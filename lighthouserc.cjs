@@ -10,6 +10,7 @@ module.exports = {
       chromePath: chromium.executablePath(),
       settings: {
         preset: "desktop",
+        chromeFlags: "--no-sandbox",
         onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
       },
     },
