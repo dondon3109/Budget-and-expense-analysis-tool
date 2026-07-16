@@ -9,7 +9,7 @@ export function formatMoney(amountMinor: number): string {
 }
 
 export function formatMonth(month: string): string {
-  return new Intl.DateTimeFormat("en-PH", { month: "short" }).format(
+  return new Intl.DateTimeFormat("en-PH", { month: "short", timeZone: "UTC" }).format(
     new Date(`${month}-01T00:00:00Z`),
   );
 }
