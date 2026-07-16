@@ -1,0 +1,7 @@
+.hermes/
+*.pdf
+tmp/
+.lighthouseci/
+dist/
+node_modules/
+coverage/

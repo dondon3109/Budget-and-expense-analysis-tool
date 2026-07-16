@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "budget-expense-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "env": {
+    "preview": {
+      "name": "budget-expense-api-preview",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "budget-expense-preview",
+          "database_id": "REPLACE_WITH_PREVIEW_D1_ID",
+          "migrations_dir": "../../db/migrations",
+        },
+      ],
+      "vars": {
+        "ALLOWED_ORIGINS": "https://REPLACE_WITH_PREVIEW_PAGES_HOST",
+      },
+    },
+    "production": {
+      "name": "budget-expense-api-production",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "budget-expense-production",
+          "database_id": "REPLACE_WITH_PRODUCTION_D1_ID",
+          "migrations_dir": "../../db/migrations",
+        },
+      ],
+      "vars": {
+        "ALLOWED_ORIGINS": "https://REPLACE_WITH_PRODUCTION_DOMAIN",
+      },
+    },
+  },
+}

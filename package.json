@@ -1,0 +1,46 @@
+{
+  "name": "budget-expense-analysis-tool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "build": "pnpm -r build",
+    "lint": "eslint apps packages db e2e scripts playwright.config.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck && tsc -p tsconfig.e2e.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e:prepare": "pnpm db:migrate:local && pnpm db:seed:local",
+    "test:e2e": "pnpm test:e2e:prepare && playwright test",
+    "lighthouse": "lhci autorun",
+    "smoke:production": "node scripts/smoke-production.mjs",
+    "capture:screenshots": "node scripts/capture-portfolio.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "pnpm --filter @budget/api exec wrangler d1 migrations apply budget-expense-local --local",
+    "db:seed:local": "pnpm --filter @budget/api exec wrangler d1 execute budget-expense-local --local --file=../../db/seed.sql"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.61.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^26.1.1",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2",
+    "eslint": "^10.7.0",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.9.5",
+    "tslib": "^2.8.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.64.0",
+    "vitest": "^4.1.10"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@budget/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@budget/shared": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.30"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260715.1",
+    "wrangler": "^4.110.0"
+  }
+}

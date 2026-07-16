@@ -1,0 +1,1 @@
+CREATE INDEX `transactions_tenant_account_idx` ON `transactions` (`tenant_id`,`account_id`);
