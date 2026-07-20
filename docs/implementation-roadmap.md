@@ -81,14 +81,18 @@ Exit gate: the full demo journey works on desktop and mobile with no hidden mock
 
 Exit gate: the production URL and repository tell a complete, reproducible engineering story.
 
-## Milestone 6 — Optional authenticated persistence
+## Milestone 6 — Authenticated persistence
 
-Only begin after the public demo is stable.
+Status: implemented locally; hosted environment configuration and deployment remain.
 
-- [ ] Select a Worker-compatible identity provider after a cost/security review.
-- [ ] Link verified identities to separate user tenants.
-- [ ] Protected routes, cross-user isolation tests, data export, and account deletion.
-- [ ] Data retention and privacy review.
+- [x] Select Supabase Auth as the Worker-compatible identity provider while retaining D1 for financial data.
+- [x] Verify Supabase JWTs through JWKS and map verified identities to separate D1 tenants.
+- [x] Bootstrap starter accounts/categories and require tenant scope throughout every repository.
+- [x] Protect application routes, make the public demo read-only, and scope browser caches by user.
+- [x] Add authentication boundary, tenant bootstrap, API scope, route guard, and browser tests.
+- [x] Keep transaction CSV export behind authenticated tenant scope.
+- [ ] Configure hosted Supabase callback URLs and environment values, migrate preview/production D1, and deploy.
+- [ ] Add complete account-data export, account deletion, and formal retention/privacy controls.
 
 ## NotebookLM input
 

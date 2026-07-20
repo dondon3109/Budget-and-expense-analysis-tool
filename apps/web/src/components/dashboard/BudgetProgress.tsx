@@ -2,12 +2,14 @@ import type { DashboardSummary } from "@budget/shared";
 import { Link } from "react-router-dom";
 
 import { formatMoney } from "../../lib/formatters";
+import type { WorkspaceMode } from "../../lib/workspace";
 
 interface Props {
   data: DashboardSummary["budgetProgress"];
+  mode: WorkspaceMode;
 }
 
-export function BudgetProgress({ data }: Props) {
+export function BudgetProgress({ data, mode }: Props) {
   return (
     <section className="panel budget-panel" aria-labelledby="budget-title">
       <div className="panel-heading">
@@ -15,8 +17,8 @@ export function BudgetProgress({ data }: Props) {
           <p className="eyebrow">July plan</p>
           <h2 id="budget-title">Budget progress</h2>
         </div>
-        <Link to="/budgets" className="text-button">
-          Edit budgets
+        <Link to={mode === "demo" ? "/signup" : "/app/budgets"} className="text-button">
+          {mode === "demo" ? "Create your plan" : "Edit budgets"}
         </Link>
       </div>
       <div className="budget-list">

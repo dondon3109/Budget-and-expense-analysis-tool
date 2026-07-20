@@ -9,10 +9,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Download, FileCheck2, FileUp, RotateCcw, ShieldCheck } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 
+import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { commitImport, previewImport } from "../lib/api";
 import { formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
+import { userWorkspace } from "../lib/workspace";
 
 const MAX_FILE_BYTES = 1_000_000;
 
@@ -46,6 +48,8 @@ function downloadTemplate() {
 }
 
 export function ImportPage() {
+  const { user } = useAuth();
+  const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const [fileName, setFileName] = useState("");
   const [csvText, setCsvText] = useState("");
@@ -61,19 +65,19 @@ export function ImportPage() {
   const [result, setResult] = useState<ImportCommitResult>();
 
   const previewMutation = useMutation({
-    mutationFn: previewImport,
+    mutationFn: (input: Parameters<typeof previewImport>[1]) => previewImport(workspace, input),
     onSuccess: (data) => {
       setPreview(data);
       setResult(undefined);
     },
   });
   const commitMutation = useMutation({
-    mutationFn: commitImport,
+    mutationFn: (token: string) => commitImport(workspace, token),
     onSuccess: async (data) => {
       setResult(data);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
       ]);
     },
   });
@@ -122,7 +126,7 @@ export function ImportPage() {
     mapping.date && mapping.description && mapping.amount && mapping.category;
 
   return (
-    <AppShell>
+    <AppShell mode="user">
       <div className="dashboard-page import-page">
         <header className="dashboard-header transaction-header">
           <div>
@@ -138,9 +142,9 @@ export function ImportPage() {
         <div className="import-safety-note">
           <ShieldCheck size={19} />
           <div>
-            <strong>Use demo data only</strong>
+            <strong>Review before saving</strong>
             <span>
-              Files are limited to 1 MB and 500 rows. Previewing does not write transactions.
+              Files are limited to 1 MB and 500 rows. Previewing does not change your workspace.
             </span>
           </div>
         </div>

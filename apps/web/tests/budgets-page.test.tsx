@@ -12,6 +12,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getBudgets, saveBudgets } from "../src/lib/api";
 import { BudgetsPage } from "../src/pages/BudgetsPage";
 
+vi.mock("../src/auth/AuthProvider", () => ({
+  useAuth: () => ({
+    user: { id: "test-user", email: "test@example.com" },
+    signOut: vi.fn(),
+  }),
+}));
+
 vi.mock("../src/lib/api", () => ({
   getBudgets: vi.fn(),
   saveBudgets: vi.fn(),
@@ -61,9 +68,12 @@ describe("BudgetsPage", () => {
     await user.click(screen.getByRole("button", { name: "Save monthly plan" }));
 
     await waitFor(() => expect(saveBudgets).toHaveBeenCalledOnce());
-    expect(vi.mocked(saveBudgets).mock.calls[0]?.[0]).toEqual({
-      month: "2026-07-01",
-      items: [{ categoryId: "food", limitMinor: 900_000 }],
-    });
+    expect(vi.mocked(saveBudgets)).toHaveBeenCalledWith(
+      { mode: "user", key: "user:test-user", userId: "test-user" },
+      {
+        month: "2026-07-01",
+        items: [{ categoryId: "food", limitMinor: 900_000 }],
+      },
+    );
   });
 });

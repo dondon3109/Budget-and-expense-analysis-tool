@@ -11,7 +11,7 @@ import { categories, importPreviews } from "../../../../db/schema";
 import { HttpError } from "../errors";
 import { prepareImportRows, type PreparedImportRecord } from "../imports/prepare";
 import type { Bindings } from "../types";
-import { DEMO_TENANT_ID } from "./scope";
+import { defaultAccountIdForTenant } from "./tenants";
 
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_ROWS = 500;
@@ -30,8 +30,8 @@ export function assertImportRowCount(rowCount: number): void {
 }
 
 export interface ImportRepository {
-  preview(env: Bindings, input: ImportPreviewRequest, tenantId?: string): Promise<ImportPreview>;
-  commit(env: Bindings, token: string, tenantId?: string): Promise<ImportCommitResult>;
+  preview(env: Bindings, tenantId: string, input: ImportPreviewRequest): Promise<ImportPreview>;
+  commit(env: Bindings, tenantId: string, token: string): Promise<ImportCommitResult>;
 }
 
 async function findExistingFingerprints(
@@ -68,7 +68,7 @@ function parseStoredRows(value: string): PreparedImportRecord[] {
 }
 
 export const importRepository: ImportRepository = {
-  async preview(env, input, tenantId = DEMO_TENANT_ID) {
+  async preview(env, tenantId, input) {
     assertImportFileSize(input.csvText);
 
     let csv;
@@ -95,10 +95,17 @@ export const importRepository: ImportRepository = {
       })
       .from(categories)
       .where(and(eq(categories.tenantId, tenantId), eq(categories.archived, false)));
+    const defaultAccountId = defaultAccountIdForTenant(tenantId);
 
     let initial;
     try {
-      initial = await prepareImportRows(csv, input.mapping, categoryRows, new Set());
+      initial = await prepareImportRows(
+        csv,
+        input.mapping,
+        categoryRows,
+        new Set(),
+        defaultAccountId,
+      );
     } catch (error) {
       throw new HttpError(
         400,
@@ -114,7 +121,7 @@ export const importRepository: ImportRepository = {
     const prepared =
       existing.size === 0
         ? initial
-        : await prepareImportRows(csv, input.mapping, categoryRows, existing);
+        : await prepareImportRows(csv, input.mapping, categoryRows, existing, defaultAccountId);
 
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + PREVIEW_LIFETIME_MS).toISOString();
@@ -153,7 +160,7 @@ export const importRepository: ImportRepository = {
     };
   },
 
-  async commit(env, token, tenantId = DEMO_TENANT_ID) {
+  async commit(env, tenantId, token) {
     const db = drizzle(env.DB);
     const [preview] = await db
       .select()
@@ -177,6 +184,7 @@ export const importRepository: ImportRepository = {
       throw new HttpError(400, "nothing_to_import", "The preview has no valid rows to import.");
     }
     const importId = crypto.randomUUID();
+    const defaultAccountId = defaultAccountIdForTenant(tenantId);
     const statements = [
       env.DB.prepare(
         "INSERT INTO imports (id, tenant_id, original_filename, row_count, accepted_count, rejected_count) VALUES (?, ?, ?, ?, ?, ?)",
@@ -194,7 +202,7 @@ export const importRepository: ImportRepository = {
         ).bind(
           crypto.randomUUID(),
           tenantId,
-          "account-everyday",
+          defaultAccountId,
           row.categoryId,
           row.date,
           row.description,

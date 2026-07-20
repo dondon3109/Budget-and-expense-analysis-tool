@@ -3,24 +3,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Check, CircleDollarSign, PiggyBank, TrendingDown } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
+import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { getBudgets, saveBudgets } from "../lib/api";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
+import { userWorkspace } from "../lib/workspace";
 
 function toAmountText(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2);
 }
 
 export function BudgetsPage() {
+  const { user } = useAuth();
+  const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const [month, setMonth] = useState("2026-07");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [clientError, setClientError] = useState<string>();
   const monthStart = `${month}-01`;
   const budgetQuery = useQuery({
-    queryKey: queryKeys.budgets(monthStart),
-    queryFn: () => getBudgets(monthStart),
+    queryKey: queryKeys.budgets(workspace, monthStart),
+    queryFn: () => getBudgets(workspace, monthStart),
   });
 
   useEffect(() => {
@@ -34,10 +38,10 @@ export function BudgetsPage() {
   }, [budgetQuery.data]);
 
   const saveMutation = useMutation({
-    mutationFn: saveBudgets,
+    mutationFn: (input: BudgetUpsert) => saveBudgets(workspace, input),
     onSuccess: async (data) => {
-      queryClient.setQueryData(queryKeys.budgets(data.month), data);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+      queryClient.setQueryData(queryKeys.budgets(workspace, data.month), data);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
     },
   });
 
@@ -59,7 +63,7 @@ export function BudgetsPage() {
 
   const data = budgetQuery.data;
   return (
-    <AppShell>
+    <AppShell mode="user">
       <div className="dashboard-page budgets-page">
         <header className="dashboard-header transaction-header">
           <div>

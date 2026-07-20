@@ -3,12 +3,14 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Link } from "react-router-dom";
 
 import { formatMoney } from "../../lib/formatters";
+import type { WorkspaceMode } from "../../lib/workspace";
 
 interface Props {
   data: DashboardSummary["spendingByCategory"];
+  mode: WorkspaceMode;
 }
 
-export function SpendingByCategory({ data }: Props) {
+export function SpendingByCategory({ data, mode }: Props) {
   return (
     <section className="panel category-panel" aria-labelledby="spending-title">
       <div className="panel-heading">
@@ -16,8 +18,8 @@ export function SpendingByCategory({ data }: Props) {
           <p className="eyebrow">Breakdown</p>
           <h2 id="spending-title">Spending by category</h2>
         </div>
-        <Link to="/transactions" className="text-button">
-          View details
+        <Link to={mode === "demo" ? "/signup" : "/app/transactions"} className="text-button">
+          {mode === "demo" ? "Track your spending" : "View details"}
         </Link>
       </div>
       <div className="donut-layout">

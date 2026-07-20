@@ -6,10 +6,8 @@ import {
 import { and, eq, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { budgets, categories, transactions } from "../../../../db/schema";
+import { accounts, budgets, categories, transactions } from "../../../../db/schema";
 import type { Bindings } from "../types";
-
-const DEMO_TENANT_ID = "demo";
 
 function sixMonthWindowStart(to: string): string {
   const endMonth = new Date(`${to.slice(0, 7)}-01T00:00:00Z`);
@@ -19,6 +17,7 @@ function sixMonthWindowStart(to: string): string {
 
 export async function loadDashboard(
   env: Bindings,
+  tenantId: string,
   period: { from: string; to: string },
 ): Promise<DashboardSummary> {
   const db = drizzle(env.DB);
@@ -36,12 +35,20 @@ export async function loadDashboard(
       categoryId: categories.id,
       categoryName: categories.name,
       categoryColor: categories.color,
+      accountName: accounts.name,
     })
     .from(transactions)
-    .innerJoin(categories, eq(transactions.categoryId, categories.id))
+    .innerJoin(
+      categories,
+      and(eq(transactions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+    )
+    .leftJoin(
+      accounts,
+      and(eq(transactions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
+    )
     .where(
       and(
-        eq(transactions.tenantId, DEMO_TENANT_ID),
+        eq(transactions.tenantId, tenantId),
         gte(transactions.date, queryFrom),
         lte(transactions.date, period.to),
       ),
@@ -56,13 +63,16 @@ export async function loadDashboard(
       limitMinor: budgets.limitMinor,
     })
     .from(budgets)
-    .innerJoin(categories, eq(budgets.categoryId, categories.id))
-    .where(and(eq(budgets.tenantId, DEMO_TENANT_ID), eq(budgets.month, budgetMonth)));
+    .innerJoin(
+      categories,
+      and(eq(budgets.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+    )
+    .where(and(eq(budgets.tenantId, tenantId), eq(budgets.month, budgetMonth)));
 
   const normalizedTransactions: TransactionRecord[] = transactionRows.map((row) => ({
     ...row,
     currency: "PHP",
-    accountName: "Everyday account",
+    accountName: row.accountName ?? "Unassigned",
   }));
 
   return buildDashboardSummary(normalizedTransactions, budgetRows, period);

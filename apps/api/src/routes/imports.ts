@@ -3,10 +3,10 @@ import { Hono } from "hono";
 
 import type { ImportRepository } from "../db/imports";
 import { HttpError } from "../errors";
-import type { Bindings } from "../types";
+import type { AppEnvironment } from "../types";
 
 export function createImportRoutes(repository: ImportRepository) {
-  const routes = new Hono<{ Bindings: Bindings }>();
+  const routes = new Hono<AppEnvironment>();
 
   routes.post("/preview", async (context) => {
     let body: unknown;
@@ -24,7 +24,9 @@ export function createImportRoutes(repository: ImportRepository) {
         parsed.error.flatten(),
       );
     }
-    return context.json(await repository.preview(context.env, parsed.data));
+    return context.json(
+      await repository.preview(context.env, context.get("tenant").tenantId, parsed.data),
+    );
   });
 
   routes.post("/commit", async (context) => {
@@ -38,7 +40,10 @@ export function createImportRoutes(repository: ImportRepository) {
     if (!parsed.success) {
       throw new HttpError(400, "invalid_request", "The preview token is invalid.");
     }
-    return context.json(await repository.commit(context.env, parsed.data.token), 201);
+    return context.json(
+      await repository.commit(context.env, context.get("tenant").tenantId, parsed.data.token),
+      201,
+    );
   });
 
   return routes;

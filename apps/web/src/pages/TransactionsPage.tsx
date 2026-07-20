@@ -8,6 +8,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { ChevronLeft, ChevronRight, Download, FolderCog, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
+import { useAuth } from "../auth/AuthProvider";
 import { CategoryManager } from "../components/transactions/CategoryManager";
 import { TransactionFilters } from "../components/transactions/TransactionFilters";
 import { TransactionForm } from "../components/transactions/TransactionForm";
@@ -23,6 +24,7 @@ import {
   updateTransaction,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
+import { userWorkspace } from "../lib/workspace";
 
 const initialQuery: TransactionListQuery = {
   page: 1,
@@ -32,6 +34,8 @@ const initialQuery: TransactionListQuery = {
 };
 
 export function TransactionsPage() {
+  const { user } = useAuth();
+  const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const [query, setQuery] = useState<TransactionListQuery>(initialQuery);
   const [searchDraft, setSearchDraft] = useState("");
@@ -42,29 +46,31 @@ export function TransactionsPage() {
   const [exportError, setExportError] = useState<string>();
 
   const categoriesQuery = useQuery({
-    queryKey: queryKeys.categories(true),
-    queryFn: () => getCategories(true),
+    queryKey: queryKeys.categories(workspace, true),
+    queryFn: () => getCategories(workspace, true),
   });
   const accountsQuery = useQuery({
-    queryKey: queryKeys.accounts,
-    queryFn: getAccounts,
+    queryKey: queryKeys.accounts(workspace),
+    queryFn: () => getAccounts(workspace),
   });
   const transactionsQuery = useQuery({
-    queryKey: queryKeys.transactions(query),
-    queryFn: () => getTransactions(query),
+    queryKey: queryKeys.transactions(workspace, query),
+    queryFn: () => getTransactions(workspace, query),
     placeholderData: keepPreviousData,
   });
 
   const refreshProductData = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
     ]);
   };
 
   const saveMutation = useMutation({
     mutationFn: async (input: TransactionInput) =>
-      editing ? updateTransaction({ id: editing.id, input }) : createTransaction(input),
+      editing
+        ? updateTransaction(workspace, { id: editing.id, input })
+        : createTransaction(workspace, input),
     onSuccess: async () => {
       setFormOpen(false);
       setEditing(undefined);
@@ -72,7 +78,7 @@ export function TransactionsPage() {
     },
   });
   const deleteMutation = useMutation({
-    mutationFn: deleteTransaction,
+    mutationFn: (id: string) => deleteTransaction(workspace, id),
     onSuccess: refreshProductData,
   });
 
@@ -119,7 +125,7 @@ export function TransactionsPage() {
         sortBy: query.sortBy,
         sortDirection: query.sortDirection,
       };
-      await downloadTransactions(filters);
+      await downloadTransactions(workspace, filters);
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "The export could not be prepared.");
     } finally {
@@ -128,7 +134,7 @@ export function TransactionsPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell mode="user">
       <div className="dashboard-page transactions-page">
         <header className="dashboard-header transaction-header">
           <div>
@@ -191,7 +197,7 @@ export function TransactionsPage() {
               <span>
                 {transactionsQuery.isFetching && page
                   ? "Refreshing list…"
-                  : "Demo workspace · Philippine pesos"}
+                  : "Personal workspace · Philippine pesos"}
               </span>
             </div>
             <button
@@ -220,7 +226,7 @@ export function TransactionsPage() {
           {page && page.items.length === 0 && (
             <div className="empty-transactions">
               <strong>No transactions match these filters.</strong>
-              <p>Clear the filters or add a new transaction to this demo workspace.</p>
+              <p>Clear the filters or add a new transaction to your workspace.</p>
               <button className="button primary" type="button" onClick={openCreate}>
                 <Plus size={16} /> Add transaction
               </button>
@@ -295,7 +301,11 @@ export function TransactionsPage() {
         />
       )}
       {categoryManagerOpen && (
-        <CategoryManager categories={categories} onClose={() => setCategoryManagerOpen(false)} />
+        <CategoryManager
+          workspace={workspace}
+          categories={categories}
+          onClose={() => setCategoryManagerOpen(false)}
+        />
       )}
     </AppShell>
   );

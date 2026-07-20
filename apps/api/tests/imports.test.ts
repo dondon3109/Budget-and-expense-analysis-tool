@@ -52,7 +52,13 @@ describe("import preparation", () => {
         "2026-07-20,Weekly market,-500.00,expense,Food & dining",
       ].join("\n"),
     );
-    const prepared = await prepareImportRows(csv, mapping, categories, new Set());
+    const prepared = await prepareImportRows(
+      csv,
+      mapping,
+      categories,
+      new Set(),
+      "user:user-1:account:default",
+    );
     expect(prepared.rows.map((row) => row.status)).toEqual(["ready", "invalid", "duplicate"]);
     expect(prepared.records).toHaveLength(1);
     expect(prepared.records[0]?.amountMinor).toBe(-50_000);
@@ -68,6 +74,7 @@ describe("import preparation", () => {
       { ...mapping, kind: undefined },
       categories,
       new Set(),
+      "user:user-1:account:default",
     );
     const fingerprint = withoutExisting.records[0]!.fingerprint;
     const withExisting = await prepareImportRows(
@@ -75,9 +82,31 @@ describe("import preparation", () => {
       { ...mapping, kind: undefined },
       categories,
       new Set([fingerprint]),
+      "user:user-1:account:default",
     );
     expect(withExisting.rows[0]?.status).toBe("duplicate");
     expect(withExisting.records).toHaveLength(0);
+  });
+
+  it("uses the tenant default account as the fingerprint source", async () => {
+    const csv = parseCsv(
+      "Date,Description,Amount,Category\n2026-07-20,Weekly market,-500.00,Food & dining",
+    );
+    const firstTenant = await prepareImportRows(
+      csv,
+      { ...mapping, kind: undefined },
+      categories,
+      new Set(),
+      "user:user-1:account:default",
+    );
+    const secondTenant = await prepareImportRows(
+      csv,
+      { ...mapping, kind: undefined },
+      categories,
+      new Set(),
+      "user:user-2:account:default",
+    );
+    expect(firstTenant.records[0]?.fingerprint).not.toBe(secondTenant.records[0]?.fingerprint);
   });
 
   it("rejects a mapped non-PHP currency", async () => {
@@ -89,6 +118,7 @@ describe("import preparation", () => {
       { ...mapping, kind: undefined, currency: "Currency" },
       categories,
       new Set(),
+      "user:user-1:account:default",
     );
     expect(prepared.rows[0]).toMatchObject({
       status: "invalid",

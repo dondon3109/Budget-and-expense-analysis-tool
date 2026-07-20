@@ -15,9 +15,14 @@ export function LandingPage() {
           <a href="#features">Features</a>
           <a href="#approach">How it works</a>
         </div>
-        <Link className="button secondary" to="/demo">
-          Open demo
-        </Link>
+        <div className="landing-account-actions">
+          <Link className="landing-sign-in" to="/login">
+            Sign in
+          </Link>
+          <Link className="button primary" to="/signup">
+            Create account
+          </Link>
+        </div>
       </header>
       <main id="top">
         <section className="hero">
@@ -31,11 +36,16 @@ export function LandingPage() {
               a clear monthly picture.
             </p>
             <div className="hero-actions">
-              <Link className="button primary" to="/demo">
-                Explore the sample dashboard <ArrowRight size={18} />
-              </Link>
+              <div className="hero-action-buttons">
+                <Link className="button primary" to="/signup">
+                  Create account <ArrowRight size={18} />
+                </Link>
+                <Link className="button secondary" to="/demo">
+                  Open demo
+                </Link>
+              </div>
               <span>
-                <ShieldCheck size={17} /> Uses demo data—no account needed
+                <ShieldCheck size={17} /> The read-only demo needs no account
               </span>
             </div>
             <div className="hero-proof">

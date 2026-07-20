@@ -1,21 +1,24 @@
 import type {
   AccountRecord,
+  BudgetMonthPlan,
+  BudgetUpsert,
   CategoryInput,
   CategoryRecord,
   CategoryUpdate,
-  BudgetMonthPlan,
-  BudgetUpsert,
   DashboardSummary,
   ImportCommitResult,
   ImportPreview,
   ImportPreviewRequest,
-  TransactionInput,
   TransactionExportQuery,
+  TransactionInput,
   TransactionListItem,
   TransactionListQuery,
   TransactionPage,
   TransactionUpdate,
 } from "@budget/shared";
+
+import { getSupabaseClient } from "./supabase";
+import type { AuthenticatedWorkspace, Workspace } from "./workspace";
 
 const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -30,13 +33,65 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiUrl}${path}`, {
+async function accessToken(
+  workspace: AuthenticatedWorkspace,
+  refresh: boolean,
+): Promise<string> {
+  const client = getSupabaseClient();
+  const result = refresh ? await client.auth.refreshSession() : await client.auth.getSession();
+  if (result.error) throw result.error;
+  const session = result.data.session;
+  if (!session || session.user.id !== workspace.userId) {
+    throw new ApiRequestError("Your session has expired. Sign in again.", 401, "session_expired");
+  }
+  return session.access_token;
+}
+
+async function signOutAfterUnauthorized() {
+  try {
+    await getSupabaseClient().auth.signOut({ scope: "local" });
+  } catch {
+    // The auth state listener still clears local workspace data when sign-out succeeds locally.
+  }
+}
+
+async function workspaceFetch(
+  workspace: Workspace,
+  path: string,
+  init: RequestInit,
+): Promise<Response> {
+  const run = async (refresh: boolean) => {
+    const headers = new Headers(init.headers);
+    if (workspace.mode === "user") {
+      headers.set("Authorization", `Bearer ${await accessToken(workspace, refresh)}`);
+    }
+    return fetch(`${apiUrl}${path}`, { ...init, headers });
+  };
+
+  let response = await run(false);
+  if (response.status === 401 && workspace.mode === "user") {
+    try {
+      response = await run(true);
+    } catch {
+      await signOutAfterUnauthorized();
+      throw new ApiRequestError("Your session has expired. Sign in again.", 401, "session_expired");
+    }
+    if (response.status === 401) await signOutAfterUnauthorized();
+  }
+  return response;
+}
+
+async function requestJson<T>(
+  workspace: Workspace,
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const response = await workspaceFetch(workspace, path, {
     ...init,
     headers: {
       Accept: "application/json",
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...init.headers,
     },
   });
   if (!response.ok) {
@@ -45,7 +100,10 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
       message?: string;
     } | null;
     throw new ApiRequestError(
-      payload?.message ?? "The request could not be completed.",
+      payload?.message ??
+        (response.status === 401
+          ? "Your session has expired. Sign in again."
+          : "The request could not be completed."),
       response.status,
       payload?.error ?? "request_failed",
     );
@@ -54,15 +112,18 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function requestBlob(path: string): Promise<Blob> {
-  const response = await fetch(`${apiUrl}${path}`, { headers: { Accept: "text/csv" } });
+async function requestBlob(workspace: AuthenticatedWorkspace, path: string): Promise<Blob> {
+  const response = await workspaceFetch(workspace, path, { headers: { Accept: "text/csv" } });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
       error?: string;
       message?: string;
     } | null;
     throw new ApiRequestError(
-      payload?.message ?? "The download could not be prepared.",
+      payload?.message ??
+        (response.status === 401
+          ? "Your session has expired. Sign in again."
+          : "The download could not be prepared."),
       response.status,
       payload?.error ?? "request_failed",
     );
@@ -70,87 +131,134 @@ async function requestBlob(path: string): Promise<Blob> {
   return response.blob();
 }
 
-export function getDashboard(): Promise<DashboardSummary> {
-  return requestJson("/api/dashboard?from=2026-07-01&to=2026-07-31");
+export function getDashboard(workspace: Workspace): Promise<DashboardSummary> {
+  const basePath = workspace.mode === "demo" ? "/api/demo" : "/api/app";
+  return requestJson(workspace, `${basePath}/dashboard?from=2026-07-01&to=2026-07-31`);
 }
 
-export function getTransactions(query: TransactionListQuery): Promise<TransactionPage> {
+export function getTransactions(
+  workspace: AuthenticatedWorkspace,
+  query: TransactionListQuery,
+): Promise<TransactionPage> {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value !== undefined && value !== "") search.set(key, String(value));
   }
-  return requestJson(`/api/transactions?${search.toString()}`);
+  return requestJson(workspace, `/api/app/transactions?${search.toString()}`);
 }
 
-export function createTransaction(input: TransactionInput): Promise<TransactionListItem> {
-  return requestJson("/api/transactions", { method: "POST", body: JSON.stringify(input) });
+export function createTransaction(
+  workspace: AuthenticatedWorkspace,
+  input: TransactionInput,
+): Promise<TransactionListItem> {
+  return requestJson(workspace, "/api/app/transactions", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
-export function updateTransaction(args: {
-  id: string;
-  input: TransactionUpdate;
-}): Promise<TransactionListItem> {
-  return requestJson(`/api/transactions/${args.id}`, {
+export function updateTransaction(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; input: TransactionUpdate },
+): Promise<TransactionListItem> {
+  return requestJson(workspace, `/api/app/transactions/${args.id}`, {
     method: "PATCH",
     body: JSON.stringify(args.input),
   });
 }
 
-export function deleteTransaction(id: string): Promise<void> {
-  return requestJson(`/api/transactions/${id}`, { method: "DELETE" });
+export function deleteTransaction(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+): Promise<void> {
+  return requestJson(workspace, `/api/app/transactions/${id}`, { method: "DELETE" });
 }
 
-export async function getCategories(includeArchived = false): Promise<CategoryRecord[]> {
+export async function getCategories(
+  workspace: AuthenticatedWorkspace,
+  includeArchived = false,
+): Promise<CategoryRecord[]> {
   const result = await requestJson<{ items: CategoryRecord[] }>(
-    `/api/categories${includeArchived ? "?includeArchived=true" : ""}`,
+    workspace,
+    `/api/app/categories${includeArchived ? "?includeArchived=true" : ""}`,
   );
   return result.items;
 }
 
-export async function getAccounts(): Promise<AccountRecord[]> {
-  const result = await requestJson<{ items: AccountRecord[] }>("/api/accounts");
+export async function getAccounts(workspace: AuthenticatedWorkspace): Promise<AccountRecord[]> {
+  const result = await requestJson<{ items: AccountRecord[] }>(workspace, "/api/app/accounts");
   return result.items;
 }
 
-export function createCategory(input: CategoryInput): Promise<CategoryRecord> {
-  return requestJson("/api/categories", { method: "POST", body: JSON.stringify(input) });
+export function createCategory(
+  workspace: AuthenticatedWorkspace,
+  input: CategoryInput,
+): Promise<CategoryRecord> {
+  return requestJson(workspace, "/api/app/categories", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
-export function updateCategory(args: {
-  id: string;
-  input: CategoryUpdate;
-}): Promise<CategoryRecord> {
-  return requestJson(`/api/categories/${args.id}`, {
+export function updateCategory(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; input: CategoryUpdate },
+): Promise<CategoryRecord> {
+  return requestJson(workspace, `/api/app/categories/${args.id}`, {
     method: "PATCH",
     body: JSON.stringify(args.input),
   });
 }
 
-export function previewImport(input: ImportPreviewRequest): Promise<ImportPreview> {
-  return requestJson("/api/imports/preview", { method: "POST", body: JSON.stringify(input) });
+export function previewImport(
+  workspace: AuthenticatedWorkspace,
+  input: ImportPreviewRequest,
+): Promise<ImportPreview> {
+  return requestJson(workspace, "/api/app/imports/preview", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
-export function commitImport(token: string): Promise<ImportCommitResult> {
-  return requestJson("/api/imports/commit", {
+export function commitImport(
+  workspace: AuthenticatedWorkspace,
+  token: string,
+): Promise<ImportCommitResult> {
+  return requestJson(workspace, "/api/app/imports/commit", {
     method: "POST",
     body: JSON.stringify({ token }),
   });
 }
 
-export function getBudgets(month: string): Promise<BudgetMonthPlan> {
-  return requestJson(`/api/budgets?month=${encodeURIComponent(month)}`);
+export function getBudgets(
+  workspace: AuthenticatedWorkspace,
+  month: string,
+): Promise<BudgetMonthPlan> {
+  return requestJson(workspace, `/api/app/budgets?month=${encodeURIComponent(month)}`);
 }
 
-export function saveBudgets(input: BudgetUpsert): Promise<BudgetMonthPlan> {
-  return requestJson("/api/budgets", { method: "PUT", body: JSON.stringify(input) });
+export function saveBudgets(
+  workspace: AuthenticatedWorkspace,
+  input: BudgetUpsert,
+): Promise<BudgetMonthPlan> {
+  return requestJson(workspace, "/api/app/budgets", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
-export async function downloadTransactions(query: TransactionExportQuery): Promise<void> {
+export async function downloadTransactions(
+  workspace: AuthenticatedWorkspace,
+  query: TransactionExportQuery,
+): Promise<void> {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value !== undefined && value !== "") search.set(key, String(value));
   }
-  const blob = await requestBlob(`/api/exports/transactions.csv?${search.toString()}`);
+  const blob = await requestBlob(
+    workspace,
+    `/api/app/exports/transactions.csv?${search.toString()}`,
+  );
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

@@ -17,6 +17,20 @@ export const tenants = sqliteTable("tenants", {
   ...timestamps,
 });
 
+export const userTenants = sqliteTable(
+  "user_tenants",
+  {
+    userId: text("user_id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [uniqueIndex("user_tenants_tenant_unique").on(table.tenantId)],
+);
+
 export const accounts = sqliteTable(
   "accounts",
   {

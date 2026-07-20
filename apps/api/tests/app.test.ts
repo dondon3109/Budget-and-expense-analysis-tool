@@ -1,8 +1,8 @@
 import {
   demoDashboard,
   demoTransactions,
-  type BudgetMonthPlan,
   type AccountRecord,
+  type BudgetMonthPlan,
   type CategoryRecord,
   type ImportPreviewRequest,
   type TransactionListItem,
@@ -10,15 +10,20 @@ import {
 } from "@budget/shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { createApp } from "../src/app";
-import type { BudgetRepository } from "../src/db/budgets";
+import { createApp, type AppOptions } from "../src/app";
+import type { AuthVerifier } from "../src/auth";
 import type { AccountRepository } from "../src/db/accounts";
+import type { BudgetRepository } from "../src/db/budgets";
 import type { CategoryRepository } from "../src/db/categories";
 import type { ImportRepository } from "../src/db/imports";
+import type { TenantResolver } from "../src/db/tenants";
 import type { TransactionRepository } from "../src/db/transactions";
 import { HttpError } from "../src/errors";
 import type { RateLimiter } from "../src/rate-limit";
 import type { Bindings } from "../src/types";
+
+const AUTHORIZATION = { Authorization: "Bearer valid-token" };
+const TENANT_ID = "user:user-1";
 
 const transactionItem: TransactionListItem = {
   ...demoTransactions[0]!,
@@ -100,7 +105,7 @@ function createBudgetStore(): BudgetRepository {
 
 function createImportStore(): ImportRepository {
   return {
-    preview: vi.fn(async (_env: Bindings, input: ImportPreviewRequest) => ({
+    preview: vi.fn(async (_env: Bindings, _tenantId: string, input: ImportPreviewRequest) => ({
       token: "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
       expiresAt: "2026-07-16T15:15:00.000Z",
       fileName: input.fileName,
@@ -114,45 +119,166 @@ function createImportStore(): ImportRepository {
   };
 }
 
+function createAuthVerifier(): AuthVerifier {
+  return {
+    verify: vi.fn(async (_env, token) => {
+      if (token !== "valid-token") throw new Error("invalid token");
+      return { id: "user-1", email: "person@example.com", role: "authenticated" };
+    }),
+  };
+}
+
+function createTenantResolver(): TenantResolver {
+  return {
+    resolve: vi.fn(async () => ({
+      tenantId: TENANT_ID,
+      defaultAccountId: `${TENANT_ID}:account:default`,
+    })),
+  };
+}
+
+function createAllowedRateLimiter(): RateLimiter {
+  return {
+    consume: vi.fn(async () => ({
+      allowed: true,
+      limit: 60,
+      remaining: 59,
+      retryAfterSeconds: 60,
+    })),
+  };
+}
+
+function createTestApp(options: AppOptions = {}) {
+  return createApp({
+    readinessCheck: vi.fn().mockResolvedValue(undefined),
+    authVerifier: createAuthVerifier(),
+    tenantResolver: createTenantResolver(),
+    rateLimiter: createAllowedRateLimiter(),
+    ...options,
+  });
+}
+
+function privateHeaders(additional: Record<string, string> = {}) {
+  return { ...AUTHORIZATION, ...additional };
+}
+
 describe("API foundation", () => {
   it("reports readiness", async () => {
-    const app = createApp({ readinessCheck: vi.fn().mockResolvedValue(undefined) });
+    const app = createTestApp();
     const response = await app.request("/health");
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ status: "ok" });
   });
 
+  it("serves the explicit public demo dashboard without authentication", async () => {
+    const loader = vi.fn().mockResolvedValue(demoDashboard);
+    const app = createTestApp({ dashboardLoader: loader });
+    const response = await app.request("/api/demo/dashboard?from=2026-07-01&to=2026-07-31");
+    expect(response.status).toBe(200);
+    expect(loader).toHaveBeenCalledWith(undefined, "demo", {
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+  });
+
+  it("keeps the public demo read-only", async () => {
+    const app = createTestApp();
+    const response = await app.request("/api/demo/dashboard", { method: "POST" });
+    expect(response.status).toBe(404);
+  });
+
   it("validates dashboard date ranges", async () => {
-    const app = createApp({ dashboardLoader: vi.fn().mockResolvedValue(demoDashboard) });
-    const response = await app.request("/api/dashboard?from=2026-08-01&to=2026-07-01", {});
+    const app = createTestApp({ dashboardLoader: vi.fn().mockResolvedValue(demoDashboard) });
+    const response = await app.request("/api/app/dashboard?from=2026-08-01&to=2026-07-01", {
+      headers: AUTHORIZATION,
+    });
     expect(response.status).toBe(400);
   });
 
-  it("returns the shared dashboard contract", async () => {
-    const loader = vi.fn().mockResolvedValue(demoDashboard);
-    const app = createApp({ dashboardLoader: loader });
-    const response = await app.request("/api/dashboard?from=2026-07-01&to=2026-07-31", {});
+  it("requires authentication for private routes", async () => {
+    const app = createTestApp();
+    const response = await app.request("/api/app/me");
+    expect(response.status).toBe(401);
+    expect(response.headers.get("WWW-Authenticate")).toContain("Bearer");
+    await expect(response.json()).resolves.toEqual({ error: "authentication_required" });
+  });
+
+  it("rejects invalid bearer tokens before resolving a tenant", async () => {
+    const tenantResolver = createTenantResolver();
+    const app = createTestApp({ tenantResolver });
+    const response = await app.request("/api/app/me", {
+      headers: { Authorization: "Bearer invalid-token" },
+    });
+    expect(response.status).toBe(401);
+    expect(tenantResolver.resolve).not.toHaveBeenCalled();
+  });
+
+  it("returns the authenticated user and resolved tenant", async () => {
+    const app = createTestApp();
+    const response = await app.request("/api/app/me", { headers: AUTHORIZATION });
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ currency: "PHP" });
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual({
+      user: {
+        id: "user-1",
+        email: "person@example.com",
+        role: "authenticated",
+      },
+      tenantId: TENANT_ID,
+    });
+  });
+
+  it("answers CORS preflight before authentication and allows Authorization", async () => {
+    const authVerifier = createAuthVerifier();
+    const app = createTestApp({ authVerifier });
+    const response = await app.request("/api/app/transactions", {
+      method: "OPTIONS",
+      headers: {
+        Origin: "http://localhost:5173",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "authorization,content-type",
+      },
+    });
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Headers")).toBe(
+      "Authorization, Content-Type",
+    );
+    expect(authVerifier.verify).not.toHaveBeenCalled();
   });
 
   it("rejects browser requests from an unapproved origin", async () => {
-    const app = createApp({ dashboardLoader: vi.fn().mockResolvedValue(demoDashboard) });
-    const response = await app.request("/api/dashboard?from=2026-07-01&to=2026-07-31", {
+    const app = createTestApp({ dashboardLoader: vi.fn().mockResolvedValue(demoDashboard) });
+    const response = await app.request("/api/demo/dashboard?from=2026-07-01&to=2026-07-31", {
       headers: { Origin: "https://untrusted.example" },
     });
     expect(response.status).toBe(403);
   });
 
-  it("parses pagination and filters before listing transactions", async () => {
+  it("loads the private dashboard for the resolved tenant", async () => {
+    const loader = vi.fn().mockResolvedValue(demoDashboard);
+    const app = createTestApp({ dashboardLoader: loader });
+    const response = await app.request("/api/app/dashboard?from=2026-07-01&to=2026-07-31", {
+      headers: AUTHORIZATION,
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(loader).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+  });
+
+  it("parses pagination and filters before listing tenant transactions", async () => {
     const transactions = createTransactionStore();
-    const app = createApp({ transactions });
+    const app = createTestApp({ transactions });
     const response = await app.request(
-      "/api/transactions?page=2&pageSize=5&kind=expense&accountId=account-everyday&search=rent",
+      "/api/app/transactions?page=2&pageSize=5&kind=expense&accountId=account-everyday&search=rent",
+      { headers: AUTHORIZATION },
     );
     expect(response.status).toBe(200);
     expect(transactions.list).toHaveBeenCalledWith(
       undefined,
+      TENANT_ID,
       expect.objectContaining({
         page: 2,
         pageSize: 5,
@@ -163,21 +289,21 @@ describe("API foundation", () => {
     );
   });
 
-  it("lists tenant-scoped accounts for transaction filters", async () => {
+  it("lists accounts for the resolved tenant", async () => {
     const accounts = createAccountStore();
-    const app = createApp({ accounts });
-    const response = await app.request("/api/accounts");
+    const app = createTestApp({ accounts });
+    const response = await app.request("/api/app/accounts", { headers: AUTHORIZATION });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ items: [accountItem] });
-    expect(accounts.list).toHaveBeenCalledOnce();
+    expect(accounts.list).toHaveBeenCalledWith(undefined, TENANT_ID);
   });
 
-  it("validates and creates a transaction", async () => {
+  it("validates and creates a tenant transaction", async () => {
     const transactions = createTransactionStore();
-    const app = createApp({ transactions });
-    const response = await app.request("/api/transactions", {
+    const app = createTestApp({ transactions });
+    const response = await app.request("/api/app/transactions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: privateHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         date: "2026-07-18",
         description: "Weekend groceries",
@@ -188,15 +314,19 @@ describe("API foundation", () => {
       }),
     });
     expect(response.status).toBe(201);
-    expect(transactions.create).toHaveBeenCalledOnce();
+    expect(transactions.create).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      expect.objectContaining({ description: "Weekend groceries" }),
+    );
   });
 
   it("rejects an impossible date before reaching the repository", async () => {
     const transactions = createTransactionStore();
-    const app = createApp({ transactions });
-    const response = await app.request("/api/transactions", {
+    const app = createTestApp({ transactions });
+    const response = await app.request("/api/app/transactions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: privateHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         date: "2026-02-30",
         description: "Impossible",
@@ -210,7 +340,7 @@ describe("API foundation", () => {
     expect(transactions.create).not.toHaveBeenCalled();
   });
 
-  it("rate-limits write requests before they reach a repository", async () => {
+  it("rate-limits authenticated writes by resolved tenant", async () => {
     const transactions = createTransactionStore();
     const rateLimiter: RateLimiter = {
       consume: vi.fn(async () => ({
@@ -220,17 +350,37 @@ describe("API foundation", () => {
         retryAfterSeconds: 42,
       })),
     };
-    const app = createApp({ transactions, rateLimiter });
-    const response = await app.request("/api/transactions", {
+    const app = createTestApp({ transactions, rateLimiter });
+    const response = await app.request("/api/app/transactions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.8" },
+      headers: privateHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({}),
     });
 
     expect(response.status).toBe(429);
     expect(response.headers.get("Retry-After")).toBe("42");
-    await expect(response.json()).resolves.toMatchObject({ error: "rate_limit_exceeded" });
+    expect(rateLimiter.consume).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      scope: "tenant-write",
+      limit: 60,
+      windowSeconds: 60,
+    });
     expect(transactions.create).not.toHaveBeenCalled();
+  });
+
+  it("uses the import-specific tenant rate limit", async () => {
+    const imports = createImportStore();
+    const rateLimiter = createAllowedRateLimiter();
+    const app = createTestApp({ imports, rateLimiter });
+    await app.request("/api/app/imports/preview", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({}),
+    });
+    expect(rateLimiter.consume).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      scope: "tenant-import",
+      limit: 20,
+      windowSeconds: 900,
+    });
   });
 
   it("returns stable not-found errors from write operations", async () => {
@@ -238,10 +388,10 @@ describe("API foundation", () => {
     vi.mocked(transactions.update).mockRejectedValueOnce(
       new HttpError(404, "transaction_not_found", "Transaction not found."),
     );
-    const app = createApp({ transactions });
-    const response = await app.request("/api/transactions/missing", {
+    const app = createTestApp({ transactions });
+    const response = await app.request("/api/app/transactions/missing", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: privateHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ description: "Updated" }),
     });
     expect(response.status).toBe(404);
@@ -250,37 +400,43 @@ describe("API foundation", () => {
 
   it("preserves an intentional empty note when validating an update", async () => {
     const transactions = createTransactionStore();
-    const app = createApp({ transactions });
-    const response = await app.request("/api/transactions/transaction-1", {
+    const app = createTestApp({ transactions });
+    const response = await app.request("/api/app/transactions/transaction-1", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: privateHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ notes: "" }),
     });
     expect(response.status).toBe(200);
-    expect(transactions.update).toHaveBeenCalledWith(undefined, "transaction-1", { notes: "" });
+    expect(transactions.update).toHaveBeenCalledWith(undefined, TENANT_ID, "transaction-1", {
+      notes: "",
+    });
   });
 
-  it("lists and creates categories through validated routes", async () => {
+  it("lists and creates categories for the resolved tenant", async () => {
     const categories = createCategoryStore();
-    const app = createApp({ categories });
-    const listResponse = await app.request("/api/categories");
+    const app = createTestApp({ categories });
+    const listResponse = await app.request("/api/app/categories", { headers: AUTHORIZATION });
     expect(listResponse.status).toBe(200);
 
-    const createResponse = await app.request("/api/categories", {
+    const createResponse = await app.request("/api/app/categories", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: privateHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ name: "Health", kind: "expense", color: "#4f7faf" }),
     });
     expect(createResponse.status).toBe(201);
-    expect(categories.create).toHaveBeenCalledOnce();
+    expect(categories.create).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      expect.objectContaining({ name: "Health" }),
+    );
   });
 
-  it("previews and commits an import through server-issued tokens", async () => {
+  it("previews and commits an import for the resolved tenant", async () => {
     const imports = createImportStore();
-    const app = createApp({ imports });
-    const previewResponse = await app.request("/api/imports/preview", {
+    const app = createTestApp({ imports });
+    const previewResponse = await app.request("/api/app/imports/preview", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: privateHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         fileName: "transactions.csv",
         csvText: "Date,Description,Amount,Category\n2026-07-20,Market,-50.00,Food & dining",
@@ -294,43 +450,57 @@ describe("API foundation", () => {
     });
     expect(previewResponse.status).toBe(200);
 
-    const commitResponse = await app.request("/api/imports/commit", {
+    const commitResponse = await app.request("/api/app/imports/commit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: privateHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ token: "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0" }),
     });
     expect(commitResponse.status).toBe(201);
-    expect(imports.commit).toHaveBeenCalledOnce();
+    expect(imports.preview).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(Object));
+    expect(imports.commit).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
+    );
   });
 
   it("reads and atomically updates a monthly budget plan", async () => {
     const budgets = createBudgetStore();
-    const app = createApp({ budgets });
-    const listResponse = await app.request("/api/budgets?month=2026-07-01");
+    const app = createTestApp({ budgets });
+    const listResponse = await app.request("/api/app/budgets?month=2026-07-01", {
+      headers: AUTHORIZATION,
+    });
     expect(listResponse.status).toBe(200);
 
-    const updateResponse = await app.request("/api/budgets", {
+    const updateResponse = await app.request("/api/app/budgets", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: privateHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         month: "2026-07-01",
         items: [{ categoryId: "food", limitMinor: 900_000 }],
       }),
     });
     expect(updateResponse.status).toBe(200);
-    expect(budgets.upsert).toHaveBeenCalledOnce();
+    expect(budgets.upsert).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      expect.objectContaining({ month: "2026-07-01" }),
+    );
   });
 
-  it("exports transactions using the validated active filters", async () => {
+  it("exports transactions using tenant scope and active filters", async () => {
     const transactions = createTransactionStore();
-    const app = createApp({ transactions });
+    const app = createTestApp({ transactions });
     const response = await app.request(
-      "/api/exports/transactions.csv?kind=expense&search=market&sortBy=amount&sortDirection=asc",
+      "/api/app/exports/transactions.csv?kind=expense&search=market&sortBy=amount&sortDirection=asc",
+      { headers: AUTHORIZATION },
     );
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/csv");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(transactions.export).toHaveBeenCalledWith(
       undefined,
+      TENANT_ID,
       expect.objectContaining({
         kind: "expense",
         search: "market",

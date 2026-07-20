@@ -5,16 +5,15 @@ import { drizzle } from "drizzle-orm/d1";
 import { categories } from "../../../../db/schema";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import { DEMO_TENANT_ID } from "./scope";
 
 export interface CategoryRepository {
-  list(env: Bindings, includeArchived?: boolean, tenantId?: string): Promise<CategoryRecord[]>;
-  create(env: Bindings, input: CategoryInput, tenantId?: string): Promise<CategoryRecord>;
+  list(env: Bindings, tenantId: string, includeArchived?: boolean): Promise<CategoryRecord[]>;
+  create(env: Bindings, tenantId: string, input: CategoryInput): Promise<CategoryRecord>;
   update(
     env: Bindings,
+    tenantId: string,
     id: string,
     input: CategoryUpdate,
-    tenantId?: string,
   ): Promise<CategoryRecord>;
 }
 
@@ -30,12 +29,13 @@ async function ensureUniqueName(env: Bindings, name: string, tenantId: string, e
     .from(categories)
     .where(and(...conditions))
     .limit(1);
-  if (existing)
+  if (existing) {
     throw new HttpError(409, "category_name_exists", "A category with this name already exists.");
+  }
 }
 
 export const categoryRepository: CategoryRepository = {
-  async list(env, includeArchived = false, tenantId = DEMO_TENANT_ID) {
+  async list(env, tenantId, includeArchived = false) {
     const db = drizzle(env.DB);
     return db
       .select({
@@ -54,7 +54,7 @@ export const categoryRepository: CategoryRepository = {
       .orderBy(asc(categories.kind), asc(categories.name));
   },
 
-  async create(env, input, tenantId = DEMO_TENANT_ID) {
+  async create(env, tenantId, input) {
     await ensureUniqueName(env, input.name, tenantId);
     const id = crypto.randomUUID();
     const db = drizzle(env.DB);
@@ -62,7 +62,7 @@ export const categoryRepository: CategoryRepository = {
     return { id, ...input, archived: false };
   },
 
-  async update(env, id, input, tenantId = DEMO_TENANT_ID) {
+  async update(env, tenantId, id, input) {
     const db = drizzle(env.DB);
     const [existing] = await db
       .select({

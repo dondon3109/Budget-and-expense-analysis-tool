@@ -12,9 +12,6 @@ function requiredUrl(name) {
 
 async function expectResponse(label, url, init, validate) {
   const response = await fetch(url, init);
-  if (!response.ok) {
-    throw new Error(`${label} failed with HTTP ${response.status}.`);
-  }
   await validate(response);
   console.log(`✓ ${label}`);
 }
@@ -22,25 +19,23 @@ async function expectResponse(label, url, init, validate) {
 const apiHeaders = { Origin: origin };
 
 await expectResponse("landing page", webUrl, undefined, async (response) => {
+  if (!response.ok) throw new Error(`Landing page failed with HTTP ${response.status}.`);
   const html = await response.text();
   if (!html.includes("Clarity")) throw new Error("Landing page did not contain the app title.");
 });
 
-await expectResponse(
-  "API health and D1 readiness",
-  `${apiUrl}/health`,
-  undefined,
-  async (response) => {
-    const body = await response.json();
-    if (body.status !== "ok") throw new Error("Health response was not ready.");
-  },
-);
+await expectResponse("API health and D1 readiness", `${apiUrl}/health`, undefined, async (response) => {
+  if (!response.ok) throw new Error(`Health check failed with HTTP ${response.status}.`);
+  const body = await response.json();
+  if (body.status !== "ok") throw new Error("Health response was not ready.");
+});
 
 await expectResponse(
-  "dashboard data",
-  `${apiUrl}/api/dashboard?from=${from}&to=${to}`,
+  "read-only demo dashboard",
+  `${apiUrl}/api/demo/dashboard?from=${from}&to=${to}`,
   { headers: apiHeaders },
   async (response) => {
+    if (!response.ok) throw new Error(`Demo dashboard failed with HTTP ${response.status}.`);
     const body = await response.json();
     if (body.currency !== "PHP" || !body.metrics) {
       throw new Error("Dashboard response did not match the expected contract.");
@@ -52,44 +47,36 @@ await expectResponse(
 );
 
 await expectResponse(
-  "filtered CSV export",
-  `${apiUrl}/api/exports/transactions.csv?from=${from}&to=${to}&sortBy=date&sortDirection=asc`,
+  "private API rejects anonymous access",
+  `${apiUrl}/api/app/dashboard?from=${from}&to=${to}`,
   { headers: apiHeaders },
   async (response) => {
-    const csv = await response.text();
-    if (!response.headers.get("content-type")?.includes("text/csv")) {
-      throw new Error("Export did not return CSV content.");
+    if (response.status !== 401) {
+      throw new Error(`Private API returned HTTP ${response.status} instead of 401.`);
     }
-    if (!csv.startsWith("Date,Description,Amount,Currency,Type,Category,Account,Notes")) {
-      throw new Error("Export header did not match the documented format.");
+    const body = await response.json();
+    if (body.error !== "authentication_required") {
+      throw new Error("Private API did not return the expected authentication error.");
     }
   },
 );
 
 await expectResponse(
-  "read-only import preview",
-  `${apiUrl}/api/imports/preview`,
+  "authenticated CORS preflight",
+  `${apiUrl}/api/app/transactions`,
   {
-    method: "POST",
-    headers: { ...apiHeaders, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      fileName: "production-smoke.csv",
-      csvText:
-        "Date,Description,Amount,Currency,Type,Category\n2026-07-01,Smoke check,-1.00,USD,expense,Unknown",
-      mapping: {
-        date: "Date",
-        description: "Description",
-        amount: "Amount",
-        currency: "Currency",
-        kind: "Type",
-        category: "Category",
-      },
-    }),
+    method: "OPTIONS",
+    headers: {
+      Origin: origin,
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "authorization,content-type",
+    },
   },
   async (response) => {
-    const body = await response.json();
-    if (body.acceptedCount !== 0 || body.rejectedCount !== 1) {
-      throw new Error("Import preview did not reject the intentionally invalid row.");
+    if (response.status !== 204) throw new Error(`Preflight failed with HTTP ${response.status}.`);
+    const allowed = response.headers.get("access-control-allow-headers")?.toLowerCase() ?? "";
+    if (!allowed.includes("authorization") || !allowed.includes("content-type")) {
+      throw new Error("Preflight did not allow authenticated JSON requests.");
     }
   },
 );

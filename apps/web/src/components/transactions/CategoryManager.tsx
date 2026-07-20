@@ -5,15 +5,17 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { createCategory, updateCategory } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
+import type { AuthenticatedWorkspace } from "../../lib/workspace";
 
 interface CategoryManagerProps {
+  workspace: AuthenticatedWorkspace;
   categories: CategoryRecord[];
   onClose: () => void;
 }
 
 const palette = ["#dc8b3f", "#3f8f74", "#3a83c5", "#9a6ac2", "#b45a7a", "#6f6bd9"];
 
-export function CategoryManager({ categories, onClose }: CategoryManagerProps) {
+export function CategoryManager({ workspace, categories, onClose }: CategoryManagerProps) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [kind, setKind] = useState<TransactionKind>("expense");
@@ -31,10 +33,10 @@ export function CategoryManager({ categories, onClose }: CategoryManagerProps) {
   }, [onClose]);
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["categories"] });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.allCategories(workspace) });
   };
   const createMutation = useMutation({
-    mutationFn: createCategory,
+    mutationFn: (input: CategoryInput) => createCategory(workspace, input),
     onSuccess: async () => {
       setName("");
       setError(undefined);
@@ -43,13 +45,13 @@ export function CategoryManager({ categories, onClose }: CategoryManagerProps) {
     onError: (mutationError) => setError(mutationError.message),
   });
   const updateMutation = useMutation({
-    mutationFn: updateCategory,
+    mutationFn: (args: Parameters<typeof updateCategory>[1]) => updateCategory(workspace, args),
     onSuccess: async () => {
       setEditingId(undefined);
       setError(undefined);
       await refresh();
-      await queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
     },
     onError: (mutationError) => setError(mutationError.message),
   });

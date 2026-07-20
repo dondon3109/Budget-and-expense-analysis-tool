@@ -3,14 +3,16 @@ import { Hono } from "hono";
 
 import type { CategoryRepository } from "../db/categories";
 import { HttpError } from "../errors";
-import type { Bindings } from "../types";
+import type { AppEnvironment } from "../types";
 
 export function createCategoryRoutes(repository: CategoryRepository) {
-  const routes = new Hono<{ Bindings: Bindings }>();
+  const routes = new Hono<AppEnvironment>();
 
   routes.get("/", async (context) => {
     const includeArchived = context.req.query("includeArchived") === "true";
-    return context.json({ items: await repository.list(context.env, includeArchived) });
+    return context.json({
+      items: await repository.list(context.env, context.get("tenant").tenantId, includeArchived),
+    });
   });
 
   routes.post("/", async (context) => {
@@ -29,7 +31,10 @@ export function createCategoryRoutes(repository: CategoryRepository) {
         parsed.error.flatten(),
       );
     }
-    return context.json(await repository.create(context.env, parsed.data), 201);
+    return context.json(
+      await repository.create(context.env, context.get("tenant").tenantId, parsed.data),
+      201,
+    );
   });
 
   routes.patch("/:id", async (context) => {
@@ -48,7 +53,14 @@ export function createCategoryRoutes(repository: CategoryRepository) {
         parsed.error.flatten(),
       );
     }
-    return context.json(await repository.update(context.env, context.req.param("id"), parsed.data));
+    return context.json(
+      await repository.update(
+        context.env,
+        context.get("tenant").tenantId,
+        context.req.param("id"),
+        parsed.data,
+      ),
+    );
   });
 
   return routes;

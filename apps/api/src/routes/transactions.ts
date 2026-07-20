@@ -7,10 +7,10 @@ import { Hono } from "hono";
 
 import type { TransactionRepository } from "../db/transactions";
 import { HttpError } from "../errors";
-import type { Bindings } from "../types";
+import type { AppEnvironment } from "../types";
 
 export function createTransactionRoutes(repository: TransactionRepository) {
-  const routes = new Hono<{ Bindings: Bindings }>();
+  const routes = new Hono<AppEnvironment>();
 
   routes.get("/", async (context) => {
     const parsed = transactionListQuerySchema.safeParse(context.req.query());
@@ -22,7 +22,9 @@ export function createTransactionRoutes(repository: TransactionRepository) {
         parsed.error.flatten(),
       );
     }
-    return context.json(await repository.list(context.env, parsed.data));
+    return context.json(
+      await repository.list(context.env, context.get("tenant").tenantId, parsed.data),
+    );
   });
 
   routes.post("/", async (context) => {
@@ -41,7 +43,10 @@ export function createTransactionRoutes(repository: TransactionRepository) {
         parsed.error.flatten(),
       );
     }
-    return context.json(await repository.create(context.env, parsed.data), 201);
+    return context.json(
+      await repository.create(context.env, context.get("tenant").tenantId, parsed.data),
+      201,
+    );
   });
 
   routes.patch("/:id", async (context) => {
@@ -60,11 +65,18 @@ export function createTransactionRoutes(repository: TransactionRepository) {
         parsed.error.flatten(),
       );
     }
-    return context.json(await repository.update(context.env, context.req.param("id"), parsed.data));
+    return context.json(
+      await repository.update(
+        context.env,
+        context.get("tenant").tenantId,
+        context.req.param("id"),
+        parsed.data,
+      ),
+    );
   });
 
   routes.delete("/:id", async (context) => {
-    await repository.remove(context.env, context.req.param("id"));
+    await repository.remove(context.env, context.get("tenant").tenantId, context.req.param("id"));
     return context.body(null, 204);
   });
 

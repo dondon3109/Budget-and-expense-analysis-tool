@@ -4,14 +4,13 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { accounts } from "../../../../db/schema";
 import type { Bindings } from "../types";
-import { DEMO_TENANT_ID } from "./scope";
 
 export interface AccountRepository {
-  list(env: Bindings, tenantId?: string): Promise<AccountRecord[]>;
+  list(env: Bindings, tenantId: string): Promise<AccountRecord[]>;
 }
 
 export const accountRepository: AccountRepository = {
-  async list(env, tenantId = DEMO_TENANT_ID) {
+  async list(env, tenantId) {
     return drizzle(env.DB)
       .select({
         id: accounts.id,

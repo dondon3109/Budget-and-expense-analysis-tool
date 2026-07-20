@@ -1,15 +1,17 @@
 # Test strategy
 
-Clarity tests financial rules at the lowest practical layer, then proves the same contracts through the API and browser. Tests use fictional PHP data and restore all mutable demo state.
+Clarity tests financial and identity boundaries at the lowest practical layer, then proves the same contracts through the API and browser. Unit/API tests use fictional identities and locally generated JWT keys; they do not require live Supabase credentials.
 
 ## Coverage layers
 
 - **Domain tests:** money parsing, totals, transfers, budget percentages, duplicate fingerprints, CSV parsing, and validation edge cases.
-- **API tests:** request validation, CORS, transaction/category/budget/import/export contracts, failure codes, and exact CSV formatting.
-- **Component tests:** transaction amount normalization and optional notes, category create/archive behavior, and budget load/save behavior.
-- **Browser tests:** desktop landing-to-demo, savings/recurring insights, transaction CRUD and recategorization, account filtering, category-chart recalculation, filtered download, mixed valid/invalid import preview and commit, budget-progress recalculation, and mobile navigation.
-- **Runtime checks:** local D1 migrations and seed, tenant isolation, atomic import/budget writes, token reuse rejection, duplicate detection, dashboard recalculation, and cleanup.
-- **Production smoke:** landing, API/D1 readiness, CORS, dashboard contract, export, and a deliberately rejected import preview that persists no transaction or preview row.
+- **Authentication tests:** locally signed JWTs prove signature, issuer, audience, subject, and configuration validation without contacting Supabase.
+- **Tenant tests:** deterministic IDs and one atomic, idempotent D1 bootstrap batch for the personal tenant, mapping, account, and categories.
+- **API tests:** public demo/read-only boundaries, unauthenticated/invalid-token rejection, CORS preflight, authenticated tenant propagation, rate-limit identity, request validation, transaction/category/budget/import/export contracts, and stable failures.
+- **Frontend tests:** route guards, intended-destination redirects, bearer-token attachment, one refresh retry, final unauthorized sign-out, workspace-scoped query keys, and component behavior.
+- **Browser tests:** desktop landing-to-demo behavior, explicit denial of anonymous private API access, private-route redirects, and mobile read-only demo navigation.
+- **Runtime checks:** local D1 migrations and seed, dashboard delivery, private API denial, and production builds.
+- **Production smoke:** landing, API/D1 readiness, public dashboard contract and CORS, anonymous private-route denial, and authenticated-request CORS preflight. The smoke check is non-mutating.
 
 ## Repeatable commands
 
@@ -22,8 +24,8 @@ pnpm build
 pnpm lighthouse
 ```
 
-The Playwright teardown removes any `E2E` transactions and import audit data and restores the Food & dining July budget to exactly PHP 8,500. Tests run serially to avoid races against the shared local D1 demo tenant. The current local suite contains 32 unit/API/component tests plus one full desktop and one mobile journey. CI is configured to run the same sequence on every pull request and push to `main`; remote CI evidence remains pending until the repository is published.
+The secret-free local and CI suites do not create live Supabase users. Before deployment, run a separate manual or gated two-user flow against the intended Supabase preview project to prove first-login bootstrap and cross-user data isolation through the real identity service.
 
 ## Release rule
 
-A release is eligible only when all local/CI gates pass, both preview and production migrations succeed, and the post-deploy smoke command passes against the intended web/API pair. Authentication remains out of scope; no real financial data belongs in this public demo.
+A release is eligible only when local/CI gates pass, preview and production D1 migrations succeed, Supabase redirect URLs and public environment values are configured, the post-deploy smoke command passes, and the two-user authenticated isolation flow succeeds. The public demo must remain read-only; private financial data must never be reachable without a verified bearer token.

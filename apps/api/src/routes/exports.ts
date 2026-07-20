@@ -4,10 +4,10 @@ import { Hono } from "hono";
 import type { TransactionRepository } from "../db/transactions";
 import { HttpError } from "../errors";
 import { buildTransactionCsv } from "../exports/csv";
-import type { Bindings } from "../types";
+import type { AppEnvironment } from "../types";
 
 export function createExportRoutes(repository: TransactionRepository) {
-  const routes = new Hono<{ Bindings: Bindings }>();
+  const routes = new Hono<AppEnvironment>();
 
   routes.get("/transactions.csv", async (context) => {
     const parsed = transactionExportQuerySchema.safeParse(context.req.query());
@@ -19,10 +19,9 @@ export function createExportRoutes(repository: TransactionRepository) {
         parsed.error.flatten(),
       );
     }
-    const rows = await repository.export(context.env, parsed.data);
+    const rows = await repository.export(context.env, context.get("tenant").tenantId, parsed.data);
     context.header("Content-Type", "text/csv; charset=utf-8");
     context.header("Content-Disposition", 'attachment; filename="clarity-transactions.csv"');
-    context.header("Cache-Control", "no-store");
     return context.body(buildTransactionCsv(rows));
   });
 

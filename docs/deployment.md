@@ -1,60 +1,97 @@
-# Cloudflare deployment runbook
+# Cloudflare and Supabase deployment runbook
 
-Clarity deploys as two Cloudflare services: a Pages project for the Vite app and a Worker with a D1 binding for the API. Preview and production use separate D1 databases. The repository deliberately contains no account IDs, tokens, or real domain values.
+Clarity deploys as a Cloudflare Pages app plus a Worker with a D1 binding. Supabase Auth supplies user identity and sessions; private financial data remains in D1 and is partitioned by the tenant resolved from a verified Supabase JWT. The repository deliberately contains no account IDs, private tokens, service-role keys, or real domain values.
 
-## One-time account setup
+## One-time Supabase setup
+
+1. Create separate Supabase projects for preview and production when practical. If one project is shared initially, keep its redirect allow-list restricted to the known Clarity hosts.
+2. In **Authentication > URL configuration**, set the correct site URL and add redirect URLs for:
+   - `http://localhost:5173/auth/callback`
+   - `https://PREVIEW_PAGES_HOST/auth/callback`
+   - `https://PRODUCTION_HOST/auth/callback`
+3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users.
+4. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
+5. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
+
+## One-time Cloudflare setup
 
 1. Authenticate locally with `pnpm --filter @budget/api exec wrangler login`.
-2. Create `budget-expense-preview` and `budget-expense-production` with `wrangler d1 create`; retain the two returned database IDs.
-3. Copy `apps/api/wrangler.deploy.example.jsonc` to ignored `apps/api/wrangler.deploy.jsonc`. Replace both D1 IDs and the allowed preview/production origins.
-4. Create separate preview and production Pages projects. Keep the production custom domain on the production project only.
+2. Create `budget-expense-preview` and `budget-expense-production` with `wrangler d1 create`; retain the returned database IDs.
+3. Copy `apps/api/wrangler.deploy.example.jsonc` to ignored `apps/api/wrangler.deploy.jsonc`.
+4. Replace the D1 IDs, allowed origins, and `SUPABASE_URL` values for each environment. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise.
+5. Create separate preview and production Pages projects. Keep a production custom domain on the production project only.
+
+## Frontend configuration
+
+Build Pages with environment-specific public values:
+
+```bash
+VITE_API_URL=https://PREVIEW_WORKER_URL \
+VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
+VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
+pnpm --filter @budget/web build
+```
+
+The publishable key is intended for browser use. It does not grant access to D1; the Worker still verifies every access token and chooses tenant scope server-side.
 
 ## Preview release
 
-From `apps/api`, apply migrations and seed the fictional demo data against the preview binding:
+Apply migrations and seed only the fictional public demo:
 
 ```bash
+cd apps/api
 pnpm exec wrangler d1 migrations apply DB --remote --config wrangler.deploy.jsonc --env preview
 pnpm exec wrangler d1 execute DB --remote --config wrangler.deploy.jsonc --env preview --file=../../db/seed.sql
 pnpm exec wrangler deploy --config wrangler.deploy.jsonc --env preview
 ```
 
-Build the browser app with the deployed preview Worker URL and deploy `apps/web/dist` to the preview Pages project:
+Build and deploy the browser app:
 
 ```bash
-VITE_API_URL=https://PREVIEW_WORKER_URL pnpm --filter @budget/web build
+VITE_API_URL=https://PREVIEW_WORKER_URL \
+VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
+VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
+pnpm --filter @budget/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIEW_PAGES_PROJECT --branch=main
 ```
 
-Run the smoke gate with the exact resulting URLs:
+Run the non-mutating smoke gate:
 
 ```bash
 WEB_URL=https://PREVIEW_PAGES_URL API_URL=https://PREVIEW_WORKER_URL pnpm smoke:production
 ```
 
+Then perform an authenticated browser check with two ordinary preview users:
+
+1. Sign in as user A and create a uniquely named transaction.
+2. Sign out and sign in as user B; confirm user A's transaction is absent.
+3. Create a user B transaction, then return to user A and confirm only user A's marker is present.
+4. Exercise transaction CRUD, import preview/commit, budgets, and CSV export.
+5. Sign out and confirm `/app` redirects to login.
+
+No service-role key is needed for normal product traffic or this check.
+
 ## Production release
 
-Repeat the migration, seed, Worker deploy, frontend build, Pages deploy, and smoke sequence with the production environment. Verify the custom domain’s DNS and certificate are active before adding it as the only production `ALLOWED_ORIGINS` value. Set a canonical URL in the HTML when the final domain is known, and redirect any Pages/Worker aliases to that host.
+Repeat the migration, seed, Worker deploy, frontend build, Pages deploy, smoke check, and two-user isolation check with production configuration. Verify the production origin appears in both `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users.
 
-Before announcing the release, verify direct navigation to `/demo`, `/transactions`, `/import`, and `/budgets`; the committed `_redirects` file provides the SPA fallback. Recapture the desktop/mobile portfolio screenshots from the final custom domain.
+Direct navigation should work for `/demo`, `/login`, `/signup`, `/forgot-password`, `/auth/callback`, `/update-password`, and `/app/*`; the committed `_redirects` file provides SPA fallback.
 
 ## Rollback
 
-- **Pages:** use the Cloudflare deployment history to promote the previously verified frontend deployment.
-- **Worker:** roll back to the previous Worker version. Do not roll back code past an incompatible database migration.
-- **D1:** migrations are forward-only. Before a destructive schema change, create a D1 Time Travel restore point and rehearse recovery in preview. The current migrations are additive.
-- After any rollback, rerun `pnpm smoke:production` against the restored web/API pair.
+- **Pages:** promote the previously verified frontend deployment.
+- **Worker:** roll back to the previous Worker version, but do not roll code back past an incompatible D1 migration.
+- **D1:** migrations are forward-only. Create a Time Travel restore point before destructive schema changes and rehearse recovery in preview.
+- **Supabase Auth:** do not rotate or remove signing keys as an application rollback mechanism. Follow Supabase key-rotation guidance and keep old keys valid through their transition window.
+- After rollback, rerun `pnpm smoke:production` and verify unauthenticated `/api/app/*` requests still return `401`.
 
-## Current free-tier release
+## Current hosted resources
 
-Released on 2026-07-16 using Cloudflare-provided domains and no paid add-ons:
+The existing Cloudflare hosts are:
 
 - Production web: <https://clarity-budget.pages.dev>
 - Production API: <https://budget-expense-api-production.dondon3109.workers.dev>
 - Preview web: <https://clarity-budget-preview.pages.dev>
 - Preview API: <https://budget-expense-api-preview.dondon3109.workers.dev>
-- Isolated D1 databases: `budget-expense-production` and `budget-expense-preview`
 
-All four migrations and the fictional seed dataset were applied independently to both databases. Preview passed the smoke gate before production; production then passed landing delivery, API/D1 health, dashboard contract and CORS, filtered CSV export, and non-mutating import preview checks. The final browser pass also verified the production desktop dashboard and a 390 px mobile transactions layout without overflow or console errors.
-
-The Cloudflare `pages.dev` and `workers.dev` hosts provide managed HTTPS. A purchased custom domain is intentionally not required for this free release. If one is attached later, update `ALLOWED_ORIGINS`, the canonical URL, and redirects, then rerun the smoke gate.
+These deployments must be rebuilt with the new Supabase variables and the `user_tenants` D1 migration before authenticated accounts are available. Deployment is not performed automatically by the implementation work.

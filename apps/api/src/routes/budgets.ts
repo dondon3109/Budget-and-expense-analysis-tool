@@ -3,17 +3,19 @@ import { Hono } from "hono";
 
 import type { BudgetRepository } from "../db/budgets";
 import { HttpError } from "../errors";
-import type { Bindings } from "../types";
+import type { AppEnvironment } from "../types";
 
 export function createBudgetRoutes(repository: BudgetRepository) {
-  const routes = new Hono<{ Bindings: Bindings }>();
+  const routes = new Hono<AppEnvironment>();
 
   routes.get("/", async (context) => {
     const parsed = budgetQuerySchema.safeParse(context.req.query());
     if (!parsed.success) {
       throw new HttpError(400, "invalid_request", "Choose a valid budget month.");
     }
-    return context.json(await repository.list(context.env, parsed.data.month));
+    return context.json(
+      await repository.list(context.env, context.get("tenant").tenantId, parsed.data.month),
+    );
   });
 
   routes.put("/", async (context) => {
@@ -32,7 +34,9 @@ export function createBudgetRoutes(repository: BudgetRepository) {
         parsed.error.flatten(),
       );
     }
-    return context.json(await repository.upsert(context.env, parsed.data));
+    return context.json(
+      await repository.upsert(context.env, context.get("tenant").tenantId, parsed.data),
+    );
   });
 
   return routes;

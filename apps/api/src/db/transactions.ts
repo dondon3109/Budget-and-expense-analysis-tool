@@ -1,7 +1,7 @@
 import {
   normalizeSignedAmount,
-  type TransactionInput,
   type TransactionExportQuery,
+  type TransactionInput,
   type TransactionListItem,
   type TransactionListQuery,
   type TransactionPage,
@@ -13,22 +13,21 @@ import { drizzle } from "drizzle-orm/d1";
 import { accounts, categories, transactions } from "../../../../db/schema";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import { DEMO_TENANT_ID } from "./scope";
 
 export interface TransactionRepository {
-  list(env: Bindings, query: TransactionListQuery, tenantId?: string): Promise<TransactionPage>;
-  create(env: Bindings, input: TransactionInput, tenantId?: string): Promise<TransactionListItem>;
+  list(env: Bindings, tenantId: string, query: TransactionListQuery): Promise<TransactionPage>;
+  create(env: Bindings, tenantId: string, input: TransactionInput): Promise<TransactionListItem>;
   update(
     env: Bindings,
+    tenantId: string,
     id: string,
     input: TransactionUpdate,
-    tenantId?: string,
   ): Promise<TransactionListItem>;
-  remove(env: Bindings, id: string, tenantId?: string): Promise<void>;
+  remove(env: Bindings, tenantId: string, id: string): Promise<void>;
   export(
     env: Bindings,
+    tenantId: string,
     query: TransactionExportQuery,
-    tenantId?: string,
   ): Promise<TransactionListItem[]>;
 }
 
@@ -120,8 +119,14 @@ async function findTransaction(
       notes: transactions.notes,
     })
     .from(transactions)
-    .innerJoin(categories, eq(transactions.categoryId, categories.id))
-    .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+    .innerJoin(
+      categories,
+      and(eq(transactions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+    )
+    .leftJoin(
+      accounts,
+      and(eq(transactions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
+    )
     .where(and(eq(transactions.id, id), eq(transactions.tenantId, tenantId)))
     .limit(1);
 
@@ -134,7 +139,7 @@ async function findTransaction(
 }
 
 export const transactionRepository: TransactionRepository = {
-  async list(env, query, tenantId = DEMO_TENANT_ID) {
+  async list(env, tenantId, query) {
     const db = drizzle(env.DB);
     const conditions = buildConditions(query, tenantId);
     const orderBy = getOrderBy(query);
@@ -158,8 +163,14 @@ export const transactionRepository: TransactionRepository = {
           notes: transactions.notes,
         })
         .from(transactions)
-        .innerJoin(categories, eq(transactions.categoryId, categories.id))
-        .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+        .innerJoin(
+          categories,
+          and(eq(transactions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+        )
+        .leftJoin(
+          accounts,
+          and(eq(transactions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
+        )
         .where(where)
         .orderBy(orderBy, desc(transactions.id))
         .limit(query.pageSize)
@@ -181,7 +192,7 @@ export const transactionRepository: TransactionRepository = {
     };
   },
 
-  async create(env, input, tenantId = DEMO_TENANT_ID) {
+  async create(env, tenantId, input) {
     await validateReferences(env, input, tenantId);
     const id = crypto.randomUUID();
     const db = drizzle(env.DB);
@@ -202,7 +213,7 @@ export const transactionRepository: TransactionRepository = {
     return created;
   },
 
-  async update(env, id, input, tenantId = DEMO_TENANT_ID) {
+  async update(env, tenantId, id, input) {
     const existing = await findTransaction(env, id, tenantId);
     if (!existing) throw new HttpError(404, "transaction_not_found", "Transaction not found.");
 
@@ -239,7 +250,7 @@ export const transactionRepository: TransactionRepository = {
     return updated;
   },
 
-  async remove(env, id, tenantId = DEMO_TENANT_ID) {
+  async remove(env, tenantId, id) {
     const db = drizzle(env.DB);
     const deleted = await db
       .delete(transactions)
@@ -250,7 +261,7 @@ export const transactionRepository: TransactionRepository = {
     }
   },
 
-  async export(env, query, tenantId = DEMO_TENANT_ID) {
+  async export(env, tenantId, query) {
     const db = drizzle(env.DB);
     const rows = await db
       .select({
@@ -268,8 +279,14 @@ export const transactionRepository: TransactionRepository = {
         notes: transactions.notes,
       })
       .from(transactions)
-      .innerJoin(categories, eq(transactions.categoryId, categories.id))
-      .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+      .innerJoin(
+        categories,
+        and(eq(transactions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+      )
+      .leftJoin(
+        accounts,
+        and(eq(transactions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
+      )
       .where(and(...buildConditions(query, tenantId)))
       .orderBy(getOrderBy(query), desc(transactions.id))
       .limit(5001);

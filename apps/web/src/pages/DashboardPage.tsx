@@ -8,6 +8,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { useAuth } from "../auth/AuthProvider";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
 import { MetricCard } from "../components/dashboard/MetricCard";
 import { InsightsPanel } from "../components/dashboard/InsightsPanel";
@@ -17,16 +18,19 @@ import { AppShell } from "../components/layout/AppShell";
 import { getDashboard } from "../lib/api";
 import { formatMoney, formatPeriod } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
+import { demoWorkspace, userWorkspace, type WorkspaceMode } from "../lib/workspace";
 
-export function DashboardPage() {
+export function DashboardPage({ mode }: { mode: WorkspaceMode }) {
+  const { user } = useAuth();
+  const workspace = mode === "demo" ? demoWorkspace : userWorkspace(user!);
   const { data, isFetching, isError, error, refetch } = useQuery({
-    queryKey: queryKeys.dashboard,
-    queryFn: getDashboard,
+    queryKey: queryKeys.dashboard(workspace),
+    queryFn: () => getDashboard(workspace),
   });
 
   if (isError) {
     return (
-      <AppShell>
+      <AppShell mode={mode}>
         <div className="full-page-status error-state">
           <strong>The dashboard could not be loaded.</strong>
           <span>{error.message}</span>
@@ -41,7 +45,7 @@ export function DashboardPage() {
 
   const { metrics } = data;
   return (
-    <AppShell>
+    <AppShell mode={mode}>
       <div className="dashboard-page">
         <header className="dashboard-header">
           <div>
@@ -53,14 +57,16 @@ export function DashboardPage() {
             <CalendarDays size={17} /> {formatPeriod(data.period.from, data.period.to)}
           </span>
         </header>
-        <div className="demo-notice">
-          <Info size={17} />
-          <p>
-            <strong>You’re viewing sample data.</strong> Explore freely—nothing here belongs to a
-            real person.
-          </p>
-          <span>{isFetching ? "Refreshing…" : "Up to date"}</span>
-        </div>
+        {mode === "demo" && (
+          <div className="demo-notice">
+            <Info size={17} />
+            <p>
+              <strong>You’re viewing sample data.</strong> This overview is read-only and contains no
+              real financial information.
+            </p>
+            <span>{isFetching ? "Refreshing…" : "Up to date"}</span>
+          </div>
+        )}
         <section className="metric-grid" aria-label="Monthly summary">
           <MetricCard
             label="Money in"
@@ -96,10 +102,10 @@ export function DashboardPage() {
           />
         </section>
         <div className="dashboard-grid">
-          <SpendingByCategory data={data.spendingByCategory} />
+          <SpendingByCategory data={data.spendingByCategory} mode={mode} />
           <MonthlyTrend data={data.monthlyTrend} />
           <InsightsPanel data={data.insights} />
-          <BudgetProgress data={data.budgetProgress} />
+          <BudgetProgress data={data.budgetProgress} mode={mode} />
         </div>
         <details className="calculation-note">
           <summary>How these numbers are calculated</summary>

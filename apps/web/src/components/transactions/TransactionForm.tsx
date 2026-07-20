@@ -25,6 +25,14 @@ function toAmountText(item?: TransactionListItem): string {
   return (Math.abs(item.amountMinor) / 100).toFixed(2);
 }
 
+function today(): string {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function TransactionForm({
   item,
   categories,
@@ -35,11 +43,11 @@ export function TransactionForm({
   onClose,
 }: TransactionFormProps) {
   const [kind, setKind] = useState<TransactionKind>(item?.kind ?? "expense");
-  const [date, setDate] = useState(item?.date ?? "2026-07-16");
+  const [date, setDate] = useState(item?.date ?? today);
   const [description, setDescription] = useState(item?.description ?? "");
   const [amount, setAmount] = useState(toAmountText(item));
   const [categoryId, setCategoryId] = useState(item?.categoryId ?? "");
-  const [accountId, setAccountId] = useState(item?.accountId ?? "account-everyday");
+  const [accountId, setAccountId] = useState(item?.accountId ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [clientError, setClientError] = useState<string>();
 
@@ -53,6 +61,13 @@ export function TransactionForm({
       setCategoryId(availableCategories[0]?.id ?? "");
     }
   }, [availableCategories, categoryId]);
+
+  useEffect(() => {
+    const activeAccounts = accounts.filter((account) => !account.archived);
+    if (!activeAccounts.some((account) => account.id === accountId)) {
+      setAccountId(activeAccounts[0]?.id ?? "");
+    }
+  }, [accountId, accounts]);
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
@@ -218,7 +233,11 @@ export function TransactionForm({
             <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button className="button primary" type="submit" disabled={busy || !categoryId}>
+            <button
+              className="button primary"
+              type="submit"
+              disabled={busy || !categoryId || !accountId}
+            >
               {busy ? "Saving…" : item ? "Save changes" : "Add transaction"}
             </button>
           </div>

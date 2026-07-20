@@ -16,6 +16,8 @@
       ],
       "vars": {
         "ALLOWED_ORIGINS": "https://REPLACE_WITH_PREVIEW_PAGES_HOST",
+        "SUPABASE_URL": "https://REPLACE_WITH_SUPABASE_PROJECT_REF.supabase.co",
+        "SUPABASE_JWT_AUDIENCE": "authenticated",
       },
     },
     "production": {
@@ -30,6 +32,8 @@
       ],
       "vars": {
         "ALLOWED_ORIGINS": "https://REPLACE_WITH_PRODUCTION_DOMAIN",
+        "SUPABASE_URL": "https://REPLACE_WITH_SUPABASE_PROJECT_REF.supabase.co",
+        "SUPABASE_JWT_AUDIENCE": "authenticated",
       },
     },
   },

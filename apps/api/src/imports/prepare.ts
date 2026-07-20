@@ -45,6 +45,7 @@ export async function prepareImportRows(
   mapping: ImportMapping,
   categories: CategoryRecord[],
   existingFingerprints: ReadonlySet<string>,
+  accountSource: string,
 ): Promise<PreparedImport> {
   const mappedHeaders = [
     mapping.date,
@@ -141,7 +142,7 @@ export async function prepareImportRows(
       date,
       amountMinor: signedAmount,
       description,
-      accountSource: "account-everyday",
+      accountSource,
     });
     const duplicate = seenFingerprints.has(fingerprint) || existingFingerprints.has(fingerprint);
     seenFingerprints.add(fingerprint);

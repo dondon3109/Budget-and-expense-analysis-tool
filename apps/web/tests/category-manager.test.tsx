@@ -10,11 +10,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CategoryManager } from "../src/components/transactions/CategoryManager";
 import { createCategory, updateCategory } from "../src/lib/api";
+import type { AuthenticatedWorkspace } from "../src/lib/workspace";
 
 vi.mock("../src/lib/api", () => ({
   createCategory: vi.fn(),
   updateCategory: vi.fn(),
 }));
+
+const workspace: AuthenticatedWorkspace = {
+  mode: "user",
+  key: "user:test-user",
+  userId: "test-user",
+};
 
 const category: CategoryRecord = {
   id: "food",
@@ -28,7 +35,7 @@ function renderManager() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <CategoryManager categories={[category]} onClose={vi.fn()} />
+      <CategoryManager workspace={workspace} categories={[category]} onClose={vi.fn()} />
     </QueryClientProvider>,
   );
 }
@@ -46,7 +53,7 @@ describe("CategoryManager", () => {
     await user.type(screen.getByLabelText("New category"), "Health");
     await user.click(screen.getByRole("button", { name: "Add" }));
     await waitFor(() => expect(createCategory).toHaveBeenCalledOnce());
-    expect(vi.mocked(createCategory).mock.calls[0]?.[0]).toEqual({
+    expect(vi.mocked(createCategory)).toHaveBeenCalledWith(workspace, {
       name: "Health",
       kind: "expense",
       color: "#dc8b3f",
@@ -54,7 +61,7 @@ describe("CategoryManager", () => {
 
     await user.click(screen.getByRole("button", { name: "Archive Food & dining" }));
     await waitFor(() => expect(updateCategory).toHaveBeenCalledOnce());
-    expect(vi.mocked(updateCategory).mock.calls[0]?.[0]).toEqual({
+    expect(vi.mocked(updateCategory)).toHaveBeenCalledWith(workspace, {
       id: "food",
       input: { archived: true },
     });

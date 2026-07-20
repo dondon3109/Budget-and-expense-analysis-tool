@@ -5,11 +5,10 @@ import { drizzle } from "drizzle-orm/d1";
 import { budgets, categories, transactions } from "../../../../db/schema";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import { DEMO_TENANT_ID } from "./scope";
 
 export interface BudgetRepository {
-  list(env: Bindings, month: string, tenantId?: string): Promise<BudgetMonthPlan>;
-  upsert(env: Bindings, input: BudgetUpsert, tenantId?: string): Promise<BudgetMonthPlan>;
+  list(env: Bindings, tenantId: string, month: string): Promise<BudgetMonthPlan>;
+  upsert(env: Bindings, tenantId: string, input: BudgetUpsert): Promise<BudgetMonthPlan>;
 }
 
 function nextMonth(month: string): string {
@@ -25,7 +24,7 @@ function roundPercent(value: number): number {
 }
 
 export const budgetRepository: BudgetRepository = {
-  async list(env, month, tenantId = DEMO_TENANT_ID) {
+  async list(env, tenantId, month) {
     const db = drizzle(env.DB);
     const end = nextMonth(month);
     const [categoryRows, budgetRows, spendingRows, totalRows] = await Promise.all([
@@ -111,7 +110,7 @@ export const budgetRepository: BudgetRepository = {
     };
   },
 
-  async upsert(env, input, tenantId = DEMO_TENANT_ID) {
+  async upsert(env, tenantId, input) {
     const db = drizzle(env.DB);
     const categoryRows = await db
       .select({ id: categories.id })
@@ -138,6 +137,6 @@ export const budgetRepository: BudgetRepository = {
         ).bind(crypto.randomUUID(), tenantId, item.categoryId, input.month, item.limitMinor),
       ),
     );
-    return this.list(env, input.month, tenantId);
+    return this.list(env, tenantId, input.month);
   },
 };
