@@ -43,6 +43,13 @@
       "when": 1784554734707,
       "tag": "0005_remove_public_demo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1784584517255,
+      "tag": "0006_melted_smasher",
+      "breakpoints": true
     }
   ]
 }

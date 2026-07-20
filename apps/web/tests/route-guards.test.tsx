@@ -45,6 +45,26 @@ describe("auth route guards", () => {
     expect(screen.getByText(/redirectTo=%2Fapp%2Fbudgets%3Fmonth%3D2026-07/)).toBeInTheDocument();
   });
 
+  it("preserves a signed-out subscriptions destination", () => {
+    render(
+      <MemoryRouter initialEntries={["/app/subscriptions"]}>
+        <Routes>
+          <Route
+            path="/app/subscriptions"
+            element={
+              <RequireAuth>
+                <div>Private subscriptions</div>
+              </RequireAuth>
+            }
+          />
+          <Route path="/login" element={<Location />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/redirectTo=%2Fapp%2Fsubscriptions/)).toBeInTheDocument();
+  });
+
   it("redirects signed-in users away from public-only auth pages", () => {
     authState.user = { id: "user-1" };
     render(

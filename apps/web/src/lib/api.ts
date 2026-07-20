@@ -9,6 +9,10 @@ import type {
   ImportCommitResult,
   ImportPreview,
   ImportPreviewRequest,
+  SubscriptionInput,
+  SubscriptionMonthSummary,
+  SubscriptionRecord,
+  SubscriptionStatusUpdate,
   TransactionExportQuery,
   TransactionInput,
   TransactionListItem,
@@ -235,6 +239,33 @@ export function saveBudgets(
   return requestJson(workspace, "/api/app/budgets", {
     method: "PUT",
     body: JSON.stringify(input),
+  });
+}
+
+export function getSubscriptions(
+  workspace: AuthenticatedWorkspace,
+  month: string,
+): Promise<SubscriptionMonthSummary> {
+  return requestJson(workspace, `/api/app/subscriptions?month=${encodeURIComponent(month)}`);
+}
+
+export function createSubscription(
+  workspace: AuthenticatedWorkspace,
+  input: SubscriptionInput,
+): Promise<SubscriptionRecord> {
+  return requestJson(workspace, "/api/app/subscriptions", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function setSubscriptionStatus(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; input: SubscriptionStatusUpdate },
+): Promise<SubscriptionRecord> {
+  return requestJson(workspace, `/api/app/subscriptions/${args.id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify(args.input),
   });
 }
 

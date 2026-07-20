@@ -18,4 +18,8 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "accounts"] as const,
   budgets: (workspace: AuthenticatedWorkspace, month: string) =>
     [...queryKeys.workspace(workspace), "budgets", month] as const,
+  subscriptions: (workspace: AuthenticatedWorkspace, month: string) =>
+    [...queryKeys.workspace(workspace), "subscriptions", month] as const,
+  allSubscriptions: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "subscriptions"] as const,
 };

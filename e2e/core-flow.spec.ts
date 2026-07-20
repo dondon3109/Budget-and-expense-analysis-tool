@@ -50,4 +50,10 @@ test("private pages redirect signed-out users to login", async ({ page }) => {
 
   await page.goto("/app/budgets");
   await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Fbudgets$/);
+
+  await page.goto("/app/subscriptions");
+  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Fsubscriptions$/);
+
+  await page.goto("/subscriptions");
+  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Fsubscriptions$/);
 });

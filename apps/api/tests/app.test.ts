@@ -4,6 +4,8 @@ import {
   type CategoryRecord,
   type DashboardSummary,
   type ImportPreviewRequest,
+  type SubscriptionMonthSummary,
+  type SubscriptionRecord,
   type TransactionListItem,
   type TransactionPage,
 } from "@budget/shared";
@@ -15,6 +17,7 @@ import type { AccountRepository } from "../src/db/accounts";
 import type { BudgetRepository } from "../src/db/budgets";
 import type { CategoryRepository } from "../src/db/categories";
 import type { ImportRepository } from "../src/db/imports";
+import type { SubscriptionRepository } from "../src/db/subscriptions";
 import type { TenantResolver } from "../src/db/tenants";
 import type { TransactionRepository } from "../src/db/transactions";
 import { HttpError } from "../src/errors";
@@ -117,6 +120,26 @@ const budgetPlan: BudgetMonthPlan = {
   ],
 };
 
+const subscriptionItem: SubscriptionRecord = {
+  id: "subscription-1",
+  name: "Music streaming",
+  amountMinor: 199_00,
+  currency: "PHP",
+  billingCycle: "monthly",
+  nextBillingDate: "2026-07-25",
+  status: "active",
+  categoryId: "food",
+  categoryName: "Food & dining",
+  categoryColor: "#dc8b3f",
+};
+
+const subscriptionSummary: SubscriptionMonthSummary = {
+  month: "2026-07-01",
+  currency: "PHP",
+  totalMonthlyCostMinor: 199_00,
+  items: [{ ...subscriptionItem, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
+};
+
 function createTransactionStore(): TransactionRepository {
   return {
     list: vi.fn(async () => transactionPage),
@@ -143,6 +166,14 @@ function createBudgetStore(): BudgetRepository {
   return {
     list: vi.fn(async () => budgetPlan),
     upsert: vi.fn(async () => budgetPlan),
+  };
+}
+
+function createSubscriptionStore(): SubscriptionRepository {
+  return {
+    list: vi.fn(async () => subscriptionSummary),
+    create: vi.fn(async () => subscriptionItem),
+    setStatus: vi.fn(async () => ({ ...subscriptionItem, status: "canceled" as const })),
   };
 }
 
@@ -520,6 +551,72 @@ describe("API foundation", () => {
       TENANT_ID,
       expect.objectContaining({ month: "2026-07-01" }),
     );
+  });
+
+  it("lists, creates, and updates subscriptions for the resolved tenant", async () => {
+    const subscriptions = createSubscriptionStore();
+    const app = createTestApp({ subscriptions });
+
+    const listResponse = await app.request("/api/app/subscriptions?month=2026-07-01", {
+      headers: AUTHORIZATION,
+    });
+    expect(listResponse.status).toBe(200);
+    expect(subscriptions.list).toHaveBeenCalledWith(undefined, TENANT_ID, "2026-07-01");
+
+    const createResponse = await app.request("/api/app/subscriptions", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        name: "Music streaming",
+        amountMinor: 199_00,
+        billingCycle: "monthly",
+        nextBillingDate: "2026-07-25",
+        categoryId: "food",
+      }),
+    });
+    expect(createResponse.status).toBe(201);
+    expect(subscriptions.create).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      name: "Music streaming",
+      amountMinor: 199_00,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-07-25",
+      categoryId: "food",
+    });
+
+    const statusResponse = await app.request("/api/app/subscriptions/subscription-1/status", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ status: "canceled" }),
+    });
+    expect(statusResponse.status).toBe(200);
+    expect(subscriptions.setStatus).toHaveBeenCalledWith(undefined, TENANT_ID, "subscription-1", {
+      status: "canceled",
+    });
+  });
+
+  it("rejects invalid subscription months and fields before repository access", async () => {
+    const subscriptions = createSubscriptionStore();
+    const app = createTestApp({ subscriptions });
+
+    const listResponse = await app.request("/api/app/subscriptions?month=2026-07-02", {
+      headers: AUTHORIZATION,
+    });
+    expect(listResponse.status).toBe(400);
+    expect(subscriptions.list).not.toHaveBeenCalled();
+
+    const createResponse = await app.request("/api/app/subscriptions", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        name: "Invalid",
+        amountMinor: 0,
+        billingCycle: "weekly",
+        nextBillingDate: "2026-02-30",
+        categoryId: "food",
+      }),
+    });
+    expect(createResponse.status).toBe(400);
+    expect(subscriptions.create).not.toHaveBeenCalled();
   });
 
   it("exports transactions using tenant scope and active filters", async () => {

@@ -42,6 +42,37 @@ export interface CategoryRecord {
   archived: boolean;
 }
 
+export const subscriptionBillingCycles = ["monthly", "yearly"] as const;
+export type SubscriptionBillingCycle = (typeof subscriptionBillingCycles)[number];
+
+export const subscriptionStatuses = ["active", "canceled"] as const;
+export type SubscriptionStatus = (typeof subscriptionStatuses)[number];
+
+export interface SubscriptionRecord {
+  id: string;
+  name: string;
+  amountMinor: number;
+  currency: "PHP";
+  billingCycle: SubscriptionBillingCycle;
+  nextBillingDate: string;
+  status: SubscriptionStatus;
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+}
+
+export interface SubscriptionMonthItem extends SubscriptionRecord {
+  billingDate: string | null;
+  monthlyCostMinor: number;
+}
+
+export interface SubscriptionMonthSummary {
+  month: string;
+  currency: "PHP";
+  totalMonthlyCostMinor: number;
+  items: SubscriptionMonthItem[];
+}
+
 export interface ImportMapping {
   date: string;
   description: string;

@@ -96,6 +96,33 @@ export const transactions = sqliteTable(
   ],
 );
 
+export const subscriptions = sqliteTable(
+  "subscriptions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    categoryId: text("category_id")
+      .notNull()
+      .references(() => categories.id),
+    name: text("name").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
+    currency: text("currency").notNull().default("PHP"),
+    billingCycle: text("billing_cycle", { enum: ["monthly", "yearly"] }).notNull(),
+    nextBillingDate: text("next_billing_date").notNull(),
+    status: text("status", { enum: ["active", "canceled"] })
+      .notNull()
+      .default("active"),
+    ...timestamps,
+  },
+  (table) => [
+    index("subscriptions_tenant_idx").on(table.tenantId),
+    index("subscriptions_tenant_status_idx").on(table.tenantId, table.status),
+    index("subscriptions_tenant_category_idx").on(table.tenantId, table.categoryId),
+  ],
+);
+
 export const budgets = sqliteTable(
   "budgets",
   {

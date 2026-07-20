@@ -1,4 +1,14 @@
-import { BarChart3, FileUp, Landmark, List, LogOut, Menu, PiggyBank, X } from "lucide-react";
+import {
+  BarChart3,
+  FileUp,
+  Landmark,
+  List,
+  LogOut,
+  Menu,
+  PiggyBank,
+  Repeat2,
+  X,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 
@@ -13,6 +23,7 @@ const navItems = [
   { label: "Transactions", icon: List, to: "/app/transactions" },
   { label: "Import", icon: FileUp, to: "/app/import" },
   { label: "Budgets", icon: PiggyBank, to: "/app/budgets" },
+  { label: "Subscriptions", icon: Repeat2, to: "/app/subscriptions" },
 ];
 
 export function AppShell({ children }: AppShellProps) {

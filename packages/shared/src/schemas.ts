@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { transactionKinds } from "./types";
+import { subscriptionBillingCycles, subscriptionStatuses, transactionKinds } from "./types";
 
 export const isoDateSchema = z
   .string()
@@ -122,6 +122,24 @@ export const budgetUpsertSchema = z.object({
 });
 
 export type BudgetUpsert = z.infer<typeof budgetUpsertSchema>;
+
+export const subscriptionQuerySchema = z.object({ month: monthStartSchema });
+
+export const subscriptionInputSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  amountMinor: z.number().int().safe().min(1).max(1_000_000_000_00),
+  billingCycle: z.enum(subscriptionBillingCycles),
+  nextBillingDate: isoDateSchema,
+  categoryId: z.string().min(1),
+});
+
+export type SubscriptionInput = z.infer<typeof subscriptionInputSchema>;
+
+export const subscriptionStatusUpdateSchema = z.object({
+  status: z.enum(subscriptionStatuses),
+});
+
+export type SubscriptionStatusUpdate = z.infer<typeof subscriptionStatusUpdateSchema>;
 
 export const importMappingSchema = z.object({
   date: z.string().min(1),

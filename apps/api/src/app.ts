@@ -7,6 +7,7 @@ import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { loadDashboard } from "./db/dashboard";
 import { importRepository, type ImportRepository } from "./db/imports";
+import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
 import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
 import { HttpError } from "./errors";
@@ -16,6 +17,7 @@ import { createBudgetRoutes } from "./routes/budgets";
 import { createCategoryRoutes } from "./routes/categories";
 import { createExportRoutes } from "./routes/exports";
 import { createImportRoutes } from "./routes/imports";
+import { createSubscriptionRoutes } from "./routes/subscriptions";
 import { createTransactionRoutes } from "./routes/transactions";
 import type { AppEnvironment, Bindings } from "./types";
 
@@ -34,6 +36,7 @@ export interface AppOptions {
   categories?: CategoryRepository;
   accounts?: AccountRepository;
   budgets?: BudgetRepository;
+  subscriptions?: SubscriptionRepository;
   imports?: ImportRepository;
   rateLimiter?: RateLimiter;
   authVerifier?: AuthVerifier;
@@ -47,6 +50,7 @@ export function createApp(options: AppOptions = {}) {
   const categoryStore = options.categories ?? categoryRepository;
   const accountStore = options.accounts ?? accountRepository;
   const budgetStore = options.budgets ?? budgetRepository;
+  const subscriptionStore = options.subscriptions ?? subscriptionRepository;
   const importStore = options.imports ?? importRepository;
   const rateLimiter = options.rateLimiter ?? d1RateLimiter;
   const authVerifier = options.authVerifier ?? supabaseAuthVerifier;
@@ -151,6 +155,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/accounts", createAccountRoutes(accountStore));
   app.route("/api/app/categories", createCategoryRoutes(categoryStore));
   app.route("/api/app/budgets", createBudgetRoutes(budgetStore));
+  app.route("/api/app/subscriptions", createSubscriptionRoutes(subscriptionStore));
   app.route("/api/app/imports", createImportRoutes(importStore));
   app.route("/api/app/exports", createExportRoutes(transactionStore));
 

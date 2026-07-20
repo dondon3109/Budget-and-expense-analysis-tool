@@ -23,6 +23,10 @@ const BudgetsPage = lazy(async () => {
   const module = await import("./pages/BudgetsPage");
   return { default: module.BudgetsPage };
 });
+const SubscriptionsPage = lazy(async () => {
+  const module = await import("./pages/SubscriptionsPage");
+  return { default: module.SubscriptionsPage };
+});
 const LoginPage = lazy(async () => {
   const module = await import("./pages/LoginPage");
   return { default: module.LoginPage };
@@ -122,9 +126,18 @@ export function App() {
             </Private>
           }
         />
+        <Route
+          path="/app/subscriptions"
+          element={
+            <Private>
+              <SubscriptionsPage />
+            </Private>
+          }
+        />
         <Route path="/transactions" element={<Navigate to="/app/transactions" replace />} />
         <Route path="/import" element={<Navigate to="/app/import" replace />} />
         <Route path="/budgets" element={<Navigate to="/app/budgets" replace />} />
+        <Route path="/subscriptions" element={<Navigate to="/app/subscriptions" replace />} />
         <Route path="/dashboard" element={<Navigate to="/app" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
