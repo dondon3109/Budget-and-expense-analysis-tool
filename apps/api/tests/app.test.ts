@@ -1,9 +1,8 @@
 import {
-  demoDashboard,
-  demoTransactions,
   type AccountRecord,
   type BudgetMonthPlan,
   type CategoryRecord,
+  type DashboardSummary,
   type ImportPreviewRequest,
   type TransactionListItem,
   type TransactionPage,
@@ -26,9 +25,53 @@ const AUTHORIZATION = { Authorization: "Bearer valid-token" };
 const TENANT_ID = "user:user-1";
 
 const transactionItem: TransactionListItem = {
-  ...demoTransactions[0]!,
+  id: "transaction-1",
+  date: "2026-07-18",
+  description: "Weekend groceries",
+  amountMinor: -245_50,
+  currency: "PHP",
+  kind: "expense",
+  categoryId: "food",
+  categoryName: "Food & dining",
+  categoryColor: "#dc8b3f",
   accountId: "account-everyday",
+  accountName: "Everyday account",
   notes: null,
+};
+
+const dashboardFixture: DashboardSummary = {
+  period: { from: "2026-07-01", to: "2026-07-31" },
+  currency: "PHP",
+  metrics: {
+    moneyInMinor: 80_000_00,
+    moneyOutMinor: 24_550,
+    netMinor: 79_754_50,
+    budgetLimitMinor: 850_000,
+    remainingBudgetMinor: 825_450,
+    budgetUsedPercent: 2.9,
+  },
+  spendingByCategory: [
+    {
+      categoryId: "food",
+      name: "Food & dining",
+      color: "#dc8b3f",
+      amountMinor: 24_550,
+      sharePercent: 100,
+    },
+  ],
+  monthlyTrend: [{ month: "2026-07", incomeMinor: 80_000_00, expenseMinor: 24_550 }],
+  budgetProgress: [
+    {
+      categoryId: "food",
+      name: "Food & dining",
+      color: "#dc8b3f",
+      spentMinor: 24_550,
+      limitMinor: 850_000,
+      remainingMinor: 825_450,
+      usedPercent: 2.9,
+    },
+  ],
+  insights: { savingsMinor: 79_754_50, savingsRatePercent: 99.7, recurringExpenses: [] },
 };
 
 const transactionPage: TransactionPage = {
@@ -170,25 +213,16 @@ describe("API foundation", () => {
     await expect(response.json()).resolves.toMatchObject({ status: "ok" });
   });
 
-  it("serves the explicit public demo dashboard without authentication", async () => {
-    const loader = vi.fn().mockResolvedValue(demoDashboard);
+  it("does not expose the retired public dashboard", async () => {
+    const loader = vi.fn().mockResolvedValue(dashboardFixture);
     const app = createTestApp({ dashboardLoader: loader });
     const response = await app.request("/api/demo/dashboard?from=2026-07-01&to=2026-07-31");
-    expect(response.status).toBe(200);
-    expect(loader).toHaveBeenCalledWith(undefined, "demo", {
-      from: "2026-07-01",
-      to: "2026-07-31",
-    });
-  });
-
-  it("keeps the public demo read-only", async () => {
-    const app = createTestApp();
-    const response = await app.request("/api/demo/dashboard", { method: "POST" });
     expect(response.status).toBe(404);
+    expect(loader).not.toHaveBeenCalled();
   });
 
   it("validates dashboard date ranges", async () => {
-    const app = createTestApp({ dashboardLoader: vi.fn().mockResolvedValue(demoDashboard) });
+    const app = createTestApp({ dashboardLoader: vi.fn().mockResolvedValue(dashboardFixture) });
     const response = await app.request("/api/app/dashboard?from=2026-08-01&to=2026-07-01", {
       headers: AUTHORIZATION,
     });
@@ -247,15 +281,15 @@ describe("API foundation", () => {
   });
 
   it("rejects browser requests from an unapproved origin", async () => {
-    const app = createTestApp({ dashboardLoader: vi.fn().mockResolvedValue(demoDashboard) });
-    const response = await app.request("/api/demo/dashboard?from=2026-07-01&to=2026-07-31", {
+    const app = createTestApp({ dashboardLoader: vi.fn().mockResolvedValue(dashboardFixture) });
+    const response = await app.request("/api/app/dashboard?from=2026-07-01&to=2026-07-31", {
       headers: { Origin: "https://untrusted.example" },
     });
     expect(response.status).toBe(403);
   });
 
   it("loads the private dashboard for the resolved tenant", async () => {
-    const loader = vi.fn().mockResolvedValue(demoDashboard);
+    const loader = vi.fn().mockResolvedValue(dashboardFixture);
     const app = createTestApp({ dashboardLoader: loader });
     const response = await app.request("/api/app/dashboard?from=2026-07-01&to=2026-07-31", {
       headers: AUTHORIZATION,

@@ -1,40 +1,25 @@
-import {
-  BarChart3,
-  FileUp,
-  Landmark,
-  List,
-  LogOut,
-  Menu,
-  PiggyBank,
-  X,
-} from "lucide-react";
+import { BarChart3, FileUp, Landmark, List, LogOut, Menu, PiggyBank, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 
 import { useAuth } from "../../auth/AuthProvider";
-import type { WorkspaceMode } from "../../lib/workspace";
 
 interface AppShellProps {
   children: ReactNode;
-  mode: WorkspaceMode;
 }
 
-const privateNavItems = [
+const navItems = [
   { label: "Overview", icon: BarChart3, to: "/app" },
   { label: "Transactions", icon: List, to: "/app/transactions" },
   { label: "Import", icon: FileUp, to: "/app/import" },
   { label: "Budgets", icon: PiggyBank, to: "/app/budgets" },
 ];
 
-export function AppShell({ children, mode }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   const { user, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
-  const navItems =
-    mode === "demo"
-      ? [{ label: "Overview", icon: BarChart3, to: "/demo" }]
-      : privateNavItems;
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -74,8 +59,8 @@ export function AppShell({ children, mode }: AppShellProps) {
           </span>
           <span>Clarity</span>
         </Link>
-        <div className="demo-pill">
-          <span /> {mode === "demo" ? "Read-only demo" : "Personal workspace"}
+        <div className="workspace-pill">
+          <span /> Personal workspace
         </div>
         <nav className="side-nav" aria-label="Main navigation">
           {navItems.map((item) => {
@@ -95,32 +80,19 @@ export function AppShell({ children, mode }: AppShellProps) {
           })}
         </nav>
 
-        {mode === "demo" ? (
-          <div className="sidebar-account demo-account">
-            <strong>Ready for your own numbers?</strong>
-            <p>The demo is sample data and cannot be changed.</p>
-            <Link className="button primary" to="/signup">
-              Create account
-            </Link>
-            <Link className="button secondary" to="/login">
-              Sign in
-            </Link>
-          </div>
-        ) : (
-          <div className="sidebar-account">
-            <span>Signed in as</span>
-            <strong title={user?.email}>{user?.email ?? "Clarity user"}</strong>
-            <button
-              className="logout-button"
-              type="button"
-              onClick={() => void handleSignOut()}
-              disabled={signingOut}
-            >
-              <LogOut size={15} /> {signingOut ? "Signing out…" : "Sign out"}
-            </button>
-            {signOutError && <small role="alert">{signOutError}</small>}
-          </div>
-        )}
+        <div className="sidebar-account">
+          <span>Signed in as</span>
+          <strong title={user?.email}>{user?.email ?? "Clarity user"}</strong>
+          <button
+            className="logout-button"
+            type="button"
+            onClick={() => void handleSignOut()}
+            disabled={signingOut}
+          >
+            <LogOut size={15} aria-hidden="true" /> {signingOut ? "Signing out…" : "Sign out"}
+          </button>
+          {signOutError && <small role="alert">{signOutError}</small>}
+        </div>
         <Link className="back-link" to="/">
           ← Back to introduction
         </Link>

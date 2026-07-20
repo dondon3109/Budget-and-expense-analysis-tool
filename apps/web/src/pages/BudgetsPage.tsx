@@ -63,7 +63,7 @@ export function BudgetsPage() {
 
   const data = budgetQuery.data;
   return (
-    <AppShell mode="user">
+    <AppShell>
       <div className="dashboard-page budgets-page">
         <header className="dashboard-header transaction-header">
           <div>

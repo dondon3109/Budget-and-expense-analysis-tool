@@ -13,7 +13,16 @@ interface CategoryManagerProps {
   onClose: () => void;
 }
 
-const palette = ["#dc8b3f", "#3f8f74", "#3a83c5", "#9a6ac2", "#b45a7a", "#6f6bd9"];
+const palette = [
+  "#2a78d6",
+  "#008300",
+  "#e87ba4",
+  "#eda100",
+  "#1baf7a",
+  "#eb6834",
+  "#4a3aa7",
+  "#e34948",
+];
 
 export function CategoryManager({ workspace, categories, onClose }: CategoryManagerProps) {
   const queryClient = useQueryClient();

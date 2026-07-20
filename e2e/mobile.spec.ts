@@ -1,13 +1,23 @@
 import { expect, test } from "@playwright/test";
 
-test("mobile demo exposes a read-only overview and account actions", async ({ page }) => {
-  await page.goto("/demo");
-  await expect(page.getByRole("heading", { name: "Your month, at a glance" })).toBeVisible();
+test("mobile landing keeps account actions and preview usable", async ({ page }) => {
+  await page.goto("/");
 
-  await page.getByRole("button", { name: "Open navigation" }).click();
-  await expect(page.getByRole("link", { name: "Overview" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Budgets" })).not.toBeVisible();
-  await expect(page.getByRole("link", { name: "Transactions" })).not.toBeVisible();
-  await expect(page.getByRole("link", { name: "Create account" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "See where your money goes. Decide what comes next." }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Create account" }).last()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign in" }).last()).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Illustrative preview of the Clarity monthly dashboard" }),
+  ).toBeVisible();
+
+  const hasHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(hasHorizontalOverflow).toBe(false);
+
+  await page.getByRole("link", { name: "Create account" }).last().click();
+  await expect(page).toHaveURL(/\/signup$/);
+  await expect(page.getByRole("heading", { name: "Create your Clarity account" })).toBeVisible();
 });

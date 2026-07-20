@@ -7,7 +7,6 @@ import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { loadDashboard } from "./db/dashboard";
 import { importRepository, type ImportRepository } from "./db/imports";
-import { DEMO_TENANT_ID } from "./db/scope";
 import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
 import { HttpError } from "./errors";
@@ -119,19 +118,6 @@ export function createApp(options: AppOptions = {}) {
   app.get("/health", async (context) => {
     await readinessCheck(context.env);
     return context.json({ status: "ok", service: "budget-expense-api" });
-  });
-
-  app.get("/api/demo/dashboard", async (context) => {
-    const parsed = dashboardQuerySchema.safeParse(context.req.query());
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Choose a valid dashboard date range.",
-        parsed.error.flatten(),
-      );
-    }
-    return context.json(await dashboardLoader(context.env, DEMO_TENANT_ID, parsed.data));
   });
 
   app.get("/api/app/me", (context) => {

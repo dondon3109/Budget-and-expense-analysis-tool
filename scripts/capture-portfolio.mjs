@@ -28,28 +28,22 @@ try {
     heading: "See where your money goes. Decide what comes next.",
   });
   await capture({
-    name: "dashboard-desktop.png",
-    path: "/demo",
-    viewport: { width: 1440, height: 1000 },
-    heading: "Your month, at a glance",
-  });
-  await capture({
-    name: "transactions-desktop.png",
-    path: "/transactions",
-    viewport: { width: 1440, height: 1000 },
-    heading: "Transactions",
-  });
-  await capture({
-    name: "dashboard-mobile.png",
-    path: "/demo",
+    name: "landing-mobile.png",
+    path: "/",
     viewport: { width: 390, height: 844 },
-    heading: "Your month, at a glance",
+    heading: "See where your money goes. Decide what comes next.",
   });
   await capture({
-    name: "budgets-mobile.png",
-    path: "/budgets",
+    name: "login-desktop.png",
+    path: "/login",
+    viewport: { width: 1440, height: 1000 },
+    heading: "Sign in to Clarity",
+  });
+  await capture({
+    name: "signup-mobile.png",
+    path: "/signup",
     viewport: { width: 390, height: 844 },
-    heading: "Budgets",
+    heading: "Create your Clarity account",
   });
 } finally {
   await browser.close();

@@ -18,7 +18,6 @@ vi.mock("../src/lib/api", () => ({
 }));
 
 const workspace: AuthenticatedWorkspace = {
-  mode: "user",
   key: "user:test-user",
   userId: "test-user",
 };
@@ -56,7 +55,7 @@ describe("CategoryManager", () => {
     expect(vi.mocked(createCategory)).toHaveBeenCalledWith(workspace, {
       name: "Health",
       kind: "expense",
-      color: "#dc8b3f",
+      color: "#2a78d6",
     });
 
     await user.click(screen.getByRole("button", { name: "Archive Food & dining" }));

@@ -98,10 +98,8 @@ describe("tenant bootstrap", () => {
       "user:user-1",
     ]);
     expect(
-      captured.find((statement) =>
-        statement.values.includes("user:user-1:category:food"),
-      )?.values,
-    ).toEqual(["user:user-1:category:food", "user:user-1", "Food & dining", "expense", "#dc8b3f"]);
+      captured.find((statement) => statement.values.includes("user:user-1:category:food"))?.values,
+    ).toEqual(["user:user-1:category:food", "user:user-1", "Food & dining", "expense", "#e87ba4"]);
     expect(
       captured
         .filter((statement) => statement.sql.startsWith("INSERT"))
@@ -112,8 +110,8 @@ describe("tenant bootstrap", () => {
 
   it("fails closed when the identity mapping is not visible after bootstrap", async () => {
     const { env } = createBindings(false);
-    await expect(
-      tenantBootstrapRepository.bootstrap(env, { id: "user-1" }),
-    ).rejects.toThrow("could not be initialized");
+    await expect(tenantBootstrapRepository.bootstrap(env, { id: "user-1" })).rejects.toThrow(
+      "could not be initialized",
+    );
   });
 });

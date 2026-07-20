@@ -2,22 +2,26 @@
 
 ## Problem
 
-Personal finance imports are easy to make visually appealing but hard to make trustworthy. Clarity needed deterministic PHP arithmetic, understandable errors, a safe CSV workflow, responsive analysis, and a public demo that never implies bank connectivity or private-data protection it does not provide.
+Personal finance tools are easy to make visually appealing but hard to make trustworthy. Clarity needed deterministic PHP arithmetic, understandable errors, a safe CSV workflow, responsive analysis, and a clear boundary between public product information and private financial records.
 
 ## Approach
 
-The solution uses a small Cloudflare-native boundary: React/Vite in Pages, a Hono Worker, D1, and shared Zod/TypeScript rules. Every owned row is tenant-scoped from migration one. Currency is stored as integer centavos, transfers are excluded from income/expense totals, and the same validated account/category/date/type filters drive the transaction table and CSV export.
+The solution uses React/Vite in Cloudflare Pages, a Hono Worker, D1, Supabase Auth, and shared Zod/TypeScript rules. Every owned row is tenant-scoped. Currency is stored as integer centavos, transfers are excluded from income/expense totals, and the same validated filters drive the transaction table and CSV export.
 
-CSV import is preview-first. The server parses and normalizes rows, reports row-specific problems and duplicates, and issues a short-lived one-time token only when at least one row can be committed. Commit atomically writes approved transactions and an audit record. This avoids preview/commit drift and partial imports.
+Supabase owns account identity and sessions. The Worker verifies each bearer token through JWKS, maps the user to a D1 tenant, and bootstraps only an account plus starter categories on first access. Transactions and budgets begin empty. The landing page therefore uses a clearly labeled static illustration rather than serving public financial records.
+
+CSV import is preview-first. The server parses and normalizes rows, reports row-specific problems and duplicates, and issues a short-lived one-time token only when at least one row can be committed. Commit atomically writes approved transactions and an audit record, avoiding preview/commit drift and partial imports.
 
 ## Reliability and speed
 
-Financial rules are unit-tested, HTTP contracts are API-tested, interactive mutations are component-tested, and Playwright proves the full desktop/mobile journey against local D1 with exact cleanup. The dashboard bounds database reads to the requested period and useful trend window. Pagination, export ceilings, and import limits keep expensive operations predictable.
+Financial rules are unit-tested, HTTP contracts are API-tested, interactive mutations are component-tested, and Playwright covers public account entry points plus signed-out private-route boundaries. The dashboard bounds database reads to the requested period and useful trend window. Pagination, export ceilings, and import limits keep expensive operations predictable.
 
-The public demo also needs protection from automated writes. D1-backed atomic windows limit general mutations and apply a tighter import policy across Worker instances. Only a SHA-256 client hash is persisted. A local runtime proof confirmed requests 1–20 reached validation and request 21 received `429`, with no financial rows created.
+D1-backed atomic windows limit authenticated mutations and apply a tighter import policy across Worker instances. Rate-limit identity comes from the verified tenant, not a user-supplied value. Only a SHA-256 client hash is persisted for the limiter.
 
-The measured production landing build scores 100 in all four Lighthouse categories, with 490–534 ms LCP, zero CLS, and a 101.9 KB transfer. These are reproducible local lab results; field performance remains to be measured after launch.
+The measured landing build is held to Lighthouse performance, accessibility, best-practice, SEO, LCP, CLS, and bundle-size gates. These are reproducible local lab results; field performance should be monitored after each hosted release.
 
 ## Scope and outcome
 
-The complete demo—including transaction CRUD, account filtering, recategorization, mixed-row import, budgets, recurring/savings insights, dashboard recalculation, and export—is implemented and verified. Separate preview and production Pages, Worker, and D1 resources are live on Cloudflare’s free domains, with isolated migrations and fictional seed data. Both environments passed the production smoke gate, and direct browser inspection confirmed the desktop dashboard and mobile transactions layout without console errors or horizontal overflow. Authentication, bank connections, multiple currencies, and financial advice remain intentionally excluded.
+Clarity now provides authenticated transaction CRUD, account filtering, recategorization, mixed-row import, budgets, recurring/savings insights, dashboard recalculation, and export in isolated personal workspaces. New users get an intentional onboarding state instead of fictional records. Public visitors can understand the product and choose signup or login without exposing a shared financial dataset.
+
+Separate preview and production Pages, Worker, and D1 resources are documented for deployment. Bank connections, multiple currencies, financial advice, complete account-data export, and formal retention/deletion controls remain outside the current scope.

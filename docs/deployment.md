@@ -36,14 +36,15 @@ The publishable key is intended for browser use. It does not grant access to D1;
 
 ## Preview release
 
-Apply migrations and seed only the fictional public demo:
+Create a D1 Time Travel recovery point before applying migrations that remove retired data, then apply migrations and deploy the Worker:
 
 ```bash
 cd apps/api
 pnpm exec wrangler d1 migrations apply DB --remote --config wrangler.deploy.jsonc --env preview
-pnpm exec wrangler d1 execute DB --remote --config wrangler.deploy.jsonc --env preview --file=../../db/seed.sql
 pnpm exec wrangler deploy --config wrangler.deploy.jsonc --env preview
 ```
+
+Inspect the preview database after migration: the retired public tenant should be absent, while authenticated user tenants and their records must remain unchanged.
 
 Build and deploy the browser app:
 
@@ -73,9 +74,9 @@ No service-role key is needed for normal product traffic or this check.
 
 ## Production release
 
-Repeat the migration, seed, Worker deploy, frontend build, Pages deploy, smoke check, and two-user isolation check with production configuration. Verify the production origin appears in both `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users.
+After the preview migration and authenticated checks pass, create a production D1 recovery point and repeat the migration, Worker deploy, frontend build, Pages deploy, smoke check, and two-user isolation check with production configuration. Verify the production origin appears in both `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users.
 
-Direct navigation should work for `/demo`, `/login`, `/signup`, `/forgot-password`, `/auth/callback`, `/update-password`, and `/app/*`; the committed `_redirects` file provides SPA fallback.
+Direct navigation should work for `/login`, `/signup`, `/forgot-password`, `/auth/callback`, `/update-password`, and `/app/*`; the committed `_redirects` file provides SPA fallback. The retired `/demo` route should return visitors to `/`.
 
 ## Rollback
 
@@ -94,4 +95,4 @@ The existing Cloudflare hosts are:
 - Preview web: <https://clarity-budget-preview.pages.dev>
 - Preview API: <https://budget-expense-api-preview.dondon3109.workers.dev>
 
-These deployments must be rebuilt with the new Supabase variables and the `user_tenants` D1 migration before authenticated accounts are available. Deployment is not performed automatically by the implementation work.
+These deployments must be rebuilt with the current Supabase variables and all committed D1 migrations before the authenticated-only product boundary is live. Deployment is not performed automatically by implementation work.

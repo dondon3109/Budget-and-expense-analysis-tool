@@ -16,14 +16,13 @@
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.e2e.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e:prepare": "pnpm db:migrate:local && pnpm db:seed:local",
+    "test:e2e:prepare": "pnpm db:migrate:local",
     "test:e2e": "pnpm test:e2e:prepare && playwright test",
     "lighthouse": "lhci autorun",
     "smoke:production": "node scripts/smoke-production.mjs",
     "capture:screenshots": "node scripts/capture-portfolio.mjs",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "pnpm --filter @budget/api exec wrangler d1 migrations apply budget-expense-local --local",
-    "db:seed:local": "pnpm --filter @budget/api exec wrangler d1 execute budget-expense-local --local --file=../../db/seed.sql"
+    "db:migrate:local": "pnpm --filter @budget/api exec wrangler d1 migrations apply budget-expense-local --local"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

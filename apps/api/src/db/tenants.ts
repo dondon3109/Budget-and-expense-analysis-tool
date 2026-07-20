@@ -1,17 +1,17 @@
 import type { AuthUser, Bindings, TenantContext } from "../types";
 
 const DEFAULT_CATEGORIES = [
-  { key: "salary", name: "Salary", kind: "income", color: "#3f8f74" },
-  { key: "housing", name: "Housing", kind: "expense", color: "#6f6bd9" },
-  { key: "food", name: "Food & dining", kind: "expense", color: "#dc8b3f" },
-  { key: "transport", name: "Transport", kind: "expense", color: "#3a83c5" },
-  { key: "utilities", name: "Utilities", kind: "expense", color: "#b45a7a" },
-  { key: "leisure", name: "Leisure", kind: "expense", color: "#9a6ac2" },
+  { key: "salary", name: "Salary", kind: "income", color: "#2a78d6" },
+  { key: "housing", name: "Housing", kind: "expense", color: "#008300" },
+  { key: "food", name: "Food & dining", kind: "expense", color: "#e87ba4" },
+  { key: "transport", name: "Transport", kind: "expense", color: "#eda100" },
+  { key: "utilities", name: "Utilities", kind: "expense", color: "#1baf7a" },
+  { key: "leisure", name: "Leisure", kind: "expense", color: "#eb6834" },
   {
     key: "savings-transfer",
     name: "Savings transfer",
     kind: "transfer",
-    color: "#7363a6",
+    color: "#4a3aa7",
   },
 ] as const;
 

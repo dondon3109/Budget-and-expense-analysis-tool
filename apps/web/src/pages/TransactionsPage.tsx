@@ -134,7 +134,7 @@ export function TransactionsPage() {
   }
 
   return (
-    <AppShell mode="user">
+    <AppShell>
       <div className="dashboard-page transactions-page">
         <header className="dashboard-header transaction-header">
           <div>

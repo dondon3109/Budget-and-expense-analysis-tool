@@ -34,7 +34,7 @@ export function SignupPage() {
     <AuthLayout
       eyebrow="Start your workspace"
       title="Create your Clarity account"
-      description="Use your own private workspace instead of the public sample data."
+      description="Start with a private workspace that is ready for the transactions and budgets you choose to add."
       footer={
         <p>
           Already have an account? <Link to="/login">Sign in</Link>

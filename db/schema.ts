@@ -12,7 +12,7 @@ const timestamps = {
 
 export const tenants = sqliteTable("tenants", {
   id: text("id").primaryKey(),
-  kind: text("kind", { enum: ["demo", "user"] }).notNull(),
+  kind: text("kind", { enum: ["user"] }).notNull(),
   name: text("name").notNull(),
   ...timestamps,
 });

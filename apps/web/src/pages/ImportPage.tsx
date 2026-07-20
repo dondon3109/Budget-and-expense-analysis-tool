@@ -126,7 +126,7 @@ export function ImportPage() {
     mapping.date && mapping.description && mapping.amount && mapping.category;
 
   return (
-    <AppShell mode="user">
+    <AppShell>
       <div className="dashboard-page import-page">
         <header className="dashboard-header transaction-header">
           <div>

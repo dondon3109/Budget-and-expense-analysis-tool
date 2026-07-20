@@ -69,7 +69,7 @@ describe("BudgetsPage", () => {
 
     await waitFor(() => expect(saveBudgets).toHaveBeenCalledOnce());
     expect(vi.mocked(saveBudgets)).toHaveBeenCalledWith(
-      { mode: "user", key: "user:test-user", userId: "test-user" },
+      { key: "user:test-user", userId: "test-user" },
       {
         month: "2026-07-01",
         items: [{ categoryId: "food", limitMinor: 900_000 }],

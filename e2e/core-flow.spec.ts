@@ -1,30 +1,43 @@
 import { expect, test } from "@playwright/test";
 
-test("public demo is a read-only dashboard", async ({ page, request }) => {
+test("landing page leads visitors to account creation or sign in", async ({ page, request }) => {
+  const demoRequests: string[] = [];
+  page.on("request", (browserRequest) => {
+    if (browserRequest.url().includes("/api/demo/")) demoRequests.push(browserRequest.url());
+  });
+
   await page.goto("/");
-  await expect(page.getByRole("link", { name: "Create account" }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "See where your money goes. Decide what comes next." }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Create account" }).first()).toHaveAttribute(
+    "href",
+    "/signup",
+  );
+  await expect(page.getByRole("link", { name: "Sign in" }).first()).toHaveAttribute(
+    "href",
+    "/login",
+  );
+  await expect(
+    page.getByRole("img", { name: "Illustrative preview of the Clarity monthly dashboard" }),
+  ).toBeVisible();
+  await expect(page.getByText(/workspace begins without transactions or budgets/i)).toBeVisible();
+  expect(demoRequests).toEqual([]);
 
-  await page.getByRole("link", { name: "Open demo" }).click();
-  await expect(page).toHaveURL(/\/demo$/);
-  await expect(page.getByRole("heading", { name: "Your month, at a glance" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Savings and recurring costs" })).toBeVisible();
-  await expect(page.getByText("Apartment rent", { exact: true })).toBeVisible();
-  await expect(page.getByText("You’re viewing sample data.", { exact: true })).toBeVisible();
-
-  await expect(page.getByRole("link", { name: "Transactions" })).not.toBeVisible();
-  await expect(page.getByRole("link", { name: "Import" })).not.toBeVisible();
-  await expect(page.getByRole("link", { name: "Budgets" })).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Add transaction" })).not.toBeVisible();
-  await expect(page.getByRole("link", { name: "Create account" }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
-
-  const demoRead = await request.get("/api/demo/dashboard?from=2026-07-01&to=2026-07-31");
-  expect(demoRead.ok()).toBe(true);
+  const retiredDemo = await request.get("/api/demo/dashboard?from=2026-07-01&to=2026-07-31");
+  expect(retiredDemo.status()).toBe(404);
   const privateRead = await request.get("/api/app/dashboard?from=2026-07-01&to=2026-07-31");
   expect(privateRead.status()).toBe(401);
   const privateWrite = await request.post("/api/app/transactions", { data: {} });
   expect(privateWrite.status()).toBe(401);
+});
+
+test("retired demo route returns to the landing page", async ({ page }) => {
+  await page.goto("/demo");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("heading", { name: "See where your money goes. Decide what comes next." }),
+  ).toBeVisible();
 });
 
 test("private pages redirect signed-out users to login", async ({ page }) => {

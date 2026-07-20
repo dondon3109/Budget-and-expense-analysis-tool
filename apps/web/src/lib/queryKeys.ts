@@ -1,20 +1,21 @@
 import type { TransactionListQuery } from "@budget/shared";
 
-import type { Workspace } from "./workspace";
+import type { AuthenticatedWorkspace } from "./workspace";
 
 export const queryKeys = {
-  workspace: (workspace: Workspace) => ["workspace", workspace.key] as const,
-  dashboard: (workspace: Workspace) =>
+  workspace: (workspace: AuthenticatedWorkspace) => ["workspace", workspace.key] as const,
+  dashboard: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "dashboard", "2026-07"] as const,
-  transactions: (workspace: Workspace, query: TransactionListQuery) =>
+  transactions: (workspace: AuthenticatedWorkspace, query: TransactionListQuery) =>
     [...queryKeys.workspace(workspace), "transactions", query] as const,
-  allTransactions: (workspace: Workspace) =>
+  allTransactions: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "transactions"] as const,
-  categories: (workspace: Workspace, includeArchived = false) =>
+  categories: (workspace: AuthenticatedWorkspace, includeArchived = false) =>
     [...queryKeys.workspace(workspace), "categories", { includeArchived }] as const,
-  allCategories: (workspace: Workspace) =>
+  allCategories: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "categories"] as const,
-  accounts: (workspace: Workspace) => [...queryKeys.workspace(workspace), "accounts"] as const,
-  budgets: (workspace: Workspace, month: string) =>
+  accounts: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "accounts"] as const,
+  budgets: (workspace: AuthenticatedWorkspace, month: string) =>
     [...queryKeys.workspace(workspace), "budgets", month] as const,
 };

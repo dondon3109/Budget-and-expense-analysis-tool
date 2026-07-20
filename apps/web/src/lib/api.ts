@@ -18,7 +18,7 @@ import type {
 } from "@budget/shared";
 
 import { getSupabaseClient } from "./supabase";
-import type { AuthenticatedWorkspace, Workspace } from "./workspace";
+import type { AuthenticatedWorkspace } from "./workspace";
 
 const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "";
 
@@ -33,10 +33,7 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function accessToken(
-  workspace: AuthenticatedWorkspace,
-  refresh: boolean,
-): Promise<string> {
+async function accessToken(workspace: AuthenticatedWorkspace, refresh: boolean): Promise<string> {
   const client = getSupabaseClient();
   const result = refresh ? await client.auth.refreshSession() : await client.auth.getSession();
   if (result.error) throw result.error;
@@ -56,20 +53,18 @@ async function signOutAfterUnauthorized() {
 }
 
 async function workspaceFetch(
-  workspace: Workspace,
+  workspace: AuthenticatedWorkspace,
   path: string,
   init: RequestInit,
 ): Promise<Response> {
   const run = async (refresh: boolean) => {
     const headers = new Headers(init.headers);
-    if (workspace.mode === "user") {
-      headers.set("Authorization", `Bearer ${await accessToken(workspace, refresh)}`);
-    }
+    headers.set("Authorization", `Bearer ${await accessToken(workspace, refresh)}`);
     return fetch(`${apiUrl}${path}`, { ...init, headers });
   };
 
   let response = await run(false);
-  if (response.status === 401 && workspace.mode === "user") {
+  if (response.status === 401) {
     try {
       response = await run(true);
     } catch {
@@ -82,7 +77,7 @@ async function workspaceFetch(
 }
 
 async function requestJson<T>(
-  workspace: Workspace,
+  workspace: AuthenticatedWorkspace,
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
@@ -131,9 +126,8 @@ async function requestBlob(workspace: AuthenticatedWorkspace, path: string): Pro
   return response.blob();
 }
 
-export function getDashboard(workspace: Workspace): Promise<DashboardSummary> {
-  const basePath = workspace.mode === "demo" ? "/api/demo" : "/api/app";
-  return requestJson(workspace, `${basePath}/dashboard?from=2026-07-01&to=2026-07-31`);
+export function getDashboard(workspace: AuthenticatedWorkspace): Promise<DashboardSummary> {
+  return requestJson(workspace, "/api/app/dashboard?from=2026-07-01&to=2026-07-31");
 }
 
 export function getTransactions(
@@ -167,10 +161,7 @@ export function updateTransaction(
   });
 }
 
-export function deleteTransaction(
-  workspace: AuthenticatedWorkspace,
-  id: string,
-): Promise<void> {
+export function deleteTransaction(workspace: AuthenticatedWorkspace, id: string): Promise<void> {
   return requestJson(workspace, `/api/app/transactions/${id}`, { method: "DELETE" });
 }
 

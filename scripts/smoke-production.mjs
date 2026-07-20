@@ -1,7 +1,5 @@
 const webUrl = requiredUrl("WEB_URL");
 const apiUrl = requiredUrl("API_URL");
-const from = process.env.SMOKE_FROM ?? "2026-07-01";
-const to = process.env.SMOKE_TO ?? "2026-07-31";
 const origin = new URL(webUrl).origin;
 
 function requiredUrl(name) {
@@ -24,31 +22,31 @@ await expectResponse("landing page", webUrl, undefined, async (response) => {
   if (!html.includes("Clarity")) throw new Error("Landing page did not contain the app title.");
 });
 
-await expectResponse("API health and D1 readiness", `${apiUrl}/health`, undefined, async (response) => {
-  if (!response.ok) throw new Error(`Health check failed with HTTP ${response.status}.`);
-  const body = await response.json();
-  if (body.status !== "ok") throw new Error("Health response was not ready.");
-});
+await expectResponse(
+  "API health and D1 readiness",
+  `${apiUrl}/health`,
+  undefined,
+  async (response) => {
+    if (!response.ok) throw new Error(`Health check failed with HTTP ${response.status}.`);
+    const body = await response.json();
+    if (body.status !== "ok") throw new Error("Health response was not ready.");
+  },
+);
 
 await expectResponse(
-  "read-only demo dashboard",
-  `${apiUrl}/api/demo/dashboard?from=${from}&to=${to}`,
+  "retired public dashboard",
+  `${apiUrl}/api/demo/dashboard?from=2026-07-01&to=2026-07-31`,
   { headers: apiHeaders },
   async (response) => {
-    if (!response.ok) throw new Error(`Demo dashboard failed with HTTP ${response.status}.`);
-    const body = await response.json();
-    if (body.currency !== "PHP" || !body.metrics) {
-      throw new Error("Dashboard response did not match the expected contract.");
-    }
-    if (response.headers.get("access-control-allow-origin") !== origin) {
-      throw new Error("Dashboard CORS response did not allow the deployed web origin.");
+    if (response.status !== 404) {
+      throw new Error(`Retired public dashboard returned HTTP ${response.status} instead of 404.`);
     }
   },
 );
 
 await expectResponse(
   "private API rejects anonymous access",
-  `${apiUrl}/api/app/dashboard?from=${from}&to=${to}`,
+  `${apiUrl}/api/app/dashboard?from=2026-07-01&to=2026-07-31`,
   { headers: apiHeaders },
   async (response) => {
     if (response.status !== 401) {

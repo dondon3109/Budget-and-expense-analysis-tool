@@ -57,7 +57,6 @@ export function App() {
     <Suspense fallback={<div className="full-page-status">Loading Clarity…</div>}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/demo" element={<DashboardPage mode="demo" />} />
         <Route
           path="/login"
           element={
@@ -95,7 +94,7 @@ export function App() {
           path="/app"
           element={
             <Private>
-              <DashboardPage mode="user" />
+              <DashboardPage />
             </Private>
           }
         />

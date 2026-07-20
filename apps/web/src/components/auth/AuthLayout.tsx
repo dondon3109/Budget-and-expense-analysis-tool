@@ -35,9 +35,12 @@ export function AuthLayout({
       <aside className="auth-aside">
         <p className="eyebrow">Your private workspace</p>
         <h2>Keep your monthly picture in one calm place.</h2>
-        <p>Import transactions, shape budgets, and return to the same secure workspace anytime.</p>
-        <Link className="text-link" to="/demo">
-          Prefer to look around first? Open the read-only demo.
+        <p>
+          Import transactions, shape budgets, and return to the same secure workspace anytime. Your
+          account begins with no financial records until you add them.
+        </p>
+        <Link className="text-link" to="/">
+          See how Clarity works
         </Link>
       </aside>
     </main>
