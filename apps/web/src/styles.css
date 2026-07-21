@@ -524,6 +524,10 @@ textarea:focus-visible {
   cursor: default;
   text-align: left;
 }
+.nav-item:not(.current):hover {
+  background: #f0eee7;
+  cursor: pointer;
+}
 .nav-item.current {
   color: var(--ink);
   background: #f0eee7;
