@@ -108,7 +108,23 @@ async function requestJson<T>(
     );
   }
   if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("json")) {
+    throw new ApiRequestError(
+      "The API returned an unexpected response. Check the API URL configuration.",
+      502,
+      "invalid_api_response",
+    );
+  }
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new ApiRequestError(
+      "The API returned invalid JSON. Try again or check the API deployment.",
+      502,
+      "invalid_api_response",
+    );
+  }
 }
 
 async function requestBlob(workspace: AuthenticatedWorkspace, path: string): Promise<Blob> {

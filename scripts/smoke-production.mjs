@@ -14,12 +14,35 @@ async function expectResponse(label, url, init, validate) {
   console.log(`✓ ${label}`);
 }
 
+async function expectFrontendApiUrl(html) {
+  const pending = [...html.matchAll(/<script[^>]+src=["']([^"']+\.js)["']/g)].map(
+    (match) => new URL(match[1], webUrl).href,
+  );
+  const visited = new Set();
+
+  while (pending.length > 0) {
+    const assetUrl = pending.pop();
+    if (!assetUrl || visited.has(assetUrl)) continue;
+    visited.add(assetUrl);
+    const response = await fetch(assetUrl);
+    if (!response.ok) throw new Error(`Frontend asset failed with HTTP ${response.status}.`);
+    const source = await response.text();
+    if (source.includes(apiUrl)) return;
+    for (const match of source.matchAll(/(?:\.\/|\/)?assets\/[A-Za-z0-9_.-]+\.js/g)) {
+      pending.push(new URL(match[0], webUrl).href);
+    }
+  }
+
+  throw new Error("The deployed frontend does not contain the configured API URL.");
+}
+
 const apiHeaders = { Origin: origin };
 
 await expectResponse("landing page", webUrl, undefined, async (response) => {
   if (!response.ok) throw new Error(`Landing page failed with HTTP ${response.status}.`);
   const html = await response.text();
   if (!html.includes("Clarity")) throw new Error("Landing page did not contain the app title.");
+  await expectFrontendApiUrl(html);
 });
 
 await expectResponse(

@@ -53,7 +53,12 @@ describe("authenticated API requests", () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ error: "invalid_access_token" }), { status: 401 }),
       )
-      .mockResolvedValueOnce(new Response(JSON.stringify(dashboard), { status: 200 }));
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(dashboard), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
 
     await getDashboard(userWorkspace);
 
@@ -66,6 +71,22 @@ describe("authenticated API requests", () => {
       "Bearer new-token",
     );
     expect(auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it("reports a configuration error when the API request returns HTML", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: session("token") }, error: null });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("<!doctype html><title>Clarity</title>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      }),
+    );
+
+    await expect(getDashboard(userWorkspace)).rejects.toMatchObject({
+      status: 502,
+      code: "invalid_api_response",
+      message: "The API returned an unexpected response. Check the API URL configuration.",
+    });
   });
 
   it("signs out after the refreshed request is also unauthorized", async () => {
