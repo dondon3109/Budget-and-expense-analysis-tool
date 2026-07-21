@@ -91,6 +91,7 @@ const categoryItem: CategoryRecord = {
   kind: "expense",
   color: "#dc8b3f",
   archived: false,
+  system: false,
 };
 
 const accountItem: AccountRecord = {
@@ -527,6 +528,45 @@ describe("API foundation", () => {
       TENANT_ID,
       "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
     );
+  });
+
+  it("accepts a fallback import date without a Category mapping", async () => {
+    const imports = createImportStore();
+    const app = createTestApp({ imports });
+    const response = await app.request("/api/app/imports/preview", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        fileName: "transactions.csv",
+        csvText: "Description,Amount\nMarket,-50.00",
+        mapping: { description: "Description", amount: "Amount" },
+        fallbackDate: "2026-07-21",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(imports.preview).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      expect.objectContaining({ fallbackDate: "2026-07-21" }),
+    );
+  });
+
+  it("rejects imports with no date source", async () => {
+    const imports = createImportStore();
+    const app = createTestApp({ imports });
+    const response = await app.request("/api/app/imports/preview", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        fileName: "transactions.csv",
+        csvText: "Description,Amount\nMarket,-50.00",
+        mapping: { description: "Description", amount: "Amount" },
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(imports.preview).not.toHaveBeenCalled();
   });
 
   it("reads and atomically updates a monthly budget plan", async () => {

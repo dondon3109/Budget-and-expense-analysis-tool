@@ -20,6 +20,34 @@ const categories: CategoryRecord[] = [
     kind: "expense",
     color: "#dc8b3f",
     archived: false,
+    system: false,
+  },
+];
+
+const uncategorizedCategories: CategoryRecord[] = [
+  {
+    id: "uncategorized-income",
+    name: "Uncategorized",
+    kind: "income",
+    color: "#6b7280",
+    archived: false,
+    system: true,
+  },
+  {
+    id: "uncategorized-expense",
+    name: "Uncategorized",
+    kind: "expense",
+    color: "#6b7280",
+    archived: false,
+    system: true,
+  },
+  {
+    id: "uncategorized-transfer",
+    name: "Uncategorized",
+    kind: "transfer",
+    color: "#6b7280",
+    archived: false,
+    system: true,
   },
 ];
 
@@ -123,6 +151,96 @@ describe("import preparation", () => {
     expect(prepared.rows[0]).toMatchObject({
       status: "invalid",
       errors: ["Currency must be PHP."],
+    });
+  });
+
+  it("uses the kind-specific Uncategorized category when Category is omitted", async () => {
+    const csv = parseCsv(
+      [
+        "Date,Description,Amount,Type",
+        "2026-07-20,Refund,50.00,income",
+        "2026-07-20,Market,-50.00,expense",
+        "2026-07-20,Savings,50.00,transfer",
+      ].join("\n"),
+    );
+    const prepared = await prepareImportRows(
+      csv,
+      { date: "Date", description: "Description", amount: "Amount", kind: "Type" },
+      uncategorizedCategories,
+      new Set(),
+      "user:user-1:account:default",
+    );
+
+    expect(prepared.records.map((row) => row.categoryId)).toEqual([
+      "uncategorized-income",
+      "uncategorized-expense",
+      "uncategorized-transfer",
+    ]);
+    expect(prepared.rows.every((row) => row.categoryName === "Uncategorized")).toBe(true);
+  });
+
+  it("falls back for blank, unknown, and wrong-kind category values", async () => {
+    const csv = parseCsv(
+      [
+        "Date,Description,Amount,Category",
+        "2026-07-20,Blank,-10.00,",
+        "2026-07-20,Unknown,-20.00,Shopping",
+        "2026-07-20,Wrong kind,-30.00,Salary",
+      ].join("\n"),
+    );
+    const prepared = await prepareImportRows(
+      csv,
+      { date: "Date", description: "Description", amount: "Amount", category: "Category" },
+      [
+        ...uncategorizedCategories,
+        {
+          id: "salary",
+          name: "Salary",
+          kind: "income",
+          color: "#2a78d6",
+          archived: false,
+          system: false,
+        },
+      ],
+      new Set(),
+      "user:user-1:account:default",
+    );
+
+    expect(prepared.rows.map((row) => row.status)).toEqual(["ready", "ready", "ready"]);
+    expect(prepared.records.every((row) => row.categoryId === "uncategorized-expense")).toBe(true);
+  });
+
+  it("applies one fallback date to every row before fingerprinting", async () => {
+    const csv = parseCsv("Description,Amount\nMarket,-50.00\nSalary,100.00");
+    const prepared = await prepareImportRows(
+      csv,
+      { description: "Description", amount: "Amount" },
+      uncategorizedCategories,
+      new Set(),
+      "user:user-1:account:default",
+      "2026-07-21",
+    );
+
+    expect(prepared.records.map((row) => row.date)).toEqual(["2026-07-21", "2026-07-21"]);
+    expect(prepared.records.map((row) => row.categoryId)).toEqual([
+      "uncategorized-expense",
+      "uncategorized-income",
+    ]);
+  });
+
+  it("does not use the fallback date for invalid cells in a mapped Date column", async () => {
+    const csv = parseCsv("Date,Description,Amount\n,Market,-50.00");
+    const prepared = await prepareImportRows(
+      csv,
+      { date: "Date", description: "Description", amount: "Amount" },
+      uncategorizedCategories,
+      new Set(),
+      "user:user-1:account:default",
+    );
+
+    expect(prepared.rows[0]).toMatchObject({
+      status: "invalid",
+      errors: ["Date must be a real YYYY-MM-DD date."],
     });
   });
 });

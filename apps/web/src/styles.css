@@ -1862,7 +1862,8 @@ textarea:focus-visible {
   font-size: 9px;
   font-weight: 750;
 }
-.mapping-grid select {
+.mapping-grid select,
+.mapping-grid input {
   min-width: 0;
   height: 42px;
   padding: 0 10px;

@@ -40,6 +40,7 @@ export interface CategoryRecord {
   kind: TransactionKind;
   color: string;
   archived: boolean;
+  system: boolean;
 }
 
 export const subscriptionBillingCycles = ["monthly", "yearly"] as const;
@@ -74,10 +75,10 @@ export interface SubscriptionMonthSummary {
 }
 
 export interface ImportMapping {
-  date: string;
+  date?: string;
   description: string;
   amount: string;
-  category: string;
+  category?: string;
   kind?: string;
   currency?: string;
 }

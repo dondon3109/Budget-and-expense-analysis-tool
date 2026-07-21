@@ -28,8 +28,16 @@ import { userWorkspace } from "../lib/workspace";
 const MAX_CSV_FILE_BYTES = 1_000_000;
 const MAX_WORKBOOK_FILE_BYTES = 5_000_000;
 
+function localToday(): string {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function emptyMapping(): ImportMapping {
-  return { date: "", description: "", amount: "", category: "" };
+  return { description: "", amount: "" };
 }
 
 function findHeader(headers: string[], aliases: string[]): string {
@@ -38,10 +46,10 @@ function findHeader(headers: string[], aliases: string[]): string {
 
 function suggestMapping(headers: string[]): ImportMapping {
   return {
-    date: findHeader(headers, ["date", "transaction date", "posted date"]),
+    date: findHeader(headers, ["date", "transaction date", "posted date"]) || undefined,
     description: findHeader(headers, ["description", "details", "merchant", "memo"]),
     amount: findHeader(headers, ["amount", "value", "transaction amount"]),
-    category: findHeader(headers, ["category", "category name"]),
+    category: findHeader(headers, ["category", "category name"]) || undefined,
     kind: findHeader(headers, ["type", "kind", "transaction type"]) || undefined,
     currency: findHeader(headers, ["currency", "currency code"]) || undefined,
   };
@@ -69,6 +77,7 @@ export function ImportPage() {
   const [csvText, setCsvText] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<ImportMapping>(emptyMapping);
+  const [fallbackDate, setFallbackDate] = useState(localToday);
   const [worksheetNames, setWorksheetNames] = useState<string[]>([]);
   const [selectedWorksheet, setSelectedWorksheet] = useState("");
   const [worksheetRowCount, setWorksheetRowCount] = useState<number>();
@@ -109,6 +118,7 @@ export function ImportPage() {
     setCsvText("");
     setHeaders([]);
     setMapping(emptyMapping());
+    setFallbackDate(localToday());
     setWorksheetRowCount(undefined);
     setWorkbookWarnings([]);
     setPreview(undefined);
@@ -236,7 +246,7 @@ export function ImportPage() {
   }
 
   const requiredMappingComplete =
-    mapping.date && mapping.description && mapping.amount && mapping.category;
+    mapping.description && mapping.amount && (mapping.date || fallbackDate);
 
   return (
     <AppShell>
@@ -365,16 +375,18 @@ export function ImportPage() {
                 <span>2</span>
                 <div>
                   <strong>Match your columns</strong>
-                  <small>Type is optional; amount sign can identify income or expense</small>
+                  <small>
+                    Date, category, and type are optional; amount sign can identify the type
+                  </small>
                 </div>
               </div>
               <div className="mapping-grid">
                 {(
                   [
-                    ["date", "Date"],
+                    ["date", "Date (optional)"],
                     ["description", "Description"],
                     ["amount", "Amount"],
-                    ["category", "Category"],
+                    ["category", "Category (optional)"],
                     ["kind", "Type (optional)"],
                     ["currency", "Currency (optional)"],
                   ] as const
@@ -394,11 +406,15 @@ export function ImportPage() {
                       }}
                     >
                       <option value="">
-                        {key === "kind"
-                          ? "Infer from amount"
-                          : key === "currency"
-                            ? "Assume PHP"
-                            : "Choose column"}
+                        {key === "date"
+                          ? "Use one date for all rows"
+                          : key === "category"
+                            ? "Use Uncategorized"
+                            : key === "kind"
+                              ? "Infer from amount"
+                              : key === "currency"
+                                ? "Assume PHP"
+                                : "Choose column"}
                       </option>
                       {headers.map((header) => (
                         <option key={header} value={header}>
@@ -408,12 +424,34 @@ export function ImportPage() {
                     </select>
                   </label>
                 ))}
+                {!mapping.date && (
+                  <label>
+                    <span>Date for every row</span>
+                    <input
+                      type="date"
+                      value={fallbackDate}
+                      disabled={headers.length === 0}
+                      onChange={(event) => {
+                        setFallbackDate(event.target.value);
+                        setPreview(undefined);
+                        previewMutation.reset();
+                      }}
+                    />
+                  </label>
+                )}
               </div>
               <button
                 className="button primary preview-import-button"
                 type="button"
                 disabled={!csvText || !requiredMappingComplete || previewMutation.isPending}
-                onClick={() => previewMutation.mutate({ fileName, csvText, mapping })}
+                onClick={() =>
+                  previewMutation.mutate({
+                    fileName,
+                    csvText,
+                    mapping,
+                    ...(mapping.date ? {} : { fallbackDate }),
+                  })
+                }
               >
                 <FileCheck2 size={17} />{" "}
                 {previewMutation.isPending ? "Checking rows…" : "Preview import"}

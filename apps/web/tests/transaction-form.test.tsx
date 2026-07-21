@@ -20,6 +20,7 @@ const category: CategoryRecord = {
   kind: "expense",
   color: "#dc8b3f",
   archived: false,
+  system: false,
 };
 
 const transaction: TransactionListItem = {

@@ -142,19 +142,32 @@ export const subscriptionStatusUpdateSchema = z.object({
 export type SubscriptionStatusUpdate = z.infer<typeof subscriptionStatusUpdateSchema>;
 
 export const importMappingSchema = z.object({
-  date: z.string().min(1),
+  date: z.string().min(1).optional(),
   description: z.string().min(1),
   amount: z.string().min(1),
-  category: z.string().min(1),
+  category: z.string().min(1).optional(),
   kind: z.string().min(1).optional(),
   currency: z.string().min(1).optional(),
 });
 
-export const importPreviewRequestSchema = z.object({
-  fileName: z.string().trim().min(1).max(180),
-  csvText: z.string().min(1).max(1_100_000),
-  mapping: importMappingSchema,
-});
+export const importPreviewRequestSchema = z
+  .object({
+    fileName: z.string().trim().min(1).max(180),
+    csvText: z.string().min(1).max(1_100_000),
+    mapping: importMappingSchema,
+    fallbackDate: isoDateSchema.optional(),
+  })
+  .superRefine((input, context) => {
+    const hasMappedDate = Boolean(input.mapping.date);
+    const hasFallbackDate = Boolean(input.fallbackDate);
+    if (hasMappedDate === hasFallbackDate) {
+      context.addIssue({
+        code: "custom",
+        path: ["fallbackDate"],
+        message: "Choose a Date column or enter one date for every row.",
+      });
+    }
+  });
 
 export type ImportPreviewRequest = z.infer<typeof importPreviewRequestSchema>;
 

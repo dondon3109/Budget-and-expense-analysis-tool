@@ -57,11 +57,13 @@ export const categories = sqliteTable(
     kind: text("kind", { enum: ["income", "expense", "transfer"] }).notNull(),
     color: text("color").notNull(),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+    systemKey: text("system_key"),
     ...timestamps,
   },
   (table) => [
     index("categories_tenant_idx").on(table.tenantId),
-    uniqueIndex("categories_tenant_name_unique").on(table.tenantId, table.name),
+    uniqueIndex("categories_tenant_kind_name_unique").on(table.tenantId, table.kind, table.name),
+    uniqueIndex("categories_tenant_system_key_unique").on(table.tenantId, table.systemKey),
   ],
 );
 

@@ -129,6 +129,9 @@ export function TransactionFilters({
           {categories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
+              {category.system
+                ? ` (${category.kind === "income" ? "Money in" : category.kind === "expense" ? "Money out" : "Transfer"})`
+                : ""}
               {category.archived ? " (archived)" : ""}
             </option>
           ))}

@@ -122,6 +122,29 @@ describe("ImportPage", () => {
     );
   });
 
+  it("uses one entered date and Uncategorized when Date and Category are absent", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    const csv = "Description,Amount\nMarket,-50.00";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    const fallbackDate = screen.getByLabelText("Date for every row");
+    await user.clear(fallbackDate);
+    await user.type(fallbackDate, "2026-07-15");
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+
+    await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
+    const request = vi.mocked(previewImport).mock.calls[0]?.[1];
+    expect(request).toMatchObject({
+      fileName: "transactions.csv",
+      csvText: csv,
+      fallbackDate: "2026-07-15",
+      mapping: { description: "Description", amount: "Amount" },
+    });
+    expect(request?.mapping.date).toBeUndefined();
+    expect(request?.mapping.category).toBeUndefined();
+  });
+
   it("requires a worksheet choice and previews only the selected worksheet", async () => {
     const user = userEvent.setup();
     workbook.inspect.mockResolvedValue(["Instructions", "Transactions"]);
@@ -154,6 +177,38 @@ describe("ImportPage", () => {
     const request = vi.mocked(previewImport).mock.calls[0]?.[1];
     expect(request?.fileName).toBe("bank-export.xlsx");
     expect(request?.csvText).toContain("2026-07-20,Market");
+  });
+
+  it("offers one date for a converted worksheet without Date or Category columns", async () => {
+    const user = userEvent.setup();
+    workbook.inspect.mockResolvedValue(["Transactions"]);
+    workbook.convert.mockResolvedValue({
+      csvText: "Description,Amount\nMarket,-50.00",
+      headers: ["Description", "Amount"],
+      rowCount: 1,
+      warnings: [],
+    });
+    const { container } = renderPage();
+
+    await user.upload(
+      fileInput(container),
+      fileWithBuffer(
+        "bank.xlsx",
+        "workbook bytes",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ),
+    );
+    const fallbackDate = await screen.findByLabelText("Date for every row");
+    await user.clear(fallbackDate);
+    await user.type(fallbackDate, "2026-07-16");
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+
+    await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
+    expect(vi.mocked(previewImport).mock.calls[0]?.[1]).toMatchObject({
+      fileName: "bank.xlsx",
+      fallbackDate: "2026-07-16",
+      mapping: { description: "Description", amount: "Amount" },
+    });
   });
 
   it("automatically converts a single-sheet workbook and disposes it on unmount", async () => {

@@ -3,6 +3,7 @@ import {
   type ImportCommitResult,
   type ImportPreview,
   type ImportPreviewRequest,
+  type TransactionKind,
 } from "@budget/shared";
 import { and, eq, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -85,16 +86,36 @@ export const importRepository: ImportRepository = {
     assertImportRowCount(csv.rows.length);
 
     const db = drizzle(env.DB);
-    const categoryRows = await db
+    const storedCategories = await db
       .select({
         id: categories.id,
         name: categories.name,
         kind: categories.kind,
         color: categories.color,
         archived: categories.archived,
+        systemKey: categories.systemKey,
       })
       .from(categories)
       .where(and(eq(categories.tenantId, tenantId), eq(categories.archived, false)));
+    const categoryRows = storedCategories.map(({ systemKey, ...category }) => ({
+      ...category,
+      system: systemKey !== null,
+    }));
+    const transactionKinds: TransactionKind[] = ["income", "expense", "transfer"];
+    if (
+      transactionKinds.some(
+        (kind) =>
+          !storedCategories.some(
+            (category) => category.systemKey === `uncategorized:${kind}` && category.kind === kind,
+          ),
+      )
+    ) {
+      throw new HttpError(
+        500,
+        "import_categories_unavailable",
+        "Uncategorized categories are not available. Apply the latest database migration.",
+      );
+    }
     const defaultAccountId = defaultAccountIdForTenant(tenantId);
 
     let initial;
@@ -105,6 +126,7 @@ export const importRepository: ImportRepository = {
         categoryRows,
         new Set(),
         defaultAccountId,
+        input.fallbackDate,
       );
     } catch (error) {
       throw new HttpError(
@@ -121,7 +143,14 @@ export const importRepository: ImportRepository = {
     const prepared =
       existing.size === 0
         ? initial
-        : await prepareImportRows(csv, input.mapping, categoryRows, existing, defaultAccountId);
+        : await prepareImportRows(
+            csv,
+            input.mapping,
+            categoryRows,
+            existing,
+            defaultAccountId,
+            input.fallbackDate,
+          );
 
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + PREVIEW_LIFETIME_MS).toISOString();

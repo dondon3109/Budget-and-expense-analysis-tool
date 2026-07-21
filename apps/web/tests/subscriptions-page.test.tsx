@@ -37,6 +37,7 @@ const category: CategoryRecord = {
   kind: "expense",
   color: "#7363a6",
   archived: false,
+  system: false,
 };
 
 const record: SubscriptionRecord = {

@@ -1,17 +1,63 @@
 import type { AuthUser, Bindings, TenantContext } from "../types";
 
 const DEFAULT_CATEGORIES = [
-  { key: "salary", name: "Salary", kind: "income", color: "#2a78d6" },
-  { key: "housing", name: "Housing", kind: "expense", color: "#008300" },
-  { key: "food", name: "Food & dining", kind: "expense", color: "#e87ba4" },
-  { key: "transport", name: "Transport", kind: "expense", color: "#eda100" },
-  { key: "utilities", name: "Utilities", kind: "expense", color: "#1baf7a" },
-  { key: "leisure", name: "Leisure", kind: "expense", color: "#eb6834" },
+  { key: "salary", name: "Salary", kind: "income", color: "#2a78d6", systemKey: null },
+  { key: "housing", name: "Housing", kind: "expense", color: "#008300", systemKey: null },
+  {
+    key: "food",
+    name: "Food & dining",
+    kind: "expense",
+    color: "#e87ba4",
+    systemKey: null,
+  },
+  {
+    key: "transport",
+    name: "Transport",
+    kind: "expense",
+    color: "#eda100",
+    systemKey: null,
+  },
+  {
+    key: "utilities",
+    name: "Utilities",
+    kind: "expense",
+    color: "#1baf7a",
+    systemKey: null,
+  },
+  {
+    key: "leisure",
+    name: "Leisure",
+    kind: "expense",
+    color: "#eb6834",
+    systemKey: null,
+  },
   {
     key: "savings-transfer",
     name: "Savings transfer",
     kind: "transfer",
     color: "#4a3aa7",
+    systemKey: null,
+  },
+  {
+    key: "uncategorized-income",
+    name: "Uncategorized",
+    kind: "income",
+    color: "#6b7280",
+    systemKey: "uncategorized:income",
+  },
+  {
+    key: "uncategorized-expense",
+    name: "Uncategorized",
+    kind: "expense",
+    color: "#6b7280",
+    systemKey: "uncategorized:expense",
+  },
+  {
+    key: "uncategorized-transfer",
+    name: "Uncategorized",
+    kind: "transfer",
+    color: "#6b7280",
+    systemKey: "uncategorized:transfer",
   },
 ] as const;
 
@@ -53,13 +99,14 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
       ).bind(defaultAccountId, tenantId),
       ...DEFAULT_CATEGORIES.map((category) =>
         env.DB.prepare(
-          "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color) VALUES (?, ?, ?, ?, ?)",
+          "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, system_key) VALUES (?, ?, ?, ?, ?, ?)",
         ).bind(
           defaultCategoryIdForTenant(tenantId, category.key),
           tenantId,
           category.name,
           category.kind,
           category.color,
+          category.systemKey,
         ),
       ),
     ];

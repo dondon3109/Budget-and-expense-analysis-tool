@@ -167,55 +167,57 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                         ? "Money out"
                         : "Transfer"}
                     {category.archived ? " · Archived" : ""}
+                    {category.system ? " · Required for imports" : ""}
                   </span>
                 </div>
               )}
               <div className="manager-actions">
-                {editingId === category.id ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateMutation.mutate({ id: category.id, input: { name: editingName } })
-                      }
-                      aria-label="Save category name"
-                    >
-                      <Check size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(undefined)}
-                      aria-label="Cancel edit"
-                    >
-                      <X size={15} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingId(category.id);
-                        setEditingName(category.name);
-                      }}
-                      aria-label={`Rename ${category.name}`}
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateMutation.mutate({
-                          id: category.id,
-                          input: { archived: !category.archived },
-                        })
-                      }
-                      aria-label={`${category.archived ? "Restore" : "Archive"} ${category.name}`}
-                    >
-                      {category.archived ? <RotateCcw size={15} /> : <Archive size={15} />}
-                    </button>
-                  </>
-                )}
+                {!category.system &&
+                  (editingId === category.id ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateMutation.mutate({ id: category.id, input: { name: editingName } })
+                        }
+                        aria-label="Save category name"
+                      >
+                        <Check size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(undefined)}
+                        aria-label="Cancel edit"
+                      >
+                        <X size={15} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(category.id);
+                          setEditingName(category.name);
+                        }}
+                        aria-label={`Rename ${category.name}`}
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateMutation.mutate({
+                            id: category.id,
+                            input: { archived: !category.archived },
+                          })
+                        }
+                        aria-label={`${category.archived ? "Restore" : "Archive"} ${category.name}`}
+                      >
+                        {category.archived ? <RotateCcw size={15} /> : <Archive size={15} />}
+                      </button>
+                    </>
+                  ))}
               </div>
             </div>
           ))}

@@ -18,6 +18,7 @@ const categories: CategoryRecord[] = [
     kind: "expense",
     color: "#7363a6",
     archived: false,
+    system: false,
   },
   {
     id: "salary",
@@ -25,6 +26,7 @@ const categories: CategoryRecord[] = [
     kind: "income",
     color: "#2a78d6",
     archived: false,
+    system: false,
   },
   {
     id: "old",
@@ -32,6 +34,7 @@ const categories: CategoryRecord[] = [
     kind: "expense",
     color: "#eda100",
     archived: true,
+    system: false,
   },
 ];
 

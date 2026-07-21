@@ -16,16 +16,18 @@ Password-protected, encrypted, damaged, or unsupported workbooks cannot be impor
 
 Download the current template from the Import page or use these columns:
 
-| Column      | Required | Rule                                                                  |
-| ----------- | -------- | --------------------------------------------------------------------- |
-| Date        | Yes      | A real date in `YYYY-MM-DD` format.                                   |
-| Description | Yes      | 1–240 characters.                                                     |
-| Amount      | Yes      | A plain number with up to two decimals; commas and signs are allowed. |
-| Category    | Yes      | The name or ID of an active Clarity category.                         |
-| Type        | No       | `income`, `expense`, or `transfer`; otherwise inferred from the sign. |
-| Currency    | No       | Must be `PHP` when mapped; otherwise PHP is assumed.                  |
+| Column      | Required    | Rule                                                                  |
+| ----------- | ----------- | --------------------------------------------------------------------- |
+| Date        | Conditional | A real date in `YYYY-MM-DD` format, or choose one date for every row. |
+| Description | Yes         | 1–240 characters.                                                     |
+| Amount      | Yes         | A plain number with up to two decimals; commas and signs are allowed. |
+| Category    | No          | An active Clarity category; otherwise Uncategorized is used.          |
+| Type        | No          | `income`, `expense`, or `transfer`; otherwise inferred from the sign. |
+| Currency    | No          | Must be `PHP` when mapped; otherwise PHP is assumed.                  |
 
-Every mapped field must point to a different source column.
+Every mapped field must point to a different source column. When no Date column is mapped, Clarity displays an editable date field and applies that date to every row. When a Date column is mapped, blank or invalid dates remain invalid and do not use the file-wide date.
+
+When Category is not mapped, blank, unknown, archived, or belongs to another transaction type, the row uses the protected Uncategorized category for its inferred type. Clarity maintains separate income, expense, and transfer records that all display as `Uncategorized`; these system categories cannot be renamed or archived.
 
 ## Excel conversion behavior
 
@@ -41,7 +43,7 @@ The converted worksheet must still fit the authoritative 1 MB CSV and 500-row li
 
 ## Safe preview and commit
 
-Previewing parses and validates the file but does not create transactions. Each row is marked ready, invalid, or duplicate. Duplicate detection uses a SHA-256 fingerprint of normalized date, signed amount, description, and account source, and checks both the file and existing imported transactions.
+Previewing parses and validates the file but does not create transactions. Each row is marked ready, invalid, or duplicate. Duplicate detection uses a SHA-256 fingerprint of the resolved date, signed amount, description, and account source, and checks both the file and existing imported transactions. A date entered for every row therefore participates in duplicate detection.
 
 The server stores only the ready normalized rows behind a one-time preview token that expires after 15 minutes. Committing uses that server-issued preview and writes the import audit plus transactions as one atomic D1 batch. Invalid and duplicate rows are never written.
 
@@ -51,4 +53,12 @@ The server stores only the ready normalized rows behind a one-time preview token
 Date,Description,Amount,Currency,Type,Category
 2026-07-20,"Weekend groceries",-1250.50,PHP,expense,"Food & dining"
 2026-07-21,Freelance payment,8000.00,PHP,income,Salary
+```
+
+A date-less, category-less bank summary can also be imported. Choose one date in the mapping step; Clarity will assign the appropriate Uncategorized category:
+
+```csv
+Description,Amount
+"Weekend groceries",-1250.50
+Freelance payment,8000.00
 ```

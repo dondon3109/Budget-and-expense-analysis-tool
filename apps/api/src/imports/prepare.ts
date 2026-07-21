@@ -46,29 +46,40 @@ export async function prepareImportRows(
   categories: CategoryRecord[],
   existingFingerprints: ReadonlySet<string>,
   accountSource: string,
+  fallbackDate?: string,
 ): Promise<PreparedImport> {
+  if (Boolean(mapping.date) === Boolean(fallbackDate)) {
+    throw new Error("Choose a Date column or enter one date for every row.");
+  }
+
   const mappedHeaders = [
     mapping.date,
     mapping.description,
     mapping.amount,
     mapping.category,
-    ...(mapping.kind ? [mapping.kind] : []),
-    ...(mapping.currency ? [mapping.currency] : []),
-  ];
+    mapping.kind,
+    mapping.currency,
+  ].filter((header): header is string => Boolean(header));
   if (new Set(mappedHeaders).size !== mappedHeaders.length) {
     throw new Error("Each import field must use a different CSV column.");
   }
 
   const indexes = {
-    date: csv.headers.indexOf(mapping.date),
+    date: mapping.date ? csv.headers.indexOf(mapping.date) : -1,
     description: csv.headers.indexOf(mapping.description),
     amount: csv.headers.indexOf(mapping.amount),
-    category: csv.headers.indexOf(mapping.category),
+    category: mapping.category ? csv.headers.indexOf(mapping.category) : -1,
     kind: mapping.kind ? csv.headers.indexOf(mapping.kind) : -1,
     currency: mapping.currency ? csv.headers.indexOf(mapping.currency) : -1,
   };
-  if ([indexes.date, indexes.description, indexes.amount, indexes.category].includes(-1)) {
+  if ([indexes.description, indexes.amount].includes(-1)) {
     throw new Error("One or more mapped CSV columns no longer exist.");
+  }
+  if (mapping.date && indexes.date === -1) {
+    throw new Error("The mapped date column no longer exists.");
+  }
+  if (mapping.category && indexes.category === -1) {
+    throw new Error("The mapped category column no longer exists.");
   }
   if (mapping.kind && indexes.kind === -1) {
     throw new Error("The mapped transaction type column no longer exists.");
@@ -77,10 +88,16 @@ export async function prepareImportRows(
     throw new Error("The mapped currency column no longer exists.");
   }
 
-  const categoryLookup = new Map<string, CategoryRecord>();
+  const categoryLookups = new Map<TransactionKind, Map<string, CategoryRecord>>();
+  const uncategorizedByKind = new Map<TransactionKind, CategoryRecord>();
   for (const category of categories) {
-    categoryLookup.set(normalizeLookup(category.id), category);
-    categoryLookup.set(normalizeLookup(category.name), category);
+    const lookup = categoryLookups.get(category.kind) ?? new Map<string, CategoryRecord>();
+    lookup.set(normalizeLookup(category.id), category);
+    lookup.set(normalizeLookup(category.name), category);
+    categoryLookups.set(category.kind, lookup);
+    if (category.system && normalizeLookup(category.name) === "uncategorized") {
+      uncategorizedByKind.set(category.kind, category);
+    }
   }
 
   const rows: ImportPreviewRow[] = [];
@@ -94,10 +111,11 @@ export async function prepareImportRows(
       errors.push(`Expected ${csv.headers.length} columns but found ${row.values.length}.`);
     }
 
-    const date = row.values[indexes.date]?.trim() ?? "";
+    const date =
+      indexes.date >= 0 ? (row.values[indexes.date]?.trim() ?? "") : (fallbackDate ?? "");
     const description = row.values[indexes.description]?.trim() ?? "";
     const amountText = row.values[indexes.amount]?.trim() ?? "";
-    const categoryText = row.values[indexes.category]?.trim() ?? "";
+    const categoryText = indexes.category >= 0 ? (row.values[indexes.category]?.trim() ?? "") : "";
     const kindText = indexes.kind >= 0 ? (row.values[indexes.kind]?.trim() ?? "") : "";
     const currencyText =
       indexes.currency >= 0 ? (row.values[indexes.currency]?.trim() ?? "") : "PHP";
@@ -117,10 +135,12 @@ export async function prepareImportRows(
     const kind = amountMinor === undefined ? null : parseKind(kindText, amountMinor);
     if (!kind) errors.push("Type must be income, expense, or transfer.");
     if (currencyText.toUpperCase() !== "PHP") errors.push("Currency must be PHP.");
-    const category = categoryLookup.get(normalizeLookup(categoryText));
-    if (!category) errors.push("Category does not match an active category.");
-    else if (kind && category.kind !== kind)
-      errors.push("Category type does not match the transaction type.");
+    const matchedCategory =
+      kind && categoryText
+        ? categoryLookups.get(kind)?.get(normalizeLookup(categoryText))
+        : undefined;
+    const category = matchedCategory ?? (kind ? uncategorizedByKind.get(kind) : undefined);
+    if (kind && !category) errors.push("The Uncategorized category is unavailable.");
 
     const previewBase = {
       rowNumber: row.rowNumber,

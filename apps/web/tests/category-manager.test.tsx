@@ -28,13 +28,14 @@ const category: CategoryRecord = {
   kind: "expense",
   color: "#dc8b3f",
   archived: false,
+  system: false,
 };
 
-function renderManager() {
+function renderManager(categories: CategoryRecord[] = [category]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <CategoryManager workspace={workspace} categories={[category]} onClose={vi.fn()} />
+      <CategoryManager workspace={workspace} categories={categories} onClose={vi.fn()} />
     </QueryClientProvider>,
   );
 }
@@ -64,5 +65,22 @@ describe("CategoryManager", () => {
       id: "food",
       input: { archived: true },
     });
+  });
+
+  it("identifies system categories and does not offer edit controls", () => {
+    renderManager([
+      {
+        id: "uncategorized-expense",
+        name: "Uncategorized",
+        kind: "expense",
+        color: "#6b7280",
+        archived: false,
+        system: true,
+      },
+    ]);
+
+    expect(screen.getByText(/Required for imports/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Rename Uncategorized" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Archive Uncategorized" })).not.toBeInTheDocument();
   });
 });
