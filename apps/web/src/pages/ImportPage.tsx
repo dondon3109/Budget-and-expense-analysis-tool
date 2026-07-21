@@ -6,17 +6,31 @@ import {
   type ImportPreview,
 } from "@budget/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Download, FileCheck2, FileUp, RotateCcw, ShieldCheck } from "lucide-react";
-import { useState, type ChangeEvent } from "react";
+import {
+  CheckCircle2,
+  Download,
+  FileCheck2,
+  FileUp,
+  LoaderCircle,
+  RotateCcw,
+  ShieldCheck,
+} from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { commitImport, previewImport } from "../lib/api";
 import { formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
+import { WorkbookImportClient } from "../lib/workbookImportClient";
 import { userWorkspace } from "../lib/workspace";
 
-const MAX_FILE_BYTES = 1_000_000;
+const MAX_CSV_FILE_BYTES = 1_000_000;
+const MAX_WORKBOOK_FILE_BYTES = 5_000_000;
+
+function emptyMapping(): ImportMapping {
+  return { date: "", description: "", amount: "", category: "" };
+}
 
 function findHeader(headers: string[], aliases: string[]): string {
   return headers.find((header) => aliases.includes(header.trim().toLocaleLowerCase("en"))) ?? "";
@@ -54,15 +68,17 @@ export function ImportPage() {
   const [fileName, setFileName] = useState("");
   const [csvText, setCsvText] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
-  const [mapping, setMapping] = useState<ImportMapping>({
-    date: "",
-    description: "",
-    amount: "",
-    category: "",
-  });
+  const [mapping, setMapping] = useState<ImportMapping>(emptyMapping);
+  const [worksheetNames, setWorksheetNames] = useState<string[]>([]);
+  const [selectedWorksheet, setSelectedWorksheet] = useState("");
+  const [worksheetRowCount, setWorksheetRowCount] = useState<number>();
+  const [workbookWarnings, setWorkbookWarnings] = useState<string[]>([]);
+  const [workbookBusy, setWorkbookBusy] = useState(false);
   const [fileError, setFileError] = useState<string>();
   const [preview, setPreview] = useState<ImportPreview>();
   const [result, setResult] = useState<ImportCommitResult>();
+  const workbookClientRef = useRef<WorkbookImportClient | undefined>(undefined);
+  const fileSelectionIdRef = useRef(0);
 
   const previewMutation = useMutation({
     mutationFn: (input: Parameters<typeof previewImport>[1]) => previewImport(workspace, input),
@@ -82,44 +98,141 @@ export function ImportPage() {
     },
   });
 
-  async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    previewMutation.reset();
-    commitMutation.reset();
+  useEffect(
+    () => () => {
+      workbookClientRef.current?.dispose();
+    },
+    [],
+  );
+
+  function clearConvertedImport() {
+    setCsvText("");
+    setHeaders([]);
+    setMapping(emptyMapping());
+    setWorksheetRowCount(undefined);
+    setWorkbookWarnings([]);
     setPreview(undefined);
     setResult(undefined);
+    previewMutation.reset();
+    commitMutation.reset();
+  }
+
+  async function convertWorkbookWorksheet(
+    client: WorkbookImportClient,
+    worksheetName: string,
+    selectionId: number,
+  ) {
+    setSelectedWorksheet(worksheetName);
+    clearConvertedImport();
+    setWorkbookBusy(true);
     setFileError(undefined);
+    try {
+      const converted = await client.convert(worksheetName);
+      if (selectionId !== fileSelectionIdRef.current || client !== workbookClientRef.current)
+        return;
+      setCsvText(converted.csvText);
+      setHeaders(converted.headers);
+      setMapping(suggestMapping(converted.headers));
+      setWorksheetRowCount(converted.rowCount);
+      setWorkbookWarnings(converted.warnings);
+    } catch (error) {
+      if (selectionId !== fileSelectionIdRef.current || client !== workbookClientRef.current)
+        return;
+      setSelectedWorksheet("");
+      setFileError(
+        error instanceof Error
+          ? error.message
+          : "The selected worksheet could not be converted for import.",
+      );
+    } finally {
+      if (selectionId === fileSelectionIdRef.current && client === workbookClientRef.current) {
+        setWorkbookBusy(false);
+      }
+    }
+  }
+
+  async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    fileSelectionIdRef.current += 1;
+    const selectionId = fileSelectionIdRef.current;
+    workbookClientRef.current?.dispose();
+    workbookClientRef.current = undefined;
+    setFileName(file?.name ?? "");
+    setWorksheetNames([]);
+    setSelectedWorksheet("");
+    setWorkbookBusy(false);
+    setFileError(undefined);
+    clearConvertedImport();
     if (!file) return;
-    if (file.size > MAX_FILE_BYTES) {
-      setFileError("Choose a CSV file no larger than 1 MB.");
+
+    const extension = file.name.split(".").pop()?.toLocaleLowerCase("en") ?? "";
+    if (!["csv", "xlsx", "xls"].includes(extension)) {
+      setFileError("Choose a CSV, XLSX, or XLS file.");
       return;
     }
-    const text = await file.text();
+
+    if (extension === "csv") {
+      if (file.size > MAX_CSV_FILE_BYTES) {
+        setFileError("Choose a CSV file no larger than 1 MB.");
+        return;
+      }
+      try {
+        const text = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
+        const parsed = parseCsv(text);
+        if (selectionId !== fileSelectionIdRef.current) return;
+        setCsvText(text);
+        setHeaders(parsed.headers);
+        setMapping(suggestMapping(parsed.headers));
+      } catch (error) {
+        if (selectionId !== fileSelectionIdRef.current) return;
+        setFileError(
+          error instanceof CsvParseError
+            ? error.message
+            : "This CSV could not be read. Make sure it uses UTF-8 encoding.",
+        );
+      }
+      return;
+    }
+
+    if (file.size > MAX_WORKBOOK_FILE_BYTES) {
+      setFileError("Choose an Excel workbook no larger than 5 MB.");
+      return;
+    }
+
+    const client = new WorkbookImportClient();
+    workbookClientRef.current = client;
+    setWorkbookBusy(true);
     try {
-      const parsed = parseCsv(text);
-      setFileName(file.name);
-      setCsvText(text);
-      setHeaders(parsed.headers);
-      setMapping(suggestMapping(parsed.headers));
+      const sheetNames = await client.inspect(await file.arrayBuffer());
+      if (selectionId !== fileSelectionIdRef.current || client !== workbookClientRef.current)
+        return;
+      setWorksheetNames(sheetNames);
+      if (sheetNames.length === 1) {
+        await convertWorkbookWorksheet(client, sheetNames[0]!, selectionId);
+      } else {
+        setWorkbookBusy(false);
+      }
     } catch (error) {
-      setFileName(file.name);
-      setCsvText("");
-      setHeaders([]);
+      if (selectionId !== fileSelectionIdRef.current || client !== workbookClientRef.current)
+        return;
+      setWorkbookBusy(false);
       setFileError(
-        error instanceof CsvParseError ? error.message : "This file could not be read as CSV.",
+        error instanceof Error ? error.message : "This workbook could not be opened for import.",
       );
     }
   }
 
   function resetImport() {
+    fileSelectionIdRef.current += 1;
+    workbookClientRef.current?.dispose();
+    workbookClientRef.current = undefined;
     setFileName("");
-    setCsvText("");
-    setHeaders([]);
-    setPreview(undefined);
-    setResult(undefined);
+    setWorksheetNames([]);
+    setSelectedWorksheet("");
+    setWorkbookBusy(false);
     setFileError(undefined);
-    previewMutation.reset();
-    commitMutation.reset();
+    clearConvertedImport();
   }
 
   const requiredMappingComplete =
@@ -132,7 +245,7 @@ export function ImportPage() {
           <div>
             <p className="eyebrow">Preview before saving</p>
             <h1>Import transactions</h1>
-            <p>Map a CSV, review every issue, then save only the rows marked ready.</p>
+            <p>Choose a CSV or Excel worksheet, review every issue, then save ready rows.</p>
           </div>
           <button className="button secondary" type="button" onClick={downloadTemplate}>
             <Download size={17} /> Download template
@@ -144,7 +257,8 @@ export function ImportPage() {
           <div>
             <strong>Review before saving</strong>
             <span>
-              Files are limited to 1 MB and 500 rows. Previewing does not change your workspace.
+              CSV files are limited to 1 MB, Excel files to 5 MB, and worksheets to 500 rows.
+              Previewing does not change your workspace.
             </span>
           </div>
         </div>
@@ -171,22 +285,74 @@ export function ImportPage() {
               <div className="import-step-heading">
                 <span>1</span>
                 <div>
-                  <strong>Choose a CSV file</strong>
-                  <small>Comma-separated values with a header row</small>
+                  <strong>Choose a CSV or Excel file</strong>
+                  <small>CSV, Excel Workbook (.xlsx), or Excel 97–2003 (.xls)</small>
                 </div>
               </div>
               <label className={`file-drop ${fileName ? "selected" : ""}`}>
                 <FileUp size={27} />
-                <strong>{fileName || "Select a CSV file"}</strong>
+                <strong>{fileName || "Select a CSV or Excel file"}</strong>
                 <span>
-                  {fileName ? "Choose a different file" : "Up to 1 MB · maximum 500 rows"}
+                  {fileName
+                    ? "Choose a different file"
+                    : "CSV up to 1 MB · Excel up to 5 MB · maximum 500 rows"}
                 </span>
                 <input
                   type="file"
-                  accept=".csv,text/csv"
+                  accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                   onChange={(event) => void chooseFile(event)}
                 />
               </label>
+              {workbookBusy && worksheetNames.length === 0 && (
+                <span className="worksheet-loading" role="status">
+                  <LoaderCircle className="spinning" size={16} /> Reading workbook…
+                </span>
+              )}
+              {worksheetNames.length > 0 && (
+                <div className="worksheet-picker">
+                  <label>
+                    <span>Worksheet</span>
+                    <select
+                      value={selectedWorksheet}
+                      disabled={workbookBusy}
+                      onChange={(event) => {
+                        const client = workbookClientRef.current;
+                        if (!client || !event.target.value) return;
+                        void convertWorkbookWorksheet(
+                          client,
+                          event.target.value,
+                          fileSelectionIdRef.current,
+                        );
+                      }}
+                    >
+                      <option value="">Choose a worksheet</option>
+                      {worksheetNames.map((worksheetName) => (
+                        <option key={worksheetName} value={worksheetName}>
+                          {worksheetName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {workbookBusy && (
+                    <span className="worksheet-loading" role="status">
+                      <LoaderCircle className="spinning" size={16} /> Reading worksheet…
+                    </span>
+                  )}
+                  {selectedWorksheet && worksheetRowCount !== undefined && (
+                    <span className="worksheet-summary">
+                      Worksheet: {selectedWorksheet} · {worksheetRowCount} data{" "}
+                      {worksheetRowCount === 1 ? "row" : "rows"}
+                    </span>
+                  )}
+                </div>
+              )}
+              {workbookWarnings.length > 0 && (
+                <div className="workbook-warning" role="status">
+                  {workbookWarnings.map((warning) => (
+                    <span key={warning}>{warning}</span>
+                  ))}
+                </div>
+              )}
               {fileError && (
                 <p className="page-error" role="alert">
                   {fileError}

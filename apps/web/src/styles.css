@@ -1803,6 +1803,51 @@ textarea:focus-visible {
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+.worksheet-picker {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+.worksheet-picker label {
+  display: grid;
+  gap: 6px;
+}
+.worksheet-picker label > span {
+  color: #68716b;
+  font-size: 9px;
+  font-weight: 750;
+}
+.worksheet-picker select {
+  height: 42px;
+  padding: 0 10px;
+  color: var(--ink);
+  border: 1px solid #ddd9cf;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 10px;
+}
+.worksheet-loading,
+.worksheet-summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #68766f;
+  font-size: 10px;
+}
+.worksheet-loading {
+  margin-top: 12px;
+}
+.workbook-warning {
+  margin-top: 12px;
+  padding: 11px 13px;
+  display: grid;
+  gap: 4px;
+  color: #745c21;
+  border: 1px solid #e5d49d;
+  border-radius: 10px;
+  background: #fff9e7;
+  font-size: 10px;
+}
 .mapping-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
