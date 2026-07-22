@@ -74,9 +74,6 @@ export function AppShell({ children }: AppShellProps) {
           </span>
           <span>Clarity</span>
         </Link>
-        <div className="workspace-pill">
-          <span /> Personal workspace
-        </div>
         <nav className="side-nav" aria-label="Main navigation">
           {navItems.map((item) => {
             const Icon = item.icon;

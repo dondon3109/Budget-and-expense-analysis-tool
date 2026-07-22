@@ -32,9 +32,6 @@ export function LandingPage() {
       <main id="top">
         <section className="hero">
           <div className="hero-copy">
-            <div className="hero-kicker">
-              <span /> A calmer way to understand your money
-            </div>
             <h1>See where your money goes. Decide what comes next.</h1>
             <p>
               Import everyday transactions, set practical budgets, and turn scattered spending into
@@ -153,6 +150,89 @@ export function LandingPage() {
               <p>Start from a clean workspace and add only the records you choose.</p>
             </div>
           </article>
+        </section>
+        <section className="import-support" aria-labelledby="import-support-title">
+          <div className="import-support-inner">
+            <div className="import-support-copy">
+              <p className="eyebrow">Flexible file imports</p>
+              <h2 id="import-support-title">Import from the files you already use.</h2>
+              <p className="import-support-lead">
+                Choose a CSV, XLSX, or XLS file, then review every row before anything is saved.
+              </p>
+              <div className="import-support-options">
+                <article>
+                  <span className="import-support-icon">
+                    <Upload size={19} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3>Start with Excel</h3>
+                    <p>
+                      Already tracking finances in Excel? Import your workbook, choose a worksheet,
+                      and see it visualized after review.
+                    </p>
+                  </div>
+                </article>
+                <article>
+                  <span className="import-support-icon">
+                    <Landmark size={19} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3>Bring your bank export</h3>
+                    <p>
+                      Export your bank transactions, import the file, and see your spending habits
+                      at a glance.
+                    </p>
+                  </div>
+                </article>
+              </div>
+            </div>
+            <div className="import-sheet-visual" aria-hidden="true">
+              <div className="import-sheet-topbar">
+                <span className="import-file-chip">
+                  <Upload size={15} /> Monthly-spend.xlsx
+                </span>
+                <span className="import-ready-chip">
+                  <Check size={14} /> Ready to review
+                </span>
+              </div>
+              <div className="import-sheet-grid">
+                <div className="import-sheet-row heading">
+                  <span>Date</span>
+                  <span>Description</span>
+                  <span>Category</span>
+                  <span>Amount</span>
+                </div>
+                <div className="import-sheet-row">
+                  <span>Jul 02</span>
+                  <span>Neighborhood market</span>
+                  <span>Groceries</span>
+                  <span>₱1,240</span>
+                </div>
+                <div className="import-sheet-row">
+                  <span>Jul 05</span>
+                  <span>Monthly salary</span>
+                  <span>Income</span>
+                  <span>₱48,000</span>
+                </div>
+                <div className="import-sheet-row">
+                  <span>Jul 08</span>
+                  <span>Electric bill</span>
+                  <span>Utilities</span>
+                  <span>₱2,180</span>
+                </div>
+                <div className="import-sheet-row muted-row">
+                  <span>Jul 11</span>
+                  <span>Bank transfer</span>
+                  <span>Review</span>
+                  <span>₱3,500</span>
+                </div>
+              </div>
+              <div className="import-sheet-footer">
+                <span>Sheet: Transactions</span>
+                <strong>Every row stays reviewable</strong>
+              </div>
+            </div>
+          </div>
         </section>
         <section className="approach" id="approach">
           <p className="eyebrow">Designed for real decisions</p>

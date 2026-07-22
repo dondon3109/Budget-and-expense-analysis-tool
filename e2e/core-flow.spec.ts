@@ -21,6 +21,12 @@ test("landing page leads visitors to account creation or sign in", async ({ page
   await expect(
     page.getByRole("img", { name: "Illustrative preview of the Clarity monthly dashboard" }),
   ).toBeVisible();
+  await expect(page.getByText("A calmer way to understand your money")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Import from the files you already use." }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Start with Excel" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bring your bank export" })).toBeVisible();
   await expect(page.getByText(/workspace begins without transactions or budgets/i)).toBeVisible();
   expect(demoRequests).toEqual([]);
 

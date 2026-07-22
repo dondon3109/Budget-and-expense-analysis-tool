@@ -11,6 +11,11 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   await expect(
     page.getByRole("img", { name: "Illustrative preview of the Clarity monthly dashboard" }),
   ).toBeVisible();
+  const importHeading = page.getByRole("heading", { name: "Import from the files you already use." });
+  await importHeading.scrollIntoViewIfNeeded();
+  await expect(importHeading).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Start with Excel" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bring your bank export" })).toBeVisible();
   const themeToggle = page.getByRole("button", { name: /Switch to (dark|light) mode/ });
   await expect(themeToggle).toBeVisible();
   const initialTheme = await page.locator("html").getAttribute("data-theme");

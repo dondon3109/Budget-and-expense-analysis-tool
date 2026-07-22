@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -32,6 +32,36 @@ describe("landing page", () => {
     expect(container.querySelector('a[href="/demo"]')).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /switch to (dark|light) mode/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("highlights file imports without the extra hero label", () => {
+    renderLanding();
+
+    expect(screen.queryByText("A calmer way to understand your money")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "See where your money goes. Decide what comes next.",
+      }),
+    ).toBeInTheDocument();
+
+    const importSection = screen.getByRole("region", {
+      name: "Import from the files you already use.",
+    });
+    expect(within(importSection).getByRole("heading", { name: "Start with Excel" })).toBeInTheDocument();
+    expect(
+      within(importSection).getByText(
+        /Already tracking finances in Excel\? Import your workbook, choose a worksheet/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(importSection).getByRole("heading", { name: "Bring your bank export" }),
+    ).toBeInTheDocument();
+    expect(
+      within(importSection).getByText(
+        /Export your bank transactions, import the file, and see your spending habits/i,
+      ),
     ).toBeInTheDocument();
   });
 

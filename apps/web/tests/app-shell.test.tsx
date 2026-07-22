@@ -33,6 +33,7 @@ describe("AppShell", () => {
       Array.from(navigation.querySelectorAll("a")).map((link) => link.textContent?.trim()),
     ).toEqual(["Overview", "Transactions", "Import", "Budgets", "Subscriptions"]);
     expect(screen.getByRole("link", { name: "Subscriptions" })).toHaveClass("current");
+    expect(screen.queryByText("Personal workspace")).not.toBeInTheDocument();
     expect(screen.getByText("Signed in as")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /switch to (dark|light) mode/i })).toHaveLength(2);
   });
