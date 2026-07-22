@@ -1,9 +1,12 @@
 import { ArrowRight, BarChart3, Check, Landmark, ShieldCheck, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import supportedExportFormatsLarge from "../assets/supported-export-formats-1536.webp";
+import supportedExportFormatsSmall from "../assets/supported-export-formats-768.webp";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
 
 const previewBars = [42, 55, 38, 66, 50, 61];
+const supportedExportFormats = ["BPI", "BDO", "MariBank", "Bank of America", "JPMorgan / Chase"];
 
 export function LandingPage() {
   return (
@@ -152,86 +155,131 @@ export function LandingPage() {
           </article>
         </section>
         <section className="import-support" aria-labelledby="import-support-title">
-          <div className="import-support-inner">
-            <div className="import-support-copy">
-              <p className="eyebrow">Flexible file imports</p>
-              <h2 id="import-support-title">Import from the files you already use.</h2>
-              <p className="import-support-lead">
-                Choose a CSV, XLSX, or XLS file, then review every row before anything is saved.
-              </p>
-              <div className="import-support-options">
-                <article>
-                  <span className="import-support-icon">
-                    <Upload size={19} aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3>Start with Excel</h3>
-                    <p>
-                      Already tracking finances in Excel? Import your workbook, choose a worksheet,
-                      and see it visualized after review.
-                    </p>
-                  </div>
-                </article>
-                <article>
-                  <span className="import-support-icon">
-                    <Landmark size={19} aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3>Bring your bank export</h3>
-                    <p>
-                      Export your bank transactions, import the file, and see your spending habits
-                      at a glance.
-                    </p>
-                  </div>
-                </article>
+          <div className="import-support-copy">
+            <p className="eyebrow">Flexible file imports</p>
+            <h2 id="import-support-title">Import from the files you already use.</h2>
+            <p className="import-support-lead">
+              Choose a CSV, XLSX, or XLS file, then review every row before anything is saved.
+            </p>
+            <div className="import-support-options">
+              <article>
+                <span className="import-support-icon">
+                  <Upload size={19} aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>Start with Excel</h3>
+                  <p>
+                    Already tracking finances in Excel? Import your workbook, choose a worksheet,
+                    and see it visualized after review.
+                  </p>
+                </div>
+              </article>
+              <article>
+                <span className="import-support-icon">
+                  <Landmark size={19} aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>Bring your bank export</h3>
+                  <p>
+                    Export your bank transactions, import the file, and see your spending habits at
+                    a glance.
+                  </p>
+                </div>
+              </article>
+            </div>
+          </div>
+          <div className="import-sheet-visual" aria-hidden="true">
+            <div className="import-sheet-topbar">
+              <span className="import-file-chip">
+                <Upload size={15} /> Monthly-spend.xlsx
+              </span>
+              <span className="import-ready-chip">
+                <Check size={14} /> Ready to review
+              </span>
+            </div>
+            <div className="import-sheet-grid">
+              <div className="import-sheet-row heading">
+                <span>Date</span>
+                <span>Description</span>
+                <span>Category</span>
+                <span>Amount</span>
+              </div>
+              <div className="import-sheet-row">
+                <span>Jul 02</span>
+                <span>Neighborhood market</span>
+                <span>Groceries</span>
+                <span>₱1,240</span>
+              </div>
+              <div className="import-sheet-row">
+                <span>Jul 05</span>
+                <span>Monthly salary</span>
+                <span>Income</span>
+                <span>₱48,000</span>
+              </div>
+              <div className="import-sheet-row">
+                <span>Jul 08</span>
+                <span>Electric bill</span>
+                <span>Utilities</span>
+                <span>₱2,180</span>
+              </div>
+              <div className="import-sheet-row muted-row">
+                <span>Jul 11</span>
+                <span>Bank transfer</span>
+                <span>Review</span>
+                <span>₱3,500</span>
               </div>
             </div>
-            <div className="import-sheet-visual" aria-hidden="true">
-              <div className="import-sheet-topbar">
-                <span className="import-file-chip">
-                  <Upload size={15} /> Monthly-spend.xlsx
-                </span>
-                <span className="import-ready-chip">
-                  <Check size={14} /> Ready to review
-                </span>
-              </div>
-              <div className="import-sheet-grid">
-                <div className="import-sheet-row heading">
-                  <span>Date</span>
-                  <span>Description</span>
-                  <span>Category</span>
-                  <span>Amount</span>
-                </div>
-                <div className="import-sheet-row">
-                  <span>Jul 02</span>
-                  <span>Neighborhood market</span>
-                  <span>Groceries</span>
-                  <span>₱1,240</span>
-                </div>
-                <div className="import-sheet-row">
-                  <span>Jul 05</span>
-                  <span>Monthly salary</span>
-                  <span>Income</span>
-                  <span>₱48,000</span>
-                </div>
-                <div className="import-sheet-row">
-                  <span>Jul 08</span>
-                  <span>Electric bill</span>
-                  <span>Utilities</span>
-                  <span>₱2,180</span>
-                </div>
-                <div className="import-sheet-row muted-row">
-                  <span>Jul 11</span>
-                  <span>Bank transfer</span>
-                  <span>Review</span>
-                  <span>₱3,500</span>
-                </div>
-              </div>
-              <div className="import-sheet-footer">
-                <span>Sheet: Transactions</span>
-                <strong>Every row stays reviewable</strong>
-              </div>
+            <div className="import-sheet-footer">
+              <span>Sheet: Transactions</span>
+              <strong>Every row stays reviewable</strong>
             </div>
+          </div>
+        </section>
+        <section className="supported-formats" aria-labelledby="supported-formats-title">
+          <picture className="supported-formats-photo" aria-hidden="true">
+            <source media="(max-width: 760px)" srcSet={supportedExportFormatsSmall} />
+            <img
+              src={supportedExportFormatsLarge}
+              srcSet={`${supportedExportFormatsSmall} 768w, ${supportedExportFormatsLarge} 1536w`}
+              sizes="100vw"
+              width={1536}
+              height={1024}
+              loading="lazy"
+              decoding="async"
+              alt=""
+            />
+          </picture>
+          <div className="supported-formats-overlay" aria-hidden="true" />
+          <div className="supported-formats-content">
+            <h2 className="supported-formats-heading" id="supported-formats-title">
+              Supported Export Formats
+            </h2>
+            <div className="supported-formats-marquee">
+              <div className="supported-formats-track" aria-hidden="true">
+                {[0, 1].map((groupIndex) => (
+                  <div
+                    className="supported-formats-group"
+                    data-marquee-copy={groupIndex === 1 ? "duplicate" : "primary"}
+                    key={groupIndex}
+                  >
+                    {supportedExportFormats.map((format) => (
+                      <span className="supported-format-name" key={format}>
+                        {format}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <ul className="sr-only" aria-label="Supported institutions">
+                {supportedExportFormats.map((format) => (
+                  <li key={format}>{format}</li>
+                ))}
+              </ul>
+            </div>
+            <p className="supported-formats-disclaimer">
+              Bank names are shown to indicate supported export formats only. Clarity is not
+              affiliated with or endorsed by these institutions.
+            </p>
           </div>
         </section>
         <section className="approach" id="approach">

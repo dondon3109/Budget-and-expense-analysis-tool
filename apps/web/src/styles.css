@@ -190,6 +190,7 @@ textarea:focus-visible {
 }
 
 .landing-page {
+  --import-curve-depth: clamp(36px, 4vw, 56px);
   min-height: 100vh;
   overflow: hidden;
   background:
@@ -515,23 +516,33 @@ textarea:focus-visible {
   line-height: 1.5;
 }
 .import-support {
-  padding: 92px 24px;
-  background: var(--paper);
-}
-.import-support-inner {
-  width: min(1080px, 100%);
-  margin: 0 auto;
-  padding: 54px;
+  --ink: #f1f7f3;
+  --muted: rgba(222, 235, 228, 0.72);
+  --excel-ink: #b8e4cc;
+  --excel-soft: rgba(92, 159, 127, 0.2);
+  --excel-line: rgba(177, 226, 203, 0.22);
+  --excel-grid: rgba(177, 226, 203, 0.09);
+  --surface: rgba(8, 25, 18, 0.88);
+  --surface-soft: rgba(12, 33, 24, 0.82);
+  --surface-glass: rgba(8, 28, 20, 0.62);
+  --surface-translucent: rgba(7, 24, 17, 0.82);
+  --shadow: rgba(0, 0, 0, 0.34);
+  --warning: #e7c77d;
+  position: relative;
+  z-index: 1;
+  padding: clamp(76px, 7vw, 92px) max(24px, calc((100% - 1080px) / 2))
+    calc(clamp(56px, 4.5vw, 68px) + var(--import-curve-depth));
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
   align-items: center;
   gap: 64px;
   overflow: hidden;
-  border: 1px solid var(--excel-line);
-  border-radius: 30px;
+  border-bottom-left-radius: var(--import-curve-depth);
+  border-bottom-right-radius: var(--import-curve-depth);
   background:
-    radial-gradient(circle at 88% 8%, var(--excel-grid), transparent 34%), var(--excel-soft);
-  box-shadow: 0 22px 58px var(--shadow);
+    radial-gradient(ellipse at 16% -6%, rgba(68, 134, 101, 0.2), transparent 43%),
+    linear-gradient(155deg, #0c281d 0%, #081c14 54%, #06150f 100%);
+  margin-bottom: calc(-1 * var(--import-curve-depth));
 }
 .import-support-copy,
 .import-sheet-visual {
@@ -570,6 +581,7 @@ textarea:focus-visible {
   border: 1px solid var(--excel-line);
   border-radius: 16px;
   background: var(--surface-glass);
+  backdrop-filter: blur(8px);
 }
 .import-support-icon {
   flex: 0 0 auto;
@@ -690,6 +702,104 @@ textarea:focus-visible {
 .import-sheet-footer strong {
   color: var(--excel-ink);
   font-size: 10px;
+}
+@keyframes supported-formats-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+.supported-formats {
+  position: relative;
+  isolation: isolate;
+  min-height: clamp(560px, 52vw, 700px);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  color: #ffffff;
+  background: #14231c;
+}
+.supported-formats-photo,
+.supported-formats-overlay {
+  position: absolute;
+  inset: 0;
+}
+.supported-formats-photo {
+  z-index: -3;
+  display: block;
+}
+.supported-formats-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 20%;
+}
+.supported-formats-overlay {
+  z-index: -2;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(9, 20, 15, 0.03) 18%,
+      rgba(9, 20, 15, 0.42) 61%,
+      rgba(9, 20, 15, 0.93) 100%
+    ),
+    linear-gradient(90deg, rgba(9, 20, 15, 0.52), rgba(9, 20, 15, 0.08) 58%, transparent 82%);
+}
+.supported-formats-content {
+  width: 100%;
+  min-width: 0;
+  padding: 0 max(24px, calc((100% - 1180px) / 2)) clamp(36px, 5vw, 58px);
+}
+.supported-formats-heading {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.supported-formats-marquee {
+  min-width: 0;
+  margin-top: 15px;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+.supported-formats-track {
+  width: max-content;
+  display: flex;
+  will-change: transform;
+  animation: supported-formats-marquee 36s linear infinite;
+}
+.supported-formats-group {
+  flex: 0 0 auto;
+  padding: 20px clamp(48px, 6vw, 86px) 20px 0;
+  display: flex;
+  align-items: center;
+  gap: clamp(48px, 6vw, 86px);
+}
+.supported-format-name {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.94);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(26px, 3.25vw, 44px);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
+}
+.supported-formats-disclaimer {
+  max-width: 790px;
+  margin: 17px 0 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 10px;
+  line-height: 1.6;
 }
 .approach {
   padding: 100px 24px 110px;
@@ -2928,7 +3038,7 @@ button:disabled {
     border-right: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.13);
   }
-  .import-support-inner {
+  .import-support {
     grid-template-columns: 1fr;
     gap: 46px;
   }
@@ -2995,6 +3105,9 @@ button:disabled {
   .auth-heading h1 {
     font-size: 31px;
   }
+  .landing-page {
+    --import-curve-depth: 36px;
+  }
   .landing-nav {
     width: calc(100% - 32px);
     height: 72px;
@@ -3030,12 +3143,8 @@ button:disabled {
     height: 115px;
   }
   .import-support {
-    padding: 68px 16px;
-  }
-  .import-support-inner {
-    padding: 36px 28px;
+    padding: 64px 16px calc(52px + var(--import-curve-depth));
     gap: 36px;
-    border-radius: 24px;
   }
   .import-support-copy h2 {
     font-size: 34px;
@@ -3046,6 +3155,25 @@ button:disabled {
   }
   .import-sheet-row span {
     padding: 11px 8px;
+  }
+  .supported-formats {
+    min-height: 520px;
+  }
+  .supported-formats-photo img {
+    object-position: 54% center;
+  }
+  .supported-formats-content {
+    padding: 0 16px 34px;
+  }
+  .supported-formats-group {
+    padding: 18px 48px 18px 0;
+    gap: 48px;
+  }
+  .supported-format-name {
+    font-size: 28px;
+  }
+  .supported-formats-disclaimer {
+    max-width: 620px;
   }
   .approach h2 {
     font-size: 33px;
@@ -3391,11 +3519,11 @@ button:disabled {
   .preview-metrics > div:nth-child(2) {
     display: none;
   }
-  .import-support {
-    padding: 56px 14px;
+  .landing-page {
+    --import-curve-depth: 28px;
   }
-  .import-support-inner {
-    padding: 28px 18px;
+  .import-support {
+    padding: 54px 14px calc(46px + var(--import-curve-depth));
   }
   .import-support-copy h2 {
     font-size: 30px;
@@ -3416,6 +3544,36 @@ button:disabled {
   }
   .import-sheet-row span:nth-child(2) {
     border-right: 1px solid var(--excel-line);
+  }
+  .supported-formats {
+    min-height: 500px;
+  }
+  .supported-formats-photo img {
+    object-position: 52% center;
+  }
+  .supported-formats-content {
+    padding: 0 14px 28px;
+  }
+  .supported-formats-heading {
+    font-size: 9px;
+    letter-spacing: 0.17em;
+  }
+  .supported-formats-marquee {
+    margin-top: 12px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  }
+  .supported-formats-group {
+    padding: 17px 38px 17px 0;
+    gap: 38px;
+  }
+  .supported-format-name {
+    font-size: 24px;
+  }
+  .supported-formats-disclaimer {
+    margin-top: 14px;
+    font-size: 9px;
+    line-height: 1.55;
   }
   .metric-grid {
     grid-template-columns: 1fr;
@@ -3446,5 +3604,23 @@ button:disabled {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+  .supported-formats-marquee {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .supported-formats-track {
+    width: 100%;
+    transform: none !important;
+    will-change: auto;
+    animation: none !important;
+  }
+  .supported-formats-group {
+    width: 100%;
+    padding-right: 0;
+    flex-wrap: wrap;
+  }
+  .supported-formats-group[data-marquee-copy="duplicate"] {
+    display: none;
   }
 }

@@ -49,7 +49,9 @@ describe("landing page", () => {
     const importSection = screen.getByRole("region", {
       name: "Import from the files you already use.",
     });
-    expect(within(importSection).getByRole("heading", { name: "Start with Excel" })).toBeInTheDocument();
+    expect(
+      within(importSection).getByRole("heading", { name: "Start with Excel" }),
+    ).toBeInTheDocument();
     expect(
       within(importSection).getByText(
         /Already tracking finances in Excel\? Import your workbook, choose a worksheet/i,
@@ -63,6 +65,35 @@ describe("landing page", () => {
         /Export your bank transactions, import the file, and see your spending habits/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("presents supported export formats without duplicate announcements", () => {
+    renderLanding();
+
+    const formatsSection = screen.getByRole("region", { name: "Supported Export Formats" });
+    const institutions = within(formatsSection).getByRole("list", {
+      name: "Supported institutions",
+    });
+    expect(
+      within(institutions)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["BPI", "BDO", "MariBank", "Bank of America", "JPMorgan / Chase"]);
+    expect(
+      within(formatsSection).getByText(
+        "Bank names are shown to indicate supported export formats only. Clarity is not affiliated with or endorsed by these institutions.",
+      ),
+    ).toBeInTheDocument();
+
+    const visualTrack = formatsSection.querySelector(".supported-formats-track");
+    expect(visualTrack).toHaveAttribute("aria-hidden", "true");
+    expect(visualTrack?.querySelectorAll('[data-marquee-copy="duplicate"]')).toHaveLength(1);
+
+    expect(
+      within(formatsSection).queryByRole("button", {
+        name: /supported export formats animation/i,
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("labels the dashboard artwork as illustrative and explains the empty start", () => {
