@@ -4,18 +4,20 @@ import "@testing-library/jest-dom/vitest";
 
 import type { ImportPreview } from "@budget/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commitImport, getCategories, previewImport } from "../src/lib/api";
+import type { WorkbookConversion } from "../src/lib/workbookParser";
 import { ImportPage } from "../src/pages/ImportPage";
+import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 const workbook = vi.hoisted(() => ({
-  inspect: vi.fn(),
-  convert: vi.fn(),
-  dispose: vi.fn(),
+  inspect: vi.fn<(buffer: ArrayBuffer) => Promise<string[]>>(),
+  convert: vi.fn<(worksheetName: string) => Promise<WorkbookConversion>>(),
+  dispose: vi.fn<() => void>(),
 }));
 
 vi.mock("../src/auth/AuthProvider", () => ({
@@ -33,9 +35,27 @@ vi.mock("../src/lib/api", () => ({
 
 vi.mock("../src/lib/workbookImportClient", () => ({
   WorkbookImportClient: class {
-    inspect = workbook.inspect;
-    convert = workbook.convert;
-    dispose = workbook.dispose;
+    private disposed = false;
+
+    async inspect(buffer: ArrayBuffer) {
+      if (this.disposed) throw new Error("Choose the workbook again and retry.");
+      const result = await workbook.inspect(buffer);
+      if (this.disposed) throw new Error("The workbook import was cancelled.");
+      return result;
+    }
+
+    async convert(worksheetName: string) {
+      if (this.disposed) throw new Error("Choose the workbook again and retry.");
+      const result = await workbook.convert(worksheetName);
+      if (this.disposed) throw new Error("The workbook import was cancelled.");
+      return result;
+    }
+
+    dispose() {
+      if (this.disposed) return;
+      this.disposed = true;
+      workbook.dispose();
+    }
   },
 }));
 
@@ -66,11 +86,13 @@ const preview: ImportPreview = {
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <QueryClientProvider client={queryClient}>
-        <ImportPage />
-      </QueryClientProvider>
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <ImportPage />
+        </QueryClientProvider>
+      </MemoryRouter>
+    </ThemeProvider>,
   );
 }
 
@@ -177,7 +199,6 @@ describe("ImportPage", () => {
     workbook.inspect.mockResolvedValue(["Instructions", "Transactions"]);
     workbook.convert.mockResolvedValue({
       csvText: "Date,Description,Amount,Category\n2026-07-20,Market,-50.00,Food & dining",
-      headers: ["Date", "Description", "Amount", "Category"],
       rowCount: 1,
       warnings: [
         "Formula cells use their last saved results and are not recalculated during import.",
@@ -211,7 +232,6 @@ describe("ImportPage", () => {
     workbook.inspect.mockResolvedValue(["Transactions"]);
     workbook.convert.mockResolvedValue({
       csvText: "Description,Amount\nMarket,-50.00",
-      headers: ["Description", "Amount"],
       rowCount: 1,
       warnings: [],
     });
@@ -243,7 +263,6 @@ describe("ImportPage", () => {
     workbook.inspect.mockResolvedValue(["Transactions"]);
     workbook.convert.mockResolvedValue({
       csvText: "Date,Description,Amount,Category\n2026-07-20,Market,-50.00,Food & dining",
-      headers: ["Date", "Description", "Amount", "Category"],
       rowCount: 1,
       warnings: [],
     });
@@ -256,8 +275,117 @@ describe("ImportPage", () => {
 
     expect(await screen.findByText(/Worksheet: Transactions · 1 data row/)).toBeInTheDocument();
     expect(workbook.convert).toHaveBeenCalledWith("Transactions");
+    expect(workbook.dispose).not.toHaveBeenCalled();
     unmount();
-    expect(workbook.dispose).toHaveBeenCalled();
+    expect(workbook.dispose).toHaveBeenCalledOnce();
+  });
+
+  it("imports a dropped CSV through the same preview path", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    const csv = "Date,Description,Amount\n2026-07-20,Market,-50.00";
+    const input = fileInput(container);
+    const dropzone = input.closest("label")!;
+    const file = fileWithBuffer("dropped.csv", csv, "text/csv");
+
+    fireEvent.dragEnter(dropzone, { dataTransfer: { files: [file], types: ["Files"] } });
+    expect(dropzone).toHaveClass("drag-active");
+    expect(screen.getByText("Drop one file to import")).toBeInTheDocument();
+    fireEvent.dragLeave(dropzone, { dataTransfer: { files: [file], types: ["Files"] } });
+    expect(dropzone).not.toHaveClass("drag-active");
+    fireEvent.dragEnter(dropzone, { dataTransfer: { files: [file], types: ["Files"] } });
+
+    fireEvent.drop(dropzone, { dataTransfer: { files: [file], types: ["Files"] } });
+    expect(dropzone).not.toHaveClass("drag-active");
+    expect(await screen.findByText("dropped.csv")).toBeInTheDocument();
+    const previewButton = screen.getByRole("button", { name: "Preview import" });
+    await waitFor(() => expect(previewButton).toBeEnabled());
+    await user.click(previewButton);
+
+    await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
+    expect(vi.mocked(previewImport).mock.calls[0]?.[1]).toMatchObject({
+      fileName: "dropped.csv",
+      csvText: csv,
+      mapping: { date: "Date", description: "Description", amount: "Amount" },
+    });
+  });
+
+  it("imports a dropped workbook through the existing worker path", async () => {
+    workbook.inspect.mockResolvedValue(["Transactions"]);
+    workbook.convert.mockResolvedValue({
+      csvText: "Date,Description,Amount\n2026-07-20,Market,-50.00",
+      rowCount: 1,
+      warnings: [],
+    });
+    const { container } = renderPage();
+    const input = fileInput(container);
+    const dropzone = input.closest("label")!;
+    const file = fileWithBuffer(
+      "dropped.xlsx",
+      "workbook bytes",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+
+    fireEvent.drop(dropzone, { dataTransfer: { files: [file], types: ["Files"] } });
+
+    expect(await screen.findByText(/Worksheet: Transactions · 1 data row/)).toBeInTheDocument();
+    expect(workbook.inspect).toHaveBeenCalledOnce();
+    expect(workbook.convert).toHaveBeenCalledWith("Transactions");
+  });
+
+  it("rejects multiple dropped files and keeps the native picker accessible", async () => {
+    const { container } = renderPage();
+    const input = screen.getByLabelText("Choose transaction file");
+    expect(input).toHaveAttribute("accept", expect.stringContaining(".xlsx"));
+    const dropzone = fileInput(container).closest("label")!;
+    const first = fileWithBuffer("first.csv", "Date,Description,Amount", "text/csv");
+    const second = fileWithBuffer("second.csv", "Date,Description,Amount", "text/csv");
+
+    fireEvent.drop(dropzone, {
+      dataTransfer: { files: [first, second], types: ["Files"] },
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Drop one CSV, XLSX, or XLS file at a time.",
+    );
+    expect(previewImport).not.toHaveBeenCalled();
+    expect(workbook.inspect).not.toHaveBeenCalled();
+  });
+
+  it("disposes a pending workbook when a replacement file is selected", async () => {
+    const user = userEvent.setup();
+    let resolveInspect!: (sheets: string[]) => void;
+    workbook.inspect.mockImplementationOnce(
+      () =>
+        new Promise<string[]>((resolve) => {
+          resolveInspect = resolve;
+        }),
+    );
+    const { container } = renderPage();
+    const input = fileInput(container);
+
+    await user.upload(
+      input,
+      fileWithBuffer(
+        "pending.xlsx",
+        "workbook bytes",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ),
+    );
+    expect(await screen.findByText("Reading workbook…")).toBeInTheDocument();
+
+    await user.upload(
+      input,
+      fileWithBuffer(
+        "replacement.csv",
+        "Date,Description,Amount\n2026-07-20,Market,-50.00",
+        "text/csv",
+      ),
+    );
+    expect(workbook.dispose).toHaveBeenCalledOnce();
+    await screen.findByText("replacement.csv");
+    await act(async () => resolveInspect(["Old worksheet"]));
+    expect(screen.queryByLabelText("Worksheet")).not.toBeInTheDocument();
   });
 
   it("detects an introductory BPI header and maps Debit and Credit", async () => {

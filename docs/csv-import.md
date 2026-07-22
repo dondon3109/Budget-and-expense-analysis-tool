@@ -1,12 +1,13 @@
 # Transaction import guide
 
-Clarity accepts UTF-8 CSV files, Excel workbooks (`.xlsx`), and Excel 97–2003 workbooks (`.xls`). Importing always starts with a preview and never changes the workspace until the user confirms the ready rows.
+Clarity accepts UTF-8 CSV files, Excel workbooks (`.xlsx`), and Excel 97–2003 workbooks (`.xls`). Choose a file with the native picker or drag and drop one file onto the import area; both methods use the same validation and preview pipeline. Importing always starts with a preview and never changes the workspace until the user confirms the ready rows.
 
 ## Supported files
 
 - **CSV:** Up to 1 MB, comma-separated, with a selectable header row.
 - **Excel:** Up to 5 MB. If the workbook has multiple worksheets, choose the worksheet containing the transaction table. A workbook with one worksheet is selected automatically.
 - **Rows:** The selected header can have up to 500 nonblank data rows below it.
+- **Drag and drop:** Drop exactly one supported file at a time. Multiple-file drops are rejected without choosing one implicitly.
 
 Excel workbooks are read and converted to canonical CSV in a browser Web Worker. The original workbook is not uploaded to the API. Only the selected worksheet's converted text, selected header row, and editable column mapping enter the preview flow.
 

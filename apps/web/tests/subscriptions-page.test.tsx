@@ -16,6 +16,7 @@ import {
   setSubscriptionStatus,
 } from "../src/lib/api";
 import { SubscriptionsPage } from "../src/pages/SubscriptionsPage";
+import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({
@@ -56,11 +57,13 @@ const record: SubscriptionRecord = {
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <QueryClientProvider client={queryClient}>
-        <SubscriptionsPage />
-      </QueryClientProvider>
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <SubscriptionsPage />
+        </QueryClientProvider>
+      </MemoryRouter>
+    </ThemeProvider>,
   );
 }
 

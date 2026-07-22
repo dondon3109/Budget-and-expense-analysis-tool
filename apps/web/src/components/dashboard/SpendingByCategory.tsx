@@ -37,14 +37,23 @@ export function SpendingByCategory({ data }: Props) {
                     innerRadius={62}
                     outerRadius={88}
                     paddingAngle={3}
-                    stroke="#fffdf8"
+                    stroke="var(--chart-slice-separator)"
                     strokeWidth={2}
                   >
                     {data.map((entry) => (
                       <Cell key={entry.categoryId} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => formatMoney(Number(value))} />
+                  <Tooltip
+                    formatter={(value) => formatMoney(Number(value))}
+                    contentStyle={{
+                      background: "var(--chart-tooltip-bg)",
+                      border: "1px solid var(--chart-tooltip-border)",
+                      borderRadius: 10,
+                      color: "var(--ink)",
+                    }}
+                    itemStyle={{ color: "var(--ink)" }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
               <div className="donut-center">

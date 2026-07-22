@@ -7,6 +7,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "../src/components/layout/AppShell";
+import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({
@@ -18,11 +19,13 @@ vi.mock("../src/auth/AuthProvider", () => ({
 describe("AppShell", () => {
   it("places Subscriptions directly below Budgets and above the account footer", () => {
     render(
-      <MemoryRouter initialEntries={["/app/subscriptions"]}>
-        <AppShell>
-          <div>Subscriptions content</div>
-        </AppShell>
-      </MemoryRouter>,
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/app/subscriptions"]}>
+          <AppShell>
+            <div>Subscriptions content</div>
+          </AppShell>
+        </MemoryRouter>
+      </ThemeProvider>,
     );
 
     const navigation = screen.getByRole("navigation", { name: "Main navigation" });
@@ -31,5 +34,6 @@ describe("AppShell", () => {
     ).toEqual(["Overview", "Transactions", "Import", "Budgets", "Subscriptions"]);
     expect(screen.getByRole("link", { name: "Subscriptions" })).toHaveClass("current");
     expect(screen.getByText("Signed in as")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /switch to (dark|light) mode/i })).toHaveLength(2);
   });
 });

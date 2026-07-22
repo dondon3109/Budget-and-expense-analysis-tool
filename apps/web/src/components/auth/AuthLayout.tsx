@@ -2,6 +2,8 @@ import { Landmark } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
+import { ThemeToggle } from "../theme/ThemeToggle";
+
 export function AuthLayout({
   eyebrow,
   title,
@@ -18,12 +20,15 @@ export function AuthLayout({
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <Link className="brand" to="/" aria-label="Clarity home">
-          <span className="brand-mark">
-            <Landmark size={20} aria-hidden="true" />
-          </span>
-          <span>Clarity</span>
-        </Link>
+        <div className="auth-card-header">
+          <Link className="brand" to="/" aria-label="Clarity home">
+            <span className="brand-mark">
+              <Landmark size={20} aria-hidden="true" />
+            </span>
+            <span>Clarity</span>
+          </Link>
+          <ThemeToggle />
+        </div>
         <div className="auth-heading">
           <p className="eyebrow">{eyebrow}</p>
           <h1>{title}</h1>

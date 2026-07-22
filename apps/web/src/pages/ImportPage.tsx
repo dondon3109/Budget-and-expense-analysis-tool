@@ -24,7 +24,7 @@ import {
   ShieldCheck,
   Tags,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
@@ -110,6 +110,7 @@ export function ImportPage() {
   const [worksheetRowCount, setWorksheetRowCount] = useState<number>();
   const [workbookWarnings, setWorkbookWarnings] = useState<string[]>([]);
   const [workbookBusy, setWorkbookBusy] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [fileError, setFileError] = useState<string>();
   const [previewError, setPreviewError] = useState<Error>();
   const [preview, setPreview] = useState<ImportPreview>();
@@ -121,6 +122,7 @@ export function ImportPage() {
   const [result, setResult] = useState<ImportCommitResult>();
   const workbookClientRef = useRef<WorkbookImportClient | undefined>(undefined);
   const fileSelectionIdRef = useRef(0);
+  const dragDepthRef = useRef(0);
   const previewGenerationRef = useRef(0);
 
   const categoriesQuery = useQuery({
@@ -161,9 +163,12 @@ export function ImportPage() {
     },
   });
 
-  useEffect(() => () => {
-    workbookClientRef.current?.dispose();
-  });
+  useEffect(
+    () => () => {
+      workbookClientRef.current?.dispose();
+    },
+    [],
+  );
 
   function invalidatePreview() {
     previewGenerationRef.current += 1;
@@ -285,21 +290,23 @@ export function ImportPage() {
     }
   }
 
-  async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  function beginFileSelection(): number {
     fileSelectionIdRef.current += 1;
-    const selectionId = fileSelectionIdRef.current;
     workbookClientRef.current?.dispose();
     workbookClientRef.current = undefined;
-    setFileName(file?.name ?? "");
+    dragDepthRef.current = 0;
+    setDragActive(false);
+    setFileName("");
     setWorksheetNames([]);
     setSelectedWorksheet("");
     setWorkbookBusy(false);
     setFileError(undefined);
     clearConvertedImport();
-    if (!file) return;
+    return fileSelectionIdRef.current;
+  }
 
+  async function processFile(file: File) {
+    const selectionId = beginFileSelection();
     const extension = file.name.split(".").pop()?.toLocaleLowerCase("en") ?? "";
     if (!["csv", "xlsx", "xls"].includes(extension)) {
       setFileError("Choose a CSV, XLSX, or XLS file.");
@@ -311,6 +318,7 @@ export function ImportPage() {
         setFileError("Choose a CSV file no larger than 1 MB.");
         return;
       }
+      setFileName(file.name);
       try {
         const text = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
         if (selectionId !== fileSelectionIdRef.current) return;
@@ -331,6 +339,7 @@ export function ImportPage() {
       return;
     }
 
+    setFileName(file.name);
     const client = new WorkbookImportClient();
     workbookClientRef.current = client;
     setWorkbookBusy(true);
@@ -354,16 +363,52 @@ export function ImportPage() {
     }
   }
 
+  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (file) void processFile(file);
+  }
+
+  function isFileDrag(event: DragEvent<HTMLElement>): boolean {
+    return Array.from(event.dataTransfer.types).includes("Files");
+  }
+
+  function handleDragEnter(event: DragEvent<HTMLLabelElement>) {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    setDragActive(true);
+  }
+
+  function handleDragOver(event: DragEvent<HTMLLabelElement>) {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLLabelElement>) {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setDragActive(false);
+  }
+
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    dragDepthRef.current = 0;
+    setDragActive(false);
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length !== 1) {
+      beginFileSelection();
+      setFileError("Drop one CSV, XLSX, or XLS file at a time.");
+      return;
+    }
+    void processFile(files[0]!);
+  }
+
   function resetImport() {
-    fileSelectionIdRef.current += 1;
-    workbookClientRef.current?.dispose();
-    workbookClientRef.current = undefined;
-    setFileName("");
-    setWorksheetNames([]);
-    setSelectedWorksheet("");
-    setWorkbookBusy(false);
-    setFileError(undefined);
-    clearConvertedImport();
+    beginFileSelection();
   }
 
   function changeHeader(nextHeaderRowNumber: number) {
@@ -556,18 +601,41 @@ export function ImportPage() {
                   <small>CSV, Excel Workbook (.xlsx), or Excel 97–2003 (.xls)</small>
                 </div>
               </div>
-              <label className={`file-drop ${fileName ? "selected" : ""}`}>
+              <label
+                className={[
+                  "file-drop",
+                  fileName ? "selected" : "",
+                  dragActive ? "drag-active" : "",
+                  fileError && !fileName ? "rejected" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                htmlFor="transaction-file-input"
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
                 <FileUp size={27} />
-                <strong>{fileName || "Select a CSV or Excel file"}</strong>
-                <span>
-                  {fileName
-                    ? "Choose a different file"
-                    : "CSV up to 1 MB · Excel up to 5 MB · maximum 500 data rows"}
+                <strong>
+                  {dragActive
+                    ? "Drop one file to import"
+                    : fileName || "Choose or drag a CSV or Excel file"}
+                </strong>
+                <span id="transaction-file-help">
+                  {dragActive
+                    ? "CSV, XLSX, or XLS"
+                    : fileName
+                      ? "Choose or drop another file"
+                      : "CSV up to 1 MB · Excel up to 5 MB · maximum 500 data rows"}
                 </span>
                 <input
+                  id="transaction-file-input"
                   type="file"
+                  aria-label="Choose transaction file"
+                  aria-describedby="transaction-file-help"
                   accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                  onChange={(event) => void chooseFile(event)}
+                  onChange={chooseFile}
                 />
               </label>
               {workbookBusy && worksheetNames.length === 0 && (

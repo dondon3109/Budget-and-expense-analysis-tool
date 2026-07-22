@@ -1,6 +1,8 @@
 import { ArrowRight, BarChart3, Check, Landmark, ShieldCheck, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { ThemeToggle } from "../components/theme/ThemeToggle";
+
 const previewBars = [42, 55, 38, 66, 50, 61];
 
 export function LandingPage() {
@@ -18,6 +20,7 @@ export function LandingPage() {
           <a href="#approach">How it works</a>
         </div>
         <div className="landing-account-actions">
+          <ThemeToggle />
           <Link className="landing-sign-in" to="/login">
             Sign in
           </Link>

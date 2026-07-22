@@ -13,6 +13,7 @@ import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 
 import { useAuth } from "../../auth/AuthProvider";
+import { ThemeToggle } from "../theme/ThemeToggle";
 
 interface AppShellProps {
   children: ReactNode;
@@ -52,15 +53,18 @@ export function AppShell({ children }: AppShellProps) {
           </span>
           <span>Clarity</span>
         </Link>
-        <button
-          className="icon-button"
-          type="button"
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? <X size={21} /> : <Menu size={21} />}
-        </button>
+        <div className="mobile-header-actions">
+          <ThemeToggle />
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X size={21} /> : <Menu size={21} />}
+          </button>
+        </div>
       </header>
 
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
@@ -92,6 +96,7 @@ export function AppShell({ children }: AppShellProps) {
         </nav>
 
         <div className="sidebar-account">
+          <ThemeToggle />
           <span>Signed in as</span>
           <strong title={user?.email}>{user?.email ?? "Clarity user"}</strong>
           <button

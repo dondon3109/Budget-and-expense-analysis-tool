@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getBudgets, saveBudgets } from "../src/lib/api";
 import { BudgetsPage } from "../src/pages/BudgetsPage";
+import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({
@@ -54,11 +55,13 @@ describe("BudgetsPage", () => {
     const user = userEvent.setup();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
-      <MemoryRouter>
-        <QueryClientProvider client={queryClient}>
-          <BudgetsPage />
-        </QueryClientProvider>
-      </MemoryRouter>,
+      <ThemeProvider>
+        <MemoryRouter>
+          <QueryClientProvider client={queryClient}>
+            <BudgetsPage />
+          </QueryClientProvider>
+        </MemoryRouter>
+      </ThemeProvider>,
     );
 
     const amount = await screen.findByLabelText("Food & dining monthly budget");

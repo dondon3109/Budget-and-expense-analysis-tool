@@ -14,13 +14,13 @@ The public site is a marketing and authentication surface with a static illustra
 
 The implementation includes:
 
-- Responsive landing, signup, login, recovery, and private application routes.
+- Responsive landing, signup, login, recovery, and private application routes with a persistent light/dark appearance switch.
 - Supabase email/password signup, confirmation, login, session refresh, password recovery, and sign-out.
 - Worker-side Supabase JWT verification and fail-closed `/api/app/*` routes.
 - Automatic D1 tenant bootstrap with an Everyday account and starter categories.
 - Empty first-use onboarding; transactions and budgets begin blank.
 - Transaction CRUD, category management, filters, pagination, and CSV export.
-- Preview-first CSV/XLS/XLSX import with header detection, BPI/BDO/MariBank/Bank of America/JPMorgan presets, signed or Debit/Credit amounts, U.S. slash dates, bulk categorization, duplicate prevention, and atomic commit.
+- Preview-first CSV/XLS/XLSX selection or drag-and-drop import with header detection, BPI/BDO/MariBank/Bank of America/JPMorgan presets, signed or Debit/Credit amounts, U.S. slash dates, bulk categorization, duplicate prevention, and atomic commit.
 - Editable monthly budgets, category spending, six-month trends, savings rate, and recurring-expense insights.
 - Tenant-scoped rate limiting for authenticated writes and imports.
 - Accessible chart tables, keyboard-visible focus states, mobile layouts, and route-level code splitting.

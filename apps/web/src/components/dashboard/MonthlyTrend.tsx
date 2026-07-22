@@ -41,43 +41,50 @@ export function MonthlyTrend({ data }: Props) {
               <AreaChart data={data} margin={{ top: 12, right: 6, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3f8f74" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#3f8f74" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--chart-income)" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="var(--chart-income)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#dc8b3f" stopOpacity={0.2} />
-                    <stop offset="100%" stopColor="#dc8b3f" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--chart-expense)" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="var(--chart-expense)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#e7e2d8" vertical={false} />
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                 <XAxis
                   dataKey="month"
                   tickFormatter={formatMonth}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#73716b", fontSize: 12 }}
+                  tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
                 />
                 <YAxis
                   tickFormatter={(value) => `₱${Math.round(Number(value) / 100_000)}k`}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#73716b", fontSize: 11 }}
+                  tick={{ fill: "var(--chart-axis)", fontSize: 11 }}
                 />
                 <Tooltip
                   labelFormatter={(label) => formatMonth(String(label))}
                   formatter={(value) => formatMoney(Number(value))}
+                  contentStyle={{
+                    background: "var(--chart-tooltip-bg)",
+                    border: "1px solid var(--chart-tooltip-border)",
+                    borderRadius: 10,
+                    color: "var(--ink)",
+                  }}
+                  labelStyle={{ color: "var(--ink)" }}
                 />
                 <Area
                   type="monotone"
                   dataKey="incomeMinor"
-                  stroke="#3f8f74"
+                  stroke="var(--chart-income)"
                   strokeWidth={2.5}
                   fill="url(#incomeFill)"
                 />
                 <Area
                   type="monotone"
                   dataKey="expenseMinor"
-                  stroke="#dc8b3f"
+                  stroke="var(--chart-expense)"
                   strokeWidth={2.5}
                   fill="url(#expenseFill)"
                 />
