@@ -1,3 +1,4 @@
+import { parseCsv } from "@budget/shared";
 import { describe, expect, it } from "vitest";
 import { utils, write, type BookType, type WorkBook } from "xlsx";
 
@@ -50,9 +51,11 @@ describe("Excel workbook parsing", () => {
 
       expect(inspectWorkbook(buffer)).toEqual(["Instructions", "Transactions"]);
       const converted = convertWorksheet(buffer, "Transactions");
+      const parsed = parseCsv(converted.csvText);
 
-      expect(converted.headers).toEqual(["Date", "Description", "Amount", "Category"]);
-      expect(converted.rowCount).toBe(2);
+      expect(parsed.headers).toEqual(["Date", "Description", "Amount", "Category"]);
+      expect(converted.rowCount).toBe(3);
+      expect(parsed.rows).toHaveLength(2);
       expect(converted.csvText).toContain("2026-07-20");
       expect(converted.csvText).toContain('"Market, ""weekly""\nshop"');
       expect(converted.csvText).toContain("-1250.5");
@@ -64,6 +67,25 @@ describe("Excel workbook parsing", () => {
       }
     },
   );
+
+  it("preserves introductory rows so the header can be selected later", () => {
+    const workbook = utils.book_new();
+    utils.book_append_sheet(
+      workbook,
+      utils.aoa_to_sheet([
+        ["BPI Statement of Account"],
+        ["Account", "1234"],
+        ["Transaction Date", "Description", "Debit", "Credit"],
+        ["7/20/2026", "Market", 50, ""],
+      ]),
+      "Transactions",
+    );
+
+    const converted = convertWorksheet(workbookBuffer(workbook), "Transactions");
+
+    expect(converted.csvText).toContain("BPI Statement of Account");
+    expect(parseCsv(converted.csvText, { headerRowNumber: 3 }).rows).toHaveLength(1);
+  });
 
   it("warns when a formula has no saved result", () => {
     const workbook = utils.book_new();
@@ -83,7 +105,7 @@ describe("Excel workbook parsing", () => {
     expect(converted.csvText).not.toContain("1+1");
   });
 
-  it("rejects empty sheets and duplicate headers", () => {
+  it("rejects empty sheets but preserves rows for header validation in the UI", () => {
     const emptyWorkbook = utils.book_new();
     utils.book_append_sheet(emptyWorkbook, utils.aoa_to_sheet([]), "Empty");
     expect(() => convertWorksheet(workbookBuffer(emptyWorkbook), "Empty")).toThrow(
@@ -99,12 +121,11 @@ describe("Excel workbook parsing", () => {
       ]),
       "Duplicate",
     );
-    expect(() => convertWorksheet(workbookBuffer(duplicateWorkbook), "Duplicate")).toThrow(
-      "CSV headers must be unique.",
-    );
+    const converted = convertWorksheet(workbookBuffer(duplicateWorkbook), "Duplicate");
+    expect(() => parseCsv(converted.csvText)).toThrow("CSV headers must be unique.");
   });
 
-  it("rejects worksheets over 500 data rows", () => {
+  it("preserves worksheets over 500 rows for post-header validation", () => {
     const workbook = utils.book_new();
     const rows = [
       ["Date", "Description", "Amount", "Category"],
@@ -117,9 +138,7 @@ describe("Excel workbook parsing", () => {
     ];
     utils.book_append_sheet(workbook, utils.aoa_to_sheet(rows), "Transactions");
 
-    expect(() => convertWorksheet(workbookBuffer(workbook), "Transactions")).toThrow(
-      "The selected worksheet contains more than 500 data rows.",
-    );
+    expect(convertWorksheet(workbookBuffer(workbook), "Transactions").rowCount).toBe(502);
   });
 
   it("rejects oversized and malformed workbooks", () => {

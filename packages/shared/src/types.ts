@@ -77,7 +77,9 @@ export interface SubscriptionMonthSummary {
 export interface ImportMapping {
   date?: string;
   description: string;
-  amount: string;
+  amount?: string;
+  debit?: string;
+  credit?: string;
   category?: string;
   kind?: string;
   currency?: string;
@@ -90,7 +92,9 @@ export interface ImportPreviewRow {
   description?: string;
   amountMinor?: number;
   kind?: TransactionKind;
+  categoryId?: string;
   categoryName?: string;
+  categoryIsUncategorized?: boolean;
   errors: string[];
 }
 
@@ -103,6 +107,16 @@ export interface ImportPreview {
   rejectedCount: number;
   duplicateCount: number;
   rows: ImportPreviewRow[];
+}
+
+export interface ImportCategoryOverride {
+  rowNumber: number;
+  categoryId: string;
+}
+
+export interface ImportCommitRequest {
+  token: string;
+  categoryOverrides: ImportCategoryOverride[];
 }
 
 export interface ImportCommitResult {

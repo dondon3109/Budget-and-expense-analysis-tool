@@ -141,19 +141,49 @@ export const subscriptionStatusUpdateSchema = z.object({
 
 export type SubscriptionStatusUpdate = z.infer<typeof subscriptionStatusUpdateSchema>;
 
-export const importMappingSchema = z.object({
-  date: z.string().min(1).optional(),
-  description: z.string().min(1),
-  amount: z.string().min(1),
-  category: z.string().min(1).optional(),
-  kind: z.string().min(1).optional(),
-  currency: z.string().min(1).optional(),
-});
+const importColumnSchema = z.string().trim().min(1);
+
+export const importMappingSchema = z
+  .object({
+    date: importColumnSchema.optional(),
+    description: importColumnSchema,
+    amount: importColumnSchema.optional(),
+    debit: importColumnSchema.optional(),
+    credit: importColumnSchema.optional(),
+    category: importColumnSchema.optional(),
+    kind: importColumnSchema.optional(),
+    currency: importColumnSchema.optional(),
+  })
+  .superRefine((mapping, context) => {
+    const usesAmount = Boolean(mapping.amount);
+    const usesDebit = Boolean(mapping.debit);
+    const usesCredit = Boolean(mapping.credit);
+    const hasValidAmountStrategy =
+      (usesAmount && !usesDebit && !usesCredit) || (!usesAmount && usesDebit && usesCredit);
+    if (!hasValidAmountStrategy) {
+      context.addIssue({
+        code: "custom",
+        path: ["amount"],
+        message: "Choose one Amount column or both Debit and Credit columns.",
+      });
+    }
+
+    const columns = Object.values(mapping)
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim().toLocaleLowerCase("en"));
+    if (new Set(columns).size !== columns.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Each mapped field must use a different source column.",
+      });
+    }
+  });
 
 export const importPreviewRequestSchema = z
   .object({
     fileName: z.string().trim().min(1).max(180),
     csvText: z.string().min(1).max(1_100_000),
+    headerRowNumber: z.number().int().min(1).max(10_000).optional(),
     mapping: importMappingSchema,
     fallbackDate: isoDateSchema.optional(),
   })
@@ -171,4 +201,26 @@ export const importPreviewRequestSchema = z
 
 export type ImportPreviewRequest = z.infer<typeof importPreviewRequestSchema>;
 
-export const importCommitSchema = z.object({ token: z.string().uuid() });
+export const importCommitSchema = z
+  .object({
+    token: z.string().uuid(),
+    categoryOverrides: z
+      .array(
+        z.object({
+          rowNumber: z.number().int().min(1),
+          categoryId: z.string().min(1),
+        }),
+      )
+      .max(500)
+      .default([]),
+  })
+  .superRefine((input, context) => {
+    const rowNumbers = input.categoryOverrides.map((override) => override.rowNumber);
+    if (new Set(rowNumbers).size !== rowNumbers.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["categoryOverrides"],
+        message: "Each import row can have only one category override.",
+      });
+    }
+  });

@@ -20,7 +20,7 @@ The implementation includes:
 - Automatic D1 tenant bootstrap with an Everyday account and starter categories.
 - Empty first-use onboarding; transactions and budgets begin blank.
 - Transaction CRUD, category management, filters, pagination, and CSV export.
-- Preview-first CSV import with validation, duplicate prevention, and atomic commit.
+- Preview-first CSV/XLS/XLSX import with header detection, BPI/BDO/MariBank/Bank of America/JPMorgan presets, signed or Debit/Credit amounts, U.S. slash dates, bulk categorization, duplicate prevention, and atomic commit.
 - Editable monthly budgets, category spending, six-month trends, savings rate, and recurring-expense insights.
 - Tenant-scoped rate limiting for authenticated writes and imports.
 - Accessible chart tables, keyboard-visible focus states, mobile layouts, and route-level code splitting.

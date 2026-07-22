@@ -1,8 +1,13 @@
 import { parseCsv, type CategoryRecord } from "@budget/shared";
 import { describe, expect, it } from "vitest";
 
-import { assertImportFileSize, assertImportRowCount } from "../src/db/imports";
-import { prepareImportRows } from "../src/imports/prepare";
+import {
+  applyCategoryOverridesToRows,
+  assertImportFileSize,
+  buildImportTransactionInsertSql,
+  assertImportRowCount,
+} from "../src/db/imports";
+import { prepareImportRows, type PreparedImportRecord } from "../src/imports/prepare";
 
 function captureError(action: () => void): unknown {
   try {
@@ -58,6 +63,18 @@ const mapping = {
   kind: "Type",
   category: "Category",
 };
+
+describe("import commit category guard", () => {
+  it("rechecks tenant, active status, kind, and non-system overrides inside the insert", () => {
+    const regularSql = buildImportTransactionInsertSql(false);
+    const overrideSql = buildImportTransactionInsertSql(true);
+
+    expect(regularSql).toContain("tenant_id = ? AND archived = 0 AND kind = ?");
+    expect(regularSql).not.toContain("system_key IS NULL");
+    expect(overrideSql).toContain("system_key IS NULL");
+    expect(overrideSql).toContain("(SELECT id FROM categories");
+  });
+});
 
 describe("import preparation", () => {
   it("rejects oversized files and row sets before preparation", () => {
@@ -240,7 +257,193 @@ describe("import preparation", () => {
 
     expect(prepared.rows[0]).toMatchObject({
       status: "invalid",
-      errors: ["Date must be a real YYYY-MM-DD date."],
+      errors: ["Date must be a real YYYY-MM-DD or MM/DD/YYYY date."],
     });
+  });
+
+  it("combines Debit and Credit columns into signed amounts", async () => {
+    const csv = parseCsv(
+      [
+        "Date,Description,Debit,Credit",
+        "7/20/2026,Market,500.00,",
+        "7/21/2026,Salary,,1000.00",
+        "7/22/2026,Refund,-25.00,",
+      ].join("\n"),
+    );
+    const prepared = await prepareImportRows(
+      csv,
+      { date: "Date", description: "Description", debit: "Debit", credit: "Credit" },
+      uncategorizedCategories,
+      new Set(),
+      "user:user-1:account:default",
+    );
+
+    expect(prepared.records.map((row) => [row.date, row.amountMinor, row.kind])).toEqual([
+      ["2026-07-20", -50_000, "expense"],
+      ["2026-07-21", 100_000, "income"],
+      ["2026-07-22", -2_500, "expense"],
+    ]);
+  });
+
+  it("rejects rows with values in both or neither split amount column", async () => {
+    const csv = parseCsv(
+      ["Date,Description,Debit,Credit", "7/20/2026,Both,50.00,10.00", "7/21/2026,Neither,,0"].join(
+        "\n",
+      ),
+    );
+    const prepared = await prepareImportRows(
+      csv,
+      { date: "Date", description: "Description", debit: "Debit", credit: "Credit" },
+      uncategorizedCategories,
+      new Set(),
+      "user:user-1:account:default",
+    );
+
+    expect(prepared.rows.every((row) => row.status === "invalid")).toBe(true);
+    expect(prepared.rows.every((row) => row.errors[0]?.includes("either Debit or Credit"))).toBe(
+      true,
+    );
+  });
+
+  it("rejects a mapped type that conflicts with Debit or Credit", async () => {
+    const csv = parseCsv("Date,Description,Debit,Credit,Type\n7/20/2026,Market,50.00,,income");
+    const prepared = await prepareImportRows(
+      csv,
+      {
+        date: "Date",
+        description: "Description",
+        debit: "Debit",
+        credit: "Credit",
+        kind: "Type",
+      },
+      uncategorizedCategories,
+      new Set(),
+      "user:user-1:account:default",
+    );
+
+    expect(prepared.rows[0]).toMatchObject({
+      status: "invalid",
+      errors: ["Type must match whether the value is in Debit or Credit."],
+    });
+  });
+
+  it("deduplicates equivalent ISO/signed and slash-date/split rows", async () => {
+    const signed = await prepareImportRows(
+      parseCsv("Date,Description,Amount\n2026-07-20,Market,-500.00"),
+      { date: "Date", description: "Description", amount: "Amount" },
+      uncategorizedCategories,
+      new Set(),
+      "user:user-1:account:default",
+    );
+    const split = await prepareImportRows(
+      parseCsv("Date,Description,Debit,Credit\n7/20/2026,Market,500.00,"),
+      { date: "Date", description: "Description", debit: "Debit", credit: "Credit" },
+      uncategorizedCategories,
+      new Set([signed.records[0]!.fingerprint]),
+      "user:user-1:account:default",
+    );
+
+    expect(split.rows[0]?.status).toBe("duplicate");
+    expect(split.records).toHaveLength(0);
+  });
+
+  it("marks only server-selected Uncategorized rows as eligible for category changes", async () => {
+    const prepared = await prepareImportRows(
+      parseCsv(
+        "Date,Description,Amount,Category\n2026-07-20,Market,-50.00,\n2026-07-21,Dinner,-20.00,Food & dining",
+      ),
+      { date: "Date", description: "Description", amount: "Amount", category: "Category" },
+      [...uncategorizedCategories, ...categories],
+      new Set(),
+      "user:user-1:account:default",
+    );
+
+    expect(prepared.rows.map((row) => [row.categoryId, row.categoryIsUncategorized])).toEqual([
+      ["uncategorized-expense", true],
+      ["food", false],
+    ]);
+    expect(prepared.records.map((row) => row.categoryIsUncategorized)).toEqual([true, false]);
+  });
+});
+
+const preparedUncategorizedRow: PreparedImportRecord = {
+  rowNumber: 2,
+  date: "2026-07-20",
+  description: "Market",
+  amountMinor: -5_000,
+  kind: "expense",
+  categoryId: "uncategorized-expense",
+  categoryName: "Uncategorized",
+  categoryIsUncategorized: true,
+  fingerprint: "fingerprint-1",
+};
+
+const foodOverrideCategory = {
+  id: "food",
+  name: "Food & dining",
+  kind: "expense" as const,
+  archived: false,
+  systemKey: null,
+};
+
+describe("import category overrides", () => {
+  it("replaces only the category while preserving transaction identity", () => {
+    const rows = applyCategoryOverridesToRows(
+      [preparedUncategorizedRow],
+      [{ rowNumber: 2, categoryId: "food" }],
+      [foodOverrideCategory],
+    );
+
+    expect(rows[0]).toEqual({
+      ...preparedUncategorizedRow,
+      categoryId: "food",
+      categoryName: "Food & dining",
+      categoryIsUncategorized: false,
+    });
+    expect(preparedUncategorizedRow.categoryId).toBe("uncategorized-expense");
+    expect(rows[0]?.fingerprint).toBe(preparedUncategorizedRow.fingerprint);
+  });
+
+  it("rejects missing rows, inaccessible categories, archived, system, and wrong-kind targets", () => {
+    const cases = [
+      {
+        rows: [preparedUncategorizedRow],
+        override: { rowNumber: 99, categoryId: "food" },
+        categories: [foodOverrideCategory],
+      },
+      {
+        rows: [preparedUncategorizedRow],
+        override: { rowNumber: 2, categoryId: "other-tenant" },
+        categories: [foodOverrideCategory],
+      },
+      {
+        rows: [preparedUncategorizedRow],
+        override: { rowNumber: 2, categoryId: "food" },
+        categories: [{ ...foodOverrideCategory, archived: true }],
+      },
+      {
+        rows: [preparedUncategorizedRow],
+        override: { rowNumber: 2, categoryId: "food" },
+        categories: [{ ...foodOverrideCategory, systemKey: "uncategorized:expense" }],
+      },
+      {
+        rows: [preparedUncategorizedRow],
+        override: { rowNumber: 2, categoryId: "food" },
+        categories: [{ ...foodOverrideCategory, kind: "income" as const }],
+      },
+      {
+        rows: [{ ...preparedUncategorizedRow, categoryIsUncategorized: false }],
+        override: { rowNumber: 2, categoryId: "food" },
+        categories: [foodOverrideCategory],
+      },
+    ];
+
+    for (const testCase of cases) {
+      expect(
+        captureError(() =>
+          applyCategoryOverridesToRows(testCase.rows, [testCase.override], testCase.categories),
+        ),
+      ).toMatchObject({ status: 400, code: "invalid_category_override" });
+    }
   });
 });

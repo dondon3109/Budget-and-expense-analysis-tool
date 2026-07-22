@@ -6,6 +6,7 @@ import type {
   CategoryRecord,
   CategoryUpdate,
   DashboardSummary,
+  ImportCommitRequest,
   ImportCommitResult,
   ImportPreview,
   ImportPreviewRequest,
@@ -233,11 +234,11 @@ export function previewImport(
 
 export function commitImport(
   workspace: AuthenticatedWorkspace,
-  token: string,
+  input: ImportCommitRequest,
 ): Promise<ImportCommitResult> {
   return requestJson(workspace, "/api/app/imports/commit", {
     method: "POST",
-    body: JSON.stringify({ token }),
+    body: JSON.stringify(input),
   });
 }
 

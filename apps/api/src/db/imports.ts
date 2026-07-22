@@ -1,5 +1,7 @@
 import {
+  normalizeImportDate,
   parseCsv,
+  type ImportCommitRequest,
   type ImportCommitResult,
   type ImportPreview,
   type ImportPreviewRequest,
@@ -18,6 +20,11 @@ const MAX_FILE_BYTES = 1_000_000;
 const MAX_ROWS = 500;
 const PREVIEW_LIFETIME_MS = 15 * 60 * 1000;
 
+export function buildImportTransactionInsertSql(requireNonSystemCategory: boolean): string {
+  const systemConstraint = requireNonSystemCategory ? " AND system_key IS NULL" : "";
+  return `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint) VALUES (?, ?, ?, (SELECT id FROM categories WHERE id = ? AND tenant_id = ? AND archived = 0 AND kind = ?${systemConstraint}), ?, ?, ?, 'PHP', ?, ?)`;
+}
+
 export function assertImportFileSize(csvText: string): void {
   if (new TextEncoder().encode(csvText).byteLength > MAX_FILE_BYTES) {
     throw new HttpError(413, "file_too_large", "CSV files must be 1 MB or smaller.");
@@ -32,7 +39,7 @@ export function assertImportRowCount(rowCount: number): void {
 
 export interface ImportRepository {
   preview(env: Bindings, tenantId: string, input: ImportPreviewRequest): Promise<ImportPreview>;
-  commit(env: Bindings, tenantId: string, token: string): Promise<ImportCommitResult>;
+  commit(env: Bindings, tenantId: string, input: ImportCommitRequest): Promise<ImportCommitResult>;
 }
 
 async function findExistingFingerprints(
@@ -55,17 +62,126 @@ async function findExistingFingerprints(
   return existing;
 }
 
+function invalidStoredPreview(): never {
+  throw new HttpError(500, "invalid_preview", "The saved preview could not be read.");
+}
+
 function parseStoredRows(value: string): PreparedImportRecord[] {
   let parsed: unknown;
   try {
     parsed = JSON.parse(value);
   } catch {
-    throw new HttpError(500, "invalid_preview", "The saved preview could not be read.");
+    invalidStoredPreview();
   }
-  if (!Array.isArray(parsed)) {
-    throw new HttpError(500, "invalid_preview", "The saved preview could not be read.");
+  if (!Array.isArray(parsed)) invalidStoredPreview();
+
+  const rows = parsed.map((candidate) => {
+    if (!candidate || typeof candidate !== "object") invalidStoredPreview();
+    const row = candidate as Record<string, unknown>;
+    const kind = row.kind;
+    if (
+      !Number.isInteger(row.rowNumber) ||
+      (row.rowNumber as number) < 1 ||
+      typeof row.date !== "string" ||
+      normalizeImportDate(row.date) !== row.date ||
+      typeof row.description !== "string" ||
+      !row.description ||
+      !Number.isSafeInteger(row.amountMinor) ||
+      row.amountMinor === 0 ||
+      (kind !== "income" && kind !== "expense" && kind !== "transfer") ||
+      typeof row.categoryId !== "string" ||
+      !row.categoryId ||
+      typeof row.categoryName !== "string" ||
+      !row.categoryName ||
+      typeof row.fingerprint !== "string" ||
+      !row.fingerprint
+    ) {
+      invalidStoredPreview();
+    }
+
+    return {
+      rowNumber: row.rowNumber as number,
+      date: row.date,
+      description: row.description,
+      amountMinor: row.amountMinor as number,
+      kind,
+      categoryId: row.categoryId,
+      categoryName: row.categoryName,
+      categoryIsUncategorized: row.categoryIsUncategorized === true,
+      fingerprint: row.fingerprint,
+    } satisfies PreparedImportRecord;
+  });
+  if (new Set(rows.map((row) => row.rowNumber)).size !== rows.length) invalidStoredPreview();
+  return rows;
+}
+
+interface OverrideCategory {
+  id: string;
+  name: string;
+  kind: TransactionKind;
+  archived: boolean;
+  systemKey: string | null;
+}
+
+export function applyCategoryOverridesToRows(
+  rows: PreparedImportRecord[],
+  overrides: ImportCommitRequest["categoryOverrides"],
+  availableCategories: OverrideCategory[],
+): PreparedImportRecord[] {
+  if (overrides.length === 0) return rows;
+
+  const categoryById = new Map(availableCategories.map((category) => [category.id, category]));
+  const rowByNumber = new Map(rows.map((row) => [row.rowNumber, row]));
+  const replacements = new Map<number, PreparedImportRecord>();
+
+  for (const override of overrides) {
+    const row = rowByNumber.get(override.rowNumber);
+    const category = categoryById.get(override.categoryId);
+    if (
+      !row ||
+      !row.categoryIsUncategorized ||
+      !category ||
+      category.archived ||
+      category.systemKey !== null ||
+      category.kind !== row.kind
+    ) {
+      throw new HttpError(
+        400,
+        "invalid_category_override",
+        "One or more category changes are no longer valid. Preview the file again.",
+      );
+    }
+    replacements.set(row.rowNumber, {
+      ...row,
+      categoryId: category.id,
+      categoryName: category.name,
+      categoryIsUncategorized: false,
+    });
   }
-  return parsed as PreparedImportRecord[];
+
+  return rows.map((row) => replacements.get(row.rowNumber) ?? row);
+}
+
+async function applyCategoryOverrides(
+  env: Bindings,
+  tenantId: string,
+  rows: PreparedImportRecord[],
+  overrides: ImportCommitRequest["categoryOverrides"],
+): Promise<PreparedImportRecord[]> {
+  if (overrides.length === 0) return rows;
+
+  const db = drizzle(env.DB);
+  const availableCategories = await db
+    .select({
+      id: categories.id,
+      name: categories.name,
+      kind: categories.kind,
+      archived: categories.archived,
+      systemKey: categories.systemKey,
+    })
+    .from(categories)
+    .where(eq(categories.tenantId, tenantId));
+  return applyCategoryOverridesToRows(rows, overrides, availableCategories);
 }
 
 export const importRepository: ImportRepository = {
@@ -74,7 +190,7 @@ export const importRepository: ImportRepository = {
 
     let csv;
     try {
-      csv = parseCsv(input.csvText);
+      csv = parseCsv(input.csvText, { headerRowNumber: input.headerRowNumber });
     } catch (error) {
       throw new HttpError(
         400,
@@ -189,18 +305,18 @@ export const importRepository: ImportRepository = {
     };
   },
 
-  async commit(env, tenantId, token) {
+  async commit(env, tenantId, input) {
     const db = drizzle(env.DB);
     const [preview] = await db
       .select()
       .from(importPreviews)
-      .where(and(eq(importPreviews.id, token), eq(importPreviews.tenantId, tenantId)))
+      .where(and(eq(importPreviews.id, input.token), eq(importPreviews.tenantId, tenantId)))
       .limit(1);
     if (!preview) throw new HttpError(404, "preview_not_found", "Import preview not found.");
     if (new Date(preview.expiresAt).valueOf() <= Date.now()) {
       await db
         .delete(importPreviews)
-        .where(and(eq(importPreviews.id, token), eq(importPreviews.tenantId, tenantId)));
+        .where(and(eq(importPreviews.id, input.token), eq(importPreviews.tenantId, tenantId)));
       throw new HttpError(
         410,
         "preview_expired",
@@ -208,10 +324,15 @@ export const importRepository: ImportRepository = {
       );
     }
 
-    const rows = parseStoredRows(preview.rowsJson);
-    if (rows.length === 0) {
+    const storedRows = parseStoredRows(preview.rowsJson);
+    if (storedRows.length === 0) {
       throw new HttpError(400, "nothing_to_import", "The preview has no valid rows to import.");
     }
+    if (storedRows.length !== preview.acceptedCount) invalidStoredPreview();
+    const rows = await applyCategoryOverrides(env, tenantId, storedRows, input.categoryOverrides);
+    const overriddenRowNumbers = new Set(
+      input.categoryOverrides.map((override) => override.rowNumber),
+    );
     const importId = crypto.randomUUID();
     const defaultAccountId = defaultAccountIdForTenant(tenantId);
     const statements = [
@@ -225,23 +346,25 @@ export const importRepository: ImportRepository = {
         preview.acceptedCount,
         preview.rejectedCount,
       ),
-      ...rows.map((row) =>
-        env.DB.prepare(
-          "INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, 'PHP', ?, ?)",
+      ...rows.map((row) => {
+        return env.DB.prepare(
+          buildImportTransactionInsertSql(overriddenRowNumbers.has(row.rowNumber)),
         ).bind(
           crypto.randomUUID(),
           tenantId,
           defaultAccountId,
           row.categoryId,
+          tenantId,
+          row.kind,
           row.date,
           row.description,
           row.amountMinor,
           row.kind,
           row.fingerprint,
-        ),
-      ),
+        );
+      }),
       env.DB.prepare("DELETE FROM import_previews WHERE id = ? AND tenant_id = ?").bind(
-        token,
+        input.token,
         tenantId,
       ),
     ];
@@ -249,11 +372,19 @@ export const importRepository: ImportRepository = {
     try {
       await env.DB.batch(statements);
     } catch (error) {
-      if (error instanceof Error && error.message.toLocaleLowerCase("en").includes("unique")) {
+      const message = error instanceof Error ? error.message.toLocaleLowerCase("en") : "";
+      if (message.includes("unique")) {
         throw new HttpError(
           409,
           "import_conflict",
           "A matching transaction was imported after this preview. Preview the file again.",
+        );
+      }
+      if (message.includes("transactions.category_id") || message.includes("not null constraint")) {
+        throw new HttpError(
+          409,
+          "invalid_category_override",
+          "One or more categories changed after preview. Preview the file again.",
         );
       }
       throw error;

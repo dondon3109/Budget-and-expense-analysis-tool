@@ -41,7 +41,7 @@ export function createImportRoutes(repository: ImportRepository) {
       throw new HttpError(400, "invalid_request", "The preview token is invalid.");
     }
     return context.json(
-      await repository.commit(context.env, context.get("tenant").tenantId, parsed.data.token),
+      await repository.commit(context.env, context.get("tenant").tenantId, parsed.data),
       201,
     );
   });

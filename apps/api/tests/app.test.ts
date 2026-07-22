@@ -519,15 +519,17 @@ describe("API foundation", () => {
     const commitResponse = await app.request("/api/app/imports/commit", {
       method: "POST",
       headers: privateHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ token: "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0" }),
+      body: JSON.stringify({
+        token: "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
+        categoryOverrides: [{ rowNumber: 2, categoryId: "food" }],
+      }),
     });
     expect(commitResponse.status).toBe(201);
     expect(imports.preview).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(Object));
-    expect(imports.commit).toHaveBeenCalledWith(
-      undefined,
-      TENANT_ID,
-      "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
-    );
+    expect(imports.commit).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      token: "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
+      categoryOverrides: [{ rowNumber: 2, categoryId: "food" }],
+    });
   });
 
   it("accepts a fallback import date without a Category mapping", async () => {

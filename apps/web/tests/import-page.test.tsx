@@ -4,12 +4,12 @@ import "@testing-library/jest-dom/vitest";
 
 import type { ImportPreview } from "@budget/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { previewImport } from "../src/lib/api";
+import { commitImport, getCategories, previewImport } from "../src/lib/api";
 import { ImportPage } from "../src/pages/ImportPage";
 
 const workbook = vi.hoisted(() => ({
@@ -27,6 +27,7 @@ vi.mock("../src/auth/AuthProvider", () => ({
 
 vi.mock("../src/lib/api", () => ({
   commitImport: vi.fn(),
+  getCategories: vi.fn(),
   previewImport: vi.fn(),
 }));
 
@@ -54,7 +55,9 @@ const preview: ImportPreview = {
       description: "Market",
       amountMinor: -5000,
       kind: "expense",
+      categoryId: "food",
       categoryName: "Food & dining",
+      categoryIsUncategorized: false,
       errors: [],
     },
   ],
@@ -90,7 +93,30 @@ afterEach(cleanup);
 describe("ImportPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getCategories).mockResolvedValue([
+      {
+        id: "food",
+        name: "Food & dining",
+        kind: "expense",
+        color: "#dc8b3f",
+        archived: false,
+        system: false,
+      },
+      {
+        id: "uncategorized-expense",
+        name: "Uncategorized",
+        kind: "expense",
+        color: "#6b7280",
+        archived: false,
+        system: true,
+      },
+    ]);
     vi.mocked(previewImport).mockResolvedValue(preview);
+    vi.mocked(commitImport).mockResolvedValue({
+      importId: "import-1",
+      importedCount: 1,
+      rejectedCount: 0,
+    });
   });
 
   it("keeps CSV imports on the existing mapping and preview path", async () => {
@@ -110,6 +136,7 @@ describe("ImportPage", () => {
       {
         fileName: "transactions.csv",
         csvText: csv,
+        headerRowNumber: 1,
         mapping: {
           date: "Date",
           description: "Description",
@@ -230,6 +257,120 @@ describe("ImportPage", () => {
     expect(await screen.findByText(/Worksheet: Transactions · 1 data row/)).toBeInTheDocument();
     expect(workbook.convert).toHaveBeenCalledWith("Transactions");
     unmount();
-    expect(workbook.dispose).toHaveBeenCalledOnce();
+    expect(workbook.dispose).toHaveBeenCalled();
+  });
+
+  it("detects an introductory BPI header and maps Debit and Credit", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    const csv = [
+      "BPI Statement of Account",
+      "Account,1234",
+      "Transaction Date,Description,Debit,Credit",
+      "7/20/2026,Market,50.00,",
+    ].join("\n");
+
+    await user.upload(fileInput(container), fileWithBuffer("bpi-export.csv", csv, "text/csv"));
+
+    expect(await screen.findByLabelText("Header row")).toHaveValue("3");
+    expect(screen.getByLabelText("Amount format")).toHaveValue("debit-credit");
+    expect(screen.getByText("Ignoring 2 introductory rows")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+
+    await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
+    expect(vi.mocked(previewImport).mock.calls[0]?.[1]).toMatchObject({
+      headerRowNumber: 3,
+      mapping: {
+        date: "Transaction Date",
+        description: "Description",
+        debit: "Debit",
+        credit: "Credit",
+      },
+    });
+  });
+
+  it("requires explicit PHP confirmation for a Chase export without a PHP currency column", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    const csv = "Posting Date,Description,Amount\n7/20/2026,Market,-50.00";
+
+    await user.upload(fileInput(container), fileWithBuffer("Chase1234.csv", csv, "text/csv"));
+
+    expect(screen.getByText("PHP-only import")).toBeInTheDocument();
+    const previewButton = screen.getByRole("button", { name: "Preview import" });
+    expect(previewButton).toBeDisabled();
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "Store these numeric values as PHP without currency conversion",
+      }),
+    );
+    expect(previewButton).toBeEnabled();
+  });
+
+  it("ignores a preview response after the file changes", async () => {
+    const user = userEvent.setup();
+    let resolvePreview!: (value: ImportPreview) => void;
+    vi.mocked(previewImport).mockImplementationOnce(
+      () =>
+        new Promise<ImportPreview>((resolve) => {
+          resolvePreview = resolve;
+        }),
+    );
+    const { container } = renderPage();
+    const firstCsv = "Date,Description,Amount\n2026-07-20,First,-50.00";
+    const secondCsv = "Date,Description,Amount\n2026-07-21,Second,-25.00";
+
+    await user.upload(fileInput(container), fileWithBuffer("first.csv", firstCsv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+    await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
+    await user.upload(fileInput(container), fileWithBuffer("second.csv", secondCsv, "text/csv"));
+    await screen.findByText("second.csv");
+    await act(async () => resolvePreview(preview));
+
+    await waitFor(() =>
+      expect(screen.getByText("Your row-by-row preview will appear here.")).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: "Import 1 ready rows" })).not.toBeInTheDocument();
+  });
+
+  it("selects Uncategorized rows across preview pages and commits category overrides", async () => {
+    const user = userEvent.setup();
+    const rows = Array.from({ length: 101 }, (_, index) => ({
+      rowNumber: index + 2,
+      status: "ready" as const,
+      date: "2026-07-20",
+      description: `Transaction ${index + 1}`,
+      amountMinor: -100,
+      kind: "expense" as const,
+      categoryId: "uncategorized-expense",
+      categoryName: "Uncategorized",
+      categoryIsUncategorized: true,
+      errors: [],
+    }));
+    vi.mocked(previewImport).mockResolvedValueOnce({
+      ...preview,
+      rowCount: rows.length,
+      acceptedCount: rows.length,
+      rows,
+    });
+    const { container } = renderPage();
+    const csv = "Date,Description,Amount\n2026-07-20,Market,-50.00";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+    await screen.findByText("Categorize Uncategorized rows");
+    await user.click(screen.getByRole("button", { name: "Select all 101" }));
+    await user.selectOptions(screen.getByLabelText("New category"), "food");
+    await user.click(screen.getByRole("button", { name: "Apply to 101 selected" }));
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Transaction 101")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Import 101 ready rows" }));
+
+    await waitFor(() => expect(commitImport).toHaveBeenCalledOnce());
+    const request = vi.mocked(commitImport).mock.calls[0]?.[1];
+    expect(request?.token).toBe("preview-token");
+    expect(request?.categoryOverrides).toHaveLength(101);
+    expect(request?.categoryOverrides[0]).toEqual({ rowNumber: 2, categoryId: "food" });
   });
 });

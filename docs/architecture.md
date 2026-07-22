@@ -19,7 +19,10 @@ The public landing page contains a static dashboard illustration only. It does n
 
 - Currency is Philippine pesos (`PHP`) stored as integer centavos.
 - Dashboard calculations are pure and shared between API tests and UI contracts.
-- CSV import is preview-first: commit consumes a short-lived, tenant-scoped token and writes the audit plus transactions atomically.
+- CSV/XLS/XLSX import is preview-first. Excel bytes stay in a browser Web Worker; the API receives canonical CSV, an explicit header row, and editable column mappings.
+- Import normalization accepts signed Amount or Debit/Credit columns and canonicalizes ISO or U.S. slash dates before fingerprinting.
+- Built-in BPI, BDO, MariBank, Bank of America, and JPMorgan/Chase presets are client-side suggestions, never server-authoritative parsing rules.
+- Commit consumes a short-lived, tenant-scoped token plus optional row/category overrides, validates every override, and writes the audit plus transactions atomically without mutating the saved preview.
 - Imported transactions use the authenticated tenant's deterministic default account.
 - Landing and feature routes are lazy-loaded; the dashboard chart bundle loads only for the private app.
 - Authenticated write and import throttles use the verified tenant as their client identity.
@@ -30,7 +33,7 @@ The public landing page contains a static dashboard illustration only. It does n
 - `amount_minor` is an integer. Income is positive and expense is negative.
 - Transfers have their own kind and never contribute to money-in or money-out totals.
 - Dates use `YYYY-MM-DD`; timestamps are UTC SQLite timestamps.
-- Import fingerprints are SHA-256 hashes of normalized date, amount, description, and account source.
+- Import fingerprints are SHA-256 hashes of normalized date, signed amount, description, and account source. Category is excluded so commit-time recategorization does not change duplicate identity.
 - A unique `(tenant_id, import_fingerprint)` index prevents duplicate imported rows while allowing manual rows without fingerprints.
 - Query indexes start with `tenant_id` to keep user isolation and filtering efficient.
 
@@ -47,7 +50,7 @@ Authenticated (`Authorization: Bearer <Supabase access token>`):
 - `GET/POST/PATCH/DELETE /api/app/transactions/*` — transaction search and CRUD.
 - `GET /api/app/accounts` — accounts for forms and filters.
 - `GET/POST/PATCH /api/app/categories/*` — category management.
-- `POST /api/app/imports/preview` and `POST /api/app/imports/commit` — tenant-scoped CSV import.
+- `POST /api/app/imports/preview` and `POST /api/app/imports/commit` — tenant-scoped CSV/Excel-derived preview and atomic commit with validated category overrides.
 - `GET/PUT /api/app/budgets` — monthly budget plans.
 - `GET /api/app/exports/transactions.csv` — tenant-scoped CSV export.
 

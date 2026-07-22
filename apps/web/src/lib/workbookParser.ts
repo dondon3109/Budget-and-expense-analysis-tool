@@ -1,13 +1,10 @@
-import { parseCsv, type ParsedCsv } from "@budget/shared";
 import { read, utils, type CellObject, type WorkSheet } from "xlsx";
 
 export const MAX_WORKBOOK_FILE_BYTES = 5_000_000;
 const MAX_CANONICAL_CSV_BYTES = 1_000_000;
-const MAX_DATA_ROWS = 500;
 
 export interface WorkbookConversion {
   csvText: string;
-  headers: string[];
   rowCount: number;
   warnings: string[];
 }
@@ -151,21 +148,14 @@ function worksheetRows(sheet: WorkSheet, state: CellConversionState): string[][]
   return rows;
 }
 
-function parseGeneratedCsv(rows: string[][]): { csvText: string; parsed: ParsedCsv } {
+function serializeWorksheetRows(rows: string[][]): string {
   const csvText = rows.map((row) => row.map(csvField).join(",")).join("\n");
-  const parsed = parseCsv(csvText);
-  if (parsed.rows.length === 0) {
-    throw new WorkbookImportError("The selected worksheet has no data rows.");
-  }
-  if (parsed.rows.length > MAX_DATA_ROWS) {
-    throw new WorkbookImportError("The selected worksheet contains more than 500 data rows.");
-  }
   if (new TextEncoder().encode(csvText).byteLength > MAX_CANONICAL_CSV_BYTES) {
     throw new WorkbookImportError(
       "The selected worksheet is larger than the 1 MB import limit after conversion.",
     );
   }
-  return { csvText, parsed };
+  return csvText;
 }
 
 export function convertWorksheet(buffer: ArrayBuffer, sheetName: string): WorkbookConversion {
@@ -176,7 +166,7 @@ export function convertWorksheet(buffer: ArrayBuffer, sheetName: string): Workbo
 
   const state: CellConversionState = { formulaCount: 0, missingFormulaValueCount: 0 };
   const rows = worksheetRows(sheet, state);
-  const { csvText, parsed } = parseGeneratedCsv(rows);
+  const csvText = serializeWorksheetRows(rows);
   const warnings: string[] = [];
   if (state.formulaCount > 0) {
     warnings.push(
@@ -191,8 +181,7 @@ export function convertWorksheet(buffer: ArrayBuffer, sheetName: string): Workbo
 
   return {
     csvText,
-    headers: parsed.headers,
-    rowCount: parsed.rows.length,
+    rowCount: rows.length,
     warnings,
   };
 }
