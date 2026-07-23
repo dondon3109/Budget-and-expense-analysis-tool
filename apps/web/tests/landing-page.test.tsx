@@ -33,6 +33,8 @@ describe("landing page", () => {
     expect(
       screen.getByRole("button", { name: /switch to (dark|light) mode/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Learn more" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Why Zoption" })).toBeInTheDocument();
   });
 
   it("highlights file imports without the extra hero label", () => {
@@ -99,9 +101,14 @@ describe("landing page", () => {
   it("labels the dashboard artwork as illustrative and explains the empty start", () => {
     renderLanding();
 
-    expect(
-      screen.getByRole("img", { name: "Illustrative preview of the Zoption monthly dashboard" }),
-    ).toBeInTheDocument();
+    const preview = screen.getByRole("img", {
+      name: "Illustrative preview of the Zoption monthly dashboard",
+    });
+
+    expect(preview).toBeInTheDocument();
+    expect(preview.querySelector(".preview-metric-income")).toBeInTheDocument();
+    expect(preview.querySelector(".preview-metric-expense")).toBeInTheDocument();
+    expect(preview.querySelectorAll(".chart-bars span")).toHaveLength(6);
     expect(
       screen.getByText(/workspace begins without transactions or budgets/i),
     ).toBeInTheDocument();

@@ -18,10 +18,10 @@ export function LandingPage() {
           </span>
           <span>Zoption</span>
         </a>
-        <div className="landing-links">
+        <nav className="landing-links" aria-label="Learn more">
           <a href="#features">Features</a>
           <a href="#approach">How it works</a>
-        </div>
+        </nav>
         <div className="landing-account-actions">
           <ThemeToggle />
           <Link className="landing-sign-in" to="/login">
@@ -53,20 +53,20 @@ export function LandingPage() {
                 <ShieldCheck size={17} aria-hidden="true" /> Your workspace starts empty and private
               </span>
             </div>
-            <div className="hero-proof">
-              <div>
+            <ul className="hero-proof" aria-label="Why Zoption">
+              <li>
                 <strong>Review</strong>
                 <span>every row before import</span>
-              </div>
-              <div>
+              </li>
+              <li>
                 <strong>No bank link</strong>
                 <span>you choose what to add</span>
-              </div>
-              <div>
+              </li>
+              <li>
                 <strong>Transparent</strong>
                 <span>plain-language calculations</span>
-              </div>
-            </div>
+              </li>
+            </ul>
           </div>
           <div
             className="hero-visual"
@@ -84,12 +84,12 @@ export function LandingPage() {
               <span className="status-dot">Illustration</span>
             </div>
             <div className="preview-metrics">
-              <div>
+              <div className="preview-metric preview-metric-income">
                 <span>Money in</span>
                 <strong>₱48,000</strong>
                 <small>Income this month</small>
               </div>
-              <div>
+              <div className="preview-metric preview-metric-expense">
                 <span>Money out</span>
                 <strong>₱21,400</strong>
                 <small>45% of income</small>

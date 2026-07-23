@@ -2,6 +2,7 @@ import type { DashboardSummary } from "@zoption/shared";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Link } from "react-router-dom";
 
+import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { formatMoney } from "../../lib/formatters";
 
 interface Props {
@@ -9,6 +10,8 @@ interface Props {
 }
 
 export function SpendingByCategory({ data }: Props) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <section className="panel category-panel" aria-labelledby="spending-title">
       <div className="panel-heading">
@@ -39,6 +42,9 @@ export function SpendingByCategory({ data }: Props) {
                     paddingAngle={3}
                     stroke="var(--chart-slice-separator)"
                     strokeWidth={2}
+                    isAnimationActive={!reduceMotion}
+                    animationDuration={460}
+                    animationEasing="ease-out"
                   >
                     {data.map((entry) => (
                       <Cell key={entry.categoryId} fill={entry.color} />

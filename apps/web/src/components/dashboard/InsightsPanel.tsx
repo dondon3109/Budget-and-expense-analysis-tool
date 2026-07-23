@@ -26,7 +26,10 @@ export function InsightsPanel({ data }: InsightsPanelProps) {
         </div>
       </div>
       <div className="insights-layout">
-        <article className="savings-insight">
+        <article
+          className="savings-insight"
+          data-state={data.savingsMinor >= 0 ? "positive" : "negative"}
+        >
           <span className="insight-icon" aria-hidden="true">
             <PiggyBank size={18} />
           </span>

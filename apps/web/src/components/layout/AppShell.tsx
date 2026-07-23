@@ -63,6 +63,7 @@ export function AppShell({ children }: AppShellProps) {
             onClick={() => setMenuOpen((open) => !open)}
             aria-label={menuOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={menuOpen}
+            aria-controls="primary-navigation"
           >
             {menuOpen ? <X size={21} /> : <Menu size={21} />}
           </button>
@@ -76,7 +77,7 @@ export function AppShell({ children }: AppShellProps) {
           </span>
           <span>Zoption</span>
         </Link>
-        <nav className="side-nav" aria-label="Main navigation">
+        <nav id="primary-navigation" className="side-nav" aria-label="Main navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (

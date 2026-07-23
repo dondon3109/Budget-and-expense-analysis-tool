@@ -15,7 +15,7 @@ export const THEME_STORAGE_KEY = "zoption-theme";
 const LEGACY_THEME_STORAGE_KEY = "clarity-theme";
 
 const THEME_COLORS: Record<Theme, string> = {
-  light: "#f3f0e8",
+  light: "#f4f1e9",
   dark: "#101814",
 };
 

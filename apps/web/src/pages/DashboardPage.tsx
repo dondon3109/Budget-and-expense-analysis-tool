@@ -61,7 +61,7 @@ export function DashboardPage() {
     <AppShell>
       <div className="dashboard-page">
         <header className="dashboard-header">
-          <div>
+          <div className="dashboard-heading">
             <p className="eyebrow">Overview</p>
             <h1>Your month, at a glance</h1>
             <p>See what came in, what went out, and what is still available.</p>
@@ -118,7 +118,7 @@ export function DashboardPage() {
                   amountMinor: metrics.moneyInMinor,
                   detail: "Income received this month",
                   icon: ArrowDownRight,
-                  tone: "sage",
+                  tone: "income",
                 },
                 {
                   label: "Money out",
@@ -128,7 +128,7 @@ export function DashboardPage() {
                       ? "No income recorded this month"
                       : `${Math.round((metrics.moneyOutMinor / metrics.moneyInMinor) * 100)}% of monthly income`,
                   icon: ArrowUpRight,
-                  tone: "amber",
+                  tone: "expense",
                 },
                 {
                   label: "Net position",

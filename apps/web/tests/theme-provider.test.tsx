@@ -21,7 +21,7 @@ beforeEach(() => {
   window.localStorage.clear();
   delete document.documentElement.dataset.theme;
   document.documentElement.style.colorScheme = "";
-  document.head.innerHTML = '<meta name="theme-color" content="#f3f0e8">';
+  document.head.innerHTML = '<meta name="theme-color" content="#f4f1e9">';
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
 });
 
@@ -56,7 +56,7 @@ describe("ThemeProvider", () => {
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
     expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
       "content",
-      "#f3f0e8",
+      "#f4f1e9",
     );
   });
 

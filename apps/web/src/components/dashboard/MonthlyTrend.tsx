@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { formatMoney, formatMonth } from "../../lib/formatters";
 import { createMonthlyTrendAxis, formatMonthlyTrendTick } from "../../lib/monthlyTrendAxis";
 
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function MonthlyTrend({ data }: Props) {
+  const reduceMotion = useReducedMotion();
   const maximumMinor = data.reduce(
     (maximum, item) => Math.max(maximum, item.incomeMinor, item.expenseMinor),
     0,
@@ -32,7 +34,8 @@ export function MonthlyTrend({ data }: Props) {
         </div>
         {data.length > 0 && (
           <div className="chart-key">
-            <span className="income-key" /> In <span className="expense-key" /> Out
+            <span className="income-key" aria-hidden="true" /> <span>In</span>{" "}
+            <span className="expense-key" aria-hidden="true" /> <span>Out</span>
           </div>
         )}
       </div>
@@ -48,11 +51,11 @@ export function MonthlyTrend({ data }: Props) {
               <AreaChart data={data} margin={{ top: 12, right: 6, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-income)" stopOpacity={0.25} />
+                    <stop offset="0%" stopColor="var(--chart-income)" stopOpacity={0.16} />
                     <stop offset="100%" stopColor="var(--chart-income)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-expense)" stopOpacity={0.2} />
+                    <stop offset="0%" stopColor="var(--chart-expense)" stopOpacity={0.13} />
                     <stop offset="100%" stopColor="var(--chart-expense)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
@@ -89,15 +92,21 @@ export function MonthlyTrend({ data }: Props) {
                   type="monotone"
                   dataKey="incomeMinor"
                   stroke="var(--chart-income)"
-                  strokeWidth={2.5}
+                  strokeWidth={2}
                   fill="url(#incomeFill)"
+                  isAnimationActive={!reduceMotion}
+                  animationDuration={520}
+                  animationEasing="ease-out"
                 />
                 <Area
                   type="monotone"
                   dataKey="expenseMinor"
                   stroke="var(--chart-expense)"
-                  strokeWidth={2.5}
+                  strokeWidth={2}
                   fill="url(#expenseFill)"
+                  isAnimationActive={!reduceMotion}
+                  animationDuration={520}
+                  animationEasing="ease-out"
                 />
               </AreaChart>
             </ResponsiveContainer>

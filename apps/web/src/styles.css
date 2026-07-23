@@ -18,17 +18,38 @@
   --page-accent: #f7f4ec;
   --ink: #17342e;
   --muted: #6c716c;
-  --subtle: #858984;
+  --subtle: #66706a;
   --sage: #2f705a;
   --sage-hover: #245047;
   --sage-soft: #e5f0eb;
+  --action: #0f6b5b;
+  --action-strong: #06473d;
+  --action-soft: #d5f4ea;
+  --brand: #0f6b5b;
+  --brand-strong: #06473d;
+  --brand-soft: #d5f4ea;
+  --selection-soft: #c6eee1;
+  --brand-glow: rgba(15, 107, 91, 0.2);
+  --income: #08776d;
+  --income-soft: #d9f5f0;
+  --expense: #d96b35;
+  --expense-soft: #ffe3d6;
+  --expense-text: #a0441f;
+  --budget: #6e4fc5;
+  --budget-soft: #eae2ff;
+  --info: #2f65c8;
+  --info-soft: #e0e9ff;
+  --page-glow-alt: rgba(47, 101, 200, 0.15);
+  --inverse-bg: #17342e;
+  --inverse-text: #fffdf8;
+  --inverse-muted: #b9d8cc;
   --excel-accent: #217346;
   --excel-ink: #175c37;
   --excel-soft: #edf7f1;
   --excel-line: rgba(33, 115, 70, 0.18);
   --excel-grid: rgba(33, 115, 70, 0.09);
-  --solid-bg: #17342e;
-  --solid-hover: #245047;
+  --solid-bg: #06473d;
+  --solid-hover: #0f6b5b;
   --solid-text: #fff;
   --paper: #fffdf8;
   --surface: #fff;
@@ -37,10 +58,10 @@
   --surface-glass: rgba(255, 255, 255, 0.62);
   --surface-translucent: rgba(255, 253, 248, 0.9);
   --glass-border: rgba(255, 255, 255, 0.78);
-  --page-glow: rgba(207, 226, 216, 0.75);
+  --page-glow: rgba(153, 232, 211, 0.82);
   --line: #e4dfd3;
   --line-strong: #d9d5cb;
-  --focus: #83b8a5;
+  --focus: #2f705a;
   --shadow: rgba(35, 51, 44, 0.08);
   --overlay: rgba(18, 34, 30, 0.56);
   --success: #2f705a;
@@ -56,8 +77,8 @@
   --contrast-bg: #17342e;
   --contrast-text: #fffdf8;
   --contrast-muted: #b9d8cc;
-  --chart-income: #3f8f74;
-  --chart-expense: #dc8b3f;
+  --chart-income: #0e8a7e;
+  --chart-expense: #d96b35;
   --chart-grid: #e7e2d8;
   --chart-axis: #73716b;
   --chart-tooltip-bg: #fffdf8;
@@ -77,13 +98,34 @@
   --sage: #78c5a6;
   --sage-hover: #8dd3b6;
   --sage-soft: #1b392f;
+  --action: #67e0bc;
+  --action-strong: #a3f2d5;
+  --action-soft: #123f35;
+  --brand: #67e0bc;
+  --brand-strong: #a3f2d5;
+  --brand-soft: #123f35;
+  --selection-soft: #1a5645;
+  --brand-glow: rgba(103, 224, 188, 0.2);
+  --income: #62ddcb;
+  --income-soft: #123e3b;
+  --expense: #ffad7b;
+  --expense-soft: #4d2a25;
+  --expense-text: #ffb28a;
+  --budget: #c2a6ff;
+  --budget-soft: #382b57;
+  --info: #8ab4ff;
+  --info-soft: #213457;
+  --page-glow-alt: rgba(112, 154, 255, 0.18);
+  --inverse-bg: #0a110e;
+  --inverse-text: #edf5f0;
+  --inverse-muted: #a8b8b0;
   --excel-accent: #75c99a;
   --excel-ink: #c2ead3;
   --excel-soft: #172b22;
   --excel-line: rgba(117, 201, 154, 0.22);
   --excel-grid: rgba(117, 201, 154, 0.1);
-  --solid-bg: #78c5a6;
-  --solid-hover: #8dd3b6;
+  --solid-bg: #67e0bc;
+  --solid-hover: #a3f2d5;
   --solid-text: #102019;
   --paper: #18231e;
   --surface: #202d27;
@@ -92,7 +134,7 @@
   --surface-glass: rgba(32, 45, 39, 0.78);
   --surface-translucent: rgba(24, 35, 30, 0.94);
   --glass-border: rgba(120, 197, 166, 0.2);
-  --page-glow: rgba(53, 94, 76, 0.5);
+  --page-glow: rgba(54, 154, 121, 0.62);
   --line: #33463d;
   --line-strong: #43594f;
   --focus: #8ed0b5;
@@ -111,8 +153,8 @@
   --contrast-bg: #0a110e;
   --contrast-text: #edf5f0;
   --contrast-muted: #a8b8b0;
-  --chart-income: #72c2a2;
-  --chart-expense: #f0a65c;
+  --chart-income: #62ddcb;
+  --chart-expense: #ffad7b;
   --chart-grid: #34463e;
   --chart-axis: #a8b8b0;
   --chart-tooltip-bg: #202d27;
@@ -194,11 +236,13 @@ textarea:focus-visible {
   min-height: 100vh;
   overflow: hidden;
   background:
-    radial-gradient(circle at 82% 12%, var(--page-glow), transparent 30%), var(--page-accent);
+    radial-gradient(circle at 84% 10%, var(--page-glow), transparent 31%),
+    radial-gradient(circle at 8% 34%, var(--page-glow-alt), transparent 24%),
+    linear-gradient(135deg, var(--page-accent) 0%, var(--page) 52%, var(--page-accent) 100%);
 }
 .landing-nav {
   width: min(1180px, calc(100% - 48px));
-  height: 88px;
+  height: 92px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -210,6 +254,9 @@ textarea:focus-visible {
   color: var(--muted);
   font-size: 14px;
   font-weight: 600;
+}
+.landing-links a {
+  transition: color 0.16s ease;
 }
 .landing-links a:hover {
   color: var(--ink);
@@ -225,6 +272,7 @@ textarea:focus-visible {
   color: var(--muted);
   font-size: 14px;
   font-weight: 750;
+  transition: color 0.16s ease;
 }
 .landing-sign-in:hover {
   color: var(--ink);
@@ -246,6 +294,9 @@ textarea:focus-visible {
 .button:hover {
   transform: translateY(-2px);
 }
+.button:active {
+  transform: translateY(0);
+}
 .button.primary {
   color: var(--solid-text);
   background: var(--solid-bg);
@@ -264,13 +315,13 @@ textarea:focus-visible {
 }
 .hero {
   width: min(1180px, calc(100% - 48px));
-  min-height: 650px;
+  min-height: 680px;
   margin: 0 auto;
-  padding: 78px 0 72px;
+  padding: 82px 0 78px;
   display: grid;
   grid-template-columns: 1.02fr 0.98fr;
   align-items: center;
-  gap: 68px;
+  gap: 72px;
 }
 .hero h1 {
   max-width: 650px;
@@ -304,12 +355,15 @@ textarea:focus-visible {
   line-height: 1.45;
 }
 .hero-proof {
+  margin: 0;
+  padding: 27px 0 0;
   display: flex;
   gap: 34px;
-  padding-top: 27px;
-  border-top: 1px solid var(--line);
+  border-top: 2px solid var(--action);
+  list-style: none;
 }
-.hero-proof div {
+.hero-proof li {
+  min-width: 0;
   display: grid;
   gap: 3px;
 }
@@ -322,15 +376,17 @@ textarea:focus-visible {
   font-size: 11px;
 }
 .hero-visual {
+  --hero-rotation: 0.6deg;
   position: relative;
-  padding: 28px;
+  padding: 30px;
   border: 1px solid var(--glass-border);
-  border-radius: 30px;
+  border-radius: 26px;
   background: var(--surface-translucent);
   box-shadow:
-    0 34px 90px var(--shadow),
-    inset 0 1px 0 var(--glass-border);
-  transform: rotate(0.6deg);
+    0 28px 72px var(--shadow),
+    0 1px 0 var(--glass-border),
+    0 0 0 10px color-mix(in srgb, var(--brand) 10%, transparent);
+  transform: rotate(var(--hero-rotation));
 }
 .hero-visual::before {
   content: "";
@@ -338,7 +394,7 @@ textarea:focus-visible {
   inset: 20px -25px -25px 30px;
   z-index: -1;
   border-radius: 30px;
-  background: var(--success-soft);
+  background: var(--brand-soft);
   transform: rotate(-4deg);
 }
 .preview-top,
@@ -365,9 +421,9 @@ textarea:focus-visible {
 }
 .status-dot {
   padding: 6px 10px;
-  color: var(--sage);
+  color: var(--info);
   border-radius: 999px;
-  background: var(--sage-soft);
+  background: var(--info-soft);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
@@ -380,10 +436,27 @@ textarea:focus-visible {
   margin: 25px 0 12px;
 }
 .preview-metrics > div {
+  position: relative;
+  overflow: hidden;
   padding: 20px;
   border: 1px solid var(--line);
   border-radius: 17px;
   background: var(--surface);
+  box-shadow: inset 0 3px 0 var(--info);
+}
+.preview-metrics > .preview-metric-income {
+  background: linear-gradient(145deg, var(--income-soft), var(--surface) 54%);
+  box-shadow: inset 0 3px 0 var(--income);
+}
+.preview-metrics > .preview-metric-expense {
+  background: linear-gradient(145deg, var(--expense-soft), var(--surface) 54%);
+  box-shadow: inset 0 3px 0 var(--expense);
+}
+.preview-metric-income strong {
+  color: var(--income);
+}
+.preview-metric-expense strong {
+  color: var(--expense-text);
 }
 .preview-metrics span,
 .preview-metrics small {
@@ -401,9 +474,12 @@ textarea:focus-visible {
 .preview-chart {
   height: 220px;
   padding: 20px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--info);
   border-radius: 17px;
-  background: var(--surface);
+  background: linear-gradient(145deg, var(--info-soft), transparent 42%), var(--surface);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--info) 22%, transparent),
+    0 12px 28px var(--shadow);
 }
 .preview-chart-head span {
   font-size: 13px;
@@ -425,16 +501,144 @@ textarea:focus-visible {
 .chart-bars span {
   width: 26px;
   border-radius: 8px 8px 2px 2px;
-  background: linear-gradient(var(--sage), var(--chart-income));
+  transform-origin: bottom;
+  background: linear-gradient(180deg, var(--expense), var(--chart-expense));
 }
-.chart-bars span:nth-child(2n) {
-  background: linear-gradient(var(--amber), var(--chart-expense));
+@keyframes hero-preview-settle {
+  from {
+    opacity: 0.9;
+    transform: translateY(18px) rotate(calc(var(--hero-rotation) + 1.2deg));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--hero-rotation));
+  }
+}
+@keyframes preview-source-confirm {
+  0% {
+    opacity: 0.84;
+    transform: scale(0.86) rotate(-6deg);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--action) 0%, transparent);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--action) 22%, transparent);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--action) 0%, transparent);
+  }
+}
+@keyframes preview-metrics-resolve {
+  from {
+    opacity: 0.86;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes preview-bar-rise {
+  from {
+    opacity: 0.84;
+    filter: saturate(0.72);
+    transform: scaleY(0.64);
+  }
+  to {
+    opacity: 1;
+    filter: saturate(1);
+    transform: scaleY(1);
+  }
+}
+@keyframes preview-status-settle {
+  from {
+    opacity: 0.84;
+    transform: scale(0.78) rotate(-5deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .landing-page .hero-visual {
+    animation: hero-preview-settle 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .landing-page .preview-icon.upload {
+    animation: preview-source-confirm 280ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+  }
+  .landing-page .preview-metrics > div {
+    animation: preview-metrics-resolve 340ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
+  }
+  .landing-page .preview-metrics > div:nth-child(2) {
+    animation-delay: 248ms;
+  }
+  .landing-page .chart-bars span {
+    animation: preview-bar-rise 340ms cubic-bezier(0.16, 1, 0.3, 1) 360ms both;
+  }
+  .landing-page .chart-bars span:nth-child(2) {
+    animation-delay: 396ms;
+  }
+  .landing-page .chart-bars span:nth-child(3) {
+    animation-delay: 432ms;
+  }
+  .landing-page .chart-bars span:nth-child(4) {
+    animation-delay: 468ms;
+  }
+  .landing-page .chart-bars span:nth-child(5) {
+    animation-delay: 504ms;
+  }
+  .landing-page .chart-bars span:nth-child(6) {
+    animation-delay: 540ms;
+  }
+  .landing-page .status-dot,
+  .landing-page .check {
+    animation: preview-status-settle 260ms cubic-bezier(0.16, 1, 0.3, 1) 760ms both;
+  }
+  .landing-page .check {
+    animation-delay: 800ms;
+  }
+}
+@keyframes dashboard-data-settle {
+  from {
+    opacity: 0.9;
+    transform: translateY(5px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes budget-fill-settle {
+  from {
+    transform: scaleX(0.86);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-page .progress-track span {
+    animation: budget-fill-settle 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .dashboard-page .savings-insight {
+    animation: dashboard-data-settle 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
 }
 .preview-bottom {
   margin-top: 12px;
   padding: 15px 17px;
+  border: 1px solid color-mix(in srgb, var(--action) 38%, var(--line));
   border-radius: 15px;
-  background: var(--success-soft);
+  background: linear-gradient(135deg, var(--action-soft), var(--surface));
+  box-shadow: 0 10px 24px var(--shadow);
 }
 .preview-bottom > div {
   justify-content: flex-start;
@@ -459,7 +663,8 @@ textarea:focus-visible {
   place-items: center;
   border-radius: 9px;
   color: var(--solid-text);
-  background: var(--sage);
+  background: var(--action);
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--action) 28%, transparent);
 }
 .check {
   width: 26px;
@@ -467,8 +672,9 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: var(--chart-income);
+  color: var(--success);
   background: var(--surface);
+  box-shadow: 0 0 0 3px var(--success-soft);
 }
 .preview-disclaimer {
   margin: 13px 3px 0;
@@ -478,7 +684,7 @@ textarea:focus-visible {
   text-align: center;
 }
 .feature-strip {
-  padding: 46px max(24px, calc((100% - 1180px) / 2));
+  padding: 52px max(24px, calc((100% - 1180px) / 2));
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1px;
@@ -491,6 +697,9 @@ textarea:focus-visible {
   color: var(--contrast-text);
   border-right: 1px solid rgba(255, 255, 255, 0.13);
 }
+.feature-strip article > div {
+  min-width: 0;
+}
 .feature-strip article:last-child {
   border: 0;
 }
@@ -501,8 +710,9 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  color: var(--contrast-muted);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--action);
+  background: color-mix(in srgb, var(--action) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--action) 42%, transparent);
 }
 .feature-strip h2 {
   margin: 0 0 5px;
@@ -873,14 +1083,18 @@ textarea:focus-visible {
   border-radius: 11px;
   cursor: default;
   text-align: left;
+  transition:
+    color 0.16s ease,
+    background 0.16s ease;
 }
 .nav-item:not(.current):hover {
   background: var(--surface-hover);
   cursor: pointer;
 }
 .nav-item.current {
-  color: var(--ink);
-  background: var(--surface-hover);
+  color: var(--action-strong);
+  background: var(--selection-soft);
+  box-shadow: inset 3px 0 0 var(--action);
   font-weight: 750;
 }
 .nav-item small {
@@ -981,20 +1195,24 @@ textarea:focus-visible {
 .dashboard-page {
   width: min(1270px, calc(100% - 64px));
   margin: 0 auto;
-  padding: 48px 0 58px;
+  padding: 54px 0 64px;
 }
 .dashboard-header {
   display: flex;
-  align-items: end;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
+  gap: 28px;
+}
+.dashboard-heading {
+  max-width: 680px;
 }
 .dashboard-header h1 {
   margin: 0;
   color: var(--ink);
   font-family: Georgia, serif;
-  font-size: 36px;
-  letter-spacing: -0.025em;
+  font-size: clamp(36px, 3.2vw, 44px);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
 }
 .dashboard-header p:not(.eyebrow) {
   margin: 8px 0 0;
@@ -1003,6 +1221,7 @@ textarea:focus-visible {
 }
 .date-button {
   min-height: 42px;
+  margin-top: 4px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1012,19 +1231,19 @@ textarea:focus-visible {
   border-radius: 11px;
   background: var(--paper);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
   font-weight: 650;
 }
 .workspace-onboarding {
-  margin-top: 28px;
-  padding: clamp(28px, 5vw, 54px);
+  margin-top: 32px;
+  padding: clamp(30px, 5vw, 58px);
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
   gap: clamp(34px, 6vw, 78px);
   border: 1px solid var(--line);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 90% 10%, rgba(113, 170, 149, 0.18), transparent 34%), var(--paper);
-  box-shadow: 0 18px 52px rgba(35, 51, 44, 0.07);
+  border-radius: 20px;
+  background: radial-gradient(circle at 90% 10%, var(--brand-glow), transparent 34%), var(--paper);
+  box-shadow: 0 18px 52px var(--shadow);
 }
 .onboarding-copy h2 {
   max-width: 620px;
@@ -1059,10 +1278,10 @@ textarea:focus-visible {
   height: 34px;
   display: grid;
   place-items: center;
-  color: var(--sage);
+  color: var(--brand-strong);
   border: 1px solid var(--line);
   border-radius: 50%;
-  background: var(--success-soft);
+  background: var(--brand-soft);
   font-size: 11px;
   font-weight: 800;
 }
@@ -1120,21 +1339,36 @@ textarea:focus-visible {
   place-items: center;
   border-radius: 9px;
 }
-.tone-sage .overview-stat-icon {
-  color: var(--chart-income);
-  background: var(--success-soft);
+.tone-income .overview-stat-icon {
+  color: var(--income);
+  background: var(--income-soft);
 }
-.tone-amber .overview-stat-icon {
-  color: var(--amber);
-  background: var(--amber-soft);
+.tone-expense .overview-stat-icon {
+  color: var(--expense-text);
+  background: var(--expense-soft);
 }
 .tone-ink .overview-stat-icon {
   color: var(--ink);
   background: var(--surface-hover);
 }
 .tone-plum .overview-stat-icon {
-  color: var(--plum);
-  background: var(--plum-soft);
+  color: var(--budget);
+  background: var(--budget-soft);
+}
+.dashboard-page .overview-stat {
+  box-shadow: inset 0 3px 0 var(--info);
+}
+.dashboard-page .overview-stat.tone-income {
+  box-shadow: inset 0 3px 0 var(--income);
+}
+.dashboard-page .overview-stat.tone-expense {
+  box-shadow: inset 0 3px 0 var(--expense);
+}
+.dashboard-page .overview-stat.tone-ink {
+  box-shadow: inset 0 3px 0 var(--ink);
+}
+.dashboard-page .overview-stat.tone-plum {
+  box-shadow: inset 0 3px 0 var(--budget);
 }
 .overview-stat > strong {
   display: block;
@@ -1269,6 +1503,10 @@ textarea:focus-visible {
   background: transparent;
   font-size: 11px;
   font-weight: 750;
+  transition: color 0.16s ease;
+}
+.text-button:hover {
+  color: var(--sage-hover);
 }
 .donut-layout {
   min-height: 255px;
@@ -1340,23 +1578,26 @@ textarea:focus-visible {
   margin-top: 10px;
 }
 .chart-key {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 7px;
   color: var(--muted);
   font-size: 10px;
+  white-space: nowrap;
 }
 .income-key,
 .expense-key {
-  width: 7px;
-  height: 7px;
+  width: 18px;
+  height: 3px;
   display: inline-block;
-  border-radius: 50%;
-  background: var(--sage);
+  border-radius: 999px;
+  background: var(--chart-income);
+  box-shadow: 0 0 0 2px var(--income-soft);
 }
 .expense-key {
-  margin-left: 5px;
-  background: var(--amber);
+  margin-left: 6px;
+  background: var(--chart-expense);
+  box-shadow: 0 0 0 2px var(--expense-soft);
 }
 .budget-panel {
   grid-column: 1 / -1;
@@ -1382,7 +1623,15 @@ textarea:focus-visible {
   gap: 13px;
   border: 1px solid var(--line);
   border-radius: 14px;
+  background: var(--surface-soft);
+}
+.savings-insight[data-state="positive"] {
+  border-color: var(--success);
   background: var(--success-soft);
+}
+.savings-insight[data-state="negative"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
 }
 .insight-icon {
   width: 36px;
@@ -1390,9 +1639,15 @@ textarea:focus-visible {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  color: var(--sage);
+  color: var(--muted);
   border-radius: 10px;
-  background: var(--success-soft);
+  background: var(--surface);
+}
+.savings-insight[data-state="positive"] .insight-icon {
+  color: var(--success);
+}
+.savings-insight[data-state="negative"] .insight-icon {
+  color: var(--danger);
 }
 .savings-insight div {
   min-width: 0;
@@ -1406,10 +1661,22 @@ textarea:focus-visible {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+.savings-insight[data-state="positive"] div > span {
+  color: var(--success);
+}
+.savings-insight[data-state="negative"] div > span {
+  color: var(--danger);
+}
 .savings-insight strong {
   color: var(--ink);
   font-family: Georgia, serif;
   font-size: 23px;
+}
+.savings-insight[data-state="positive"] strong {
+  color: var(--success);
+}
+.savings-insight[data-state="negative"] strong {
+  color: var(--danger);
 }
 .savings-insight p,
 .insight-empty {
@@ -1497,9 +1764,13 @@ textarea:focus-visible {
   height: 100%;
   display: block;
   border-radius: inherit;
+  transform-origin: left center;
+  transition:
+    width 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 160ms ease;
 }
 .progress-track span.over {
-  background: #b85a56;
+  background: var(--danger);
 }
 .budget-value {
   color: var(--muted);
@@ -1525,6 +1796,84 @@ textarea:focus-visible {
 .calculation-note p {
   max-width: 720px;
   line-height: 1.6;
+}
+
+/* Surface-specific polish keeps the shared component language intact. */
+.dashboard-page .overview-stat-bar {
+  border-radius: 18px;
+  box-shadow: 0 14px 34px var(--shadow);
+}
+.dashboard-page .overview-stat {
+  padding: 23px 25px;
+}
+.dashboard-page .overview-stat > strong {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(24px, 2vw, 30px);
+  font-weight: 760;
+  letter-spacing: -0.035em;
+}
+.dashboard-page .dashboard-grid {
+  gap: 18px;
+}
+.dashboard-page .panel {
+  padding: 25px;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px var(--shadow);
+}
+.dashboard-page .panel-heading h2 {
+  font-size: 20px;
+  letter-spacing: -0.015em;
+}
+.dashboard-page .panel-empty {
+  min-height: 230px;
+  border-radius: 15px;
+}
+.dashboard-page .calculation-note {
+  margin-top: 20px;
+}
+.dashboard-page .panel {
+  position: relative;
+  overflow: hidden;
+}
+.dashboard-page .category-panel {
+  background: linear-gradient(145deg, var(--info-soft), var(--paper) 30%);
+  box-shadow:
+    inset 0 3px 0 var(--info),
+    0 12px 30px var(--shadow);
+}
+.dashboard-page .trend-panel {
+  background: linear-gradient(145deg, var(--income-soft), var(--paper) 26%);
+  box-shadow:
+    inset 0 3px 0 var(--income),
+    0 12px 30px var(--shadow);
+}
+.dashboard-page .insights-panel {
+  background: linear-gradient(145deg, var(--action-soft), var(--paper) 28%);
+  box-shadow:
+    inset 0 3px 0 var(--action),
+    0 12px 30px var(--shadow);
+}
+.dashboard-page .budget-panel {
+  background: linear-gradient(145deg, var(--budget-soft), var(--paper) 28%);
+  box-shadow:
+    inset 0 3px 0 var(--budget),
+    0 12px 30px var(--shadow);
+}
+.landing-page .eyebrow,
+.dashboard-page .eyebrow {
+  color: var(--action);
+}
+.dashboard-page .text-button {
+  color: var(--action);
+}
+.dashboard-page .category-panel .eyebrow {
+  color: var(--info);
+}
+.dashboard-page .trend-panel .eyebrow {
+  color: var(--income);
+}
+.dashboard-page .budget-panel .eyebrow {
+  color: var(--budget);
 }
 .full-page-status {
   min-height: 100vh;
@@ -1843,7 +2192,7 @@ textarea:focus-visible {
   background: var(--success-soft);
 }
 .kind-badge.expense {
-  color: var(--amber);
+  color: var(--expense-text);
   background: var(--amber-soft);
 }
 .kind-badge.transfer {
@@ -1859,7 +2208,7 @@ textarea:focus-visible {
   color: var(--success);
 }
 .amount-expense {
-  color: var(--amber);
+  color: var(--expense-text);
 }
 .row-actions {
   width: 88px;
@@ -3541,9 +3890,10 @@ button:disabled {
     gap: 17px;
   }
   .hero-visual {
+    --hero-rotation: 0deg;
     padding: 17px;
     border-radius: 22px;
-    transform: none;
+    transform: rotate(var(--hero-rotation));
   }
   .preview-chart {
     height: 190px;
@@ -3617,7 +3967,7 @@ button:disabled {
     width: 100%;
     padding-top: 18px;
     transform: translateX(-102%);
-    transition: transform 0.2s ease;
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .sidebar.open {
     transform: translateX(0);
@@ -3641,7 +3991,11 @@ button:disabled {
   }
   .dashboard-page {
     width: calc(100% - 28px);
-    padding: 28px 0 44px;
+    padding: 30px 0 46px;
+  }
+  .dashboard-page .panel {
+    padding: 20px 17px;
+    border-radius: 16px;
   }
   .dashboard-header {
     align-items: flex-start;
@@ -4083,6 +4437,25 @@ button:disabled {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+  .landing-page .hero-visual,
+  .landing-page .preview-icon.upload,
+  .landing-page .preview-metrics > div,
+  .landing-page .chart-bars span,
+  .landing-page .status-dot,
+  .landing-page .check,
+  .dashboard-page .progress-track span,
+  .dashboard-page .savings-insight {
+    animation: none !important;
+  }
+  .button:hover,
+  .calendar-month-nav:hover {
+    transform: none !important;
+  }
+  .progress-track span,
+  .spinning {
+    animation: none !important;
+    transition: none !important;
   }
   .supported-formats-marquee {
     -webkit-mask-image: none;

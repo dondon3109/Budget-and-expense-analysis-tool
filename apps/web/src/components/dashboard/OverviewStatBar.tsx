@@ -8,7 +8,7 @@ export interface OverviewStatItem {
   amountMinor: number;
   detail: string;
   icon: LucideIcon;
-  tone: "sage" | "amber" | "ink" | "plum";
+  tone: "income" | "expense" | "ink" | "plum";
 }
 
 interface OverviewStatBarProps {
