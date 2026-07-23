@@ -1152,7 +1152,7 @@ textarea:focus-visible {
 .sidebar-account .button + .button {
   margin-top: 0;
 }
-.logout-button {
+.sidebar-account-action {
   min-height: 34px;
   margin-top: 4px;
   padding: 0 8px;
@@ -1168,11 +1168,16 @@ textarea:focus-visible {
   font-size: 10px;
   font-weight: 750;
 }
-.logout-button:hover:not(:disabled) {
+.sidebar-account-action + .sidebar-account-action {
+  margin-top: 0;
+}
+.sidebar-account-action:hover:not(:disabled),
+.sidebar-account-action.current {
   color: var(--ink);
   background: var(--surface-hover);
 }
-.logout-button:disabled {
+.sidebar-account-action:disabled {
+  cursor: not-allowed;
   opacity: 0.55;
 }
 .sidebar-account > small {
@@ -3740,6 +3745,146 @@ button:disabled {
   text-align: center;
 }
 
+.settings-page {
+  max-width: 980px;
+}
+.settings-notice {
+  margin-top: 28px;
+  padding: 15px 17px;
+  display: grid;
+  gap: 4px;
+  color: var(--success);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--success-soft);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.settings-notice strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+.settings-sections {
+  margin-top: 28px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+}
+.settings-section {
+  padding: clamp(24px, 4vw, 38px);
+}
+.settings-section + .settings-section {
+  border-top: 1px solid var(--line);
+}
+.settings-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+}
+.settings-section-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+.settings-section-heading p {
+  max-width: 570px;
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.settings-section-heading > span {
+  flex: 0 0 auto;
+  padding-top: 5px;
+  color: var(--subtle);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.settings-form {
+  max-width: 680px;
+  margin-top: 24px;
+  display: grid;
+  gap: 16px;
+}
+.settings-form label {
+  display: grid;
+  gap: 7px;
+}
+.settings-form label > span,
+.current-account-value > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.settings-form label > small,
+.current-account-value small,
+.settings-helper {
+  margin: 0;
+  color: var(--subtle);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.settings-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  font-size: 12px;
+}
+.settings-form input:focus {
+  border-color: #76a994;
+  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+}
+.settings-form input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.settings-password-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.current-account-value {
+  max-width: 680px;
+  margin-top: 21px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 5px;
+  border-radius: 11px;
+  background: var(--surface-soft);
+}
+.current-account-value strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 12px;
+}
+.form-success {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--success);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--success-soft);
+  font-size: 11px;
+}
+.settings-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 @media (max-width: 1050px) {
   .auth-page {
     grid-template-columns: minmax(0, 620px);
@@ -4003,6 +4148,19 @@ button:disabled {
   }
   .dashboard-header h1 {
     font-size: 31px;
+  }
+  .settings-section-heading {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .settings-section-heading > span {
+    padding-top: 0;
+  }
+  .settings-password-row {
+    grid-template-columns: 1fr;
+  }
+  .settings-form-actions .button {
+    width: 100%;
   }
   .transaction-header .header-actions {
     width: 100%;

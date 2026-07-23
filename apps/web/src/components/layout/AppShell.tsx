@@ -8,6 +8,7 @@ import {
   Menu,
   PiggyBank,
   Repeat2,
+  Settings,
   X,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -31,6 +32,8 @@ const navItems = [
 
 export function AppShell({ children }: AppShellProps) {
   const { user, signOut } = useAuth();
+  const displayName =
+    typeof user?.user_metadata?.display_name === "string" ? user.user_metadata.display_name.trim() : "";
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
@@ -98,9 +101,19 @@ export function AppShell({ children }: AppShellProps) {
         <div className="sidebar-account">
           <ThemeToggle />
           <span>Signed in as</span>
-          <strong title={user?.email}>{user?.email ?? "Zoption user"}</strong>
+          <strong title={displayName || user?.email}>{displayName || user?.email || "Zoption user"}</strong>
+          {displayName && <p title={user?.email}>{user?.email}</p>}
+          <NavLink
+            to="/app/settings"
+            className={({ isActive }) =>
+              isActive ? "sidebar-account-action current" : "sidebar-account-action"
+            }
+            onClick={() => setMenuOpen(false)}
+          >
+            <Settings size={15} aria-hidden="true" /> Account settings
+          </NavLink>
           <button
-            className="logout-button"
+            className="sidebar-account-action"
             type="button"
             onClick={() => void handleSignOut()}
             disabled={signingOut}

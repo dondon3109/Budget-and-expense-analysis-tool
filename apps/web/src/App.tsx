@@ -31,6 +31,10 @@ const SubscriptionsPage = lazy(async () => {
   const module = await import("./pages/SubscriptionsPage");
   return { default: module.SubscriptionsPage };
 });
+const SettingsPage = lazy(async () => {
+  const module = await import("./pages/SettingsPage");
+  return { default: module.SettingsPage };
+});
 const LoginPage = lazy(async () => {
   const module = await import("./pages/LoginPage");
   return { default: module.LoginPage };
@@ -143,6 +147,14 @@ export function App() {
           element={
             <Private>
               <SubscriptionsPage />
+            </Private>
+          }
+        />
+        <Route
+          path="/app/settings"
+          element={
+            <Private>
+              <SettingsPage />
             </Private>
           }
         />

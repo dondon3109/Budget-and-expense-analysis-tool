@@ -25,7 +25,7 @@ export function AuthCallbackPage() {
       return;
     }
     if (!code) {
-      setError("This sign-in link is missing its authorization code. Request a new link and try again.");
+      setError("This account link is missing its authorization code. Request a new link and try again.");
       return;
     }
 
@@ -33,7 +33,7 @@ export function AuthCallbackPage() {
       .then(() => navigate(safeNext(searchParams.get("next")), { replace: true }))
       .catch((callbackError: unknown) => {
         setError(
-          callbackError instanceof Error ? callbackError.message : "The sign-in link could not be completed.",
+          callbackError instanceof Error ? callbackError.message : "The account link could not be completed.",
         );
       });
   }, [exchangeCodeForSession, navigate, searchParams]);
@@ -41,7 +41,7 @@ export function AuthCallbackPage() {
   if (error) {
     return (
       <div className="full-page-status error-state">
-        <strong>We could not finish signing you in.</strong>
+        <strong>We could not complete this account link.</strong>
         <span>{error}</span>
         <Link className="button primary" to="/login">
           Return to sign in
@@ -50,5 +50,5 @@ export function AuthCallbackPage() {
     );
   }
 
-  return <div className="full-page-status">Securing your Zoption session…</div>;
+  return <div className="full-page-status">Completing your secure account link…</div>;
 }

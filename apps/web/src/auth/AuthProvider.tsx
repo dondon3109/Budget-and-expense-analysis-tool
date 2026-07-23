@@ -22,6 +22,9 @@ interface AuthContextValue {
   signUp: (email: string, password: string) => Promise<{ confirmationRequired: boolean }>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  updateDisplayName: (displayName: string | null) => Promise<void>;
+  requestEmailChange: (email: string) => Promise<void>;
+  verifyCurrentPassword: (password: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   exchangeCodeForSession: (code: string) => Promise<void>;
 }
@@ -115,6 +118,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
+  const updateDisplayName = useCallback(async (displayName: string | null) => {
+    const { error } = await getSupabaseClient().auth.updateUser({
+      data: { display_name: displayName },
+    });
+    if (error) throw error;
+  }, []);
+
+  const requestEmailChange = useCallback(async (email: string) => {
+    const { error } = await getSupabaseClient().auth.updateUser(
+      { email },
+      { emailRedirectTo: callbackUrl("/app/settings?emailChange=confirmed") },
+    );
+    if (error) throw error;
+  }, []);
+
+  const verifyCurrentPassword = useCallback(
+    async (password: string) => {
+      const email = session?.user.email;
+      if (!email) throw new Error("Password verification is unavailable for this account.");
+
+      const { error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    },
+    [session?.user.email],
+  );
+
   const updatePassword = useCallback(async (password: string) => {
     const { error } = await getSupabaseClient().auth.updateUser({ password });
     if (error) throw error;
@@ -135,18 +164,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       sendPasswordReset,
+      updateDisplayName,
+      requestEmailChange,
+      verifyCurrentPassword,
       updatePassword,
       exchangeCodeForSession,
     }),
     [
       exchangeCodeForSession,
       loading,
+      requestEmailChange,
       sendPasswordReset,
       session,
       signIn,
       signOut,
       signUp,
+      updateDisplayName,
       updatePassword,
+      verifyCurrentPassword,
     ],
   );
 
