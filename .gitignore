@@ -9,6 +9,7 @@ apps/api/wrangler.deploy.jsonc
 .env
 .env.*
 !.env.example
+!apps/web/.env.production
 playwright-report/
 test-results/
 tmp/

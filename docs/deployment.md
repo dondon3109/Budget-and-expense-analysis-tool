@@ -1,14 +1,15 @@
 # Cloudflare and Supabase deployment runbook
 
-Zoption deploys as a Cloudflare Pages app plus a Worker with a D1 binding. Supabase Auth supplies user identity and sessions; private financial data remains in D1 and is partitioned by the tenant resolved from a verified Supabase JWT. The repository deliberately contains no account IDs, private tokens, service-role keys, or real domain values.
+Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worker at <https://api.zoption.site> with a D1 binding. Supabase Auth supplies user identity and sessions; private financial data remains in D1 and is partitioned by the tenant resolved from a verified Supabase JWT. The repository contains the public production domains but deliberately contains no account IDs, private tokens, or service-role keys.
 
 ## One-time Supabase setup
 
 1. Create separate Supabase projects for preview and production when practical. If one project is shared initially, keep its redirect allow-list restricted to the known Zoption hosts.
-2. In **Authentication > URL configuration**, set the correct site URL and add redirect URLs for:
+2. In **Authentication > URL configuration**, set the production site URL to `https://zoption.site` and add redirect URLs for:
    - `http://localhost:5173/auth/callback`
-   - `https://PREVIEW_PAGES_HOST/auth/callback`
-   - `https://PRODUCTION_HOST/auth/callback`
+   - `https://PREVIEW_WEB_HOST/auth/callback`
+   - `https://zoption.site/auth/callback`
+   - `https://www.zoption.site/auth/callback`
 3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users.
 4. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
 5. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
@@ -19,14 +20,15 @@ Zoption deploys as a Cloudflare Pages app plus a Worker with a D1 binding. Supab
 2. Create `budget-expense-preview` and `budget-expense-production` with `wrangler d1 create`; retain the returned database IDs.
 3. Copy `apps/api/wrangler.deploy.example.jsonc` to ignored `apps/api/wrangler.deploy.jsonc`.
 4. Replace the D1 IDs, allowed origins, and `SUPABASE_URL` values for each environment. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise.
-5. Create separate preview and production Pages projects. Keep a production custom domain on the production project only.
+5. Create separate preview and production Pages projects. Attach `zoption.site` and `www.zoption.site` to the production Pages project in the Cloudflare dashboard. Pages custom domains are dashboard-managed; this repository does not use an `apps/web/wrangler.jsonc` file.
+6. Keep the production Worker custom domain route for `api.zoption.site` in `apps/api/wrangler.deploy.jsonc`; the tracked example documents the same route.
 
 ## Frontend configuration
 
-Build Pages with environment-specific public values:
+Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production API default to `https://api.zoption.site`; Cloudflare Pages environment variables can override it. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`.
 
 ```bash
-VITE_API_URL=https://PREVIEW_WORKER_URL \
+VITE_API_URL=https://PREVIEW_API_HOST \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
 pnpm --filter @zoption/web build
@@ -49,7 +51,7 @@ Inspect the preview database after migration: the retired public tenant should b
 Build and deploy the browser app:
 
 ```bash
-VITE_API_URL=https://PREVIEW_WORKER_URL \
+VITE_API_URL=https://PREVIEW_API_HOST \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
 pnpm --filter @zoption/web build
@@ -59,7 +61,7 @@ pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIE
 Run the non-mutating smoke gate:
 
 ```bash
-WEB_URL=https://PREVIEW_PAGES_URL API_URL=https://PREVIEW_WORKER_URL pnpm smoke:production
+WEB_URL=https://PREVIEW_WEB_HOST API_URL=https://PREVIEW_API_HOST pnpm smoke:production
 ```
 
 Then perform an authenticated browser check with two ordinary preview users:
@@ -74,9 +76,26 @@ No service-role key is needed for normal product traffic or this check.
 
 ## Production release
 
-After the preview migration and authenticated checks pass, create a production D1 recovery point and repeat the migration, Worker deploy, frontend build, Pages deploy, smoke check, and two-user isolation check with production configuration. Verify the production origin appears in both `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users.
+After the preview migration and authenticated checks pass, create a production D1 recovery point, apply migrations, and deploy the Worker. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site`, `www.zoption.site`, and the transitional Pages origin.
 
-Direct navigation should work for `/login`, `/signup`, `/forgot-password`, `/auth/callback`, `/update-password`, and `/app/*`; the committed `_redirects` file provides SPA fallback. The retired `/demo` route should return visitors to `/`.
+```bash
+cd apps/api
+pnpm exec wrangler d1 migrations apply DB --remote --config wrangler.deploy.jsonc --env production
+pnpm exec wrangler deploy --config wrangler.deploy.jsonc --env production
+cd ../..
+```
+
+Build and deploy the frontend with production Supabase values. `VITE_API_URL` defaults to `https://api.zoption.site` for production builds, but it may be supplied explicitly by the Pages build environment.
+
+```bash
+VITE_SUPABASE_URL=https://PRODUCTION_PROJECT_REF.supabase.co \
+VITE_SUPABASE_PUBLISHABLE_KEY=PRODUCTION_PUBLISHABLE_KEY \
+pnpm --filter @zoption/web build
+pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PRODUCTION_PAGES_PROJECT --branch=main
+WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production
+```
+
+Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. Direct navigation should work for `/login`, `/signup`, `/forgot-password`, `/auth/callback`, `/update-password`, and `/app/*`; the committed `_redirects` file provides SPA fallback. The retired `/demo` route should return visitors to `/`.
 
 ## Rollback
 
@@ -86,13 +105,31 @@ Direct navigation should work for `/login`, `/signup`, `/forgot-password`, `/aut
 - **Supabase Auth:** do not rotate or remove signing keys as an application rollback mechanism. Follow Supabase key-rotation guidance and keep old keys valid through their transition window.
 - After rollback, rerun `pnpm smoke:production` and verify unauthenticated `/api/app/*` requests still return `401`.
 
+## Custom-domain verification
+
+Before treating the domain migration as complete:
+
+1. In the Pages project, confirm `zoption.site` serves the frontend and no Worker route or Worker Custom Domain claims the apex host. If `https://zoption.site/health` returns the API health response, the apex is still routed to the Worker.
+2. Deploy the production Worker with `apps/api/wrangler.deploy.jsonc` so its Custom Domain is `api.zoption.site`, then confirm `https://api.zoption.site/health` returns `200`.
+3. Add `www.zoption.site` to Pages and configure the canonical redirect, or remove the alias from `ALLOWED_ORIGINS` and Supabase if it will not be served.
+4. Run `WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production` after DNS and custom-domain changes have propagated.
+
 ## Current hosted resources
 
-The existing Cloudflare hosts are:
+The intended production endpoints are:
 
-- Production web: <https://clarity-budget.pages.dev>
-- Production API: <https://budget-expense-api-production.dondon3109.workers.dev>
-- Preview web: <https://clarity-budget-preview.pages.dev>
-- Preview API: <https://budget-expense-api-preview.dondon3109.workers.dev>
+- Production web: <https://zoption.site>
+- Production web alias: <https://www.zoption.site>
+- Production API: <https://api.zoption.site>
 
-These deployments must be rebuilt with the current Supabase variables and all committed D1 migrations before the authenticated-only product boundary is live. Deployment is not performed automatically by implementation work.
+Preview endpoints are deployment-specific. Supply them through `PREVIEW_WEB_HOST` and `PREVIEW_API_HOST` in release commands instead of committing provider-generated hostnames.
+
+## Transition cleanup
+
+Keep `https://clarity-budget.pages.dev` in production `ALLOWED_ORIGINS` until the custom domain has been stable and old-host traffic has stopped. Then:
+
+1. Remove the Pages origin from `apps/api/wrangler.deploy.jsonc`, `apps/api/wrangler.deploy.example.jsonc`, `apps/api/wrangler.jsonc`, and `.env.example`.
+2. Redeploy the production Worker and verify requests from `https://zoption.site` and `https://www.zoption.site` still receive the expected CORS headers.
+3. Remove old Pages-host callback URLs from the Supabase redirect allow-list and keep `https://zoption.site/auth/callback` plus `https://www.zoption.site/auth/callback`.
+4. Confirm `www.zoption.site` redirects to the canonical host, or keep both origins and callback URLs if both hosts remain directly usable.
+5. Re-run `WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production` after each deployment or routing change.

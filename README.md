@@ -4,8 +4,8 @@ Zoption is a privacy-conscious budgeting web application that turns imported or 
 
 ## Hosted app
 
-- Production: [clarity-budget.pages.dev](https://clarity-budget.pages.dev)
-- Preview: [clarity-budget-preview.pages.dev](https://clarity-budget-preview.pages.dev)
+- Frontend: [zoption.site](https://zoption.site)
+- API: [api.zoption.site](https://api.zoption.site)
 - Source: [github.com/dondon3109/budget-and-expense-analysis-tool](https://github.com/dondon3109/budget-and-expense-analysis-tool)
 
 The public site is a marketing and authentication surface with a static illustrative dashboard preview. Real financial data is available only after authentication and is never seeded into a new workspace.

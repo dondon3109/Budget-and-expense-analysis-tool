@@ -15,13 +15,14 @@
         },
       ],
       "vars": {
-        "ALLOWED_ORIGINS": "https://REPLACE_WITH_PREVIEW_PAGES_HOST",
+        "ALLOWED_ORIGINS": "https://REPLACE_WITH_PREVIEW_WEB_HOST",
         "SUPABASE_URL": "https://REPLACE_WITH_SUPABASE_PROJECT_REF.supabase.co",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
       },
     },
     "production": {
       "name": "budget-expense-api-production",
+      "routes": [{ "pattern": "api.zoption.site", "custom_domain": true }],
       "d1_databases": [
         {
           "binding": "DB",
@@ -31,7 +32,7 @@
         },
       ],
       "vars": {
-        "ALLOWED_ORIGINS": "https://REPLACE_WITH_PRODUCTION_DOMAIN",
+        "ALLOWED_ORIGINS": "https://zoption.site,https://www.zoption.site,https://clarity-budget.pages.dev",
         "SUPABASE_URL": "https://REPLACE_WITH_SUPABASE_PROJECT_REF.supabase.co",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
       },
