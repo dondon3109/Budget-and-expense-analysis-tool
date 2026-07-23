@@ -28,8 +28,11 @@ async function expectFrontendApiUrl(html) {
     if (!response.ok) throw new Error(`Frontend asset failed with HTTP ${response.status}.`);
     const source = await response.text();
     if (source.includes(apiUrl)) return;
-    for (const match of source.matchAll(/(?:\.\/|\/)?assets\/[A-Za-z0-9_.-]+\.js/g)) {
-      pending.push(new URL(match[0], webUrl).href);
+    for (const match of source.matchAll(/["']([^"']+\.js)["']/g)) {
+      const assetPath = match[1];
+      if (!/^(?:\.\/|\/?assets\/)/.test(assetPath)) continue;
+      const baseUrl = assetPath.startsWith("./") ? assetUrl : `${webUrl}/`;
+      pending.push(new URL(assetPath, baseUrl).href);
     }
   }
 
