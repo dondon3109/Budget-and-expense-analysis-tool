@@ -1,4 +1,4 @@
-import type { TransactionListItem, TransactionListQuery } from "@budget/shared";
+import type { TransactionListItem, TransactionListQuery } from "@zoption/shared";
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 

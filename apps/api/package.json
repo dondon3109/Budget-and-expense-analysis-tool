@@ -1,5 +1,5 @@
 {
-  "name": "@budget/api",
+  "name": "@zoption/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@budget/shared": "workspace:*",
+    "@zoption/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.30",
     "jose": "^6.2.3"

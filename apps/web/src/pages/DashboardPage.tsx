@@ -1,4 +1,4 @@
-import type { DashboardSummary } from "@budget/shared";
+import type { DashboardSummary } from "@zoption/shared";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDownRight,
@@ -79,7 +79,7 @@ export function DashboardPage() {
               <h2 id="workspace-onboarding-title">Build your first monthly picture</h2>
               <p>
                 Your workspace starts without fictional transactions or budgets. Import a CSV or add
-                a transaction when you are ready, and Clarity will build the overview from your
+                a transaction when you are ready, and Zoption will build the overview from your
                 data.
               </p>
               <div className="onboarding-actions">
@@ -104,7 +104,7 @@ export function DashboardPage() {
               </p>
               <span>3</span>
               <p>
-                <strong>Return for clarity</strong>
+                <strong>Return for a clearer picture</strong>
                 Review totals, trends, and recurring costs together.
               </p>
             </div>

@@ -2,7 +2,7 @@ import {
   buildDashboardSummary,
   type DashboardSummary,
   type TransactionRecord,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 

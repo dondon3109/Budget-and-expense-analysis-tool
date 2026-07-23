@@ -3,7 +3,7 @@ import type {
   TransactionInput,
   TransactionListItem,
   TransactionListQuery,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Download, FolderCog, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";

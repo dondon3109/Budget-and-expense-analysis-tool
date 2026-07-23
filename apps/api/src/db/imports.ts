@@ -8,7 +8,7 @@ import {
   type ImportPreview,
   type ImportPreviewRequest,
   type TransactionKind,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { and, eq, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 

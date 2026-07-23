@@ -1,4 +1,4 @@
-import type { DashboardSummary } from "@budget/shared";
+import type { DashboardSummary } from "@zoption/shared";
 import { PiggyBank, Repeat2 } from "lucide-react";
 
 import { formatMoney } from "../../lib/formatters";

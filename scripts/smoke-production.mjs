@@ -41,7 +41,7 @@ const apiHeaders = { Origin: origin };
 await expectResponse("landing page", webUrl, undefined, async (response) => {
   if (!response.ok) throw new Error(`Landing page failed with HTTP ${response.status}.`);
   const html = await response.text();
-  if (!html.includes("Clarity")) throw new Error("Landing page did not contain the app title.");
+  if (!html.includes("Zoption")) throw new Error("Landing page did not contain the app title.");
   await expectFrontendApiUrl(html);
 });
 

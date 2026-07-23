@@ -1,4 +1,4 @@
-import type { CategoryInput, CategoryRecord, TransactionKind } from "@budget/shared";
+import type { CategoryInput, CategoryRecord, TransactionKind } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Check, Pencil, Plus, RotateCcw, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";

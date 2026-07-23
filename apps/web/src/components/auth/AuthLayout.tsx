@@ -21,11 +21,11 @@ export function AuthLayout({
     <main className="auth-page">
       <section className="auth-card">
         <div className="auth-card-header">
-          <Link className="brand" to="/" aria-label="Clarity home">
+          <Link className="brand" to="/" aria-label="Zoption home">
             <span className="brand-mark">
               <Landmark size={20} aria-hidden="true" />
             </span>
-            <span>Clarity</span>
+            <span>Zoption</span>
           </Link>
           <ThemeToggle />
         </div>
@@ -45,7 +45,7 @@ export function AuthLayout({
           account begins with no financial records until you add them.
         </p>
         <Link className="text-link" to="/">
-          See how Clarity works
+          See how Zoption works
         </Link>
       </aside>
     </main>

@@ -21,7 +21,7 @@ import type {
   TransactionListQuery,
   TransactionPage,
   TransactionUpdate,
-} from "@budget/shared";
+} from "@zoption/shared";
 
 import { getSupabaseClient } from "./supabase";
 import type { AuthenticatedWorkspace } from "./workspace";
@@ -312,7 +312,7 @@ export async function downloadTransactions(
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "clarity-transactions.csv";
+  anchor.download = "zoption-transactions.csv";
   anchor.click();
   URL.revokeObjectURL(url);
 }

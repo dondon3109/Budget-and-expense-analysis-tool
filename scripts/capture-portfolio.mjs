@@ -37,13 +37,13 @@ try {
     name: "login-desktop.png",
     path: "/login",
     viewport: { width: 1440, height: 1000 },
-    heading: "Sign in to Clarity",
+    heading: "Sign in to Zoption",
   });
   await capture({
     name: "signup-mobile.png",
     path: "/signup",
     viewport: { width: 390, height: 844 },
-    heading: "Create your Clarity account",
+    heading: "Create your Zoption account",
   });
 } finally {
   await browser.close();

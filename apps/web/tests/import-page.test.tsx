@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import type { ImportPreview } from "@budget/shared";
+import type { ImportPreview } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

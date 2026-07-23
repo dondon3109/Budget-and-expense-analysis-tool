@@ -1,4 +1,4 @@
-import type { SubscriptionMonthItem, SubscriptionStatus } from "@budget/shared";
+import type { SubscriptionMonthItem, SubscriptionStatus } from "@zoption/shared";
 
 import { formatMoney } from "../../lib/formatters";
 

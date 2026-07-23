@@ -1,8 +1,8 @@
-# Clarity engineering case study
+# Zoption engineering case study
 
 ## Problem
 
-Personal finance tools are easy to make visually appealing but hard to make trustworthy. Clarity needed deterministic PHP arithmetic, understandable errors, a safe CSV workflow, responsive analysis, and a clear boundary between public product information and private financial records.
+Personal finance tools are easy to make visually appealing but hard to make trustworthy. Zoption needed deterministic PHP arithmetic, understandable errors, a safe CSV workflow, responsive analysis, and a clear boundary between public product information and private financial records.
 
 ## Approach
 
@@ -22,6 +22,6 @@ The measured landing build is held to Lighthouse performance, accessibility, bes
 
 ## Scope and outcome
 
-Clarity now provides authenticated transaction CRUD, account filtering, recategorization, mixed-row import, budgets, recurring/savings insights, dashboard recalculation, and export in isolated personal workspaces. New users get an intentional onboarding state instead of fictional records. Public visitors can understand the product and choose signup or login without exposing a shared financial dataset.
+Zoption now provides authenticated transaction CRUD, account filtering, recategorization, mixed-row import, budgets, recurring/savings insights, dashboard recalculation, and export in isolated personal workspaces. New users get an intentional onboarding state instead of fictional records. Public visitors can understand the product and choose signup or login without exposing a shared financial dataset.
 
 Separate preview and production Pages, Worker, and D1 resources are documented for deployment. Bank connections, multiple currencies, financial advice, complete account-data export, and formal retention/deletion controls remain outside the current scope.

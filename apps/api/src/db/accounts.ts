@@ -1,4 +1,4 @@
-import type { AccountRecord } from "@budget/shared";
+import type { AccountRecord } from "@zoption/shared";
 import { asc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 

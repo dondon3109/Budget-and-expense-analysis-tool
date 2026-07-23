@@ -9,7 +9,7 @@ import {
   type TransactionCalendarMonth,
   type TransactionListItem,
   type TransactionPage,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import { createApp, type AppOptions } from "../src/app";

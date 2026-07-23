@@ -1,4 +1,4 @@
-import { parseCsv, type CategoryRecord } from "@budget/shared";
+import { parseCsv, type CategoryRecord } from "@zoption/shared";
 import { describe, expect, it } from "vitest";
 
 import {

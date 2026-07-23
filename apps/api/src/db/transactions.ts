@@ -8,7 +8,7 @@ import {
   type TransactionListQuery,
   type TransactionPage,
   type TransactionUpdate,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { and, asc, count, desc, eq, gte, lt, lte, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 

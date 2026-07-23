@@ -8,8 +8,17 @@
       (() => {
         let theme;
         try {
-          const saved = localStorage.getItem("clarity-theme");
-          if (saved === "light" || saved === "dark") theme = saved;
+          const saved = localStorage.getItem("zoption-theme");
+          if (saved === "light" || saved === "dark") {
+            theme = saved;
+          } else {
+            const legacy = localStorage.getItem("clarity-theme");
+            if (legacy === "light" || legacy === "dark") {
+              theme = legacy;
+              localStorage.setItem("zoption-theme", legacy);
+              localStorage.removeItem("clarity-theme");
+            }
+          }
         } catch {}
         if (!theme) {
           try {
@@ -29,7 +38,7 @@
       name="description"
       content="A clear, privacy-conscious workspace for understanding expenses, budgets, and monthly cash flow."
     />
-    <title>Clarity — Budget and expense analysis</title>
+    <title>Zoption — Budget and expense analysis</title>
   </head>
   <body>
     <div id="root"></div>

@@ -76,7 +76,7 @@ describe("authenticated API requests", () => {
   it("reports a configuration error when the API request returns HTML", async () => {
     auth.getSession.mockResolvedValue({ data: { session: session("token") }, error: null });
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("<!doctype html><title>Clarity</title>", {
+      new Response("<!doctype html><title>Zoption</title>", {
         status: 200,
         headers: { "Content-Type": "text/html" },
       }),

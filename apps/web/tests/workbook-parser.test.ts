@@ -1,4 +1,4 @@
-import { parseCsv } from "@budget/shared";
+import { parseCsv } from "@zoption/shared";
 import { describe, expect, it } from "vitest";
 import { utils, write, type BookType, type WorkBook } from "xlsx";
 

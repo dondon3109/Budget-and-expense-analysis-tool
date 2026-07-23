@@ -81,7 +81,7 @@ describe("landing page", () => {
     ).toEqual(["BPI", "BDO", "MariBank", "Bank of America", "JPMorgan / Chase"]);
     expect(
       within(formatsSection).getByText(
-        "Bank names are shown to indicate supported export formats only. Clarity is not affiliated with or endorsed by these institutions.",
+        "Bank names are shown to indicate supported export formats only. Zoption is not affiliated with or endorsed by these institutions.",
       ),
     ).toBeInTheDocument();
 
@@ -100,7 +100,7 @@ describe("landing page", () => {
     renderLanding();
 
     expect(
-      screen.getByRole("img", { name: "Illustrative preview of the Clarity monthly dashboard" }),
+      screen.getByRole("img", { name: "Illustrative preview of the Zoption monthly dashboard" }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/workspace begins without transactions or budgets/i),

@@ -4,7 +4,7 @@ import type {
   ImportMapping,
   ImportPreview,
   TransactionKind,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "../auth/AuthProvider";

@@ -1,6 +1,6 @@
 # Transaction import guide
 
-Clarity accepts UTF-8 CSV files, Excel workbooks (`.xlsx`), and Excel 97–2003 workbooks (`.xls`). Choose a file with the native picker or drag and drop one file onto the import area; both methods use the same validation and preview pipeline. Importing always starts with a preview and never changes the workspace until the user confirms the ready rows.
+Zoption accepts UTF-8 CSV files, Excel workbooks (`.xlsx`), and Excel 97–2003 workbooks (`.xls`). Choose a file with the native picker or drag and drop one file onto the import area; both methods use the same validation and preview pipeline. Importing always starts with a preview and never changes the workspace until the user confirms the ready rows.
 
 ## Supported files
 
@@ -15,7 +15,7 @@ Password-protected, encrypted, damaged, or unsupported workbooks cannot be impor
 
 ## Header detection and bank formats
 
-Clarity inspects a bounded set of early nonblank rows and suggests the row that looks most like a transaction header. Statement titles, account details, date ranges, and other introductory rows before the selected header are ignored. The suggested header remains editable, and row numbers in preview continue to identify the corresponding source records.
+Zoption inspects a bounded set of early nonblank rows and suggests the row that looks most like a transaction header. Statement titles, account details, date ranges, and other introductory rows before the selected header are ignored. The suggested header remains editable, and row numbers in preview continue to identify the corresponding source records.
 
 The **Bank format** control provides editable built-in mappings for:
 
@@ -49,13 +49,13 @@ Choose exactly one amount strategy:
 
 Every mapped field must point to a different source column. Equivalent dates and amounts are normalized before duplicate detection, so `7/20/2026` with a Debit of `500.00` matches `2026-07-20` with an Amount of `-500.00` when the description and account source are also equal.
 
-Slash dates are always interpreted as month/day/year. Clarity does not guess day-first dates. A supported date may be followed by a valid 24-hour time such as `14:30` or `14:30:45`; the time is discarded because transactions are date-based. Impossible dates such as `2/30/2026` and invalid times such as `24:00` remain invalid. When no Date column is mapped, Clarity displays an editable ISO date field and applies that date to every row. When a Date column is mapped, blank or invalid cells do not use the file-wide date.
+Slash dates are always interpreted as month/day/year. Zoption does not guess day-first dates. A supported date may be followed by a valid 24-hour time such as `14:30` or `14:30:45`; the time is discarded because transactions are date-based. Impossible dates such as `2/30/2026` and invalid times such as `24:00` remain invalid. When no Date column is mapped, Zoption displays an editable ISO date field and applies that date to every row. When a Date column is mapped, blank or invalid cells do not use the file-wide date.
 
-When Category is not mapped, blank, unknown, archived, or belongs to another transaction type, the row uses the protected Uncategorized category for its inferred type. Clarity maintains separate income, expense, and transfer records that all display as `Uncategorized`; these system categories cannot be renamed or archived.
+When Category is not mapped, blank, unknown, archived, or belongs to another transaction type, the row uses the protected Uncategorized category for its inferred type. Zoption maintains separate income, expense, and transfer records that all display as `Uncategorized`; these system categories cannot be renamed or archived.
 
 ## PHP-only handling
 
-Clarity stores Philippine pesos (`PHP`) only and does not perform currency conversion. A mapped Currency column must contain `PHP` for every imported row.
+Zoption stores Philippine pesos (`PHP`) only and does not perform currency conversion. A mapped Currency column must contain `PHP` for every imported row.
 
 Bank of America and JPMorgan / Chase exports commonly contain USD. Their presets display a prominent warning. If a mapped Currency column does not prove that every row is PHP, the user must explicitly confirm that the numeric values should be stored as PHP without conversion before previewing. This confirmation does not make USD valid: a mapped non-PHP currency is still rejected by the API.
 
@@ -64,7 +64,7 @@ Bank of America and JPMorgan / Chase exports commonly contain USD. Their presets
 - Real Excel date cells are converted to `YYYY-MM-DD` without changing the calendar day.
 - Text dates are preserved and then validated by the same ISO/U.S.-slash date normalizer used for CSV files.
 - Numeric cells use their raw values rather than displayed currency or thousands-separator formatting.
-- Formulas are not recalculated. Clarity uses the last result saved in the workbook and displays a warning when formula cells are present.
+- Formulas are not recalculated. Zoption uses the last result saved in the workbook and displays a warning when formula cells are present.
 - Formula cells without saved results are left blank. Open, recalculate, and save the workbook before importing if those cells are required.
 - Entirely blank surrounding rows and columns are ignored. Nonblank introductory rows are preserved so the actual header can be detected or selected.
 - Only the selected worksheet is converted; worksheets are never combined.
@@ -103,7 +103,7 @@ Transaction Date,Description,Debit,Credit
 7/21/2026,Freelance payment,,8000.00
 ```
 
-A date-less, category-less summary can also be imported. Choose one date in the mapping step; Clarity assigns the appropriate Uncategorized category:
+A date-less, category-less summary can also be imported. Choose one date in the mapping step; Zoption assigns the appropriate Uncategorized category:
 
 ```csv
 Description,Amount

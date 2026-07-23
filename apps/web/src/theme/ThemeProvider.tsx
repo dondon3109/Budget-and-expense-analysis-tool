@@ -10,7 +10,9 @@ import {
 
 export type Theme = "light" | "dark";
 
-export const THEME_STORAGE_KEY = "clarity-theme";
+export const THEME_STORAGE_KEY = "zoption-theme";
+
+const LEGACY_THEME_STORAGE_KEY = "clarity-theme";
 
 const THEME_COLORS: Record<Theme, string> = {
   light: "#f3f0e8",
@@ -32,7 +34,14 @@ function isTheme(value: unknown): value is Theme {
 function storedTheme(): Theme | undefined {
   try {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return isTheme(value) ? value : undefined;
+    if (isTheme(value)) return value;
+
+    const legacyValue = window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+    if (!isTheme(legacyValue)) return undefined;
+
+    window.localStorage.setItem(THEME_STORAGE_KEY, legacyValue);
+    window.localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
+    return legacyValue;
   } catch {
     return undefined;
   }
@@ -62,6 +71,7 @@ function applyTheme(theme: Theme) {
 function persistTheme(theme: Theme) {
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    window.localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
   } catch {
     // Theme switching still works when storage is unavailable.
   }

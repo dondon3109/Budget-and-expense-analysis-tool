@@ -9,7 +9,7 @@ import {
   type ImportCommitRequest,
   type ImportMapping,
   type TransactionKind,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -59,7 +59,7 @@ function downloadTemplate() {
   const url = URL.createObjectURL(new Blob([content], { type: "text/csv;charset=utf-8" }));
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "clarity-import-template.csv";
+  anchor.download = "zoption-import-template.csv";
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -898,7 +898,7 @@ export function ImportPage() {
                   <div>
                     <strong>PHP-only import</strong>
                     <span>
-                      {resolvedPreset.label} exports commonly contain USD. Clarity does not convert
+                      {resolvedPreset.label} exports commonly contain USD. Zoption does not convert
                       currencies, and any mapped non-PHP currency will be rejected.
                     </span>
                     {requiresPhpConfirmation ? (

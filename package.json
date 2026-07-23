@@ -1,5 +1,5 @@
 {
-  "name": "budget-expense-analysis-tool",
+  "name": "zoption",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,7 +22,7 @@
     "smoke:production": "node scripts/smoke-production.mjs",
     "capture:screenshots": "node scripts/capture-portfolio.mjs",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "pnpm --filter @budget/api exec wrangler d1 migrations apply budget-expense-local --local"
+    "db:migrate:local": "pnpm --filter @zoption/api exec wrangler d1 migrations apply budget-expense-local --local"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

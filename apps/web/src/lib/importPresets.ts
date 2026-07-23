@@ -1,4 +1,4 @@
-import { normalizeCsvHeader, type ImportMapping } from "@budget/shared";
+import { normalizeCsvHeader, type ImportMapping } from "@zoption/shared";
 
 export type ImportPresetId =
   "auto" | "generic" | "bpi" | "bdo" | "maribank" | "bank-of-america" | "jpmorgan";
@@ -117,7 +117,7 @@ export const importPresets: ImportPreset[] = [
     preferredAmountMode: "amount",
     requiresPhpConfirmation: true,
     guidance:
-      "Bank of America commonly exports USD. Clarity stores PHP only and does not convert currencies.",
+      "Bank of America commonly exports USD. Zoption stores PHP only and does not convert currencies.",
   },
   {
     id: "jpmorgan",
@@ -133,7 +133,7 @@ export const importPresets: ImportPreset[] = [
     preferredAmountMode: "amount",
     requiresPhpConfirmation: true,
     guidance:
-      "JPMorgan and Chase exports commonly use USD. Clarity stores PHP only and does not convert currencies.",
+      "JPMorgan and Chase exports commonly use USD. Zoption stores PHP only and does not convert currencies.",
   },
 ];
 

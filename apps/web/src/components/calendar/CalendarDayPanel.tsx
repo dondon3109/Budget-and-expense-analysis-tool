@@ -1,4 +1,4 @@
-import type { TransactionListItem } from "@budget/shared";
+import type { TransactionListItem } from "@zoption/shared";
 import { Plus } from "lucide-react";
 
 import { formatCalendarDate } from "../../lib/calendar";

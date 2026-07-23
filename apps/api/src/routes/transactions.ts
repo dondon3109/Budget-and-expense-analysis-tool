@@ -3,7 +3,7 @@ import {
   transactionInputSchema,
   transactionListQuerySchema,
   transactionUpdateSchema,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { TransactionRepository } from "../db/transactions";

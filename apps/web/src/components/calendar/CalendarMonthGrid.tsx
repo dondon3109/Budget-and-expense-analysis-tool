@@ -1,4 +1,4 @@
-import type { SubscriptionMonthItem, TransactionListItem } from "@budget/shared";
+import type { SubscriptionMonthItem, TransactionListItem } from "@zoption/shared";
 import { ArrowDownRight, ArrowUpRight, CalendarClock, Repeat2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 

@@ -8,7 +8,7 @@ import {
   type ImportPreviewRow,
   type ParsedCsv,
   type TransactionKind,
-} from "@budget/shared";
+} from "@zoption/shared";
 
 export interface PreparedImportRecord {
   rowNumber: number;

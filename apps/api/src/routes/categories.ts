@@ -1,4 +1,4 @@
-import { categoryInputSchema, categoryUpdateSchema } from "@budget/shared";
+import { categoryInputSchema, categoryUpdateSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { CategoryRepository } from "../db/categories";

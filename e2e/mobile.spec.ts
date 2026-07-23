@@ -9,7 +9,7 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   await expect(page.getByRole("link", { name: "Create account" }).last()).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign in" }).last()).toBeVisible();
   await expect(
-    page.getByRole("img", { name: "Illustrative preview of the Clarity monthly dashboard" }),
+    page.getByRole("img", { name: "Illustrative preview of the Zoption monthly dashboard" }),
   ).toBeVisible();
   const importHeading = page.getByRole("heading", {
     name: "Import from the files you already use.",
@@ -68,7 +68,7 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
 
   await page.getByRole("link", { name: "Create account" }).last().click();
   await expect(page).toHaveURL(/\/signup$/);
-  await expect(page.getByRole("heading", { name: "Create your Clarity account" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create your Zoption account" })).toBeVisible();
 });
 
 test("supported formats marquee becomes static with reduced motion", async ({ page }) => {

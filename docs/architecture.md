@@ -2,7 +2,7 @@
 
 ## System shape
 
-Clarity is a React/Vite SPA backed by a Hono Cloudflare Worker and D1. Supabase Auth is the identity provider. The browser obtains a Supabase session and sends its access token to authenticated Worker routes; the Worker verifies the JWT against the project's JWKS before resolving the user's D1 tenant. Zod schemas, money handling, fingerprints, and aggregate calculations live in the shared package.
+Zoption is a React/Vite SPA backed by a Hono Cloudflare Worker and D1. Supabase Auth is the identity provider. The browser obtains a Supabase session and sends its access token to authenticated Worker routes; the Worker verifies the JWT against the project's JWKS before resolving the user's D1 tenant. Zod schemas, money handling, fingerprints, and aggregate calculations live in the shared package.
 
 The public landing page contains a static dashboard illustration only. It does not request financial data. All real financial reads and writes require authentication.
 

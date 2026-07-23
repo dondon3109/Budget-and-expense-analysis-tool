@@ -50,5 +50,5 @@ export function AuthCallbackPage() {
     );
   }
 
-  return <div className="full-page-status">Securing your Clarity session…</div>;
+  return <div className="full-page-status">Securing your Zoption session…</div>;
 }

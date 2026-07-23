@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import type { CategoryRecord } from "@budget/shared";
+import type { CategoryRecord } from "@zoption/shared";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 

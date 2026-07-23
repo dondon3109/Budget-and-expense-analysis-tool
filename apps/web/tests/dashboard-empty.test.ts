@@ -1,4 +1,4 @@
-import type { DashboardSummary } from "@budget/shared";
+import type { DashboardSummary } from "@zoption/shared";
 import { describe, expect, it } from "vitest";
 
 import { isDashboardEmpty } from "../src/pages/DashboardPage";

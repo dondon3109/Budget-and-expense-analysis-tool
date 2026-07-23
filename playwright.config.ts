@@ -27,13 +27,13 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pnpm --filter @budget/api dev",
+      command: "pnpm --filter @zoption/api dev",
       url: "http://localhost:8787/health",
       reuseExistingServer: false,
       timeout: 120_000,
     },
     {
-      command: "pnpm --filter @budget/web dev",
+      command: "pnpm --filter @zoption/web dev",
       url: "http://localhost:5173",
       reuseExistingServer: false,
       timeout: 120_000,

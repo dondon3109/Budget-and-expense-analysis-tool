@@ -1,4 +1,4 @@
-import type { SubscriptionInput, SubscriptionStatus } from "@budget/shared";
+import type { SubscriptionInput, SubscriptionStatus } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Plus, RefreshCw, Repeat2 } from "lucide-react";
 import { useState } from "react";
@@ -146,7 +146,7 @@ export function SubscriptionsPage() {
                   <p className="eyebrow">A clean starting point</p>
                   <strong>Start with your recurring charges</strong>
                   <p>
-                    Add the services and memberships you pay for, and Clarity will show their
+                    Add the services and memberships you pay for, and Zoption will show their
                     monthly cost in one place.
                   </p>
                   <button className="button primary" type="button" onClick={openForm}>

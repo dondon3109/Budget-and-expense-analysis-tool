@@ -1,4 +1,4 @@
-import type { DashboardSummary } from "@budget/shared";
+import type { DashboardSummary } from "@zoption/shared";
 import {
   Area,
   AreaChart,

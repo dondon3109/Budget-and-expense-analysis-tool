@@ -1,4 +1,4 @@
-import { dashboardQuerySchema, type DashboardSummary } from "@budget/shared";
+import { dashboardQuerySchema, type DashboardSummary } from "@zoption/shared";
 import { Hono } from "hono";
 
 import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from "./auth";

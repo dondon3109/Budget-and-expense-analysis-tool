@@ -1,4 +1,4 @@
-import type { TransactionInput } from "@budget/shared";
+import type { TransactionInput } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, FileUp, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";

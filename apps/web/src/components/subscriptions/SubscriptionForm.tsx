@@ -4,7 +4,7 @@ import {
   type CategoryRecord,
   type SubscriptionBillingCycle,
   type SubscriptionInput,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 

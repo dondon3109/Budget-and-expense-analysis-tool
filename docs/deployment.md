@@ -1,10 +1,10 @@
 # Cloudflare and Supabase deployment runbook
 
-Clarity deploys as a Cloudflare Pages app plus a Worker with a D1 binding. Supabase Auth supplies user identity and sessions; private financial data remains in D1 and is partitioned by the tenant resolved from a verified Supabase JWT. The repository deliberately contains no account IDs, private tokens, service-role keys, or real domain values.
+Zoption deploys as a Cloudflare Pages app plus a Worker with a D1 binding. Supabase Auth supplies user identity and sessions; private financial data remains in D1 and is partitioned by the tenant resolved from a verified Supabase JWT. The repository deliberately contains no account IDs, private tokens, service-role keys, or real domain values.
 
 ## One-time Supabase setup
 
-1. Create separate Supabase projects for preview and production when practical. If one project is shared initially, keep its redirect allow-list restricted to the known Clarity hosts.
+1. Create separate Supabase projects for preview and production when practical. If one project is shared initially, keep its redirect allow-list restricted to the known Zoption hosts.
 2. In **Authentication > URL configuration**, set the correct site URL and add redirect URLs for:
    - `http://localhost:5173/auth/callback`
    - `https://PREVIEW_PAGES_HOST/auth/callback`
@@ -15,7 +15,7 @@ Clarity deploys as a Cloudflare Pages app plus a Worker with a D1 binding. Supab
 
 ## One-time Cloudflare setup
 
-1. Authenticate locally with `pnpm --filter @budget/api exec wrangler login`.
+1. Authenticate locally with `pnpm --filter @zoption/api exec wrangler login`.
 2. Create `budget-expense-preview` and `budget-expense-production` with `wrangler d1 create`; retain the returned database IDs.
 3. Copy `apps/api/wrangler.deploy.example.jsonc` to ignored `apps/api/wrangler.deploy.jsonc`.
 4. Replace the D1 IDs, allowed origins, and `SUPABASE_URL` values for each environment. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise.
@@ -29,7 +29,7 @@ Build Pages with environment-specific public values:
 VITE_API_URL=https://PREVIEW_WORKER_URL \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
-pnpm --filter @budget/web build
+pnpm --filter @zoption/web build
 ```
 
 The publishable key is intended for browser use. It does not grant access to D1; the Worker still verifies every access token and chooses tenant scope server-side.
@@ -52,7 +52,7 @@ Build and deploy the browser app:
 VITE_API_URL=https://PREVIEW_WORKER_URL \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
-pnpm --filter @budget/web build
+pnpm --filter @zoption/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIEW_PAGES_PROJECT --branch=main
 ```
 

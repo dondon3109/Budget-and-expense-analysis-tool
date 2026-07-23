@@ -2,7 +2,7 @@ import {
   subscriptionInputSchema,
   subscriptionQuerySchema,
   subscriptionStatusUpdateSchema,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { SubscriptionRepository } from "../db/subscriptions";

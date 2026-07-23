@@ -62,7 +62,7 @@ function SignedOutOnly({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <Suspense fallback={<div className="full-page-status">Loading Clarity…</div>}>
+    <Suspense fallback={<div className="full-page-status">Loading Zoption…</div>}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route

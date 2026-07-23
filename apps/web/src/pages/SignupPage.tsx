@@ -33,7 +33,7 @@ export function SignupPage() {
   return (
     <AuthLayout
       eyebrow="Start your workspace"
-      title="Create your Clarity account"
+      title="Create your Zoption account"
       description="Start with a private workspace that is ready for the transactions and budgets you choose to add."
       footer={
         <p>

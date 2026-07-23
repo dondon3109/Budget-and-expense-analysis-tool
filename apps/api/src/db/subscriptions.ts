@@ -5,7 +5,7 @@ import {
   type SubscriptionMonthSummary,
   type SubscriptionRecord,
   type SubscriptionStatusUpdate,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 

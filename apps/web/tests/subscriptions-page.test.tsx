@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import type { CategoryRecord, SubscriptionMonthSummary, SubscriptionRecord } from "@budget/shared";
+import type { CategoryRecord, SubscriptionMonthSummary, SubscriptionRecord } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

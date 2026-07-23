@@ -1,4 +1,4 @@
-import type { DashboardSummary } from "@budget/shared";
+import type { DashboardSummary } from "@zoption/shared";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Link } from "react-router-dom";
 

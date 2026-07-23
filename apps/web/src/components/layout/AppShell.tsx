@@ -49,11 +49,11 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="app-shell">
       <header className="mobile-header">
-        <Link className="brand compact" to="/" aria-label="Clarity home">
+        <Link className="brand compact" to="/" aria-label="Zoption home">
           <span className="brand-mark">
             <Landmark size={19} aria-hidden="true" />
           </span>
-          <span>Clarity</span>
+          <span>Zoption</span>
         </Link>
         <div className="mobile-header-actions">
           <ThemeToggle />
@@ -70,11 +70,11 @@ export function AppShell({ children }: AppShellProps) {
       </header>
 
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
-        <Link className="brand" to="/" aria-label="Clarity home">
+        <Link className="brand" to="/" aria-label="Zoption home">
           <span className="brand-mark">
             <Landmark size={20} aria-hidden="true" />
           </span>
-          <span>Clarity</span>
+          <span>Zoption</span>
         </Link>
         <nav className="side-nav" aria-label="Main navigation">
           {navItems.map((item) => {
@@ -97,7 +97,7 @@ export function AppShell({ children }: AppShellProps) {
         <div className="sidebar-account">
           <ThemeToggle />
           <span>Signed in as</span>
-          <strong title={user?.email}>{user?.email ?? "Clarity user"}</strong>
+          <strong title={user?.email}>{user?.email ?? "Zoption user"}</strong>
           <button
             className="logout-button"
             type="button"

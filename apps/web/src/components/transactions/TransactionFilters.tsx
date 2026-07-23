@@ -1,4 +1,4 @@
-import type { AccountRecord, CategoryRecord, TransactionKind } from "@budget/shared";
+import type { AccountRecord, CategoryRecord, TransactionKind } from "@zoption/shared";
 import { Filter, Search, X } from "lucide-react";
 import type { FormEvent } from "react";
 

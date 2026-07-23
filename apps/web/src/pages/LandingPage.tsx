@@ -16,7 +16,7 @@ export function LandingPage() {
           <span className="brand-mark">
             <Landmark size={20} aria-hidden="true" />
           </span>
-          <span>Clarity</span>
+          <span>Zoption</span>
         </a>
         <div className="landing-links">
           <a href="#features">Features</a>
@@ -71,7 +71,7 @@ export function LandingPage() {
           <div
             className="hero-visual"
             role="img"
-            aria-label="Illustrative preview of the Clarity monthly dashboard"
+            aria-label="Illustrative preview of the Zoption monthly dashboard"
             aria-describedby="preview-disclaimer"
           >
             <div className="preview-top">
@@ -277,16 +277,16 @@ export function LandingPage() {
               </ul>
             </div>
             <p className="supported-formats-disclaimer">
-              Bank names are shown to indicate supported export formats only. Clarity is not
+              Bank names are shown to indicate supported export formats only. Zoption is not
               affiliated with or endorsed by these institutions.
             </p>
           </div>
         </section>
         <section className="approach" id="approach">
           <p className="eyebrow">Designed for real decisions</p>
-          <h2>Financial clarity without the financial jargon.</h2>
+          <h2>Financial confidence without the financial jargon.</h2>
           <p>
-            Clarity keeps calculations transparent, represents money safely in integer centavos, and
+            Zoption keeps calculations transparent, represents money safely in integer centavos, and
             makes every imported row reviewable.
           </p>
           <div className="final-cta-actions">

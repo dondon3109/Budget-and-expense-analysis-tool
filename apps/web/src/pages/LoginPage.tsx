@@ -34,11 +34,11 @@ export function LoginPage() {
   return (
     <AuthLayout
       eyebrow="Welcome back"
-      title="Sign in to Clarity"
+      title="Sign in to Zoption"
       description="Continue to your personal budget and transaction workspace."
       footer={
         <p>
-          New to Clarity? <Link to="/signup">Create an account</Link>
+          New to Zoption? <Link to="/signup">Create an account</Link>
         </p>
       }
     >

@@ -1,4 +1,4 @@
-import type { TransactionListItem } from "@budget/shared";
+import type { TransactionListItem } from "@zoption/shared";
 import { describe, expect, it } from "vitest";
 
 import { buildTransactionCsv } from "../src/exports/csv";

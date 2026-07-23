@@ -1,4 +1,4 @@
-import { budgetQuerySchema, budgetUpsertSchema } from "@budget/shared";
+import { budgetQuerySchema, budgetUpsertSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { BudgetRepository } from "../db/budgets";

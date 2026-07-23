@@ -1,4 +1,4 @@
-import type { TransactionListQuery } from "@budget/shared";
+import type { TransactionListQuery } from "@zoption/shared";
 
 import type { AuthenticatedWorkspace } from "./workspace";
 

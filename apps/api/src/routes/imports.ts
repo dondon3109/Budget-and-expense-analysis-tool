@@ -1,4 +1,4 @@
-import { importCommitSchema, importPreviewRequestSchema } from "@budget/shared";
+import { importCommitSchema, importPreviewRequestSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { ImportRepository } from "../db/imports";

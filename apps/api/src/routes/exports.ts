@@ -1,4 +1,4 @@
-import { transactionExportQuerySchema } from "@budget/shared";
+import { transactionExportQuerySchema } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { TransactionRepository } from "../db/transactions";
@@ -21,7 +21,7 @@ export function createExportRoutes(repository: TransactionRepository) {
     }
     const rows = await repository.export(context.env, context.get("tenant").tenantId, parsed.data);
     context.header("Content-Type", "text/csv; charset=utf-8");
-    context.header("Content-Disposition", 'attachment; filename="clarity-transactions.csv"');
+    context.header("Content-Disposition", 'attachment; filename="zoption-transactions.csv"');
     return context.body(buildTransactionCsv(rows));
   });
 

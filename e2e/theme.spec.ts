@@ -10,7 +10,7 @@ test("applies the system theme before render and persists a manual choice", asyn
 
   await page.getByRole("button", { name: "Switch to light mode" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("clarity-theme"))).toBe("light");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("zoption-theme"))).toBe("light");
 
   await page.goto("/login");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -18,4 +18,13 @@ test("applies the system theme before render and persists a manual choice", asyn
 
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+});
+
+test("migrates a saved legacy theme to the Zoption storage key", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("clarity-theme", "dark"));
+  await page.goto("/");
+
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("zoption-theme"))).toBe("dark");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("clarity-theme"))).toBeNull();
 });

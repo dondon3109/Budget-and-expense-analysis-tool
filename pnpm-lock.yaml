@@ -59,7 +59,7 @@ importers:
 
   apps/api:
     dependencies:
-      '@budget/shared':
+      '@zoption/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       drizzle-orm:
@@ -81,15 +81,15 @@ importers:
 
   apps/web:
     dependencies:
-      '@budget/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@supabase/supabase-js':
         specifier: ^2.110.7
         version: 2.110.7
       '@tanstack/react-query':
         specifier: ^5.101.2
         version: 5.101.2(react@19.2.7)
+      '@zoption/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       lucide-react:
         specifier: ^1.24.0
         version: 1.24.0(react@19.2.7)

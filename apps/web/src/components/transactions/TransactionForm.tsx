@@ -6,7 +6,7 @@ import {
   type TransactionInput,
   type TransactionKind,
   type TransactionListItem,
-} from "@budget/shared";
+} from "@zoption/shared";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 

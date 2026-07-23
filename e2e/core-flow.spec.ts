@@ -19,7 +19,7 @@ test("landing page leads visitors to account creation or sign in", async ({ page
     "/login",
   );
   await expect(
-    page.getByRole("img", { name: "Illustrative preview of the Clarity monthly dashboard" }),
+    page.getByRole("img", { name: "Illustrative preview of the Zoption monthly dashboard" }),
   ).toBeVisible();
   await expect(page.getByText("A calmer way to understand your money")).toHaveCount(0);
   await expect(
@@ -68,7 +68,7 @@ test("landing page leads visitors to account creation or sign in", async ({ page
   ).toHaveText(["BPI", "BDO", "MariBank", "Bank of America", "JPMorgan / Chase"]);
   await expect(
     formatsSection.getByText(
-      "Bank names are shown to indicate supported export formats only. Clarity is not affiliated with or endorsed by these institutions.",
+      "Bank names are shown to indicate supported export formats only. Zoption is not affiliated with or endorsed by these institutions.",
     ),
   ).toBeVisible();
   await expect
@@ -109,7 +109,7 @@ test("retired demo route returns to the landing page", async ({ page }) => {
 test("private pages redirect signed-out users to login", async ({ page }) => {
   await page.goto("/app/transactions");
   await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Ftransactions$/);
-  await expect(page.getByRole("heading", { name: "Sign in to Clarity" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in to Zoption" })).toBeVisible();
 
   await page.goto("/transactions");
   await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Ftransactions$/);

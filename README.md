@@ -1,6 +1,6 @@
-# Clarity — Budget and Expense Analysis
+# Zoption — Budget and Expense Analysis
 
-Clarity is a privacy-conscious budgeting web application that turns imported or manually entered transactions into understandable monthly totals, category spending, budget progress, and trends. Supabase Auth provides email/password accounts and sessions, while a Cloudflare Worker stores each user's financial records in an isolated D1 tenant.
+Zoption is a privacy-conscious budgeting web application that turns imported or manually entered transactions into understandable monthly totals, category spending, budget progress, and trends. Supabase Auth provides email/password accounts and sessions, while a Cloudflare Worker stores each user's financial records in an isolated D1 tenant.
 
 ## Hosted app
 
@@ -85,6 +85,6 @@ scripts/           Non-mutating smoke checks and screenshot capture
 
 ## Privacy and scope
 
-Authenticated financial records are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions or budgets. Clarity does not connect to banks and does not provide financial, tax, investment, or legal advice.
+Authenticated financial records are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions or budgets. Zoption does not connect to banks and does not provide financial, tax, investment, or legal advice.
 
 Engineering evidence is summarized in the [test strategy](docs/test-strategy.md), [performance report](docs/performance.md), [deployment runbook](docs/deployment.md), and [case study](docs/case-study.md).

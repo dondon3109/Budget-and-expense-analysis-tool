@@ -1,4 +1,4 @@
-import type { CategoryInput, CategoryRecord, CategoryUpdate } from "@budget/shared";
+import type { CategoryInput, CategoryRecord, CategoryUpdate } from "@zoption/shared";
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 

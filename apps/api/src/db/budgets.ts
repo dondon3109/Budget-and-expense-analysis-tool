@@ -1,4 +1,4 @@
-import type { BudgetMonthPlan, BudgetUpsert } from "@budget/shared";
+import type { BudgetMonthPlan, BudgetUpsert } from "@zoption/shared";
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 

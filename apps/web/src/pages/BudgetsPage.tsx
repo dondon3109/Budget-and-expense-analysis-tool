@@ -1,4 +1,4 @@
-import { parseAmountToMinor, type BudgetUpsert } from "@budget/shared";
+import { parseAmountToMinor, type BudgetUpsert } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Check, CircleDollarSign, PiggyBank, TrendingDown } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";

@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import type { CategoryRecord, TransactionListItem } from "@budget/shared";
+import type { CategoryRecord, TransactionListItem } from "@zoption/shared";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
