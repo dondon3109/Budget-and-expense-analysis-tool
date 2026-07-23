@@ -13,8 +13,8 @@ import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
-import { MetricCard } from "../components/dashboard/MetricCard";
 import { InsightsPanel } from "../components/dashboard/InsightsPanel";
+import { OverviewStatBar } from "../components/dashboard/OverviewStatBar";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
 import { AppShell } from "../components/layout/AppShell";
@@ -111,40 +111,41 @@ export function DashboardPage() {
           </section>
         ) : (
           <>
-            <section className="metric-grid" aria-label="Monthly summary">
-              <MetricCard
-                label="Money in"
-                value={formatMoney(metrics.moneyInMinor)}
-                detail="Income received this month"
-                icon={ArrowDownRight}
-                tone="sage"
-              />
-              <MetricCard
-                label="Money out"
-                value={formatMoney(metrics.moneyOutMinor)}
-                detail={
-                  metrics.moneyInMinor === 0
-                    ? "No income recorded this month"
-                    : `${Math.round((metrics.moneyOutMinor / metrics.moneyInMinor) * 100)}% of monthly income`
-                }
-                icon={ArrowUpRight}
-                tone="amber"
-              />
-              <MetricCard
-                label="Net position"
-                value={formatMoney(metrics.netMinor)}
-                detail="After all recorded spending"
-                icon={WalletCards}
-                tone="ink"
-              />
-              <MetricCard
-                label="Remaining budget"
-                value={formatMoney(metrics.remainingBudgetMinor)}
-                detail={`${metrics.budgetUsedPercent}% of plan used`}
-                icon={PiggyBank}
-                tone="plum"
-              />
-            </section>
+            <OverviewStatBar
+              items={[
+                {
+                  label: "Money in",
+                  value: formatMoney(metrics.moneyInMinor),
+                  detail: "Income received this month",
+                  icon: ArrowDownRight,
+                  tone: "sage",
+                },
+                {
+                  label: "Money out",
+                  value: formatMoney(metrics.moneyOutMinor),
+                  detail:
+                    metrics.moneyInMinor === 0
+                      ? "No income recorded this month"
+                      : `${Math.round((metrics.moneyOutMinor / metrics.moneyInMinor) * 100)}% of monthly income`,
+                  icon: ArrowUpRight,
+                  tone: "amber",
+                },
+                {
+                  label: "Net position",
+                  value: formatMoney(metrics.netMinor),
+                  detail: "After all recorded spending",
+                  icon: WalletCards,
+                  tone: "ink",
+                },
+                {
+                  label: "Remaining budget",
+                  value: formatMoney(metrics.remainingBudgetMinor),
+                  detail: `${metrics.budgetUsedPercent}% of plan used`,
+                  icon: PiggyBank,
+                  tone: "plum",
+                },
+              ]}
+            />
             <div className="dashboard-grid">
               <SpendingByCategory data={data.spendingByCategory} />
               <MonthlyTrend data={data.monthlyTrend} />

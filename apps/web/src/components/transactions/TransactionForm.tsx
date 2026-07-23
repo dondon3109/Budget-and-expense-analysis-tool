@@ -10,8 +10,11 @@ import {
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
+import { localIsoDate } from "../../lib/calendar";
+
 interface TransactionFormProps {
   item?: TransactionListItem;
+  initialDate?: string;
   categories: CategoryRecord[];
   accounts: AccountRecord[];
   busy: boolean;
@@ -25,16 +28,9 @@ function toAmountText(item?: TransactionListItem): string {
   return (Math.abs(item.amountMinor) / 100).toFixed(2);
 }
 
-function today(): string {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 export function TransactionForm({
   item,
+  initialDate,
   categories,
   accounts,
   busy,
@@ -43,7 +39,7 @@ export function TransactionForm({
   onClose,
 }: TransactionFormProps) {
   const [kind, setKind] = useState<TransactionKind>(item?.kind ?? "expense");
-  const [date, setDate] = useState(item?.date ?? today);
+  const [date, setDate] = useState(item?.date ?? initialDate ?? localIsoDate);
   const [description, setDescription] = useState(item?.description ?? "");
   const [amount, setAmount] = useState(toAmountText(item));
   const [categoryId, setCategoryId] = useState(item?.categoryId ?? "");

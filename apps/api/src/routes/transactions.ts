@@ -1,4 +1,5 @@
 import {
+  transactionCalendarQuerySchema,
   transactionInputSchema,
   transactionListQuerySchema,
   transactionUpdateSchema,
@@ -11,6 +12,21 @@ import type { AppEnvironment } from "../types";
 
 export function createTransactionRoutes(repository: TransactionRepository) {
   const routes = new Hono<AppEnvironment>();
+
+  routes.get("/calendar", async (context) => {
+    const parsed = transactionCalendarQuerySchema.safeParse(context.req.query());
+    if (!parsed.success) {
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Choose a valid calendar month.",
+        parsed.error.flatten(),
+      );
+    }
+    return context.json(
+      await repository.calendar(context.env, context.get("tenant").tenantId, parsed.data),
+    );
+  });
 
   routes.get("/", async (context) => {
     const parsed = transactionListQuerySchema.safeParse(context.req.query());

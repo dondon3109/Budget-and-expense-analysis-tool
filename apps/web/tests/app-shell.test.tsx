@@ -31,7 +31,7 @@ describe("AppShell", () => {
     const navigation = screen.getByRole("navigation", { name: "Main navigation" });
     expect(
       Array.from(navigation.querySelectorAll("a")).map((link) => link.textContent?.trim()),
-    ).toEqual(["Overview", "Transactions", "Import", "Budgets", "Subscriptions"]);
+    ).toEqual(["Overview", "Calendar", "Transactions", "Import", "Budgets", "Subscriptions"]);
     expect(screen.getByRole("link", { name: "Subscriptions" })).toHaveClass("current");
     expect(screen.queryByText("Personal workspace")).not.toBeInTheDocument();
     expect(screen.getByText("Signed in as")).toBeInTheDocument();

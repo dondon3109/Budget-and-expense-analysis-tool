@@ -102,6 +102,10 @@ export const monthStartSchema = isoDateSchema.refine(
   "Use the first day of the month.",
 );
 
+export const transactionCalendarQuerySchema = z.object({ month: monthStartSchema });
+
+export type TransactionCalendarQuery = z.infer<typeof transactionCalendarQuerySchema>;
+
 export const budgetQuerySchema = z.object({ month: monthStartSchema });
 
 export const budgetUpsertSchema = z.object({

@@ -6,6 +6,7 @@ import {
   type ImportPreviewRequest,
   type SubscriptionMonthSummary,
   type SubscriptionRecord,
+  type TransactionCalendarMonth,
   type TransactionListItem,
   type TransactionPage,
 } from "@budget/shared";
@@ -85,6 +86,13 @@ const transactionPage: TransactionPage = {
   totalPages: 1,
 };
 
+const transactionCalendar: TransactionCalendarMonth = {
+  month: "2026-07-01",
+  currency: "PHP",
+  items: [transactionItem],
+  hasAnyTransactions: true,
+};
+
 const categoryItem: CategoryRecord = {
   id: "food",
   name: "Food & dining",
@@ -144,6 +152,7 @@ const subscriptionSummary: SubscriptionMonthSummary = {
 function createTransactionStore(): TransactionRepository {
   return {
     list: vi.fn(async () => transactionPage),
+    calendar: vi.fn(async () => transactionCalendar),
     create: vi.fn(async () => transactionItem),
     update: vi.fn(async () => transactionItem),
     remove: vi.fn(async () => undefined),
@@ -353,6 +362,29 @@ describe("API foundation", () => {
         search: "rent",
       }),
     );
+  });
+
+  it("loads a complete calendar month for the resolved tenant", async () => {
+    const transactions = createTransactionStore();
+    const app = createTestApp({ transactions });
+    const response = await app.request("/api/app/transactions/calendar?month=2026-07-01", {
+      headers: AUTHORIZATION,
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(transactionCalendar);
+    expect(transactions.calendar).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      month: "2026-07-01",
+    });
+  });
+
+  it("rejects an invalid calendar month before reaching the repository", async () => {
+    const transactions = createTransactionStore();
+    const app = createTestApp({ transactions });
+    const response = await app.request("/api/app/transactions/calendar?month=2026-07-02", {
+      headers: AUTHORIZATION,
+    });
+    expect(response.status).toBe(400);
+    expect(transactions.calendar).not.toHaveBeenCalled();
   });
 
   it("lists accounts for the resolved tenant", async () => {

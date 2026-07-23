@@ -1,5 +1,7 @@
 import {
   normalizeSignedAmount,
+  type TransactionCalendarMonth,
+  type TransactionCalendarQuery,
   type TransactionExportQuery,
   type TransactionInput,
   type TransactionListItem,
@@ -7,7 +9,7 @@ import {
   type TransactionPage,
   type TransactionUpdate,
 } from "@budget/shared";
-import { and, asc, count, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, lt, lte, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { accounts, categories, transactions } from "../../../../db/schema";
@@ -16,6 +18,11 @@ import type { Bindings } from "../types";
 
 export interface TransactionRepository {
   list(env: Bindings, tenantId: string, query: TransactionListQuery): Promise<TransactionPage>;
+  calendar(
+    env: Bindings,
+    tenantId: string,
+    query: TransactionCalendarQuery,
+  ): Promise<TransactionCalendarMonth>;
   create(env: Bindings, tenantId: string, input: TransactionInput): Promise<TransactionListItem>;
   update(
     env: Bindings,
@@ -62,6 +69,12 @@ function getOrderBy(query: TransactionExportQuery) {
         ? transactions.amountMinor
         : transactions.date;
   return query.sortDirection === "asc" ? asc(sortColumn) : desc(sortColumn);
+}
+
+function nextMonthStart(month: string): string {
+  const date = new Date(`${month}T00:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 async function validateReferences(
@@ -189,6 +202,69 @@ export const transactionRepository: TransactionRepository = {
       pageSize: query.pageSize,
       total,
       totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
+    };
+  },
+
+  async calendar(env, tenantId, query) {
+    const db = drizzle(env.DB);
+    const [rows, anyTransactions] = await Promise.all([
+      db
+        .select({
+          id: transactions.id,
+          date: transactions.date,
+          description: transactions.description,
+          amountMinor: transactions.amountMinor,
+          currency: transactions.currency,
+          kind: transactions.kind,
+          categoryId: categories.id,
+          categoryName: categories.name,
+          categoryColor: categories.color,
+          accountId: transactions.accountId,
+          accountName: accounts.name,
+          notes: transactions.notes,
+        })
+        .from(transactions)
+        .innerJoin(
+          categories,
+          and(eq(transactions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+        )
+        .leftJoin(
+          accounts,
+          and(eq(transactions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
+        )
+        .where(
+          and(
+            eq(transactions.tenantId, tenantId),
+            gte(transactions.date, query.month),
+            lt(transactions.date, nextMonthStart(query.month)),
+          ),
+        )
+        .orderBy(asc(transactions.date), desc(transactions.id))
+        .limit(5001),
+      db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(eq(transactions.tenantId, tenantId))
+        .limit(1),
+    ]);
+
+    if (rows.length > 5000) {
+      throw new HttpError(
+        413,
+        "calendar_month_too_large",
+        "This month has too many records for the calendar. Use Transactions to review it.",
+      );
+    }
+
+    return {
+      month: query.month,
+      currency: "PHP",
+      hasAnyTransactions: anyTransactions.length > 0,
+      items: rows.map((row) => ({
+        ...row,
+        currency: "PHP",
+        accountName: row.accountName ?? "Unassigned",
+      })),
     };
   },
 

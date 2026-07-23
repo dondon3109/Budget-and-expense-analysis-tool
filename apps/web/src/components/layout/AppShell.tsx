@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  CalendarDays,
   FileUp,
   Landmark,
   List,
@@ -21,6 +22,7 @@ interface AppShellProps {
 
 const navItems = [
   { label: "Overview", icon: BarChart3, to: "/app" },
+  { label: "Calendar", icon: CalendarDays, to: "/app/calendar" },
   { label: "Transactions", icon: List, to: "/app/transactions" },
   { label: "Import", icon: FileUp, to: "/app/import" },
   { label: "Budgets", icon: PiggyBank, to: "/app/budgets" },

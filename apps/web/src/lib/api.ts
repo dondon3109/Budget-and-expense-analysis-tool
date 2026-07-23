@@ -14,6 +14,7 @@ import type {
   SubscriptionMonthSummary,
   SubscriptionRecord,
   SubscriptionStatusUpdate,
+  TransactionCalendarMonth,
   TransactionExportQuery,
   TransactionInput,
   TransactionListItem,
@@ -160,6 +161,16 @@ export function getTransactions(
     if (value !== undefined && value !== "") search.set(key, String(value));
   }
   return requestJson(workspace, `/api/app/transactions?${search.toString()}`);
+}
+
+export function getTransactionCalendar(
+  workspace: AuthenticatedWorkspace,
+  month: string,
+): Promise<TransactionCalendarMonth> {
+  return requestJson(
+    workspace,
+    `/api/app/transactions/calendar?month=${encodeURIComponent(month)}`,
+  );
 }
 
 export function createTransaction(

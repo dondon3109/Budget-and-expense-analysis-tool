@@ -27,6 +27,13 @@ export interface TransactionPage {
   totalPages: number;
 }
 
+export interface TransactionCalendarMonth {
+  month: string;
+  currency: "PHP";
+  items: TransactionListItem[];
+  hasAnyTransactions: boolean;
+}
+
 export interface AccountRecord {
   id: string;
   name: string;

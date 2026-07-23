@@ -3,9 +3,9 @@
 import "@testing-library/jest-dom/vitest";
 
 import type { CategoryRecord, TransactionListItem } from "@budget/shared";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TransactionForm } from "../src/components/transactions/TransactionForm";
 
@@ -23,6 +23,8 @@ const category: CategoryRecord = {
   system: false,
 };
 
+afterEach(cleanup);
+
 const transaction: TransactionListItem = {
   id: "transaction-1",
   date: "2026-07-20",
@@ -39,6 +41,37 @@ const transaction: TransactionListItem = {
 };
 
 describe("TransactionForm", () => {
+  it("prefills a new transaction with the selected calendar date", () => {
+    render(
+      <TransactionForm
+        initialDate="2026-08-12"
+        categories={[category]}
+        accounts={accounts}
+        busy={false}
+        onSubmit={vi.fn(async () => undefined)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Date")).toHaveValue("2026-08-12");
+  });
+
+  it("keeps the existing date when editing even if an initial date is provided", () => {
+    render(
+      <TransactionForm
+        item={transaction}
+        initialDate="2026-08-12"
+        categories={[category]}
+        accounts={accounts}
+        busy={false}
+        onSubmit={vi.fn(async () => undefined)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Date")).toHaveValue("2026-07-20");
+  });
+
   it("submits normalized edits and preserves an intentional empty note", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
