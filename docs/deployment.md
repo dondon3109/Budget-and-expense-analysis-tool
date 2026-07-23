@@ -124,12 +124,6 @@ The intended production endpoints are:
 
 Preview endpoints are deployment-specific. Supply them through `PREVIEW_WEB_HOST` and `PREVIEW_API_HOST` in release commands instead of committing provider-generated hostnames.
 
-## Transition cleanup
+## Legacy origin cleanup
 
-Keep `https://clarity-budget.pages.dev` in production `ALLOWED_ORIGINS` until the custom domain has been stable and old-host traffic has stopped. Then:
-
-1. Remove the Pages origin from `apps/api/wrangler.deploy.jsonc`, `apps/api/wrangler.deploy.example.jsonc`, `apps/api/wrangler.jsonc`, and `.env.example`.
-2. Redeploy the production Worker and verify requests from `https://zoption.site` and `https://www.zoption.site` still receive the expected CORS headers.
-3. Remove old Pages-host callback URLs from the Supabase redirect allow-list and keep `https://zoption.site/auth/callback` plus `https://www.zoption.site/auth/callback`.
-4. Confirm `www.zoption.site` redirects to the canonical host, or keep both origins and callback URLs if both hosts remain directly usable.
-5. Re-run `WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production` after each deployment or routing change.
+The legacy production Pages origin is no longer accepted by the API. Production `ALLOWED_ORIGINS` contains only `https://zoption.site` and `https://www.zoption.site`. Keep only the matching custom-domain callback URLs in Supabase, and rerun `WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production` after deployment or routing changes.

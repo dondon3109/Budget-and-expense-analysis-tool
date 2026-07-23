@@ -32,7 +32,7 @@
         },
       ],
       "vars": {
-        "ALLOWED_ORIGINS": "https://zoption.site,https://www.zoption.site,https://clarity-budget.pages.dev",
+        "ALLOWED_ORIGINS": "https://zoption.site,https://www.zoption.site",
         "SUPABASE_URL": "https://REPLACE_WITH_SUPABASE_PROJECT_REF.supabase.co",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
       },
