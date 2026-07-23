@@ -10,12 +10,19 @@ import {
 } from "recharts";
 
 import { formatMoney, formatMonth } from "../../lib/formatters";
+import { createMonthlyTrendAxis, formatMonthlyTrendTick } from "../../lib/monthlyTrendAxis";
 
 interface Props {
   data: DashboardSummary["monthlyTrend"];
 }
 
 export function MonthlyTrend({ data }: Props) {
+  const maximumMinor = data.reduce(
+    (maximum, item) => Math.max(maximum, item.incomeMinor, item.expenseMinor),
+    0,
+  );
+  const axis = createMonthlyTrendAxis(maximumMinor);
+
   return (
     <section className="panel trend-panel" aria-labelledby="trend-title">
       <div className="panel-heading">
@@ -58,7 +65,11 @@ export function MonthlyTrend({ data }: Props) {
                   tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
                 />
                 <YAxis
-                  tickFormatter={(value) => `₱${Math.round(Number(value) / 100_000)}k`}
+                  ticks={axis.ticks}
+                  domain={axis.domain}
+                  interval={0}
+                  allowDecimals={false}
+                  tickFormatter={(value) => formatMonthlyTrendTick(Number(value), axis)}
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: "var(--chart-axis)", fontSize: 11 }}

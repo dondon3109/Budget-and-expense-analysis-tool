@@ -8,6 +8,10 @@ export function formatMoney(amountMinor: number): string {
   return currencyFormatter.format(amountMinor / 100);
 }
 
+export function formatMoneyParts(amountMinor: number): Intl.NumberFormatPart[] {
+  return currencyFormatter.formatToParts(amountMinor / 100);
+}
+
 export function formatMonth(month: string): string {
   return new Intl.DateTimeFormat("en-PH", { month: "short", timeZone: "UTC" }).format(
     new Date(`${month}-01T00:00:00Z`),

@@ -1146,6 +1146,9 @@ textarea:focus-visible {
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
 }
+.overview-stat-currency {
+  font-family: Verdana, "Segoe UI", system-ui, sans-serif;
+}
 .overview-stat > p {
   margin: 0;
   color: var(--subtle);

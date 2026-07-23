@@ -19,7 +19,7 @@ import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
 import { AppShell } from "../components/layout/AppShell";
 import { getDashboard } from "../lib/api";
-import { formatMoney, formatPeriod } from "../lib/formatters";
+import { formatPeriod } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 
@@ -115,14 +115,14 @@ export function DashboardPage() {
               items={[
                 {
                   label: "Money in",
-                  value: formatMoney(metrics.moneyInMinor),
+                  amountMinor: metrics.moneyInMinor,
                   detail: "Income received this month",
                   icon: ArrowDownRight,
                   tone: "sage",
                 },
                 {
                   label: "Money out",
-                  value: formatMoney(metrics.moneyOutMinor),
+                  amountMinor: metrics.moneyOutMinor,
                   detail:
                     metrics.moneyInMinor === 0
                       ? "No income recorded this month"
@@ -132,14 +132,14 @@ export function DashboardPage() {
                 },
                 {
                   label: "Net position",
-                  value: formatMoney(metrics.netMinor),
+                  amountMinor: metrics.netMinor,
                   detail: "After all recorded spending",
                   icon: WalletCards,
                   tone: "ink",
                 },
                 {
                   label: "Remaining budget",
-                  value: formatMoney(metrics.remainingBudgetMinor),
+                  amountMinor: metrics.remainingBudgetMinor,
                   detail: `${metrics.budgetUsedPercent}% of plan used`,
                   icon: PiggyBank,
                   tone: "plum",

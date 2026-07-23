@@ -1,8 +1,11 @@
 import type { LucideIcon } from "lucide-react";
+import { Fragment } from "react";
+
+import { formatMoneyParts } from "../../lib/formatters";
 
 export interface OverviewStatItem {
   label: string;
-  value: string;
+  amountMinor: number;
   detail: string;
   icon: LucideIcon;
   tone: "sage" | "amber" | "ink" | "plum";
@@ -25,7 +28,17 @@ export function OverviewStatBar({ items }: OverviewStatBarProps) {
                 <Icon size={16} aria-hidden="true" />
               </span>
             </div>
-            <strong>{item.value}</strong>
+            <strong>
+              {formatMoneyParts(item.amountMinor).map((part, index) =>
+                part.type === "currency" ? (
+                  <span className="overview-stat-currency" key={`${part.type}-${index}`}>
+                    {part.value}
+                  </span>
+                ) : (
+                  <Fragment key={`${part.type}-${index}`}>{part.value}</Fragment>
+                ),
+              )}
+            </strong>
             <p>{item.detail}</p>
           </article>
         );
