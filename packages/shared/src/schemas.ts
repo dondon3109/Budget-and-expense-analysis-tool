@@ -217,14 +217,31 @@ export const importCommitSchema = z
       )
       .max(500)
       .default([]),
+    kindOverrides: z
+      .array(
+        z.object({
+          rowNumber: z.number().int().min(1),
+          kind: z.enum(transactionKinds),
+        }),
+      )
+      .max(500)
+      .default([]),
   })
   .superRefine((input, context) => {
-    const rowNumbers = input.categoryOverrides.map((override) => override.rowNumber);
-    if (new Set(rowNumbers).size !== rowNumbers.length) {
+    const categoryRows = input.categoryOverrides.map((override) => override.rowNumber);
+    if (new Set(categoryRows).size !== categoryRows.length) {
       context.addIssue({
         code: "custom",
         path: ["categoryOverrides"],
         message: "Each import row can have only one category override.",
+      });
+    }
+    const kindRows = input.kindOverrides.map((override) => override.rowNumber);
+    if (new Set(kindRows).size !== kindRows.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["kindOverrides"],
+        message: "Each import row can have only one transaction type override.",
       });
     }
   });

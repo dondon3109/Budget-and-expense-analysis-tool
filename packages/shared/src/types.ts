@@ -121,9 +121,15 @@ export interface ImportCategoryOverride {
   categoryId: string;
 }
 
+export interface ImportKindOverride {
+  rowNumber: number;
+  kind: TransactionKind;
+}
+
 export interface ImportCommitRequest {
   token: string;
   categoryOverrides: ImportCategoryOverride[];
+  kindOverrides: ImportKindOverride[];
 }
 
 export interface ImportCommitResult {

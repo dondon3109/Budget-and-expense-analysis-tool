@@ -554,6 +554,7 @@ describe("API foundation", () => {
       body: JSON.stringify({
         token: "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
         categoryOverrides: [{ rowNumber: 2, categoryId: "food" }],
+        kindOverrides: [{ rowNumber: 2, kind: "expense" }],
       }),
     });
     expect(commitResponse.status).toBe(201);
@@ -561,6 +562,7 @@ describe("API foundation", () => {
     expect(imports.commit).toHaveBeenCalledWith(undefined, TENANT_ID, {
       token: "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
       categoryOverrides: [{ rowNumber: 2, categoryId: "food" }],
+      kindOverrides: [{ rowNumber: 2, kind: "expense" }],
     });
   });
 

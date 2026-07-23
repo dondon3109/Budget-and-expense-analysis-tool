@@ -1,13 +1,13 @@
 import {
   CsvParseError,
+  importPreviewRequestSchema,
   inspectCsv,
+  normalizeSignedAmount,
   parseCsv,
+  transactionKinds,
   type CategoryRecord,
-  type CsvInspection,
   type ImportCommitRequest,
-  type ImportCommitResult,
   type ImportMapping,
-  type ImportPreview,
   type TransactionKind,
 } from "@budget/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,10 +24,12 @@ import {
   ShieldCheck,
   Tags,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
+import { emptyImportMapping, localToday, useImportDraft } from "../import/ImportDraftProvider";
+import "../import/import.css";
 import { commitImport, getCategories, previewImport } from "../lib/api";
 import { formatMoney } from "../lib/formatters";
 import {
@@ -47,18 +49,6 @@ const MAX_CSV_FILE_BYTES = 1_000_000;
 const MAX_WORKBOOK_FILE_BYTES = 5_000_000;
 const MAX_IMPORT_ROWS = 500;
 const PREVIEW_PAGE_SIZE = 100;
-
-function localToday(): string {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function emptyMapping(): ImportMapping {
-  return { description: "", amount: "" };
-}
 
 function downloadTemplate() {
   const content = [
@@ -93,37 +83,69 @@ export function ImportPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
-  const [fileName, setFileName] = useState("");
-  const [csvText, setCsvText] = useState("");
-  const [inspection, setInspection] = useState<CsvInspection>();
-  const [headerRowNumber, setHeaderRowNumber] = useState<number>();
-  const [selectedRowCount, setSelectedRowCount] = useState(0);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [mapping, setMapping] = useState<ImportMapping>(emptyMapping);
-  const [amountMode, setAmountMode] = useState<ImportAmountMode>("amount");
-  const [selectedPresetId, setSelectedPresetId] = useState<ImportPresetId>("auto");
-  const [resolvedPresetId, setResolvedPresetId] = useState<ImportPreset["id"]>("generic");
-  const [phpConfirmed, setPhpConfirmed] = useState(false);
-  const [fallbackDate, setFallbackDate] = useState(localToday);
-  const [worksheetNames, setWorksheetNames] = useState<string[]>([]);
-  const [selectedWorksheet, setSelectedWorksheet] = useState("");
-  const [worksheetRowCount, setWorksheetRowCount] = useState<number>();
-  const [workbookWarnings, setWorkbookWarnings] = useState<string[]>([]);
-  const [workbookBusy, setWorkbookBusy] = useState(false);
+  const {
+    fileName,
+    setFileName,
+    csvText,
+    setCsvText,
+    inspection,
+    setInspection,
+    headerRowNumber,
+    setHeaderRowNumber,
+    selectedRowCount,
+    setSelectedRowCount,
+    headers,
+    setHeaders,
+    mapping,
+    setMapping,
+    amountMode,
+    setAmountMode,
+    selectedPresetId,
+    setSelectedPresetId,
+    resolvedPresetId,
+    setResolvedPresetId,
+    phpConfirmed,
+    setPhpConfirmed,
+    fallbackDate,
+    setFallbackDate,
+    worksheetNames,
+    setWorksheetNames,
+    selectedWorksheet,
+    setSelectedWorksheet,
+    worksheetRowCount,
+    setWorksheetRowCount,
+    workbookWarnings,
+    setWorkbookWarnings,
+    workbookBusy,
+    setWorkbookBusy,
+    fileError,
+    setFileError,
+    previewError,
+    setPreviewError,
+    previewAttempted,
+    setPreviewAttempted,
+    preview,
+    setPreview,
+    previewPage,
+    setPreviewPage,
+    categoryOverrides,
+    setCategoryOverrides,
+    kindOverrides,
+    setKindOverrides,
+    bulkKind,
+    setBulkKind,
+    selectedRows,
+    setSelectedRows,
+    bulkCategoryId,
+    setBulkCategoryId,
+    result,
+    setResult,
+    workbookClientRef,
+    fileSelectionIdRef,
+    previewGenerationRef,
+  } = useImportDraft();
   const [dragActive, setDragActive] = useState(false);
-  const [fileError, setFileError] = useState<string>();
-  const [previewError, setPreviewError] = useState<Error>();
-  const [preview, setPreview] = useState<ImportPreview>();
-  const [previewPage, setPreviewPage] = useState(1);
-  const [categoryOverrides, setCategoryOverrides] = useState<Record<number, string>>({});
-  const [bulkKind, setBulkKind] = useState<TransactionKind>();
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
-  const [bulkCategoryId, setBulkCategoryId] = useState("");
-  const [result, setResult] = useState<ImportCommitResult>();
-  const workbookClientRef = useRef<WorkbookImportClient | undefined>(undefined);
-  const fileSelectionIdRef = useRef(0);
   const dragDepthRef = useRef(0);
-  const previewGenerationRef = useRef(0);
 
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories(workspace),
@@ -141,6 +163,8 @@ export function ImportPage() {
       setResult(undefined);
       setPreviewPage(1);
       setCategoryOverrides({});
+      setKindOverrides({});
+      setPreviewAttempted(false);
       setSelectedRows([]);
       setBulkCategoryId("");
       setBulkKind(
@@ -155,6 +179,8 @@ export function ImportPage() {
   const commitMutation = useMutation({
     mutationFn: (input: ImportCommitRequest) => commitImport(workspace, input),
     onSuccess: async (data) => {
+      workbookClientRef.current?.dispose();
+      workbookClientRef.current = undefined;
       setResult(data);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
@@ -163,13 +189,6 @@ export function ImportPage() {
     },
   });
 
-  useEffect(
-    () => () => {
-      workbookClientRef.current?.dispose();
-    },
-    [],
-  );
-
   function invalidatePreview() {
     previewGenerationRef.current += 1;
     setPreviewError(undefined);
@@ -177,6 +196,7 @@ export function ImportPage() {
     setResult(undefined);
     setPreviewPage(1);
     setCategoryOverrides({});
+    setKindOverrides({});
     setSelectedRows([]);
     setBulkCategoryId("");
     setBulkKind(undefined);
@@ -190,7 +210,7 @@ export function ImportPage() {
     setHeaderRowNumber(undefined);
     setSelectedRowCount(0);
     setHeaders([]);
-    setMapping(emptyMapping());
+    setMapping(emptyImportMapping());
     setAmountMode("amount");
     setSelectedPresetId("auto");
     setResolvedPresetId("generic");
@@ -198,6 +218,7 @@ export function ImportPage() {
     setFallbackDate(localToday());
     setWorksheetRowCount(undefined);
     setWorkbookWarnings([]);
+    setPreviewAttempted(false);
     invalidatePreview();
   }
 
@@ -485,14 +506,38 @@ export function ImportPage() {
   const resolvedPreset = getImportPreset(resolvedPresetId);
   const requiresPhpConfirmation =
     resolvedPreset.requiresPhpConfirmation && !currencyColumnProvesPhp;
-  const requiredMappingComplete = Boolean(
-    mapping.description &&
-    (mapping.date || fallbackDate) &&
-    (amountMode === "amount" ? mapping.amount : mapping.debit && mapping.credit) &&
+  const canAttemptPreview = Boolean(
+    csvText &&
+    !workbookBusy &&
     selectedRowCount > 0 &&
     selectedRowCount <= MAX_IMPORT_ROWS &&
     (!requiresPhpConfirmation || phpConfirmed),
   );
+  const descriptionMappingMissing = previewAttempted && !mapping.description.trim();
+
+  function requestPreview() {
+    previewGenerationRef.current += 1;
+    setPreviewAttempted(true);
+    const generation = previewGenerationRef.current;
+    setPreviewError(undefined);
+
+    if (!mapping.description.trim()) return;
+
+    const parsed = importPreviewRequestSchema.safeParse({
+      fileName,
+      csvText,
+      headerRowNumber,
+      mapping,
+      ...(mapping.date ? {} : { fallbackDate }),
+    });
+    if (!parsed.success) {
+      const messages = [...new Set(parsed.error.issues.map((issue) => issue.message))];
+      setPreviewError(new Error(messages.join(" ")));
+      return;
+    }
+
+    previewMutation.mutate({ generation, input: parsed.data });
+  }
 
   const previewPages = preview
     ? Math.max(1, Math.ceil(preview.rows.length / PREVIEW_PAGE_SIZE))
@@ -500,23 +545,15 @@ export function ImportPage() {
   const visibleRows = preview
     ? preview.rows.slice((previewPage - 1) * PREVIEW_PAGE_SIZE, previewPage * PREVIEW_PAGE_SIZE)
     : [];
-  const eligibleKinds = preview
-    ? (["income", "expense", "transfer"] as const).filter((kind) =>
-        preview.rows.some(
-          (row) => row.status === "ready" && row.categoryIsUncategorized && row.kind === kind,
-        ),
-      )
-    : [];
-  const eligibleRowsForKind =
+  const eligibleRows =
     preview?.rows.filter(
-      (row) => row.status === "ready" && row.categoryIsUncategorized && row.kind === bulkKind,
+      (row) => row.status === "ready" && row.categoryIsUncategorized && row.kind,
     ) ?? [];
   const availableBulkCategories = categories.filter(
     (category) => !category.archived && !category.system && category.kind === bulkKind,
   );
   const allEligibleSelected =
-    eligibleRowsForKind.length > 0 &&
-    eligibleRowsForKind.every((row) => selectedRows.includes(row.rowNumber));
+    eligibleRows.length > 0 && eligibleRows.every((row) => selectedRows.includes(row.rowNumber));
 
   function toggleRow(rowNumber: number) {
     setSelectedRows((current) =>
@@ -527,14 +564,27 @@ export function ImportPage() {
   }
 
   function toggleAllEligible() {
-    setSelectedRows(allEligibleSelected ? [] : eligibleRowsForKind.map((row) => row.rowNumber));
+    setSelectedRows(allEligibleSelected ? [] : eligibleRows.map((row) => row.rowNumber));
   }
 
-  function applyBulkCategory() {
-    if (!bulkCategoryId || selectedRows.length === 0) return;
+  function applyBulkChanges() {
+    if (!bulkKind || selectedRows.length === 0) return;
+    const selected = new Set(selectedRows);
+    setKindOverrides((current) => {
+      const next = { ...current };
+      for (const row of eligibleRows) {
+        if (!selected.has(row.rowNumber)) continue;
+        if (row.kind === bulkKind) delete next[row.rowNumber];
+        else next[row.rowNumber] = bulkKind;
+      }
+      return next;
+    });
     setCategoryOverrides((current) => {
       const next = { ...current };
-      for (const rowNumber of selectedRows) next[rowNumber] = bulkCategoryId;
+      for (const rowNumber of selectedRows) {
+        if (bulkCategoryId) next[rowNumber] = bulkCategoryId;
+        else delete next[rowNumber];
+      }
       return next;
     });
     setSelectedRows([]);
@@ -546,6 +596,10 @@ export function ImportPage() {
         categoryOverrides: Object.entries(categoryOverrides).map(([rowNumber, categoryId]) => ({
           rowNumber: Number(rowNumber),
           categoryId,
+        })),
+        kindOverrides: Object.entries(kindOverrides).map(([rowNumber, kind]) => ({
+          rowNumber: Number(rowNumber),
+          kind,
         })),
       }
     : undefined;
@@ -776,11 +830,26 @@ export function ImportPage() {
                     ["currency", "Currency (optional)"],
                   ] as Array<readonly [keyof ImportMapping, string]>
                 ).map(([key, label]) => (
-                  <label key={key}>
+                  <label
+                    key={key}
+                    className={
+                      key === "description" && descriptionMappingMissing
+                        ? "mapping-field-invalid"
+                        : undefined
+                    }
+                  >
                     <span>{label}</span>
                     <select
                       value={mapping[key] ?? ""}
                       disabled={headers.length === 0}
+                      aria-invalid={
+                        key === "description" && descriptionMappingMissing ? true : undefined
+                      }
+                      aria-describedby={
+                        key === "description" && descriptionMappingMissing
+                          ? "description-mapping-error"
+                          : undefined
+                      }
                       onChange={(event) => updateMapping(key, event.target.value)}
                     >
                       <option value="">
@@ -800,6 +869,11 @@ export function ImportPage() {
                         </option>
                       ))}
                     </select>
+                    {key === "description" && descriptionMappingMissing && (
+                      <small id="description-mapping-error" className="mapping-field-error">
+                        Select a column before previewing.
+                      </small>
+                    )}
                   </label>
                 ))}
                 {!mapping.date && (
@@ -849,21 +923,8 @@ export function ImportPage() {
               <button
                 className="button primary preview-import-button"
                 type="button"
-                disabled={!csvText || !requiredMappingComplete || previewMutation.isPending}
-                onClick={() => {
-                  previewGenerationRef.current += 1;
-                  setPreviewError(undefined);
-                  previewMutation.mutate({
-                    generation: previewGenerationRef.current,
-                    input: {
-                      fileName,
-                      csvText,
-                      headerRowNumber,
-                      mapping,
-                      ...(mapping.date ? {} : { fallbackDate }),
-                    },
-                  });
-                }}
+                disabled={!canAttemptPreview || previewMutation.isPending}
+                onClick={requestPreview}
               >
                 <FileCheck2 size={17} />{" "}
                 {previewMutation.isPending ? "Checking rows…" : "Preview import"}
@@ -905,18 +966,18 @@ export function ImportPage() {
                     </div>
                   </div>
 
-                  {eligibleKinds.length > 0 && (
+                  {eligibleRows.length > 0 && (
                     <div className="bulk-category-toolbar">
                       <div className="bulk-category-heading">
                         <Tags size={18} />
                         <div>
-                          <strong>Categorize Uncategorized rows</strong>
-                          <span>Selections include matching rows on every preview page.</span>
+                          <strong>Update Uncategorized rows</strong>
+                          <span>Selections include eligible rows on every preview page.</span>
                         </div>
                       </div>
                       <div className="bulk-category-controls">
                         <label>
-                          <span>Transaction type</span>
+                          <span>Import selected rows as</span>
                           <select
                             value={bulkKind ?? ""}
                             onChange={(event) => {
@@ -925,9 +986,9 @@ export function ImportPage() {
                               setBulkCategoryId("");
                             }}
                           >
-                            {eligibleKinds.map((kind) => (
+                            {transactionKinds.map((kind) => (
                               <option key={kind} value={kind}>
-                                {kind}
+                                {kind.charAt(0).toUpperCase() + kind.slice(1)}
                               </option>
                             ))}
                           </select>
@@ -939,15 +1000,15 @@ export function ImportPage() {
                         >
                           {allEligibleSelected
                             ? "Clear selection"
-                            : `Select all ${eligibleRowsForKind.length}`}
+                            : `Select all ${eligibleRows.length}`}
                         </button>
                         <label>
-                          <span>New category</span>
+                          <span>New category (optional)</span>
                           <select
                             value={bulkCategoryId}
                             onChange={(event) => setBulkCategoryId(event.target.value)}
                           >
-                            <option value="">Choose category</option>
+                            <option value="">Use Uncategorized</option>
                             {availableBulkCategories.map((category) => (
                               <option key={category.id} value={category.id}>
                                 {category.name}
@@ -958,8 +1019,8 @@ export function ImportPage() {
                         <button
                           className="button primary"
                           type="button"
-                          disabled={!bulkCategoryId || selectedRows.length === 0}
-                          onClick={applyBulkCategory}
+                          disabled={!bulkKind || selectedRows.length === 0}
+                          onClick={applyBulkChanges}
                         >
                           Apply to {selectedRows.length} selected
                         </button>
@@ -985,12 +1046,24 @@ export function ImportPage() {
                       <tbody>
                         {visibleRows.map((row) => {
                           const eligible =
-                            row.status === "ready" &&
-                            row.categoryIsUncategorized &&
-                            row.kind === bulkKind;
+                            row.status === "ready" && row.categoryIsUncategorized && row.kind;
+                          const effectiveKind = kindOverrides[row.rowNumber] ?? row.kind;
+                          const effectiveAmount =
+                            row.amountMinor === undefined || !effectiveKind
+                              ? row.amountMinor
+                              : effectiveKind === "transfer"
+                                ? row.amountMinor
+                                : normalizeSignedAmount(row.amountMinor, effectiveKind);
                           const overrideName = categoryName(
                             categories,
                             categoryOverrides[row.rowNumber],
+                          );
+                          const effectiveCategory =
+                            overrideName ||
+                            (effectiveKind !== row.kind ? "Uncategorized" : row.categoryName) ||
+                            "No category";
+                          const changed = Boolean(
+                            overrideName || (effectiveKind && effectiveKind !== row.kind),
                           );
                           return (
                             <tr key={row.rowNumber}>
@@ -1014,16 +1087,16 @@ export function ImportPage() {
                               <td>
                                 <strong>{row.description || "—"}</strong>
                                 <small>
-                                  {row.date || "No valid date"} ·{" "}
-                                  {overrideName || row.categoryName || "No category"}
+                                  {row.date || "No valid date"} · {effectiveKind || "No type"} ·{" "}
+                                  {effectiveCategory}
                                 </small>
                               </td>
                               <td>
-                                {row.amountMinor === undefined ? "—" : formatMoney(row.amountMinor)}
+                                {effectiveAmount === undefined ? "—" : formatMoney(effectiveAmount)}
                               </td>
                               <td>
-                                {overrideName
-                                  ? `Will use ${overrideName}`
+                                {changed && effectiveKind
+                                  ? `Will import as ${effectiveKind} · ${effectiveCategory}`
                                   : row.errors[0] || "Ready to import"}
                               </td>
                             </tr>
@@ -1060,6 +1133,8 @@ export function ImportPage() {
                   <div className="import-commit-row">
                     <span>
                       Preview expires in 15 minutes.
+                      {Object.keys(kindOverrides).length > 0 &&
+                        ` ${Object.keys(kindOverrides).length} transaction type ${Object.keys(kindOverrides).length === 1 ? "change" : "changes"} will be applied.`}
                       {Object.keys(categoryOverrides).length > 0 &&
                         ` ${Object.keys(categoryOverrides).length} category ${Object.keys(categoryOverrides).length === 1 ? "change" : "changes"} will be applied.`}
                     </span>

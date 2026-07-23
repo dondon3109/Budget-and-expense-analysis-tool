@@ -1,5 +1,7 @@
 import {
+  createImportFingerprint,
   normalizeImportDate,
+  normalizeSignedAmount,
   parseCsv,
   type ImportCommitRequest,
   type ImportCommitResult,
@@ -123,6 +125,56 @@ interface OverrideCategory {
   systemKey: string | null;
 }
 
+export async function applyKindOverridesToRows(
+  rows: PreparedImportRecord[],
+  overrides: ImportCommitRequest["kindOverrides"],
+  availableCategories: OverrideCategory[],
+  accountSource: string,
+): Promise<PreparedImportRecord[]> {
+  if (overrides.length === 0) return rows;
+
+  const rowByNumber = new Map(rows.map((row) => [row.rowNumber, row]));
+  const replacements = new Map<number, PreparedImportRecord>();
+
+  for (const override of overrides) {
+    const row = rowByNumber.get(override.rowNumber);
+    const uncategorized = availableCategories.find(
+      (category) =>
+        !category.archived &&
+        category.kind === override.kind &&
+        category.systemKey === `uncategorized:${override.kind}`,
+    );
+    if (!row || !row.categoryIsUncategorized || !uncategorized) {
+      throw new HttpError(
+        400,
+        "invalid_kind_override",
+        "One or more transaction type changes are no longer valid. Preview the file again.",
+      );
+    }
+
+    const amountMinor =
+      override.kind === "transfer"
+        ? row.amountMinor
+        : normalizeSignedAmount(row.amountMinor, override.kind);
+    replacements.set(row.rowNumber, {
+      ...row,
+      amountMinor,
+      kind: override.kind,
+      categoryId: uncategorized.id,
+      categoryName: uncategorized.name,
+      categoryIsUncategorized: true,
+      fingerprint: await createImportFingerprint({
+        date: row.date,
+        amountMinor,
+        description: row.description,
+        accountSource,
+      }),
+    });
+  }
+
+  return rows.map((row) => replacements.get(row.rowNumber) ?? row);
+}
+
 export function applyCategoryOverridesToRows(
   rows: PreparedImportRecord[],
   overrides: ImportCommitRequest["categoryOverrides"],
@@ -162,13 +214,14 @@ export function applyCategoryOverridesToRows(
   return rows.map((row) => replacements.get(row.rowNumber) ?? row);
 }
 
-async function applyCategoryOverrides(
+async function applyImportOverrides(
   env: Bindings,
   tenantId: string,
   rows: PreparedImportRecord[],
-  overrides: ImportCommitRequest["categoryOverrides"],
+  input: Pick<ImportCommitRequest, "categoryOverrides" | "kindOverrides">,
+  accountSource: string,
 ): Promise<PreparedImportRecord[]> {
-  if (overrides.length === 0) return rows;
+  if (input.categoryOverrides.length === 0 && input.kindOverrides.length === 0) return rows;
 
   const db = drizzle(env.DB);
   const availableCategories = await db
@@ -181,7 +234,13 @@ async function applyCategoryOverrides(
     })
     .from(categories)
     .where(eq(categories.tenantId, tenantId));
-  return applyCategoryOverridesToRows(rows, overrides, availableCategories);
+  const kindAdjusted = await applyKindOverridesToRows(
+    rows,
+    input.kindOverrides,
+    availableCategories,
+    accountSource,
+  );
+  return applyCategoryOverridesToRows(kindAdjusted, input.categoryOverrides, availableCategories);
 }
 
 export const importRepository: ImportRepository = {
@@ -329,12 +388,29 @@ export const importRepository: ImportRepository = {
       throw new HttpError(400, "nothing_to_import", "The preview has no valid rows to import.");
     }
     if (storedRows.length !== preview.acceptedCount) invalidStoredPreview();
-    const rows = await applyCategoryOverrides(env, tenantId, storedRows, input.categoryOverrides);
+    const defaultAccountId = defaultAccountIdForTenant(tenantId);
+    const rows = await applyImportOverrides(env, tenantId, storedRows, input, defaultAccountId);
+    if (input.kindOverrides.length > 0) {
+      const fingerprints = rows.map((row) => row.fingerprint);
+      if (new Set(fingerprints).size !== fingerprints.length) {
+        throw new HttpError(
+          409,
+          "import_conflict",
+          "A transaction type change created a duplicate. Preview the file again.",
+        );
+      }
+      if ((await findExistingFingerprints(env, tenantId, fingerprints)).size > 0) {
+        throw new HttpError(
+          409,
+          "import_conflict",
+          "A matching transaction was imported after this preview. Preview the file again.",
+        );
+      }
+    }
     const overriddenRowNumbers = new Set(
       input.categoryOverrides.map((override) => override.rowNumber),
     );
     const importId = crypto.randomUUID();
-    const defaultAccountId = defaultAccountIdForTenant(tenantId);
     const statements = [
       env.DB.prepare(
         "INSERT INTO imports (id, tenant_id, original_filename, row_count, accepted_count, rejected_count) VALUES (?, ?, ?, ?, ?, ?)",

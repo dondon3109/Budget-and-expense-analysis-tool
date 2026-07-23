@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyCategoryOverridesToRows,
+  applyKindOverridesToRows,
   assertImportFileSize,
   buildImportTransactionInsertSql,
   assertImportRowCount,
@@ -385,6 +386,86 @@ const foodOverrideCategory = {
   archived: false,
   systemKey: null,
 };
+
+describe("import transaction type overrides", () => {
+  const overrideCategories = [
+    foodOverrideCategory,
+    {
+      id: "uncategorized-income",
+      name: "Uncategorized",
+      kind: "income" as const,
+      archived: false,
+      systemKey: "uncategorized:income",
+    },
+    {
+      id: "uncategorized-expense",
+      name: "Uncategorized",
+      kind: "expense" as const,
+      archived: false,
+      systemKey: "uncategorized:expense",
+    },
+    {
+      id: "uncategorized-transfer",
+      name: "Uncategorized",
+      kind: "transfer" as const,
+      archived: false,
+      systemKey: "uncategorized:transfer",
+    },
+  ];
+
+  it("changes an inferred income row to a signed expense and recomputes its identity", async () => {
+    const incomeRow: PreparedImportRecord = {
+      ...preparedUncategorizedRow,
+      amountMinor: 5_000,
+      kind: "income",
+      categoryId: "uncategorized-income",
+    };
+
+    const rows = await applyKindOverridesToRows(
+      [incomeRow],
+      [{ rowNumber: 2, kind: "expense" }],
+      overrideCategories,
+      "user:user-1:account:default",
+    );
+
+    expect(rows[0]).toMatchObject({
+      amountMinor: -5_000,
+      kind: "expense",
+      categoryId: "uncategorized-expense",
+      categoryName: "Uncategorized",
+      categoryIsUncategorized: true,
+    });
+    expect(rows[0]?.fingerprint).not.toBe(incomeRow.fingerprint);
+    expect(incomeRow).toMatchObject({ amountMinor: 5_000, kind: "income" });
+  });
+
+  it("preserves a transfer sign and rejects unavailable or categorized rows", async () => {
+    const transferRows = await applyKindOverridesToRows(
+      [preparedUncategorizedRow],
+      [{ rowNumber: 2, kind: "transfer" }],
+      overrideCategories,
+      "user:user-1:account:default",
+    );
+    expect(transferRows[0]).toMatchObject({ amountMinor: -5_000, kind: "transfer" });
+
+    await expect(
+      applyKindOverridesToRows(
+        [{ ...preparedUncategorizedRow, categoryIsUncategorized: false }],
+        [{ rowNumber: 2, kind: "income" }],
+        overrideCategories,
+        "user:user-1:account:default",
+      ),
+    ).rejects.toMatchObject({ status: 400, code: "invalid_kind_override" });
+    await expect(
+      applyKindOverridesToRows(
+        [preparedUncategorizedRow],
+        [{ rowNumber: 2, kind: "income" }],
+        [foodOverrideCategory],
+        "user:user-1:account:default",
+      ),
+    ).rejects.toMatchObject({ status: 400, code: "invalid_kind_override" });
+  });
+});
 
 describe("import category overrides", () => {
   it("replaces only the category while preserving transaction identity", () => {

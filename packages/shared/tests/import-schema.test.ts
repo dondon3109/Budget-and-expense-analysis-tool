@@ -106,7 +106,11 @@ describe("import commit schema", () => {
   const token = "00000000-0000-4000-8000-000000000000";
 
   it("keeps token-only commits compatible", () => {
-    expect(importCommitSchema.parse({ token })).toEqual({ token, categoryOverrides: [] });
+    expect(importCommitSchema.parse({ token })).toEqual({
+      token,
+      categoryOverrides: [],
+      kindOverrides: [],
+    });
   });
 
   it("accepts bounded unique category overrides", () => {
@@ -121,6 +125,18 @@ describe("import commit schema", () => {
     ).toBe(true);
   });
 
+  it("accepts canonical kind overrides alongside category overrides", () => {
+    for (const kind of ["income", "expense", "transfer"] as const) {
+      expect(
+        importCommitSchema.safeParse({
+          token,
+          categoryOverrides: [{ rowNumber: 2, categoryId: "category" }],
+          kindOverrides: [{ rowNumber: 2, kind }],
+        }).success,
+      ).toBe(true);
+    }
+  });
+
   it("rejects duplicate row overrides", () => {
     expect(
       importCommitSchema.safeParse({
@@ -129,6 +145,24 @@ describe("import commit schema", () => {
           { rowNumber: 2, categoryId: "food" },
           { rowNumber: 2, categoryId: "transport" },
         ],
+      }).success,
+    ).toBe(false);
+    expect(
+      importCommitSchema.safeParse({
+        token,
+        kindOverrides: [
+          { rowNumber: 2, kind: "income" },
+          { rowNumber: 2, kind: "expense" },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects unknown transaction kinds", () => {
+    expect(
+      importCommitSchema.safeParse({
+        token,
+        kindOverrides: [{ rowNumber: 2, kind: "refund" }],
       }).success,
     ).toBe(false);
   });

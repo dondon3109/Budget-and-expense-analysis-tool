@@ -1,0 +1,11 @@
+.mapping-field-invalid select,
+.mapping-grid select[aria-invalid="true"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.mapping-field-error {
+  color: var(--danger);
+  font-size: 9px;
+  font-weight: 750;
+}

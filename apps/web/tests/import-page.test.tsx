@@ -6,9 +6,10 @@ import type { ImportPreview } from "@budget/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ImportDraftProvider } from "../src/import/ImportDraftProvider";
 import { commitImport, getCategories, previewImport } from "../src/lib/api";
 import type { WorkbookConversion } from "../src/lib/workbookParser";
 import { ImportPage } from "../src/pages/ImportPage";
@@ -87,11 +88,34 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <ThemeProvider>
-      <MemoryRouter>
-        <QueryClientProvider client={queryClient}>
-          <ImportPage />
-        </QueryClientProvider>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <ImportDraftProvider>
+          <MemoryRouter>
+            <ImportPage />
+          </MemoryRouter>
+        </ImportDraftProvider>
+      </QueryClientProvider>
+    </ThemeProvider>,
+  );
+}
+
+function renderRoutePage() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ImportDraftProvider>
+          <MemoryRouter initialEntries={["/app/import"]}>
+            <Routes>
+              <Route path="/app/import" element={<ImportPage />} />
+              <Route
+                path="/app/transactions"
+                element={<Link to="/app/import">Return to import</Link>}
+              />
+            </Routes>
+          </MemoryRouter>
+        </ImportDraftProvider>
+      </QueryClientProvider>
     </ThemeProvider>,
   );
 }
@@ -169,6 +193,30 @@ describe("ImportPage", () => {
         },
       },
     );
+  });
+
+  it("shows a required Description mapping error before previewing", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    const csv = "Date,Label,Amount\n2026-07-20,Market,-50.00";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    const description = screen.getByLabelText("Description");
+    const previewButton = screen.getByRole("button", { name: "Preview import" });
+    expect(description).not.toHaveAttribute("aria-invalid", "true");
+    expect(previewButton).toBeEnabled();
+
+    await user.click(previewButton);
+
+    expect(description).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("Select a column before previewing.")).toBeInTheDocument();
+    expect(previewImport).not.toHaveBeenCalled();
+
+    await user.selectOptions(description, "Label");
+    expect(description).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText("Select a column before previewing.")).not.toBeInTheDocument();
+    await user.click(previewButton);
+    await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
   });
 
   it("uses one entered date and Uncategorized when Date and Category are absent", async () => {
@@ -256,6 +304,71 @@ describe("ImportPage", () => {
       fallbackDate: "2026-07-16",
       mapping: { description: "Description", amount: "Amount" },
     });
+  });
+
+  it("keeps import setup and review choices when navigating away and back", async () => {
+    const user = userEvent.setup();
+    vi.mocked(previewImport).mockResolvedValueOnce({
+      ...preview,
+      rows: [
+        {
+          rowNumber: 2,
+          status: "ready",
+          date: "2026-07-15",
+          description: "Market",
+          amountMinor: -5000,
+          kind: "expense",
+          categoryId: "uncategorized-expense",
+          categoryName: "Uncategorized",
+          categoryIsUncategorized: true,
+          errors: [],
+        },
+      ],
+    });
+    const { container } = renderRoutePage();
+    const csv = "Description,Amount\nMarket,-50.00";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    const fallbackDate = screen.getByLabelText("Date for every row");
+    await user.clear(fallbackDate);
+    await user.type(fallbackDate, "2026-07-15");
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+    await screen.findByText("Update Uncategorized rows");
+    await user.click(screen.getByLabelText("Select row 2"));
+    await user.selectOptions(screen.getByLabelText("New category (optional)"), "food");
+    await user.click(screen.getByRole("button", { name: "Apply to 1 selected" }));
+
+    await user.click(screen.getByRole("link", { name: "Transactions" }));
+    await user.click(screen.getByRole("link", { name: "Return to import" }));
+
+    expect(screen.getByText("transactions.csv")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date for every row")).toHaveValue("2026-07-15");
+    expect(screen.getByLabelText("Description")).toHaveValue("Description");
+    expect(screen.getByText("Market")).toBeInTheDocument();
+    expect(screen.getByText(/Will import as expense · Food & dining/i)).toBeInTheDocument();
+  });
+
+  it("keeps a workbook client alive across route navigation", async () => {
+    const user = userEvent.setup();
+    workbook.inspect.mockResolvedValue(["Transactions"]);
+    workbook.convert.mockResolvedValue({
+      csvText: "Date,Description,Amount\n2026-07-20,Market,-50.00",
+      rowCount: 1,
+      warnings: [],
+    });
+    const { container } = renderRoutePage();
+
+    await user.upload(
+      fileInput(container),
+      fileWithBuffer("bank.xls", "workbook bytes", "application/vnd.ms-excel"),
+    );
+    expect(await screen.findByText(/Worksheet: Transactions · 1 data row/)).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Transactions" }));
+    expect(workbook.dispose).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("link", { name: "Return to import" }));
+    expect(screen.getByText("bank.xls")).toBeInTheDocument();
+    expect(screen.getByText(/Worksheet: Transactions · 1 data row/)).toBeInTheDocument();
+    expect(workbook.dispose).not.toHaveBeenCalled();
   });
 
   it("automatically converts a single-sheet workbook and disposes it on unmount", async () => {
@@ -486,9 +599,9 @@ describe("ImportPage", () => {
 
     await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
-    await screen.findByText("Categorize Uncategorized rows");
+    await screen.findByText("Update Uncategorized rows");
     await user.click(screen.getByRole("button", { name: "Select all 101" }));
-    await user.selectOptions(screen.getByLabelText("New category"), "food");
+    await user.selectOptions(screen.getByLabelText("New category (optional)"), "food");
     await user.click(screen.getByRole("button", { name: "Apply to 101 selected" }));
 
     await user.click(screen.getByRole("button", { name: "Next" }));
@@ -500,5 +613,54 @@ describe("ImportPage", () => {
     expect(request?.token).toBe("preview-token");
     expect(request?.categoryOverrides).toHaveLength(101);
     expect(request?.categoryOverrides[0]).toEqual({ rowNumber: 2, categoryId: "food" });
+    expect(request?.kindOverrides).toEqual([]);
+  });
+
+  it("imports an inferred income row as an expense with an expense category", async () => {
+    const user = userEvent.setup();
+    vi.mocked(previewImport).mockResolvedValueOnce({
+      ...preview,
+      rows: [
+        {
+          rowNumber: 2,
+          status: "ready",
+          date: "2026-07-20",
+          description: "Deposit shown as positive",
+          amountMinor: 5_000,
+          kind: "income",
+          categoryId: "uncategorized-income",
+          categoryName: "Uncategorized",
+          categoryIsUncategorized: true,
+          errors: [],
+        },
+      ],
+    });
+    const { container } = renderPage();
+    const csv = "Date,Description,Amount\n2026-07-20,Deposit shown as positive,50.00";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+
+    const typeSelect = await screen.findByLabelText("Import selected rows as");
+    expect(
+      Array.from((typeSelect as HTMLSelectElement).options).map((option) => option.text),
+    ).toEqual(["Income", "Expense", "Transfer"]);
+    await user.selectOptions(typeSelect, "expense");
+    const rowCheckbox = screen.getByRole("checkbox", { name: "Select row 2" });
+    expect(rowCheckbox).toBeEnabled();
+    await user.click(rowCheckbox);
+    await user.selectOptions(screen.getByLabelText("New category (optional)"), "food");
+    await user.click(screen.getByRole("button", { name: "Apply to 1 selected" }));
+
+    expect(screen.getByText("Will import as expense · Food & dining")).toBeInTheDocument();
+    expect(screen.getByText("-₱50")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Import 1 ready rows" }));
+
+    await waitFor(() => expect(commitImport).toHaveBeenCalledOnce());
+    expect(vi.mocked(commitImport).mock.calls[0]?.[1]).toEqual({
+      token: "preview-token",
+      categoryOverrides: [{ rowNumber: 2, categoryId: "food" }],
+      kindOverrides: [{ rowNumber: 2, kind: "expense" }],
+    });
   });
 });
