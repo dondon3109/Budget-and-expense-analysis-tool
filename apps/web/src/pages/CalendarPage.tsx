@@ -14,6 +14,7 @@ import {
   createTransaction,
   getAccounts,
   getCategories,
+  getSubscriptions,
   getTransactionCalendar,
 } from "../lib/api";
 import { currentMonth, isMonth, localIsoDate, monthStart, shiftMonth } from "../lib/calendar";
@@ -44,6 +45,10 @@ export function CalendarPage() {
     queryKey: queryKeys.transactionCalendar(workspace, monthStart(visibleMonth)),
     queryFn: () => getTransactionCalendar(workspace, monthStart(visibleMonth)),
   });
+  const subscriptionsQuery = useQuery({
+    queryKey: queryKeys.subscriptions(workspace, monthStart(visibleMonth)),
+    queryFn: () => getSubscriptions(workspace, monthStart(visibleMonth)),
+  });
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories(workspace, true),
     queryFn: () => getCategories(workspace, true),
@@ -69,6 +74,7 @@ export function CalendarPage() {
     for (const item of calendarQuery.data?.items ?? []) {
       const day = lookup.get(item.date) ?? {
         items: [],
+        subscriptions: [],
         incomeMinor: 0,
         expenseMinor: 0,
         incomeCount: 0,
@@ -87,8 +93,23 @@ export function CalendarPage() {
       }
       lookup.set(item.date, day);
     }
+
+    for (const subscription of subscriptionsQuery.data?.items ?? []) {
+      if (subscription.status !== "active" || !subscription.billingDate) continue;
+      const day = lookup.get(subscription.billingDate) ?? {
+        items: [],
+        subscriptions: [],
+        incomeMinor: 0,
+        expenseMinor: 0,
+        incomeCount: 0,
+        expenseCount: 0,
+        transferCount: 0,
+      };
+      day.subscriptions.push(subscription);
+      lookup.set(subscription.billingDate, day);
+    }
     return lookup;
-  }, [calendarQuery.data?.items]);
+  }, [calendarQuery.data?.items, subscriptionsQuery.data?.items]);
 
   const selectedItems = days.get(selectedDate)?.items ?? [];
 
@@ -116,7 +137,7 @@ export function CalendarPage() {
           </div>
           <div className="calendar-month-controls" aria-label="Calendar month controls">
             <button
-              className="icon-button"
+              className="calendar-month-nav"
               type="button"
               onClick={() => showMonth(shiftMonth(visibleMonth, -1))}
               aria-label="Previous month"
@@ -125,7 +146,7 @@ export function CalendarPage() {
             </button>
             <strong aria-live="polite">{formatFullMonth(visibleMonth)}</strong>
             <button
-              className="icon-button"
+              className="calendar-month-nav"
               type="button"
               onClick={() => showMonth(shiftMonth(visibleMonth, 1))}
               aria-label="Next month"

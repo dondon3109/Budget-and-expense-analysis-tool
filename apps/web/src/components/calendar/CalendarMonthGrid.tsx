@@ -1,11 +1,12 @@
-import type { TransactionListItem } from "@budget/shared";
-import { ArrowDownRight, ArrowUpRight, Repeat2 } from "lucide-react";
+import type { SubscriptionMonthItem, TransactionListItem } from "@budget/shared";
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Repeat2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
 import { firstWeekday, formatCalendarDate, monthDates } from "../../lib/calendar";
 
 export interface CalendarDayData {
   items: TransactionListItem[];
+  subscriptions: SubscriptionMonthItem[];
   incomeMinor: number;
   expenseMinor: number;
   incomeCount: number;
@@ -50,6 +51,11 @@ function dayLabel(
   }
   if (data?.transferCount) {
     parts.push(`${data.transferCount} transfer${data.transferCount === 1 ? "" : "s"}`);
+  }
+  if (data?.subscriptions.length) {
+    parts.push(
+      `${data.subscriptions.length} subscription${data.subscriptions.length === 1 ? "" : "s"}: ${data.subscriptions.map((subscription) => subscription.name).join(", ")}`,
+    );
   }
   return parts.join(", ");
 }
@@ -133,6 +139,15 @@ export function CalendarMonthGrid({
                     <Repeat2 size={11} aria-hidden="true" /> {data.transferCount}
                   </span>
                 ) : null}
+                {data?.subscriptions.map((subscription) => (
+                  <span
+                    className={`calendar-indicator subscription ${date <= today ? "paid" : "due"}`}
+                    key={subscription.id}
+                    title={`${subscription.name} · ${date <= today ? "Paid" : "Upcoming"}`}
+                  >
+                    <CalendarClock size={11} aria-hidden="true" /> {subscription.name}
+                  </span>
+                ))}
               </span>
             </button>
           </div>

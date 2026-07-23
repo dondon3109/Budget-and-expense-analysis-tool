@@ -3121,9 +3121,40 @@ button:disabled {
   align-items: center;
   gap: 8px;
 }
+.calendar-month-nav {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+.calendar-month-nav:hover {
+  color: var(--sage);
+  transform: scale(1.16);
+}
+.calendar-month-nav:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
 .calendar-month-controls > strong {
   min-width: 138px;
+  min-height: 40px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
   font-family: Georgia, serif;
   font-size: 16px;
   text-align: center;
@@ -3257,6 +3288,12 @@ button:disabled {
 }
 .calendar-indicator.transfer {
   color: var(--plum);
+}
+.calendar-indicator.subscription.paid {
+  color: var(--success);
+}
+.calendar-indicator.subscription.due {
+  color: var(--danger);
 }
 .calendar-day-panel {
   position: sticky;
