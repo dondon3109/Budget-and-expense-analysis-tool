@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { evaluatePassword } from "../auth/passwordPolicy";
 import { useAuth } from "../auth/AuthProvider";
+import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { AppShell } from "../components/layout/AppShell";
 
 const DISPLAY_NAME_LIMIT = 80;
@@ -17,13 +19,8 @@ function displayNameFromMetadata(metadata: Record<string, unknown> | undefined):
 }
 
 export function SettingsPage() {
-  const {
-    user,
-    updateDisplayName,
-    requestEmailChange,
-    verifyCurrentPassword,
-    updatePassword,
-  } = useAuth();
+  const { user, updateDisplayName, requestEmailChange, verifyCurrentPassword, updatePassword } =
+    useAuth();
   const [searchParams] = useSearchParams();
   const savedDisplayName = displayNameFromMetadata(user?.user_metadata);
   const currentEmail = user?.email ?? "";
@@ -38,6 +35,9 @@ export function SettingsPage() {
   const [profileBusy, setProfileBusy] = useState(false);
   const [emailBusy, setEmailBusy] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordSubmitted, setPasswordSubmitted] = useState(false);
+  const [newPasswordTouched, setNewPasswordTouched] = useState(false);
+  const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false);
   const [profileFeedback, setProfileFeedback] = useState<Feedback>({});
   const [emailFeedback, setEmailFeedback] = useState<Feedback>({});
   const [passwordFeedback, setPasswordFeedback] = useState<Feedback>({});
@@ -45,11 +45,22 @@ export function SettingsPage() {
   const normalizedDisplayName = displayName.trim();
   const displayNameUnchanged = normalizedDisplayName === savedDisplayName.trim();
   const emailConfirmationProcessed = searchParams.get("emailChange") === "confirmed";
+  const newPasswordEvaluation = evaluatePassword(newPassword);
+  const showNewPasswordError =
+    (passwordSubmitted || newPasswordTouched) && !newPasswordEvaluation.isValid;
+  const confirmPasswordError =
+    (passwordSubmitted || confirmPasswordTouched) && !confirmPassword
+      ? "Confirm your password."
+      : (passwordSubmitted || confirmPasswordTouched) && newPassword !== confirmPassword
+        ? "Passwords do not match."
+        : undefined;
 
   async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (normalizedDisplayName.length > DISPLAY_NAME_LIMIT) {
-      setProfileFeedback({ error: `Display name must be ${DISPLAY_NAME_LIMIT} characters or fewer.` });
+      setProfileFeedback({
+        error: `Display name must be ${DISPLAY_NAME_LIMIT} characters or fewer.`,
+      });
       return;
     }
 
@@ -101,9 +112,10 @@ export function SettingsPage() {
 
   async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setPasswordSubmitted(true);
 
-    if (newPassword.length < 8) {
-      setPasswordFeedback({ error: "New password must be at least 8 characters." });
+    if (!newPasswordEvaluation.isValid) {
+      setPasswordFeedback({ error: "New password must meet every requirement." });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -111,7 +123,9 @@ export function SettingsPage() {
       return;
     }
     if (newPassword === currentPassword) {
-      setPasswordFeedback({ error: "Choose a new password that differs from your current password." });
+      setPasswordFeedback({
+        error: "Choose a new password that differs from your current password.",
+      });
       return;
     }
 
@@ -129,6 +143,9 @@ export function SettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      setPasswordSubmitted(false);
+      setNewPasswordTouched(false);
+      setConfirmPasswordTouched(false);
       setPasswordFeedback({
         success: "Password updated. Use the new password the next time you sign in.",
       });
@@ -292,7 +309,7 @@ export function SettingsPage() {
                 <h2 id="password-settings-title">Password</h2>
                 <p>Verify your current password before replacing it with a new one.</p>
               </div>
-              <span>Minimum 8 characters</span>
+              <span>12+ characters and mixed character types</span>
             </div>
 
             <form
@@ -315,37 +332,62 @@ export function SettingsPage() {
                 />
               </label>
               <div className="settings-password-row">
-                <label>
+                <label htmlFor="settings-new-password">
                   <span>New password</span>
                   <input
+                    id="settings-new-password"
                     type="password"
                     autoComplete="new-password"
                     value={newPassword}
                     onChange={(event) => {
                       setNewPassword(event.target.value);
+                      setNewPasswordTouched(true);
                       clearPasswordFeedback();
                     }}
+                    onBlur={() => setNewPasswordTouched(true)}
+                    aria-describedby={
+                      showNewPasswordError
+                        ? "settings-password-guidance settings-password-error"
+                        : "settings-password-guidance"
+                    }
+                    aria-invalid={showNewPasswordError}
                     disabled={passwordBusy || !currentEmail}
-                    minLength={8}
                     required
                   />
                 </label>
-                <label>
+                <label htmlFor="settings-confirm-password">
                   <span>Confirm new password</span>
                   <input
+                    id="settings-confirm-password"
                     type="password"
                     autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(event) => {
                       setConfirmPassword(event.target.value);
+                      setConfirmPasswordTouched(true);
                       clearPasswordFeedback();
                     }}
+                    onBlur={() => setConfirmPasswordTouched(true)}
+                    aria-describedby={
+                      confirmPasswordError ? "settings-confirm-password-error" : undefined
+                    }
+                    aria-invalid={Boolean(confirmPasswordError)}
                     disabled={passwordBusy || !currentEmail}
-                    minLength={8}
                     required
                   />
                 </label>
               </div>
+              <PasswordGuidance
+                password={newPassword}
+                id="settings-password-guidance"
+                errorId="settings-password-error"
+                showError={showNewPasswordError}
+              />
+              {confirmPasswordError && (
+                <small id="settings-confirm-password-error" className="field-error">
+                  {confirmPasswordError}
+                </small>
+              )}
               {!currentEmail && (
                 <p className="settings-helper">
                   Password changes are unavailable because this account does not use an email login.

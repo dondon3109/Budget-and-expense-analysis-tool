@@ -1,5 +1,5 @@
 import { Landmark } from "lucide-react";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { ThemeToggle } from "../theme/ThemeToggle";
@@ -17,9 +17,11 @@ export function AuthLayout({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const headingId = useId();
+
   return (
     <main className="auth-page">
-      <section className="auth-card">
+      <section className="auth-card" aria-labelledby={headingId}>
         <div className="auth-card-header">
           <Link className="brand" to="/" aria-label="Zoption home">
             <span className="brand-mark">
@@ -31,7 +33,7 @@ export function AuthLayout({
         </div>
         <div className="auth-heading">
           <p className="eyebrow">{eyebrow}</p>
-          <h1>{title}</h1>
+          <h1 id={headingId}>{title}</h1>
           <p>{description}</p>
         </div>
         {children}

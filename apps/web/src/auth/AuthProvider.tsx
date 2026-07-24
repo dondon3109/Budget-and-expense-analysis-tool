@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { AuthOperationError, normalizePasswordError, normalizeSignupError } from "./authErrors";
 import { getSupabaseClient, isSupabaseConfigured, supabase } from "../lib/supabase";
 
 interface AuthContextValue {
@@ -95,12 +96,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
+    // Let Supabase's server-side create operation own email uniqueness and race handling.
     const { data, error } = await getSupabaseClient().auth.signUp({
       email,
       password,
       options: { emailRedirectTo: callbackUrl() },
     });
-    if (error) throw error;
+    if (error) throw normalizeSignupError(error);
+
+    // With email confirmation enabled, Supabase masks an existing email as a
+    // successful signup response whose user has no identities.
+    if (data.user && data.user.identities?.length === 0) {
+      throw new AuthOperationError(
+        "duplicate_email",
+        "This email is already registered.",
+        "email_exists",
+      );
+    }
+
     return { confirmationRequired: !data.session };
   }, []);
 
@@ -146,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updatePassword = useCallback(async (password: string) => {
     const { error } = await getSupabaseClient().auth.updateUser({ password });
-    if (error) throw error;
+    if (error) throw normalizePasswordError(error);
   }, []);
 
   const exchangeCodeForSession = useCallback(async (code: string) => {

@@ -81,7 +81,9 @@ describe("SettingsPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Change email" }));
 
-    await waitFor(() => expect(authState.requestEmailChange).toHaveBeenCalledWith("new@example.com"));
+    await waitFor(() =>
+      expect(authState.requestEmailChange).toHaveBeenCalledWith("new@example.com"),
+    );
     expect(screen.getByRole("status")).toHaveTextContent("current email stays active");
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
   });
@@ -93,14 +95,33 @@ describe("SettingsPage", () => {
       target: { value: "current-password" },
     });
     fireEvent.change(screen.getByLabelText("New password"), {
-      target: { value: "new-password" },
+      target: { value: "Budgeting-2026!" },
     });
     fireEvent.change(screen.getByLabelText("Confirm new password"), {
-      target: { value: "different-password" },
+      target: { value: "Budgeting-2026?" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Update password" }));
 
     expect(screen.getByRole("alert")).toHaveTextContent("do not match");
+    expect(authState.verifyCurrentPassword).not.toHaveBeenCalled();
+    expect(authState.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it("rejects a new password that misses the shared policy", () => {
+    renderSettings();
+
+    fireEvent.change(screen.getByLabelText("Current password"), {
+      target: { value: "current-password" },
+    });
+    fireEvent.change(screen.getByLabelText("New password"), {
+      target: { value: "longpassword" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirm new password"), {
+      target: { value: "longpassword" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Update password" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("meet every requirement");
     expect(authState.verifyCurrentPassword).not.toHaveBeenCalled();
     expect(authState.updatePassword).not.toHaveBeenCalled();
   });
@@ -119,14 +140,14 @@ describe("SettingsPage", () => {
       target: { value: "current-password" },
     });
     fireEvent.change(screen.getByLabelText("New password"), {
-      target: { value: "new-password" },
+      target: { value: "Budgeting-2026!" },
     });
     fireEvent.change(screen.getByLabelText("Confirm new password"), {
-      target: { value: "new-password" },
+      target: { value: "Budgeting-2026!" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Update password" }));
 
-    await waitFor(() => expect(authState.updatePassword).toHaveBeenCalledWith("new-password"));
+    await waitFor(() => expect(authState.updatePassword).toHaveBeenCalledWith("Budgeting-2026!"));
     expect(callOrder).toEqual(["verify", "update"]);
     expect(screen.getByLabelText("Current password")).toHaveValue("");
     expect(screen.getByRole("status")).toHaveTextContent("Password updated");
@@ -140,10 +161,10 @@ describe("SettingsPage", () => {
       target: { value: "wrong-password" },
     });
     fireEvent.change(screen.getByLabelText("New password"), {
-      target: { value: "new-password" },
+      target: { value: "Budgeting-2026!" },
     });
     fireEvent.change(screen.getByLabelText("Confirm new password"), {
-      target: { value: "new-password" },
+      target: { value: "Budgeting-2026!" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Update password" }));
 

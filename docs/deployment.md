@@ -11,8 +11,9 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    - `https://zoption.site/auth/callback`
    - `https://www.zoption.site/auth/callback`
 3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users.
-4. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
-5. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
+4. In **Authentication > Password security**, set the minimum password length to 12 and enable leaked-password protection when available. Zoption's signup, recovery, and settings forms also require lowercase, uppercase, number, and special-character coverage; keep any Supabase Auth Hook or equivalent server-side policy aligned if direct Auth API clients must be held to those character-class rules.
+5. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
+6. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
 
 ## One-time Cloudflare setup
 

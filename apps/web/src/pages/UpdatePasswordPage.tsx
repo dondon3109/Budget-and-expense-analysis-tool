@@ -1,25 +1,42 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { useAuth } from "../auth/AuthProvider";
 import { AuthLayout } from "../components/auth/AuthLayout";
+import { PasswordGuidance } from "../components/auth/PasswordGuidance";
+import { evaluatePassword } from "../auth/passwordPolicy";
+import { useAuth } from "../auth/AuthProvider";
 
 export function UpdatePasswordPage() {
   const { updatePassword } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const [confirmationTouched, setConfirmationTouched] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
-  async function handleSubmit(event: FormEvent) {
+  const passwordEvaluation = evaluatePassword(password);
+  const showPasswordError = (submitted || passwordTouched) && !passwordEvaluation.isValid;
+  const confirmationError =
+    (submitted || confirmationTouched) && !confirmation
+      ? "Confirm your password."
+      : (submitted || confirmationTouched) && password !== confirmation
+        ? "Passwords do not match."
+        : undefined;
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (password !== confirmation) {
-      setError("Passwords do not match.");
+    setSubmitted(true);
+    setError(undefined);
+    if (!passwordEvaluation.isValid || password !== confirmation) {
+      setPasswordTouched(true);
+      setConfirmationTouched(true);
       return;
     }
+
     setBusy(true);
-    setError(undefined);
     try {
       await updatePassword(password);
       void navigate("/app", { replace: true });
@@ -32,35 +49,74 @@ export function UpdatePasswordPage() {
     }
   }
 
+  const passwordDescribedBy = [
+    "update-password-guidance",
+    showPasswordError ? "update-password-error" : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <AuthLayout
       eyebrow="Account recovery"
       title="Choose a new password"
       description="Use a strong password you have not used for this account before."
     >
-      <form className="auth-form" onSubmit={(event) => void handleSubmit(event)}>
-        <label>
+      <form
+        className="auth-form"
+        onSubmit={(event) => void handleSubmit(event)}
+        noValidate
+        aria-busy={busy}
+      >
+        <label htmlFor="update-password">
           <span>New password</span>
           <input
+            id="update-password"
             type="password"
             autoComplete="new-password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={8}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setPasswordTouched(true);
+              setError(undefined);
+            }}
+            onBlur={() => setPasswordTouched(true)}
+            aria-describedby={passwordDescribedBy}
+            aria-invalid={showPasswordError}
+            disabled={busy}
             required
           />
         </label>
-        <label>
+        <PasswordGuidance
+          password={password}
+          id="update-password-guidance"
+          errorId="update-password-error"
+          showError={showPasswordError}
+        />
+        <label htmlFor="update-password-confirmation">
           <span>Confirm new password</span>
           <input
+            id="update-password-confirmation"
             type="password"
             autoComplete="new-password"
             value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-            minLength={8}
+            onChange={(event) => {
+              setConfirmation(event.target.value);
+              setConfirmationTouched(true);
+              setError(undefined);
+            }}
+            onBlur={() => setConfirmationTouched(true)}
+            aria-describedby={confirmationError ? "update-password-confirmation-error" : undefined}
+            aria-invalid={Boolean(confirmationError)}
+            disabled={busy}
             required
           />
         </label>
+        {confirmationError && (
+          <small id="update-password-confirmation-error" className="field-error">
+            {confirmationError}
+          </small>
+        )}
         {error && (
           <p className="form-error" role="alert">
             {error}
