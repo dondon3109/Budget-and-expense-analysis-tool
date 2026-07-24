@@ -2,7 +2,6 @@ import {
   BarChart3,
   CalendarDays,
   FileUp,
-  Landmark,
   List,
   LogOut,
   Menu,
@@ -53,10 +52,10 @@ export function AppShell({ children }: AppShellProps) {
     <div className="app-shell">
       <header className="mobile-header">
         <Link className="brand compact" to="/" aria-label="Zoption home">
-          <span className="brand-mark">
-            <Landmark size={19} aria-hidden="true" />
+          <span className="brand-mark" aria-hidden="true">
+            <span className="brand-monogram">Z</span>
           </span>
-          <span>Zoption</span>
+          <span className="brand-wordmark">Zoption</span>
         </Link>
         <div className="mobile-header-actions">
           <ThemeToggle />
@@ -75,10 +74,10 @@ export function AppShell({ children }: AppShellProps) {
 
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         <Link className="brand" to="/" aria-label="Zoption home">
-          <span className="brand-mark">
-            <Landmark size={20} aria-hidden="true" />
+          <span className="brand-mark" aria-hidden="true">
+            <span className="brand-monogram">Z</span>
           </span>
-          <span>Zoption</span>
+          <span className="brand-wordmark">Zoption</span>
         </Link>
         <nav id="primary-navigation" className="side-nav" aria-label="Main navigation">
           {navItems.map((item) => {

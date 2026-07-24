@@ -4589,6 +4589,236 @@ button:disabled {
   }
 }
 
+/* Quiet refinement for the primary brand surfaces. */
+.landing-nav {
+  width: min(1180px, calc(100% - 56px));
+  height: 82px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+.landing-nav .brand,
+.sidebar .brand,
+.mobile-header .brand {
+  gap: 11px;
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+.landing-nav .brand-mark,
+.sidebar .brand-mark,
+.mobile-header .brand-mark {
+  width: 32px;
+  height: 32px;
+  color: var(--action-strong);
+  border: 1px solid color-mix(in srgb, var(--action) 35%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--action) 8%, transparent);
+  box-shadow: none;
+}
+.brand-monogram {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--subtle);
+  transform: translateX(-0.5px);
+}
+.landing-nav .brand-wordmark,
+.sidebar .brand-wordmark,
+.mobile-header .brand-wordmark {
+  color: var(--ink);
+  font-weight: 700;
+}
+.landing-nav .brand-wordmark::first-letter,
+.sidebar .brand-wordmark::first-letter,
+.mobile-header .brand-wordmark::first-letter {
+  color: var(--subtle);
+}
+.landing-nav .brand > span:last-child,
+.sidebar .brand > span:last-child,
+.mobile-header .brand > span:last-child {
+  font-weight: 700;
+}
+.landing-links {
+  gap: 26px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.landing-links a {
+  padding: 8px 0;
+  color: var(--subtle);
+}
+.landing-account-actions {
+  gap: 6px;
+}
+.landing-nav .theme-toggle {
+  min-height: 36px;
+  padding: 0 9px;
+  border-color: transparent;
+  background: transparent;
+}
+.landing-nav .theme-toggle:hover {
+  border-color: var(--line);
+  background: var(--surface-hover);
+}
+.landing-sign-in {
+  padding: 9px 10px;
+  font-weight: 650;
+}
+.landing-nav .button.primary {
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 11px;
+  box-shadow: none;
+  font-weight: 700;
+}
+.landing-nav .button:hover,
+.dashboard-page .button:hover {
+  transform: translateY(-1px);
+}
+
+@media (min-width: 761px) {
+  .app-shell {
+    grid-template-columns: 224px 1fr;
+  }
+  .sidebar {
+    width: 224px;
+    padding: 24px 18px 20px;
+    background: var(--page);
+  }
+  .sidebar .brand {
+    margin-left: 6px;
+  }
+  .side-nav {
+    margin-top: 34px;
+    gap: 4px;
+  }
+  .dashboard-page {
+    padding: 60px 0 72px;
+  }
+}
+
+.nav-item {
+  min-height: 43px;
+  padding: 0 11px;
+  gap: 10px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.nav-item.current {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--action) 8%, var(--paper));
+  box-shadow: inset 1px 0 0 var(--action);
+  font-weight: 700;
+}
+.nav-item.current svg {
+  color: var(--action);
+}
+.sidebar-account {
+  padding-top: 16px;
+  border-top-color: color-mix(in srgb, var(--line) 82%, transparent);
+}
+.dashboard-header h1 {
+  font-weight: 600;
+  letter-spacing: -0.028em;
+}
+.dashboard-header p:not(.eyebrow) {
+  line-height: 1.55;
+}
+.date-button {
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+}
+.workspace-onboarding {
+  background: var(--paper);
+  box-shadow: 0 12px 28px var(--shadow);
+}
+.onboarding-steps > span {
+  color: var(--action);
+  border-color: color-mix(in srgb, var(--action) 35%, var(--line));
+  background: transparent;
+}
+.dashboard-page .overview-stat-bar {
+  border-radius: 15px;
+  box-shadow: 0 8px 20px var(--shadow);
+}
+.dashboard-page .overview-stat {
+  padding: 22px 24px;
+  box-shadow: none;
+}
+.dashboard-page .overview-stat.tone-income,
+.dashboard-page .overview-stat.tone-expense,
+.dashboard-page .overview-stat.tone-ink,
+.dashboard-page .overview-stat.tone-plum {
+  box-shadow: none;
+}
+.dashboard-page .overview-stat > strong {
+  font-weight: 700;
+}
+.dashboard-page .panel {
+  border-radius: 15px;
+  background: var(--paper);
+  box-shadow: 0 8px 20px var(--shadow);
+}
+.dashboard-page .category-panel,
+.dashboard-page .trend-panel,
+.dashboard-page .insights-panel,
+.dashboard-page .budget-panel {
+  background: var(--paper);
+  box-shadow: 0 8px 20px var(--shadow);
+}
+.dashboard-page .panel-heading h2 {
+  font-weight: 650;
+}
+.savings-insight[data-state="positive"] {
+  border-color: color-mix(in srgb, var(--success) 38%, var(--line));
+  background: color-mix(in srgb, var(--success) 6%, var(--paper));
+}
+.savings-insight[data-state="negative"] {
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--line));
+  background: color-mix(in srgb, var(--danger) 6%, var(--paper));
+}
+
+@media (max-width: 760px) {
+  .landing-nav {
+    width: calc(100% - 32px);
+    height: 70px;
+  }
+  .landing-nav .brand,
+  .mobile-header .brand {
+    font-size: 19px;
+  }
+  .mobile-header {
+    height: 64px;
+    background: var(--page);
+    backdrop-filter: none;
+  }
+  .app-shell {
+    padding-top: 64px;
+  }
+  .sidebar {
+    inset: 64px 0 0;
+    width: 100%;
+    background: var(--page);
+  }
+  .dashboard-page {
+    padding: 28px 0 48px;
+  }
+  .dashboard-page .panel {
+    border-radius: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-page .progress-track span {
+    animation-duration: 400ms;
+  }
+  .dashboard-page .savings-insight {
+    animation-duration: 320ms;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -13,10 +13,10 @@ export function LandingPage() {
     <div className="landing-page">
       <header className="landing-nav">
         <a className="brand" href="#top">
-          <span className="brand-mark">
-            <Landmark size={20} aria-hidden="true" />
+          <span className="brand-mark" aria-hidden="true">
+            <span className="brand-monogram">Z</span>
           </span>
-          <span>Zoption</span>
+          <span className="brand-wordmark">Zoption</span>
         </a>
         <nav className="landing-links" aria-label="Learn more">
           <a href="#features">Features</a>
