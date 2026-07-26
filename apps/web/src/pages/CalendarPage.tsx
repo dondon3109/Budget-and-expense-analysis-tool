@@ -1,6 +1,6 @@
-import type { TransactionInput } from "@zoption/shared";
+import type { SubscriptionMonthItem, TransactionInput, TransactionListItem } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, FileUp, Plus } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, FileUp, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -17,10 +17,63 @@ import {
   getSubscriptions,
   getTransactionCalendar,
 } from "../lib/api";
-import { currentMonth, isMonth, localIsoDate, monthStart, shiftMonth } from "../lib/calendar";
+import {
+  currentMonth,
+  formatCalendarDate,
+  isMonth,
+  localIsoDate,
+  monthStart,
+  shiftMonth,
+} from "../lib/calendar";
 import { formatFullMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+
+function buildCalendarDays(
+  items: readonly TransactionListItem[],
+  subscriptions: readonly SubscriptionMonthItem[],
+): Map<string, CalendarDayData> {
+  const lookup = new Map<string, CalendarDayData>();
+  for (const item of items) {
+    const day = lookup.get(item.date) ?? {
+      items: [],
+      subscriptions: [],
+      incomeMinor: 0,
+      expenseMinor: 0,
+      incomeCount: 0,
+      expenseCount: 0,
+      transferCount: 0,
+    };
+    day.items.push(item);
+    if (item.kind === "income") {
+      day.incomeMinor += Math.abs(item.amountMinor);
+      day.incomeCount += 1;
+    } else if (item.kind === "expense") {
+      day.expenseMinor += Math.abs(item.amountMinor);
+      day.expenseCount += 1;
+    } else {
+      day.transferCount += 1;
+    }
+    lookup.set(item.date, day);
+  }
+
+  for (const subscription of subscriptions) {
+    if (subscription.status !== "active" || !subscription.billingDate) continue;
+    const day = lookup.get(subscription.billingDate) ?? {
+      items: [],
+      subscriptions: [],
+      incomeMinor: 0,
+      expenseMinor: 0,
+      incomeCount: 0,
+      expenseCount: 0,
+      transferCount: 0,
+    };
+    day.subscriptions.push(subscription);
+    lookup.set(subscription.billingDate, day);
+  }
+
+  return lookup;
+}
 
 export function CalendarPage() {
   const { user } = useAuth();
@@ -30,16 +83,21 @@ export function CalendarPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedMonth = searchParams.get("month");
   const visibleMonth = isMonth(requestedMonth) ? requestedMonth : currentMonth();
+  const nextMonth = shiftMonth(visibleMonth, 1);
   const [selectedDate, setSelectedDate] = useState(
     visibleMonth === currentMonth() ? today : monthStart(visibleMonth),
   );
   const [formOpen, setFormOpen] = useState(false);
 
   useEffect(() => {
-    if (!selectedDate.startsWith(`${visibleMonth}-`)) {
-      setSelectedDate(visibleMonth === currentMonth() ? today : monthStart(visibleMonth));
-    }
-  }, [selectedDate, today, visibleMonth]);
+    setSelectedDate((current) =>
+      current.startsWith(`${visibleMonth}-`) || current.startsWith(`${nextMonth}-`)
+        ? current
+        : visibleMonth === currentMonth()
+          ? today
+          : monthStart(visibleMonth),
+    );
+  }, [nextMonth, today, visibleMonth]);
 
   const calendarQuery = useQuery({
     queryKey: queryKeys.transactionCalendar(workspace, monthStart(visibleMonth)),
@@ -48,6 +106,14 @@ export function CalendarPage() {
   const subscriptionsQuery = useQuery({
     queryKey: queryKeys.subscriptions(workspace, monthStart(visibleMonth)),
     queryFn: () => getSubscriptions(workspace, monthStart(visibleMonth)),
+  });
+  const nextCalendarQuery = useQuery({
+    queryKey: queryKeys.transactionCalendar(workspace, monthStart(nextMonth)),
+    queryFn: () => getTransactionCalendar(workspace, monthStart(nextMonth)),
+  });
+  const nextSubscriptionsQuery = useQuery({
+    queryKey: queryKeys.subscriptions(workspace, monthStart(nextMonth)),
+    queryFn: () => getSubscriptions(workspace, monthStart(nextMonth)),
   });
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories(workspace, true),
@@ -69,49 +135,22 @@ export function CalendarPage() {
     },
   });
 
-  const days = useMemo(() => {
-    const lookup = new Map<string, CalendarDayData>();
-    for (const item of calendarQuery.data?.items ?? []) {
-      const day = lookup.get(item.date) ?? {
-        items: [],
-        subscriptions: [],
-        incomeMinor: 0,
-        expenseMinor: 0,
-        incomeCount: 0,
-        expenseCount: 0,
-        transferCount: 0,
-      };
-      day.items.push(item);
-      if (item.kind === "income") {
-        day.incomeMinor += Math.abs(item.amountMinor);
-        day.incomeCount += 1;
-      } else if (item.kind === "expense") {
-        day.expenseMinor += Math.abs(item.amountMinor);
-        day.expenseCount += 1;
-      } else {
-        day.transferCount += 1;
-      }
-      lookup.set(item.date, day);
-    }
+  const days = useMemo(
+    () => buildCalendarDays(calendarQuery.data?.items ?? [], subscriptionsQuery.data?.items ?? []),
+    [calendarQuery.data?.items, subscriptionsQuery.data?.items],
+  );
+  const nextMonthDays = useMemo(
+    () =>
+      buildCalendarDays(
+        nextCalendarQuery.data?.items ?? [],
+        nextSubscriptionsQuery.data?.items ?? [],
+      ),
+    [nextCalendarQuery.data?.items, nextSubscriptionsQuery.data?.items],
+  );
 
-    for (const subscription of subscriptionsQuery.data?.items ?? []) {
-      if (subscription.status !== "active" || !subscription.billingDate) continue;
-      const day = lookup.get(subscription.billingDate) ?? {
-        items: [],
-        subscriptions: [],
-        incomeMinor: 0,
-        expenseMinor: 0,
-        incomeCount: 0,
-        expenseCount: 0,
-        transferCount: 0,
-      };
-      day.subscriptions.push(subscription);
-      lookup.set(subscription.billingDate, day);
-    }
-    return lookup;
-  }, [calendarQuery.data?.items, subscriptionsQuery.data?.items]);
-
-  const selectedItems = days.get(selectedDate)?.items ?? [];
+  const selectedItems =
+    (selectedDate.startsWith(`${nextMonth}-`) ? nextMonthDays : days).get(selectedDate)?.items ??
+    [];
 
   function showMonth(month: string, date = monthStart(month)) {
     setSelectedDate(date);
@@ -236,13 +275,65 @@ export function CalendarPage() {
                   <span>Select a date to add one, or move to another month.</span>
                 </div>
               )}
+
+            <div className="calendar-next-month-separator" role="separator">
+              <span>Next month</span>
+            </div>
+            <section className="calendar-next-month" aria-labelledby="calendar-next-month-title">
+              <div className="calendar-next-month-heading">
+                <div>
+                  <p className="eyebrow">Coming up</p>
+                  <h3 id="calendar-next-month-title">{formatFullMonth(nextMonth)}</h3>
+                </div>
+                {(nextCalendarQuery.isFetching || nextSubscriptionsQuery.isFetching) && (
+                  <span>Refreshing…</span>
+                )}
+              </div>
+              {nextCalendarQuery.isError || nextSubscriptionsQuery.isError ? (
+                <div className="calendar-status error-state" role="alert">
+                  <strong>The next month could not be loaded.</strong>
+                  <span>
+                    {nextCalendarQuery.error?.message ?? nextSubscriptionsQuery.error?.message}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <CalendarMonthGrid
+                    month={nextMonth}
+                    selectedDate={selectedDate}
+                    today={today}
+                    days={nextMonthDays}
+                    onSelectDate={setSelectedDate}
+                  />
+                  {(nextCalendarQuery.isPending || nextSubscriptionsQuery.isPending) && (
+                    <div className="calendar-loading" aria-live="polite">
+                      Loading next month…
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
           </section>
 
-          <CalendarDayPanel
-            date={selectedDate}
-            items={selectedItems}
-            onAddTransaction={() => setFormOpen(true)}
-          />
+          <div className="calendar-side-column">
+            <CalendarDayPanel
+              date={selectedDate}
+              items={selectedItems}
+              onAddTransaction={() => setFormOpen(true)}
+            />
+            <section className="calendar-add-event" aria-labelledby="calendar-add-event-title">
+              <span className="calendar-add-event-icon" aria-hidden="true">
+                <CalendarPlus size={19} />
+              </span>
+              <div>
+                <p className="eyebrow">Schedule</p>
+                <h2 id="calendar-add-event-title">Add Event</h2>
+                <p>
+                  Plan reminders and upcoming activities for {formatCalendarDate(selectedDate)}.
+                </p>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
 

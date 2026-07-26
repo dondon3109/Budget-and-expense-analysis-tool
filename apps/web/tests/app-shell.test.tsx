@@ -67,6 +67,9 @@ describe("AppShell", () => {
       "src",
       "https://example.com/avatar.png",
     );
+    expect(profile.querySelector(".theme-menu")).not.toBeNull();
+    expect(document.querySelector(".sidebar-account .theme-menu")).toBeNull();
+    expect(document.querySelector(".sidebar-profile-divider")).not.toBeNull();
     expect(screen.getByRole("link", { name: "Account settings" })).toHaveAttribute(
       "href",
       "/app/settings",

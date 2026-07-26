@@ -99,7 +99,12 @@ export function AppShell({ children }: AppShellProps) {
               </strong>
             </div>
           </div>
+          <div className="sidebar-profile-theme">
+            <span>Appearance</span>
+            <ThemeToggle />
+          </div>
         </div>
+        <div className="sidebar-profile-divider" aria-hidden="true" />
 
         <nav id="primary-navigation" className="side-nav" aria-label="Main navigation">
           {navItems.map((item) => {
@@ -120,7 +125,6 @@ export function AppShell({ children }: AppShellProps) {
         </nav>
 
         <div className="sidebar-account">
-          <ThemeToggle />
           <NavLink
             to="/app/settings"
             className={({ isActive }) =>

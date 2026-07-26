@@ -62,7 +62,7 @@ export function DashboardPage() {
       <div className="dashboard-page">
         <header className="dashboard-header">
           <div className="dashboard-heading">
-            <p className="eyebrow">Overview</p>
+            <p className="eyebrow">Profile Overview</p>
             <h1>Your month, at a glance</h1>
             <p>See what came in, what went out, and what is still available.</p>
           </div>
