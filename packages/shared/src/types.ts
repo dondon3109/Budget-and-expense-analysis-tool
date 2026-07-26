@@ -34,6 +34,20 @@ export interface TransactionCalendarMonth {
   hasAnyTransactions: boolean;
 }
 
+export interface CalendarEventRecord {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  notes: string | null;
+}
+
+export interface CalendarEventMonth {
+  month: string;
+  items: CalendarEventRecord[];
+}
+
 export interface AccountRecord {
   id: string;
   name: string;

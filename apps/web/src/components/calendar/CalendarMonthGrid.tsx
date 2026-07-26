@@ -1,5 +1,9 @@
-import type { SubscriptionMonthItem, TransactionListItem } from "@zoption/shared";
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Repeat2 } from "lucide-react";
+import type {
+  CalendarEventRecord,
+  SubscriptionMonthItem,
+  TransactionListItem,
+} from "@zoption/shared";
+import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarDays, Repeat2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
 import { firstWeekday, formatCalendarDate, monthDates } from "../../lib/calendar";
@@ -7,6 +11,7 @@ import { firstWeekday, formatCalendarDate, monthDates } from "../../lib/calendar
 export interface CalendarDayData {
   items: TransactionListItem[];
   subscriptions: SubscriptionMonthItem[];
+  events: CalendarEventRecord[];
   incomeMinor: number;
   expenseMinor: number;
   incomeCount: number;
@@ -55,6 +60,11 @@ function dayLabel(
   if (data?.subscriptions.length) {
     parts.push(
       `${data.subscriptions.length} subscription${data.subscriptions.length === 1 ? "" : "s"}: ${data.subscriptions.map((subscription) => subscription.name).join(", ")}`,
+    );
+  }
+  if (data?.events.length) {
+    parts.push(
+      `${data.events.length} event${data.events.length === 1 ? "" : "s"}: ${data.events.map((event) => event.title).join(", ")}`,
     );
   }
   return parts.join(", ");
@@ -139,6 +149,20 @@ export function CalendarMonthGrid({
                     <Repeat2 size={11} aria-hidden="true" /> {data.transferCount}
                   </span>
                 ) : null}
+                {data?.events.slice(0, 2).map((calendarEvent) => (
+                  <span
+                    className="calendar-indicator event"
+                    key={calendarEvent.id}
+                    title={calendarEvent.title}
+                  >
+                    <CalendarDays size={11} aria-hidden="true" /> {calendarEvent.title}
+                  </span>
+                ))}
+                {data && data.events.length > 2 && (
+                  <span className="calendar-indicator event-more">
+                    +{data.events.length - 2} more
+                  </span>
+                )}
                 {data?.subscriptions.map((subscription) => (
                   <span
                     className={`calendar-indicator subscription ${date <= today ? "paid" : "due"}`}

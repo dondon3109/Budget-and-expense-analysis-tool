@@ -57,6 +57,13 @@
       "when": 1784622491409,
       "tag": "0007_simple_pandemic",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1785056350756,
+      "tag": "0008_zippy_mystique",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import { accountRepository, type AccountRepository } from "./db/accounts";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { loadDashboard } from "./db/dashboard";
+import { calendarEventRepository, type CalendarEventRepository } from "./db/events";
 import { importRepository, type ImportRepository } from "./db/imports";
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
 import { tenantResolver, type TenantResolver } from "./db/tenants";
@@ -15,6 +16,7 @@ import { d1RateLimiter, type RateLimiter } from "./rate-limit";
 import { createAccountRoutes } from "./routes/accounts";
 import { createBudgetRoutes } from "./routes/budgets";
 import { createCategoryRoutes } from "./routes/categories";
+import { createCalendarEventRoutes } from "./routes/events";
 import { createExportRoutes } from "./routes/exports";
 import { createImportRoutes } from "./routes/imports";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
@@ -37,6 +39,7 @@ export interface AppOptions {
   accounts?: AccountRepository;
   budgets?: BudgetRepository;
   subscriptions?: SubscriptionRepository;
+  events?: CalendarEventRepository;
   imports?: ImportRepository;
   rateLimiter?: RateLimiter;
   authVerifier?: AuthVerifier;
@@ -51,6 +54,7 @@ export function createApp(options: AppOptions = {}) {
   const accountStore = options.accounts ?? accountRepository;
   const budgetStore = options.budgets ?? budgetRepository;
   const subscriptionStore = options.subscriptions ?? subscriptionRepository;
+  const eventStore = options.events ?? calendarEventRepository;
   const importStore = options.imports ?? importRepository;
   const rateLimiter = options.rateLimiter ?? d1RateLimiter;
   const authVerifier = options.authVerifier ?? supabaseAuthVerifier;
@@ -156,6 +160,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/categories", createCategoryRoutes(categoryStore));
   app.route("/api/app/budgets", createBudgetRoutes(budgetStore));
   app.route("/api/app/subscriptions", createSubscriptionRoutes(subscriptionStore));
+  app.route("/api/app/events", createCalendarEventRoutes(eventStore));
   app.route("/api/app/imports", createImportRoutes(importStore));
   app.route("/api/app/exports", createExportRoutes(transactionStore));
 

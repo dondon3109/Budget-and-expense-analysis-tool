@@ -125,6 +125,23 @@ export const subscriptions = sqliteTable(
   ],
 );
 
+export const calendarEvents = sqliteTable(
+  "calendar_events",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    date: text("date").notNull(),
+    startTime: text("start_time"),
+    endTime: text("end_time"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (table) => [index("calendar_events_tenant_date_idx").on(table.tenantId, table.date)],
+);
+
 export const budgets = sqliteTable(
   "budgets",
   {

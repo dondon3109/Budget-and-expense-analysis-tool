@@ -1,6 +1,8 @@
 import {
   type AccountRecord,
   type BudgetMonthPlan,
+  type CalendarEventMonth,
+  type CalendarEventRecord,
   type CategoryRecord,
   type DashboardSummary,
   type ImportPreviewRequest,
@@ -17,6 +19,7 @@ import type { AuthVerifier } from "../src/auth";
 import type { AccountRepository } from "../src/db/accounts";
 import type { BudgetRepository } from "../src/db/budgets";
 import type { CategoryRepository } from "../src/db/categories";
+import type { CalendarEventRepository } from "../src/db/events";
 import type { ImportRepository } from "../src/db/imports";
 import type { SubscriptionRepository } from "../src/db/subscriptions";
 import type { TenantResolver } from "../src/db/tenants";
@@ -91,6 +94,20 @@ const transactionCalendar: TransactionCalendarMonth = {
   currency: "PHP",
   items: [transactionItem],
   hasAnyTransactions: true,
+};
+
+const calendarEventItem: CalendarEventRecord = {
+  id: "event-1",
+  title: "Dentist",
+  date: "2026-07-22",
+  startTime: "09:30",
+  endTime: "10:15",
+  notes: "Bring insurance card",
+};
+
+const calendarEventMonth: CalendarEventMonth = {
+  month: "2026-07-01",
+  items: [calendarEventItem],
 };
 
 const categoryItem: CategoryRecord = {
@@ -184,6 +201,15 @@ function createSubscriptionStore(): SubscriptionRepository {
     list: vi.fn(async () => subscriptionSummary),
     create: vi.fn(async () => subscriptionItem),
     setStatus: vi.fn(async () => ({ ...subscriptionItem, status: "canceled" as const })),
+  };
+}
+
+function createCalendarEventStore(): CalendarEventRepository {
+  return {
+    list: vi.fn(async () => calendarEventMonth),
+    create: vi.fn(async () => calendarEventItem),
+    update: vi.fn(async () => calendarEventItem),
+    remove: vi.fn(async () => undefined),
   };
 }
 
@@ -693,6 +719,80 @@ describe("API foundation", () => {
     });
     expect(createResponse.status).toBe(400);
     expect(subscriptions.create).not.toHaveBeenCalled();
+  });
+
+  it("lists, creates, updates, and deletes events for the resolved tenant", async () => {
+    const events = createCalendarEventStore();
+    const app = createTestApp({ events });
+
+    const listResponse = await app.request("/api/app/events?month=2026-07-01", {
+      headers: AUTHORIZATION,
+    });
+    expect(listResponse.status).toBe(200);
+    expect(events.list).toHaveBeenCalledWith(undefined, TENANT_ID, { month: "2026-07-01" });
+
+    const input = {
+      title: "Dentist",
+      date: "2026-07-22",
+      startTime: "09:30",
+      endTime: "10:15",
+      notes: "Bring insurance card",
+    };
+    const createResponse = await app.request("/api/app/events", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(input),
+    });
+    expect(createResponse.status).toBe(201);
+    expect(events.create).toHaveBeenCalledWith(undefined, TENANT_ID, input);
+
+    const updateResponse = await app.request("/api/app/events/event-1", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ title: "Dental appointment" }),
+    });
+    expect(updateResponse.status).toBe(200);
+    expect(events.update).toHaveBeenCalledWith(undefined, TENANT_ID, "event-1", {
+      title: "Dental appointment",
+    });
+
+    const deleteResponse = await app.request("/api/app/events/event-1", {
+      method: "DELETE",
+      headers: AUTHORIZATION,
+    });
+    expect(deleteResponse.status).toBe(204);
+    expect(events.remove).toHaveBeenCalledWith(undefined, TENANT_ID, "event-1");
+  });
+
+  it("rejects invalid event months and fields before repository access", async () => {
+    const events = createCalendarEventStore();
+    const app = createTestApp({ events });
+
+    const listResponse = await app.request("/api/app/events?month=2026-07-02", {
+      headers: AUTHORIZATION,
+    });
+    expect(listResponse.status).toBe(400);
+    expect(events.list).not.toHaveBeenCalled();
+
+    const createResponse = await app.request("/api/app/events", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        title: "Invalid event",
+        date: "2026-07-22",
+        endTime: "10:00",
+      }),
+    });
+    expect(createResponse.status).toBe(400);
+    expect(events.create).not.toHaveBeenCalled();
+
+    const updateResponse = await app.request("/api/app/events/event-1", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({}),
+    });
+    expect(updateResponse.status).toBe(400);
+    expect(events.update).not.toHaveBeenCalled();
   });
 
   it("exports transactions using tenant scope and active filters", async () => {

@@ -4246,6 +4246,13 @@ button:disabled {
 .calendar-indicator.transfer {
   color: var(--plum);
 }
+.calendar-indicator.event {
+  color: var(--action);
+}
+.calendar-indicator.event-more {
+  color: var(--muted);
+  font-weight: 700;
+}
 .calendar-indicator.subscription.paid {
   color: var(--success);
 }
@@ -4268,6 +4275,13 @@ button:disabled {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: 12px;
+}
+.calendar-add-event-copy {
+  min-width: 0;
+}
+.calendar-add-event > .button {
+  grid-column: 2;
+  justify-self: start;
 }
 .calendar-add-event-icon {
   width: 36px;
@@ -4300,6 +4314,111 @@ button:disabled {
 .calendar-day-heading h2 {
   font-size: 16px;
   line-height: 1.25;
+}
+.calendar-day-section-heading {
+  min-height: 42px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+.calendar-day-section-heading h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.calendar-day-section-heading .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.calendar-event-section + .calendar-transaction-section {
+  border-top: 1px solid var(--line-strong);
+}
+.calendar-event-list,
+.calendar-transaction-list {
+  display: grid;
+}
+.calendar-event-item {
+  min-width: 0;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.calendar-event-item:last-child {
+  border-bottom: 0;
+}
+.calendar-event-time {
+  padding-top: 2px;
+  color: var(--action);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.calendar-event-copy {
+  min-width: 0;
+}
+.calendar-event-copy strong {
+  display: block;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+.calendar-event-copy p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.calendar-event-actions {
+  display: flex;
+  gap: 5px;
+}
+.icon-button.compact {
+  width: 30px;
+  height: 30px;
+  color: var(--muted);
+  border-radius: 8px;
+}
+.icon-button.compact:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+}
+.icon-button.danger,
+.text-button.danger {
+  color: var(--danger);
+}
+.calendar-event-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+}
+.calendar-event-delete-error {
+  margin: 0 18px 14px;
+}
+.calendar-day-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .calendar-transaction-list {
   display: grid;
@@ -4383,6 +4502,69 @@ button:disabled {
   border-top: 1px solid var(--line);
   font-size: 10px;
   text-align: center;
+}
+.calendar-event-form-modal {
+  width: min(560px, 100%);
+}
+.calendar-event-form-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.calendar-event-form-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--action);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--action) 10%, var(--surface));
+}
+.calendar-event-schedule {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: stretch;
+  gap: 14px;
+}
+.transaction-form .calendar-event-all-day {
+  min-height: 43px;
+  padding: 9px 11px;
+  display: flex;
+  align-items: center;
+  grid-template-columns: none;
+  gap: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.transaction-form .calendar-event-all-day:has(input:focus-visible) {
+  border-color: #76a994;
+  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+}
+.transaction-form .calendar-event-all-day input {
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--action);
+}
+.transaction-form .calendar-event-all-day > span {
+  display: grid;
+  gap: 2px;
+  color: var(--ink);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.calendar-event-all-day strong {
+  font-size: 11px;
+}
+.calendar-event-all-day small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
 }
 
 .settings-page {
@@ -5206,6 +5388,32 @@ button:disabled {
   }
   .calendar-transaction {
     padding: 14px 16px;
+  }
+  .calendar-add-event {
+    padding: 16px;
+  }
+  .calendar-add-event > .button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .calendar-event-item {
+    padding: 13px 16px;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+  }
+  .calendar-event-confirm {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .calendar-event-schedule,
+  .calendar-event-times {
+    grid-template-columns: 1fr;
+  }
+  .calendar-day-empty-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .calendar-day-empty-actions .button {
+    width: 100%;
   }
   .workspace-onboarding {
     padding: 25px 20px;

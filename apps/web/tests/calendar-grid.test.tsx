@@ -24,6 +24,7 @@ describe("CalendarMonthGrid", () => {
               {
                 items: [],
                 subscriptions: [],
+                events: [],
                 incomeMinor: 500_000,
                 expenseMinor: 125_00,
                 incomeCount: 1,
@@ -71,6 +72,7 @@ describe("CalendarMonthGrid", () => {
               {
                 items: [],
                 subscriptions: [subscription],
+                events: [],
                 incomeMinor: 0,
                 expenseMinor: 0,
                 incomeCount: 0,
@@ -90,6 +92,7 @@ describe("CalendarMonthGrid", () => {
                     billingDate: "2026-07-29",
                   },
                 ],
+                events: [],
                 incomeMinor: 0,
                 expenseMinor: 0,
                 incomeCount: 0,
@@ -105,6 +108,46 @@ describe("CalendarMonthGrid", () => {
 
     expect(screen.getByTitle("Netflix · Paid")).toHaveClass("paid");
     expect(screen.getByTitle("Spotify · Upcoming")).toHaveClass("due");
+  });
+
+  it("shows events in the day cell and accessible label", () => {
+    render(
+      <CalendarMonthGrid
+        month="2026-07"
+        selectedDate="2026-07-01"
+        today="2026-07-18"
+        days={
+          new Map([
+            [
+              "2026-07-22",
+              {
+                items: [],
+                subscriptions: [],
+                events: [
+                  {
+                    id: "event-1",
+                    title: "Dentist",
+                    date: "2026-07-22",
+                    startTime: "09:30",
+                    endTime: null,
+                    notes: null,
+                  },
+                ],
+                incomeMinor: 0,
+                expenseMinor: 0,
+                incomeCount: 0,
+                expenseCount: 0,
+                transferCount: 0,
+              },
+            ],
+          ])
+        }
+        onSelectDate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /1 event: Dentist/i })).toBeVisible();
+    expect(screen.getByTitle("Dentist")).toHaveClass("event");
   });
 
   it("moves focus selection by week with the keyboard", () => {

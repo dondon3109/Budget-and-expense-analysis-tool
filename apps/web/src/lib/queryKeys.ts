@@ -12,6 +12,10 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "transactions"] as const,
   transactionCalendar: (workspace: AuthenticatedWorkspace, month: string) =>
     [...queryKeys.allTransactions(workspace), "calendar", month] as const,
+  allEvents: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "events"] as const,
+  events: (workspace: AuthenticatedWorkspace, month: string) =>
+    [...queryKeys.allEvents(workspace), month] as const,
   categories: (workspace: AuthenticatedWorkspace, includeArchived = false) =>
     [...queryKeys.workspace(workspace), "categories", { includeArchived }] as const,
   allCategories: (workspace: AuthenticatedWorkspace) =>
