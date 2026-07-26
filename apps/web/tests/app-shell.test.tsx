@@ -11,9 +11,23 @@ import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({
-    user: { id: "test-user", email: "test@example.com", user_metadata: { display_name: "Taylor" } },
+    user: {
+      id: "test-user",
+      email: "test@example.com",
+      user_metadata: { display_name: "Taylor", avatar_path: "test-user/avatar.png" },
+    },
     signOut: vi.fn(),
   }),
+}));
+
+vi.mock("../src/lib/supabase", () => ({
+  supabase: {
+    storage: {
+      from: () => ({
+        getPublicUrl: () => ({ data: { publicUrl: "https://example.com/avatar.png" } }),
+      }),
+    },
+  },
 }));
 
 describe("AppShell", () => {
@@ -43,11 +57,17 @@ describe("AppShell", () => {
     expect(screen.getByText("Signed in as")).toBeInTheDocument();
     expect(screen.getByText("Taylor")).toBeInTheDocument();
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
+    expect(document.querySelector(".sidebar-account img")).toHaveAttribute(
+      "src",
+      "https://example.com/avatar.png",
+    );
     expect(screen.getByRole("link", { name: "Account settings" })).toHaveAttribute(
       "href",
       "/app/settings",
     );
-    expect(screen.getAllByRole("button", { name: /choose theme\. current theme: (light|dark|coffee)/i })).toHaveLength(2);
+    expect(
+      screen.getAllByRole("button", { name: /choose theme\. current theme: (light|dark|coffee)/i }),
+    ).toHaveLength(2);
   });
 
   it("marks account settings as current without adding it to main navigation", () => {

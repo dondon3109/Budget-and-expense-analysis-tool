@@ -6,7 +6,7 @@ import type {
 } from "@zoption/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Download, FolderCog, Plus, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import { CategoryManager } from "../components/transactions/CategoryManager";
@@ -33,12 +33,19 @@ const initialQuery: TransactionListQuery = {
   sortDirection: "desc",
 };
 
+const SEARCH_DEBOUNCE_MS = 300;
+
+function normalizeSearch(value: string): string | undefined {
+  return value.trim() || undefined;
+}
+
 export function TransactionsPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const [query, setQuery] = useState<TransactionListQuery>(initialQuery);
   const [searchDraft, setSearchDraft] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionListItem>();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
@@ -58,6 +65,24 @@ export function TransactionsPage() {
     queryFn: () => getTransactions(workspace, query),
     placeholderData: keepPreviousData,
   });
+
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    const nextSearch = normalizeSearch(searchDraft);
+    if (nextSearch === query.search) return;
+
+    searchTimerRef.current = setTimeout(() => {
+      setQuery((current) =>
+        current.search === nextSearch ? current : { ...current, search: nextSearch, page: 1 },
+      );
+      searchTimerRef.current = undefined;
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [query.search, searchDraft]);
 
   const refreshProductData = async () => {
     await Promise.all([
@@ -85,9 +110,33 @@ export function TransactionsPage() {
   const categories = categoriesQuery.data ?? [];
   const accounts = accountsQuery.data ?? [];
   const page = transactionsQuery.data;
+  const hasFilters = Boolean(
+    searchDraft.trim() ||
+    query.search ||
+    query.kind ||
+    query.categoryId ||
+    query.accountId ||
+    query.from ||
+    query.to,
+  );
 
   function updateFilters(change: Partial<TransactionListQuery>) {
     setQuery((current) => ({ ...current, ...change, page: 1 }));
+  }
+
+  function applySearchImmediately() {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const nextSearch = normalizeSearch(searchDraft);
+    setQuery((current) =>
+      current.search === nextSearch ? current : { ...current, search: nextSearch, page: 1 },
+    );
+  }
+
+  function clearFilters() {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = undefined;
+    setSearchDraft("");
+    setQuery(initialQuery);
   }
 
   function openCreate() {
@@ -173,17 +222,15 @@ export function TransactionsPage() {
           to={query.to}
           categories={categories}
           accounts={accounts}
+          hasFilters={hasFilters}
           onSearchChange={setSearchDraft}
-          onSearch={() => updateFilters({ search: searchDraft || undefined })}
+          onSearch={applySearchImmediately}
           onKindChange={(kind) => updateFilters({ kind, categoryId: undefined })}
           onCategoryChange={(categoryId) => updateFilters({ categoryId })}
           onAccountChange={(accountId) => updateFilters({ accountId })}
           onFromChange={(from) => updateFilters({ from })}
           onToChange={(to) => updateFilters({ to })}
-          onClear={() => {
-            setSearchDraft("");
-            setQuery(initialQuery);
-          }}
+          onClear={clearFilters}
         />
 
         <section className="transactions-panel" aria-live="polite">

@@ -14,6 +14,8 @@ import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 
 import { useAuth } from "../../auth/AuthProvider";
+import { avatarPathFromMetadata } from "../../lib/avatar";
+import { UserAvatar } from "../profile/UserAvatar";
 import { ThemeToggle } from "../theme/ThemeToggle";
 
 interface AppShellProps {
@@ -32,7 +34,10 @@ const navItems = [
 export function AppShell({ children }: AppShellProps) {
   const { user, signOut } = useAuth();
   const displayName =
-    typeof user?.user_metadata?.display_name === "string" ? user.user_metadata.display_name.trim() : "";
+    typeof user?.user_metadata?.display_name === "string"
+      ? user.user_metadata.display_name.trim()
+      : "";
+  const avatarPath = avatarPathFromMetadata(user?.user_metadata);
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
@@ -99,9 +104,21 @@ export function AppShell({ children }: AppShellProps) {
 
         <div className="sidebar-account">
           <ThemeToggle />
-          <span>Signed in as</span>
-          <strong title={displayName || user?.email}>{displayName || user?.email || "Zoption user"}</strong>
-          {displayName && <p title={user?.email}>{user?.email}</p>}
+          <div className="sidebar-account-identity">
+            <UserAvatar
+              avatarPath={avatarPath}
+              displayName={displayName}
+              email={user?.email}
+              alt=""
+            />
+            <div>
+              <span>Signed in as</span>
+              <strong title={displayName || user?.email}>
+                {displayName || user?.email || "Zoption user"}
+              </strong>
+              {displayName && <p title={user?.email}>{user?.email}</p>}
+            </div>
+          </div>
           <NavLink
             to="/app/settings"
             className={({ isActive }) =>

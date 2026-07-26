@@ -14,6 +14,15 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
 4. In **Authentication > Password security**, set the minimum password length to 12 and enable leaked-password protection when available. Zoption's signup, recovery, and settings forms also require lowercase, uppercase, number, and special-character coverage; keep any Supabase Auth Hook or equivalent server-side policy aligned if direct Auth API clients must be held to those character-class rules.
 5. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
 6. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
+7. Apply the tracked Supabase migrations to each preview and production project:
+
+   ```bash
+   pnpm dlx supabase login
+   pnpm dlx supabase link --project-ref PROJECT_REF
+   pnpm dlx supabase db push --linked
+   ```
+
+   The migration creates a public `avatars` bucket limited to 2 MB JPEG, PNG, and WebP files. Public retrieval is intentional for profile pictures; authenticated Storage policies restrict insert and delete operations to the current user's own folder. Relink before pushing when preview and production use separate Supabase projects.
 
 After changing redirect or template settings, request a fresh recovery email; previously issued links retain their original destination and reset links are short-lived and single-use. Open the fresh link once in the same browser profile that requested it so the PKCE verifier is available. If a newly issued link immediately returns `otp_expired`, check whether the email provider's click tracking or security scanner is opening the link before the user.
 
@@ -72,10 +81,12 @@ Then perform an authenticated browser check with two ordinary preview users:
 1. Sign in as user A and create a uniquely named transaction.
 2. Sign out and sign in as user B; confirm user A's transaction is absent.
 3. Create a user B transaction, then return to user A and confirm only user A's marker is present.
-4. Exercise transaction CRUD, import preview/commit, budgets, and CSV export.
-5. Sign out and confirm `/app` redirects to login.
+4. Exercise transaction CRUD, transaction search, import preview/commit, budgets, and CSV export.
+5. Upload an avatar as user A and confirm it appears in Settings and the sidebar. Confirm user A cannot upload into user B's folder and user B cannot delete user A's object; then confirm each user can replace and remove their own avatar.
+6. Confirm unsupported or oversized avatar files are rejected and that the public avatar URL is readable as documented.
+7. Sign out and confirm `/app` redirects to login.
 
-No service-role key is needed for normal product traffic or this check.
+No service-role key is needed for normal product traffic or this check. Display names and avatar metadata are presentation-only and must not change Worker tenant resolution or D1 authorization.
 
 ## Production release
 

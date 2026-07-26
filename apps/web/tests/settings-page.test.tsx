@@ -12,9 +12,11 @@ const authState = vi.hoisted(() => ({
     id: "test-user",
     email: "test@example.com",
     new_email: "pending@example.com",
-    user_metadata: { display_name: "Taylor" },
+    user_metadata: { display_name: "Taylor", avatar_path: undefined as string | undefined },
   },
   updateDisplayName: vi.fn(),
+  updateAvatar: vi.fn(),
+  removeAvatar: vi.fn(),
   requestEmailChange: vi.fn(),
   verifyCurrentPassword: vi.fn(),
   updatePassword: vi.fn(),
@@ -46,12 +48,22 @@ describe("SettingsPage", () => {
       id: "test-user",
       email: "test@example.com",
       new_email: "pending@example.com",
-      user_metadata: { display_name: "Taylor" },
+      user_metadata: { display_name: "Taylor", avatar_path: undefined },
     };
     authState.updateDisplayName.mockReset();
+    authState.updateAvatar.mockReset().mockResolvedValue({});
+    authState.removeAvatar.mockReset().mockResolvedValue({});
     authState.requestEmailChange.mockReset();
     authState.verifyCurrentPassword.mockReset();
     authState.updatePassword.mockReset();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: vi.fn(() => "blob:avatar-preview"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: vi.fn(),
+    });
   });
 
   it("shows current profile and email information", () => {
@@ -61,6 +73,42 @@ describe("SettingsPage", () => {
     expect(screen.getByLabelText(/^Display name/)).toHaveValue("Taylor");
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
     expect(screen.getByText("Pending confirmation: pending@example.com")).toBeInTheDocument();
+  });
+
+  it("uploads a validated profile picture", async () => {
+    renderSettings();
+    const file = new File(["avatar"], "avatar.png", { type: "image/png" });
+
+    fireEvent.change(screen.getByLabelText(/Choose a profile picture/), {
+      target: { files: [file] },
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save picture" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Save picture" }));
+
+    await waitFor(() => expect(authState.updateAvatar).toHaveBeenCalledWith(file));
+    expect(screen.getByRole("status")).toHaveTextContent("Profile picture updated");
+  });
+
+  it("rejects unsupported profile picture formats", async () => {
+    renderSettings();
+    const file = new File(["avatar"], "avatar.svg", { type: "image/svg+xml" });
+
+    fireEvent.change(screen.getByLabelText(/Choose a profile picture/), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("JPEG, PNG, or WebP"));
+    expect(authState.updateAvatar).not.toHaveBeenCalled();
+  });
+
+  it("removes the current profile picture", async () => {
+    authState.user.user_metadata.avatar_path = "test-user/existing.png";
+    renderSettings();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove picture" }));
+
+    await waitFor(() => expect(authState.removeAvatar).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("status")).toHaveTextContent("Profile picture removed");
   });
 
   it("normalizes and saves the display name", async () => {

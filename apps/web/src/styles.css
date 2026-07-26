@@ -1449,19 +1449,70 @@ textarea:focus-visible {
   gap: 4px;
   border-top: 1px solid var(--line);
 }
-.sidebar-account > span,
-.sidebar-account > p {
+.sidebar-account-identity {
+  margin: 4px 0 3px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.sidebar-account-identity > div {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.sidebar-account-identity span,
+.sidebar-account-identity p {
   margin: 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: 10px;
-  line-height: 1.5;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.sidebar-account > strong {
+.sidebar-account-identity strong {
   overflow: hidden;
   color: var(--ink);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.user-avatar {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--action);
+  border: 1px solid color-mix(in srgb, var(--action) 22%, var(--line));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--action) 9%, var(--surface));
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.user-avatar.small {
+  width: 36px;
+  height: 36px;
+  font-size: 11px;
+}
+.user-avatar.large {
+  width: 88px;
+  height: 88px;
+  font-size: 22px;
+}
+.user-avatar img,
+.user-avatar-fallback {
+  width: 100%;
+  height: 100%;
+}
+.user-avatar img {
+  display: block;
+  object-fit: cover;
+}
+.user-avatar-fallback {
+  display: grid;
+  place-items: center;
 }
 .sidebar-account .button {
   width: 100%;
@@ -2368,7 +2419,7 @@ textarea:focus-visible {
   max-width: 100%;
   flex: 1 1 280px;
   height: 42px;
-  padding-left: 13px;
+  padding: 0 13px;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -2376,6 +2427,10 @@ textarea:focus-visible {
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   background: var(--surface);
+}
+.search-form:focus-within {
+  border-color: #76a994;
+  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
 }
 .search-form input {
   min-width: 80px;
@@ -2386,15 +2441,8 @@ textarea:focus-visible {
   background: transparent;
   font-size: 12px;
 }
-.search-form button {
-  align-self: stretch;
-  padding: 0 14px;
-  color: var(--solid-text);
-  border: 0;
-  border-radius: 0 9px 9px 0;
-  background: var(--solid-bg);
-  font-size: 11px;
-  font-weight: 750;
+.search-form input::placeholder {
+  color: var(--subtle);
 }
 .filter-select-wrap {
   min-width: 0;
@@ -4294,6 +4342,74 @@ button:disabled {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+.avatar-settings {
+  max-width: 680px;
+  margin-top: 24px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+.avatar-settings-content {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+.avatar-settings-content label {
+  display: grid;
+  gap: 7px;
+}
+.avatar-settings-content label > span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 750;
+}
+.avatar-settings-content input[type="file"] {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  font-size: 11px;
+}
+.avatar-settings-content input[type="file"]::file-selector-button {
+  min-height: 28px;
+  margin-right: 10px;
+  padding: 0 10px;
+  color: var(--solid-text);
+  border: 0;
+  border-radius: 7px;
+  background: var(--solid-bg);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+.avatar-settings-content input[type="file"]:focus-visible {
+  border-color: #76a994;
+  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+}
+.avatar-settings-content input[type="file"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.avatar-settings-content small {
+  color: var(--subtle);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.avatar-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .settings-form {
   max-width: 680px;
   margin-top: 24px;
@@ -4654,11 +4770,22 @@ button:disabled {
   .settings-section-heading > span {
     padding-top: 0;
   }
-  .settings-password-row {
+  .avatar-settings {
     grid-template-columns: 1fr;
   }
+  .avatar-settings .user-avatar.large {
+    width: 76px;
+    height: 76px;
+  }
+  .avatar-settings-actions {
+    display: grid;
+  }
+  .avatar-settings-actions .button,
   .settings-form-actions .button {
     width: 100%;
+  }
+  .settings-password-row {
+    grid-template-columns: 1fr;
   }
   .transaction-header .header-actions {
     width: 100%;

@@ -11,6 +11,7 @@ interface TransactionFiltersProps {
   to?: string;
   categories: CategoryRecord[];
   accounts: AccountRecord[];
+  hasFilters: boolean;
   onSearchChange: (value: string) => void;
   onSearch: () => void;
   onKindChange: (value?: TransactionKind) => void;
@@ -30,6 +31,7 @@ export function TransactionFilters({
   to,
   categories,
   accounts,
+  hasFilters,
   onSearchChange,
   onSearch,
   onKindChange,
@@ -39,8 +41,6 @@ export function TransactionFilters({
   onToChange,
   onClear,
 }: TransactionFiltersProps) {
-  const hasFilters = Boolean(search || kind || categoryId || accountId || from || to);
-
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     onSearch();
@@ -51,16 +51,16 @@ export function TransactionFilters({
       <form className="search-form" onSubmit={handleSubmit}>
         <Search size={17} aria-hidden="true" />
         <label className="sr-only" htmlFor="transaction-search">
-          Search transaction descriptions
+          Search transactions by description, notes, account, or category
         </label>
         <input
           id="transaction-search"
           type="search"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search descriptions"
+          placeholder="Search transactions"
+          autoComplete="off"
         />
-        <button type="submit">Search</button>
       </form>
       <div className="filter-select-wrap">
         <Filter size={15} aria-hidden="true" />

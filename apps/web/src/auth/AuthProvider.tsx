@@ -12,6 +12,14 @@ import {
 } from "react";
 
 import { AuthOperationError, normalizePasswordError, normalizeSignupError } from "./authErrors";
+import {
+  AVATAR_BUCKET,
+  type AvatarOperationResult,
+  avatarPathFromMetadata,
+  createAvatarPath,
+  isOwnedAvatarPath,
+  validateAvatarFile,
+} from "../lib/avatar";
 import { getSupabaseClient, isSupabaseConfigured, supabase } from "../lib/supabase";
 
 interface AuthContextValue {
@@ -24,6 +32,8 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   updateDisplayName: (displayName: string | null) => Promise<void>;
+  updateAvatar: (file: File) => Promise<AvatarOperationResult>;
+  removeAvatar: () => Promise<AvatarOperationResult>;
   requestEmailChange: (email: string) => Promise<void>;
   verifyCurrentPassword: (password: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
@@ -140,6 +150,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
+  const updateAvatar = useCallback(
+    async (file: File): Promise<AvatarOperationResult> => {
+      const user = session?.user;
+      if (!user) throw new Error("Sign in again before updating your profile picture.");
+
+      await validateAvatarFile(file);
+      const client = getSupabaseClient();
+      const bucket = client.storage.from(AVATAR_BUCKET);
+      const previousPath = avatarPathFromMetadata(user.user_metadata);
+      const nextPath = createAvatarPath(user.id, file.type);
+      const { error: uploadError } = await bucket.upload(nextPath, file, {
+        cacheControl: "31536000",
+        contentType: file.type,
+        upsert: false,
+      });
+      if (uploadError) throw uploadError;
+
+      const { error: metadataError } = await client.auth.updateUser({
+        data: { avatar_path: nextPath },
+      });
+      if (metadataError) {
+        await bucket.remove([nextPath]);
+        throw metadataError;
+      }
+
+      if (isOwnedAvatarPath(previousPath, user.id)) {
+        const { error: cleanupError } = await bucket.remove([previousPath]);
+        if (cleanupError) {
+          return {
+            cleanupWarning:
+              "Your new picture is active, but the previous file could not be cleaned up.",
+          };
+        }
+      }
+
+      return {};
+    },
+    [session?.user],
+  );
+
+  const removeAvatar = useCallback(async (): Promise<AvatarOperationResult> => {
+    const user = session?.user;
+    if (!user) throw new Error("Sign in again before removing your profile picture.");
+
+    const previousPath = avatarPathFromMetadata(user.user_metadata);
+    const client = getSupabaseClient();
+    const { error: metadataError } = await client.auth.updateUser({
+      data: { avatar_path: null },
+    });
+    if (metadataError) throw metadataError;
+
+    if (isOwnedAvatarPath(previousPath, user.id)) {
+      const { error: cleanupError } = await client.storage
+        .from(AVATAR_BUCKET)
+        .remove([previousPath]);
+      if (cleanupError) {
+        return {
+          cleanupWarning:
+            "Your picture was removed from the profile, but its old file could not be cleaned up.",
+        };
+      }
+    }
+
+    return {};
+  }, [session?.user]);
+
   const requestEmailChange = useCallback(async (email: string) => {
     const { error } = await getSupabaseClient().auth.updateUser(
       { email },
@@ -187,6 +263,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       sendPasswordReset,
       updateDisplayName,
+      updateAvatar,
+      removeAvatar,
       requestEmailChange,
       verifyCurrentPassword,
       updatePassword,
@@ -195,12 +273,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       exchangeCodeForSession,
       loading,
+      removeAvatar,
       requestEmailChange,
       sendPasswordReset,
       session,
       signIn,
       signOut,
       signUp,
+      updateAvatar,
       updateDisplayName,
       updatePassword,
       verifyCurrentPassword,

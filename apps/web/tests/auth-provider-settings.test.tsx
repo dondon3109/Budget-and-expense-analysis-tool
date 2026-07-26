@@ -29,6 +29,10 @@ const supabaseMocks = vi.hoisted(() => {
     exchangeCodeForSession: vi.fn(),
     getSession: vi.fn(),
     onAuthStateChange: vi.fn(),
+    upload: vi.fn(),
+    remove: vi.fn(),
+    getPublicUrl: vi.fn(),
+    storageFrom: vi.fn(),
   };
 });
 
@@ -43,6 +47,9 @@ vi.mock("../src/lib/supabase", () => {
       exchangeCodeForSession: supabaseMocks.exchangeCodeForSession,
       getSession: supabaseMocks.getSession,
       onAuthStateChange: supabaseMocks.onAuthStateChange,
+    },
+    storage: {
+      from: supabaseMocks.storageFrom,
     },
   };
 
@@ -59,6 +66,8 @@ function SettingsOperations() {
   const {
     user,
     updateDisplayName,
+    updateAvatar,
+    removeAvatar,
     requestEmailChange,
     verifyCurrentPassword,
     updatePassword,
@@ -70,6 +79,15 @@ function SettingsOperations() {
     <div>
       <button type="button" onClick={() => void updateDisplayName("Taylor")}>
         Update name
+      </button>
+      <button
+        type="button"
+        onClick={() => void updateAvatar(new File(["avatar"], "avatar.png", { type: "image/png" }))}
+      >
+        Update avatar
+      </button>
+      <button type="button" onClick={() => void removeAvatar()}>
+        Remove avatar
       </button>
       <button type="button" onClick={() => void requestEmailChange("next@example.com")}>
         Update email
@@ -86,8 +104,17 @@ function SettingsOperations() {
 
 describe("AuthProvider account settings operations", () => {
   beforeEach(() => {
+    supabaseMocks.session.user.user_metadata = {};
     supabaseMocks.updateUser.mockReset().mockResolvedValue({ data: {}, error: null });
     supabaseMocks.signInWithPassword.mockReset().mockResolvedValue({ data: {}, error: null });
+    supabaseMocks.upload.mockReset().mockResolvedValue({ data: {}, error: null });
+    supabaseMocks.remove.mockReset().mockResolvedValue({ data: {}, error: null });
+    supabaseMocks.getPublicUrl.mockReset().mockReturnValue({ data: { publicUrl: "avatar-url" } });
+    supabaseMocks.storageFrom.mockReset().mockReturnValue({
+      upload: supabaseMocks.upload,
+      remove: supabaseMocks.remove,
+      getPublicUrl: supabaseMocks.getPublicUrl,
+    });
     supabaseMocks.getSession.mockReset().mockResolvedValue({
       data: { session: supabaseMocks.session },
       error: null,
@@ -114,6 +141,25 @@ describe("AuthProvider account settings operations", () => {
       expect(supabaseMocks.updateUser).toHaveBeenCalledWith({
         data: { display_name: "Taylor" },
       }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Update avatar" }));
+    await waitFor(() => expect(supabaseMocks.upload).toHaveBeenCalledTimes(1));
+    const avatarPath = supabaseMocks.upload.mock.calls[0]?.[0] as string;
+    expect(avatarPath).toMatch(/^user-1\/[a-f0-9-]+\.png$/);
+    expect(supabaseMocks.storageFrom).toHaveBeenCalledWith("avatars");
+    expect(supabaseMocks.upload).toHaveBeenCalledWith(
+      avatarPath,
+      expect.any(File),
+      expect.objectContaining({ contentType: "image/png", upsert: false }),
+    );
+    expect(supabaseMocks.updateUser).toHaveBeenCalledWith({
+      data: { avatar_path: avatarPath },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove avatar" }));
+    await waitFor(() =>
+      expect(supabaseMocks.updateUser).toHaveBeenCalledWith({ data: { avatar_path: null } }),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Update email" }));

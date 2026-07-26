@@ -48,9 +48,19 @@ With the local app running, `pnpm capture:screenshots` captures repeatable landi
 Requirements: Node.js 24+ and pnpm 11.
 
 1. In Supabase Auth URL configuration, add `http://localhost:5173/auth/callback` as an allowed redirect URL.
-2. Create `apps/web/.env.local` with the browser values from `.env.example`.
-3. Set the matching `SUPABASE_URL` in `apps/api/wrangler.jsonc` or an ignored local Wrangler configuration.
-4. Run:
+2. Apply the tracked Supabase migrations to the project used for local development:
+
+   ```bash
+   pnpm dlx supabase login
+   pnpm dlx supabase link --project-ref YOUR_PROJECT_REF
+   pnpm dlx supabase db push --linked
+   ```
+
+   This creates the public `avatars` bucket. Avatar files can be read by anyone with their URL, while Storage policies restrict uploads and deletes to each authenticated user's own folder.
+
+3. Create `apps/web/.env.local` with the browser values from `.env.example`.
+4. Set the matching `SUPABASE_URL` in `apps/api/wrangler.jsonc` or an ignored local Wrangler configuration.
+5. Run:
 
 ```bash
 pnpm install --frozen-lockfile

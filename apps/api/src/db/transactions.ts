@@ -56,7 +56,24 @@ function buildConditions(query: TransactionExportQuery, tenantId: string): SQL[]
   if (query.to) conditions.push(lte(transactions.date, query.to));
   if (query.search) {
     const pattern = `%${escapeLike(query.search)}%`;
-    conditions.push(sql`${transactions.description} LIKE ${pattern} ESCAPE '\\'`);
+    conditions.push(sql`(
+      ${transactions.description} LIKE ${pattern} ESCAPE '\\'
+      OR COALESCE(${transactions.notes}, '') LIKE ${pattern} ESCAPE '\\'
+      OR EXISTS (
+        SELECT 1
+        FROM ${accounts}
+        WHERE ${accounts.id} = ${transactions.accountId}
+          AND ${accounts.tenantId} = ${tenantId}
+          AND ${accounts.name} LIKE ${pattern} ESCAPE '\\'
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM ${categories}
+        WHERE ${categories.id} = ${transactions.categoryId}
+          AND ${categories.tenantId} = ${tenantId}
+          AND ${categories.name} LIKE ${pattern} ESCAPE '\\'
+      )
+    )`);
   }
   return conditions;
 }
