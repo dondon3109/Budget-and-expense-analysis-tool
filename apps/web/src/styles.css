@@ -4369,7 +4369,7 @@ button:disabled {
   background: var(--warning-soft);
 }
 .calendar-upcoming-list {
-  max-height: 300px;
+  max-height: 220px;
   margin: 0;
   padding: 0;
   overflow-y: auto;
@@ -4416,6 +4416,35 @@ button:disabled {
 .calendar-upcoming-copy small {
   color: var(--muted);
   font-size: 9px;
+}
+.calendar-subscription-list {
+  max-height: 220px;
+}
+.calendar-subscription-event {
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.calendar-subscription-event .calendar-upcoming-date {
+  white-space: normal;
+}
+.calendar-subscription-event .calendar-upcoming-copy small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-subscription-category {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+.calendar-subscription-amount {
+  color: var(--ink);
+  font-size: 10px;
+  white-space: nowrap;
 }
 .calendar-day-heading {
   align-items: flex-start;

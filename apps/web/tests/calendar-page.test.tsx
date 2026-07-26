@@ -292,4 +292,166 @@ describe("CalendarPage month views", () => {
     expect(await screen.findByRole("button", { name: /View Current month event/i })).toBeVisible();
     expect(screen.getByText("Some upcoming events could not be loaded.")).toBeVisible();
   });
+
+  it("shows active subscriptions to pay across the current and next month", async () => {
+    apiMocks.getSubscriptions.mockImplementation((_, month: string) =>
+      Promise.resolve({
+        month,
+        currency: "PHP",
+        totalMonthlyCostMinor: 0,
+        items:
+          month === "2026-07-01"
+            ? [
+                {
+                  id: "past",
+                  name: "Past subscription",
+                  amountMinor: 100_00,
+                  currency: "PHP",
+                  billingCycle: "monthly",
+                  nextBillingDate: "2026-07-25",
+                  status: "active",
+                  categoryId: "category-1",
+                  categoryName: "Services",
+                  categoryColor: "#123456",
+                  billingDate: "2026-07-25",
+                  monthlyCostMinor: 100_00,
+                },
+                {
+                  id: "streaming",
+                  name: "Streaming plan",
+                  amountMinor: 549_00,
+                  currency: "PHP",
+                  billingCycle: "monthly",
+                  nextBillingDate: "2026-07-26",
+                  status: "active",
+                  categoryId: "category-2",
+                  categoryName: "Entertainment",
+                  categoryColor: "#654321",
+                  billingDate: "2026-07-26",
+                  monthlyCostMinor: 549_00,
+                },
+                {
+                  id: "yearly",
+                  name: "Annual productivity suite",
+                  amountMinor: 12_000_00,
+                  currency: "PHP",
+                  billingCycle: "yearly",
+                  nextBillingDate: "2026-07-30",
+                  status: "active",
+                  categoryId: "category-3",
+                  categoryName: "Productivity",
+                  categoryColor: "#abcdef",
+                  billingDate: "2026-07-30",
+                  monthlyCostMinor: 1_000_00,
+                },
+                {
+                  id: "canceled",
+                  name: "Canceled plan",
+                  amountMinor: 300_00,
+                  currency: "PHP",
+                  billingCycle: "monthly",
+                  nextBillingDate: "2026-07-28",
+                  status: "canceled",
+                  categoryId: "category-1",
+                  categoryName: "Services",
+                  categoryColor: "#123456",
+                  billingDate: "2026-07-28",
+                  monthlyCostMinor: 300_00,
+                },
+                {
+                  id: "yearly-later",
+                  name: "Not billed this month",
+                  amountMinor: 800_00,
+                  currency: "PHP",
+                  billingCycle: "yearly",
+                  nextBillingDate: "2026-09-01",
+                  status: "active",
+                  categoryId: "category-1",
+                  categoryName: "Services",
+                  categoryColor: "#123456",
+                  billingDate: null,
+                  monthlyCostMinor: 67_00,
+                },
+              ]
+            : [
+                {
+                  id: "streaming",
+                  name: "Streaming plan",
+                  amountMinor: 549_00,
+                  currency: "PHP",
+                  billingCycle: "monthly",
+                  nextBillingDate: "2026-07-26",
+                  status: "active",
+                  categoryId: "category-2",
+                  categoryName: "Entertainment",
+                  categoryColor: "#654321",
+                  billingDate: "2026-08-26",
+                  monthlyCostMinor: 549_00,
+                },
+              ],
+      }),
+    );
+
+    renderPage();
+
+    const list = await screen.findByRole("list", {
+      name: /Subscriptions to pay for July 2026–August 2026/i,
+    });
+    const rows = Array.from(list.querySelectorAll("button"));
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Due todayStreaming plan"),
+      expect.stringContaining("Jul 30Annual productivity suite"),
+      expect.stringContaining("Aug 26Streaming plan"),
+    ]);
+    expect(within(list).getByText("₱12,000")).toBeVisible();
+    expect(within(list).getByText("Yearly · Productivity")).toBeVisible();
+    expect(within(list).queryByText("Past subscription")).not.toBeInTheDocument();
+    expect(within(list).queryByText("Canceled plan")).not.toBeInTheDocument();
+    expect(within(list).queryByText("Not billed this month")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /View Streaming plan, due Wednesday, August 26, 2026, ₱549/i,
+      }),
+    );
+    await waitFor(() => expect(screen.getByText("Selected date: 2026-08-26")).toBeVisible());
+    expect(
+      screen.getByLabelText("Calendar month controls").querySelector("strong"),
+    ).toHaveTextContent("July 2026");
+  });
+
+  it("keeps loaded subscriptions visible when the next month fails", async () => {
+    apiMocks.getSubscriptions.mockImplementation((_, month: string) =>
+      month === "2026-08-01"
+        ? Promise.reject(new Error("August subscriptions unavailable"))
+        : Promise.resolve({
+            month,
+            currency: "PHP",
+            totalMonthlyCostMinor: 499_00,
+            items: [
+              {
+                id: "current-subscription",
+                name: "Current subscription",
+                amountMinor: 499_00,
+                currency: "PHP",
+                billingCycle: "monthly",
+                nextBillingDate: "2026-07-30",
+                status: "active",
+                categoryId: "category-1",
+                categoryName: "Services",
+                categoryColor: "#123456",
+                billingDate: "2026-07-30",
+                monthlyCostMinor: 499_00,
+              },
+            ],
+          }),
+    );
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: /View Current subscription, due/i }),
+    ).toBeVisible();
+    expect(screen.getByText("Some subscription due dates could not be loaded.")).toBeVisible();
+  });
 });

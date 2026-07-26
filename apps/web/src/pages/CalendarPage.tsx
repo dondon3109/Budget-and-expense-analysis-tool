@@ -36,6 +36,7 @@ import {
   monthStart,
   shiftMonth,
   upcomingCalendarEvents,
+  upcomingCalendarSubscriptions,
 } from "../lib/calendar";
 import { formatFullMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
@@ -221,6 +222,19 @@ export function CalendarPage() {
     (eventsQuery.isPending && !eventsQuery.data) ||
     (nextEventsQuery.isPending && !nextEventsQuery.data);
   const upcomingEventsLoadError = eventsQuery.isError || nextEventsQuery.isError;
+  const upcomingSubscriptions = useMemo(
+    () =>
+      upcomingCalendarSubscriptions(
+        [...(subscriptionsQuery.data?.items ?? []), ...(nextSubscriptionsQuery.data?.items ?? [])],
+        today,
+      ),
+    [subscriptionsQuery.data?.items, nextSubscriptionsQuery.data?.items, today],
+  );
+  const upcomingSubscriptionsLoading =
+    (subscriptionsQuery.isPending && !subscriptionsQuery.data) ||
+    (nextSubscriptionsQuery.isPending && !nextSubscriptionsQuery.data);
+  const upcomingSubscriptionsLoadError =
+    subscriptionsQuery.isError || nextSubscriptionsQuery.isError;
 
   function showMonth(month: string, date = monthStart(month)) {
     setSelectedDate(date);
@@ -436,8 +450,12 @@ export function CalendarPage() {
               visibleMonth={visibleMonth}
               nextMonth={nextMonth}
               events={upcomingEvents}
+              subscriptions={upcomingSubscriptions}
+              today={today}
               isLoading={upcomingEventsLoading}
               hasLoadError={upcomingEventsLoadError}
+              subscriptionsLoading={upcomingSubscriptionsLoading}
+              hasSubscriptionsLoadError={upcomingSubscriptionsLoadError}
               onAddEvent={openNewEvent}
               onSelectDate={setSelectedDate}
             />

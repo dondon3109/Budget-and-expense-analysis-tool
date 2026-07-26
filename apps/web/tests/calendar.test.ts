@@ -1,4 +1,4 @@
-import type { CalendarEventRecord } from "@zoption/shared";
+import type { CalendarEventRecord, SubscriptionMonthItem } from "@zoption/shared";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,6 +8,7 @@ import {
   monthDates,
   shiftMonth,
   upcomingCalendarEvents,
+  upcomingCalendarSubscriptions,
 } from "../src/lib/calendar";
 
 function event(
@@ -17,6 +18,28 @@ function event(
   startTime: string | null = null,
 ): CalendarEventRecord {
   return { id, date, title, startTime, endTime: null, notes: null };
+}
+
+function subscription(
+  id: string,
+  billingDate: string | null,
+  name: string,
+  status: SubscriptionMonthItem["status"] = "active",
+): SubscriptionMonthItem {
+  return {
+    id,
+    name,
+    amountMinor: 999_00,
+    currency: "PHP",
+    billingCycle: "monthly",
+    nextBillingDate: billingDate ?? "2026-09-01",
+    status,
+    categoryId: "category-1",
+    categoryName: "Services",
+    categoryColor: "#123456",
+    billingDate,
+    monthlyCostMinor: 999_00,
+  };
 }
 
 describe("calendar utilities", () => {
@@ -62,5 +85,27 @@ describe("calendar utilities", () => {
         endTime: "15:00",
       }),
     ).toBe("1:30 PM–3:00 PM");
+  });
+
+  it("keeps active subscription occurrences due today or later in deterministic order", () => {
+    const subscriptions = [
+      subscription("past", "2026-07-25", "Past"),
+      subscription("canceled", "2026-07-30", "Canceled", "canceled"),
+      subscription("not-due", null, "Yearly later"),
+      subscription("repeat", "2026-08-26", "Streaming"),
+      subscription("same-b", "2026-07-26", "utilities"),
+      subscription("same-a", "2026-07-26", "Cloud storage"),
+      subscription("repeat", "2026-07-28", "Streaming"),
+    ];
+    const originalOrder = subscriptions.map(({ id, billingDate }) => `${id}:${billingDate}`);
+
+    expect(
+      upcomingCalendarSubscriptions(subscriptions, "2026-07-26").map(
+        ({ id, billingDate }) => `${id}:${billingDate}`,
+      ),
+    ).toEqual(["same-a:2026-07-26", "same-b:2026-07-26", "repeat:2026-07-28", "repeat:2026-08-26"]);
+    expect(subscriptions.map(({ id, billingDate }) => `${id}:${billingDate}`)).toEqual(
+      originalOrder,
+    );
   });
 });

@@ -1,4 +1,4 @@
-import type { CalendarEventRecord } from "@zoption/shared";
+import type { CalendarEventRecord, SubscriptionMonthItem } from "@zoption/shared";
 
 const calendarEventTitleCollator = new Intl.Collator("en-PH", {
   numeric: true,
@@ -95,4 +95,24 @@ export function upcomingCalendarEvents(
   today: string,
 ): CalendarEventRecord[] {
   return events.filter((event) => event.date >= today).sort(compareCalendarEvents);
+}
+
+export function upcomingCalendarSubscriptions(
+  subscriptions: readonly SubscriptionMonthItem[],
+  today: string,
+): SubscriptionMonthItem[] {
+  return subscriptions
+    .filter(
+      (subscription) =>
+        subscription.status === "active" &&
+        subscription.billingDate !== null &&
+        subscription.billingDate >= today,
+    )
+    .sort((left, right) => {
+      const dateOrder = (left.billingDate ?? "").localeCompare(right.billingDate ?? "");
+      if (dateOrder !== 0) return dateOrder;
+
+      const nameOrder = calendarEventTitleCollator.compare(left.name, right.name);
+      return nameOrder !== 0 ? nameOrder : left.id.localeCompare(right.id);
+    });
 }
