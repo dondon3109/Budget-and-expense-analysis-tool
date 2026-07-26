@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("mobile landing keeps account actions and preview usable", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
 
   await expect(
@@ -52,14 +53,10 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
     )
     .toBe(true);
 
-  const themeToggle = page.getByRole("button", { name: /Switch to (dark|light) mode/ });
+  const themeToggle = page.getByRole("button", { name: "Switch to dark mode" });
   await expect(themeToggle).toBeVisible();
-  const initialTheme = await page.locator("html").getAttribute("data-theme");
   await themeToggle.click();
-  await expect(page.locator("html")).toHaveAttribute(
-    "data-theme",
-    initialTheme === "dark" ? "light" : "dark",
-  );
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -68,6 +65,8 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
 
   await page.getByRole("link", { name: "Create account" }).last().click();
   await expect(page).toHaveURL(/\/signup$/);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator(".auth-card")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Create your Zoption account" })).toBeVisible();
 });
 

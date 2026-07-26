@@ -43,7 +43,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.style.colorScheme).toBe("dark");
     expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
       "content",
-      "#101814",
+      "#0f1115",
     );
 
     await user.click(toggle);

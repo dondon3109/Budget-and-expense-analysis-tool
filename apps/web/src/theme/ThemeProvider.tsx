@@ -16,7 +16,7 @@ const LEGACY_THEME_STORAGE_KEY = "clarity-theme";
 
 const THEME_COLORS: Record<Theme, string> = {
   light: "#f4f1e9",
-  dark: "#101814",
+  dark: "#0f1115",
 };
 
 interface ThemeContextValue {

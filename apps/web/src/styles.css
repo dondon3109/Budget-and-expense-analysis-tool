@@ -88,13 +88,13 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  color: #edf5f0;
-  background: #101814;
-  --page: #101814;
-  --page-accent: #131e19;
-  --ink: #edf5f0;
-  --muted: #a8b8b0;
-  --subtle: #8fa098;
+  color: #f2f4f7;
+  background: #0f1115;
+  --page: #0f1115;
+  --page-accent: #13161b;
+  --ink: #f2f4f7;
+  --muted: #b2b8c2;
+  --subtle: #929aa6;
   --sage: #78c5a6;
   --sage-hover: #8dd3b6;
   --sage-soft: #1b392f;
@@ -115,10 +115,10 @@
   --budget-soft: #382b57;
   --info: #8ab4ff;
   --info-soft: #213457;
-  --page-glow-alt: rgba(112, 154, 255, 0.18);
-  --inverse-bg: #0a110e;
-  --inverse-text: #edf5f0;
-  --inverse-muted: #a8b8b0;
+  --page-glow-alt: rgba(96, 119, 152, 0.12);
+  --inverse-bg: #0b0d10;
+  --inverse-text: #f2f4f7;
+  --inverse-muted: #b2b8c2;
   --excel-accent: #75c99a;
   --excel-ink: #c2ead3;
   --excel-soft: #172b22;
@@ -127,19 +127,19 @@
   --solid-bg: #67e0bc;
   --solid-hover: #a3f2d5;
   --solid-text: #102019;
-  --paper: #18231e;
-  --surface: #202d27;
-  --surface-soft: #141e1a;
-  --surface-hover: #26362f;
-  --surface-glass: rgba(32, 45, 39, 0.78);
-  --surface-translucent: rgba(24, 35, 30, 0.94);
-  --glass-border: rgba(120, 197, 166, 0.2);
-  --page-glow: rgba(54, 154, 121, 0.62);
-  --line: #33463d;
-  --line-strong: #43594f;
-  --focus: #8ed0b5;
-  --shadow: rgba(0, 0, 0, 0.3);
-  --overlay: rgba(3, 8, 6, 0.74);
+  --paper: #171a20;
+  --surface: #1d2128;
+  --surface-soft: #14171c;
+  --surface-hover: #252a33;
+  --surface-glass: rgba(29, 33, 40, 0.78);
+  --surface-translucent: rgba(23, 26, 32, 0.94);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --page-glow: rgba(148, 163, 184, 0.12);
+  --line: #303640;
+  --line-strong: #626d7d;
+  --focus: #7ad8b8;
+  --shadow: rgba(0, 0, 0, 0.34);
+  --overlay: rgba(0, 0, 0, 0.74);
   --success: #83c9ac;
   --success-soft: #1a392e;
   --warning: #e6c57d;
@@ -150,16 +150,55 @@
   --amber-soft: #442f1f;
   --plum: #b4a5e2;
   --plum-soft: #312b46;
-  --contrast-bg: #0a110e;
-  --contrast-text: #edf5f0;
-  --contrast-muted: #a8b8b0;
-  --chart-income: #62ddcb;
-  --chart-expense: #ffad7b;
-  --chart-grid: #34463e;
-  --chart-axis: #a8b8b0;
-  --chart-tooltip-bg: #202d27;
-  --chart-tooltip-border: #43594f;
-  --chart-slice-separator: #18231e;
+  --contrast-bg: #0b0d10;
+  --contrast-text: #f2f4f7;
+  --contrast-muted: #b2b8c2;
+  --chart-income: #199e70;
+  --chart-expense: #d95926;
+  --chart-grid: #303640;
+  --chart-axis: #9ba3af;
+  --chart-tooltip-bg: #1d2128;
+  --chart-tooltip-border: #626d7d;
+  --chart-slice-separator: #171a20;
+}
+
+:root[data-theme="dark"] .button.primary {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .overview-stat-bar,
+:root[data-theme="dark"] .metric-card,
+:root[data-theme="dark"] .panel,
+:root[data-theme="dark"] .transactions-panel,
+:root[data-theme="dark"] .calendar-surface,
+:root[data-theme="dark"] .calendar-day-panel {
+  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme="dark"] .import-card,
+:root[data-theme="dark"] .import-success,
+:root[data-theme="dark"] .budget-editor-panel {
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme="dark"] .form-modal {
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.48);
+}
+
+:root[data-theme="dark"] .auth-card,
+:root[data-theme="dark"] .auth-aside {
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+}
+
+:root[data-theme="dark"] .transaction-form input:focus,
+:root[data-theme="dark"] .transaction-form select:focus,
+:root[data-theme="dark"] .transaction-form textarea:focus,
+:root[data-theme="dark"] .new-category-form input:focus,
+:root[data-theme="dark"] .new-category-form select:focus,
+:root[data-theme="dark"] .manager-category input:focus,
+:root[data-theme="dark"] .settings-form input:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
 }
 
 * {
@@ -3454,7 +3493,7 @@ button:disabled {
 }
 .auth-aside h2 {
   max-width: 500px;
-  color: var(--paper);
+  color: var(--contrast-text);
   font-size: clamp(38px, 5vw, 58px);
   line-height: 1.04;
 }
@@ -3468,7 +3507,7 @@ button:disabled {
 .auth-aside .text-link {
   width: fit-content;
   margin-top: 34px;
-  color: var(--paper);
+  color: var(--contrast-text);
   font-size: 12px;
 }
 
