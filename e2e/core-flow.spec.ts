@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("zoption-theme", "light"));
+});
+
 test("landing page leads visitors to account creation or sign in", async ({ page, request }) => {
   const demoRequests: string[] = [];
   page.on("request", (browserRequest) => {

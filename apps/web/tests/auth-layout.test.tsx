@@ -24,7 +24,7 @@ describe("AuthLayout", () => {
     expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Sign in" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /switch to (dark|light) mode/i }),
+      screen.getByRole("button", { name: /choose theme\. current theme: (light|dark|coffee)/i }),
     ).toBeInTheDocument();
   });
 });

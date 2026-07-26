@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("zoption-theme", "light"));
+});
+
 test("mobile landing keeps account actions and preview usable", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
@@ -53,9 +57,12 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
     )
     .toBe(true);
 
-  const themeToggle = page.getByRole("button", { name: "Switch to dark mode" });
+  const themeToggle = page.getByRole("button", {
+    name: "Choose theme. Current theme: Light",
+  });
   await expect(themeToggle).toBeVisible();
   await themeToggle.click();
+  await page.getByRole("menuitemradio", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
   const hasHorizontalOverflow = await page.evaluate(
@@ -68,6 +75,35 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator(".auth-card")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Create your Zoption account" })).toBeVisible();
+});
+
+test("first-visit bottom sheet previews and confirms Coffee without overflow", async ({ page }) => {
+  await page.addInitScript(() => localStorage.clear());
+  await page.goto("/");
+
+  const dialog = page.getByRole("dialog", { name: "Choose how Zoption looks" });
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Preview Light theme" })).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Preview Dark theme" })).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Preview Coffee theme" })).toBeVisible();
+
+  await page.getByRole("radio", { name: "Preview Coffee theme" }).click();
+  await expect(dialog).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "coffee");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("zoption-theme"))).toBeNull();
+
+  const confirm = page.getByRole("button", { name: "Confirm Coffee theme" });
+  await expect(confirm).toBeVisible();
+  await confirm.click();
+  await expect(dialog).toBeHidden();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("zoption-theme"))).toBe(
+    "coffee",
+  );
+
+  const hasHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(hasHorizontalOverflow).toBe(false);
 });
 
 test("supported formats marquee becomes static with reduced motion", async ({ page }) => {

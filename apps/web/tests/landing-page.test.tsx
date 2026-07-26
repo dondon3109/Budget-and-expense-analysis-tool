@@ -31,7 +31,7 @@ describe("landing page", () => {
     expect(container.querySelector('a[href="/login"]')).toBeInTheDocument();
     expect(container.querySelector('a[href="/demo"]')).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /switch to (dark|light) mode/i }),
+      screen.getByRole("button", { name: /choose theme\. current theme: (light|dark|coffee)/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Learn more" })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Why Zoption" })).toBeInTheDocument();

@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from "react";
 
-export type Theme = "light" | "dark";
+export const THEMES = ["light", "dark", "coffee"] as const;
+export type Theme = (typeof THEMES)[number];
 
 export const THEME_STORAGE_KEY = "zoption-theme";
 
@@ -17,34 +18,56 @@ const LEGACY_THEME_STORAGE_KEY = "clarity-theme";
 const THEME_COLORS: Record<Theme, string> = {
   light: "#f4f1e9",
   dark: "#0f1115",
+  coffee: "#efe4d2",
+};
+
+const THEME_COLOR_SCHEMES: Record<Theme, "light" | "dark"> = {
+  light: "light",
+  dark: "dark",
+  coffee: "light",
 };
 
 interface ThemeContextValue {
   theme: Theme;
+  hasThemePreference: boolean;
+  previewTheme: (theme: Theme) => void;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
+}
+
+interface ThemeState {
+  theme: Theme;
+  hasThemePreference: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function isTheme(value: unknown): value is Theme {
-  return value === "light" || value === "dark";
+  return typeof value === "string" && THEMES.some((theme) => theme === value);
 }
 
 function storedTheme(): Theme | undefined {
+  let legacyValue: string | null;
+
   try {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY);
     if (isTheme(value)) return value;
 
-    const legacyValue = window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
-    if (!isTheme(legacyValue)) return undefined;
-
-    window.localStorage.setItem(THEME_STORAGE_KEY, legacyValue);
-    window.localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
-    return legacyValue;
+    legacyValue = window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
   } catch {
     return undefined;
   }
+
+  if (!isTheme(legacyValue)) return undefined;
+
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, legacyValue);
+    window.localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
+  } catch {
+    // The legacy preference still applies when migration writes are unavailable.
+  }
+
+  return legacyValue;
 }
 
 function systemTheme(): Theme {
@@ -55,14 +78,19 @@ function systemTheme(): Theme {
   }
 }
 
-function initialTheme(): Theme {
+function initialThemeState(): ThemeState {
+  const preference = storedTheme();
   const documentTheme = document.documentElement.dataset.theme;
-  return isTheme(documentTheme) ? documentTheme : (storedTheme() ?? systemTheme());
+
+  return {
+    theme: isTheme(documentTheme) ? documentTheme : (preference ?? systemTheme()),
+    hasThemePreference: preference !== undefined,
+  };
 }
 
 function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
+  document.documentElement.style.colorScheme = THEME_COLOR_SCHEMES[theme];
   document
     .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
     ?.setAttribute("content", THEME_COLORS[theme]);
@@ -78,16 +106,16 @@ function persistTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(initialTheme);
+  const [themeState, setThemeState] = useState<ThemeState>(initialThemeState);
 
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    applyTheme(themeState.theme);
+  }, [themeState.theme]);
 
   useEffect(() => {
     function syncTheme(event: StorageEvent) {
       if (event.key === THEME_STORAGE_KEY && isTheme(event.newValue)) {
-        setThemeState(event.newValue);
+        setThemeState({ theme: event.newValue, hasThemePreference: true });
       }
     }
 
@@ -95,17 +123,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", syncTheme);
   }, []);
 
+  const previewTheme = useCallback((nextTheme: Theme) => {
+    applyTheme(nextTheme);
+    setThemeState((current) => ({ ...current, theme: nextTheme }));
+  }, []);
+
   const setTheme = useCallback((nextTheme: Theme) => {
     applyTheme(nextTheme);
     persistTheme(nextTheme);
-    setThemeState(nextTheme);
+    setThemeState({ theme: nextTheme, hasThemePreference: true });
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }, [setTheme, theme]);
+    const currentIndex = THEMES.indexOf(themeState.theme);
+    const nextTheme = THEMES[(currentIndex + 1) % THEMES.length] ?? "light";
+    setTheme(nextTheme);
+  }, [setTheme, themeState.theme]);
 
-  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [setTheme, theme, toggleTheme]);
+  const value = useMemo(
+    () => ({ ...themeState, previewTheme, setTheme, toggleTheme }),
+    [previewTheme, setTheme, themeState, toggleTheme],
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

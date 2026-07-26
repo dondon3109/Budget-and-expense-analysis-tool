@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
+import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
 import { ImportDraftProvider } from "./import/ImportDraftProvider";
 import "./styles.css";
 import { ThemeProvider } from "./theme/ThemeProvider";
@@ -22,6 +23,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
+      <ThemeChoiceDialog />
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ImportDraftProvider>
