@@ -1,3 +1,10 @@
+import type { CalendarEventRecord } from "@zoption/shared";
+
+const calendarEventTitleCollator = new Intl.Collator("en-PH", {
+  numeric: true,
+  sensitivity: "base",
+});
+
 export function localIsoDate(date = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -51,4 +58,41 @@ export function formatCalendarDate(date: string): string {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${date}T00:00:00Z`));
+}
+
+export function formatCalendarEventTime(time: string): string {
+  const [hour = 0, minute = 0] = time.split(":").map(Number);
+  const period = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
+export function calendarEventTimeLabel(event: CalendarEventRecord): string {
+  if (!event.startTime) return "All day";
+  const start = formatCalendarEventTime(event.startTime);
+  return event.endTime ? `${start}–${formatCalendarEventTime(event.endTime)}` : start;
+}
+
+export function compareCalendarEvents(
+  left: CalendarEventRecord,
+  right: CalendarEventRecord,
+): number {
+  const dateOrder = left.date.localeCompare(right.date);
+  if (dateOrder !== 0) return dateOrder;
+
+  if (left.startTime === null && right.startTime !== null) return -1;
+  if (left.startTime !== null && right.startTime === null) return 1;
+
+  const timeOrder = (left.startTime ?? "").localeCompare(right.startTime ?? "");
+  if (timeOrder !== 0) return timeOrder;
+
+  const titleOrder = calendarEventTitleCollator.compare(left.title, right.title);
+  return titleOrder !== 0 ? titleOrder : left.id.localeCompare(right.id);
+}
+
+export function upcomingCalendarEvents(
+  events: readonly CalendarEventRecord[],
+  today: string,
+): CalendarEventRecord[] {
+  return events.filter((event) => event.date >= today).sort(compareCalendarEvents);
 }

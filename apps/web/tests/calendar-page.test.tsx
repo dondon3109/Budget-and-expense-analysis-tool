@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import type { CalendarEventInput } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -95,6 +95,8 @@ function renderPage() {
 
 describe("CalendarPage month views", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-07-26T12:00:00"));
     apiMocks.getTransactionCalendar.mockReset().mockImplementation((_, month: string) =>
       Promise.resolve({
         month,
@@ -132,7 +134,10 @@ describe("CalendarPage month views", () => {
     apiMocks.deleteCalendarEvent.mockReset();
   });
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   it("renders the following month below a separator inside the clipped calendar surface", async () => {
     const { container } = renderPage();
@@ -191,5 +196,100 @@ describe("CalendarPage month views", () => {
         },
       ),
     );
+  });
+
+  it("shows future events from the current and next month in chronological order", async () => {
+    apiMocks.getCalendarEvents.mockImplementation((_, month: string) =>
+      Promise.resolve({
+        month,
+        items:
+          month === "2026-07-01"
+            ? [
+                {
+                  id: "past",
+                  title: "Already happened",
+                  date: "2026-07-25",
+                  startTime: null,
+                  endTime: null,
+                  notes: null,
+                },
+                {
+                  id: "today",
+                  title: "Today all day",
+                  date: "2026-07-26",
+                  startTime: null,
+                  endTime: null,
+                  notes: null,
+                },
+                {
+                  id: "current",
+                  title: "Current month appointment",
+                  date: "2026-07-30",
+                  startTime: "09:30",
+                  endTime: null,
+                  notes: null,
+                },
+              ]
+            : [
+                {
+                  id: "next",
+                  title: "Next month meeting",
+                  date: "2026-08-05",
+                  startTime: "14:00",
+                  endTime: "15:00",
+                  notes: null,
+                },
+              ],
+      }),
+    );
+
+    renderPage();
+
+    const upcoming = await screen.findByRole("list", {
+      name: /Upcoming events for July 2026–August 2026/i,
+    });
+    const eventButtons = Array.from(upcoming.querySelectorAll("button"));
+    expect(eventButtons.map((button) => button.textContent)).toEqual([
+      expect.stringContaining("Today all day"),
+      expect.stringContaining("Current month appointment"),
+      expect.stringContaining("Next month meeting"),
+    ]);
+    expect(within(upcoming).queryByText("Already happened")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /View Next month meeting on .*August 5, 2026, 2:00 PM–3:00 PM/i,
+      }),
+    );
+
+    await waitFor(() => expect(screen.getByText("Selected date: 2026-08-05")).toBeVisible());
+    expect(
+      screen.getByLabelText("Calendar month controls").querySelector("strong"),
+    ).toHaveTextContent("July 2026");
+  });
+
+  it("keeps loaded upcoming events visible when one month fails", async () => {
+    apiMocks.getCalendarEvents.mockImplementation((_, month: string) =>
+      month === "2026-08-01"
+        ? Promise.reject(new Error("August unavailable"))
+        : Promise.resolve({
+            month,
+            items: [
+              {
+                id: "current",
+                title: "Current month event",
+                date: "2026-07-30",
+                startTime: null,
+                endTime: null,
+                notes: null,
+              },
+            ],
+          }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: /View Current month event/i })).toBeVisible();
+    expect(screen.getByText("Some upcoming events could not be loaded.")).toBeVisible();
   });
 });

@@ -2,7 +2,7 @@ import type { CalendarEventRecord, TransactionListItem } from "@zoption/shared";
 import { CalendarPlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { formatCalendarDate } from "../../lib/calendar";
+import { calendarEventTimeLabel, formatCalendarDate } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
 
 interface CalendarDayPanelProps {
@@ -15,19 +15,6 @@ interface CalendarDayPanelProps {
   onAddEvent: () => void;
   onEditEvent: (event: CalendarEventRecord) => void;
   onDeleteEvent: (id: string) => Promise<void>;
-}
-
-function formatEventTime(time: string): string {
-  const [hour = 0, minute = 0] = time.split(":").map(Number);
-  const period = hour >= 12 ? "PM" : "AM";
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${String(minute).padStart(2, "0")} ${period}`;
-}
-
-function eventTimeLabel(event: CalendarEventRecord): string {
-  if (!event.startTime) return "All day";
-  const start = formatEventTime(event.startTime);
-  return event.endTime ? `${start}–${formatEventTime(event.endTime)}` : start;
 }
 
 export function CalendarDayPanel({
@@ -76,7 +63,7 @@ export function CalendarDayPanel({
               const deleting = deletingEventId === event.id;
               return (
                 <article className="calendar-event-item" key={event.id}>
-                  <div className="calendar-event-time">{eventTimeLabel(event)}</div>
+                  <div className="calendar-event-time">{calendarEventTimeLabel(event)}</div>
                   <div className="calendar-event-copy">
                     <strong>{event.title}</strong>
                     {event.notes && <p>{event.notes}</p>}

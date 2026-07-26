@@ -150,6 +150,43 @@ describe("CalendarMonthGrid", () => {
     expect(screen.getByTitle("Dentist")).toHaveClass("event");
   });
 
+  it("keeps outer-column dates fully selectable", () => {
+    const onSelectDate = vi.fn();
+    const { rerender } = render(
+      <CalendarMonthGrid
+        month="2026-05"
+        selectedDate="2026-05-31"
+        today="2026-05-15"
+        days={new Map()}
+        onSelectDate={onSelectDate}
+      />,
+    );
+
+    const bottomLeftDate = screen.getByRole("button", {
+      name: /May 31, 2026, selected/i,
+    });
+    expect(bottomLeftDate).toHaveClass("selected");
+    expect(bottomLeftDate).toHaveAttribute("aria-pressed", "true");
+
+    rerender(
+      <CalendarMonthGrid
+        month="2026-10"
+        selectedDate="2026-10-31"
+        today="2026-10-15"
+        days={new Map()}
+        onSelectDate={onSelectDate}
+      />,
+    );
+
+    const bottomRightDate = screen.getByRole("button", {
+      name: /October 31, 2026, selected/i,
+    });
+    expect(bottomRightDate).toHaveClass("selected");
+    expect(bottomRightDate).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(bottomRightDate);
+    expect(onSelectDate).toHaveBeenCalledWith("2026-10-31");
+  });
+
   it("moves focus selection by week with the keyboard", () => {
     const onSelectDate = vi.fn();
     render(

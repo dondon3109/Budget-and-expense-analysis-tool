@@ -6,13 +6,14 @@ import type {
   TransactionListItem,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, ChevronLeft, ChevronRight, FileUp, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileUp, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { CalendarDayPanel } from "../components/calendar/CalendarDayPanel";
 import { CalendarEventForm } from "../components/calendar/CalendarEventForm";
 import { CalendarMonthGrid, type CalendarDayData } from "../components/calendar/CalendarMonthGrid";
+import { CalendarUpcomingEvents } from "../components/calendar/CalendarUpcomingEvents";
 import { AppShell } from "../components/layout/AppShell";
 import { TransactionForm } from "../components/transactions/TransactionForm";
 import { useAuth } from "../auth/AuthProvider";
@@ -30,11 +31,11 @@ import {
 } from "../lib/api";
 import {
   currentMonth,
-  formatCalendarDate,
   isMonth,
   localIsoDate,
   monthStart,
   shiftMonth,
+  upcomingCalendarEvents,
 } from "../lib/calendar";
 import { formatFullMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
@@ -208,6 +209,18 @@ export function CalendarPage() {
   );
   const selectedItems = selectedDay?.items ?? [];
   const selectedEvents = selectedDay?.events ?? [];
+  const upcomingEvents = useMemo(
+    () =>
+      upcomingCalendarEvents(
+        [...(eventsQuery.data?.items ?? []), ...(nextEventsQuery.data?.items ?? [])],
+        today,
+      ),
+    [eventsQuery.data?.items, nextEventsQuery.data?.items, today],
+  );
+  const upcomingEventsLoading =
+    (eventsQuery.isPending && !eventsQuery.data) ||
+    (nextEventsQuery.isPending && !nextEventsQuery.data);
+  const upcomingEventsLoadError = eventsQuery.isError || nextEventsQuery.isError;
 
   function showMonth(month: string, date = monthStart(month)) {
     setSelectedDate(date);
@@ -418,19 +431,16 @@ export function CalendarPage() {
                 await deleteEventMutation.mutateAsync(id);
               }}
             />
-            <section className="calendar-add-event" aria-labelledby="calendar-add-event-title">
-              <span className="calendar-add-event-icon" aria-hidden="true">
-                <CalendarPlus size={19} />
-              </span>
-              <div className="calendar-add-event-copy">
-                <p className="eyebrow">Schedule</p>
-                <h2 id="calendar-add-event-title">Add Event</h2>
-                <p>Plan an activity for {formatCalendarDate(selectedDate)}.</p>
-              </div>
-              <button className="button primary compact" type="button" onClick={openNewEvent}>
-                <Plus size={16} aria-hidden="true" /> Add event
-              </button>
-            </section>
+            <CalendarUpcomingEvents
+              selectedDate={selectedDate}
+              visibleMonth={visibleMonth}
+              nextMonth={nextMonth}
+              events={upcomingEvents}
+              isLoading={upcomingEventsLoading}
+              hasLoadError={upcomingEventsLoadError}
+              onAddEvent={openNewEvent}
+              onSelectDate={setSelectedDate}
+            />
           </div>
         </div>
       </div>
