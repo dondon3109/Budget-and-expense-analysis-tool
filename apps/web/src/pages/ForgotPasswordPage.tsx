@@ -13,10 +13,12 @@ export function ForgotPasswordPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    const normalizedEmail = email.trim();
     setBusy(true);
     setError(undefined);
     try {
-      await sendPasswordReset(email);
+      await sendPasswordReset(normalizedEmail);
+      setEmail(normalizedEmail);
       setSent(true);
     } catch (submitError) {
       setError(

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { PublicOnly, RequireAuth } from "./auth/RouteGuards";
 
@@ -56,6 +56,29 @@ const AuthCallbackPage = lazy(async () => {
   return { default: module.AuthCallbackPage };
 });
 
+export function RootRoute() {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const hasAuthError =
+    searchParams.has("error") ||
+    searchParams.has("error_code") ||
+    hashParams.has("error") ||
+    hashParams.has("error_code");
+
+  if (hasAuthError) {
+    return <Navigate to="/auth/callback?next=%2Fupdate-password" replace />;
+  }
+
+  const code = searchParams.get("code")?.trim();
+  if (code) {
+    const callbackParams = new URLSearchParams({ code });
+    return <Navigate to={`/auth/callback?${callbackParams.toString()}`} replace />;
+  }
+
+  return <LandingPage />;
+}
+
 function Private({ children }: { children: React.ReactNode }) {
   return <RequireAuth>{children}</RequireAuth>;
 }
@@ -68,7 +91,7 @@ export function App() {
   return (
     <Suspense fallback={<div className="full-page-status">Loading Zoption…</div>}>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<RootRoute />} />
         <Route
           path="/login"
           element={

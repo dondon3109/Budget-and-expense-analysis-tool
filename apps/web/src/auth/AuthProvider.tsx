@@ -27,7 +27,7 @@ interface AuthContextValue {
   requestEmailChange: (email: string) => Promise<void>;
   verifyCurrentPassword: (password: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
-  exchangeCodeForSession: (code: string) => Promise<void>;
+  exchangeCodeForSession: (code: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef<string | null>(null);
   const initializedRef = useRef(false);
+  const passwordRecoveryRef = useRef(false);
 
   const applySession = useCallback(
     (nextSession: Session | null) => {
@@ -71,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let active = true;
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") passwordRecoveryRef.current = true;
       if (active) applySession(nextSession);
     });
 
@@ -163,8 +165,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const exchangeCodeForSession = useCallback(async (code: string) => {
+    passwordRecoveryRef.current = false;
     const { error } = await getSupabaseClient().auth.exchangeCodeForSession(code);
-    if (error) throw error;
+    if (error) {
+      passwordRecoveryRef.current = false;
+      throw error;
+    }
+    const isPasswordRecovery = passwordRecoveryRef.current;
+    passwordRecoveryRef.current = false;
+    return isPasswordRecovery;
   }, []);
 
   const value = useMemo<AuthContextValue>(

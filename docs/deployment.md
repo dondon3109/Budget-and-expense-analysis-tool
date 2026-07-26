@@ -10,10 +10,12 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    - `https://PREVIEW_WEB_HOST/auth/callback`
    - `https://zoption.site/auth/callback`
    - `https://www.zoption.site/auth/callback`
-3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users.
+3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users. The Site URL is only a fallback; password recovery should return through `/auth/callback?next=%2Fupdate-password`. In the recovery email template, link the reset action to `{{ .ConfirmationURL }}` so Supabase preserves the `redirectTo` supplied by the app. Do not link recovery mail directly to `{{ .SiteURL }}`. Compare the reset request's actual `redirectTo` with the dashboard allow-list and add the query-bearing production callback explicitly if Supabase does not accept the base callback entry. New Free-plan projects using Supabase's default SMTP cannot customize Auth templates, so configure custom SMTP when template editing or delivery to non-team addresses is required.
 4. In **Authentication > Password security**, set the minimum password length to 12 and enable leaked-password protection when available. Zoption's signup, recovery, and settings forms also require lowercase, uppercase, number, and special-character coverage; keep any Supabase Auth Hook or equivalent server-side policy aligned if direct Auth API clients must be held to those character-class rules.
 5. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
 6. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
+
+After changing redirect or template settings, request a fresh recovery email; previously issued links retain their original destination and reset links are short-lived and single-use. Open the fresh link once in the same browser profile that requested it so the PKCE verifier is available. If a newly issued link immediately returns `otp_expired`, check whether the email provider's click tracking or security scanner is opening the link before the user.
 
 ## One-time Cloudflare setup
 
