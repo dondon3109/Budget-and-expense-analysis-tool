@@ -1386,8 +1386,15 @@ textarea:focus-visible {
 .sidebar .brand {
   margin-left: 8px;
 }
+.sidebar-profile {
+  margin-top: 24px;
+  padding: 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
 .side-nav {
-  margin-top: 28px;
+  margin-top: 12px;
   display: grid;
   gap: 5px;
 }
@@ -1450,7 +1457,7 @@ textarea:focus-visible {
   border-top: 1px solid var(--line);
 }
 .sidebar-account-identity {
-  margin: 4px 0 3px;
+  margin: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -1461,8 +1468,7 @@ textarea:focus-visible {
   display: grid;
   gap: 1px;
 }
-.sidebar-account-identity span,
-.sidebar-account-identity p {
+.sidebar-account-identity span {
   margin: 0;
   overflow: hidden;
   color: var(--muted);

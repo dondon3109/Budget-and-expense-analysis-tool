@@ -33,7 +33,7 @@ vi.mock("../src/lib/supabase", () => ({
 describe("AppShell", () => {
   afterEach(cleanup);
 
-  it("places Subscriptions directly below Budgets and above the account footer", () => {
+  it("places the profile above navigation and Subscriptions below Budgets", () => {
     render(
       <ThemeProvider>
         <MemoryRouter initialEntries={["/app/subscriptions"]}>
@@ -47,17 +47,23 @@ describe("AppShell", () => {
     const navigation = screen.getByRole("navigation", { name: "Main navigation" });
     expect(
       Array.from(navigation.querySelectorAll("a")).map((link) => link.textContent?.trim()),
-    ).toEqual(["Overview", "Calendar", "Transactions", "Import", "Budgets", "Subscriptions"]);
+    ).toEqual(["Profile", "Calendar", "Transactions", "Import", "Budgets", "Subscriptions"]);
     expect(screen.getByRole("link", { name: "Subscriptions" })).toHaveClass("current");
     expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
       "aria-controls",
       "primary-navigation",
     );
     expect(screen.queryByText("Personal workspace")).not.toBeInTheDocument();
+    const profile = document.querySelector(".sidebar-profile");
+    expect(profile).toBeInstanceOf(HTMLElement);
+    if (!(profile instanceof HTMLElement)) throw new Error("Sidebar profile was not rendered.");
+    expect(profile.compareDocumentPosition(navigation) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
     expect(screen.getByText("Signed in as")).toBeInTheDocument();
     expect(screen.getByText("Taylor")).toBeInTheDocument();
-    expect(screen.getByText("test@example.com")).toBeInTheDocument();
-    expect(document.querySelector(".sidebar-account img")).toHaveAttribute(
+    expect(screen.queryByText("test@example.com")).not.toBeInTheDocument();
+    expect(document.querySelector(".sidebar-profile img")).toHaveAttribute(
       "src",
       "https://example.com/avatar.png",
     );
@@ -86,6 +92,6 @@ describe("AppShell", () => {
       Array.from(
         screen.getByRole("navigation", { name: "Main navigation" }).querySelectorAll("a"),
       ).map((link) => link.textContent?.trim()),
-    ).toEqual(["Overview", "Calendar", "Transactions", "Import", "Budgets", "Subscriptions"]);
+    ).toEqual(["Profile", "Calendar", "Transactions", "Import", "Budgets", "Subscriptions"]);
   });
 });

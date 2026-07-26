@@ -1,6 +1,6 @@
 import {
-  BarChart3,
   CalendarDays,
+  CircleUserRound,
   FileUp,
   List,
   LogOut,
@@ -23,7 +23,7 @@ interface AppShellProps {
 }
 
 const navItems = [
-  { label: "Overview", icon: BarChart3, to: "/app" },
+  { label: "Profile", icon: CircleUserRound, to: "/app" },
   { label: "Calendar", icon: CalendarDays, to: "/app/calendar" },
   { label: "Transactions", icon: List, to: "/app/transactions" },
   { label: "Import", icon: FileUp, to: "/app/import" },
@@ -84,6 +84,23 @@ export function AppShell({ children }: AppShellProps) {
           </span>
           <span className="brand-wordmark">Zoption</span>
         </Link>
+        <div className="sidebar-profile">
+          <div className="sidebar-account-identity">
+            <UserAvatar
+              avatarPath={avatarPath}
+              displayName={displayName}
+              email={user?.email}
+              alt=""
+            />
+            <div>
+              <span>Signed in as</span>
+              <strong title={displayName || user?.email}>
+                {displayName || user?.email || "Zoption user"}
+              </strong>
+            </div>
+          </div>
+        </div>
+
         <nav id="primary-navigation" className="side-nav" aria-label="Main navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -104,21 +121,6 @@ export function AppShell({ children }: AppShellProps) {
 
         <div className="sidebar-account">
           <ThemeToggle />
-          <div className="sidebar-account-identity">
-            <UserAvatar
-              avatarPath={avatarPath}
-              displayName={displayName}
-              email={user?.email}
-              alt=""
-            />
-            <div>
-              <span>Signed in as</span>
-              <strong title={displayName || user?.email}>
-                {displayName || user?.email || "Zoption user"}
-              </strong>
-              {displayName && <p title={user?.email}>{user?.email}</p>}
-            </div>
-          </div>
           <NavLink
             to="/app/settings"
             className={({ isActive }) =>
