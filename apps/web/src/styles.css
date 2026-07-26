@@ -4280,8 +4280,8 @@ button:disabled {
   min-width: 0;
 }
 .calendar-add-event > .button {
-  grid-column: 2;
-  justify-self: start;
+  grid-column: 1 / -1;
+  justify-self: center;
 }
 .calendar-add-event-icon {
   width: 36px;
