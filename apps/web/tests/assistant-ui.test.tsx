@@ -3,7 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -199,6 +199,28 @@ describe("assistant UI", () => {
     expect(await screen.findByRole("heading", { name: "Chats with Aster" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Edit assistant names" }));
     expect(await screen.findByRole("dialog", { name: "Edit assistant names" })).toBeInTheDocument();
+  });
+
+  it("places New chat below the history title and resets the conversation", async () => {
+    const { container } = renderPage();
+
+    await screen.findByText(thread.title);
+    const history = screen.getByRole("complementary", { name: "Assistant chat history" });
+    const newChat = within(history).getByRole("button", { name: "Start a new chat" });
+
+    expect(newChat).toHaveTextContent("New chat");
+    expect(within(history).getByRole("button", { name: "Edit assistant names" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(thread.title).closest("button")!);
+    const composer = await screen.findByRole("textbox", { name: "Ask about your finances" });
+    fireEvent.change(composer, { target: { value: "Compare it with last month" } });
+    fireEvent.click(screen.getByRole("button", { name: "History" }));
+
+    expect(container.querySelector(".assistant-workspace")).toHaveClass("history-open");
+    fireEvent.click(newChat);
+
+    expect(composer).toHaveValue("");
+    expect(container.querySelector(".assistant-workspace")).not.toHaveClass("history-open");
   });
 
   it("restores the active chat and draft after switching dashboard tabs", async () => {

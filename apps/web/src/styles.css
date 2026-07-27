@@ -6448,12 +6448,20 @@ button:disabled {
 }
 .assistant-history-heading {
   flex: 0 0 auto;
-  padding: 18px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.assistant-history-title-row {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid var(--line);
+}
+.assistant-history-title-row > div:first-child {
+  min-width: 0;
 }
 .assistant-history-heading .eyebrow {
   margin-bottom: 2px;
@@ -6471,11 +6479,6 @@ button:disabled {
 .assistant-history-actions {
   display: flex;
   flex: 0 0 auto;
-  gap: 3px;
-}
-.assistant-history-actions .icon-button {
-  width: 30px;
-  height: 30px;
 }
 .assistant-history-edit {
   min-height: 30px;
@@ -6492,6 +6495,24 @@ button:disabled {
 }
 .assistant-history-edit:hover {
   background: color-mix(in srgb, var(--action) 8%, var(--paper));
+}
+.assistant-new-chat {
+  min-height: 36px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--action);
+  border: 1px solid color-mix(in srgb, var(--action) 26%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--action) 5%, var(--paper));
+  font-size: 10px;
+  font-weight: 750;
+}
+.assistant-new-chat:hover {
+  border-color: color-mix(in srgb, var(--action) 46%, var(--line));
+  background: color-mix(in srgb, var(--action) 10%, var(--paper));
 }
 .assistant-thread-list {
   min-height: 0;

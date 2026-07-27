@@ -38,23 +38,25 @@ export function AssistantThreadList({
   return (
     <aside className="assistant-history" aria-label="Assistant chat history">
       <div className="assistant-history-heading">
-        <div>
-          <p className="eyebrow">History</p>
-          <h2 title={`Chats with ${assistantName}`}>Chats with {assistantName}</h2>
+        <div className="assistant-history-title-row">
+          <div>
+            <p className="eyebrow">History</p>
+            <h2 title={`Chats with ${assistantName}`}>Chats with {assistantName}</h2>
+          </div>
+          <div className="assistant-history-actions">
+            <button
+              className="assistant-history-edit"
+              type="button"
+              onClick={onEditIdentity}
+              aria-label="Edit assistant names"
+            >
+              <Pencil size={13} aria-hidden="true" /> Edit
+            </button>
+          </div>
         </div>
-        <div className="assistant-history-actions">
-          <button
-            className="assistant-history-edit"
-            type="button"
-            onClick={onEditIdentity}
-            aria-label="Edit assistant names"
-          >
-            <Pencil size={13} aria-hidden="true" /> Edit
-          </button>
-          <button className="icon-button" type="button" onClick={onNew} aria-label="Start a new chat">
-            <Plus size={18} />
-          </button>
-        </div>
+        <button className="assistant-new-chat" type="button" onClick={onNew} aria-label="Start a new chat">
+          <Plus size={16} aria-hidden="true" /> New chat
+        </button>
       </div>
 
       <div className="assistant-thread-list">

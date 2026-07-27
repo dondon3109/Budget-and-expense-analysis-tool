@@ -4,7 +4,7 @@ import type {
   AssistantTurnResult,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Menu, Plus, Sparkles, X } from "lucide-react";
+import { Menu, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 
 import { useAssistantSession } from "../assistant/AssistantSessionProvider";
@@ -268,9 +268,6 @@ export function AssistantPage() {
               onClick={() => setHistoryOpen((open) => !open)}
             >
               {historyOpen ? <X size={16} /> : <Menu size={16} />} History
-            </button>
-            <button className="button secondary compact" type="button" onClick={startNew}>
-              <Plus size={16} /> New chat
             </button>
           </div>
         </header>
