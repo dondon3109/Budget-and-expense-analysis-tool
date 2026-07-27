@@ -34,6 +34,14 @@ After changing redirect or template settings, request a fresh recovery email; pr
 4. Replace the D1 IDs, allowed origins, and `SUPABASE_URL` values for each environment. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise.
 5. Create separate preview and production Pages projects. Attach `zoption.site` and `www.zoption.site` to the production Pages project in the Cloudflare dashboard. Pages custom domains are dashboard-managed; this repository does not use an `apps/web/wrangler.jsonc` file.
 6. Keep the production Worker custom domain route for `api.zoption.site` in `apps/api/wrangler.deploy.jsonc`; the tracked example documents the same route.
+7. Store the DeepSeek key as a Worker secret in each environment; never add it to Wrangler `vars`, D1, browser configuration, or the repository:
+
+   ```bash
+   pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY --config wrangler.deploy.jsonc --env preview
+   pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY --config wrangler.deploy.jsonc --env production
+   ```
+
+8. Keep `DEEPSEEK_MODEL=deepseek-v4-flash`, `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
 
 ## Frontend configuration
 
@@ -85,6 +93,9 @@ Then perform an authenticated browser check with two ordinary preview users:
 5. Upload an avatar as user A and confirm it appears in Settings and the sidebar. Confirm user A cannot upload into user B's folder and user B cannot delete user A's object; then confirm each user can replace and remove their own avatar.
 6. Confirm unsupported or oversized avatar files are rejected and that the public avatar URL is readable as documented.
 7. Sign out and confirm `/app` redirects to login.
+8. Give user A and user B distinct manual account balances, then confirm each assistant answer uses only the signed-in user's snapshots and transactions.
+9. Confirm the assistant requires one-time DeepSeek consent, refuses mutation/credential/SQL requests, treats instructions inside transaction descriptions as data, and deletes one/all chats correctly.
+10. Inspect Worker logs and confirm they contain no prompts, responses, tool payloads, account names, transaction descriptions, JWTs, or API keys.
 
 No service-role key is needed for normal product traffic or this check. Display names and avatar metadata are presentation-only and must not change Worker tenant resolution or D1 authorization.
 

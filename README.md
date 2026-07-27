@@ -22,7 +22,9 @@ The implementation includes:
 - Transaction CRUD, category management, filters, pagination, and CSV export.
 - Preview-first CSV/XLS/XLSX selection or drag-and-drop import with header detection, BPI/BDO/MariBank/Bank of America/JPMorgan presets, signed or Debit/Credit amounts, U.S. slash dates, bulk categorization, duplicate prevention, and atomic commit.
 - Editable monthly budgets, category spending, six-month trends, savings rate, and recurring-expense insights.
-- Tenant-scoped rate limiting for authenticated writes and imports.
+- Manual account-balance snapshots with explicit as-of dates and credit-debt semantics.
+- A tenant-scoped, read-only AI Financial Assistant using DeepSeek v4 Flash, verified backend tools, one-time provider consent, and 90-day D1 chat retention.
+- Tenant-scoped rate limiting for authenticated writes, imports, and assistant generation.
 - Accessible chart tables, keyboard-visible focus states, mobile layouts, and route-level code splitting.
 
 ## Architecture
@@ -33,6 +35,7 @@ flowchart LR
   Browser -->|Bearer token| Worker["Hono Cloudflare Worker"]
   Worker -->|Verify JWT via JWKS| Supabase
   Worker --> D1["Cloudflare D1 tenant data"]
+  Worker -->|Allowlisted read-only tools| DeepSeek["DeepSeek v4 Flash"]
   Browser -. shared contracts .-> Shared["Shared Zod schemas and calculations"]
   Worker -. shared contracts .-> Shared
 ```
@@ -60,7 +63,8 @@ Requirements: Node.js 24+ and pnpm 11.
 
 3. Create `apps/web/.env.local` with the browser values from `.env.example`.
 4. Set the matching `SUPABASE_URL` in `apps/api/wrangler.jsonc` or an ignored local Wrangler configuration.
-5. Run:
+5. To use the assistant locally, add `DEEPSEEK_API_KEY=...` to ignored `apps/api/.dev.vars`. Never place it in a `VITE_*` variable.
+6. Run:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -95,6 +99,6 @@ scripts/           Non-mutating smoke checks and screenshot capture
 
 ## Privacy and scope
 
-Authenticated financial records are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions or budgets. Zoption does not connect to banks and does not provide financial, tax, investment, or legal advice.
+Authenticated financial records and assistant history are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions or budgets. Assistant questions require one-time DeepSeek data-sharing consent, use allowlisted read-only tools, and expire after 90 days. Zoption does not connect to banks and does not provide financial, tax, investment, or legal advice. See [AI Financial Assistant](docs/assistant.md).
 
 Engineering evidence is summarized in the [test strategy](docs/test-strategy.md), [performance report](docs/performance.md), [deployment runbook](docs/deployment.md), and [case study](docs/case-study.md).

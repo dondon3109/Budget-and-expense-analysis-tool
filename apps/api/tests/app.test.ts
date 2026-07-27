@@ -1,4 +1,5 @@
 import {
+  type AccountBalanceUpdate,
   type AccountRecord,
   type BudgetMonthPlan,
   type CalendarEventMonth,
@@ -123,6 +124,9 @@ const accountItem: AccountRecord = {
   id: "account-everyday",
   name: "Everyday account",
   type: "checking",
+  currency: "PHP",
+  balanceMinor: null,
+  balanceAsOf: null,
   archived: false,
 };
 
@@ -186,7 +190,20 @@ function createCategoryStore(): CategoryRepository {
 }
 
 function createAccountStore(): AccountRepository {
-  return { list: vi.fn(async () => [accountItem]) };
+  return {
+    list: vi.fn(async () => [accountItem]),
+    setBalance: vi.fn(
+      async (
+        _env: Bindings,
+        _tenantId: string,
+        _accountId: string,
+        input: AccountBalanceUpdate,
+      ): Promise<AccountRecord> => ({
+        ...accountItem,
+        ...input,
+      }),
+    ),
+  };
 }
 
 function createBudgetStore(): BudgetRepository {

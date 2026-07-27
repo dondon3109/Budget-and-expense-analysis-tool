@@ -47,7 +47,16 @@ describe("AppShell", () => {
     const navigation = screen.getByRole("navigation", { name: "Main navigation" });
     expect(
       Array.from(navigation.querySelectorAll("a")).map((link) => link.textContent?.trim()),
-    ).toEqual(["Profile", "Calendar", "Transactions", "Import", "Budgets", "Subscriptions"]);
+    ).toEqual([
+      "Profile",
+      "Assistant",
+      "Accounts",
+      "Calendar",
+      "Transactions",
+      "Import",
+      "Budgets",
+      "Subscriptions",
+    ]);
     expect(screen.getByRole("link", { name: "Subscriptions" })).toHaveClass("current");
     expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
       "aria-controls",
@@ -95,6 +104,15 @@ describe("AppShell", () => {
       Array.from(
         screen.getByRole("navigation", { name: "Main navigation" }).querySelectorAll("a"),
       ).map((link) => link.textContent?.trim()),
-    ).toEqual(["Profile", "Calendar", "Transactions", "Import", "Budgets", "Subscriptions"]);
+    ).toEqual([
+      "Profile",
+      "Assistant",
+      "Accounts",
+      "Calendar",
+      "Transactions",
+      "Import",
+      "Budgets",
+      "Subscriptions",
+    ]);
   });
 });

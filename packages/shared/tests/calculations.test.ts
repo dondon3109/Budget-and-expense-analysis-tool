@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildDashboardSummary } from "../src/calculations";
-import type { BudgetRecord, TransactionRecord } from "../src/types";
+import { buildDashboardSummary, summarizeAccountBalances } from "../src/calculations";
+import type { AccountRecord, BudgetRecord, TransactionRecord } from "../src/types";
 
 const baseTransaction: Omit<TransactionRecord, "id" | "kind" | "amountMinor"> = {
   date: "2026-07-10",
@@ -12,6 +12,47 @@ const baseTransaction: Omit<TransactionRecord, "id" | "kind" | "amountMinor"> = 
   categoryColor: "#a56f39",
   accountName: "Test",
 };
+
+describe("account balance calculations", () => {
+  it("treats credit balances as debt and excludes unknown snapshots", () => {
+    const accounts: AccountRecord[] = [
+      {
+        id: "checking",
+        name: "Everyday",
+        type: "checking",
+        currency: "PHP",
+        balanceMinor: 250_000,
+        balanceAsOf: "2026-07-27",
+        archived: false,
+      },
+      {
+        id: "credit",
+        name: "Card",
+        type: "credit",
+        currency: "PHP",
+        balanceMinor: 75_000,
+        balanceAsOf: "2026-07-27",
+        archived: false,
+      },
+      {
+        id: "savings",
+        name: "Savings",
+        type: "savings",
+        currency: "PHP",
+        balanceMinor: null,
+        balanceAsOf: null,
+        archived: false,
+      },
+    ];
+
+    expect(summarizeAccountBalances(accounts)).toMatchObject({
+      assetsMinor: 250_000,
+      creditDebtMinor: 75_000,
+      netMinor: 175_000,
+      missingBalanceCount: 1,
+    });
+  });
+});
 
 describe("dashboard calculations", () => {
   it("excludes transfers and keeps over-budget values visible", () => {

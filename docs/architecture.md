@@ -25,7 +25,9 @@ The public landing page contains a static dashboard illustration only. It does n
 - Commit consumes a short-lived, tenant-scoped token plus optional row/category overrides, validates every override, and writes the audit plus transactions atomically without mutating the saved preview.
 - Imported transactions use the authenticated tenant's deterministic default account.
 - Landing and feature routes are lazy-loaded; the dashboard chart bundle loads only for the private app.
-- Authenticated write and import throttles use the verified tenant as their client identity.
+- Authenticated write, import, and assistant-generation throttles use the verified tenant as their client identity.
+- Account balances are manual snapshots with explicit as-of dates; transaction mutations do not reconcile them automatically.
+- The AI assistant calls DeepSeek directly from the Worker, exposes only fixed read-only financial tools, and stores only user/final-assistant messages for 90 days.
 - The first release is intentionally light-themed; a complete dark token set is a separate enhancement.
 
 ## Data conventions
@@ -48,7 +50,9 @@ Authenticated (`Authorization: Bearer <Supabase access token>`):
 - `GET /api/app/me` — verified identity and resolved D1 tenant.
 - `GET /api/app/dashboard?from=&to=` — tenant-scoped dashboard aggregates.
 - `GET/POST/PATCH/DELETE /api/app/transactions/*` — transaction search and CRUD.
-- `GET /api/app/accounts` — accounts for forms and filters.
+- `GET /api/app/accounts` and `PUT /api/app/accounts/:id/balance` — account metadata and manual balance snapshots.
+- `GET/PATCH /api/app/assistant/preferences` — one-time provider consent and retention settings.
+- `GET/POST/DELETE /api/app/assistant/threads/*` — tenant-owned chat history and read-only financial questions.
 - `GET/POST/PATCH /api/app/categories/*` — category management.
 - `POST /api/app/imports/preview` and `POST /api/app/imports/commit` — tenant-scoped CSV/Excel-derived preview and atomic commit with validated category overrides.
 - `GET/PUT /api/app/budgets` — monthly budget plans.
@@ -60,6 +64,7 @@ Browser origins are checked through the configured allow-list. CORS preflight al
 
 - JWT tests use generated local key pairs, not a live Supabase project or checked-in credentials.
 - API tests inject auth verification and tenant resolution while asserting that repositories receive authenticated scope.
+- Assistant tests inject a fake provider, prove the tenant remains server-owned, verify the fixed tool allowlist, and never require a live DeepSeek key.
 - Tenant bootstrap tests prove deterministic IDs and atomic idempotent creation.
 - Repository joins and mutations include tenant predicates, preventing guessed cross-tenant references.
 - Frontend tests verify route guards, bearer attachment, one refresh retry, final unauthorized sign-out, and user-scoped query keys.

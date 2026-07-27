@@ -40,6 +40,9 @@ export const accounts = sqliteTable(
       .references(() => tenants.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     type: text("type", { enum: ["cash", "checking", "savings", "credit", "other"] }).notNull(),
+    currency: text("currency").notNull().default("PHP"),
+    balanceMinor: integer("balance_minor"),
+    balanceAsOf: text("balance_as_of"),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
     ...timestamps,
   },
@@ -165,6 +168,73 @@ export const budgets = sqliteTable(
     ),
   ],
 );
+
+export const assistantThreads = sqliteTable(
+  "assistant_threads",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    lastMessageAt: text("last_message_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    retentionExpiresAt: text("retention_expires_at").notNull(),
+    activeRunId: text("active_run_id"),
+    activeRunExpiresAt: text("active_run_expires_at"),
+    ...timestamps,
+  },
+  (table) => [
+    index("assistant_threads_tenant_last_message_idx").on(table.tenantId, table.lastMessageAt),
+    index("assistant_threads_retention_idx").on(table.retentionExpiresAt),
+  ],
+);
+
+export const assistantMessages = sqliteTable(
+  "assistant_messages",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => assistantThreads.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    content: text("content").notNull(),
+    status: text("status", { enum: ["pending", "completed", "failed"] }).notNull(),
+    clientRequestId: text("client_request_id"),
+    replyToMessageId: text("reply_to_message_id"),
+    model: text("model"),
+    promptTokens: integer("prompt_tokens"),
+    completionTokens: integer("completion_tokens"),
+    finishReason: text("finish_reason"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("assistant_messages_tenant_thread_created_idx").on(
+      table.tenantId,
+      table.threadId,
+      table.createdAt,
+    ),
+    uniqueIndex("assistant_messages_tenant_client_request_unique").on(
+      table.tenantId,
+      table.clientRequestId,
+    ),
+  ],
+);
+
+export const assistantPreferences = sqliteTable("assistant_preferences", {
+  tenantId: text("tenant_id")
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  consentedAt: text("consented_at"),
+  retentionDays: integer("retention_days").notNull().default(90),
+  ...timestamps,
+});
 
 export const imports = sqliteTable(
   "imports",

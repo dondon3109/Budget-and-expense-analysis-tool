@@ -3,6 +3,7 @@
   "name": "budget-expense-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
+  "triggers": { "crons": ["17 3 * * *"] },
   "env": {
     "preview": {
       "name": "budget-expense-api-preview",
@@ -18,6 +19,11 @@
         "ALLOWED_ORIGINS": "https://REPLACE_WITH_PREVIEW_WEB_HOST",
         "SUPABASE_URL": "https://REPLACE_WITH_SUPABASE_PROJECT_REF.supabase.co",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
+        "ASSISTANT_ENABLED": "true",
+        "DEEPSEEK_MODEL": "deepseek-v4-flash",
+        "ASSISTANT_TIME_ZONE": "Asia/Manila",
+        "ASSISTANT_PROVIDER_TIMEOUT_MS": "12000",
+        "ASSISTANT_OVERALL_TIMEOUT_MS": "25000",
       },
     },
     "production": {
@@ -35,6 +41,11 @@
         "ALLOWED_ORIGINS": "https://zoption.site,https://www.zoption.site",
         "SUPABASE_URL": "https://REPLACE_WITH_SUPABASE_PROJECT_REF.supabase.co",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
+        "ASSISTANT_ENABLED": "true",
+        "DEEPSEEK_MODEL": "deepseek-v4-flash",
+        "ASSISTANT_TIME_ZONE": "Asia/Manila",
+        "ASSISTANT_PROVIDER_TIMEOUT_MS": "12000",
+        "ASSISTANT_OVERALL_TIMEOUT_MS": "25000",
       },
     },
   },

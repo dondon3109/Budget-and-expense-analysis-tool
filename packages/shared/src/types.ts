@@ -48,11 +48,35 @@ export interface CalendarEventMonth {
   items: CalendarEventRecord[];
 }
 
+export const accountTypes = ["cash", "checking", "savings", "credit", "other"] as const;
+export type AccountType = (typeof accountTypes)[number];
+
 export interface AccountRecord {
   id: string;
   name: string;
-  type: "cash" | "checking" | "savings" | "credit" | "other";
+  type: AccountType;
+  currency: "PHP";
+  balanceMinor: number | null;
+  balanceAsOf: string | null;
   archived: boolean;
+}
+
+export interface AccountBalanceSummaryItem {
+  name: string;
+  type: AccountType;
+  currency: "PHP";
+  balanceMinor: number | null;
+  balanceAsOf: string | null;
+  netContributionMinor: number | null;
+}
+
+export interface AccountBalanceSummary {
+  currency: "PHP";
+  assetsMinor: number;
+  creditDebtMinor: number;
+  netMinor: number;
+  missingBalanceCount: number;
+  items: AccountBalanceSummaryItem[];
 }
 
 export interface CategoryRecord {
@@ -223,4 +247,44 @@ export interface DashboardSummary {
       latestMonth: string;
     }>;
   };
+}
+
+export type AssistantMessageRole = "user" | "assistant";
+export type AssistantMessageStatus = "pending" | "completed" | "failed";
+
+export interface AssistantPreferences {
+  consentedAt: string | null;
+  retentionDays: number;
+}
+
+export interface AssistantThread {
+  id: string;
+  title: string;
+  lastMessageAt: string;
+  createdAt: string;
+}
+
+export interface AssistantMessage {
+  id: string;
+  threadId: string;
+  role: AssistantMessageRole;
+  content: string;
+  status: AssistantMessageStatus;
+  createdAt: string;
+}
+
+export interface AssistantThreadPage {
+  items: AssistantThread[];
+  nextCursor: string | null;
+}
+
+export interface AssistantMessagePage {
+  items: AssistantMessage[];
+  nextCursor: string | null;
+}
+
+export interface AssistantTurnResult {
+  thread: AssistantThread;
+  userMessage: AssistantMessage;
+  assistantMessage: AssistantMessage;
 }

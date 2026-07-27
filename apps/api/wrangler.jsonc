@@ -15,5 +15,11 @@
     "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://zoption.site,https://www.zoption.site",
     "SUPABASE_URL": "http://127.0.0.1:54321",
     "SUPABASE_JWT_AUDIENCE": "authenticated",
+    "ASSISTANT_ENABLED": "true",
+    "DEEPSEEK_MODEL": "deepseek-v4-flash",
+    "ASSISTANT_TIME_ZONE": "Asia/Manila",
+    "ASSISTANT_PROVIDER_TIMEOUT_MS": "12000",
+    "ASSISTANT_OVERALL_TIMEOUT_MS": "25000",
   },
+  "triggers": { "crons": ["17 3 * * *"] },
 }

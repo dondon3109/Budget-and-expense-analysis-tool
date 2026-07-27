@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { subscriptionBillingCycles, subscriptionStatuses, transactionKinds } from "./types";
+import {
+  accountTypes,
+  subscriptionBillingCycles,
+  subscriptionStatuses,
+  transactionKinds,
+} from "./types";
 
 export const isoDateSchema = z
   .string()
@@ -19,6 +24,96 @@ export const dashboardQuerySchema = z
     message: "The start date must not be after the end date.",
     path: ["from"],
   });
+
+export const accountBalanceUpdateSchema = z
+  .object({
+    balanceMinor: z.number().int().safe().nullable(),
+    balanceAsOf: isoDateSchema.nullable(),
+  })
+  .strict()
+  .refine(
+    (value) => (value.balanceMinor === null) === (value.balanceAsOf === null),
+    "Enter both a balance and an as-of date, or clear both fields.",
+  );
+
+export type AccountBalanceUpdate = z.infer<typeof accountBalanceUpdateSchema>;
+
+export const assistantMessageInputSchema = z
+  .object({
+    message: z.string().trim().min(1).max(2_000),
+    clientRequestId: z.string().uuid(),
+  })
+  .strict();
+
+export type AssistantMessageInput = z.infer<typeof assistantMessageInputSchema>;
+
+export const assistantPreferenceUpdateSchema = z
+  .object({
+    consented: z.literal(true),
+  })
+  .strict();
+
+export type AssistantPreferenceUpdate = z.infer<typeof assistantPreferenceUpdateSchema>;
+
+export const assistantThreadListQuerySchema = z
+  .object({
+    cursor: z.string().datetime().optional(),
+    limit: z.coerce.number().int().min(1).max(25).default(20),
+  })
+  .strict();
+
+export type AssistantThreadListQuery = z.infer<typeof assistantThreadListQuerySchema>;
+
+export const assistantMessageListQuerySchema = z
+  .object({
+    cursor: z.string().datetime().optional(),
+    limit: z.coerce.number().int().min(1).max(50).default(50),
+  })
+  .strict();
+
+export type AssistantMessageListQuery = z.infer<typeof assistantMessageListQuerySchema>;
+
+export const assistantPeriodSummaryToolSchema = z
+  .object({
+    from: isoDateSchema,
+    to: isoDateSchema,
+  })
+  .strict()
+  .refine((value) => value.from <= value.to, {
+    message: "The start date must not be after the end date.",
+    path: ["from"],
+  });
+
+export const assistantBudgetStatusToolSchema = z
+  .object({
+    month: isoDateSchema.refine(
+      (value) => value.endsWith("-01"),
+      "Use the first day of the month.",
+    ),
+  })
+  .strict();
+
+export const assistantTransactionToolSchema = z
+  .object({
+    from: isoDateSchema.optional(),
+    to: isoDateSchema.optional(),
+    kind: z.enum(transactionKinds).optional(),
+    categoryName: z.string().trim().min(1).max(80).optional(),
+    accountName: z.string().trim().min(1).max(120).optional(),
+    search: z.string().trim().min(1).max(120).optional(),
+    page: z.number().int().min(1).max(10).default(1),
+  })
+  .strict()
+  .refine((value) => !value.from || !value.to || value.from <= value.to, {
+    message: "The start date must not be after the end date.",
+    path: ["from"],
+  });
+
+export const assistantCategoryToolSchema = z
+  .object({ kind: z.enum(transactionKinds).optional() })
+  .strict();
+
+export const accountTypeSchema = z.enum(accountTypes);
 
 export const transactionInputSchema = z.object({
   date: isoDateSchema,

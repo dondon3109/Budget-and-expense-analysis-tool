@@ -1,5 +1,11 @@
 import type {
+  AccountBalanceUpdate,
   AccountRecord,
+  AssistantMessageInput,
+  AssistantMessagePage,
+  AssistantPreferences,
+  AssistantThreadPage,
+  AssistantTurnResult,
   BudgetMonthPlan,
   BudgetUpsert,
   CalendarEventInput,
@@ -246,6 +252,87 @@ export async function getCategories(
 export async function getAccounts(workspace: AuthenticatedWorkspace): Promise<AccountRecord[]> {
   const result = await requestJson<{ items: AccountRecord[] }>(workspace, "/api/app/accounts");
   return result.items;
+}
+
+export function setAccountBalance(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; input: AccountBalanceUpdate },
+): Promise<AccountRecord> {
+  return requestJson(workspace, `/api/app/accounts/${args.id}/balance`, {
+    method: "PUT",
+    body: JSON.stringify(args.input),
+  });
+}
+
+export function getAssistantPreferences(
+  workspace: AuthenticatedWorkspace,
+): Promise<AssistantPreferences> {
+  return requestJson(workspace, "/api/app/assistant/preferences");
+}
+
+export function grantAssistantConsent(
+  workspace: AuthenticatedWorkspace,
+): Promise<AssistantPreferences> {
+  return requestJson(workspace, "/api/app/assistant/preferences", {
+    method: "PATCH",
+    body: JSON.stringify({ consented: true }),
+  });
+}
+
+export function getAssistantThreads(
+  workspace: AuthenticatedWorkspace,
+  cursor?: string,
+): Promise<AssistantThreadPage> {
+  const search = new URLSearchParams({ limit: "20" });
+  if (cursor) search.set("cursor", cursor);
+  return requestJson(workspace, `/api/app/assistant/threads?${search.toString()}`);
+}
+
+export function getAssistantMessages(
+  workspace: AuthenticatedWorkspace,
+  threadId: string,
+  cursor?: string,
+): Promise<AssistantMessagePage> {
+  const search = new URLSearchParams({ limit: "50" });
+  if (cursor) search.set("cursor", cursor);
+  return requestJson(
+    workspace,
+    `/api/app/assistant/threads/${encodeURIComponent(threadId)}/messages?${search.toString()}`,
+  );
+}
+
+export function createAssistantThread(
+  workspace: AuthenticatedWorkspace,
+  input: AssistantMessageInput,
+): Promise<AssistantTurnResult> {
+  return requestJson(workspace, "/api/app/assistant/threads", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function sendAssistantMessage(
+  workspace: AuthenticatedWorkspace,
+  args: { threadId: string; input: AssistantMessageInput },
+): Promise<AssistantTurnResult> {
+  return requestJson(
+    workspace,
+    `/api/app/assistant/threads/${encodeURIComponent(args.threadId)}/messages`,
+    { method: "POST", body: JSON.stringify(args.input) },
+  );
+}
+
+export function deleteAssistantThread(
+  workspace: AuthenticatedWorkspace,
+  threadId: string,
+): Promise<void> {
+  return requestJson(workspace, `/api/app/assistant/threads/${encodeURIComponent(threadId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function deleteAllAssistantThreads(workspace: AuthenticatedWorkspace): Promise<void> {
+  return requestJson(workspace, "/api/app/assistant/threads", { method: "DELETE" });
 }
 
 export function createCategory(

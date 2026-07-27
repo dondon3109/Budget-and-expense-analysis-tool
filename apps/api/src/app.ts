@@ -1,8 +1,14 @@
 import { dashboardQuerySchema, type DashboardSummary } from "@zoption/shared";
 import { Hono } from "hono";
 
+import { createAssistantOrchestrator } from "./assistant/orchestrator";
+import { deepSeekProvider } from "./assistant/deepseek";
+import { createFinancialReader } from "./assistant/financial-reader";
+import type { AssistantProvider } from "./assistant/provider";
+import { createAssistantService, type AssistantService } from "./assistant/service";
 import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from "./auth";
 import { accountRepository, type AccountRepository } from "./db/accounts";
+import { assistantRepository, type AssistantRepository } from "./db/assistant";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { loadDashboard } from "./db/dashboard";
@@ -14,6 +20,7 @@ import { transactionRepository, type TransactionRepository } from "./db/transact
 import { HttpError } from "./errors";
 import { d1RateLimiter, type RateLimiter } from "./rate-limit";
 import { createAccountRoutes } from "./routes/accounts";
+import { createAssistantRoutes } from "./routes/assistant";
 import { createBudgetRoutes } from "./routes/budgets";
 import { createCategoryRoutes } from "./routes/categories";
 import { createCalendarEventRoutes } from "./routes/events";
@@ -44,6 +51,9 @@ export interface AppOptions {
   rateLimiter?: RateLimiter;
   authVerifier?: AuthVerifier;
   tenantResolver?: TenantResolver;
+  assistantRepository?: AssistantRepository;
+  assistantProvider?: AssistantProvider;
+  assistantService?: AssistantService;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -59,6 +69,23 @@ export function createApp(options: AppOptions = {}) {
   const rateLimiter = options.rateLimiter ?? d1RateLimiter;
   const authVerifier = options.authVerifier ?? supabaseAuthVerifier;
   const resolveTenant = options.tenantResolver ?? tenantResolver;
+  const assistantStore = options.assistantRepository ?? assistantRepository;
+  const assistantProvider = options.assistantProvider ?? deepSeekProvider;
+  const assistantService =
+    options.assistantService ??
+    createAssistantService(
+      assistantStore,
+      createAssistantOrchestrator(
+        assistantProvider,
+        createFinancialReader({
+          accounts: accountStore,
+          budgets: budgetStore,
+          categories: categoryStore,
+          transactions: transactionStore,
+          dashboardLoader,
+        }),
+      ),
+    );
   const readinessCheck =
     options.readinessCheck ??
     (async (env: Bindings) => {
@@ -100,24 +127,36 @@ export function createApp(options: AppOptions = {}) {
     }
 
     const tenantId = context.get("tenant").tenantId;
-    const isImport = context.req.path.startsWith("/api/app/imports");
-    const policy = isImport
-      ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
-      : { scope: "tenant-write", limit: 60, windowSeconds: 60 };
-    const decision = await rateLimiter.consume(context.env, tenantId, policy);
+    const isAssistantGeneration =
+      context.req.method === "POST" &&
+      (context.req.path === "/api/app/assistant/threads" ||
+        /^\/api\/app\/assistant\/threads\/[^/]+\/messages$/.test(context.req.path));
+    const policies = isAssistantGeneration
+      ? [
+          { scope: "tenant-assistant-minute", limit: 10, windowSeconds: 60 },
+          { scope: "tenant-assistant-day", limit: 100, windowSeconds: 24 * 60 * 60 },
+        ]
+      : [
+          context.req.path.startsWith("/api/app/imports")
+            ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
+            : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
+        ];
 
-    context.header("RateLimit-Limit", String(decision.limit));
-    context.header("RateLimit-Remaining", String(decision.remaining));
-    context.header("RateLimit-Reset", String(decision.retryAfterSeconds));
-    if (!decision.allowed) {
-      context.header("Retry-After", String(decision.retryAfterSeconds));
-      return context.json(
-        {
-          error: "rate_limit_exceeded",
-          message: `Too many requests. Try again in ${decision.retryAfterSeconds} seconds.`,
-        },
-        429,
-      );
+    for (const policy of policies) {
+      const decision = await rateLimiter.consume(context.env, tenantId, policy);
+      context.header("RateLimit-Limit", String(decision.limit));
+      context.header("RateLimit-Remaining", String(decision.remaining));
+      context.header("RateLimit-Reset", String(decision.retryAfterSeconds));
+      if (!decision.allowed) {
+        context.header("Retry-After", String(decision.retryAfterSeconds));
+        return context.json(
+          {
+            error: "rate_limit_exceeded",
+            message: `Too many requests. Try again in ${decision.retryAfterSeconds} seconds.`,
+          },
+          429,
+        );
+      }
     }
 
     await next();
@@ -155,6 +194,7 @@ export function createApp(options: AppOptions = {}) {
     );
   });
 
+  app.route("/api/app/assistant", createAssistantRoutes(assistantService));
   app.route("/api/app/transactions", createTransactionRoutes(transactionStore));
   app.route("/api/app/accounts", createAccountRoutes(accountStore));
   app.route("/api/app/categories", createCategoryRoutes(categoryStore));

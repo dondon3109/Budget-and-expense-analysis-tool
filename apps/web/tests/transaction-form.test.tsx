@@ -10,8 +10,24 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TransactionForm } from "../src/components/transactions/TransactionForm";
 
 const accounts = [
-  { id: "account-everyday", name: "Everyday account", type: "checking" as const, archived: false },
-  { id: "account-savings", name: "Savings pocket", type: "savings" as const, archived: false },
+  {
+    id: "account-everyday",
+    name: "Everyday account",
+    type: "checking" as const,
+    currency: "PHP" as const,
+    balanceMinor: null,
+    balanceAsOf: null,
+    archived: false,
+  },
+  {
+    id: "account-savings",
+    name: "Savings pocket",
+    type: "savings" as const,
+    currency: "PHP" as const,
+    balanceMinor: null,
+    balanceAsOf: null,
+    archived: false,
+  },
 ];
 
 const category: CategoryRecord = {

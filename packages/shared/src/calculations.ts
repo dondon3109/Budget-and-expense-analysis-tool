@@ -1,4 +1,10 @@
-import type { BudgetRecord, DashboardSummary, TransactionRecord } from "./types";
+import type {
+  AccountBalanceSummary,
+  AccountRecord,
+  BudgetRecord,
+  DashboardSummary,
+  TransactionRecord,
+} from "./types";
 
 function clampRoundPercent(value: number): number {
   return Math.round(value * 10) / 10;
@@ -44,6 +50,55 @@ function buildRecurringExpenses(transactions: readonly TransactionRecord[]) {
       (a, b) => b.averageMinor - a.averageMinor || a.description.localeCompare(b.description, "en"),
     )
     .slice(0, 3);
+}
+
+export function summarizeAccountBalances(
+  accounts: readonly AccountRecord[],
+): AccountBalanceSummary {
+  let assetsMinor = 0;
+  let creditDebtMinor = 0;
+  let missingBalanceCount = 0;
+
+  const items = accounts
+    .filter((account) => !account.archived)
+    .map((account) => {
+      if (account.balanceMinor === null) {
+        missingBalanceCount += 1;
+        return {
+          name: account.name,
+          type: account.type,
+          currency: account.currency,
+          balanceMinor: null,
+          balanceAsOf: account.balanceAsOf,
+          netContributionMinor: null,
+        };
+      }
+
+      if (account.type === "credit") {
+        creditDebtMinor += account.balanceMinor;
+      } else {
+        assetsMinor += account.balanceMinor;
+      }
+
+      return {
+        name: account.name,
+        type: account.type,
+        currency: account.currency,
+        balanceMinor: account.balanceMinor,
+        balanceAsOf: account.balanceAsOf,
+        netContributionMinor:
+          account.type === "credit" ? -account.balanceMinor : account.balanceMinor,
+      };
+    });
+
+  return {
+    currency: "PHP",
+    assetsMinor,
+    creditDebtMinor,
+    netMinor: assetsMinor - creditDebtMinor,
+    missingBalanceCount,
+    items,
+  };
 }
 
 export function buildDashboardSummary(

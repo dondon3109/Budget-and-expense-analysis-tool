@@ -3,6 +3,12 @@ export interface Bindings {
   ALLOWED_ORIGINS?: string;
   SUPABASE_URL?: string;
   SUPABASE_JWT_AUDIENCE?: string;
+  DEEPSEEK_API_KEY?: string;
+  DEEPSEEK_MODEL?: string;
+  ASSISTANT_ENABLED?: string;
+  ASSISTANT_TIME_ZONE?: string;
+  ASSISTANT_PROVIDER_TIMEOUT_MS?: string;
+  ASSISTANT_OVERALL_TIMEOUT_MS?: string;
 }
 
 export interface AuthUser {
