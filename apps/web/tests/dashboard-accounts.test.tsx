@@ -112,9 +112,9 @@ describe("Profile dashboard account management", () => {
   beforeEach(() => {
     apiMocks.getDashboard.mockReset().mockResolvedValue(dashboard);
     apiMocks.getCashflowTrend.mockReset().mockResolvedValue({
-      view: "sixMonth",
-      granularity: "month",
-      range: { from: "2026-02-01", to: "2026-07-31" },
+      view: "weekly",
+      granularity: "day",
+      range: { from: "2026-07-21", to: "2026-07-27" },
       points: [],
     });
     apiMocks.createAccount.mockReset().mockResolvedValue({});

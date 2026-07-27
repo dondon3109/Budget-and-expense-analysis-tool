@@ -71,7 +71,7 @@ export function DashboardPage() {
   const [editingAccount, setEditingAccount] = useState<AccountBalanceSummaryItem>();
   const [editName, setEditName] = useState("");
   const [removingAccount, setRemovingAccount] = useState<AccountBalanceSummaryItem>();
-  const [cashflowView, setCashflowView] = useState<CashflowTrendView>("sixMonth");
+  const [cashflowView, setCashflowView] = useState<CashflowTrendView>("weekly");
   const anchorDate = localIsoDate();
   const summaryMonth = currentMonth();
   const summaryPeriod = {
