@@ -27,9 +27,11 @@ describe("dashboard empty state", () => {
 
   it("shows the normal dashboard after financial activity exists", () => {
     expect(
-      isDashboardEmpty({
-        ...emptyDashboard,
-        monthlyTrend: [{ month: "2026-07", incomeMinor: 10_000, expenseMinor: 0 }],
+      isDashboardEmpty(emptyDashboard, {
+        view: "sixMonth",
+        granularity: "month",
+        range: { from: "2026-02-01", to: "2026-07-31" },
+        points: [{ date: "2026-07-01", incomeMinor: 10_000, expenseMinor: 0 }],
       }),
     ).toBe(false);
   });

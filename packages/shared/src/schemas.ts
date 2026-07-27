@@ -25,6 +25,15 @@ export const dashboardQuerySchema = z
     path: ["from"],
   });
 
+export const cashflowTrendQuerySchema = z
+  .object({
+    view: z.enum(["weekly", "monthly", "sixMonth"]),
+    anchorDate: isoDateSchema,
+  })
+  .strict();
+
+export type CashflowTrendQuery = z.infer<typeof cashflowTrendQuerySchema>;
+
 export const accountInputSchema = z
   .object({
     name: z.string().trim().min(1).max(80),

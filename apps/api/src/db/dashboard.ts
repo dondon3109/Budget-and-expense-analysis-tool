@@ -1,6 +1,9 @@
 import {
+  buildCashflowTrend,
   buildDashboardSummary,
   summarizeAccountBalances,
+  type CashflowTrend,
+  type CashflowTrendView,
   type DashboardSummary,
   type TransactionRecord,
 } from "@zoption/shared";
@@ -15,6 +18,31 @@ function sixMonthWindowStart(to: string): string {
   const endMonth = new Date(`${to.slice(0, 7)}-01T00:00:00Z`);
   endMonth.setUTCMonth(endMonth.getUTCMonth() - 5);
   return endMonth.toISOString().slice(0, 10);
+}
+
+export async function loadCashflowTrend(
+  env: Bindings,
+  tenantId: string,
+  query: { view: CashflowTrendView; anchorDate: string },
+): Promise<CashflowTrend> {
+  const preview = buildCashflowTrend([], query.view, query.anchorDate);
+  const db = drizzle(env.DB);
+  const rows = await db
+    .select({
+      date: transactions.date,
+      amountMinor: transactions.amountMinor,
+      kind: transactions.kind,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.tenantId, tenantId),
+        gte(transactions.date, preview.range.from),
+        lte(transactions.date, preview.range.to),
+      ),
+    );
+
+  return buildCashflowTrend(rows, query.view, query.anchorDate);
 }
 
 export async function loadDashboard(

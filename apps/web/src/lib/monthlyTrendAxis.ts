@@ -1,14 +1,8 @@
 const TICK_COUNT = 5;
 const INTERVAL_COUNT = TICK_COUNT - 1;
 const MINIMUM_STEP_MINOR = 100;
-const MINOR_UNITS_PER_THOUSAND_PESOS = 100_000;
-
 const pesoFormatter = new Intl.NumberFormat("en-PH", {
   maximumFractionDigits: 0,
-});
-
-const compactPesoFormatter = new Intl.NumberFormat("en-PH", {
-  maximumFractionDigits: 1,
 });
 
 export interface MonthlyTrendAxis {
@@ -42,14 +36,6 @@ export function createMonthlyTrendAxis(maxMinor: number): MonthlyTrendAxis {
   };
 }
 
-export function formatMonthlyTrendTick(valueMinor: number, axis: MonthlyTrendAxis): string {
-  if (valueMinor === 0) {
-    return "₱0";
-  }
-
-  if (axis.domain[1] < MINOR_UNITS_PER_THOUSAND_PESOS) {
-    return `₱${pesoFormatter.format(valueMinor / 100)}`;
-  }
-
-  return `₱${compactPesoFormatter.format(valueMinor / MINOR_UNITS_PER_THOUSAND_PESOS)}k`;
+export function formatMonthlyTrendTick(valueMinor: number): string {
+  return `₱${pesoFormatter.format(valueMinor / 100)}`;
 }

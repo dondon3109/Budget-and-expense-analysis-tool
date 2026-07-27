@@ -60,7 +60,7 @@ describe("authenticated API requests", () => {
         }),
       );
 
-    await getDashboard(userWorkspace);
+    await getDashboard(userWorkspace, { from: "2026-07-01", to: "2026-07-31" });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/app/dashboard?from=2026-07-01&to=2026-07-31");
@@ -82,7 +82,9 @@ describe("authenticated API requests", () => {
       }),
     );
 
-    await expect(getDashboard(userWorkspace)).rejects.toMatchObject({
+    await expect(
+      getDashboard(userWorkspace, { from: "2026-07-01", to: "2026-07-31" }),
+    ).rejects.toMatchObject({
       status: 502,
       code: "invalid_api_response",
       message: "The API returned an unexpected response. Check the API URL configuration.",
@@ -96,7 +98,9 @@ describe("authenticated API requests", () => {
       new Response(JSON.stringify({ error: "invalid_access_token" }), { status: 401 }),
     );
 
-    await expect(getDashboard(userWorkspace)).rejects.toMatchObject({ status: 401 });
+    await expect(
+      getDashboard(userWorkspace, { from: "2026-07-01", to: "2026-07-31" }),
+    ).rejects.toMatchObject({ status: 401 });
     expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 });

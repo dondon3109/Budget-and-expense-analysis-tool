@@ -5,7 +5,13 @@ import type { AuthenticatedWorkspace } from "./workspace";
 export const queryKeys = {
   workspace: (workspace: AuthenticatedWorkspace) => ["workspace", workspace.key] as const,
   dashboard: (workspace: AuthenticatedWorkspace) =>
-    [...queryKeys.workspace(workspace), "dashboard", "2026-07"] as const,
+    [...queryKeys.workspace(workspace), "dashboard"] as const,
+  dashboardSummary: (workspace: AuthenticatedWorkspace, period: { from: string; to: string }) =>
+    [...queryKeys.dashboard(workspace), "summary", period] as const,
+  cashflowTrend: (
+    workspace: AuthenticatedWorkspace,
+    query: { view: "weekly" | "monthly" | "sixMonth"; anchorDate: string },
+  ) => [...queryKeys.dashboard(workspace), "cashflow-trend", query] as const,
   transactions: (workspace: AuthenticatedWorkspace, query: TransactionListQuery) =>
     [...queryKeys.workspace(workspace), "transactions", query] as const,
   allTransactions: (workspace: AuthenticatedWorkspace) =>

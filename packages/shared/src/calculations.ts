@@ -2,6 +2,7 @@ import type {
   AccountBalanceSummary,
   AccountRecord,
   BudgetRecord,
+  CashflowTrend,
   DashboardSummary,
   TransactionRecord,
 } from "./types";
@@ -70,6 +71,82 @@ export function summarizeAccountBalances(
     overallBalanceMinor: items.reduce((sum, account) => sum + account.balanceMinor, 0),
     items,
   };
+}
+
+function dateFromIso(isoDate: string): Date {
+  return new Date(`${isoDate}T00:00:00Z`);
+}
+
+function formatIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function shiftUtcDays(isoDate: string, amount: number): string {
+  const date = dateFromIso(isoDate);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return formatIsoDate(date);
+}
+
+function monthStart(isoDate: string): string {
+  return `${isoDate.slice(0, 7)}-01`;
+}
+
+function shiftUtcMonths(isoDate: string, amount: number): string {
+  const date = dateFromIso(monthStart(isoDate));
+  date.setUTCMonth(date.getUTCMonth() + amount);
+  return formatIsoDate(date);
+}
+
+function monthEnd(isoDate: string): string {
+  return shiftUtcDays(shiftUtcMonths(isoDate, 1), -1);
+}
+
+export function buildCashflowTrend(
+  transactions: readonly Pick<TransactionRecord, "date" | "kind" | "amountMinor">[],
+  view: CashflowTrend["view"],
+  anchorDate: string,
+): CashflowTrend {
+  const range =
+    view === "weekly"
+      ? { from: shiftUtcDays(anchorDate, -6), to: anchorDate }
+      : view === "monthly"
+        ? { from: monthStart(anchorDate), to: monthEnd(anchorDate) }
+        : { from: shiftUtcMonths(anchorDate, -5), to: monthEnd(anchorDate) };
+  const granularity = view === "sixMonth" ? "month" : "day";
+  const pointDates: string[] = [];
+
+  if (granularity === "day") {
+    for (let date = range.from; date <= range.to; date = shiftUtcDays(date, 1)) {
+      pointDates.push(date);
+    }
+  } else {
+    for (let date = range.from; date <= range.to; date = shiftUtcMonths(date, 1)) {
+      pointDates.push(date);
+    }
+  }
+
+  const points = new Map(
+    pointDates.map((date) => [date, { date, incomeMinor: 0, expenseMinor: 0 }]),
+  );
+
+  for (const transaction of transactions) {
+    if (
+      transaction.kind === "transfer" ||
+      transaction.date < range.from ||
+      transaction.date > range.to
+    ) {
+      continue;
+    }
+
+    const bucketDate = granularity === "day" ? transaction.date : monthStart(transaction.date);
+    const point = points.get(bucketDate);
+    if (!point) continue;
+
+    if (transaction.kind === "income") point.incomeMinor += Math.abs(transaction.amountMinor);
+    if (transaction.kind === "expense") point.expenseMinor += Math.abs(transaction.amountMinor);
+  }
+
+  return { view, granularity, range, points: [...points.values()] };
 }
 
 export function buildDashboardSummary(

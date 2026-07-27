@@ -1978,9 +1978,64 @@ textarea:focus-visible {
   color: var(--subtle);
   font-size: 9px;
 }
+.trend-panel-heading {
+  align-items: flex-start;
+}
+.trend-period {
+  margin: 5px 0 0;
+  color: var(--subtle);
+  font-size: 10px;
+}
+.trend-panel-actions {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+.trend-view-options {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-soft);
+}
+.trend-view-option {
+  min-height: 28px;
+  padding: 0 9px;
+  color: var(--muted);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.trend-view-option:hover {
+  color: var(--ink);
+}
+.trend-view-option[data-selected] {
+  color: var(--action);
+  background: var(--paper);
+  box-shadow: 0 2px 7px var(--shadow);
+}
+.trend-view-option:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 1px;
+}
 .trend-chart {
   height: 257px;
   margin-top: 10px;
+}
+.trend-panel-loading,
+.trend-panel-error {
+  min-height: 257px;
+}
+.trend-panel-error .button {
+  margin-top: 16px;
 }
 .chart-key {
   display: inline-flex;
@@ -5202,6 +5257,19 @@ button:disabled {
   }
   .dashboard-header h1 {
     font-size: 31px;
+  }
+  .trend-panel-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .trend-panel-actions {
+    justify-items: start;
+  }
+  .trend-view-options {
+    width: 100%;
+  }
+  .trend-view-option {
+    flex: 1;
   }
   .settings-section-heading {
     flex-direction: column;

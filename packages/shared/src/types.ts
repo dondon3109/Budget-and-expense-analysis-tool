@@ -209,6 +209,20 @@ export interface BudgetMonthPlan {
   items: BudgetPlanItem[];
 }
 
+export const cashflowTrendViews = ["weekly", "monthly", "sixMonth"] as const;
+export type CashflowTrendView = (typeof cashflowTrendViews)[number];
+
+export interface CashflowTrend {
+  view: CashflowTrendView;
+  granularity: "day" | "month";
+  range: { from: string; to: string };
+  points: Array<{
+    date: string;
+    incomeMinor: number;
+    expenseMinor: number;
+  }>;
+}
+
 export interface DashboardSummary {
   period: { from: string; to: string };
   currency: "PHP";

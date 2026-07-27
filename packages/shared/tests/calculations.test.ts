@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildDashboardSummary, summarizeAccountBalances } from "../src/calculations";
+import {
+  buildCashflowTrend,
+  buildDashboardSummary,
+  summarizeAccountBalances,
+} from "../src/calculations";
 import type { AccountRecord, BudgetRecord, TransactionRecord } from "../src/types";
 
 const baseTransaction: Omit<TransactionRecord, "id" | "kind" | "amountMinor"> = {
@@ -45,6 +49,60 @@ describe("account balance calculations", () => {
       },
     ];
     expect(summarizeAccountBalances(accounts)).toMatchObject({ overallBalanceMinor: 320_000 });
+  });
+});
+
+describe("cashflow trend calculations", () => {
+  it("returns seven zero-filled daily buckets for the week ending on the anchor date", () => {
+    const trend = buildCashflowTrend(
+      [
+        { date: "2026-07-27", kind: "income", amountMinor: 8_000 },
+        { date: "2026-07-23", kind: "expense", amountMinor: -2_500 },
+        { date: "2026-07-25", kind: "transfer", amountMinor: -7_000 },
+      ],
+      "weekly",
+      "2026-07-27",
+    );
+
+    expect(trend).toMatchObject({
+      view: "weekly",
+      granularity: "day",
+      range: { from: "2026-07-21", to: "2026-07-27" },
+    });
+    expect(trend.points).toHaveLength(7);
+    expect(trend.points).toContainEqual({
+      date: "2026-07-23",
+      incomeMinor: 0,
+      expenseMinor: 2_500,
+    });
+    expect(trend.points.at(-1)).toEqual({
+      date: "2026-07-27",
+      incomeMinor: 8_000,
+      expenseMinor: 0,
+    });
+    expect(trend.points.find((point) => point.date === "2026-07-25")).toEqual({
+      date: "2026-07-25",
+      incomeMinor: 0,
+      expenseMinor: 0,
+    });
+  });
+
+  it("returns every day in leap February and six full month buckets across a year boundary", () => {
+    const monthly = buildCashflowTrend([], "monthly", "2024-02-12");
+    const sixMonth = buildCashflowTrend([], "sixMonth", "2026-02-12");
+
+    expect(monthly.range).toEqual({ from: "2024-02-01", to: "2024-02-29" });
+    expect(monthly.points).toHaveLength(29);
+    expect(monthly.points.at(-1)?.date).toBe("2024-02-29");
+    expect(sixMonth.range).toEqual({ from: "2025-09-01", to: "2026-02-28" });
+    expect(sixMonth.points.map((point) => point.date)).toEqual([
+      "2025-09-01",
+      "2025-10-01",
+      "2025-11-01",
+      "2025-12-01",
+      "2026-01-01",
+      "2026-02-01",
+    ]);
   });
 });
 

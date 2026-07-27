@@ -1,4 +1,10 @@
-import type { AccountBalanceSummaryItem, AccountInput, DashboardSummary } from "@zoption/shared";
+import type {
+  AccountBalanceSummaryItem,
+  AccountInput,
+  CashflowTrend,
+  CashflowTrendView,
+  DashboardSummary,
+} from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownRight,
@@ -22,14 +28,26 @@ import { OverviewStatBar } from "../components/dashboard/OverviewStatBar";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
 import { AppShell } from "../components/layout/AppShell";
-import { createAccount, deleteAccount, getDashboard, updateAccount } from "../lib/api";
+import {
+  createAccount,
+  deleteAccount,
+  getCashflowTrend,
+  getDashboard,
+  updateAccount,
+} from "../lib/api";
+import { currentMonth, daysInMonth, localIsoDate, monthStart } from "../lib/calendar";
 import { formatPeriod } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 
-export function isDashboardEmpty(data: DashboardSummary): boolean {
+export function isDashboardEmpty(data: DashboardSummary, cashflowTrend?: CashflowTrend): boolean {
+  const hasCashflowActivity = cashflowTrend?.points.some(
+    (point) => point.incomeMinor !== 0 || point.expenseMinor !== 0,
+  );
   return (
-    data.monthlyTrend.length === 0 &&
+    !hasCashflowActivity &&
+    data.metrics.moneyInMinor === 0 &&
+    data.metrics.moneyOutMinor === 0 &&
     data.spendingByCategory.length === 0 &&
     data.budgetProgress.length === 0
   );
@@ -53,9 +71,20 @@ export function DashboardPage() {
   const [editingAccount, setEditingAccount] = useState<AccountBalanceSummaryItem>();
   const [editName, setEditName] = useState("");
   const [removingAccount, setRemovingAccount] = useState<AccountBalanceSummaryItem>();
+  const [cashflowView, setCashflowView] = useState<CashflowTrendView>("sixMonth");
+  const anchorDate = localIsoDate();
+  const summaryMonth = currentMonth();
+  const summaryPeriod = {
+    from: monthStart(summaryMonth),
+    to: `${summaryMonth}-${String(daysInMonth(summaryMonth)).padStart(2, "0")}`,
+  };
   const { data, isError, error, refetch } = useQuery({
-    queryKey: queryKeys.dashboard(workspace),
-    queryFn: () => getDashboard(workspace),
+    queryKey: queryKeys.dashboardSummary(workspace, summaryPeriod),
+    queryFn: () => getDashboard(workspace, summaryPeriod),
+  });
+  const cashflowTrendQuery = useQuery({
+    queryKey: queryKeys.cashflowTrend(workspace, { view: cashflowView, anchorDate }),
+    queryFn: () => getCashflowTrend(workspace, { view: cashflowView, anchorDate }),
   });
   const refreshAccountData = async () => {
     await Promise.all([
@@ -116,7 +145,7 @@ export function DashboardPage() {
     new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
       amountMinor / 100,
     );
-  const empty = isDashboardEmpty(data);
+  const empty = isDashboardEmpty(data, cashflowTrendQuery.data);
 
   return (
     <AppShell>
@@ -445,7 +474,14 @@ export function DashboardPage() {
             />
             <div className="dashboard-grid">
               <SpendingByCategory data={data.spendingByCategory} />
-              <MonthlyTrend data={data.monthlyTrend} />
+              <MonthlyTrend
+                data={cashflowTrendQuery.data}
+                selectedView={cashflowView}
+                onViewChange={setCashflowView}
+                isLoading={cashflowTrendQuery.isPending}
+                error={cashflowTrendQuery.error}
+                onRetry={() => void cashflowTrendQuery.refetch()}
+              />
               <InsightsPanel data={data.insights} />
               <BudgetProgress data={data.budgetProgress} />
             </div>

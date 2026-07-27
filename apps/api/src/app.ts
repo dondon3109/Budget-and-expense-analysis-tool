@@ -1,4 +1,10 @@
-import { dashboardQuerySchema, type DashboardSummary } from "@zoption/shared";
+import {
+  cashflowTrendQuerySchema,
+  dashboardQuerySchema,
+  type CashflowTrend,
+  type CashflowTrendQuery,
+  type DashboardSummary,
+} from "@zoption/shared";
 import { Hono } from "hono";
 
 import { createAssistantOrchestrator } from "./assistant/orchestrator";
@@ -11,7 +17,7 @@ import { accountRepository, type AccountRepository } from "./db/accounts";
 import { assistantRepository, type AssistantRepository } from "./db/assistant";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
-import { loadDashboard } from "./db/dashboard";
+import { loadCashflowTrend, loadDashboard } from "./db/dashboard";
 import { calendarEventRepository, type CalendarEventRepository } from "./db/events";
 import { importRepository, type ImportRepository } from "./db/imports";
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
@@ -38,8 +44,15 @@ type DashboardLoader = (
   period: { from: string; to: string },
 ) => Promise<DashboardSummary>;
 
+type CashflowTrendLoader = (
+  env: Bindings,
+  tenantId: string,
+  query: CashflowTrendQuery,
+) => Promise<CashflowTrend>;
+
 export interface AppOptions {
   dashboardLoader?: DashboardLoader;
+  cashflowTrendLoader?: CashflowTrendLoader;
   readinessCheck?: (env: Bindings) => Promise<void>;
   transactions?: TransactionRepository;
   categories?: CategoryRepository;
@@ -59,6 +72,7 @@ export interface AppOptions {
 export function createApp(options: AppOptions = {}) {
   const app = new Hono<AppEnvironment>();
   const dashboardLoader = options.dashboardLoader ?? loadDashboard;
+  const cashflowTrendLoader = options.cashflowTrendLoader ?? loadCashflowTrend;
   const transactionStore = options.transactions ?? transactionRepository;
   const categoryStore = options.categories ?? categoryRepository;
   const accountStore = options.accounts ?? accountRepository;
@@ -191,6 +205,21 @@ export function createApp(options: AppOptions = {}) {
     }
     return context.json(
       await dashboardLoader(context.env, context.get("tenant").tenantId, parsed.data),
+    );
+  });
+
+  app.get("/api/app/dashboard/cashflow-trend", async (context) => {
+    const parsed = cashflowTrendQuerySchema.safeParse(context.req.query());
+    if (!parsed.success) {
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Choose a valid cashflow trend view.",
+        parsed.error.flatten(),
+      );
+    }
+    return context.json(
+      await cashflowTrendLoader(context.env, context.get("tenant").tenantId, parsed.data),
     );
   });
 

@@ -47,6 +47,13 @@ const transactionItem: TransactionListItem = {
   notes: null,
 };
 
+const cashflowTrendFixture = {
+  view: "sixMonth" as const,
+  granularity: "month" as const,
+  range: { from: "2026-02-01", to: "2026-07-31" },
+  points: [{ date: "2026-07-01", incomeMinor: 80_000_00, expenseMinor: 24_550 }],
+};
+
 const dashboardFixture: DashboardSummary = {
   period: { from: "2026-07-01", to: "2026-07-31" },
   currency: "PHP",
@@ -384,6 +391,34 @@ describe("API foundation", () => {
       from: "2026-07-01",
       to: "2026-07-31",
     });
+  });
+
+  it("loads a validated cashflow view for the resolved tenant", async () => {
+    const loader = vi.fn().mockResolvedValue(cashflowTrendFixture);
+    const app = createTestApp({ cashflowTrendLoader: loader });
+    const response = await app.request(
+      "/api/app/dashboard/cashflow-trend?view=weekly&anchorDate=2026-07-27",
+      { headers: AUTHORIZATION },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(loader).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      view: "weekly",
+      anchorDate: "2026-07-27",
+    });
+  });
+
+  it("rejects invalid cashflow trend queries", async () => {
+    const loader = vi.fn().mockResolvedValue(cashflowTrendFixture);
+    const app = createTestApp({ cashflowTrendLoader: loader });
+    const response = await app.request(
+      "/api/app/dashboard/cashflow-trend?view=yearly&anchorDate=2026-07-32",
+      { headers: AUTHORIZATION },
+    );
+
+    expect(response.status).toBe(400);
+    expect(loader).not.toHaveBeenCalled();
   });
 
   it("parses pagination and filters before listing tenant transactions", async () => {

@@ -13,6 +13,7 @@ import type {
   CalendarEventMonth,
   CalendarEventRecord,
   CalendarEventUpdate,
+  CashflowTrend,
   CategoryInput,
   CategoryRecord,
   CategoryUpdate,
@@ -159,8 +160,21 @@ async function requestBlob(workspace: AuthenticatedWorkspace, path: string): Pro
   return response.blob();
 }
 
-export function getDashboard(workspace: AuthenticatedWorkspace): Promise<DashboardSummary> {
-  return requestJson(workspace, "/api/app/dashboard?from=2026-07-01&to=2026-07-31");
+export function getDashboard(
+  workspace: AuthenticatedWorkspace,
+  period: { from: string; to: string },
+): Promise<DashboardSummary> {
+  return requestJson(workspace, `/api/app/dashboard?${new URLSearchParams(period).toString()}`);
+}
+
+export function getCashflowTrend(
+  workspace: AuthenticatedWorkspace,
+  query: { view: CashflowTrend["view"]; anchorDate: string },
+): Promise<CashflowTrend> {
+  return requestJson(
+    workspace,
+    `/api/app/dashboard/cashflow-trend?${new URLSearchParams(query).toString()}`,
+  );
 }
 
 export function getTransactions(

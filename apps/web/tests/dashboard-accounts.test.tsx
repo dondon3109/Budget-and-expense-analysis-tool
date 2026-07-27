@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
   getDashboard: vi.fn(),
+  getCashflowTrend: vi.fn(),
   createAccount: vi.fn(),
   updateAccount: vi.fn(),
   deleteAccount: vi.fn(),
@@ -110,6 +111,12 @@ function renderPage() {
 describe("Profile dashboard account management", () => {
   beforeEach(() => {
     apiMocks.getDashboard.mockReset().mockResolvedValue(dashboard);
+    apiMocks.getCashflowTrend.mockReset().mockResolvedValue({
+      view: "sixMonth",
+      granularity: "month",
+      range: { from: "2026-02-01", to: "2026-07-31" },
+      points: [],
+    });
     apiMocks.createAccount.mockReset().mockResolvedValue({});
     apiMocks.updateAccount.mockReset().mockResolvedValue({});
     apiMocks.deleteAccount.mockReset().mockResolvedValue(undefined);

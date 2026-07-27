@@ -4,7 +4,7 @@ import { createMonthlyTrendAxis, formatMonthlyTrendTick } from "../src/lib/month
 
 function expectValidAxis(maximumMinor: number) {
   const axis = createMonthlyTrendAxis(maximumMinor);
-  const labels = axis.ticks.map((tick) => formatMonthlyTrendTick(tick, axis));
+  const labels = axis.ticks.map((tick) => formatMonthlyTrendTick(tick));
 
   expect(axis.ticks).toHaveLength(5);
   expect(new Set(axis.ticks).size).toBe(5);
@@ -29,18 +29,18 @@ describe("monthly trend axis", () => {
     expect(labels).toEqual(["₱0", "₱200", "₱400", "₱600", "₱800"]);
   });
 
-  it("preserves half-thousand precision for a maximum of ₱2,000", () => {
+  it("uses whole-peso labels for a maximum of ₱2,000", () => {
     const { axis, labels } = expectValidAxis(200_000);
 
     expect(axis.ticks).toEqual([0, 50_000, 100_000, 150_000, 200_000]);
-    expect(labels).toEqual(["₱0", "₱0.5k", "₱1k", "₱1.5k", "₱2k"]);
+    expect(labels).toEqual(["₱0", "₱500", "₱1,000", "₱1,500", "₱2,000"]);
   });
 
   it("uses a larger nice step for a maximum of ₱15,000", () => {
     const { axis, labels } = expectValidAxis(1_500_000);
 
     expect(axis.ticks).toEqual([0, 500_000, 1_000_000, 1_500_000, 2_000_000]);
-    expect(labels).toEqual(["₱0", "₱5k", "₱10k", "₱15k", "₱20k"]);
+    expect(labels).toEqual(["₱0", "₱5,000", "₱10,000", "₱15,000", "₱20,000"]);
   });
 
   it("keeps five unique ticks when all values are zero", () => {
