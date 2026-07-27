@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, Plus, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 
+import { useAssistantSession } from "../assistant/AssistantSessionProvider";
 import { useAuth } from "../auth/AuthProvider";
 import { AssistantComposer } from "../components/assistant/AssistantComposer";
 import { AssistantConsent } from "../components/assistant/AssistantConsent";
@@ -34,8 +35,7 @@ export function AssistantPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  const { activeThreadId, draft, setActiveThreadId, setDraft, startNewChat } = useAssistantSession();
   const [pendingMessage, setPendingMessage] = useState<string>();
   const [sendError, setSendError] = useState<string>();
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -43,16 +43,22 @@ export function AssistantPage() {
   const preferences = useQuery({
     queryKey: queryKeys.assistantPreferences(workspace),
     queryFn: () => getAssistantPreferences(workspace),
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
   const threads = useQuery({
     queryKey: queryKeys.assistantThreads(workspace),
     queryFn: () => getAssistantThreads(workspace),
     enabled: Boolean(preferences.data?.consentedAt),
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
   const messages = useQuery({
     queryKey: queryKeys.assistantMessages(workspace, activeThreadId ?? "new"),
     queryFn: () => getAssistantMessages(workspace, activeThreadId!),
     enabled: Boolean(activeThreadId && preferences.data?.consentedAt),
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   const consentMutation = useMutation({
@@ -111,31 +117,58 @@ export function AssistantPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (threadId: string) => deleteAssistantThread(workspace, threadId),
-    onSuccess: (_result, threadId) => {
-      queryClient.setQueryData<AssistantThreadPage>(
-        queryKeys.assistantThreads(workspace),
-        (current) => ({
-          items: current?.items.filter((thread) => thread.id !== threadId) ?? [],
-          nextCursor: current?.nextCursor ?? null,
-        }),
-      );
-      queryClient.removeQueries({ queryKey: queryKeys.assistantMessages(workspace, threadId) });
-      if (activeThreadId === threadId) setActiveThreadId(null);
+    onMutate: async (threadId) => {
+      const threadKey = queryKeys.assistantThreads(workspace);
+      await queryClient.cancelQueries({ queryKey: threadKey });
+
+      const previousThreads = queryClient.getQueryData<AssistantThreadPage>(threadKey);
+      queryClient.setQueryData<AssistantThreadPage>(threadKey, (current) => ({
+        items: current?.items.filter((thread) => thread.id !== threadId) ?? [],
+        nextCursor: current?.nextCursor ?? null,
+      }));
+
+      const wasActive = activeThreadId === threadId;
+      if (wasActive) setActiveThreadId(null);
+      return { previousThreads, wasActive };
     },
+    onError: (_error, _threadId, context) => {
+      if (!context) return;
+      queryClient.setQueryData(queryKeys.assistantThreads(workspace), context.previousThreads);
+      if (context.wasActive) setActiveThreadId(_threadId);
+    },
+    onSuccess: (_result, threadId) => {
+      queryClient.removeQueries({ queryKey: queryKeys.assistantMessages(workspace, threadId) });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
   });
 
   const deleteAllMutation = useMutation({
     mutationFn: () => deleteAllAssistantThreads(workspace),
-    onSuccess: () => {
-      queryClient.setQueryData<AssistantThreadPage>(queryKeys.assistantThreads(workspace), {
-        items: [],
-        nextCursor: null,
-      });
-      queryClient.removeQueries({
-        queryKey: [...queryKeys.workspace(workspace), "assistant", "threads"],
-      });
+    onMutate: async () => {
+      const threadKey = queryKeys.assistantThreads(workspace);
+      await queryClient.cancelQueries({ queryKey: threadKey });
+
+      const previousThreads = queryClient.getQueryData<AssistantThreadPage>(threadKey);
+      queryClient.setQueryData<AssistantThreadPage>(threadKey, { items: [], nextCursor: null });
+      const activeThread = activeThreadId;
       setActiveThreadId(null);
+      return { previousThreads, activeThread };
     },
+    onError: (_error, _variables, context) => {
+      if (!context) return;
+      queryClient.setQueryData(queryKeys.assistantThreads(workspace), context.previousThreads);
+      if (context.activeThread) setActiveThreadId(context.activeThread);
+    },
+    onSuccess: () => {
+      const threadKey = queryKeys.assistantThreads(workspace);
+      queryClient.removeQueries({
+        predicate: (query) =>
+          query.queryKey.length > threadKey.length &&
+          threadKey.every((part, index) => query.queryKey[index] === part) &&
+          query.queryKey.at(-1) === "messages",
+      });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
   });
 
   function send() {
@@ -147,8 +180,7 @@ export function AssistantPage() {
   }
 
   function startNew() {
-    setActiveThreadId(null);
-    setDraft("");
+    startNewChat();
     setSendError(undefined);
     setHistoryOpen(false);
   }
@@ -199,8 +231,10 @@ export function AssistantPage() {
         <header className="assistant-page-header">
           <div>
             <p className="eyebrow">AI Financial Assistant</p>
-            <h1>Ask your records, not a guess</h1>
-            <p>DeepSeek explains. Zoption verifies every amount from your private workspace.</p>
+            <h1>
+              Your <span className="assistant-heading-emphasis">MONEY</span>, explained.
+            </h1>
+            <p>Ask anything. Zoption already knows the numbers.</p>
           </div>
           <div className="assistant-header-actions">
             <button

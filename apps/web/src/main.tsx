@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
+import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
 import { AuthProvider } from "./auth/AuthProvider";
 import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
 import { ImportDraftProvider } from "./import/ImportDraftProvider";
@@ -26,11 +27,13 @@ createRoot(document.getElementById("root")!).render(
       <ThemeChoiceDialog />
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <ImportDraftProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </ImportDraftProvider>
+          <AssistantSessionProvider>
+            <ImportDraftProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </ImportDraftProvider>
+          </AssistantSessionProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
