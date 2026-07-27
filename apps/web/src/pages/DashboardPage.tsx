@@ -252,7 +252,6 @@ export function DashboardPage() {
                       </span>
                     </div>
                     <div className="dashboard-account-value">
-                      <strong>{formatCurrency(account.balanceMinor)}</strong>
                       {!account.system && (
                         <span className="dashboard-account-actions">
                           <button
@@ -274,6 +273,7 @@ export function DashboardPage() {
                           </button>
                         </span>
                       )}
+                      <strong>{formatCurrency(account.balanceMinor)}</strong>
                     </div>
                   </li>
                 ))}
