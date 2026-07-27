@@ -21,12 +21,18 @@ export interface AssistantAnswer {
   completionTokens?: number;
 }
 
+export interface AssistantIdentity {
+  assistantName: string;
+  userPreferredName: string;
+}
+
 export interface AssistantOrchestrator {
   answer(
     env: Bindings,
     tenantId: string,
     history: AssistantHistoryMessage[],
     message: string,
+    identity: AssistantIdentity,
   ): Promise<AssistantAnswer>;
 }
 
@@ -62,11 +68,12 @@ function providerMessages(
   history: AssistantHistoryMessage[],
   message: string,
   timeZone: string,
+  identity: AssistantIdentity,
 ): AssistantProviderMessage[] {
   return [
     {
       role: "system",
-      content: buildAssistantSystemPrompt(currentDateInTimeZone(timeZone), timeZone),
+      content: buildAssistantSystemPrompt(currentDateInTimeZone(timeZone), timeZone, identity),
     },
     ...boundedHistory(history).map((item) => ({ role: item.role, content: item.content }) as const),
     { role: "user", content: message },
@@ -84,9 +91,9 @@ export function createAssistantOrchestrator(
   reader: FinancialReader,
 ): AssistantOrchestrator {
   return {
-    async answer(env, tenantId, history, message) {
+    async answer(env, tenantId, history, message, identity) {
       const timeZone = env.ASSISTANT_TIME_ZONE?.trim() || "Asia/Manila";
-      const messages = providerMessages(history, message, timeZone);
+      const messages = providerMessages(history, message, timeZone, identity);
       const overallTimeoutMs = configuredNumber(env.ASSISTANT_OVERALL_TIMEOUT_MS, 25_000);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("assistant_timeout"), overallTimeoutMs);

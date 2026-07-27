@@ -5,6 +5,7 @@ import type {
   AssistantMessageInput,
   AssistantMessagePage,
   AssistantPreferences,
+  AssistantPreferenceUpdate,
   AssistantThreadPage,
   AssistantTurnResult,
   BudgetMonthPlan,
@@ -305,6 +306,16 @@ export function grantAssistantConsent(
   return requestJson(workspace, "/api/app/assistant/preferences", {
     method: "PATCH",
     body: JSON.stringify({ consented: true }),
+  });
+}
+
+export function updateAssistantIdentity(
+  workspace: AuthenticatedWorkspace,
+  input: Extract<AssistantPreferenceUpdate, { assistantName: string }>,
+): Promise<AssistantPreferences> {
+  return requestJson(workspace, "/api/app/assistant/preferences", {
+    method: "PATCH",
+    body: JSON.stringify(input),
   });
 }
 

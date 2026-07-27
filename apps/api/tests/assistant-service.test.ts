@@ -32,6 +32,8 @@ const input: AssistantMessageInput = {
 const preferences: AssistantPreferences = {
   consentedAt: "2026-07-27T00:00:00.000Z",
   retentionDays: 90,
+  assistantName: "Aster",
+  userPreferredName: "Sam",
 };
 const thread: AssistantThread = {
   id: threadId,
@@ -71,6 +73,7 @@ function createRepository(): AssistantRepository {
   return {
     getPreferences: vi.fn(async () => preferences),
     grantConsent: vi.fn(async () => preferences),
+    setAssistantIdentity: vi.fn(async () => preferences),
     listThreads: vi.fn(async () => ({ items: [], nextCursor: null })),
     listMessages: vi.fn(async () => ({ items: [], nextCursor: null })),
     createThread: vi.fn(async () => thread),
@@ -217,6 +220,27 @@ describe("assistant service provider failures", () => {
       code: "assistant_unavailable",
     });
     expect(repository.failTurn).toHaveBeenCalledWith(env, tenantId, start);
+  });
+
+  it("blocks generation before persistence when assistant identity is incomplete", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.getPreferences).mockResolvedValue({
+      consentedAt: preferences.consentedAt,
+      retentionDays: 90,
+      assistantName: null,
+      userPreferredName: null,
+    });
+    const orchestrator: AssistantOrchestrator = {
+      answer: vi.fn(),
+    };
+    const service = createAssistantService(repository, orchestrator);
+
+    await expect(service.sendTurn(env, tenantId, threadId, input)).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_identity_required",
+    });
+    expect(repository.beginTurn).not.toHaveBeenCalled();
+    expect(orchestrator.answer).not.toHaveBeenCalled();
   });
 
   it("emits no provider diagnostic for successful turns", async () => {

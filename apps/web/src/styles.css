@@ -6385,6 +6385,8 @@ button:disabled {
 .assistant-page {
   width: min(1240px, calc(100% - 48px));
   min-height: 100vh;
+  margin: 0 auto;
+  padding: 54px 0 64px;
   display: flex;
   flex-direction: column;
 }
@@ -6461,6 +6463,35 @@ button:disabled {
   color: var(--ink);
   font-family: Georgia, serif;
   font-size: 18px;
+  line-height: 1.12;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.assistant-history-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 3px;
+}
+.assistant-history-actions .icon-button {
+  width: 30px;
+  height: 30px;
+}
+.assistant-history-edit {
+  min-height: 30px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--action);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 750;
+}
+.assistant-history-edit:hover {
+  background: color-mix(in srgb, var(--action) 8%, var(--paper));
 }
 .assistant-thread-list {
   min-height: 0;
@@ -6878,6 +6909,35 @@ button:disabled {
   border-radius: 20px;
   background: var(--paper);
   box-shadow: 0 18px 48px var(--shadow);
+}
+.assistant-identity-dialog {
+  width: min(500px, 100%);
+}
+.assistant-identity-heading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.assistant-identity-mark {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: var(--action);
+  border: 1px solid color-mix(in srgb, var(--action) 28%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--action) 8%, var(--surface));
+}
+.assistant-identity-intro {
+  margin: -2px 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.assistant-identity-form {
+  gap: 15px;
 }
 .assistant-consent h1 {
   margin: 0;

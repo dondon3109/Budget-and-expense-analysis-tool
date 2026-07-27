@@ -33,6 +33,8 @@ interface MessageRow {
 
 interface PreferenceRow {
   consented_at: string | null;
+  assistant_name: string | null;
+  user_preferred_name: string | null;
   retention_days: number;
 }
 
@@ -65,6 +67,11 @@ export interface AssistantCompletionMetadata {
 export interface AssistantRepository {
   getPreferences(env: Bindings, tenantId: string): Promise<AssistantPreferences>;
   grantConsent(env: Bindings, tenantId: string): Promise<AssistantPreferences>;
+  setAssistantIdentity(
+    env: Bindings,
+    tenantId: string,
+    identity: { assistantName: string; userPreferredName: string },
+  ): Promise<AssistantPreferences>;
   listThreads(
     env: Bindings,
     tenantId: string,
@@ -184,7 +191,7 @@ async function findDuplicateTurn(
 export const assistantRepository: AssistantRepository = {
   async getPreferences(env, tenantId) {
     const row = await env.DB.prepare(
-      `SELECT consented_at, retention_days
+      `SELECT consented_at, assistant_name, user_preferred_name, retention_days
        FROM assistant_preferences
        WHERE tenant_id = ?`,
     )
@@ -193,6 +200,8 @@ export const assistantRepository: AssistantRepository = {
     return {
       consentedAt: row?.consented_at ?? null,
       retentionDays: row?.retention_days ?? DEFAULT_RETENTION_DAYS,
+      assistantName: row?.assistant_name ?? null,
+      userPreferredName: row?.user_preferred_name ?? null,
     };
   },
 
@@ -206,7 +215,26 @@ export const assistantRepository: AssistantRepository = {
     )
       .bind(tenantId, now, DEFAULT_RETENTION_DAYS, now)
       .run();
-    return { consentedAt: now, retentionDays: DEFAULT_RETENTION_DAYS };
+    return this.getPreferences(env, tenantId);
+  },
+
+  async setAssistantIdentity(env, tenantId, identity) {
+    const now = new Date().toISOString();
+    const result = await env.DB.prepare(
+      `UPDATE assistant_preferences
+       SET assistant_name = ?, user_preferred_name = ?, updated_at = ?
+       WHERE tenant_id = ? AND consented_at IS NOT NULL`,
+    )
+      .bind(identity.assistantName, identity.userPreferredName, now, tenantId)
+      .run();
+    if (result.meta.changes !== 1) {
+      throw new HttpError(
+        409,
+        "assistant_consent_required",
+        "Review and accept the AI data-sharing notice before naming your assistant.",
+      );
+    }
+    return this.getPreferences(env, tenantId);
   },
 
   async listThreads(env, tenantId, query) {

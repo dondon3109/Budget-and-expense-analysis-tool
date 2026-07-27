@@ -13,6 +13,7 @@ const apiMocks = vi.hoisted(() => ({
   getAssistantMessages: vi.fn(),
   getAssistantPreferences: vi.fn(),
   getAssistantThreads: vi.fn(),
+  updateAssistantIdentity: vi.fn(),
 }));
 
 vi.mock("../src/auth/AuthProvider", () => ({
@@ -24,7 +25,7 @@ vi.mock("../src/components/layout/AppShell", () => ({
 }));
 
 vi.mock("../src/lib/api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/lib/api")>()),
+  ...(await importOriginal()),
   ...apiMocks,
 }));
 
@@ -100,7 +101,11 @@ describe("assistant UI", () => {
     });
     apiMocks.getAssistantPreferences.mockReset().mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
+      retentionDays: 90,
+      assistantName: "Aster",
+      userPreferredName: "Sam",
     });
+    apiMocks.updateAssistantIdentity.mockReset();
     apiMocks.getAssistantThreads.mockReset().mockResolvedValue({
       items: [thread],
       nextCursor: null,
@@ -118,6 +123,7 @@ describe("assistant UI", () => {
   it("renders model output as text instead of HTML", () => {
     render(
       <AssistantConversation
+        assistantName="Aster"
         messages={[
           {
             id: "assistant-1",
@@ -159,6 +165,40 @@ describe("assistant UI", () => {
     expect(await screen.findByRole("heading", { name: "Your MONEY, explained." })).toBeInTheDocument();
     expect(screen.getByText("Ask anything. Zoption already knows the numbers.")).toBeInTheDocument();
     expect(screen.getByText("MONEY")).toHaveClass("assistant-heading-emphasis");
+  });
+
+  it("requires assistant and user names after consent, then displays the saved assistant name", async () => {
+    apiMocks.getAssistantPreferences.mockResolvedValue({
+      consentedAt: "2026-07-27T10:00:00.000Z",
+      retentionDays: 90,
+      assistantName: null,
+      userPreferredName: null,
+    });
+    apiMocks.updateAssistantIdentity.mockResolvedValue({
+      consentedAt: "2026-07-27T10:00:00.000Z",
+      retentionDays: 90,
+      assistantName: "Aster",
+      userPreferredName: "Sam",
+    });
+    renderPage();
+
+    expect(await screen.findByRole("dialog", { name: "Make this assistant yours" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Close assistant name editor" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Your assistant's name"), { target: { value: "Aster" } });
+    fireEvent.change(screen.getByLabelText("What should your assistant call you?"), {
+      target: { value: "Sam" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() =>
+      expect(apiMocks.updateAssistantIdentity).toHaveBeenCalledWith(
+        expect.anything(),
+        { assistantName: "Aster", userPreferredName: "Sam" },
+      ),
+    );
+    expect(await screen.findByRole("heading", { name: "Chats with Aster" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit assistant names" }));
+    expect(await screen.findByRole("dialog", { name: "Edit assistant names" })).toBeInTheDocument();
   });
 
   it("restores the active chat and draft after switching dashboard tabs", async () => {

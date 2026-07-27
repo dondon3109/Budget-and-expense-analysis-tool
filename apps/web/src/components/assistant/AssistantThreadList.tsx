@@ -1,13 +1,15 @@
 import type { AssistantThread } from "@zoption/shared";
-import { MessageSquareText, Plus, Trash2 } from "lucide-react";
+import { MessageSquareText, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 interface AssistantThreadListProps {
+  assistantName: string;
   threads: AssistantThread[];
   activeThreadId: string | null;
   busy: boolean;
   onSelect: (threadId: string) => void;
   onNew: () => void;
+  onEditIdentity: () => void;
   onDelete: (threadId: string) => Promise<void>;
   onDeleteAll: () => Promise<void>;
 }
@@ -20,11 +22,13 @@ function relativeDate(value: string): string {
 }
 
 export function AssistantThreadList({
+  assistantName,
   threads,
   activeThreadId,
   busy,
   onSelect,
   onNew,
+  onEditIdentity,
   onDelete,
   onDeleteAll,
 }: AssistantThreadListProps) {
@@ -36,11 +40,21 @@ export function AssistantThreadList({
       <div className="assistant-history-heading">
         <div>
           <p className="eyebrow">History</p>
-          <h2>Your chats</h2>
+          <h2 title={`Chats with ${assistantName}`}>Chats with {assistantName}</h2>
         </div>
-        <button className="icon-button" type="button" onClick={onNew} aria-label="Start a new chat">
-          <Plus size={18} />
-        </button>
+        <div className="assistant-history-actions">
+          <button
+            className="assistant-history-edit"
+            type="button"
+            onClick={onEditIdentity}
+            aria-label="Edit assistant names"
+          >
+            <Pencil size={13} aria-hidden="true" /> Edit
+          </button>
+          <button className="icon-button" type="button" onClick={onNew} aria-label="Start a new chat">
+            <Plus size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="assistant-thread-list">

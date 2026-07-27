@@ -12,6 +12,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { AssistantComposer } from "../components/assistant/AssistantComposer";
 import { AssistantConsent } from "../components/assistant/AssistantConsent";
 import { AssistantConversation } from "../components/assistant/AssistantConversation";
+import { AssistantIdentityDialog } from "../components/assistant/AssistantIdentityDialog";
 import { AssistantThreadList } from "../components/assistant/AssistantThreadList";
 import { AppShell } from "../components/layout/AppShell";
 import {
@@ -23,6 +24,7 @@ import {
   getAssistantThreads,
   grantAssistantConsent,
   sendAssistantMessage,
+  updateAssistantIdentity,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
@@ -39,6 +41,7 @@ export function AssistantPage() {
   const [pendingMessage, setPendingMessage] = useState<string>();
   const [sendError, setSendError] = useState<string>();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [editingIdentity, setEditingIdentity] = useState(false);
 
   const preferences = useQuery({
     queryKey: queryKeys.assistantPreferences(workspace),
@@ -49,14 +52,23 @@ export function AssistantPage() {
   const threads = useQuery({
     queryKey: queryKeys.assistantThreads(workspace),
     queryFn: () => getAssistantThreads(workspace),
-    enabled: Boolean(preferences.data?.consentedAt),
+    enabled: Boolean(
+      preferences.data?.consentedAt &&
+        preferences.data.assistantName &&
+        preferences.data.userPreferredName,
+    ),
     staleTime: Infinity,
     gcTime: Infinity,
   });
   const messages = useQuery({
     queryKey: queryKeys.assistantMessages(workspace, activeThreadId ?? "new"),
     queryFn: () => getAssistantMessages(workspace, activeThreadId!),
-    enabled: Boolean(activeThreadId && preferences.data?.consentedAt),
+    enabled: Boolean(
+      activeThreadId &&
+        preferences.data?.consentedAt &&
+        preferences.data.assistantName &&
+        preferences.data.userPreferredName,
+    ),
     staleTime: Infinity,
     gcTime: Infinity,
   });
@@ -65,6 +77,14 @@ export function AssistantPage() {
     mutationFn: () => grantAssistantConsent(workspace),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.assistantPreferences(workspace), data);
+    },
+  });
+  const identityMutation = useMutation({
+    mutationFn: (identity: { assistantName: string; userPreferredName: string }) =>
+      updateAssistantIdentity(workspace, identity),
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.assistantPreferences(workspace), data);
+      setEditingIdentity(false);
     },
   });
 
@@ -223,6 +243,11 @@ export function AssistantPage() {
     );
   }
 
+  const identityRequired =
+    !preferences.data?.assistantName || !preferences.data?.userPreferredName;
+  const assistantName = preferences.data?.assistantName ?? "Your assistant";
+  const profileDisplayName =
+    typeof user?.user_metadata?.display_name === "string" ? user.user_metadata.display_name : undefined;
   const busy = sendMutation.isPending || deleteMutation.isPending || deleteAllMutation.isPending;
 
   return (
@@ -252,6 +277,7 @@ export function AssistantPage() {
 
         <div className={`assistant-workspace ${historyOpen ? "history-open" : ""}`}>
           <AssistantThreadList
+            assistantName={assistantName}
             threads={threads.data?.items ?? []}
             activeThreadId={activeThreadId}
             busy={busy}
@@ -260,6 +286,7 @@ export function AssistantPage() {
               setHistoryOpen(false);
             }}
             onNew={startNew}
+            onEditIdentity={() => setEditingIdentity(true)}
             onDelete={(threadId) => deleteMutation.mutateAsync(threadId)}
             onDeleteAll={() => deleteAllMutation.mutateAsync()}
           />
@@ -279,6 +306,7 @@ export function AssistantPage() {
               </div>
             ) : (
               <AssistantConversation
+                assistantName={assistantName}
                 messages={messages.data?.items ?? []}
                 pendingMessage={pendingMessage}
                 loading={sendMutation.isPending || (Boolean(activeThreadId) && messages.isLoading)}
@@ -298,6 +326,18 @@ export function AssistantPage() {
           </section>
         </div>
       </div>
+      {(identityRequired || editingIdentity) && (
+        <AssistantIdentityDialog
+          required={identityRequired}
+          assistantName={preferences.data?.assistantName}
+          userPreferredName={preferences.data?.userPreferredName}
+          profileDisplayName={profileDisplayName}
+          busy={identityMutation.isPending}
+          serverError={identityMutation.error?.message}
+          onSubmit={(identity) => identityMutation.mutate(identity)}
+          onClose={() => setEditingIdentity(false)}
+        />
+      )}
     </AppShell>
   );
 }

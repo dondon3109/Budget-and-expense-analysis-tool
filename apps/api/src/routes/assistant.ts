@@ -38,11 +38,13 @@ export function createAssistantRoutes(service: AssistantService) {
       throw new HttpError(
         400,
         "invalid_request",
-        "Accept the assistant data-sharing notice to continue.",
+        "Provide valid assistant preferences.",
         parsed.error.flatten(),
       );
     }
-    return context.json(await service.grantConsent(context.env, context.get("tenant").tenantId));
+    return context.json(
+      await service.updatePreferences(context.env, context.get("tenant").tenantId, parsed.data),
+    );
   });
 
   routes.get("/threads", async (context) => {

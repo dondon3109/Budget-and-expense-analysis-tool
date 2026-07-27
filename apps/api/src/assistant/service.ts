@@ -3,6 +3,7 @@ import type {
   AssistantMessageListQuery,
   AssistantMessagePage,
   AssistantPreferences,
+  AssistantPreferenceUpdate,
   AssistantThreadListQuery,
   AssistantThreadPage,
   AssistantTurnResult,
@@ -16,7 +17,11 @@ import type { AssistantOrchestrator } from "./orchestrator";
 
 export interface AssistantService {
   getPreferences(env: Bindings, tenantId: string): Promise<AssistantPreferences>;
-  grantConsent(env: Bindings, tenantId: string): Promise<AssistantPreferences>;
+  updatePreferences(
+    env: Bindings,
+    tenantId: string,
+    input: AssistantPreferenceUpdate,
+  ): Promise<AssistantPreferences>;
   listThreads(
     env: Bindings,
     tenantId: string,
@@ -103,7 +108,10 @@ export function createAssistantService(
   orchestrator: AssistantOrchestrator,
   reporter: AssistantDiagnosticReporter = defaultDiagnosticReporter,
 ): AssistantService {
-  async function requireConsent(env: Bindings, tenantId: string) {
+  async function requireReadyPreferences(
+    env: Bindings,
+    tenantId: string,
+  ): Promise<AssistantPreferences & { assistantName: string; userPreferredName: string }> {
     const preferences = await repository.getPreferences(env, tenantId);
     if (!preferences.consentedAt) {
       throw new HttpError(
@@ -112,6 +120,15 @@ export function createAssistantService(
         "Review and accept the AI data-sharing notice before sending a message.",
       );
     }
+    const { assistantName, userPreferredName } = preferences;
+    if (!assistantName || !userPreferredName) {
+      throw new HttpError(
+        409,
+        "assistant_identity_required",
+        "Name your assistant and choose how it should address you before sending a message.",
+      );
+    }
+    return { ...preferences, assistantName, userPreferredName };
   }
 
   async function runTurn(
@@ -120,12 +137,21 @@ export function createAssistantService(
     threadId: string,
     input: AssistantMessageInput,
   ): Promise<AssistantTurnResult> {
-    await requireConsent(env, tenantId);
+    const preferences = await requireReadyPreferences(env, tenantId);
     const start = await repository.beginTurn(env, tenantId, threadId, input);
     if (start.duplicate) return start.duplicate;
 
     try {
-      const answer = await orchestrator.answer(env, tenantId, start.history, input.message);
+      const answer = await orchestrator.answer(
+        env,
+        tenantId,
+        start.history,
+        input.message,
+        {
+          assistantName: preferences.assistantName,
+          userPreferredName: preferences.userPreferredName,
+        },
+      );
       return await repository.completeTurn(env, tenantId, start, answer.content, {
         model: answer.model,
         promptTokens: answer.promptTokens,
@@ -141,13 +167,16 @@ export function createAssistantService(
 
   return {
     getPreferences: (env, tenantId) => repository.getPreferences(env, tenantId),
-    grantConsent: (env, tenantId) => repository.grantConsent(env, tenantId),
+    updatePreferences: (env, tenantId, input) =>
+      "consented" in input
+        ? repository.grantConsent(env, tenantId)
+        : repository.setAssistantIdentity(env, tenantId, input),
     listThreads: (env, tenantId, query) => repository.listThreads(env, tenantId, query),
     listMessages: (env, tenantId, threadId, query) =>
       repository.listMessages(env, tenantId, threadId, query),
 
     async createThreadTurn(env, tenantId, input) {
-      await requireConsent(env, tenantId);
+      await requireReadyPreferences(env, tenantId);
       const thread = await repository.createThread(env, tenantId, input.message);
       return runTurn(env, tenantId, thread.id, input);
     },

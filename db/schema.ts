@@ -236,6 +236,8 @@ export const assistantPreferences = sqliteTable("assistant_preferences", {
     .primaryKey()
     .references(() => tenants.id, { onDelete: "cascade" }),
   consentedAt: text("consented_at"),
+  assistantName: text("assistant_name"),
+  userPreferredName: text("user_preferred_name"),
   retentionDays: integer("retention_days").notNull().default(90),
   ...timestamps,
 });

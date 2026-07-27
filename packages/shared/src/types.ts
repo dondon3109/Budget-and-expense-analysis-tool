@@ -275,6 +275,8 @@ export type AssistantMessageStatus = "pending" | "completed" | "failed";
 export interface AssistantPreferences {
   consentedAt: string | null;
   retentionDays: number;
+  assistantName: string | null;
+  userPreferredName: string | null;
 }
 
 export interface AssistantThread {

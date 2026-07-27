@@ -78,7 +78,10 @@ describe("assistant orchestration", () => {
     const reader = createReader();
     const orchestrator = createAssistantOrchestrator(provider, reader);
 
-    const answer = await orchestrator.answer(env, "tenant-secret", [], "How much did I spend?");
+    const answer = await orchestrator.answer(env, "tenant-secret", [], "How much did I spend?", {
+        assistantName: "Aster",
+        userPreferredName: "Sam",
+      });
 
     expect(answer.content).toContain("₱12,450");
     expect(reader.getPeriodSummary).toHaveBeenCalledWith(
@@ -88,6 +91,8 @@ describe("assistant orchestration", () => {
     expect(JSON.stringify(requests)).not.toContain("tenant-secret");
     expect(requests[0]?.messages[0]?.role).toBe("system");
     expect(requests[0]?.messages[0]?.content).toContain("Return plain text only");
+    expect(requests[0]?.messages[0]?.content).toContain('"assistantName":"Aster"');
+    expect(requests[0]?.messages[0]?.content).toContain('"userPreferredName":"Sam"');
     expect(requests[1]?.messages).toContainEqual(
       expect.objectContaining({ role: "tool", tool_call_id: "call-1" }),
     );
@@ -117,7 +122,10 @@ describe("assistant orchestration", () => {
     const orchestrator = createAssistantOrchestrator(provider, createReader());
 
     await expect(
-      orchestrator.answer(env, "tenant-1", [], "How much did I spend?"),
+      orchestrator.answer(env, "tenant-1", [], "How much did I spend?", {
+        assistantName: "Aster",
+        userPreferredName: "Sam",
+      }),
     ).resolves.toMatchObject({ content: "You spent ₱12,450 this month." });
     expect(requests).toHaveLength(2);
     const retryMessage = requests[1]?.messages.at(-1);

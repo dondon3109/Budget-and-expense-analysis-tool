@@ -10,6 +10,7 @@ const QUICK_PROMPTS = [
 ];
 
 interface AssistantConversationProps {
+  assistantName: string;
   messages: AssistantMessage[];
   pendingMessage?: string;
   loading: boolean;
@@ -24,6 +25,7 @@ function messageTime(value: string): string {
 }
 
 export function AssistantConversation({
+  assistantName,
   messages,
   pendingMessage,
   loading,
@@ -66,7 +68,7 @@ export function AssistantConversation({
           </span>
           <div>
             <div className="assistant-message-meta">
-              <strong>{message.role === "assistant" ? "Zoption Assistant" : "You"}</strong>
+              <strong>{message.role === "assistant" ? assistantName : "You"}</strong>
               <time dateTime={message.createdAt}>{messageTime(message.createdAt)}</time>
             </div>
             <p>{message.content}</p>
@@ -95,7 +97,7 @@ export function AssistantConversation({
           </span>
           <div>
             <div className="assistant-message-meta">
-              <strong>Zoption Assistant</strong>
+              <strong>{assistantName}</strong>
             </div>
             <p>
               <span className="assistant-thinking-dots" aria-hidden="true">

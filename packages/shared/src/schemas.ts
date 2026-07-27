@@ -59,11 +59,47 @@ export const assistantMessageInputSchema = z
 
 export type AssistantMessageInput = z.infer<typeof assistantMessageInputSchema>;
 
-export const assistantPreferenceUpdateSchema = z
-  .object({
-    consented: z.literal(true),
-  })
-  .strict();
+function hasAssistantIdentityControlCharacter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0)!;
+    return (
+      codePoint <= 0x1f ||
+      (codePoint >= 0x7f && codePoint <= 0x9f) ||
+      (codePoint >= 0x200b && codePoint <= 0x200f) ||
+      (codePoint >= 0x202a && codePoint <= 0x202e) ||
+      codePoint === 0x2060 ||
+      (codePoint >= 0x2066 && codePoint <= 0x2069)
+    );
+  });
+}
+
+export function normalizeAssistantIdentityName(value: string): string {
+  return value.normalize("NFC").replace(/\s+/gu, " ").trim();
+}
+
+export const assistantIdentityNameSchema = z
+  .string()
+  .max(240, "Keep names to 80 characters or fewer.")
+  .refine(
+    (value) => !hasAssistantIdentityControlCharacter(value),
+    "Names cannot contain control characters or line breaks.",
+  )
+  .transform(normalizeAssistantIdentityName)
+  .pipe(z.string().min(1, "Enter a name.").max(80, "Keep names to 80 characters or fewer."));
+
+export const assistantPreferenceUpdateSchema = z.union([
+  z
+    .object({
+      consented: z.literal(true),
+    })
+    .strict(),
+  z
+    .object({
+      assistantName: assistantIdentityNameSchema,
+      userPreferredName: assistantIdentityNameSchema,
+    })
+    .strict(),
+]);
 
 export type AssistantPreferenceUpdate = z.infer<typeof assistantPreferenceUpdateSchema>;
 
