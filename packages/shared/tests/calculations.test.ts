@@ -14,43 +14,37 @@ const baseTransaction: Omit<TransactionRecord, "id" | "kind" | "amountMinor"> = 
 };
 
 describe("account balance calculations", () => {
-  it("treats credit balances as debt and excludes unknown snapshots", () => {
+  it("sums transaction-derived account balances including removed accounts", () => {
     const accounts: AccountRecord[] = [
       {
-        id: "checking",
-        name: "Everyday",
-        type: "checking",
+        id: "cash",
+        name: "Cash",
+        type: "cash",
         currency: "PHP",
         balanceMinor: 250_000,
-        balanceAsOf: "2026-07-27",
         archived: false,
+        system: true,
       },
       {
-        id: "credit",
-        name: "Card",
-        type: "credit",
+        id: "bank",
+        name: "Bank",
+        type: "checking",
         currency: "PHP",
         balanceMinor: 75_000,
-        balanceAsOf: "2026-07-27",
         archived: false,
+        system: true,
       },
       {
-        id: "savings",
-        name: "Savings",
-        type: "savings",
+        id: "old",
+        name: "Old wallet",
+        type: "other",
         currency: "PHP",
-        balanceMinor: null,
-        balanceAsOf: null,
-        archived: false,
+        balanceMinor: -5_000,
+        archived: true,
+        system: false,
       },
     ];
-
-    expect(summarizeAccountBalances(accounts)).toMatchObject({
-      assetsMinor: 250_000,
-      creditDebtMinor: 75_000,
-      netMinor: 175_000,
-      missingBalanceCount: 1,
-    });
+    expect(summarizeAccountBalances(accounts)).toMatchObject({ overallBalanceMinor: 320_000 });
   });
 });
 
@@ -70,12 +64,10 @@ describe("dashboard calculations", () => {
         limitMinor: 60_000,
       },
     ];
-
     const result = buildDashboardSummary(transactions, budgets, {
       from: "2026-07-01",
       to: "2026-07-31",
     });
-
     expect(result.metrics.moneyInMinor).toBe(100_000);
     expect(result.metrics.moneyOutMinor).toBe(70_000);
     expect(result.metrics.netMinor).toBe(30_000);
@@ -86,10 +78,7 @@ describe("dashboard calculations", () => {
   });
 
   it("returns stable empty-state totals", () => {
-    const result = buildDashboardSummary([], [], {
-      from: "2026-07-01",
-      to: "2026-07-31",
-    });
+    const result = buildDashboardSummary([], [], { from: "2026-07-01", to: "2026-07-31" });
     expect(result.metrics.budgetUsedPercent).toBe(0);
     expect(result.spendingByCategory).toEqual([]);
     expect(result.monthlyTrend).toEqual([]);
@@ -135,12 +124,10 @@ describe("dashboard calculations", () => {
         amountMinor: -10_000,
       },
     ];
-
     const result = buildDashboardSummary(transactions, [], {
       from: "2026-07-01",
       to: "2026-07-31",
     });
-
     expect(result.insights.recurringExpenses).toEqual([
       {
         description: "Rent",

@@ -77,7 +77,7 @@ describe("tenant bootstrap", () => {
     });
 
     expect(batches).toHaveLength(1);
-    expect(batches[0]).toHaveLength(13);
+    expect(batches[0]).toHaveLength(15);
 
     function findStatement(fragment: string): CapturedStatement {
       const match = captured.find((statement) => statement.sql.includes(fragment));
@@ -96,6 +96,9 @@ describe("tenant bootstrap", () => {
     expect(findStatement("INSERT OR IGNORE INTO accounts").values).toEqual([
       "user:user-1:account:default",
       "user:user-1",
+      "Cash",
+      "cash",
+      "account:cash",
     ]);
     expect(
       captured.find((statement) => statement.values.includes("user:user-1:category:food"))?.values,

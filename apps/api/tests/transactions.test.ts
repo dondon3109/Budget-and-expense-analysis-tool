@@ -15,8 +15,8 @@ function createCapturingDatabase(statements: CapturedStatement[]): D1Database {
         bind(...bindings: unknown[]) {
           statements.push({ query, bindings });
           return {
-            async raw() {
-              return query.toLowerCase().includes("count(") ? [[0]] : [];
+            async all() {
+              return { results: [] };
             },
           };
         },
@@ -26,10 +26,9 @@ function createCapturingDatabase(statements: CapturedStatement[]): D1Database {
 }
 
 describe("transactionRepository search", () => {
-  it("searches transaction text and tenant-scoped related names with escaped literals", async () => {
+  it("searches both sides of linked transfers with escaped literals", async () => {
     const statements: CapturedStatement[] = [];
     const env: Bindings = { DB: createCapturingDatabase(statements) };
-
     await transactionRepository.list(env, "tenant-1", {
       page: 1,
       pageSize: 10,
@@ -37,19 +36,10 @@ describe("transactionRepository search", () => {
       sortDirection: "desc",
       search: "50%_off\\deal",
     });
-
-    expect(statements).toHaveLength(2);
-    for (const statement of statements) {
-      expect(statement.query).toContain('"transactions"."description" LIKE ? ESCAPE');
-      expect(statement.query).toContain('COALESCE("transactions"."notes", \'\') LIKE ? ESCAPE');
-      expect(statement.query).toContain('FROM "accounts"');
-      expect(statement.query).toContain('"accounts"."tenant_id" = ?');
-      expect(statement.query).toContain('FROM "categories"');
-      expect(statement.query).toContain('"categories"."tenant_id" = ?');
-      expect(statement.bindings).toContain("%50\\%\\_off\\\\deal%");
-      expect(
-        statement.bindings.filter((value) => value === "tenant-1").length,
-      ).toBeGreaterThanOrEqual(3);
-    }
+    expect(statements).toHaveLength(1);
+    expect(statements[0]?.query).toContain("LEFT JOIN transactions peer");
+    expect(statements[0]?.query).toContain("COALESCE(destination.name, '') LIKE ? ESCAPE");
+    expect(statements[0]?.query).toContain("t.tenant_id = ?");
+    expect(statements[0]?.bindings).toContain("%50\\%\\_off\\\\deal%");
   });
 });

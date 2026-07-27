@@ -1,5 +1,6 @@
 import {
   buildDashboardSummary,
+  summarizeAccountBalances,
   type DashboardSummary,
   type TransactionRecord,
 } from "@zoption/shared";
@@ -7,6 +8,7 @@ import { and, eq, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { accounts, budgets, categories, transactions } from "../../../../db/schema";
+import { accountRepository } from "./accounts";
 import type { Bindings } from "../types";
 
 function sixMonthWindowStart(to: string): string {
@@ -24,50 +26,52 @@ export async function loadDashboard(
   const trendFrom = sixMonthWindowStart(period.to);
   const queryFrom = period.from < trendFrom ? period.from : trendFrom;
   const budgetMonth = `${period.from.slice(0, 7)}-01`;
-  const transactionRows = await db
-    .select({
-      id: transactions.id,
-      date: transactions.date,
-      description: transactions.description,
-      amountMinor: transactions.amountMinor,
-      currency: transactions.currency,
-      kind: transactions.kind,
-      categoryId: categories.id,
-      categoryName: categories.name,
-      categoryColor: categories.color,
-      accountName: accounts.name,
-    })
-    .from(transactions)
-    .innerJoin(
-      categories,
-      and(eq(transactions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
-    )
-    .leftJoin(
-      accounts,
-      and(eq(transactions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
-    )
-    .where(
-      and(
-        eq(transactions.tenantId, tenantId),
-        gte(transactions.date, queryFrom),
-        lte(transactions.date, period.to),
+  const [transactionRows, budgetRows, accountRows] = await Promise.all([
+    db
+      .select({
+        id: transactions.id,
+        date: transactions.date,
+        description: transactions.description,
+        amountMinor: transactions.amountMinor,
+        currency: transactions.currency,
+        kind: transactions.kind,
+        categoryId: categories.id,
+        categoryName: categories.name,
+        categoryColor: categories.color,
+        accountName: accounts.name,
+      })
+      .from(transactions)
+      .innerJoin(
+        categories,
+        and(eq(transactions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+      )
+      .leftJoin(
+        accounts,
+        and(eq(transactions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
+      )
+      .where(
+        and(
+          eq(transactions.tenantId, tenantId),
+          gte(transactions.date, queryFrom),
+          lte(transactions.date, period.to),
+        ),
       ),
-    );
-
-  const budgetRows = await db
-    .select({
-      categoryId: categories.id,
-      categoryName: categories.name,
-      categoryColor: categories.color,
-      month: budgets.month,
-      limitMinor: budgets.limitMinor,
-    })
-    .from(budgets)
-    .innerJoin(
-      categories,
-      and(eq(budgets.categoryId, categories.id), eq(categories.tenantId, tenantId)),
-    )
-    .where(and(eq(budgets.tenantId, tenantId), eq(budgets.month, budgetMonth)));
+    db
+      .select({
+        categoryId: categories.id,
+        categoryName: categories.name,
+        categoryColor: categories.color,
+        month: budgets.month,
+        limitMinor: budgets.limitMinor,
+      })
+      .from(budgets)
+      .innerJoin(
+        categories,
+        and(eq(budgets.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+      )
+      .where(and(eq(budgets.tenantId, tenantId), eq(budgets.month, budgetMonth))),
+    accountRepository.list(env, tenantId),
+  ]);
 
   const normalizedTransactions: TransactionRecord[] = transactionRows.map((row) => ({
     ...row,
@@ -75,5 +79,10 @@ export async function loadDashboard(
     accountName: row.accountName ?? "Unassigned",
   }));
 
-  return buildDashboardSummary(normalizedTransactions, budgetRows, period);
+  return buildDashboardSummary(
+    normalizedTransactions,
+    budgetRows,
+    period,
+    summarizeAccountBalances(accountRows),
+  );
 }

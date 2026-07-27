@@ -41,12 +41,14 @@ export const accounts = sqliteTable(
     name: text("name").notNull(),
     type: text("type", { enum: ["cash", "checking", "savings", "credit", "other"] }).notNull(),
     currency: text("currency").notNull().default("PHP"),
-    balanceMinor: integer("balance_minor"),
-    balanceAsOf: text("balance_as_of"),
+    systemKey: text("system_key"),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
     ...timestamps,
   },
-  (table) => [index("accounts_tenant_idx").on(table.tenantId)],
+  (table) => [
+    index("accounts_tenant_idx").on(table.tenantId),
+    uniqueIndex("accounts_tenant_system_key_unique").on(table.tenantId, table.systemKey),
+  ],
 );
 
 export const categories = sqliteTable(
@@ -86,6 +88,7 @@ export const transactions = sqliteTable(
     amountMinor: integer("amount_minor").notNull(),
     currency: text("currency").notNull().default("PHP"),
     kind: text("kind", { enum: ["income", "expense", "transfer"] }).notNull(),
+    transferGroupId: text("transfer_group_id"),
     importFingerprint: text("import_fingerprint"),
     notes: text("notes"),
     ...timestamps,
@@ -94,6 +97,7 @@ export const transactions = sqliteTable(
     index("transactions_tenant_date_idx").on(table.tenantId, table.date),
     index("transactions_tenant_category_idx").on(table.tenantId, table.categoryId),
     index("transactions_tenant_account_idx").on(table.tenantId, table.accountId),
+    index("transactions_tenant_transfer_group_idx").on(table.tenantId, table.transferGroupId),
     uniqueIndex("transactions_tenant_fingerprint_unique").on(
       table.tenantId,
       table.importFingerprint,

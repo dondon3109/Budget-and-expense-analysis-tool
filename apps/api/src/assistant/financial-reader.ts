@@ -46,11 +46,11 @@ type DashboardLoader = (
 ) => Promise<DashboardSummary>;
 
 function differenceInMonths(from: string, to: string): number {
-  const fromYear = Number(from.slice(0, 4));
-  const fromMonth = Number(from.slice(5, 7));
-  const toYear = Number(to.slice(0, 4));
-  const toMonth = Number(to.slice(5, 7));
-  return (toYear - fromYear) * 12 + toMonth - fromMonth;
+  return (
+    (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 +
+    Number(to.slice(5, 7)) -
+    Number(from.slice(5, 7))
+  );
 }
 
 function compactDescription(value: string): string {
@@ -62,7 +62,6 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-
 function formatMoney(amountMinor: number): string {
   return `PHP ${moneyFormatter.format(amountMinor / 100)}`;
 }
@@ -87,25 +86,19 @@ export function createFinancialReader(
       const summary = summarizeAccountBalances(await accounts.list(context.env, context.tenantId));
       return {
         currency: summary.currency,
-        assets: formatMoney(summary.assetsMinor),
-        creditDebt: formatMoney(summary.creditDebtMinor),
-        netPosition: formatMoney(summary.netMinor),
-        missingBalanceCount: summary.missingBalanceCount,
+        overallBalance: formatMoney(summary.overallBalanceMinor),
         items: summary.items.map((item) => ({
           name: item.name,
           type: item.type,
-          balance: item.balanceMinor === null ? null : formatMoney(item.balanceMinor),
-          balanceAsOf: item.balanceAsOf,
-          netContribution:
-            item.netContributionMinor === null ? null : formatMoney(item.netContributionMinor),
+          balance: formatMoney(item.balanceMinor),
+          removed: item.archived,
         })),
       };
     },
 
     async getPeriodSummary(context, input) {
-      if (differenceInMonths(input.from, input.to) > 24) {
+      if (differenceInMonths(input.from, input.to) > 24)
         throw new Error("Choose a date range of 24 months or less.");
-      }
       const summary = await dashboardLoader(context.env, context.tenantId, input);
       return {
         period: summary.period,
@@ -172,10 +165,8 @@ export function createFinancialReader(
               category.name.toLocaleLowerCase("en") === input.categoryName!.toLocaleLowerCase("en"),
           )?.id
         : undefined;
-      if ((input.accountName && !accountId) || (input.categoryName && !categoryId)) {
+      if ((input.accountName && !accountId) || (input.categoryName && !categoryId))
         return { items: [], page: input.page, total: 0, totalPages: 1, filterMatched: false };
-      }
-
       const page = await transactions.list(context.env, context.tenantId, {
         page: input.page,
         pageSize: 25,
@@ -196,7 +187,10 @@ export function createFinancialReader(
           currency: item.currency,
           kind: item.kind,
           categoryName: item.categoryName,
-          accountName: item.accountName,
+          accountName:
+            item.kind === "transfer" && item.fromAccountName && item.toAccountName
+              ? `${item.fromAccountName} → ${item.toAccountName}`
+              : item.accountName,
         })),
         page: page.page,
         total: page.total,

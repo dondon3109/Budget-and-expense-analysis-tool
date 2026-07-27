@@ -16,7 +16,18 @@ function formatMinor(amountMinor: number): string {
 
 export function buildTransactionCsv(rows: readonly TransactionListItem[]): string {
   const output = [
-    ["Date", "Description", "Amount", "Currency", "Type", "Category", "Account", "Notes"],
+    [
+      "Date",
+      "Description",
+      "Amount",
+      "Currency",
+      "Type",
+      "Category",
+      "Account",
+      "From account",
+      "To account",
+      "Notes",
+    ],
     ...rows.map((row) => [
       row.date,
       safeText(row.description),
@@ -24,7 +35,13 @@ export function buildTransactionCsv(rows: readonly TransactionListItem[]): strin
       row.currency,
       row.kind,
       safeText(row.categoryName),
-      safeText(row.accountName),
+      safeText(
+        row.kind === "transfer" && row.fromAccountName && row.toAccountName
+          ? `${row.fromAccountName} → ${row.toAccountName}`
+          : row.accountName,
+      ),
+      safeText(row.fromAccountName ?? ""),
+      safeText(row.toAccountName ?? ""),
       safeText(row.notes ?? ""),
     ]),
   ];

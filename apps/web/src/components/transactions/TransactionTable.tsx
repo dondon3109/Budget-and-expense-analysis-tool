@@ -71,7 +71,9 @@ export function TransactionTable({
                 <div className="transaction-description">
                   <strong>{item.description}</strong>
                   <span>
-                    {item.accountName}
+                    {item.kind === "transfer" && item.fromAccountName && item.toAccountName
+                      ? `${item.fromAccountName} → ${item.toAccountName}`
+                      : item.accountName}
                     {item.notes ? ` · ${item.notes}` : ""}
                   </span>
                 </div>
@@ -85,9 +87,9 @@ export function TransactionTable({
               <td data-label="Type">
                 <span className={`kind-badge ${item.kind}`}>
                   {item.kind === "income"
-                    ? "Money in"
+                    ? "Income"
                     : item.kind === "expense"
-                      ? "Money out"
+                      ? "Expenses"
                       : "Transfer"}
                 </span>
               </td>

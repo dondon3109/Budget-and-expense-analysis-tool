@@ -1,6 +1,7 @@
 import type {
-  AccountBalanceUpdate,
+  AccountInput,
   AccountRecord,
+  AccountUpdate,
   AssistantMessageInput,
   AssistantMessagePage,
   AssistantPreferences,
@@ -254,14 +255,28 @@ export async function getAccounts(workspace: AuthenticatedWorkspace): Promise<Ac
   return result.items;
 }
 
-export function setAccountBalance(
+export function createAccount(
   workspace: AuthenticatedWorkspace,
-  args: { id: string; input: AccountBalanceUpdate },
+  input: AccountInput,
 ): Promise<AccountRecord> {
-  return requestJson(workspace, `/api/app/accounts/${args.id}/balance`, {
-    method: "PUT",
+  return requestJson(workspace, "/api/app/accounts", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateAccount(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; input: AccountUpdate },
+): Promise<AccountRecord> {
+  return requestJson(workspace, `/api/app/accounts/${args.id}`, {
+    method: "PATCH",
     body: JSON.stringify(args.input),
   });
+}
+
+export function deleteAccount(workspace: AuthenticatedWorkspace, id: string): Promise<void> {
+  return requestJson(workspace, `/api/app/accounts/${id}`, { method: "DELETE" });
 }
 
 export function getAssistantPreferences(

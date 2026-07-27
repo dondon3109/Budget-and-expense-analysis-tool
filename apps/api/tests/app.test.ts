@@ -452,6 +452,7 @@ describe("API foundation", () => {
         currency: "PHP",
         kind: "expense",
         categoryId: "food",
+        accountId: "account-1",
       }),
     });
     expect(response.status).toBe(201);

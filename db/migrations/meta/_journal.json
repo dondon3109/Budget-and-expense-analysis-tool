@@ -71,6 +71,13 @@
       "when": 1785121710066,
       "tag": "0009_sticky_arachne",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1785221294000,
+      "tag": "0010_account_ledger",
+      "breakpoints": true
     }
   ]
 }

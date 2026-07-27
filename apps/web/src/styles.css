@@ -2205,6 +2205,7 @@ textarea:focus-visible {
 
 /* Surface-specific polish keeps the shared component language intact. */
 .dashboard-page .overview-stat-bar {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-radius: 18px;
   box-shadow: 0 14px 34px var(--shadow);
 }
@@ -5184,6 +5185,17 @@ button:disabled {
     padding: 20px 17px;
     border-radius: 16px;
   }
+  .dashboard-balance {
+    margin-top: 22px;
+    border-radius: 15px;
+  }
+  .dashboard-balance-total,
+  .dashboard-account-breakdown {
+    padding: 20px;
+  }
+  .dashboard-balance-total > strong {
+    margin-top: 22px;
+  }
   .dashboard-header {
     align-items: flex-start;
     flex-direction: column;
@@ -6026,166 +6038,279 @@ button:disabled {
   }
 }
 
-/* Account balance snapshots */
-.accounts-page,
-.assistant-page {
-  width: min(1180px, calc(100% - 64px));
-  margin: 0 auto;
-  padding: 54px 0 64px;
-}
-.balance-explanation {
-  margin-top: 24px;
-  padding: 15px 17px;
-  display: flex;
-  align-items: flex-start;
-  gap: 11px;
-  color: var(--muted);
-  border: 1px solid color-mix(in srgb, var(--action) 24%, var(--line));
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--action) 5%, var(--paper));
-}
-.balance-explanation svg {
-  flex: 0 0 auto;
-  color: var(--action);
-}
-.balance-explanation p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-}
-.account-balance-grid {
-  margin-top: 20px;
+/* Account balances */
+.dashboard-balance {
+  margin-top: 28px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-.account-balance-card {
-  padding: 21px;
+  grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.18fr);
+  overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--paper);
-  box-shadow: 0 8px 22px var(--shadow);
+  box-shadow: 0 14px 34px var(--shadow);
 }
-.account-balance-card > header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+.dashboard-balance-total {
+  min-width: 0;
+  padding: 25px 28px;
+  color: var(--paper);
+  background: var(--ink);
+}
+.dashboard-balance-heading {
+  display: flex;
   align-items: center;
   gap: 11px;
 }
-.account-balance-icon {
-  width: 38px;
-  height: 38px;
+.dashboard-balance-icon {
+  width: 36px;
+  height: 36px;
   display: grid;
+  flex: 0 0 auto;
   place-items: center;
-  color: var(--action);
-  border: 1px solid color-mix(in srgb, var(--action) 25%, var(--line));
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--action) 7%, var(--surface));
-}
-.account-balance-card h2 {
-  margin: 0;
   color: var(--ink);
+  border-radius: 10px;
+  background: var(--action);
+}
+.dashboard-balance-heading p,
+.dashboard-balance-heading h2,
+.dashboard-balance-total > span,
+.dashboard-account-breakdown-heading {
+  margin: 0;
+}
+.dashboard-balance-heading p {
+  color: color-mix(in srgb, var(--paper) 68%, var(--ink));
+  font-size: 11px;
+  font-weight: 720;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dashboard-balance-heading h2 {
+  margin-top: 2px;
   font-family: Georgia, serif;
-  font-size: 18px;
+  font-size: 20px;
+  line-height: 1.1;
 }
-.account-balance-card header p {
-  margin: 3px 0 0;
-  color: var(--subtle);
-  font-size: 10px;
+.dashboard-balance-total > strong {
+  display: block;
+  margin: 26px 0 7px;
+  overflow-wrap: anywhere;
+  font-size: clamp(30px, 3.1vw, 43px);
+  font-weight: 760;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
-.balance-status {
-  padding: 6px 8px;
-  border-radius: 999px;
-  font-size: 9px;
-  font-weight: 800;
-  white-space: nowrap;
+.dashboard-balance-total > span {
+  color: color-mix(in srgb, var(--paper) 64%, var(--ink));
+  font-size: 11px;
+  line-height: 1.45;
 }
-.balance-status.recorded {
-  color: var(--success);
-  background: var(--success-soft);
+.dashboard-account-breakdown {
+  min-width: 0;
+  padding: 22px 26px;
 }
-.balance-status.missing {
-  color: var(--muted);
-  background: var(--surface-hover);
-}
-.balance-as-of {
-  margin: 14px 0 0;
+.dashboard-account-breakdown-heading {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 10px;
-}
-.account-balance-card form {
-  margin-top: 17px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.65fr);
+  justify-content: space-between;
   gap: 12px;
+  color: var(--subtle);
+  font-size: 11px;
+  font-weight: 720;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
-.account-balance-card form > label {
-  display: grid;
-  gap: 6px;
-  color: var(--muted);
+.dashboard-account-add {
+  min-height: 30px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--action);
+  border: 0;
+  border-radius: 7px;
+  background: var(--action-soft);
+  font: inherit;
   font-size: 10px;
   font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  cursor: pointer;
 }
-.account-balance-card input {
-  width: 100%;
-  height: 42px;
+.dashboard-account-add:hover {
+  color: var(--paper);
+  background: var(--action);
+}
+.dashboard-account-form {
+  margin-top: 14px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr) auto;
+  gap: 10px;
+  align-items: end;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+}
+.dashboard-account-form label {
   min-width: 0;
-  padding: 0 11px;
+  display: grid;
+  gap: 6px;
+}
+.dashboard-account-form label > span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.dashboard-account-form input,
+.dashboard-account-form select {
+  width: 100%;
+  height: 38px;
+  min-width: 0;
+  padding: 0 10px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: var(--surface);
+  border-radius: 8px;
+  background: var(--paper);
   font: inherit;
   font-size: 12px;
 }
-.money-input {
-  height: 42px;
+.dashboard-account-form select {
+  padding-right: 27px;
+}
+.dashboard-account-form .button {
+  min-height: 38px;
+  padding: 0 12px;
+}
+.dashboard-account-form .form-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.dashboard-account-breakdown ul {
+  margin: 13px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dashboard-account-breakdown li {
+  min-width: 0;
+  padding: 12px 0;
   display: flex;
   align-items: center;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: var(--surface);
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid var(--line);
 }
-.money-input > span {
-  padding-left: 11px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
+.dashboard-account-details {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
 }
-.money-input input {
-  height: 40px;
-  border: 0;
-  background: transparent;
-  outline: 0;
-}
-.field-note,
-.account-balance-actions,
-.account-balance-card .form-message {
-  grid-column: 1 / -1;
-}
-.field-note {
-  margin: -2px 0 0;
-  color: var(--subtle);
-  font-size: 9px;
-  line-height: 1.5;
-}
-.account-balance-actions {
+.dashboard-account-meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.account-balance-card .form-message {
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+  color: var(--subtle);
   font-size: 10px;
+  line-height: 1.3;
+  text-transform: capitalize;
+}
+.dashboard-account-meta em {
+  padding: 2px 5px;
+  color: var(--subtle);
+  border-radius: 4px;
+  background: var(--surface-hover);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.dashboard-account-value {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.dashboard-account-actions {
+  display: inline-flex;
+  gap: 2px;
+}
+.dashboard-account-actions button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--subtle);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.dashboard-account-actions button:hover {
+  color: var(--action);
+  background: var(--action-soft);
+}
+.dashboard-account-actions button:last-child:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.dashboard-account-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 680;
+}
+.dashboard-account-name em {
+  padding: 3px 6px;
+  color: var(--action);
+  border-radius: 5px;
+  background: var(--action-soft);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.dashboard-account-value > strong,
+.dashboard-removed-accounts li > strong {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dashboard-removed-accounts {
+  margin-top: 14px;
+  color: var(--subtle);
+  font-size: 11px;
+}
+.dashboard-removed-accounts summary {
+  cursor: pointer;
   font-weight: 700;
 }
-.account-balance-card .form-message.error {
-  color: var(--danger);
+.dashboard-removed-accounts p {
+  margin: 8px 0 0;
+  line-height: 1.45;
 }
-.account-balance-card .form-message.success {
-  color: var(--success);
+.dashboard-removed-accounts ul {
+  margin-top: 9px;
+}
+.dashboard-removed-accounts li {
+  padding: 8px 0;
+  font-size: 12px;
+}
+.dashboard-account-error {
+  margin: 12px 0 0;
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 /* AI Financial Assistant */
@@ -6756,8 +6881,11 @@ button:disabled {
 }
 
 @media (max-width: 980px) {
-  .account-balance-grid {
+  .dashboard-balance {
     grid-template-columns: 1fr;
+  }
+  .dashboard-account-breakdown {
+    padding: 21px 24px;
   }
   .assistant-workspace {
     grid-template-columns: 220px minmax(0, 1fr);
@@ -6765,22 +6893,15 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
-  .accounts-page,
   .assistant-page {
     width: calc(100% - 28px);
     padding: 28px 0 48px;
   }
-  .account-balance-card form {
+  .dashboard-account-form {
     grid-template-columns: 1fr;
   }
-  .account-balance-card form > *,
-  .field-note,
-  .account-balance-actions,
-  .account-balance-card .form-message {
-    grid-column: 1;
-  }
-  .account-balance-actions .button {
-    flex: 1;
+  .dashboard-account-form .button {
+    width: 100%;
   }
   .assistant-page {
     min-height: calc(100vh - 64px);

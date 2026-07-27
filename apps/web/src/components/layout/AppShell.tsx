@@ -2,7 +2,6 @@ import {
   CalendarDays,
   CircleUserRound,
   FileUp,
-  Landmark,
   List,
   LogOut,
   Menu,
@@ -27,7 +26,6 @@ interface AppShellProps {
 const navItems = [
   { label: "Profile", icon: CircleUserRound, to: "/app" },
   { label: "Assistant", icon: Sparkles, to: "/app/assistant" },
-  { label: "Accounts", icon: Landmark, to: "/app/accounts" },
   { label: "Calendar", icon: CalendarDays, to: "/app/calendar" },
   { label: "Transactions", icon: List, to: "/app/transactions" },
   { label: "Import", icon: FileUp, to: "/app/import" },

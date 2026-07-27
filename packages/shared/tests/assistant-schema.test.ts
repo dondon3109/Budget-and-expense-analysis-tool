@@ -1,19 +1,35 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  accountBalanceUpdateSchema,
+  accountInputSchema,
   assistantMessageInputSchema,
   assistantPeriodSummaryToolSchema,
+  transactionInputSchema,
 } from "../src/schemas";
 
-describe("assistant schemas", () => {
-  it("requires balance snapshots to include both amount and date", () => {
+describe("account and assistant schemas", () => {
+  it("validates custom account details", () => {
+    expect(accountInputSchema.safeParse({ name: "My bank", type: "checking" }).success).toBe(true);
+    expect(accountInputSchema.safeParse({ name: "", type: "checking" }).success).toBe(false);
+  });
+
+  it("requires both different accounts for transfers", () => {
+    const base = {
+      date: "2026-07-27",
+      description: "Move savings",
+      amountMinor: 10_000,
+      currency: "PHP",
+      kind: "transfer",
+      categoryId: "transfer",
+    };
     expect(
-      accountBalanceUpdateSchema.safeParse({ balanceMinor: 10_000, balanceAsOf: null }).success,
-    ).toBe(false);
-    expect(
-      accountBalanceUpdateSchema.safeParse({ balanceMinor: null, balanceAsOf: null }).success,
+      transactionInputSchema.safeParse({ ...base, fromAccountId: "cash", toAccountId: "bank" })
+        .success,
     ).toBe(true);
+    expect(
+      transactionInputSchema.safeParse({ ...base, fromAccountId: "cash", toAccountId: "cash" })
+        .success,
+    ).toBe(false);
   });
 
   it("rejects client-controlled assistant context", () => {
@@ -29,10 +45,7 @@ describe("assistant schemas", () => {
 
   it("validates summary ranges before tool execution", () => {
     expect(
-      assistantPeriodSummaryToolSchema.safeParse({
-        from: "2026-08-01",
-        to: "2026-07-01",
-      }).success,
+      assistantPeriodSummaryToolSchema.safeParse({ from: "2026-08-01", to: "2026-07-01" }).success,
     ).toBe(false);
   });
 });

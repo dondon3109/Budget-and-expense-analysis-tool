@@ -17,6 +17,12 @@ export interface TransactionRecord {
 export interface TransactionListItem extends TransactionRecord {
   accountId: string | null;
   notes: string | null;
+  transferGroupId?: string | null;
+  fromAccountId?: string | null;
+  fromAccountName?: string | null;
+  toAccountId?: string | null;
+  toAccountName?: string | null;
+  legacyTransfer?: boolean;
 }
 
 export interface TransactionPage {
@@ -57,25 +63,24 @@ export interface AccountRecord {
   type: AccountType;
   currency: "PHP";
   balanceMinor: number | null;
-  balanceAsOf: string | null;
+  balanceAsOf?: string | null;
   archived: boolean;
+  system?: boolean;
 }
 
 export interface AccountBalanceSummaryItem {
+  id: string;
   name: string;
   type: AccountType;
   currency: "PHP";
-  balanceMinor: number | null;
-  balanceAsOf: string | null;
-  netContributionMinor: number | null;
+  balanceMinor: number;
+  archived: boolean;
+  system: boolean;
 }
 
 export interface AccountBalanceSummary {
   currency: "PHP";
-  assetsMinor: number;
-  creditDebtMinor: number;
-  netMinor: number;
-  missingBalanceCount: number;
+  overallBalanceMinor: number;
   items: AccountBalanceSummaryItem[];
 }
 
@@ -207,6 +212,7 @@ export interface BudgetMonthPlan {
 export interface DashboardSummary {
   period: { from: string; to: string };
   currency: "PHP";
+  accountBalances?: AccountBalanceSummary;
   metrics: {
     moneyInMinor: number;
     moneyOutMinor: number;

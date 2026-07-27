@@ -25,18 +25,21 @@ export const dashboardQuerySchema = z
     path: ["from"],
   });
 
-export const accountBalanceUpdateSchema = z
+export const accountInputSchema = z
   .object({
-    balanceMinor: z.number().int().safe().nullable(),
-    balanceAsOf: isoDateSchema.nullable(),
+    name: z.string().trim().min(1).max(80),
+    type: z.enum(accountTypes),
   })
-  .strict()
-  .refine(
-    (value) => (value.balanceMinor === null) === (value.balanceAsOf === null),
-    "Enter both a balance and an as-of date, or clear both fields.",
-  );
+  .strict();
 
-export type AccountBalanceUpdate = z.infer<typeof accountBalanceUpdateSchema>;
+export type AccountInput = z.infer<typeof accountInputSchema>;
+
+export const accountUpdateSchema = z.object({ name: z.string().trim().min(1).max(80) }).strict();
+
+export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
+
+// Backwards-compatible type export for integrations compiled against the previous API.
+export type AccountBalanceUpdate = { balanceMinor: number | null; balanceAsOf: string | null };
 
 export const assistantMessageInputSchema = z
   .object({
@@ -115,25 +118,54 @@ export const assistantCategoryToolSchema = z
 
 export const accountTypeSchema = z.enum(accountTypes);
 
-export const transactionInputSchema = z.object({
+const transactionBaseSchema = z.object({
   date: isoDateSchema,
   description: z.string().trim().min(1).max(240),
   amountMinor: z
     .number()
     .int()
     .safe()
-    .refine((value) => value !== 0, "Amount cannot be zero."),
+    .refine((value) => value > 0, "Amount must be greater than zero."),
   currency: z.literal("PHP"),
-  kind: z.enum(transactionKinds),
   categoryId: z.string().min(1),
-  accountId: z.string().min(1).optional(),
   notes: z.string().trim().max(500).optional(),
 });
 
+export const transactionInputSchema = z.discriminatedUnion("kind", [
+  transactionBaseSchema.extend({ kind: z.literal("income"), accountId: z.string().min(1) }),
+  transactionBaseSchema.extend({ kind: z.literal("expense"), accountId: z.string().min(1) }),
+  transactionBaseSchema
+    .extend({
+      kind: z.literal("transfer"),
+      fromAccountId: z.string().min(1),
+      toAccountId: z.string().min(1),
+    })
+    .refine((value) => value.fromAccountId !== value.toAccountId, {
+      path: ["toAccountId"],
+      message: "Choose different accounts for a transfer.",
+    }),
+]);
+
 export type TransactionInput = z.infer<typeof transactionInputSchema>;
 
-export const transactionUpdateSchema = transactionInputSchema
-  .partial()
+export const transactionUpdateSchema = z
+  .object({
+    date: isoDateSchema.optional(),
+    description: z.string().trim().min(1).max(240).optional(),
+    amountMinor: z
+      .number()
+      .int()
+      .safe()
+      .refine((value) => value !== 0, "Amount cannot be zero.")
+      .optional(),
+    currency: z.literal("PHP").optional(),
+    kind: z.enum(transactionKinds).optional(),
+    categoryId: z.string().min(1).optional(),
+    accountId: z.string().min(1).optional(),
+    fromAccountId: z.string().min(1).optional(),
+    toAccountId: z.string().min(1).optional(),
+    notes: z.string().trim().max(500).optional(),
+  })
   .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
 
 export type TransactionUpdate = z.infer<typeof transactionUpdateSchema>;

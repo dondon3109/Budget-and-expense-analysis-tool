@@ -168,9 +168,11 @@ describe("assistant financial reader money formatting", () => {
     const transactions = await reader.listTransactions(context, { page: 1 });
 
     expect(balances).toMatchObject({
-      assets: "PHP 1,234.56",
-      creditDebt: "PHP 456.00",
-      netPosition: "PHP 778.56",
+      overallBalance: "PHP 1,690.56",
+      items: [
+        { name: "Savings", balance: "PHP 1,234.56" },
+        { name: "Credit card", balance: "PHP 456.00" },
+      ],
     });
     expect(period).toMatchObject({
       income: "PHP 1,000.00",

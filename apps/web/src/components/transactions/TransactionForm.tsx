@@ -24,8 +24,7 @@ interface TransactionFormProps {
 }
 
 function toAmountText(item?: TransactionListItem): string {
-  if (!item) return "";
-  return (Math.abs(item.amountMinor) / 100).toFixed(2);
+  return item ? (Math.abs(item.amountMinor) / 100).toFixed(2) : "";
 }
 
 export function TransactionForm({
@@ -44,31 +43,32 @@ export function TransactionForm({
   const [amount, setAmount] = useState(toAmountText(item));
   const [categoryId, setCategoryId] = useState(item?.categoryId ?? "");
   const [accountId, setAccountId] = useState(item?.accountId ?? "");
+  const [fromAccountId, setFromAccountId] = useState(item?.fromAccountId ?? item?.accountId ?? "");
+  const [toAccountId, setToAccountId] = useState(item?.toAccountId ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [clientError, setClientError] = useState<string>();
-
+  const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
   const availableCategories = useMemo(
     () => categories.filter((category) => !category.archived && category.kind === kind),
     [categories, kind],
   );
 
   useEffect(() => {
-    if (!availableCategories.some((category) => category.id === categoryId)) {
+    if (!availableCategories.some((category) => category.id === categoryId))
       setCategoryId(availableCategories[0]?.id ?? "");
-    }
   }, [availableCategories, categoryId]);
-
   useEffect(() => {
-    const activeAccounts = accounts.filter((account) => !account.archived);
-    if (!activeAccounts.some((account) => account.id === accountId)) {
+    if (!activeAccounts.some((account) => account.id === accountId))
       setAccountId(activeAccounts[0]?.id ?? "");
-    }
-  }, [accountId, accounts]);
-
+    if (!activeAccounts.some((account) => account.id === fromAccountId))
+      setFromAccountId(activeAccounts[0]?.id ?? "");
+    if (!activeAccounts.some((account) => account.id === toAccountId))
+      setToAccountId(activeAccounts.find((account) => account.id !== fromAccountId)?.id ?? "");
+  }, [accountId, activeAccounts, fromAccountId, toAccountId]);
   useEffect(() => {
-    function handleKeydown(event: KeyboardEvent) {
+    const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !busy) onClose();
-    }
+    };
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
   }, [busy, onClose]);
@@ -83,22 +83,45 @@ export function TransactionForm({
       setClientError(error instanceof Error ? error.message : "Enter a valid amount.");
       return;
     }
-    const parsed = transactionInputSchema.safeParse({
+    const base = {
       date,
       description,
       amountMinor,
-      currency: "PHP",
+      currency: "PHP" as const,
       kind,
       categoryId,
-      accountId,
       notes,
-    });
+    };
+    const parsed = transactionInputSchema.safeParse(
+      kind === "transfer" ? { ...base, fromAccountId, toAccountId } : { ...base, accountId },
+    );
     if (!parsed.success) {
       setClientError(parsed.error.issues[0]?.message ?? "Check the transaction details.");
       return;
     }
     await onSubmit(parsed.data);
   }
+
+  const selector = (
+    label: string,
+    value: string,
+    onChange: (value: string) => void,
+    excludeId?: string,
+  ) => (
+    <label>
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} required>
+        <option value="">Choose an account</option>
+        {activeAccounts
+          .filter((account) => account.id !== excludeId)
+          .map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.name}
+            </option>
+          ))}
+      </select>
+    </label>
+  );
 
   return (
     <div
@@ -137,8 +160,8 @@ export function TransactionForm({
                 value={kind}
                 onChange={(event) => setKind(event.target.value as TransactionKind)}
               >
-                <option value="expense">Money out</option>
-                <option value="income">Money in</option>
+                <option value="expense">Expenses</option>
+                <option value="income">Income</option>
                 <option value="transfer">Transfer</option>
               </select>
             </label>
@@ -163,18 +186,14 @@ export function TransactionForm({
               required
             />
           </label>
-          <label>
-            <span>Account</span>
-            <select value={accountId} onChange={(event) => setAccountId(event.target.value)}>
-              {accounts
-                .filter((account) => !account.archived)
-                .map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-            </select>
-          </label>
+          {kind === "transfer" ? (
+            <div className="form-row split">
+              {selector("From account", fromAccountId, setFromAccountId, toAccountId)}
+              {selector("To account", toAccountId, setToAccountId, fromAccountId)}
+            </div>
+          ) : (
+            selector("Account", accountId, setAccountId)
+          )}
           <div className="form-row split">
             <label>
               <span>Amount (PHP)</span>
@@ -232,7 +251,11 @@ export function TransactionForm({
             <button
               className="button primary"
               type="submit"
-              disabled={busy || !categoryId || !accountId}
+              disabled={
+                busy ||
+                !categoryId ||
+                (kind === "transfer" ? !fromAccountId || !toAccountId : !accountId)
+              }
             >
               {busy ? "Saving…" : item ? "Save changes" : "Add transaction"}
             </button>

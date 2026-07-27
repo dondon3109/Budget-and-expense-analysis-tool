@@ -50,7 +50,6 @@ describe("AppShell", () => {
     ).toEqual([
       "Profile",
       "Assistant",
-      "Accounts",
       "Calendar",
       "Transactions",
       "Import",
@@ -107,7 +106,6 @@ describe("AppShell", () => {
     ).toEqual([
       "Profile",
       "Assistant",
-      "Accounts",
       "Calendar",
       "Transactions",
       "Import",

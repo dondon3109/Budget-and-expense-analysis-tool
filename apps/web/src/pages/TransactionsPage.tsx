@@ -87,6 +87,7 @@ export function TransactionsPage() {
   const refreshProductData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
     ]);
   };

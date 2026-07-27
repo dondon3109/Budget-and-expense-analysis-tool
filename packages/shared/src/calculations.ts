@@ -55,48 +55,19 @@ function buildRecurringExpenses(transactions: readonly TransactionRecord[]) {
 export function summarizeAccountBalances(
   accounts: readonly AccountRecord[],
 ): AccountBalanceSummary {
-  let assetsMinor = 0;
-  let creditDebtMinor = 0;
-  let missingBalanceCount = 0;
-
-  const items = accounts
-    .filter((account) => !account.archived)
-    .map((account) => {
-      if (account.balanceMinor === null) {
-        missingBalanceCount += 1;
-        return {
-          name: account.name,
-          type: account.type,
-          currency: account.currency,
-          balanceMinor: null,
-          balanceAsOf: account.balanceAsOf,
-          netContributionMinor: null,
-        };
-      }
-
-      if (account.type === "credit") {
-        creditDebtMinor += account.balanceMinor;
-      } else {
-        assetsMinor += account.balanceMinor;
-      }
-
-      return {
-        name: account.name,
-        type: account.type,
-        currency: account.currency,
-        balanceMinor: account.balanceMinor,
-        balanceAsOf: account.balanceAsOf,
-        netContributionMinor:
-          account.type === "credit" ? -account.balanceMinor : account.balanceMinor,
-      };
-    });
+  const items = accounts.map((account) => ({
+    id: account.id,
+    name: account.name,
+    type: account.type,
+    currency: account.currency,
+    balanceMinor: account.balanceMinor ?? 0,
+    archived: account.archived,
+    system: Boolean(account.system),
+  }));
 
   return {
     currency: "PHP",
-    assetsMinor,
-    creditDebtMinor,
-    netMinor: assetsMinor - creditDebtMinor,
-    missingBalanceCount,
+    overallBalanceMinor: items.reduce((sum, account) => sum + account.balanceMinor, 0),
     items,
   };
 }
@@ -105,6 +76,11 @@ export function buildDashboardSummary(
   transactions: readonly TransactionRecord[],
   budgets: readonly BudgetRecord[],
   period: { from: string; to: string },
+  accountBalances: AccountBalanceSummary = {
+    currency: "PHP",
+    overallBalanceMinor: 0,
+    items: [],
+  },
 ): DashboardSummary {
   const inPeriod = transactions.filter(
     (transaction) => transaction.date >= period.from && transaction.date <= period.to,
@@ -144,6 +120,7 @@ export function buildDashboardSummary(
   return {
     period,
     currency: "PHP",
+    accountBalances,
     metrics: {
       moneyInMinor,
       moneyOutMinor,

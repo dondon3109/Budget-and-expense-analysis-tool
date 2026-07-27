@@ -1,5 +1,11 @@
 import type { AuthUser, Bindings, TenantContext } from "../types";
 
+const SYSTEM_ACCOUNTS = [
+  { suffix: "default", name: "Cash", type: "cash", systemKey: "account:cash" },
+  { suffix: "bank", name: "Bank", type: "checking", systemKey: "account:bank" },
+  { suffix: "gcash", name: "GCash", type: "other", systemKey: "account:gcash" },
+] as const;
+
 const DEFAULT_CATEGORIES = [
   { key: "salary", name: "Salary", kind: "income", color: "#2a78d6", systemKey: null },
   { key: "housing", name: "Housing", kind: "expense", color: "#008300", systemKey: null },
@@ -94,9 +100,17 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
         user.id,
         tenantId,
       ),
-      env.DB.prepare(
-        "INSERT OR IGNORE INTO accounts (id, tenant_id, name, type) VALUES (?, ?, 'Everyday account', 'checking')",
-      ).bind(defaultAccountId, tenantId),
+      ...SYSTEM_ACCOUNTS.map((account) =>
+        env.DB.prepare(
+          "INSERT OR IGNORE INTO accounts (id, tenant_id, name, type, currency, system_key) VALUES (?, ?, ?, ?, 'PHP', ?)",
+        ).bind(
+          account.suffix === "default" ? defaultAccountId : `${tenantId}:account:${account.suffix}`,
+          tenantId,
+          account.name,
+          account.type,
+          account.systemKey,
+        ),
+      ),
       ...DEFAULT_CATEGORIES.map((category) =>
         env.DB.prepare(
           "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, system_key) VALUES (?, ?, ?, ?, ?, ?)",
