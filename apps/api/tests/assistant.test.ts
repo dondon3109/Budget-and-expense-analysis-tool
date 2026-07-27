@@ -22,11 +22,11 @@ const env = {
 
 function createReader(): FinancialReader {
   return {
-    getAccountBalances: vi.fn(async () => ({ netMinor: 100_000 })),
+    getAccountBalances: vi.fn(async () => ({ netPosition: "PHP 1,000.00" })),
     getPeriodSummary: vi.fn(async (_context: FinancialReadContext, input: PeriodSummaryInput) => ({
       period: input,
       currency: "PHP",
-      expensesMinor: 12_450_00,
+      expenses: "PHP 12,450.00",
     })),
     getBudgetStatus: vi.fn(async () => ({})),
     listTransactions: vi.fn(async () => ({ items: [] })),
@@ -86,9 +86,43 @@ describe("assistant orchestration", () => {
       { from: "2026-07-01", to: "2026-07-27" },
     );
     expect(JSON.stringify(requests)).not.toContain("tenant-secret");
+    expect(requests[0]?.messages[0]?.role).toBe("system");
+    expect(requests[0]?.messages[0]?.content).toContain("Return plain text only");
     expect(requests[1]?.messages).toContainEqual(
       expect.objectContaining({ role: "tool", tool_call_id: "call-1" }),
     );
+  });
+
+  it("retries an empty completion before returning an error", async () => {
+    const requests: ProviderCompletionRequest[] = [];
+    const provider: AssistantProvider = {
+      complete: vi.fn(
+        async (_env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion> => {
+          requests.push(structuredClone(request));
+          if (requests.length === 1) {
+            return {
+              model: "deepseek-v4-flash",
+              finishReason: "stop",
+              message: { role: "assistant", content: null },
+            };
+          }
+          return {
+            model: "deepseek-v4-flash",
+            finishReason: "stop",
+            message: { role: "assistant", content: "You spent ₱12,450 this month." },
+          };
+        },
+      ),
+    };
+    const orchestrator = createAssistantOrchestrator(provider, createReader());
+
+    await expect(
+      orchestrator.answer(env, "tenant-1", [], "How much did I spend?"),
+    ).resolves.toMatchObject({ content: "You spent ₱12,450 this month." });
+    expect(requests).toHaveLength(2);
+    const retryMessage = requests[1]?.messages.at(-1);
+    expect(retryMessage?.role).toBe("user");
+    expect(retryMessage?.content).toContain("Provide the final answer now in plain text");
   });
 
   it("exposes no SQL, secret, or mutation tools", () => {

@@ -58,6 +58,15 @@ function compactDescription(value: string): string {
   return normalized.length <= 120 ? normalized : `${normalized.slice(0, 117).trimEnd()}…`;
 }
 
+const moneyFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function formatMoney(amountMinor: number): string {
+  return `PHP ${moneyFormatter.format(amountMinor / 100)}`;
+}
+
 export function createFinancialReader(
   options: {
     accounts?: AccountRepository;
@@ -75,7 +84,22 @@ export function createFinancialReader(
 
   return {
     async getAccountBalances(context) {
-      return summarizeAccountBalances(await accounts.list(context.env, context.tenantId));
+      const summary = summarizeAccountBalances(await accounts.list(context.env, context.tenantId));
+      return {
+        currency: summary.currency,
+        assets: formatMoney(summary.assetsMinor),
+        creditDebt: formatMoney(summary.creditDebtMinor),
+        netPosition: formatMoney(summary.netMinor),
+        missingBalanceCount: summary.missingBalanceCount,
+        items: summary.items.map((item) => ({
+          name: item.name,
+          type: item.type,
+          balance: item.balanceMinor === null ? null : formatMoney(item.balanceMinor),
+          balanceAsOf: item.balanceAsOf,
+          netContribution:
+            item.netContributionMinor === null ? null : formatMoney(item.netContributionMinor),
+        })),
+      };
     },
 
     async getPeriodSummary(context, input) {
@@ -86,17 +110,27 @@ export function createFinancialReader(
       return {
         period: summary.period,
         currency: summary.currency,
-        incomeMinor: summary.metrics.moneyInMinor,
-        expensesMinor: summary.metrics.moneyOutMinor,
-        netMinor: summary.metrics.netMinor,
+        income: formatMoney(summary.metrics.moneyInMinor),
+        expenses: formatMoney(summary.metrics.moneyOutMinor),
+        net: formatMoney(summary.metrics.netMinor),
         savingsRatePercent: summary.insights.savingsRatePercent,
         spendingByCategory: summary.spendingByCategory.map((item) => ({
           name: item.name,
-          amountMinor: item.amountMinor,
+          amount: formatMoney(item.amountMinor),
           sharePercent: item.sharePercent,
         })),
-        monthlyTrend: summary.monthlyTrend,
-        recurringExpenses: summary.insights.recurringExpenses,
+        monthlyTrend: summary.monthlyTrend.map((item) => ({
+          month: item.month,
+          income: formatMoney(item.incomeMinor),
+          expenses: formatMoney(item.expenseMinor),
+        })),
+        recurringExpenses: summary.insights.recurringExpenses.map((item) => ({
+          description: item.description,
+          categoryName: item.categoryName,
+          average: formatMoney(item.averageMinor),
+          occurrenceCount: item.occurrenceCount,
+          latestMonth: item.latestMonth,
+        })),
       };
     },
 
@@ -105,17 +139,17 @@ export function createFinancialReader(
       return {
         month: plan.month,
         currency: plan.currency,
-        totalLimitMinor: plan.totalLimitMinor,
-        totalSpentMinor: plan.totalSpentMinor,
-        remainingMinor: plan.remainingMinor,
+        totalLimit: formatMoney(plan.totalLimitMinor),
+        totalSpent: formatMoney(plan.totalSpentMinor),
+        remaining: formatMoney(plan.remainingMinor),
         usedPercent: plan.usedPercent,
         items: plan.items
           .filter((item) => item.limitMinor > 0 || item.spentMinor > 0)
           .map((item) => ({
             name: item.categoryName,
-            limitMinor: item.limitMinor,
-            spentMinor: item.spentMinor,
-            remainingMinor: item.remainingMinor,
+            limit: formatMoney(item.limitMinor),
+            spent: formatMoney(item.spentMinor),
+            remaining: formatMoney(item.remainingMinor),
             usedPercent: item.usedPercent,
           })),
       };
@@ -158,7 +192,7 @@ export function createFinancialReader(
         items: page.items.map((item) => ({
           date: item.date,
           description: compactDescription(item.description),
-          amountMinor: item.amountMinor,
+          amount: formatMoney(item.amountMinor),
           currency: item.currency,
           kind: item.kind,
           categoryName: item.categoryName,

@@ -11,7 +11,7 @@ import type {
 import type { AssistantRepository } from "../db/assistant";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import { DeepSeekError } from "./deepseek";
+import { DeepSeekError, type DeepSeekErrorKind, type DeepSeekFailureReason } from "./deepseek";
 import type { AssistantOrchestrator } from "./orchestrator";
 
 export interface AssistantService {
@@ -43,6 +43,35 @@ export interface AssistantService {
   deleteAllThreads(env: Bindings, tenantId: string): Promise<void>;
 }
 
+export interface AssistantProviderFailureEvent {
+  event: "assistant_provider_failure";
+  provider: "deepseek";
+  kind: DeepSeekErrorKind;
+  reason: DeepSeekFailureReason;
+  providerStatus?: number;
+}
+
+export type AssistantDiagnosticReporter = (event: AssistantProviderFailureEvent) => void;
+
+function defaultDiagnosticReporter(event: AssistantProviderFailureEvent): void {
+  console.warn(JSON.stringify(event));
+}
+
+function reportProviderFailure(error: DeepSeekError, reporter: AssistantDiagnosticReporter): void {
+  const event: AssistantProviderFailureEvent = {
+    event: "assistant_provider_failure",
+    provider: "deepseek",
+    kind: error.kind,
+    reason: error.reason,
+    ...(error.providerStatus === undefined ? {} : { providerStatus: error.providerStatus }),
+  };
+  try {
+    reporter(event);
+  } catch {
+    // Operational diagnostics must never alter the assistant response or turn cleanup.
+  }
+}
+
 function mapProviderError(error: unknown): never {
   if (!(error instanceof DeepSeekError)) throw error;
   if (error.kind === "blocked") {
@@ -72,6 +101,7 @@ function mapProviderError(error: unknown): never {
 export function createAssistantService(
   repository: AssistantRepository,
   orchestrator: AssistantOrchestrator,
+  reporter: AssistantDiagnosticReporter = defaultDiagnosticReporter,
 ): AssistantService {
   async function requireConsent(env: Bindings, tenantId: string) {
     const preferences = await repository.getPreferences(env, tenantId);
@@ -103,6 +133,7 @@ export function createAssistantService(
         finishReason: answer.finishReason,
       });
     } catch (error) {
+      if (error instanceof DeepSeekError) reportProviderFailure(error, reporter);
       await repository.failTurn(env, tenantId, start);
       mapProviderError(error);
     }

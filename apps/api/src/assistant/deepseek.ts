@@ -40,10 +40,23 @@ const responseSchema = z.object({
 export type DeepSeekErrorKind =
   "configuration" | "rate_limit" | "unavailable" | "timeout" | "invalid_response" | "blocked";
 
+export type DeepSeekFailureReason =
+  | "missing_api_key"
+  | "credentials_rejected"
+  | "rate_limited"
+  | "upstream_unavailable"
+  | "fetch_failed"
+  | "timed_out"
+  | "request_rejected"
+  | "malformed_response"
+  | "content_filtered";
+
 export class DeepSeekError extends Error {
   constructor(
     readonly kind: DeepSeekErrorKind,
+    readonly reason: DeepSeekFailureReason,
     message: string,
+    readonly providerStatus?: number,
   ) {
     super(message);
     this.name = "DeepSeekError";
@@ -61,7 +74,11 @@ export class DeepSeekProvider implements AssistantProvider {
   async complete(env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion> {
     const apiKey = env.DEEPSEEK_API_KEY?.trim();
     if (!apiKey) {
-      throw new DeepSeekError("configuration", "The assistant provider is not configured.");
+      throw new DeepSeekError(
+        "configuration",
+        "missing_api_key",
+        "The assistant provider is not configured.",
+      );
     }
 
     const timeoutMs = configuredNumber(env.ASSISTANT_PROVIDER_TIMEOUT_MS, 12_000);
@@ -70,9 +87,10 @@ export class DeepSeekProvider implements AssistantProvider {
     const abortFromParent = () => controller.abort(request.signal?.reason ?? "request_aborted");
     request.signal?.addEventListener("abort", abortFromParent, { once: true });
 
+    const fetcher = this.fetcher;
     let response: Response;
     try {
-      response = await this.fetcher(DEEPSEEK_ENDPOINT, {
+      response = await fetcher(DEEPSEEK_ENDPOINT, {
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -85,18 +103,19 @@ export class DeepSeekProvider implements AssistantProvider {
           tools: request.tools,
           tool_choice: "auto",
           temperature: 0.15,
-          max_tokens: 420,
+          max_tokens: 800,
           stream: false,
         }),
         signal: controller.signal,
       });
-    } catch (error) {
+    } catch {
       if (controller.signal.aborted) {
-        throw new DeepSeekError("timeout", "The assistant provider timed out.");
+        throw new DeepSeekError("timeout", "timed_out", "The assistant provider timed out.");
       }
       throw new DeepSeekError(
         "unavailable",
-        error instanceof Error ? error.message : "The assistant provider is unavailable.",
+        "fetch_failed",
+        "The assistant provider is unavailable.",
       );
     } finally {
       clearTimeout(timeout);
@@ -107,31 +126,46 @@ export class DeepSeekProvider implements AssistantProvider {
       if (response.status === 429) {
         throw new DeepSeekError(
           "rate_limit",
+          "rate_limited",
           "The assistant provider is temporarily rate limited.",
+          response.status,
         );
       }
       if (response.status === 401 || response.status === 403) {
         throw new DeepSeekError(
           "configuration",
+          "credentials_rejected",
           "The assistant provider rejected its credentials.",
+          response.status,
         );
       }
       if (response.status >= 500) {
         throw new DeepSeekError(
           "unavailable",
+          "upstream_unavailable",
           "The assistant provider is temporarily unavailable.",
+          response.status,
         );
       }
-      throw new DeepSeekError("invalid_response", "The assistant provider rejected the request.");
+      throw new DeepSeekError(
+        "invalid_response",
+        "request_rejected",
+        "The assistant provider rejected the request.",
+        response.status,
+      );
     }
 
     const parsed = responseSchema.safeParse(await response.json().catch(() => null));
     if (!parsed.success) {
-      throw new DeepSeekError("invalid_response", "The assistant provider returned invalid data.");
+      throw new DeepSeekError(
+        "invalid_response",
+        "malformed_response",
+        "The assistant provider returned invalid data.",
+      );
     }
     const choice = parsed.data.choices[0]!;
     if (choice.finish_reason === "content_filter") {
-      throw new DeepSeekError("blocked", "The assistant response was blocked.");
+      throw new DeepSeekError("blocked", "content_filtered", "The assistant response was blocked.");
     }
 
     return {

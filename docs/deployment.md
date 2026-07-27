@@ -43,6 +43,30 @@ After changing redirect or template settings, request a fresh recovery email; pr
 
 8. Keep `DEEPSEEK_MODEL=deepseek-v4-flash`, `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
 
+### Assistant deployment preflight
+
+The real `apps/api/wrangler.deploy.jsonc` is ignored because it contains environment-specific deployment metadata. Before every assistant release, compare its non-secret assistant settings with `apps/api/wrangler.deploy.example.jsonc`; a secret-only change does not synchronize source code, variables, bindings, or cron configuration.
+
+For the target environment:
+
+1. Run a Wrangler deploy dry run using the real config and explicit `--env`.
+2. Run `wrangler secret list` and confirm `DEEPSEEK_API_KEY` exists by name. This confirms presence, not the encrypted value, and never prints the key.
+3. List remote D1 migrations. Stop if migration inspection is denied; do not infer assistant schema readiness from `/health`, which intentionally checks only D1 availability.
+4. Create the documented D1 recovery point before applying a pending migration.
+5. Perform a full Worker deploy, not another secret-only deployment.
+6. Verify the resulting deployment version, the `03:17 UTC` retention cron, public smoke checks, and an authenticated plain/tool-backed assistant response.
+
+Provider failures emit only a sanitized structured event with `event`, `provider`, `kind`, `reason`, and optional numeric `providerStatus`. Never add prompts, answers, tool arguments/results, account or transaction data, tenant/user/thread/message IDs, JWTs, credentials, headers, exception messages/stacks, or provider response bodies to these logs.
+
+Safe diagnostic actions:
+
+- `configuration/missing_api_key` or `credentials_rejected` — verify the exact Worker environment and re-put the already validated key without printing it.
+- `rate_limit/rate_limited` — investigate DeepSeek account quota or throttling; do not rotate credentials blindly.
+- `unavailable/upstream_unavailable` — treat provider `5xx` as an upstream outage.
+- `unavailable/fetch_failed` — investigate Worker-to-provider connectivity.
+- `invalid_response/request_rejected` or `malformed_response` — verify the request/response contract without logging provider bodies.
+- No provider event with an API `500` — investigate D1 migration and repository state.
+
 ## Frontend configuration
 
 Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production API default to `https://api.zoption.site`; Cloudflare Pages environment variables can override it. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`.

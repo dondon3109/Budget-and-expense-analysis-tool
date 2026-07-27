@@ -10,6 +10,8 @@ const MAX_PROVIDER_CALLS = 3;
 const MAX_TOOL_CALLS_PER_RESPONSE = 4;
 const MAX_TOOL_CALLS_TOTAL = 6;
 const MAX_HISTORY_CHARACTERS = 12_000;
+const EMPTY_RESPONSE_RETRY_PROMPT =
+  "Provide the final answer now in plain text. Use verified tool results already present; if none are present and financial data is needed, call an approved tool.";
 
 export interface AssistantAnswer {
   content: string;
@@ -111,6 +113,10 @@ export function createAssistantOrchestrator(
           if (toolCalls.length === 0) {
             const content = completion.message.content?.trim();
             if (!content) {
+              if (invocation + 1 < MAX_PROVIDER_CALLS) {
+                messages.push({ role: "user", content: EMPTY_RESPONSE_RETRY_PROMPT });
+                continue;
+              }
               throw new HttpError(
                 502,
                 "assistant_provider_error",
