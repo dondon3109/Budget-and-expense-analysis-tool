@@ -13,9 +13,9 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
         <Sparkles size={25} />
       </span>
       <p className="eyebrow">Before your first question</p>
-      <h1 id="assistant-consent-title">Ask with a clear privacy boundary</h1>
+      <h1 id="assistant-consent-title">Your data, your boundaries. Private by default.</h1>
       <p className="assistant-consent-intro">
-        Zoption sends your question and only the financial data needed to DeepSeek to prepare an
+        Zoption sends your question and only the financial data needed to AI Assistant to prepare an
         answer. Zoption still calculates every amount from your records.
       </p>
       <div className="assistant-consent-points">
@@ -31,7 +31,7 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
           <div>
             <strong>Credentials stay private</strong>
             <p>
-              Passwords, sign-in tokens, bank credentials, and the DeepSeek key are never shared.
+              Passwords, sign-in tokens, bank credentials are never shared.
             </p>
           </div>
         </article>
