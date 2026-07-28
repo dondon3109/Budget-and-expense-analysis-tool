@@ -70,7 +70,7 @@ Safe diagnostic actions:
 
 ## Frontend configuration
 
-Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production API default to `https://api.zoption.site`; Cloudflare Pages environment variables can override it. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`. The tracked Pages `_headers` policy restricts scripts, workers, forms, frames, images, and connections to the application, Supabase, and known API hosts, and enables HSTS on deployed HTTPS responses. Update and verify that policy whenever a new external asset, API, or authentication host is introduced.
+Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production API default to `https://api.zoption.site`; Cloudflare Pages environment variables can override it. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`. The tracked Pages `_headers` policy restricts scripts, workers, forms, frames, images, and connections to the application, Supabase, and known API hosts, and enables HSTS on deployed HTTPS responses. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`. Update and verify CSP whenever a new external asset, API, or authentication host is introduced.
 
 ```bash
 VITE_API_URL=https://PREVIEW_API_HOST \
@@ -124,6 +124,8 @@ Then perform an authenticated browser check with two ordinary preview users:
 
 No service-role key is needed for normal product traffic or this check. Display names and avatar metadata are presentation-only and must not change Worker tenant resolution or D1 authorization.
 
+Before publishing the legal routes, business and legal reviewers must resolve every `[TODO: fill in]`, the subscription placeholder, governing-law terms, contact workflow, lawful bases, processor facts, international-transfer details, retention periods, and security statements. Do not publish unresolved placeholders as final legal advice.
+
 ## Production release
 
 After the preview migration and authenticated checks pass, create a production D1 recovery point, apply migrations, and deploy the Worker. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site`, `www.zoption.site`, and the transitional Pages origin.
@@ -145,7 +147,7 @@ pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PRODUC
 WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production
 ```
 
-Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. Direct navigation should work for `/login`, `/signup`, `/forgot-password`, `/auth/callback`, `/update-password`, and `/app/*`; the committed `_redirects` file provides SPA fallback. The retired `/demo` route should return visitors to `/`.
+Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. Direct navigation should work for `/login`, `/signup`, `/forgot-password`, `/auth/callback`, `/update-password`, `/terms-of-service`, `/privacy-policy`, `/cookie-policy`, and `/app/*`; the committed `_redirects` file provides SPA fallback. Confirm the consent banner makes no Analytics or Marketing requests before opt-in and that no provider is present unless its disclosure, vendor inventory, cleanup behavior, and minimal CSP origins have been reviewed. The retired `/demo` route should return visitors to `/`.
 
 ## Rollback
 

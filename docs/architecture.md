@@ -24,7 +24,11 @@ The public landing page contains a static dashboard illustration only. It does n
 - Built-in BPI, BDO, MariBank, Bank of America, and JPMorgan/Chase presets are client-side suggestions, never server-authoritative parsing rules.
 - Commit consumes a short-lived, tenant-scoped token plus optional row/category overrides, validates every override, and writes the audit plus transactions atomically without mutating the saved preview.
 - Imported transactions use the authenticated tenant's deterministic default account.
-- Landing and feature routes are lazy-loaded; the dashboard chart bundle loads only for the private app.
+- Landing, legal, and feature routes are lazy-loaded; the dashboard chart bundle loads only for the private app.
+- Public legal routes are `/terms-of-service`, `/privacy-policy`, and `/cookie-policy`, with a shared footer across public, authentication, legal, and private shells.
+- Browser consent is a versioned, fail-closed localStorage record. Necessary behavior is always enabled; Analytics and Marketing default off and no provider is currently connected. An imperative gate blocks future optional loaders and runs cleanup on revocation.
+- Browser tracking consent remains separate from server-persisted DeepSeek assistant consent.
+- The pre-render theme bootstrap is a same-origin static script so the deployed `script-src 'self'` policy does not require inline-script exceptions.
 - Authenticated write, import, and assistant-generation throttles use the verified tenant as their client identity.
 - Account balances are manual snapshots with explicit as-of dates; transaction mutations do not reconcile them automatically.
 - The AI assistant calls DeepSeek directly from the Worker, exposes only fixed read-only financial tools, and stores only user/final-assistant messages for 90 days.

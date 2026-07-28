@@ -7,6 +7,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "../src/components/layout/AppShell";
+import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 vi.mock("../src/auth/AuthProvider", () => ({
@@ -36,11 +37,13 @@ describe("AppShell", () => {
   it("places the profile above navigation and Subscriptions below Budgets", () => {
     render(
       <ThemeProvider>
-        <MemoryRouter initialEntries={["/app/subscriptions"]}>
-          <AppShell>
-            <div>Subscriptions content</div>
-          </AppShell>
-        </MemoryRouter>
+        <CookieConsentProvider>
+          <MemoryRouter initialEntries={["/app/subscriptions"]}>
+            <AppShell>
+              <div>Subscriptions content</div>
+            </AppShell>
+          </MemoryRouter>
+        </CookieConsentProvider>
       </ThemeProvider>,
     );
 
@@ -90,11 +93,13 @@ describe("AppShell", () => {
   it("marks account settings as current without adding it to main navigation", () => {
     render(
       <ThemeProvider>
-        <MemoryRouter initialEntries={["/app/settings"]}>
-          <AppShell>
-            <div>Settings content</div>
-          </AppShell>
-        </MemoryRouter>
+        <CookieConsentProvider>
+          <MemoryRouter initialEntries={["/app/settings"]}>
+            <AppShell>
+              <div>Settings content</div>
+            </AppShell>
+          </MemoryRouter>
+        </CookieConsentProvider>
       </ThemeProvider>,
     );
 

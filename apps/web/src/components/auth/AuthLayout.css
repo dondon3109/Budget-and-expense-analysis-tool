@@ -1,12 +1,15 @@
-.auth-page {
+.auth-page-frame {
   min-height: 100vh;
+  background: radial-gradient(circle at 80% 15%, var(--page-glow), transparent 34%), var(--page);
+}
+.auth-page {
+  min-height: calc(100vh - 70px);
   padding: 48px;
   display: grid;
   grid-template-columns: minmax(340px, 480px) minmax(380px, 620px);
   align-items: stretch;
   justify-content: center;
   gap: 28px;
-  background: radial-gradient(circle at 80% 15%, var(--page-glow), transparent 34%), var(--page);
 }
 .auth-card,
 .auth-aside {

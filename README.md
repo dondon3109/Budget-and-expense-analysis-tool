@@ -14,7 +14,7 @@ The public site is a marketing and authentication surface with a static illustra
 
 The implementation includes:
 
-- Responsive landing, signup, login, recovery, and private application routes with a persistent light/dark appearance switch.
+- Responsive landing, signup, login, recovery, public legal, and private application routes with persistent Light, Dark, and Coffee themes.
 - Supabase email/password signup, confirmation, login, session refresh, password recovery, and sign-out.
 - Worker-side Supabase JWT verification and fail-closed `/api/app/*` routes.
 - Automatic D1 tenant bootstrap with an Everyday account and starter categories.
@@ -26,6 +26,8 @@ The implementation includes:
 - A tenant-scoped, read-only AI Financial Assistant using DeepSeek v4 Flash, verified backend tools, one-time provider consent, and 90-day D1 chat retention.
 - Tenant-scoped rate limiting for authenticated writes, imports, and assistant generation.
 - Accessible chart tables, keyboard-visible focus states, mobile layouts, and route-level code splitting.
+- Public Terms of Service, Privacy Policy, and Cookie Policy routes plus a shared legal footer.
+- Versioned, fail-closed browser consent with Necessary always on, optional Analytics/Marketing off by default, cross-tab synchronization, and no current analytics or marketing vendor.
 
 ## Architecture
 
@@ -99,6 +101,6 @@ scripts/           Non-mutating smoke checks and screenshot capture
 
 ## Privacy and scope
 
-Authenticated financial records and assistant history are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions or budgets. Assistant questions require one-time DeepSeek data-sharing consent, use allowlisted read-only tools, and expire after 90 days. Zoption does not connect to banks and does not provide financial, tax, investment, or legal advice. See [AI Financial Assistant](docs/assistant.md).
+Authenticated financial records and assistant history are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions or budgets. Assistant questions require one-time DeepSeek data-sharing consent, use allowlisted read-only tools, and expire after 90 days. Browser tracking consent is separate: no Analytics or Marketing provider is currently enabled, and future optional integrations must remain blocked until their category is explicitly granted. Zoption does not connect to banks and does not provide financial, tax, investment, or legal advice. Resolve every legal-policy `[TODO: fill in]` through business and legal review before publication. See [AI Financial Assistant](docs/assistant.md).
 
 Engineering evidence is summarized in the [test strategy](docs/test-strategy.md), [performance report](docs/performance.md), [deployment runbook](docs/deployment.md), and [case study](docs/case-study.md).

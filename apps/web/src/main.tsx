@@ -6,7 +6,9 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
 import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
 import { AuthProvider } from "./auth/AuthProvider";
+import { CookieConsentExperience } from "./components/consent/CookieConsentExperience";
 import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
+import { CookieConsentProvider } from "./consent/CookieConsentProvider";
 import { ImportDraftProvider } from "./import/ImportDraftProvider";
 import "./styles/foundation.css";
 import { ThemeProvider } from "./theme/ThemeProvider";
@@ -25,17 +27,20 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <ThemeChoiceDialog />
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <AssistantSessionProvider>
-            <ImportDraftProvider>
-              <BrowserRouter>
-                <App />
-              </BrowserRouter>
-            </ImportDraftProvider>
-          </AssistantSessionProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+      <CookieConsentProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <AssistantSessionProvider>
+              <ImportDraftProvider>
+                <BrowserRouter>
+                  <App />
+                  <CookieConsentExperience />
+                </BrowserRouter>
+              </ImportDraftProvider>
+            </AssistantSessionProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </CookieConsentProvider>
     </ThemeProvider>
   </StrictMode>,
 );

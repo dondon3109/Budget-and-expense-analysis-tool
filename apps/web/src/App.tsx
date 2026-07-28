@@ -59,6 +59,18 @@ const AuthCallbackPage = lazy(async () => {
   const module = await import("./pages/AuthCallbackPage");
   return { default: module.AuthCallbackPage };
 });
+const TermsOfServicePage = lazy(async () => {
+  const module = await import("./pages/legal/TermsOfServicePage");
+  return { default: module.TermsOfServicePage };
+});
+const PrivacyPolicyPage = lazy(async () => {
+  const module = await import("./pages/legal/PrivacyPolicyPage");
+  return { default: module.PrivacyPolicyPage };
+});
+const CookiePolicyPage = lazy(async () => {
+  const module = await import("./pages/legal/CookiePolicyPage");
+  return { default: module.CookiePolicyPage };
+});
 
 export function RootRoute() {
   const location = useLocation();
@@ -201,6 +213,9 @@ export function App() {
             </Private>
           }
         />
+        <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/cookie-policy" element={<CookiePolicyPage />} />
         <Route path="/assistant" element={<Navigate to="/app/assistant" replace />} />
         <Route path="/accounts" element={<Navigate to="/app" replace />} />
         <Route path="/calendar" element={<Navigate to="/app/calendar" replace />} />

@@ -7,17 +7,20 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { AuthLayout } from "../src/components/auth/AuthLayout";
+import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 describe("AuthLayout", () => {
   it("offers the shared appearance switch on authentication screens", () => {
     render(
       <ThemeProvider>
-        <MemoryRouter>
-          <AuthLayout eyebrow="Welcome" title="Sign in" description="Continue to your workspace.">
-            <form>Authentication form</form>
-          </AuthLayout>
-        </MemoryRouter>
+        <CookieConsentProvider>
+          <MemoryRouter>
+            <AuthLayout eyebrow="Welcome" title="Sign in" description="Continue to your workspace.">
+              <form>Authentication form</form>
+            </AuthLayout>
+          </MemoryRouter>
+        </CookieConsentProvider>
       </ThemeProvider>,
     );
 

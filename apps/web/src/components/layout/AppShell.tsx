@@ -19,6 +19,7 @@ import "./AppShell.css";
 import "../transactions/TransactionForm.css";
 import { useAuth } from "../../auth/AuthProvider";
 import { avatarPathFromMetadata } from "../../lib/avatar";
+import { LegalFooter } from "../legal/LegalFooter";
 import { UserAvatar } from "../profile/UserAvatar";
 import { ThemeToggle } from "../theme/ThemeToggle";
 
@@ -153,7 +154,10 @@ export function AppShell({ children }: AppShellProps) {
           ← Back to introduction
         </Link>
       </aside>
-      <main className="app-main">{children}</main>
+      <main className="app-main">
+        <div className="app-main-content">{children}</div>
+        <LegalFooter />
+      </main>
     </div>
   );
 }

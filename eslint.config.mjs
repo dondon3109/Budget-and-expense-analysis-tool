@@ -31,13 +31,16 @@ export default tseslint.config(
   },
   {
     ...tseslint.configs.disableTypeChecked,
-    files: ["scripts/**/*.mjs"],
+    files: ["scripts/**/*.mjs", "apps/web/public/**/*.js"],
     languageOptions: {
       ...tseslint.configs.disableTypeChecked.languageOptions,
       globals: {
         console: "readonly",
         fetch: "readonly",
         process: "readonly",
+        document: "readonly",
+        localStorage: "readonly",
+        matchMedia: "readonly",
         URL: "readonly",
       },
     },

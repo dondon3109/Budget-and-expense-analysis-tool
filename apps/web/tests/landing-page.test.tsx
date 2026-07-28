@@ -6,6 +6,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { LandingPage } from "../src/pages/LandingPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
@@ -14,9 +15,11 @@ afterEach(cleanup);
 function renderLanding() {
   return render(
     <ThemeProvider>
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>
+      <CookieConsentProvider>
+        <MemoryRouter>
+          <LandingPage />
+        </MemoryRouter>
+      </CookieConsentProvider>
     </ThemeProvider>,
   );
 }

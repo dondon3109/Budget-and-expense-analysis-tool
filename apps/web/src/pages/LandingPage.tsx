@@ -4,6 +4,7 @@ import "./LandingPage.css";
 
 import supportedExportFormatsLarge from "../assets/supported-export-formats-1536.webp";
 import supportedExportFormatsSmall from "../assets/supported-export-formats-768.webp";
+import { LegalFooter } from "../components/legal/LegalFooter";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
 
 const previewBars = [42, 55, 38, 66, 50, 61];
@@ -300,6 +301,7 @@ export function LandingPage() {
           </div>
         </section>
       </main>
+      <LegalFooter />
     </div>
   );
 }
