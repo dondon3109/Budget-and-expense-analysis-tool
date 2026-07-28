@@ -1,5 +1,5 @@
 import { ArrowRight, BarChart3, Check, Landmark, ShieldCheck, Upload } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import "./LandingPage.css";
 
 import supportedExportFormatsLarge from "../assets/supported-export-formats-1536.webp";
@@ -11,6 +11,9 @@ const previewBars = [42, 55, 38, 66, 50, 61];
 const supportedExportFormats = ["BPI", "BDO", "MariBank", "Bank of America", "JPMorgan / Chase"];
 
 export function LandingPage() {
+  const [searchParams] = useSearchParams();
+  const accountDeleted = searchParams.get("accountDeleted");
+
   return (
     <div className="landing-page">
       <header className="landing-nav">
@@ -35,6 +38,16 @@ export function LandingPage() {
         </div>
       </header>
       <main id="top">
+        {accountDeleted && (
+          <div className="account-deletion-notice" role="status">
+            <strong>Account deletion requested.</strong>
+            <span>
+              Your Zoption workspace is no longer available. {accountDeleted === "cleanup_pending"
+                ? "Remaining account cleanup will continue securely."
+                : "Your account has been deleted."}
+            </span>
+          </div>
+        )}
         <section className="hero">
           <div className="hero-copy">
             <h1>See where your money goes. Decide what comes next.</h1>

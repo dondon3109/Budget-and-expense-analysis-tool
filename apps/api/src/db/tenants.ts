@@ -1,3 +1,4 @@
+import { HttpError } from "../errors";
 import type { AuthUser, Bindings, TenantContext } from "../types";
 
 const SYSTEM_ACCOUNTS = [
@@ -143,6 +144,13 @@ export function createTenantResolver(
 ): TenantResolver {
   return {
     async resolve(env, user) {
+      const deleted = await env.DB.prepare("SELECT 1 FROM account_deletions WHERE user_id = ?")
+        .bind(user.id)
+        .first();
+      if (deleted) {
+        throw new HttpError(410, "account_deleted", "This account has been deleted.");
+      }
+
       const existing = await env.DB.prepare(
         "SELECT tenant_id AS tenantId FROM user_tenants WHERE user_id = ?",
       )

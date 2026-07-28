@@ -245,6 +245,51 @@ display: flex;
   justify-content: flex-end;
 }
 
+.settings-danger-zone {
+  background: color-mix(in srgb, var(--danger-soft) 38%, var(--paper));
+}
+
+.settings-danger-zone .settings-section-heading > span {
+  color: var(--danger);
+}
+
+.settings-danger-zone-content {
+  max-width: 680px;
+  margin-top: 24px;
+  padding: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.settings-danger-zone-content strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.settings-danger-zone-content p {
+  max-width: 55ch;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.settings-danger-zone .button.danger {
+  flex: 0 0 auto;
+  color: #fff;
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.settings-danger-zone .button.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
 @media (max-width: 760px) {
 .settings-section-heading {
 flex-direction: column;
@@ -276,6 +321,15 @@ width: 100%;
 .settings-password-row {
 grid-template-columns: 1fr;
 }
+
+  .settings-danger-zone-content {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-danger-zone-content .button {
+    width: 100%;
+  }
 }
 :root[data-theme="dark"] .settings-form input:focus {
   border-color: var(--focus);

@@ -21,6 +21,15 @@ export const resourceIdSchema = z
   .max(180)
   .regex(/^[A-Za-z0-9:_-]+$/, "Use a valid resource identifier.");
 
+export const accountDeletionRequestSchema = z
+  .object({
+    confirmation: z.literal("DELETE"),
+    password: z.string().min(1).max(1_024),
+  })
+  .strict();
+
+export type AccountDeletionRequest = z.infer<typeof accountDeletionRequestSchema>;
+
 export const assistantThreadIdSchema = z.string().uuid();
 
 export const categoryListQuerySchema = z

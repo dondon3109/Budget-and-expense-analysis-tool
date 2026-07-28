@@ -35,10 +35,8 @@ describe("legal pages", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/filtered transaction CSV feature/i)).toBeInTheDocument();
     expect(screen.getByText(/separate consent/i)).toBeInTheDocument();
-    expect(
-      screen.getByText("[TODO: finalize once subscription/payment provider is chosen]"),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/there is no in-app account deletion control/i)).toBeInTheDocument();
+    expect(screen.getByText(/monthly or annual paid subscription plans/i)).toBeInTheDocument();
+    expect(screen.getByText(/account deletion control in your account settings/i)).toBeInTheDocument();
   });
 
   it("describes actual processors, financial security, and user rights", () => {

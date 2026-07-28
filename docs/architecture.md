@@ -12,7 +12,8 @@ The public landing page contains a static dashboard illustration only. It does n
 2. **Financial APIs fail closed.** `/api/app/*` requires a valid bearer token. Missing or invalid authentication returns `401` and never resolves a tenant.
 3. **Identity maps to an application tenant.** `user_tenants` maps the immutable Supabase user subject to one D1 tenant.
 4. **First access bootstraps structure, not financial history.** The first authenticated request creates the personal tenant, mapping, Everyday account, and starter categories. It creates no transactions or budgets.
-5. **Tenant scope is mandatory.** Repositories require a tenant ID in every method signature. Route handlers obtain it only from authenticated Hono context; ownership is never accepted from request input.
+5. **Deletion tombstones block re-bootstrap.** A permanent account-deletion marker is checked before tenant resolution. It stays after the tenant is purged so a retained but unexpired JWT cannot create a replacement workspace; normal private requests for that identity return `410 account_deleted`.
+6. **Tenant scope is mandatory.** Repositories require a tenant ID in every method signature. Route handlers obtain it only from authenticated Hono context; ownership is never accepted from request input.
 6. **Browser caches are user-scoped.** Every TanStack Query key begins with `user:<id>`, and the cache is cancelled and cleared when the authenticated identity changes or signs out.
 
 ## Other engineering decisions
@@ -51,6 +52,7 @@ Public:
 
 Authenticated (`Authorization: Bearer <Supabase access token>`):
 
+- `DELETE /api/app/account` — server-reauthenticated, permanent account deletion; it purges the authenticated D1 tenant, clears owned avatar Storage objects, and hard-deletes the Supabase Auth identity. A minimal tombstone retains only subject/cleanup state for security and retry handling.
 - `GET /api/app/me` — verified identity and resolved D1 tenant.
 - `GET /api/app/dashboard?from=&to=` — tenant-scoped dashboard aggregates.
 - `GET/POST/PATCH/DELETE /api/app/transactions/*` — transaction search and CRUD.

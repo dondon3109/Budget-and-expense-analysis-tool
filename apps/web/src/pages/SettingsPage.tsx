@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { evaluatePassword } from "../auth/passwordPolicy";
 import { useAuth } from "../auth/AuthProvider";
+import { AccountDeletionDialog } from "../components/account/AccountDeletionDialog";
 import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { AppShell } from "../components/layout/AppShell";
@@ -32,13 +33,16 @@ export function SettingsPage() {
     requestEmailChange,
     verifyCurrentPassword,
     updatePassword,
+    deleteAccount,
   } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const savedDisplayName = displayNameFromMetadata(user?.user_metadata);
   const currentAvatarPath = avatarPathFromMetadata(user?.user_metadata);
   const currentEmail = user?.email ?? "";
   const pendingEmail = user?.new_email;
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const deletionTriggerRef = useRef<HTMLButtonElement>(null);
 
   const [displayName, setDisplayName] = useState(savedDisplayName);
   const [selectedAvatar, setSelectedAvatar] = useState<File>();
@@ -59,6 +63,9 @@ export function SettingsPage() {
   const [avatarFeedback, setAvatarFeedback] = useState<Feedback>({});
   const [emailFeedback, setEmailFeedback] = useState<Feedback>({});
   const [passwordFeedback, setPasswordFeedback] = useState<Feedback>({});
+  const [deletionOpen, setDeletionOpen] = useState(false);
+  const [deletionBusy, setDeletionBusy] = useState(false);
+  const [deletionError, setDeletionError] = useState<string>();
 
   useEffect(() => {
     if (!selectedAvatar) {
@@ -252,6 +259,27 @@ export function SettingsPage() {
     } finally {
       setPasswordBusy(false);
     }
+  }
+
+  async function handleAccountDeletion(password: string) {
+    setDeletionBusy(true);
+    setDeletionError(undefined);
+    try {
+      const result = await deleteAccount(password);
+      void navigate(`/?accountDeleted=${result.status}`, { replace: true });
+    } catch (error) {
+      setDeletionError(
+        error instanceof Error ? error.message : "Your account could not be deleted. Try again.",
+      );
+    } finally {
+      setDeletionBusy(false);
+    }
+  }
+
+  function closeAccountDeletion() {
+    if (deletionBusy) return;
+    setDeletionOpen(false);
+    setDeletionError(undefined);
   }
 
   function clearProfileFeedback() {
@@ -580,8 +608,48 @@ export function SettingsPage() {
               </div>
             </form>
           </section>
+
+          <section className="settings-section settings-danger-zone" aria-labelledby="account-deletion-title">
+            <div className="settings-section-heading">
+              <div>
+                <h2 id="account-deletion-title">Danger zone</h2>
+                <p>
+                  Permanently remove your Zoption account and the information Zoption controls for it.
+                </p>
+              </div>
+              <span>Cannot be undone</span>
+            </div>
+            <div className="settings-danger-zone-content">
+              <div>
+                <strong>Delete your account</strong>
+                <p>
+                  This removes your accounts, transactions, categories, budgets, subscriptions,
+                  calendar events, imported records, assistant history, profile picture files, and
+                  sign-in account. Copies you have downloaded or public-avatar caches outside
+                  Zoption&apos;s control may remain elsewhere.
+                </p>
+              </div>
+              <button
+                ref={deletionTriggerRef}
+                className="button danger compact"
+                type="button"
+                onClick={() => setDeletionOpen(true)}
+              >
+                Delete account
+              </button>
+            </div>
+          </section>
         </div>
       </div>
+      {deletionOpen && (
+        <AccountDeletionDialog
+          busy={deletionBusy}
+          error={deletionError}
+          returnFocus={deletionTriggerRef.current}
+          onConfirm={(password) => void handleAccountDeletion(password)}
+          onClose={closeAccountDeletion}
+        />
+      )}
     </AppShell>
   );
 }

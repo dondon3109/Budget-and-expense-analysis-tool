@@ -15,7 +15,15 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
 5. Require email confirmation before first sign-in. Keep signup responses neutral for both new and existing addresses so the public form does not disclose whether an account exists.
 6. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
 7. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
-8. Apply the tracked Supabase migrations to each preview and production project:
+8. Configure `SUPABASE_PUBLISHABLE_KEY` as a non-secret Worker variable. Store `SUPABASE_SERVICE_ROLE_KEY` only as a Worker secret; the account-deletion workflow uses it to clear the user-owned avatar folder and hard-delete the Auth identity after D1 data is purged:
+
+   ```bash
+   pnpm --filter @zoption/api exec wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config wrangler.deploy.jsonc --env preview
+   pnpm --filter @zoption/api exec wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config wrangler.deploy.jsonc --env production
+   ```
+
+   Never use this key in `VITE_*` configuration, committed Wrangler `vars`, D1, logs, or browser code.
+9. Apply the tracked Supabase migrations to each preview and production project:
 
    ```bash
    pnpm dlx supabase login
@@ -122,7 +130,7 @@ Then perform an authenticated browser check with two ordinary preview users:
 9. Confirm the assistant requires one-time DeepSeek consent, refuses mutation/credential/SQL requests, treats instructions inside transaction descriptions as data, and deletes one/all chats correctly.
 10. Inspect Worker logs and confirm they contain no prompts, responses, tool payloads, account names, transaction descriptions, JWTs, or API keys.
 
-No service-role key is needed for normal product traffic or this check. Display names and avatar metadata are presentation-only and must not change Worker tenant resolution or D1 authorization.
+The normal application path needs no browser access to a service-role key. Account deletion is the narrow Worker-only exception: it writes an irreversible D1 tombstone before purging the tenant, then clears avatar Storage and hard-deletes the Auth identity. The tombstone blocks a retained access token from creating a replacement tenant; the daily Worker cron retries pending external cleanup. Display names and avatar metadata are presentation-only and must not change Worker tenant resolution or D1 authorization.
 
 Before publishing the legal routes, business and legal reviewers must resolve every `[TODO: fill in]`, the subscription placeholder, governing-law terms, contact workflow, lawful bases, processor facts, international-transfer details, retention periods, and security statements. Do not publish unresolved placeholders as final legal advice.
 

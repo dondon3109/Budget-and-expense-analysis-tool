@@ -1,0 +1,96 @@
+/* Account-deletion confirmation owns its high-friction dialog treatment. */
+.account-deletion-dialog {
+  width: min(580px, 100%);
+}
+
+.account-deletion-header .eyebrow {
+  color: var(--danger);
+}
+
+.account-deletion-form {
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.account-deletion-intro {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.account-deletion-form label,
+.account-deletion-form .password-field {
+  display: grid;
+  gap: 7px;
+}
+
+.account-deletion-form label > span,
+.account-deletion-form .password-field label > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.account-deletion-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.account-deletion-form .password-field-control input {
+  padding-right: 54px;
+}
+
+.account-deletion-form input:focus-visible {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 24%, transparent);
+}
+
+.account-deletion-progress {
+  min-height: 17px;
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.account-deletion-dialog .button.danger {
+  color: #fff;
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.account-deletion-dialog .button.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.account-deletion-dialog .button.danger:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--danger) 42%, transparent);
+  outline-offset: 2px;
+}
+
+.account-deletion-dialog .button.danger:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+@media (max-width: 760px) {
+  .account-deletion-form .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .account-deletion-form .button {
+    width: 100%;
+  }
+}

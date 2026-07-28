@@ -13,6 +13,10 @@ import { deepSeekProvider } from "./assistant/deepseek";
 import { createFinancialReader } from "./assistant/financial-reader";
 import type { AssistantProvider } from "./assistant/provider";
 import { createAssistantService, type AssistantService } from "./assistant/service";
+import {
+  createAccountDeletionService,
+  type AccountDeletionService,
+} from "./account-deletion";
 import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from "./auth";
 import { accountRepository, type AccountRepository } from "./db/accounts";
 import { assistantRepository, type AssistantRepository } from "./db/assistant";
@@ -26,6 +30,7 @@ import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
 import { HttpError } from "./errors";
 import { d1RateLimiter, type RateLimiter } from "./rate-limit";
+import { createAccountDeletionRoutes } from "./routes/account-deletion";
 import { createAccountRoutes } from "./routes/accounts";
 import { createAssistantRoutes } from "./routes/assistant";
 import { createBudgetRoutes } from "./routes/budgets";
@@ -77,6 +82,7 @@ export interface AppOptions {
   assistantRepository?: AssistantRepository;
   assistantProvider?: AssistantProvider;
   assistantService?: AssistantService;
+  accountDeletionService?: AccountDeletionService;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -110,6 +116,7 @@ export function createApp(options: AppOptions = {}) {
         }),
       ),
     );
+  const accountDeletionService = options.accountDeletionService ?? createAccountDeletionService();
   const readinessCheck =
     options.readinessCheck ??
     (async (env: Bindings) => {
@@ -150,9 +157,19 @@ export function createApp(options: AppOptions = {}) {
     context.header("Cache-Control", "no-store");
     await next();
   });
-  app.use("/api/app/*", createAuthMiddleware(authVerifier, resolveTenant));
+  app.use(
+    "/api/app/*",
+    createAuthMiddleware(
+      authVerifier,
+      resolveTenant,
+      (path, method) => method === "DELETE" && path === "/api/app/account",
+    ),
+  );
   app.use("/api/app/*", async (context, next) => {
-    if (!JSON_METHODS.has(context.req.method)) {
+    const requiresJson =
+      JSON_METHODS.has(context.req.method) ||
+      (context.req.method === "DELETE" && context.req.path === "/api/app/account");
+    if (!requiresJson) {
       await next();
       return;
     }
@@ -181,6 +198,8 @@ export function createApp(options: AppOptions = {}) {
     return limitBody(context, next);
   });
   app.use("/api/app/*", async (context, next) => {
+    const isAccountDeletion =
+      context.req.method === "DELETE" && context.req.path === "/api/app/account";
     const isAssistantGeneration =
       context.req.method === "POST" &&
       (context.req.path === "/api/app/assistant/threads" ||
@@ -189,7 +208,9 @@ export function createApp(options: AppOptions = {}) {
       context.req.method === "GET" && context.req.path.startsWith("/api/app/exports");
     const isAssistantHistoryRead =
       context.req.method === "GET" && context.req.path.startsWith("/api/app/assistant/threads");
-    const policies = isAssistantGeneration
+    const policies = isAccountDeletion
+      ? [{ scope: "user-account-deletion", limit: 5, windowSeconds: 15 * 60 }]
+      : isAssistantGeneration
       ? [
           { scope: "tenant-assistant-minute", limit: 10, windowSeconds: 60 },
           { scope: "tenant-assistant-day", limit: 100, windowSeconds: 24 * 60 * 60 },
@@ -211,10 +232,12 @@ export function createApp(options: AppOptions = {}) {
       return;
     }
 
-    const tenantId = context.get("tenant").tenantId;
+    const rateLimitIdentity = isAccountDeletion
+      ? context.get("authUser").id
+      : context.get("tenant").tenantId;
 
     for (const policy of policies) {
-      const decision = await rateLimiter.consume(context.env, tenantId, policy);
+      const decision = await rateLimiter.consume(context.env, rateLimitIdentity, policy);
       context.header("RateLimit-Limit", String(decision.limit));
       context.header("RateLimit-Remaining", String(decision.remaining));
       context.header("RateLimit-Reset", String(decision.retryAfterSeconds));
@@ -280,6 +303,7 @@ export function createApp(options: AppOptions = {}) {
     );
   });
 
+  app.route("/api/app/account", createAccountDeletionRoutes(accountDeletionService));
   app.route("/api/app/assistant", createAssistantRoutes(assistantService));
   app.route("/api/app/transactions", createTransactionRoutes(transactionStore));
   app.route("/api/app/accounts", createAccountRoutes(accountStore));

@@ -60,6 +60,11 @@ vi.mock("../src/lib/supabase", () => {
   };
 });
 
+vi.mock("../src/lib/api", () => ({
+  deleteCurrentAccount: vi.fn(async () => ({ status: "deleted" })),
+}));
+
+import { deleteCurrentAccount } from "../src/lib/api";
 import { AuthProvider, useAuth } from "../src/auth/AuthProvider";
 
 function SettingsOperations() {
@@ -71,6 +76,7 @@ function SettingsOperations() {
     requestEmailChange,
     verifyCurrentPassword,
     updatePassword,
+    deleteAccount,
   } = useAuth();
 
   if (!user) return <span>Loading</span>;
@@ -98,6 +104,9 @@ function SettingsOperations() {
       <button type="button" onClick={() => void updatePassword("new-password")}>
         Replace password
       </button>
+      <button type="button" onClick={() => void deleteAccount("current-password")}>
+        Delete account
+      </button>
     </div>
   );
 }
@@ -105,6 +114,7 @@ function SettingsOperations() {
 describe("AuthProvider account settings operations", () => {
   beforeEach(() => {
     supabaseMocks.session.user.user_metadata = {};
+    vi.mocked(deleteCurrentAccount).mockReset().mockResolvedValue({ status: "deleted" });
     supabaseMocks.updateUser.mockReset().mockResolvedValue({ data: {}, error: null });
     supabaseMocks.signInWithPassword.mockReset().mockResolvedValue({ data: {}, error: null });
     supabaseMocks.upload.mockReset().mockResolvedValue({ data: {}, error: null });
@@ -185,5 +195,14 @@ describe("AuthProvider account settings operations", () => {
     await waitFor(() =>
       expect(supabaseMocks.updateUser).toHaveBeenCalledWith({ password: "new-password" }),
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+    await waitFor(() =>
+      expect(deleteCurrentAccount).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        "current-password",
+      ),
+    );
+    expect(supabaseMocks.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 });

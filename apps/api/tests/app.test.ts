@@ -15,6 +15,7 @@ import {
 } from "@zoption/shared";
 import { describe, expect, it, vi } from "vitest";
 
+import type { AccountDeletionService } from "../src/account-deletion";
 import { createApp, type AppOptions } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
 import type { AccountRepository } from "../src/db/accounts";
@@ -271,6 +272,13 @@ function createTenantResolver(): TenantResolver {
   };
 }
 
+function createAccountDeletionService(): AccountDeletionService {
+  return {
+    deleteAccount: vi.fn(async () => "deleted" as const),
+    reconcile: vi.fn(async () => 0),
+  };
+}
+
 function createAllowedRateLimiter(): RateLimiter {
   return {
     consume: vi.fn(async () => ({
@@ -355,6 +363,42 @@ describe("API foundation", () => {
       },
       tenantId: TENANT_ID,
     });
+  });
+
+  it("deletes only the authenticated account without resolving or bootstrapping a tenant", async () => {
+    const tenantResolver = createTenantResolver();
+    const accountDeletionService = createAccountDeletionService();
+    const app = createTestApp({ tenantResolver, accountDeletionService });
+
+    const response = await app.request("/api/app/account", {
+      method: "DELETE",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ confirmation: "DELETE", password: "current-password" }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ status: "deleted" });
+    expect(tenantResolver.resolve).not.toHaveBeenCalled();
+    expect(accountDeletionService.deleteAccount).toHaveBeenCalledWith({
+      env: undefined,
+      user: { id: "user-1", email: "person@example.com", role: "authenticated" },
+      accessToken: "valid-token",
+      password: "current-password",
+    });
+  });
+
+  it("validates deletion confirmation before invoking the deletion service", async () => {
+    const accountDeletionService = createAccountDeletionService();
+    const app = createTestApp({ accountDeletionService });
+    const response = await app.request("/api/app/account", {
+      method: "DELETE",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ confirmation: "delete", password: "current-password" }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: "invalid_request" });
+    expect(accountDeletionService.deleteAccount).not.toHaveBeenCalled();
   });
 
   it("requires a JSON media type before parsing write requests", async () => {

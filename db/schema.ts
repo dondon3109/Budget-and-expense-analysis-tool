@@ -278,6 +278,29 @@ export const importPreviews = sqliteTable(
   (table) => [index("import_previews_tenant_expiry_idx").on(table.tenantId, table.expiresAt)],
 );
 
+// This table intentionally has no foreign key to tenants: it blocks automatic
+// workspace recreation by a still-valid access token after account deletion.
+export const accountDeletions = sqliteTable(
+  "account_deletions",
+  {
+    userId: text("user_id").primaryKey(),
+    requestedAt: text("requested_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    tenantDeletedAt: text("tenant_deleted_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    storagePurgedAt: text("storage_purged_at"),
+    authDeletedAt: text("auth_deleted_at"),
+    cleanupAttempts: integer("cleanup_attempts").notNull().default(0),
+    cleanupLeaseUntil: text("cleanup_lease_until"),
+    lastErrorCode: text("last_error_code"),
+  },
+  (table) => [
+    index("account_deletions_pending_cleanup_idx").on(table.authDeletedAt, table.cleanupLeaseUntil),
+  ],
+);
+
 export const rateLimits = sqliteTable(
   "rate_limits",
   {

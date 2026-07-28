@@ -85,6 +85,7 @@ function unauthorized(context: Parameters<MiddlewareHandler<AppEnvironment>>[0],
 export function createAuthMiddleware(
   verifier: AuthVerifier,
   tenantResolver: TenantResolver,
+  skipTenantResolution: (path: string, method: string) => boolean = () => false,
 ): MiddlewareHandler<AppEnvironment> {
   return async (context, next) => {
     const authorization = context.req.header("Authorization");
@@ -99,9 +100,11 @@ export function createAuthMiddleware(
       return unauthorized(context, "invalid_access_token");
     }
 
-    const tenant = await tenantResolver.resolve(context.env, user);
     context.set("authUser", user);
-    context.set("tenant", tenant);
+    context.set("accessToken", match[1]!);
+    if (!skipTenantResolution(context.req.path, context.req.method)) {
+      context.set("tenant", await tenantResolver.resolve(context.env, user));
+    }
     await next();
   };
 }

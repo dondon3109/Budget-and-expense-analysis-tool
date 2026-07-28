@@ -20,7 +20,9 @@ import {
   isOwnedAvatarPath,
   validateAvatarFile,
 } from "../lib/avatar";
+import { deleteCurrentAccount } from "../lib/api";
 import { getSupabaseClient, isSupabaseConfigured, supabase } from "../lib/supabase";
+import { userWorkspace } from "../lib/workspace";
 
 interface AuthContextValue {
   session: Session | null;
@@ -37,6 +39,7 @@ interface AuthContextValue {
   requestEmailChange: (email: string) => Promise<void>;
   verifyCurrentPassword: (password: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
+  deleteAccount: (password: string) => Promise<{ status: "deleted" | "cleanup_pending" }>;
   exchangeCodeForSession: (code: string) => Promise<boolean>;
 }
 
@@ -241,6 +244,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw normalizePasswordError(error);
   }, []);
 
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      const user = session?.user;
+      if (!user) throw new Error("Sign in again before deleting your account.");
+
+      const result = await deleteCurrentAccount(userWorkspace(user), password);
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      try {
+        await getSupabaseClient().auth.signOut({ scope: "local" });
+      } catch {
+        // The local session may already be gone after Auth hard deletion.
+      }
+      return result;
+    },
+    [queryClient, session?.user],
+  );
+
   const exchangeCodeForSession = useCallback(async (code: string) => {
     passwordRecoveryRef.current = false;
     const { error } = await getSupabaseClient().auth.exchangeCodeForSession(code);
@@ -269,9 +290,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestEmailChange,
       verifyCurrentPassword,
       updatePassword,
+      deleteAccount,
       exchangeCodeForSession,
     }),
     [
+      deleteAccount,
       exchangeCodeForSession,
       loading,
       removeAvatar,

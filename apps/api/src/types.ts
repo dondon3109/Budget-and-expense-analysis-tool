@@ -3,6 +3,8 @@ export interface Bindings {
   ALLOWED_ORIGINS?: string;
   SUPABASE_URL?: string;
   SUPABASE_JWT_AUDIENCE?: string;
+  SUPABASE_PUBLISHABLE_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
   DEEPSEEK_API_KEY?: string;
   DEEPSEEK_MODEL?: string;
   ASSISTANT_ENABLED?: string;
@@ -26,6 +28,7 @@ export interface AppEnvironment {
   Bindings: Bindings;
   Variables: {
     authUser: AuthUser;
+    accessToken: string;
     tenant: TenantContext;
   };
 }

@@ -1,4 +1,4 @@
-import { useState, type ComponentProps } from "react";
+import { forwardRef, useState, type ComponentProps } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import "./PasswordField.css";
 
@@ -7,7 +7,10 @@ type PasswordFieldProps = Omit<ComponentProps<"input">, "id" | "type"> & {
   label: string;
 };
 
-export function PasswordField({ id, label, disabled, ...inputProps }: PasswordFieldProps) {
+export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(function PasswordField(
+  { id, label, disabled, ...inputProps },
+  ref,
+) {
   const [isVisible, setIsVisible] = useState(false);
   const fieldName = label.toLowerCase();
   const actionLabel = `${isVisible ? "Hide" : "Show"} ${fieldName}`;
@@ -18,7 +21,7 @@ export function PasswordField({ id, label, disabled, ...inputProps }: PasswordFi
         <span>{label}</span>
       </label>
       <div className="password-field-control">
-        <input id={id} type={isVisible ? "text" : "password"} disabled={disabled} {...inputProps} />
+        <input ref={ref} id={id} type={isVisible ? "text" : "password"} disabled={disabled} {...inputProps} />
         <button
           className="password-visibility-toggle"
           type="button"
@@ -32,4 +35,4 @@ export function PasswordField({ id, label, disabled, ...inputProps }: PasswordFi
       </div>
     </div>
   );
-}
+});

@@ -173,9 +173,11 @@ export function PrivacyPolicyPage() {
         </p>
         <p>
           The product currently exports filtered transactions as CSV. That export is not a complete
-          account-data archive and does not by itself satisfy every portability request. There is no
-          in-app user-account deletion control at present. For browser tracking choices, use Cookie
-          Settings or read the <Link to="/cookie-policy">Cookie Policy</Link>.
+          account-data archive and does not by itself satisfy every portability request. You can
+          permanently delete your account from Account Settings after confirming the action and your
+          current password. Zoption removes its D1 workspace records immediately; any managed
+          Storage/Auth cleanup that cannot finish at once continues securely. For browser tracking
+          choices, use Cookie Settings or read the <Link to="/cookie-policy">Cookie Policy</Link>.
         </p>
       </section>
 

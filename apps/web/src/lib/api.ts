@@ -75,6 +75,7 @@ async function workspaceFetch(
   workspace: AuthenticatedWorkspace,
   path: string,
   init: RequestInit,
+  options: { retryUnauthorized?: boolean } = {},
 ): Promise<Response> {
   const run = async (refresh: boolean) => {
     const headers = new Headers(init.headers);
@@ -83,7 +84,9 @@ async function workspaceFetch(
   };
 
   let response = await run(false);
-  if (response.status === 401) {
+  if (response.status === 410) {
+    await signOutAfterUnauthorized();
+  } else if (response.status === 401 && options.retryUnauthorized !== false) {
     try {
       response = await run(true);
     } catch {
@@ -99,6 +102,7 @@ async function requestJson<T>(
   workspace: AuthenticatedWorkspace,
   path: string,
   init: RequestInit = {},
+  options: { retryUnauthorized?: boolean } = {},
 ): Promise<T> {
   const response = await workspaceFetch(workspace, path, {
     ...init,
@@ -107,7 +111,7 @@ async function requestJson<T>(
       ...(init.body ? { "Content-Type": "application/json" } : {}),
       ...init.headers,
     },
-  });
+  }, options);
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
       error?: string;
@@ -292,6 +296,23 @@ export function updateAccount(
 
 export function deleteAccount(workspace: AuthenticatedWorkspace, id: string): Promise<void> {
   return requestJson(workspace, `/api/app/accounts/${id}`, { method: "DELETE" });
+}
+
+export type AccountDeletionResult = { status: "deleted" | "cleanup_pending" };
+
+export function deleteCurrentAccount(
+  workspace: AuthenticatedWorkspace,
+  password: string,
+): Promise<AccountDeletionResult> {
+  return requestJson(
+    workspace,
+    "/api/app/account",
+    {
+      method: "DELETE",
+      body: JSON.stringify({ confirmation: "DELETE", password }),
+    },
+    { retryUnauthorized: false },
+  );
 }
 
 export function getAssistantPreferences(
