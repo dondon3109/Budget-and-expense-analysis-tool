@@ -102,9 +102,9 @@ export function CookiePolicyPage() {
       <section>
         <h2>7. Contact</h2>
         <p>
-          Operator: <Todo>[TODO: fill in legal entity and address]</Todo>
+          Operator: Zoption Administrator
           <br />
-          Email: <Todo>[TODO: fill in privacy contact email]</Todo>
+          Email: support@zoption.site
         </p>
       </section>
     </LegalPageLayout>
