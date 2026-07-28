@@ -36,7 +36,7 @@ function ConsentProbe() {
       <button type="button" onClick={() => consent.openPreferences()}>
         Open
       </button>
-      <button type="button" onClick={consent.closePreferences}>
+      <button type="button" onClick={() => consent.closePreferences()}>
         Close
       </button>
     </div>

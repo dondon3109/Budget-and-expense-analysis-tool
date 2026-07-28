@@ -72,7 +72,7 @@ export function CookiePreferencesDialog() {
 
   return createPortal(
     <div className="cookie-preferences-layer">
-      <div className="cookie-preferences-backdrop" aria-hidden="true" onClick={closePreferences} />
+      <div className="cookie-preferences-backdrop" aria-hidden="true" onClick={() => closePreferences()} />
       <section
         ref={dialogRef}
         className="cookie-preferences-dialog"
@@ -96,7 +96,7 @@ export function CookiePreferencesDialog() {
             type="button"
             className="icon-button cookie-preferences-close"
             aria-label="Close cookie preferences"
-            onClick={closePreferences}
+            onClick={() => closePreferences()}
           >
             <X size={19} aria-hidden="true" />
           </button>
@@ -162,7 +162,7 @@ export function CookiePreferencesDialog() {
 
         <p className="cookie-preferences-policy-note">
           Learn what each category covers in the{" "}
-          <Link to="/cookie-policy" onClick={closePreferences}>
+          <Link to="/cookie-policy" onClick={() => closePreferences()}>
             Cookie Policy
           </Link>.
         </p>
