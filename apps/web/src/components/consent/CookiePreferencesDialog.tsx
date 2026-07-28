@@ -161,7 +161,10 @@ export function CookiePreferencesDialog() {
         </div>
 
         <p className="cookie-preferences-policy-note">
-          Learn what each category covers in the <Link to="/cookie-policy">Cookie Policy</Link>.
+          Learn what each category covers in the{" "}
+          <Link to="/cookie-policy" onClick={closePreferences}>
+            Cookie Policy
+          </Link>.
         </p>
 
         <footer className="cookie-preferences-actions">

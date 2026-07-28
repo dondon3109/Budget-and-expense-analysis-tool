@@ -29,7 +29,7 @@ interface CookieConsentContextValue {
   rejectAll: () => void;
   savePreferences: (preferences: ConsentPreferences) => void;
   openPreferences: (returnFocus?: HTMLElement) => void;
-  closePreferences: () => void;
+  closePreferences: (options?: { restoreFocus?: boolean }) => void;
 }
 
 const CookieConsentContext = createContext<CookieConsentContextValue | null>(null);
@@ -54,14 +54,17 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", syncConsent);
   }, []);
 
-  const closePreferences = useCallback(() => {
+  const closePreferences = useCallback((options: { restoreFocus?: boolean } = {}) => {
+    const { restoreFocus = true } = options;
     const returnFocus = preferencesReturnFocusRef.current;
     setPreferencesOpen(false);
+    if (!restoreFocus) return;
+
     window.setTimeout(() => {
       const target = returnFocus?.isConnected
         ? returnFocus
         : document.querySelector<HTMLElement>("[data-cookie-preferences-trigger]");
-      target?.focus();
+      target?.focus({ preventScroll: true });
     }, 0);
   }, []);
 
@@ -70,7 +73,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
       const record = createConsentRecord(nextPreferences, source);
       persistConsentRecord(record);
       setConsent(record);
-      closePreferences();
+      closePreferences({ restoreFocus: false });
     },
     [closePreferences],
   );

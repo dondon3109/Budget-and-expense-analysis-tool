@@ -14,7 +14,7 @@ export function CookieConsentBanner() {
     !hasThemePreference ||
     hasDecision ||
     preferencesOpen ||
-    location.pathname === "/cookie-policy"
+    ["/cookie-policy", "/privacy-policy", "/terms-of-service"].includes(location.pathname)
   ) {
     return null;
   }

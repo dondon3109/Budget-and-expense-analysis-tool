@@ -115,7 +115,6 @@ export function PrivacyPolicyPage() {
           through service providers and operational roles. Provider-managed safeguards also apply.
         </p>
         <p>
-          <Todo>
             We use reasonable administrative and technical safeguards designed to protect personal data against unauthorized access, loss, alteration, disclosure, or misuse. Zoption uses Supabase-hosted infrastructure, which encrypts project data at rest and supports encrypted connections in transit. We use Row Level Security policies to restrict access to database records according to the authenticated user and the permissions assigned to them.
 
             Our database provider performs automated backups according to the backup availability and retention applicable to our service plan. These backups may cover database records but may not include all files, storage objects, external services, or information stored outside the database. Backups are intended for service recovery and may not allow restoration of individual records or user accounts.
@@ -173,7 +172,6 @@ export function PrivacyPolicyPage() {
           * **Provider backups:** Deleted database information may remain in encrypted provider backups until the applicable backup-retention cycle expires, which may be up to 30 days under our current infrastructure arrangements. Backup copies are maintained for disaster recovery and are not ordinarily accessed or restored except when necessary to recover the service. If a backup containing previously deleted information is restored, we will take reasonable steps to reapply completed deletion requests.
 
           We may retain specific information for longer when required to comply with a legal obligation, regulatory request, court order, investigation, dispute, or the establishment, exercise, or defense of legal claims. Aggregated or anonymized information that no longer identifies an individual may be retained for longer for statistical, security, and service-improvement purposes.
-
         </p>
       </section>
 

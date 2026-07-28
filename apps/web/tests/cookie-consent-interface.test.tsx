@@ -106,6 +106,19 @@ describe("cookie consent interface", () => {
     expect(document.getElementById("root")?.inert).toBe(false);
   });
 
+  it("closes preferences before opening the Cookie Policy", async () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "light");
+    const user = userEvent.setup();
+    renderExperience();
+
+    await user.click(screen.getByRole("button", { name: "Manage Preferences" }));
+    await user.click(screen.getByRole("link", { name: "Cookie Policy" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.getElementById("root")?.inert).toBe(false);
+    expect(screen.queryByRole("heading", { name: "Choose what this browser may use" })).toBeNull();
+  });
+
   it("traps focus, closes with Escape, and restores the trigger focus", async () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, "light");
     const user = userEvent.setup();
@@ -126,12 +139,17 @@ describe("cookie consent interface", () => {
     );
   });
 
-  it("does not show the first-visit banner on the Cookie Policy page", () => {
-    window.localStorage.setItem(THEME_STORAGE_KEY, "light");
-    renderExperience(["/cookie-policy"]);
+  it.each(["/cookie-policy", "/privacy-policy", "/terms-of-service"])(
+    "does not show the first-visit banner on %s",
+    (path) => {
+      window.localStorage.setItem(THEME_STORAGE_KEY, "light");
+      renderExperience([path]);
 
-    expect(screen.queryByRole("heading", { name: "Choose what this browser may use" })).toBeNull();
-  });
+      expect(
+        screen.queryByRole("heading", { name: "Choose what this browser may use" }),
+      ).toBeNull();
+    },
+  );
 
   it("does not show the first-visit banner for a current saved decision", () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, "coffee");
