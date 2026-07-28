@@ -3,18 +3,14 @@ import { Hono } from "hono";
 
 import type { ImportRepository } from "../db/imports";
 import { HttpError } from "../errors";
+import { readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createImportRoutes(repository: ImportRepository) {
   const routes = new Hono<AppEnvironment>();
 
   routes.post("/preview", async (context) => {
-    let body: unknown;
-    try {
-      body = await context.req.json<unknown>();
-    } catch {
-      throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-    }
+    const body = await readJson(context);
     const parsed = importPreviewRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new HttpError(
@@ -30,12 +26,7 @@ export function createImportRoutes(repository: ImportRepository) {
   });
 
   routes.post("/commit", async (context) => {
-    let body: unknown;
-    try {
-      body = await context.req.json<unknown>();
-    } catch {
-      throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-    }
+    const body = await readJson(context);
     const parsed = importCommitSchema.safeParse(body);
     if (!parsed.success) {
       throw new HttpError(400, "invalid_request", "The preview token is invalid.");

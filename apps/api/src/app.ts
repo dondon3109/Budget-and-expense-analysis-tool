@@ -5,7 +5,8 @@ import {
   type CashflowTrendQuery,
   type DashboardSummary,
 } from "@zoption/shared";
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
+import { bodyLimit } from "hono/body-limit";
 
 import { createAssistantOrchestrator } from "./assistant/orchestrator";
 import { deepSeekProvider } from "./assistant/deepseek";
@@ -37,6 +38,15 @@ import { createTransactionRoutes } from "./routes/transactions";
 import type { AppEnvironment, Bindings } from "./types";
 
 const WRITE_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
+const JSON_METHODS = new Set(["POST", "PATCH", "PUT"]);
+const DEFAULT_JSON_BODY_LIMIT = 64 * 1024;
+const IMPORT_PREVIEW_BODY_LIMIT = 3 * 1024 * 1024;
+
+function isJsonContentType(contentType: string | undefined): boolean {
+  if (!contentType) return false;
+  const mediaType = contentType.split(";", 1)[0]?.trim().toLowerCase();
+  return mediaType === "application/json" || Boolean(mediaType?.endsWith("+json"));
+}
 
 type DashboardLoader = (
   env: Bindings,
@@ -107,6 +117,13 @@ export function createApp(options: AppOptions = {}) {
     });
 
   app.use("/api/*", async (context, next) => {
+    context.header("X-Content-Type-Options", "nosniff");
+    context.header("Referrer-Policy", "no-referrer");
+    context.header("X-Frame-Options", "DENY");
+    if (new URL(context.req.url).protocol === "https:") {
+      context.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    }
+
     const allowedOrigins = (context.env?.ALLOWED_ORIGINS ?? "http://localhost:5173")
       .split(",")
       .map((allowedOrigin) => allowedOrigin.trim())
@@ -135,26 +152,66 @@ export function createApp(options: AppOptions = {}) {
   });
   app.use("/api/app/*", createAuthMiddleware(authVerifier, resolveTenant));
   app.use("/api/app/*", async (context, next) => {
-    if (!WRITE_METHODS.has(context.req.method)) {
+    if (!JSON_METHODS.has(context.req.method)) {
       await next();
       return;
     }
+    if (!isJsonContentType(context.req.header("Content-Type"))) {
+      throw new HttpError(
+        415,
+        "unsupported_media_type",
+        "Send the request body as application/json.",
+      );
+    }
 
-    const tenantId = context.get("tenant").tenantId;
+    const maxSize =
+      context.req.method === "POST" && context.req.path === "/api/app/imports/preview"
+        ? IMPORT_PREVIEW_BODY_LIMIT
+        : DEFAULT_JSON_BODY_LIMIT;
+    const limitBody = bodyLimit({
+      maxSize,
+      onError: (limitedContext) =>
+        limitedContext.json(
+          { error: "payload_too_large", message: "The request body is too large." },
+          413,
+        ),
+    }) as MiddlewareHandler<AppEnvironment>;
+    // Hono narrows the wildcard route context more than its built-in middleware type.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    return limitBody(context, next);
+  });
+  app.use("/api/app/*", async (context, next) => {
     const isAssistantGeneration =
       context.req.method === "POST" &&
       (context.req.path === "/api/app/assistant/threads" ||
         /^\/api\/app\/assistant\/threads\/[^/]+\/messages$/.test(context.req.path));
+    const isExportRead =
+      context.req.method === "GET" && context.req.path.startsWith("/api/app/exports");
+    const isAssistantHistoryRead =
+      context.req.method === "GET" && context.req.path.startsWith("/api/app/assistant/threads");
     const policies = isAssistantGeneration
       ? [
           { scope: "tenant-assistant-minute", limit: 10, windowSeconds: 60 },
           { scope: "tenant-assistant-day", limit: 100, windowSeconds: 24 * 60 * 60 },
         ]
-      : [
-          context.req.path.startsWith("/api/app/imports")
-            ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
-            : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
-        ];
+      : isExportRead
+        ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
+        : isAssistantHistoryRead
+          ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
+          : WRITE_METHODS.has(context.req.method)
+            ? [
+                context.req.path.startsWith("/api/app/imports")
+                  ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
+                  : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
+              ]
+            : [];
+
+    if (policies.length === 0) {
+      await next();
+      return;
+    }
+
+    const tenantId = context.get("tenant").tenantId;
 
     for (const policy of policies) {
       const decision = await rateLimiter.consume(context.env, tenantId, policy);

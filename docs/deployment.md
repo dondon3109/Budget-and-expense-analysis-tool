@@ -11,10 +11,11 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    - `https://zoption.site/auth/callback`
    - `https://www.zoption.site/auth/callback`
 3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users. The Site URL is only a fallback; password recovery should return through `/auth/callback?next=%2Fupdate-password`. In the recovery email template, link the reset action to `{{ .ConfirmationURL }}` so Supabase preserves the `redirectTo` supplied by the app. Do not link recovery mail directly to `{{ .SiteURL }}`. Compare the reset request's actual `redirectTo` with the dashboard allow-list and add the query-bearing production callback explicitly if Supabase does not accept the base callback entry. New Free-plan projects using Supabase's default SMTP cannot customize Auth templates, so configure custom SMTP when template editing or delivery to non-team addresses is required.
-4. In **Authentication > Password security**, set the minimum password length to 12 and enable leaked-password protection when available. Zoption's signup, recovery, and settings forms also require lowercase, uppercase, number, and special-character coverage; keep any Supabase Auth Hook or equivalent server-side policy aligned if direct Auth API clients must be held to those character-class rules.
-5. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
-6. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
-7. Apply the tracked Supabase migrations to each preview and production project:
+4. In **Authentication > Password security**, set the minimum password length to 12, require lowercase, uppercase, number, and symbol coverage, enable leaked-password protection when available, and require a recent session or reauthentication for password changes. The tracked local Supabase configuration mirrors this policy; the hosted project must enforce it because browser validation can be bypassed by direct Auth API clients. Use an HTTPS project URL in preview and production; the Worker permits cleartext Supabase URLs only for explicit loopback development hosts.
+5. Require email confirmation before first sign-in. Keep signup responses neutral for both new and existing addresses so the public form does not disclose whether an account exists.
+6. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
+7. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
+8. Apply the tracked Supabase migrations to each preview and production project:
 
    ```bash
    pnpm dlx supabase login
@@ -69,7 +70,7 @@ Safe diagnostic actions:
 
 ## Frontend configuration
 
-Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production API default to `https://api.zoption.site`; Cloudflare Pages environment variables can override it. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`.
+Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production API default to `https://api.zoption.site`; Cloudflare Pages environment variables can override it. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`. The tracked Pages `_headers` policy restricts scripts, workers, forms, frames, images, and connections to the application, Supabase, and known API hosts, and enables HSTS on deployed HTTPS responses. Update and verify that policy whenever a new external asset, API, or authentication host is introduced.
 
 ```bash
 VITE_API_URL=https://PREVIEW_API_HOST \

@@ -343,6 +343,10 @@ describe("API foundation", () => {
     const response = await app.request("/api/app/me", { headers: AUTHORIZATION });
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
+    expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(response.headers.get("Strict-Transport-Security")).toBeNull();
     await expect(response.json()).resolves.toEqual({
       user: {
         id: "user-1",
@@ -351,6 +355,69 @@ describe("API foundation", () => {
       },
       tenantId: TENANT_ID,
     });
+  });
+
+  it("requires a JSON media type before parsing write requests", async () => {
+    const transactions = createTransactionStore();
+    const app = createTestApp({ transactions });
+    const response = await app.request("/api/app/transactions", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: JSON.stringify({
+        date: "2026-07-18",
+        description: "Groceries",
+        amountMinor: 2_455,
+        currency: "PHP",
+        kind: "expense",
+        categoryId: "food",
+        accountId: "account-everyday",
+      }),
+    });
+
+    expect(response.status).toBe(415);
+    await expect(response.json()).resolves.toMatchObject({ error: "unsupported_media_type" });
+    expect(transactions.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects oversized JSON before reaching the route repository", async () => {
+    const transactions = createTransactionStore();
+    const app = createTestApp({ transactions });
+    const response = await app.request("/api/app/transactions", {
+      method: "POST",
+      headers: privateHeaders({
+        "Content-Type": "application/json",
+        "Content-Length": String(65 * 1024),
+      }),
+      body: "{}",
+    });
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({ error: "payload_too_large" });
+    expect(transactions.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed JSON with a stable client error", async () => {
+    const transactions = createTransactionStore();
+    const app = createTestApp({ transactions });
+    const response = await app.request("/api/app/transactions", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: "{",
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: "invalid_json" });
+    expect(transactions.create).not.toHaveBeenCalled();
+  });
+
+  it("adds HSTS to HTTPS API responses", async () => {
+    const app = createTestApp();
+    const response = await app.request("https://api.zoption.site/api/app/me", {
+      headers: AUTHORIZATION,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Strict-Transport-Security")).toContain("max-age=31536000");
   });
 
   it("answers CORS preflight before authentication and allows Authorization", async () => {
@@ -558,6 +625,30 @@ describe("API foundation", () => {
       limit: 20,
       windowSeconds: 900,
     });
+  });
+
+  it("rate-limits bulk export reads before querying transactions", async () => {
+    const transactions = createTransactionStore();
+    const rateLimiter: RateLimiter = {
+      consume: vi.fn(async () => ({
+        allowed: false,
+        limit: 20,
+        remaining: 0,
+        retryAfterSeconds: 18,
+      })),
+    };
+    const app = createTestApp({ transactions, rateLimiter });
+    const response = await app.request("/api/app/exports/transactions.csv", {
+      headers: AUTHORIZATION,
+    });
+
+    expect(response.status).toBe(429);
+    expect(rateLimiter.consume).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      scope: "tenant-export-read",
+      limit: 20,
+      windowSeconds: 60,
+    });
+    expect(transactions.export).not.toHaveBeenCalled();
   });
 
   it("returns stable not-found errors from write operations", async () => {

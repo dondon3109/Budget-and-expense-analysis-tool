@@ -7,8 +7,6 @@ import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AuthOperationError } from "../src/auth/authErrors";
-
 const authState = vi.hoisted(() => ({
   configured: true,
   signUp: vi.fn(),
@@ -141,25 +139,6 @@ describe("SignupPage", () => {
 
     await waitFor(() =>
       expect(authState.signUp).toHaveBeenCalledWith("user@example.com", "Budgeting-2026!"),
-    );
-  });
-
-  it("shows a duplicate-email recovery link without exposing provider details", async () => {
-    authState.signUp.mockRejectedValueOnce(
-      new AuthOperationError(
-        "duplicate_email",
-        "This email is already registered.",
-        "email_exists",
-      ),
-    );
-    renderSignup();
-    fillValidCredentials();
-    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
-
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("already registered"));
-    expect(screen.getByRole("link", { name: "Sign in instead." })).toHaveAttribute(
-      "href",
-      "/login",
     );
   });
 

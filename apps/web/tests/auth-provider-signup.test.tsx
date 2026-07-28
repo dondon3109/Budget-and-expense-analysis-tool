@@ -100,9 +100,23 @@ describe("AuthProvider signup", () => {
     await waitFor(() => expect(supabaseMocks.signUp).toHaveBeenCalledTimes(2));
   });
 
+  it.each(["email_exists", "user_already_exists"])(
+    "keeps Supabase %s responses indistinguishable from confirmation-required signup",
+    async (providerCode) => {
+      supabaseMocks.signUp.mockResolvedValueOnce({
+        data: { session: null },
+        error: { code: providerCode, message: "provider detail" },
+      });
+      renderProvider();
+
+      fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+      await waitFor(() => expect(supabaseMocks.signUp).toHaveBeenCalledTimes(1));
+      expect(document.body.dataset.error).toBeUndefined();
+    },
+  );
+
   it.each([
-    ["email_exists", "duplicate_email"],
-    ["user_already_exists", "duplicate_email"],
     ["weak_password", "weak_password"],
     ["over_request_rate_limit", "rate_limited"],
     ["over_email_send_rate_limit", "rate_limited"],
@@ -120,7 +134,7 @@ describe("AuthProvider signup", () => {
     expect(document.body.dataset.error).not.toContain("provider detail");
   });
 
-  it("detects Supabase's masked existing-email response", async () => {
+  it("accepts Supabase's masked existing-email response without disclosing the account", async () => {
     supabaseMocks.signUp.mockResolvedValueOnce({
       data: { session: null, user: { identities: [] } },
       error: null,
@@ -129,8 +143,7 @@ describe("AuthProvider signup", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
-    await waitFor(() =>
-      expect(document.body.dataset.error).toBe("duplicate_email:This email is already registered."),
-    );
+    await waitFor(() => expect(supabaseMocks.signUp).toHaveBeenCalledTimes(1));
+    expect(document.body.dataset.error).toBeUndefined();
   });
 });

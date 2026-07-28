@@ -181,12 +181,7 @@ export function SignupPage() {
               Authentication is not configured for this environment.
             </p>
           )}
-          {error?.code === "duplicate_email" && (
-            <p className="form-error form-error-duplicate" role="alert">
-              <span>{error.message}</span> <Link to="/login">Sign in instead.</Link>
-            </p>
-          )}
-          {error && error.code !== "duplicate_email" && (
+          {error && (
             <p className="form-error" role="alert">
               {error.message}
             </p>

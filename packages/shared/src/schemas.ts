@@ -15,11 +15,27 @@ export const isoDateSchema = z
     return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
   }, "Enter a real calendar date.");
 
+export const resourceIdSchema = z
+  .string()
+  .min(1)
+  .max(180)
+  .regex(/^[A-Za-z0-9:_-]+$/, "Use a valid resource identifier.");
+
+export const assistantThreadIdSchema = z.string().uuid();
+
+export const categoryListQuerySchema = z
+  .object({
+    includeArchived: z.enum(["true", "false"]).optional().default("false"),
+  })
+  .strict()
+  .transform((value) => ({ includeArchived: value.includeArchived === "true" }));
+
 export const dashboardQuerySchema = z
   .object({
     from: isoDateSchema,
     to: isoDateSchema,
   })
+  .strict()
   .refine((value) => value.from <= value.to, {
     message: "The start date must not be after the end date.",
     path: ["from"],
@@ -163,27 +179,29 @@ export const assistantCategoryToolSchema = z
 
 export const accountTypeSchema = z.enum(accountTypes);
 
-const transactionBaseSchema = z.object({
-  date: isoDateSchema,
-  description: z.string().trim().min(1).max(240),
-  amountMinor: z
-    .number()
-    .int()
-    .safe()
-    .refine((value) => value > 0, "Amount must be greater than zero."),
-  currency: z.literal("PHP"),
-  categoryId: z.string().min(1),
-  notes: z.string().trim().max(500).optional(),
-});
+const transactionBaseSchema = z
+  .object({
+    date: isoDateSchema,
+    description: z.string().trim().min(1).max(240),
+    amountMinor: z
+      .number()
+      .int()
+      .safe()
+      .refine((value) => value > 0, "Amount must be greater than zero."),
+    currency: z.literal("PHP"),
+    categoryId: resourceIdSchema,
+    notes: z.string().trim().max(500).optional(),
+  })
+  .strict();
 
 export const transactionInputSchema = z.discriminatedUnion("kind", [
-  transactionBaseSchema.extend({ kind: z.literal("income"), accountId: z.string().min(1) }),
-  transactionBaseSchema.extend({ kind: z.literal("expense"), accountId: z.string().min(1) }),
+  transactionBaseSchema.extend({ kind: z.literal("income"), accountId: resourceIdSchema }),
+  transactionBaseSchema.extend({ kind: z.literal("expense"), accountId: resourceIdSchema }),
   transactionBaseSchema
     .extend({
       kind: z.literal("transfer"),
-      fromAccountId: z.string().min(1),
-      toAccountId: z.string().min(1),
+      fromAccountId: resourceIdSchema,
+      toAccountId: resourceIdSchema,
     })
     .refine((value) => value.fromAccountId !== value.toAccountId, {
       path: ["toAccountId"],
@@ -205,20 +223,21 @@ export const transactionUpdateSchema = z
       .optional(),
     currency: z.literal("PHP").optional(),
     kind: z.enum(transactionKinds).optional(),
-    categoryId: z.string().min(1).optional(),
-    accountId: z.string().min(1).optional(),
-    fromAccountId: z.string().min(1).optional(),
-    toAccountId: z.string().min(1).optional(),
+    categoryId: resourceIdSchema.optional(),
+    accountId: resourceIdSchema.optional(),
+    fromAccountId: resourceIdSchema.optional(),
+    toAccountId: resourceIdSchema.optional(),
     notes: z.string().trim().max(500).optional(),
   })
+  .strict()
   .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
 
 export type TransactionUpdate = z.infer<typeof transactionUpdateSchema>;
 
 const transactionFilterShape = {
   search: z.string().trim().max(120).optional(),
-  accountId: z.string().min(1).optional(),
-  categoryId: z.string().min(1).optional(),
+  accountId: resourceIdSchema.optional(),
+  categoryId: resourceIdSchema.optional(),
   kind: z.enum(transactionKinds).optional(),
   from: isoDateSchema.optional(),
   to: isoDateSchema.optional(),
@@ -232,6 +251,7 @@ export const transactionListQuerySchema = z
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(50).default(10),
   })
+  .strict()
   .refine((value) => !value.from || !value.to || value.from <= value.to, {
     message: "The start date must not be after the end date.",
     path: ["from"],
@@ -241,6 +261,7 @@ export type TransactionListQuery = z.infer<typeof transactionListQuerySchema>;
 
 export const transactionExportQuerySchema = z
   .object(transactionFilterShape)
+  .strict()
   .refine((value) => !value.from || !value.to || value.from <= value.to, {
     message: "The start date must not be after the end date.",
     path: ["from"],
@@ -248,11 +269,13 @@ export const transactionExportQuerySchema = z
 
 export type TransactionExportQuery = z.infer<typeof transactionExportQuerySchema>;
 
-export const categoryInputSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  kind: z.enum(transactionKinds),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a six-digit hex color."),
-});
+export const categoryInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    kind: z.enum(transactionKinds),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a six-digit hex color."),
+  })
+  .strict();
 
 export type CategoryInput = z.infer<typeof categoryInputSchema>;
 
@@ -265,6 +288,7 @@ export const categoryUpdateSchema = z
       .optional(),
     archived: z.boolean().optional(),
   })
+  .strict()
   .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
 
 export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
@@ -274,7 +298,7 @@ export const monthStartSchema = isoDateSchema.refine(
   "Use the first day of the month.",
 );
 
-export const transactionCalendarQuerySchema = z.object({ month: monthStartSchema });
+export const transactionCalendarQuerySchema = z.object({ month: monthStartSchema }).strict();
 
 export type TransactionCalendarQuery = z.infer<typeof transactionCalendarQuerySchema>;
 
@@ -307,6 +331,7 @@ export const calendarEventInputSchema = z
     endTime: eventTimeSchema.nullable().optional(),
     notes: z.string().trim().max(500).nullable().optional(),
   })
+  .strict()
   .superRefine(validateEventTimes);
 
 export type CalendarEventInput = z.infer<typeof calendarEventInputSchema>;
@@ -319,50 +344,59 @@ export const calendarEventUpdateSchema = z
     endTime: eventTimeSchema.nullable().optional(),
     notes: z.string().trim().max(500).nullable().optional(),
   })
+  .strict()
   .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
 
 export type CalendarEventUpdate = z.infer<typeof calendarEventUpdateSchema>;
 
-export const calendarEventQuerySchema = z.object({ month: monthStartSchema });
+export const calendarEventQuerySchema = z.object({ month: monthStartSchema }).strict();
 
 export type CalendarEventQuery = z.infer<typeof calendarEventQuerySchema>;
 
-export const budgetQuerySchema = z.object({ month: monthStartSchema });
+export const budgetQuerySchema = z.object({ month: monthStartSchema }).strict();
 
-export const budgetUpsertSchema = z.object({
-  month: monthStartSchema,
-  items: z
-    .array(
-      z.object({
-        categoryId: z.string().min(1),
-        limitMinor: z.number().int().safe().min(0).max(1_000_000_000_00),
-      }),
-    )
-    .min(1)
-    .max(100)
-    .refine(
-      (items) => new Set(items.map((item) => item.categoryId)).size === items.length,
-      "Budget categories must be unique.",
-    ),
-});
+export const budgetUpsertSchema = z
+  .object({
+    month: monthStartSchema,
+    items: z
+      .array(
+        z
+          .object({
+            categoryId: resourceIdSchema,
+            limitMinor: z.number().int().safe().min(0).max(1_000_000_000_00),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(100)
+      .refine(
+        (items) => new Set(items.map((item) => item.categoryId)).size === items.length,
+        "Budget categories must be unique.",
+      ),
+  })
+  .strict();
 
 export type BudgetUpsert = z.infer<typeof budgetUpsertSchema>;
 
-export const subscriptionQuerySchema = z.object({ month: monthStartSchema });
+export const subscriptionQuerySchema = z.object({ month: monthStartSchema }).strict();
 
-export const subscriptionInputSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  amountMinor: z.number().int().safe().min(1).max(1_000_000_000_00),
-  billingCycle: z.enum(subscriptionBillingCycles),
-  nextBillingDate: isoDateSchema,
-  categoryId: z.string().min(1),
-});
+export const subscriptionInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    amountMinor: z.number().int().safe().min(1).max(1_000_000_000_00),
+    billingCycle: z.enum(subscriptionBillingCycles),
+    nextBillingDate: isoDateSchema,
+    categoryId: resourceIdSchema,
+  })
+  .strict();
 
 export type SubscriptionInput = z.infer<typeof subscriptionInputSchema>;
 
-export const subscriptionStatusUpdateSchema = z.object({
-  status: z.enum(subscriptionStatuses),
-});
+export const subscriptionStatusUpdateSchema = z
+  .object({
+    status: z.enum(subscriptionStatuses),
+  })
+  .strict();
 
 export type SubscriptionStatusUpdate = z.infer<typeof subscriptionStatusUpdateSchema>;
 
@@ -379,6 +413,7 @@ export const importMappingSchema = z
     kind: importColumnSchema.optional(),
     currency: importColumnSchema.optional(),
   })
+  .strict()
   .superRefine((mapping, context) => {
     const usesAmount = Boolean(mapping.amount);
     const usesDebit = Boolean(mapping.debit);
@@ -412,6 +447,7 @@ export const importPreviewRequestSchema = z
     mapping: importMappingSchema,
     fallbackDate: isoDateSchema.optional(),
   })
+  .strict()
   .superRefine((input, context) => {
     const hasMappedDate = Boolean(input.mapping.date);
     const hasFallbackDate = Boolean(input.fallbackDate);
@@ -431,23 +467,28 @@ export const importCommitSchema = z
     token: z.string().uuid(),
     categoryOverrides: z
       .array(
-        z.object({
-          rowNumber: z.number().int().min(1),
-          categoryId: z.string().min(1),
-        }),
+        z
+          .object({
+            rowNumber: z.number().int().min(1),
+            categoryId: resourceIdSchema,
+          })
+          .strict(),
       )
       .max(500)
       .default([]),
     kindOverrides: z
       .array(
-        z.object({
-          rowNumber: z.number().int().min(1),
-          kind: z.enum(transactionKinds),
-        }),
+        z
+          .object({
+            rowNumber: z.number().int().min(1),
+            kind: z.enum(transactionKinds),
+          })
+          .strict(),
       )
       .max(500)
       .default([]),
   })
+  .strict()
   .superRefine((input, context) => {
     const categoryRows = input.categoryOverrides.map((override) => override.rowNumber);
     if (new Set(categoryRows).size !== categoryRows.length) {

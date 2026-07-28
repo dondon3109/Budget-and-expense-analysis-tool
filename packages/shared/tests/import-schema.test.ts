@@ -100,6 +100,23 @@ describe("import preview request schema", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("rejects unknown top-level and nested request fields", () => {
+    expect(
+      importPreviewRequestSchema.safeParse({
+        ...request,
+        fallbackDate: "2026-07-21",
+        tenantId: "attacker-controlled",
+      }).success,
+    ).toBe(false);
+    expect(
+      importPreviewRequestSchema.safeParse({
+        ...request,
+        fallbackDate: "2026-07-21",
+        mapping: { ...request.mapping, userId: "attacker-controlled" },
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("import commit schema", () => {

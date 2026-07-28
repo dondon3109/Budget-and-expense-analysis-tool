@@ -2,21 +2,15 @@ import {
   assistantMessageInputSchema,
   assistantMessageListQuerySchema,
   assistantPreferenceUpdateSchema,
+  assistantThreadIdSchema,
   assistantThreadListQuerySchema,
 } from "@zoption/shared";
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 
 import type { AssistantService } from "../assistant/service";
 import { HttpError } from "../errors";
+import { parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
-
-async function parseJson(context: Context<AppEnvironment>) {
-  try {
-    return await context.req.json<unknown>();
-  } catch {
-    throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-  }
-}
 
 export function createAssistantRoutes(service: AssistantService) {
   const routes = new Hono<AppEnvironment>();
@@ -33,7 +27,7 @@ export function createAssistantRoutes(service: AssistantService) {
   );
 
   routes.patch("/preferences", async (context) => {
-    const parsed = assistantPreferenceUpdateSchema.safeParse(await parseJson(context));
+    const parsed = assistantPreferenceUpdateSchema.safeParse(await readJson(context));
     if (!parsed.success) {
       throw new HttpError(
         400,
@@ -58,7 +52,7 @@ export function createAssistantRoutes(service: AssistantService) {
   });
 
   routes.post("/threads", async (context) => {
-    const parsed = assistantMessageInputSchema.safeParse(await parseJson(context));
+    const parsed = assistantMessageInputSchema.safeParse(await readJson(context));
     if (!parsed.success) {
       throw new HttpError(
         400,
@@ -87,14 +81,14 @@ export function createAssistantRoutes(service: AssistantService) {
       await service.listMessages(
         context.env,
         context.get("tenant").tenantId,
-        context.req.param("id"),
+        parsePathParameter(context.req.param("id"), assistantThreadIdSchema),
         parsed.data,
       ),
     );
   });
 
   routes.post("/threads/:id/messages", async (context) => {
-    const parsed = assistantMessageInputSchema.safeParse(await parseJson(context));
+    const parsed = assistantMessageInputSchema.safeParse(await readJson(context));
     if (!parsed.success) {
       throw new HttpError(
         400,
@@ -107,7 +101,7 @@ export function createAssistantRoutes(service: AssistantService) {
       await service.sendTurn(
         context.env,
         context.get("tenant").tenantId,
-        context.req.param("id"),
+        parsePathParameter(context.req.param("id"), assistantThreadIdSchema),
         parsed.data,
       ),
     );
@@ -117,7 +111,7 @@ export function createAssistantRoutes(service: AssistantService) {
     await service.deleteThread(
       context.env,
       context.get("tenant").tenantId,
-      context.req.param("id"),
+      parsePathParameter(context.req.param("id"), assistantThreadIdSchema),
     );
     return context.body(null, 204);
   });

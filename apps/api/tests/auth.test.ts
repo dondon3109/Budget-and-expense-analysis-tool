@@ -17,9 +17,7 @@ function bindings(overrides: Partial<Bindings> = {}): Bindings {
   };
 }
 
-async function createToken(
-  options: { audience?: string; issuer?: string; role?: string } = {},
-) {
+async function createToken(options: { audience?: string; issuer?: string; role?: string } = {}) {
   return new SignJWT({
     email: "person@example.com",
     role: options.role ?? "authenticated",
@@ -74,6 +72,25 @@ describe("Supabase JWT verifier", () => {
     const verifier = createSupabaseAuthVerifier(() => localJwks);
     await expect(
       verifier.verify(bindings({ SUPABASE_URL: undefined }), "not-a-token"),
+    ).rejects.toBeInstanceOf(AuthConfigurationError);
+  });
+
+  it("allows HTTP only for explicit loopback development hosts", async () => {
+    const createJwks = vi.fn(() => localJwks);
+    const verifier = createSupabaseAuthVerifier(createJwks);
+
+    await expect(
+      verifier.verify(bindings({ SUPABASE_URL: "http://127.0.0.1:54321" }), "not-a-token"),
+    ).rejects.not.toBeInstanceOf(AuthConfigurationError);
+    expect(createJwks).toHaveBeenCalledWith(
+      new URL("http://127.0.0.1:54321/auth/v1/.well-known/jwks.json"),
+    );
+  });
+
+  it("rejects cleartext non-local Supabase URLs", async () => {
+    const verifier = createSupabaseAuthVerifier(() => localJwks);
+    await expect(
+      verifier.verify(bindings({ SUPABASE_URL: "http://project-ref.supabase.co" }), "not-a-token"),
     ).rejects.toBeInstanceOf(AuthConfigurationError);
   });
 });

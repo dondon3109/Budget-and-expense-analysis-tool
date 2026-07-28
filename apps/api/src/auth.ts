@@ -27,8 +27,11 @@ function getSupabaseAuthUrl(env: Bindings): URL {
   } catch {
     throw new AuthConfigurationError("SUPABASE_URL must be a valid absolute URL.");
   }
-  if (!["https:", "http:"].includes(projectUrl.protocol)) {
-    throw new AuthConfigurationError("SUPABASE_URL must use HTTP or HTTPS.");
+  const isLoopbackHost = ["localhost", "127.0.0.1", "[::1]"].includes(projectUrl.hostname);
+  if (projectUrl.protocol !== "https:" && !(projectUrl.protocol === "http:" && isLoopbackHost)) {
+    throw new AuthConfigurationError(
+      "SUPABASE_URL must use HTTPS except for an explicit loopback development host.",
+    );
   }
 
   return new URL("auth/v1/", projectUrl.href.endsWith("/") ? projectUrl : `${projectUrl.href}/`);

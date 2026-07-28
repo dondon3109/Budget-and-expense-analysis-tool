@@ -1,27 +1,34 @@
-import { categoryInputSchema, categoryUpdateSchema } from "@zoption/shared";
+import {
+  categoryInputSchema,
+  categoryListQuerySchema,
+  categoryUpdateSchema,
+} from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { CategoryRepository } from "../db/categories";
 import { HttpError } from "../errors";
+import { parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createCategoryRoutes(repository: CategoryRepository) {
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/", async (context) => {
-    const includeArchived = context.req.query("includeArchived") === "true";
+    const parsed = categoryListQuerySchema.safeParse(context.req.query());
+    if (!parsed.success) {
+      throw new HttpError(400, "invalid_request", "Choose valid category options.");
+    }
     return context.json({
-      items: await repository.list(context.env, context.get("tenant").tenantId, includeArchived),
+      items: await repository.list(
+        context.env,
+        context.get("tenant").tenantId,
+        parsed.data.includeArchived,
+      ),
     });
   });
 
   routes.post("/", async (context) => {
-    let body: unknown;
-    try {
-      body = await context.req.json<unknown>();
-    } catch {
-      throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-    }
+    const body = await readJson(context);
     const parsed = categoryInputSchema.safeParse(body);
     if (!parsed.success) {
       throw new HttpError(
@@ -38,12 +45,7 @@ export function createCategoryRoutes(repository: CategoryRepository) {
   });
 
   routes.patch("/:id", async (context) => {
-    let body: unknown;
-    try {
-      body = await context.req.json<unknown>();
-    } catch {
-      throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-    }
+    const body = await readJson(context);
     const parsed = categoryUpdateSchema.safeParse(body);
     if (!parsed.success) {
       throw new HttpError(
@@ -57,7 +59,7 @@ export function createCategoryRoutes(repository: CategoryRepository) {
       await repository.update(
         context.env,
         context.get("tenant").tenantId,
-        context.req.param("id"),
+        parsePathParameter(context.req.param("id")),
         parsed.data,
       ),
     );

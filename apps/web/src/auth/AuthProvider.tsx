@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { AuthOperationError, normalizePasswordError, normalizeSignupError } from "./authErrors";
+import { normalizePasswordError, normalizeSignupError } from "./authErrors";
 import {
   AVATAR_BUCKET,
   type AvatarOperationResult,
@@ -114,16 +114,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: { emailRedirectTo: callbackUrl() },
     });
-    if (error) throw normalizeSignupError(error);
+    if (error) {
+      const normalizedError = normalizeSignupError(error);
+      if (normalizedError.code === "duplicate_email") return { confirmationRequired: true };
+      throw normalizedError;
+    }
 
     // With email confirmation enabled, Supabase masks an existing email as a
-    // successful signup response whose user has no identities.
+    // successful signup response whose user has no identities. Keep that case
+    // indistinguishable from a new account awaiting confirmation.
     if (data.user && data.user.identities?.length === 0) {
-      throw new AuthOperationError(
-        "duplicate_email",
-        "This email is already registered.",
-        "email_exists",
-      );
+      return { confirmationRequired: true };
     }
 
     return { confirmationRequired: !data.session };

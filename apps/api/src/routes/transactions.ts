@@ -8,6 +8,7 @@ import { Hono } from "hono";
 
 import type { TransactionRepository } from "../db/transactions";
 import { HttpError } from "../errors";
+import { parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createTransactionRoutes(repository: TransactionRepository) {
@@ -44,12 +45,7 @@ export function createTransactionRoutes(repository: TransactionRepository) {
   });
 
   routes.post("/", async (context) => {
-    let body: unknown;
-    try {
-      body = await context.req.json<unknown>();
-    } catch {
-      throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-    }
+    const body = await readJson(context);
     const parsed = transactionInputSchema.safeParse(body);
     if (!parsed.success) {
       throw new HttpError(
@@ -66,12 +62,7 @@ export function createTransactionRoutes(repository: TransactionRepository) {
   });
 
   routes.patch("/:id", async (context) => {
-    let body: unknown;
-    try {
-      body = await context.req.json<unknown>();
-    } catch {
-      throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-    }
+    const body = await readJson(context);
     const parsed = transactionUpdateSchema.safeParse(body);
     if (!parsed.success) {
       throw new HttpError(
@@ -85,14 +76,18 @@ export function createTransactionRoutes(repository: TransactionRepository) {
       await repository.update(
         context.env,
         context.get("tenant").tenantId,
-        context.req.param("id"),
+        parsePathParameter(context.req.param("id")),
         parsed.data,
       ),
     );
   });
 
   routes.delete("/:id", async (context) => {
-    await repository.remove(context.env, context.get("tenant").tenantId, context.req.param("id"));
+    await repository.remove(
+      context.env,
+      context.get("tenant").tenantId,
+      parsePathParameter(context.req.param("id")),
+    );
     return context.body(null, 204);
   });
 

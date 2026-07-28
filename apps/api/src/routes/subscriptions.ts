@@ -7,6 +7,7 @@ import { Hono } from "hono";
 
 import type { SubscriptionRepository } from "../db/subscriptions";
 import { HttpError } from "../errors";
+import { parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createSubscriptionRoutes(repository: SubscriptionRepository) {
@@ -28,12 +29,7 @@ export function createSubscriptionRoutes(repository: SubscriptionRepository) {
   });
 
   routes.post("/", async (context) => {
-    let body: unknown;
-    try {
-      body = await context.req.json<unknown>();
-    } catch {
-      throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-    }
+    const body = await readJson(context);
     const parsed = subscriptionInputSchema.safeParse(body);
     if (!parsed.success) {
       throw new HttpError(
@@ -50,12 +46,7 @@ export function createSubscriptionRoutes(repository: SubscriptionRepository) {
   });
 
   routes.patch("/:id/status", async (context) => {
-    let body: unknown;
-    try {
-      body = await context.req.json<unknown>();
-    } catch {
-      throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-    }
+    const body = await readJson(context);
     const parsed = subscriptionStatusUpdateSchema.safeParse(body);
     if (!parsed.success) {
       throw new HttpError(
@@ -69,7 +60,7 @@ export function createSubscriptionRoutes(repository: SubscriptionRepository) {
       await repository.setStatus(
         context.env,
         context.get("tenant").tenantId,
-        context.req.param("id"),
+        parsePathParameter(context.req.param("id")),
         parsed.data,
       ),
     );

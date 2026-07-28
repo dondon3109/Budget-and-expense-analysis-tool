@@ -3,15 +3,8 @@ import { Hono } from "hono";
 
 import type { AccountRepository } from "../db/accounts";
 import { HttpError } from "../errors";
+import { parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
-
-async function requestBody(context: { req: { json: <T>() => Promise<T> } }): Promise<unknown> {
-  try {
-    return await context.req.json<unknown>();
-  } catch {
-    throw new HttpError(400, "invalid_json", "Send a valid JSON request body.");
-  }
-}
 
 export function createAccountRoutes(repository: AccountRepository) {
   const routes = new Hono<AppEnvironment>();
@@ -21,7 +14,7 @@ export function createAccountRoutes(repository: AccountRepository) {
   );
 
   routes.post("/", async (context) => {
-    const parsed = accountInputSchema.safeParse(await requestBody(context));
+    const parsed = accountInputSchema.safeParse(await readJson(context));
     if (!parsed.success) {
       throw new HttpError(
         400,
@@ -37,7 +30,7 @@ export function createAccountRoutes(repository: AccountRepository) {
   });
 
   routes.patch("/:id", async (context) => {
-    const parsed = accountUpdateSchema.safeParse(await requestBody(context));
+    const parsed = accountUpdateSchema.safeParse(await readJson(context));
     if (!parsed.success) {
       throw new HttpError(
         400,
@@ -50,14 +43,18 @@ export function createAccountRoutes(repository: AccountRepository) {
       await repository.update!(
         context.env,
         context.get("tenant").tenantId,
-        context.req.param("id"),
+        parsePathParameter(context.req.param("id")),
         parsed.data,
       ),
     );
   });
 
   routes.delete("/:id", async (context) => {
-    await repository.remove!(context.env, context.get("tenant").tenantId, context.req.param("id"));
+    await repository.remove!(
+      context.env,
+      context.get("tenant").tenantId,
+      parsePathParameter(context.req.param("id")),
+    );
     return context.body(null, 204);
   });
 
