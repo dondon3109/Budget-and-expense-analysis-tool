@@ -28,10 +28,12 @@ import {
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import "./AssistantPage.css";
 
 function requestId(): string {
   return crypto.randomUUID();
 }
+
 
 export function AssistantPage() {
   const { user } = useAuth();

@@ -9,10 +9,12 @@ import { getBudgets, saveBudgets } from "../lib/api";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import "./BudgetsPage.css";
 
 function toAmountText(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2);
 }
+
 
 export function BudgetsPage() {
   const { user } = useAuth();

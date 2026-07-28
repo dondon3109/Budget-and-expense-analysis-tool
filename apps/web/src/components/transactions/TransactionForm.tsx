@@ -10,6 +10,7 @@ import {
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
+import "./TransactionForm.css";
 import { localIsoDate } from "../../lib/calendar";
 
 interface TransactionFormProps {

@@ -5,6 +5,7 @@ import { AuthOperationError } from "../auth/authErrors";
 import { evaluatePassword } from "../auth/passwordPolicy";
 import { useAuth } from "../auth/AuthProvider";
 import { AuthLayout } from "../components/auth/AuthLayout";
+import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -130,25 +131,22 @@ export function SignupPage() {
             </small>
           )}
 
-          <label htmlFor="signup-password">
-            <span>Password</span>
-            <input
-              id="signup-password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setPasswordTouched(true);
-                setError(undefined);
-              }}
-              onBlur={() => setPasswordTouched(true)}
-              aria-describedby={passwordDescribedBy}
-              aria-invalid={showPasswordError}
-              disabled={busy}
-              required
-            />
-          </label>
+          <PasswordField
+            id="signup-password"
+            label="Password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setPasswordTouched(true);
+              setError(undefined);
+            }}
+            onBlur={() => setPasswordTouched(true)}
+            aria-describedby={passwordDescribedBy}
+            aria-invalid={showPasswordError}
+            disabled={busy}
+            required
+          />
           <PasswordGuidance
             password={password}
             id="signup-password-guidance"
@@ -156,25 +154,22 @@ export function SignupPage() {
             showError={showPasswordError}
           />
 
-          <label htmlFor="signup-confirmation">
-            <span>Confirm password</span>
-            <input
-              id="signup-confirmation"
-              type="password"
-              autoComplete="new-password"
-              value={confirmation}
-              onChange={(event) => {
-                setConfirmation(event.target.value);
-                setConfirmationTouched(true);
-                setError(undefined);
-              }}
-              onBlur={() => setConfirmationTouched(true)}
-              aria-describedby={confirmationError ? "signup-confirmation-error" : undefined}
-              aria-invalid={Boolean(confirmationError)}
-              disabled={busy}
-              required
-            />
-          </label>
+          <PasswordField
+            id="signup-confirmation"
+            label="Confirm password"
+            autoComplete="new-password"
+            value={confirmation}
+            onChange={(event) => {
+              setConfirmation(event.target.value);
+              setConfirmationTouched(true);
+              setError(undefined);
+            }}
+            onBlur={() => setConfirmationTouched(true)}
+            aria-describedby={confirmationError ? "signup-confirmation-error" : undefined}
+            aria-invalid={Boolean(confirmationError)}
+            disabled={busy}
+            required
+          />
           {confirmationError && (
             <small id="signup-confirmation-error" className="field-error">
               {confirmationError}

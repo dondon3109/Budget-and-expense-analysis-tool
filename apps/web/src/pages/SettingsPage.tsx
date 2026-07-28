@@ -3,10 +3,12 @@ import { useSearchParams } from "react-router-dom";
 
 import { evaluatePassword } from "../auth/passwordPolicy";
 import { useAuth } from "../auth/AuthProvider";
+import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { AppShell } from "../components/layout/AppShell";
 import { UserAvatar } from "../components/profile/UserAvatar";
 import { AVATAR_ACCEPT, avatarPathFromMetadata, validateAvatarFile } from "../lib/avatar";
+import "./SettingsPage.css";
 
 const DISPLAY_NAME_LIMIT = 80;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,6 +21,7 @@ interface Feedback {
 function displayNameFromMetadata(metadata: Record<string, unknown> | undefined): string {
   return typeof metadata?.display_name === "string" ? metadata.display_name : "";
 }
+
 
 export function SettingsPage() {
   const {
@@ -488,65 +491,57 @@ export function SettingsPage() {
               onSubmit={(event) => void handlePasswordSubmit(event)}
               aria-busy={passwordBusy}
             >
-              <label>
-                <span>Current password</span>
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={currentPassword}
+              <PasswordField
+                id="settings-current-password"
+                label="Current password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(event) => {
+                  setCurrentPassword(event.target.value);
+                  clearPasswordFeedback();
+                }}
+                disabled={passwordBusy || !currentEmail}
+                required
+              />
+              <div className="settings-password-row">
+                <PasswordField
+                  id="settings-new-password"
+                  label="New password"
+                  autoComplete="new-password"
+                  value={newPassword}
                   onChange={(event) => {
-                    setCurrentPassword(event.target.value);
+                    setNewPassword(event.target.value);
+                    setNewPasswordTouched(true);
                     clearPasswordFeedback();
                   }}
+                  onBlur={() => setNewPasswordTouched(true)}
+                  aria-describedby={
+                    showNewPasswordError
+                      ? "settings-password-guidance settings-password-error"
+                      : "settings-password-guidance"
+                  }
+                  aria-invalid={showNewPasswordError}
                   disabled={passwordBusy || !currentEmail}
                   required
                 />
-              </label>
-              <div className="settings-password-row">
-                <label htmlFor="settings-new-password">
-                  <span>New password</span>
-                  <input
-                    id="settings-new-password"
-                    type="password"
-                    autoComplete="new-password"
-                    value={newPassword}
-                    onChange={(event) => {
-                      setNewPassword(event.target.value);
-                      setNewPasswordTouched(true);
-                      clearPasswordFeedback();
-                    }}
-                    onBlur={() => setNewPasswordTouched(true)}
-                    aria-describedby={
-                      showNewPasswordError
-                        ? "settings-password-guidance settings-password-error"
-                        : "settings-password-guidance"
-                    }
-                    aria-invalid={showNewPasswordError}
-                    disabled={passwordBusy || !currentEmail}
-                    required
-                  />
-                </label>
-                <label htmlFor="settings-confirm-password">
-                  <span>Confirm new password</span>
-                  <input
-                    id="settings-confirm-password"
-                    type="password"
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(event) => {
-                      setConfirmPassword(event.target.value);
-                      setConfirmPasswordTouched(true);
-                      clearPasswordFeedback();
-                    }}
-                    onBlur={() => setConfirmPasswordTouched(true)}
-                    aria-describedby={
-                      confirmPasswordError ? "settings-confirm-password-error" : undefined
-                    }
-                    aria-invalid={Boolean(confirmPasswordError)}
-                    disabled={passwordBusy || !currentEmail}
-                    required
-                  />
-                </label>
+                <PasswordField
+                  id="settings-confirm-password"
+                  label="Confirm new password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => {
+                    setConfirmPassword(event.target.value);
+                    setConfirmPasswordTouched(true);
+                    clearPasswordFeedback();
+                  }}
+                  onBlur={() => setConfirmPasswordTouched(true)}
+                  aria-describedby={
+                    confirmPasswordError ? "settings-confirm-password-error" : undefined
+                  }
+                  aria-invalid={Boolean(confirmPasswordError)}
+                  disabled={passwordBusy || !currentEmail}
+                  required
+                />
               </div>
               <PasswordGuidance
                 password={newPassword}

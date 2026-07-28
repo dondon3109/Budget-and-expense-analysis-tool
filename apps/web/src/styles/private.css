@@ -1,0 +1,5 @@
+/*
+ * Private shared, component, and route styles now load from their owning modules.
+ * This temporary placeholder remains only to preserve the former stylesheet path during
+ * the incremental extraction; it is intentionally not imported by the application.
+ */

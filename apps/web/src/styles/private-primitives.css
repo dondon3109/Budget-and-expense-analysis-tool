@@ -1,0 +1,355 @@
+/* Private Primitives styles extracted from the private application surface. */
+
+.date-button {
+min-height: 42px;
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  background: var(--paper);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.onboarding-actions {
+margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.text-button {
+padding: 0;
+  color: var(--sage);
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 750;
+  transition: color 0.16s ease;
+}
+
+.text-button:hover {
+color: var(--sage-hover);
+}
+
+.dashboard-page .text-button {
+color: var(--action);
+}
+
+.transactions-panel {
+overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--paper);
+  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
+}
+
+.transactions-panel-heading {
+min-height: 67px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+
+.transactions-panel-heading > div {
+display: grid;
+  gap: 3px;
+}
+
+.transactions-panel-heading strong {
+color: var(--ink);
+  font-size: 13px;
+}
+
+.transactions-panel-heading span {
+color: var(--subtle);
+  font-size: 10px;
+}
+
+.refresh-button {
+display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  border: 0;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.transaction-description {
+min-width: 170px;
+  display: grid;
+  gap: 3px;
+}
+
+.transaction-description strong {
+color: var(--ink);
+  font-size: 11px;
+}
+
+.transaction-description span {
+max-width: 270px;
+  overflow: hidden;
+  color: var(--subtle);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-chip {
+display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.category-chip i {
+width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.kind-badge {
+padding: 5px 8px;
+  display: inline-flex;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.kind-badge.income {
+color: var(--success);
+  background: var(--success-soft);
+}
+
+.kind-badge.expense {
+color: var(--expense-text);
+  background: var(--amber-soft);
+}
+
+.kind-badge.transfer {
+color: var(--plum);
+  background: var(--plum-soft);
+}
+
+.amount-column {
+text-align: right !important;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.amount-income {
+color: var(--success);
+}
+
+.amount-expense {
+color: var(--expense-text);
+}
+
+.table-status,.empty-transactions {
+min-height: 300px;
+  padding: 40px;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.table-status strong,.empty-transactions strong {
+color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 19px;
+}
+
+.table-status span,.empty-transactions p {
+margin: 0;
+  font-size: 11px;
+}
+
+.table-status button {
+width: fit-content;
+  margin: 8px auto 0;
+  color: var(--sage);
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.empty-transactions .button {
+width: fit-content;
+  margin: 10px auto 0;
+}
+
+.page-error {
+color: var(--danger);
+  font-size: 11px;
+}
+
+.modal-backdrop {
+position: fixed;
+  inset: 0;
+  z-index: 80;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  background: var(--overlay);
+  backdrop-filter: blur(5px);
+}
+
+.form-modal {
+width: min(620px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 25px;
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  background: var(--paper);
+  box-shadow: 0 30px 90px rgba(10, 28, 22, 0.3);
+}
+
+.modal-header {
+display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.modal-header h2 {
+margin: 0;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 26px;
+}
+
+.modal-actions {
+padding-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.budget-month-picker {
+min-height: 44px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-glass);
+}
+
+.budget-month-picker input {
+color: inherit;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.inline-status {
+min-height: 280px;
+}
+
+.button.compact {
+min-height: 36px;
+  padding: 0 12px;
+  font-size: 11px;
+}
+
+.icon-button.compact {
+width: 30px;
+  height: 30px;
+  color: var(--muted);
+  border-radius: 8px;
+}
+
+.icon-button.compact:hover {
+color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+}
+
+.icon-button.danger,.text-button.danger {
+color: var(--danger);
+}
+
+@media (max-width: 760px) {
+.transaction-header .header-actions {
+width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.transaction-header .header-actions .button {
+width: 100%;
+    min-width: 0;
+}
+
+.transaction-header .header-actions .button:last-child {
+grid-column: 1 / -1;
+}
+
+.transaction-description strong {
+font-size: 13px;
+}
+
+.modal-backdrop {
+padding: 0;
+    place-items: end center;
+}
+
+.form-modal {
+width: 100%;
+    max-height: 94vh;
+    padding: 21px 16px 24px;
+    border-radius: 22px 22px 0 0;
+}
+
+.budget-month-picker {
+width: 100%;
+    justify-content: center;
+}
+
+.date-button {
+width: 100%;
+    justify-content: center;
+}
+
+.onboarding-actions {
+align-items: stretch;
+    flex-direction: column;
+}
+
+.onboarding-actions .button {
+width: 100%;
+}
+}
+
+.date-button {
+border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme="dark"] .transactions-panel {
+  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme="dark"] .form-modal {
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.48);
+}

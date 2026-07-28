@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AuthLayout } from "../components/auth/AuthLayout";
+import { PasswordField } from "../components/auth/PasswordField";
 
 function safeRedirect(value: string | null): string {
   return value?.startsWith("/") && !value.startsWith("//") ? value : "/app";
@@ -53,17 +54,15 @@ export function LoginPage() {
             required
           />
         </label>
-        <label>
-          <span>Password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={8}
-            required
-          />
-        </label>
+        <PasswordField
+          id="login-password"
+          label="Password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          minLength={8}
+          required
+        />
         <div className="auth-form-meta">
           <Link to="/forgot-password">Forgot password?</Link>
         </div>

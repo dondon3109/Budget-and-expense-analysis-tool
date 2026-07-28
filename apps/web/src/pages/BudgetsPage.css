@@ -1,0 +1,245 @@
+/* Budgets styles extracted from the private application surface. */
+
+.budgets-page {
+max-width: 1180px;
+}
+
+.budget-summary-grid {
+margin: 22px 0 15px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.budget-summary-grid article {
+min-height: 118px;
+  padding: 19px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  align-items: center;
+  gap: 7px 10px;
+  color: var(--sage);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--paper);
+}
+
+.budget-summary-grid article.over {
+color: var(--danger);
+  border-color: var(--line-strong);
+  background: var(--danger-soft);
+}
+
+.budget-summary-grid span {
+color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.budget-summary-grid strong {
+grid-column: 1 / -1;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 26px;
+}
+
+.budget-editor-panel {
+overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 19px;
+  background: var(--paper);
+  box-shadow: 0 14px 35px rgba(38, 55, 49, 0.04);
+}
+
+.budget-editor-heading {
+min-height: 80px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.budget-editor-heading > div {
+display: grid;
+  gap: 3px;
+}
+
+.budget-editor-heading strong {
+color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 18px;
+}
+
+.budget-editor-heading span {
+color: var(--subtle);
+  font-size: 9px;
+}
+
+.budget-editor-heading .button {
+border: 0;
+}
+
+.budget-editor-list {
+display: grid;
+}
+
+.budget-editor-row {
+min-height: 95px;
+  padding: 15px 20px;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.3fr) 170px 100px;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.budget-editor-row:last-child {
+border-bottom: 0;
+}
+
+.budget-category-title {
+display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.budget-category-title i {
+width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.budget-category-title div,.budget-remaining {
+display: grid;
+  gap: 3px;
+}
+
+.budget-category-title strong,.budget-remaining strong {
+color: var(--ink);
+  font-size: 11px;
+}
+
+.budget-category-title span,.budget-remaining span,.budget-editor-progress small,.budget-amount-input > span {
+color: var(--subtle);
+  font-size: 8px;
+}
+
+.budget-editor-progress {
+display: grid;
+  gap: 6px;
+}
+
+.budget-editor-progress > div {
+height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-hover);
+}
+
+.budget-editor-progress > div span {
+height: 100%;
+  display: block;
+  border-radius: inherit;
+}
+
+.budget-editor-row.over .budget-editor-progress > div {
+box-shadow: 0 0 0 1px #d26b60;
+}
+
+.budget-amount-input {
+display: grid;
+  gap: 5px;
+}
+
+.budget-amount-input > div {
+min-height: 39px;
+  padding: 0 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.budget-amount-input b {
+font-size: 11px;
+}
+
+.budget-amount-input input {
+width: 100%;
+  min-width: 0;
+  color: var(--ink);
+  border: 0;
+  outline: 0;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.budget-remaining {
+text-align: right;
+}
+
+.budget-editor-row.over .budget-remaining strong {
+color: var(--danger);
+}
+
+.save-confirmation {
+margin: 12px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--success);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 1050px) {
+.budget-editor-row {
+grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.3fr) 160px;
+}
+
+.budget-remaining {
+display: none;
+}
+}
+
+@media (max-width: 760px) {
+.budget-summary-grid {
+grid-template-columns: 1fr;
+}
+
+.budget-summary-grid article {
+min-height: 96px;
+}
+
+.budget-editor-heading {
+align-items: stretch;
+    flex-direction: column;
+}
+
+.budget-editor-row {
+grid-template-columns: 1fr;
+    gap: 13px;
+}
+
+.budget-remaining {
+display: grid;
+    text-align: left;
+}
+
+.budget-amount-input > div {
+min-height: 44px;
+}
+}
+:root[data-theme="dark"] .budget-editor-panel {
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.24);
+}

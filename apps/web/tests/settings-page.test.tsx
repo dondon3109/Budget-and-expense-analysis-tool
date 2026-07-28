@@ -136,6 +136,21 @@ describe("SettingsPage", () => {
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
   });
 
+  it("reveals each password field independently", () => {
+    renderSettings();
+
+    const currentPassword = screen.getByLabelText("Current password");
+    const newPassword = screen.getByLabelText("New password");
+    const confirmPassword = screen.getByLabelText("Confirm new password");
+    fireEvent.click(screen.getByRole("button", { name: "Show current password" }));
+
+    expect(currentPassword).toHaveAttribute("type", "text");
+    expect(newPassword).toHaveAttribute("type", "password");
+    expect(confirmPassword).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "Show new password" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show confirm new password" })).toBeInTheDocument();
+  });
+
   it("validates password confirmation before making auth calls", () => {
     renderSettings();
 

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AuthLayout } from "../components/auth/AuthLayout";
+import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { evaluatePassword } from "../auth/passwordPolicy";
 import { useAuth } from "../auth/AuthProvider";
@@ -68,50 +69,44 @@ export function UpdatePasswordPage() {
         noValidate
         aria-busy={busy}
       >
-        <label htmlFor="update-password">
-          <span>New password</span>
-          <input
-            id="update-password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value);
-              setPasswordTouched(true);
-              setError(undefined);
-            }}
-            onBlur={() => setPasswordTouched(true)}
-            aria-describedby={passwordDescribedBy}
-            aria-invalid={showPasswordError}
-            disabled={busy}
-            required
-          />
-        </label>
+        <PasswordField
+          id="update-password"
+          label="New password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            setPasswordTouched(true);
+            setError(undefined);
+          }}
+          onBlur={() => setPasswordTouched(true)}
+          aria-describedby={passwordDescribedBy}
+          aria-invalid={showPasswordError}
+          disabled={busy}
+          required
+        />
         <PasswordGuidance
           password={password}
           id="update-password-guidance"
           errorId="update-password-error"
           showError={showPasswordError}
         />
-        <label htmlFor="update-password-confirmation">
-          <span>Confirm new password</span>
-          <input
-            id="update-password-confirmation"
-            type="password"
-            autoComplete="new-password"
-            value={confirmation}
-            onChange={(event) => {
-              setConfirmation(event.target.value);
-              setConfirmationTouched(true);
-              setError(undefined);
-            }}
-            onBlur={() => setConfirmationTouched(true)}
-            aria-describedby={confirmationError ? "update-password-confirmation-error" : undefined}
-            aria-invalid={Boolean(confirmationError)}
-            disabled={busy}
-            required
-          />
-        </label>
+        <PasswordField
+          id="update-password-confirmation"
+          label="Confirm new password"
+          autoComplete="new-password"
+          value={confirmation}
+          onChange={(event) => {
+            setConfirmation(event.target.value);
+            setConfirmationTouched(true);
+            setError(undefined);
+          }}
+          onBlur={() => setConfirmationTouched(true)}
+          aria-describedby={confirmationError ? "update-password-confirmation-error" : undefined}
+          aria-invalid={Boolean(confirmationError)}
+          disabled={busy}
+          required
+        />
         {confirmationError && (
           <small id="update-password-confirmation-error" className="field-error">
             {confirmationError}

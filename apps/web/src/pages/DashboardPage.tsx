@@ -39,6 +39,7 @@ import { currentMonth, daysInMonth, localIsoDate, monthStart } from "../lib/cale
 import { formatPeriod } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import "./DashboardPage.css";
 
 export function isDashboardEmpty(data: DashboardSummary, cashflowTrend?: CashflowTrend): boolean {
   const hasCashflowActivity = cashflowTrend?.points.some(

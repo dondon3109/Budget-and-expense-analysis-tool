@@ -1,0 +1,42 @@
+/* Avatar styles extracted from the private application surface. */
+
+.user-avatar {
+position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--action);
+  border: 1px solid color-mix(in srgb, var(--action) 22%, var(--line));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--action) 9%, var(--surface));
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.user-avatar.small {
+width: 36px;
+  height: 36px;
+  font-size: 11px;
+}
+
+.user-avatar.large {
+width: 88px;
+  height: 88px;
+  font-size: 22px;
+}
+
+.user-avatar img,.user-avatar-fallback {
+width: 100%;
+  height: 100%;
+}
+
+.user-avatar img {
+display: block;
+  object-fit: cover;
+}
+
+.user-avatar-fallback {
+display: grid;
+  place-items: center;
+}

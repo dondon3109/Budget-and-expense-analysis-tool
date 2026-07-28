@@ -8,7 +8,7 @@ import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
 import { AuthProvider } from "./auth/AuthProvider";
 import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
 import { ImportDraftProvider } from "./import/ImportDraftProvider";
-import "./styles.css";
+import "./styles/foundation.css";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
 const queryClient = new QueryClient({

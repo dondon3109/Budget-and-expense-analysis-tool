@@ -25,6 +25,7 @@ import {
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import "./TransactionsPage.css";
 
 const initialQuery: TransactionListQuery = {
   page: 1,
@@ -38,6 +39,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 function normalizeSearch(value: string): string | undefined {
   return value.trim() || undefined;
 }
+
 
 export function TransactionsPage() {
   const { user } = useAuth();

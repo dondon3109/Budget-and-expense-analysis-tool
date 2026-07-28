@@ -1,0 +1,209 @@
+/* Transaction Form styles extracted from the private application surface. */
+
+.transaction-form {
+margin-top: 24px;
+  display: grid;
+  gap: 17px;
+}
+
+.transaction-form label,.new-category-form label {
+display: grid;
+  gap: 7px;
+}
+
+.transaction-form label > span,.new-category-form label > span,.new-category-form legend {
+color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.transaction-form label small {
+color: var(--subtle);
+  font-weight: 600;
+  text-transform: none;
+}
+
+.transaction-form input,.transaction-form select,.transaction-form textarea,.new-category-form input,.new-category-form select,.manager-category input {
+width: 100%;
+  min-height: 43px;
+  padding: 10px 12px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.transaction-form textarea {
+resize: vertical;
+}
+
+.transaction-form input:focus,.transaction-form select:focus,.transaction-form textarea:focus,.new-category-form input:focus,.new-category-form select:focus,.manager-category input:focus {
+border-color: #76a994;
+  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+}
+
+.form-row.split {
+display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.money-input {
+position: relative;
+}
+
+.money-input b {
+position: absolute;
+  left: 12px;
+  top: 50%;
+  z-index: 1;
+  color: var(--muted);
+  font-size: 12px;
+  transform: translateY(-50%);
+}
+
+.money-input input {
+padding-left: 29px;
+}
+
+.category-modal {
+width: min(700px, 100%);
+}
+
+.new-category-form {
+margin: 22px 0 18px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1.3fr 0.8fr 1fr auto;
+  align-items: end;
+  gap: 10px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+
+.new-category-form fieldset {
+margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.new-category-form legend {
+margin-bottom: 7px;
+}
+
+.new-category-form .button {
+min-height: 43px;
+  border: 0;
+}
+
+.color-picker {
+min-height: 43px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.color-picker button {
+width: 25px;
+  height: 25px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  border: 2px solid transparent;
+  border-radius: 50%;
+}
+
+.color-picker button.selected {
+border-color: #fff;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.category-manager-list {
+display: grid;
+}
+
+.manager-category {
+min-height: 58px;
+  padding: 8px 4px;
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 11px;
+  border-bottom: 1px solid var(--line);
+}
+
+.manager-category.archived {
+opacity: 0.58;
+}
+
+.manager-category > i {
+width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.manager-category > div:not(.manager-actions) {
+display: grid;
+  gap: 2px;
+}
+
+.manager-category strong {
+color: var(--ink);
+  font-size: 11px;
+}
+
+.manager-category span {
+color: var(--subtle);
+  font-size: 9px;
+}
+
+.manager-actions {
+display: flex;
+  gap: 4px;
+}
+
+.manager-actions button {
+width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+@media (max-width: 1050px) {
+.new-category-form {
+grid-template-columns: 1fr 1fr;
+}
+}
+
+@media (max-width: 760px) {
+.form-row.split,
+.new-category-form {
+grid-template-columns: 1fr;
+}
+
+.new-category-form .button {
+width: 100%;
+}
+
+.manager-category {
+grid-template-columns: 10px minmax(0, 1fr) auto;
+}
+}
+:root[data-theme="dark"] .transaction-form input:focus,
+:root[data-theme="dark"] .transaction-form select:focus,
+:root[data-theme="dark"] .transaction-form textarea:focus,
+:root[data-theme="dark"] .new-category-form input:focus,
+:root[data-theme="dark"] .new-category-form select:focus,
+:root[data-theme="dark"] .manager-category input:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
+}

@@ -1,3 +1,584 @@
+/* Import styles extracted from the private application surface. */
+
+.import-page {
+max-width: 1180px;
+}
+
+.import-safety-note {
+margin: 22px 0;
+  padding: 14px 17px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--success);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--success-soft);
+}
+
+.import-safety-note div {
+display: grid;
+  gap: 2px;
+}
+
+.import-safety-note strong {
+font-size: 12px;
+}
+
+.import-safety-note span {
+color: var(--muted);
+  font-size: 10px;
+}
+
+.import-layout {
+display: grid;
+  gap: 16px;
+}
+
+.import-card,.import-success {
+padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 19px;
+  background: var(--paper);
+  box-shadow: 0 12px 30px rgba(38, 55, 49, 0.04);
+}
+
+.disabled-card {
+opacity: 0.64;
+}
+
+.import-step-heading {
+margin-bottom: 19px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.import-step-heading > span {
+width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--solid-text);
+  border-radius: 50%;
+  background: var(--solid-bg);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.import-step-heading div {
+display: grid;
+  gap: 2px;
+}
+
+.import-step-heading strong {
+color: var(--ink);
+  font-size: 14px;
+}
+
+.import-step-heading small {
+color: var(--subtle);
+  font-size: 9px;
+}
+
+.file-drop {
+min-height: 150px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--muted);
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 15px;
+  background: var(--surface-soft);
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.file-drop:hover,.file-drop:focus-within,.file-drop.selected,.file-drop.drag-active {
+color: var(--success);
+  border-color: var(--sage);
+  background: var(--success-soft);
+}
+
+.file-drop.drag-active {
+border-style: solid;
+  box-shadow: 0 0 0 4px rgba(111, 157, 140, 0.16);
+}
+
+.file-drop.rejected {
+color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.file-drop strong {
+color: var(--ink);
+  font-size: 13px;
+}
+
+.file-drop span {
+font-size: 9px;
+}
+
+.file-drop input {
+position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.worksheet-picker {
+margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.worksheet-picker label {
+display: grid;
+  gap: 6px;
+}
+
+.worksheet-picker label > span {
+color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.worksheet-picker select {
+height: 42px;
+  padding: 0 10px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 10px;
+}
+
+.worksheet-loading,.worksheet-summary {
+display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.worksheet-loading {
+margin-top: 12px;
+}
+
+.workbook-warning {
+margin-top: 12px;
+  padding: 11px 13px;
+  display: grid;
+  gap: 4px;
+  color: var(--warning);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--warning-soft);
+  font-size: 10px;
+}
+
+.mapping-grid {
+display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mapping-grid label {
+display: grid;
+  gap: 6px;
+}
+
+.mapping-grid label > span {
+color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.mapping-grid select,.mapping-grid input {
+min-width: 0;
+  height: 42px;
+  padding: 0 10px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 10px;
+}
+
+.import-source-controls {
+margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.import-source-controls label {
+display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.import-source-controls label > span,.bulk-category-controls label > span {
+color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.import-source-controls select,.bulk-category-controls select {
+min-width: 0;
+  height: 42px;
+  padding: 0 10px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 10px;
+}
+
+.import-source-controls small {
+color: var(--subtle);
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.import-preset-guidance {
+margin: 0 0 14px;
+  padding: 9px 11px;
+  color: var(--muted);
+  border-radius: 9px;
+  background: var(--surface-soft);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.php-import-warning {
+margin-top: 15px;
+  padding: 13px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--warning);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--warning-soft);
+}
+
+.php-import-warning > svg {
+flex: 0 0 auto;
+}
+
+.php-import-warning > div {
+display: grid;
+  gap: 5px;
+}
+
+.php-import-warning strong,.php-import-warning span,.php-import-warning small {
+display: block;
+}
+
+.php-import-warning strong {
+color: var(--warning);
+  font-size: 11px;
+}
+
+.php-import-warning span,.php-import-warning small {
+font-size: 9px;
+  line-height: 1.45;
+}
+
+.php-import-warning label {
+margin-top: 3px;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--warning);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.php-import-warning input {
+margin-top: 1px;
+}
+
+.import-counts {
+margin-bottom: 15px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.import-counts div {
+padding: 12px;
+  display: grid;
+  gap: 2px;
+  border-radius: 11px;
+  background: var(--surface-soft);
+}
+
+.import-counts strong {
+color: var(--ink);
+  font-size: 19px;
+}
+
+.import-counts span {
+color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.bulk-category-toolbar {
+margin-bottom: 15px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--success-soft);
+}
+
+.bulk-category-heading {
+display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--success);
+}
+
+.bulk-category-heading div {
+display: grid;
+  gap: 2px;
+}
+
+.bulk-category-heading strong {
+font-size: 11px;
+}
+
+.bulk-category-heading span {
+color: var(--muted);
+  font-size: 8px;
+}
+
+.bulk-category-controls {
+display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) auto minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 9px;
+}
+
+.bulk-category-controls label {
+display: grid;
+  gap: 6px;
+}
+
+.bulk-category-controls .button {
+min-height: 42px;
+  white-space: nowrap;
+}
+
+.import-table-wrap {
+overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.import-table {
+width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.import-table th,.import-table td {
+padding: 11px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.import-table th {
+color: var(--subtle);
+  background: var(--surface-soft);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.import-table tr:last-child td {
+border-bottom: 0;
+}
+
+.import-table td:nth-child(4) {
+min-width: 210px;
+}
+
+.import-table td:nth-child(4) strong,.import-table td:nth-child(4) small {
+display: block;
+}
+
+.import-table td:nth-child(4) small {
+margin-top: 3px;
+  color: var(--subtle);
+  font-size: 8px;
+}
+
+.import-select-column {
+width: 54px;
+  text-align: center !important;
+}
+
+.import-select-column input {
+accent-color: var(--sage);
+  cursor: pointer;
+}
+
+.import-status {
+padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 7px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.import-status.ready {
+color: var(--success);
+  background: var(--success-soft);
+}
+
+.import-status.invalid {
+color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.import-status.duplicate {
+color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.import-table-note {
+margin: 8px 0 0;
+  color: var(--subtle);
+  font-size: 9px;
+}
+
+.import-pagination {
+margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.import-pagination span {
+color: var(--muted);
+  font-size: 9px;
+}
+
+.import-pagination .button {
+min-height: 34px;
+  padding: 0 12px;
+}
+
+.import-commit-row {
+margin-top: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.import-commit-row > span {
+color: var(--subtle);
+  font-size: 9px;
+}
+
+.import-commit-row .button {
+border: 0;
+}
+
+.import-success {
+min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  color: var(--sage);
+}
+
+.import-success h2 {
+margin: 3px 0 8px;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 30px;
+}
+
+.import-success > p:not(.eyebrow) {
+max-width: 520px;
+  margin: 0 0 22px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.import-success .eyebrow {
+margin-top: 14px;
+}
+
+.import-success .button {
+border: 0;
+}
+
+@media (max-width: 1050px) {
+.mapping-grid,
+.import-source-controls {
+grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bulk-category-controls {
+grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+}
+
+@media (max-width: 760px) {
+.import-card {
+padding: 18px 14px;
+}
+
+.mapping-grid,
+.import-source-controls,
+.bulk-category-controls {
+grid-template-columns: 1fr;
+}
+
+.bulk-category-controls .button {
+width: 100%;
+}
+
+.import-pagination {
+align-items: stretch;
+    flex-direction: column;
+    text-align: center;
+}
+
+.import-commit-row {
+align-items: stretch;
+    flex-direction: column;
+}
+
+.import-counts {
+gap: 5px;
+}
+}
+
 .mapping-field-invalid select,
 .mapping-grid select[aria-invalid="true"] {
   border-color: var(--danger);
@@ -8,4 +589,9 @@
   color: var(--danger);
   font-size: 9px;
   font-weight: 750;
+}
+
+:root[data-theme="dark"] .import-card,
+:root[data-theme="dark"] .import-success {
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.24);
 }

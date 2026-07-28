@@ -14,6 +14,9 @@ import {
 import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 
+import "../../styles/private-primitives.css";
+import "./AppShell.css";
+import "../transactions/TransactionForm.css";
 import { useAuth } from "../../auth/AuthProvider";
 import { avatarPathFromMetadata } from "../../lib/avatar";
 import { UserAvatar } from "../profile/UserAvatar";

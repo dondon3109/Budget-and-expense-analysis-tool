@@ -17,6 +17,7 @@ import {
 import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import "./SubscriptionsPage.css";
 
 function currentMonth(): string {
   const date = new Date();
@@ -24,6 +25,7 @@ function currentMonth(): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
 }
+
 
 export function SubscriptionsPage() {
   const { user } = useAuth();

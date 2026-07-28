@@ -41,6 +41,7 @@ import {
 import { formatFullMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import "./CalendarPage.css";
 
 function emptyCalendarDay(): CalendarDayData {
   return {
@@ -91,6 +92,7 @@ function buildCalendarDays(
 
   return lookup;
 }
+
 
 export function CalendarPage() {
   const { user } = useAuth();

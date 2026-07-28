@@ -1,5 +1,6 @@
 import { ArrowRight, BarChart3, Check, Landmark, ShieldCheck, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
+import "./LandingPage.css";
 
 import supportedExportFormatsLarge from "../assets/supported-export-formats-1536.webp";
 import supportedExportFormatsSmall from "../assets/supported-export-formats-768.webp";

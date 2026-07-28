@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
+import "./MetricCard.css";
 interface MetricCardProps {
   label: string;
   value: string;

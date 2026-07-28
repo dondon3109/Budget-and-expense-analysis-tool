@@ -1,0 +1,283 @@
+/* Settings styles extracted from the private application surface. */
+
+.settings-page {
+max-width: 980px;
+}
+
+.settings-notice {
+margin-top: 28px;
+  padding: 15px 17px;
+  display: grid;
+  gap: 4px;
+  color: var(--success);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--success-soft);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.settings-notice strong {
+color: var(--ink);
+  font-size: 12px;
+}
+
+.settings-sections {
+margin-top: 28px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+}
+
+.settings-section {
+padding: clamp(24px, 4vw, 38px);
+}
+
+.settings-section + .settings-section {
+border-top: 1px solid var(--line);
+}
+
+.settings-section-heading {
+display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.settings-section-heading h2 {
+margin: 0;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+
+.settings-section-heading p {
+max-width: 570px;
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.settings-section-heading > span {
+flex: 0 0 auto;
+  padding-top: 5px;
+  color: var(--subtle);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.avatar-settings {
+max-width: 680px;
+  margin-top: 24px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+
+.avatar-settings-content {
+min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.avatar-settings-content label {
+display: grid;
+  gap: 7px;
+}
+
+.avatar-settings-content label > span {
+color: var(--ink);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.avatar-settings-content input[type="file"] {
+width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  font-size: 11px;
+}
+
+.avatar-settings-content input[type="file"]::file-selector-button {
+min-height: 28px;
+  margin-right: 10px;
+  padding: 0 10px;
+  color: var(--solid-text);
+  border: 0;
+  border-radius: 7px;
+  background: var(--solid-bg);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.avatar-settings-content input[type="file"]:focus-visible {
+border-color: #76a994;
+  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+}
+
+.avatar-settings-content input[type="file"]:disabled {
+cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.avatar-settings-content small {
+color: var(--subtle);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.avatar-settings-actions {
+display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-form {
+max-width: 680px;
+  margin-top: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.settings-form label,.settings-form .password-field {
+display: grid;
+  gap: 7px;
+}
+
+.settings-form label > span,.current-account-value > span {
+color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings-form label > small,.current-account-value small,.settings-helper {
+margin: 0;
+  color: var(--subtle);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.settings-form input {
+width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.settings-form input:focus {
+border-color: #76a994;
+  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+}
+
+.settings-form input:disabled {
+cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.settings-form input[aria-invalid="true"] {
+border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.settings-form .password-field-control input {
+padding-right: 54px;
+}
+
+.settings-password-row {
+display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.current-account-value {
+max-width: 680px;
+  margin-top: 21px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 5px;
+  border-radius: 11px;
+  background: var(--surface-soft);
+}
+
+.current-account-value strong {
+overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.form-success {
+margin: 0;
+  padding: 10px 12px;
+  color: var(--success);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--success-soft);
+  font-size: 11px;
+}
+
+.settings-form-actions {
+display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+.settings-section-heading {
+flex-direction: column;
+    gap: 8px;
+}
+
+.settings-section-heading > span {
+padding-top: 0;
+}
+
+.avatar-settings {
+grid-template-columns: 1fr;
+}
+
+.avatar-settings .user-avatar.large {
+width: 76px;
+    height: 76px;
+}
+
+.avatar-settings-actions {
+display: grid;
+}
+
+.avatar-settings-actions .button,
+.settings-form-actions .button {
+width: 100%;
+}
+
+.settings-password-row {
+grid-template-columns: 1fr;
+}
+}
+:root[data-theme="dark"] .settings-form input:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
+}

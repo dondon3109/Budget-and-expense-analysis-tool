@@ -86,6 +86,22 @@ describe("SignupPage", () => {
     expect(screen.getByText("Strong")).toBeInTheDocument();
   });
 
+  it("reveals password fields independently", () => {
+    renderSignup();
+
+    const password = screen.getByLabelText("Password");
+    const confirmation = screen.getByLabelText("Confirm password");
+    fireEvent.click(screen.getByRole("button", { name: "Show password" }));
+
+    expect(password).toHaveAttribute("type", "text");
+    expect(confirmation).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "Hide password" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Show confirm password" })).toBeInTheDocument();
+  });
+
   it("blocks weak passwords before calling Supabase", () => {
     renderSignup();
     fireEvent.change(screen.getByLabelText("Email address"), {

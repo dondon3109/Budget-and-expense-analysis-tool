@@ -3,6 +3,7 @@ import { useId, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { ThemeToggle } from "../theme/ThemeToggle";
+import "./AuthLayout.css";
 
 export function AuthLayout({
   eyebrow,

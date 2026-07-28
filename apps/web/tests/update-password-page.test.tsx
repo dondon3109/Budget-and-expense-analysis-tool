@@ -46,6 +46,18 @@ describe("UpdatePasswordPage", () => {
     authState.updatePassword.mockReset().mockResolvedValue(undefined);
   });
 
+  it("reveals password fields independently", () => {
+    renderUpdatePassword();
+
+    const password = screen.getByLabelText("New password");
+    const confirmation = screen.getByLabelText("Confirm new password");
+    fireEvent.click(screen.getByRole("button", { name: "Show new password" }));
+
+    expect(password).toHaveAttribute("type", "text");
+    expect(confirmation).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "Show confirm new password" })).toBeInTheDocument();
+  });
+
   it("rejects an incomplete password policy before updating", () => {
     renderUpdatePassword();
     fireEvent.change(screen.getByLabelText("New password"), {
