@@ -13,14 +13,14 @@ import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { resetConsentGateForTests } from "../src/consent/consentGate";
 import { THEME_STORAGE_KEY, ThemeProvider } from "../src/theme/ThemeProvider";
 
-function renderExperience() {
+function renderExperience(initialEntries = ["/"]) {
   const root = document.getElementById("root");
   if (!root) throw new Error("Test root is missing.");
 
   return render(
     <ThemeProvider>
       <CookieConsentProvider>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={initialEntries}>
           <button type="button">Underlying action</button>
           <CookieConsentExperience />
         </MemoryRouter>
@@ -59,10 +59,10 @@ describe("cookie consent interface", () => {
     const reject = screen.getByRole("button", { name: "Reject All" });
     expect(accept).toHaveClass("primary");
     expect(reject).toHaveClass("primary");
-    expect(screen.getByRole("link", { name: "Cookie Policy" })).toHaveAttribute(
-      "href",
-      "/cookie-policy",
-    );
+    const cookiePolicy = screen.getByRole("link", { name: "Cookie Policy" });
+    expect(cookiePolicy).toHaveAttribute("href", "/cookie-policy");
+    expect(cookiePolicy).toHaveAttribute("target", "_blank");
+    expect(cookiePolicy).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("rejects optional categories and closes the first-visit banner", async () => {
@@ -124,6 +124,13 @@ describe("cookie consent interface", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Manage Preferences" })).toHaveFocus(),
     );
+  });
+
+  it("does not show the first-visit banner on the Cookie Policy page", () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "light");
+    renderExperience(["/cookie-policy"]);
+
+    expect(screen.queryByRole("heading", { name: "Choose what this browser may use" })).toBeNull();
   });
 
   it("does not show the first-visit banner for a current saved decision", () => {
