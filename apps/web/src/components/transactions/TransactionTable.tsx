@@ -15,8 +15,17 @@ interface TransactionTableProps {
 }
 
 function SortIcon({ active, direction }: { active: boolean; direction: "asc" | "desc" }) {
-  if (!active) return <ArrowUpDown size={13} />;
-  return direction === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />;
+  if (!active) return <ArrowUpDown size={13} aria-hidden="true" />;
+  return direction === "asc" ? (
+    <ArrowUp size={13} aria-hidden="true" />
+  ) : (
+    <ArrowDown size={13} aria-hidden="true" />
+  );
+}
+
+function sortDescription(field: string, active: boolean, direction: "asc" | "desc") {
+  if (!active) return `Sort by ${field}`;
+  return `Sort by ${field}, currently ${direction === "asc" ? "ascending" : "descending"}`;
 }
 
 export function TransactionTable({
@@ -35,20 +44,57 @@ export function TransactionTable({
       <table className="transaction-table">
         <thead>
           <tr>
-            <th>
-              <button type="button" onClick={() => onSort("date")}>
+            <th
+              aria-sort={
+                sortBy === "date"
+                  ? sortDirection === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : undefined
+              }
+            >
+              <button
+                type="button"
+                aria-label={sortDescription("date", sortBy === "date", sortDirection)}
+                onClick={() => onSort("date")}
+              >
                 Date <SortIcon active={sortBy === "date"} direction={sortDirection} />
               </button>
             </th>
-            <th>
-              <button type="button" onClick={() => onSort("description")}>
+            <th
+              aria-sort={
+                sortBy === "description"
+                  ? sortDirection === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : undefined
+              }
+            >
+              <button
+                type="button"
+                aria-label={sortDescription("description", sortBy === "description", sortDirection)}
+                onClick={() => onSort("description")}
+              >
                 Description <SortIcon active={sortBy === "description"} direction={sortDirection} />
               </button>
             </th>
             <th>Category</th>
             <th>Type</th>
-            <th className="amount-column">
-              <button type="button" onClick={() => onSort("amount")}>
+            <th
+              className="amount-column"
+              aria-sort={
+                sortBy === "amount"
+                  ? sortDirection === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : undefined
+              }
+            >
+              <button
+                type="button"
+                aria-label={sortDescription("amount", sortBy === "amount", sortDirection)}
+                onClick={() => onSort("amount")}
+              >
                 Amount <SortIcon active={sortBy === "amount"} direction={sortDirection} />
               </button>
             </th>

@@ -3,8 +3,6 @@ import { Link } from "react-router-dom";
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import { useCookieConsent } from "../../consent/CookieConsentProvider";
 
-const Todo = ({ children }: { children: string }) => <span className="legal-todo">{children}</span>;
-
 export function CookiePolicyPage() {
   const { openPreferences } = useCookieConsent();
 
@@ -18,7 +16,8 @@ export function CookiePolicyPage() {
         <p>
           “Cookies” is often used as a general label, but websites can also use localStorage, SDKs,
           pixels, iframes, and related browser technologies. Zoption currently uses browser storage
-          for theme choice, this consent record, and Supabase authentication/session operation.
+          for theme choice, this consent record, a remembered transaction sort preference,
+          release-update acknowledgments, and Supabase authentication/session operation.
         </p>
       </section>
 

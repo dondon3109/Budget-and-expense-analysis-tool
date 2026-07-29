@@ -119,6 +119,32 @@ height: 38px;
   font-weight: 750;
 }
 
+.transaction-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.transaction-sort-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--subtle);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.transaction-sort-control select {
+  min-height: 32px;
+  max-width: 180px;
+  padding: 0 27px 0 9px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+}
+
 .transaction-table-wrap {
 overflow-x: auto;
 }
@@ -239,6 +265,29 @@ min-width: 100%;
 }
 
 @media (max-width: 760px) {
+  .transactions-panel-heading {
+    min-height: 0;
+    padding: 14px 16px;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .transaction-list-actions {
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .transaction-sort-control {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .transaction-sort-control select {
+    max-width: 150px;
+  }
+
 .filter-select-wrap {
 flex: 1;
 }

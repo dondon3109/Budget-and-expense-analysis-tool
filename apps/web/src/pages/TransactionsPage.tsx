@@ -25,14 +25,48 @@ import {
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import {
+  DEFAULT_TRANSACTION_SORT,
+  persistTransactionSortPreference,
+  readTransactionSortPreference,
+  TRANSACTION_SORT_STORAGE_KEY,
+} from "../transactions/sortPreference";
 import "./TransactionsPage.css";
 
 const initialQuery: TransactionListQuery = {
   page: 1,
   pageSize: 10,
-  sortBy: "date",
-  sortDirection: "desc",
+  ...DEFAULT_TRANSACTION_SORT,
 };
+
+const SORT_OPTIONS = [
+  { value: "date-desc", label: "Date: newest first", sortBy: "date", sortDirection: "desc" },
+  { value: "date-asc", label: "Date: oldest first", sortBy: "date", sortDirection: "asc" },
+  {
+    value: "description-asc",
+    label: "Description: A–Z",
+    sortBy: "description",
+    sortDirection: "asc",
+  },
+  {
+    value: "description-desc",
+    label: "Description: Z–A",
+    sortBy: "description",
+    sortDirection: "desc",
+  },
+  { value: "amount-asc", label: "Amount: lowest first", sortBy: "amount", sortDirection: "asc" },
+  {
+    value: "amount-desc",
+    label: "Amount: highest first",
+    sortBy: "amount",
+    sortDirection: "desc",
+  },
+] satisfies Array<{
+  value: string;
+  label: string;
+  sortBy: TransactionListQuery["sortBy"];
+  sortDirection: TransactionListQuery["sortDirection"];
+}>;
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -40,12 +74,14 @@ function normalizeSearch(value: string): string | undefined {
   return value.trim() || undefined;
 }
 
-
 export function TransactionsPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
-  const [query, setQuery] = useState<TransactionListQuery>(initialQuery);
+  const [query, setQuery] = useState<TransactionListQuery>(() => ({
+    ...initialQuery,
+    ...readTransactionSortPreference(),
+  }));
   const [searchDraft, setSearchDraft] = useState("");
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [formOpen, setFormOpen] = useState(false);
@@ -67,6 +103,20 @@ export function TransactionsPage() {
     queryFn: () => getTransactions(workspace, query),
     placeholderData: keepPreviousData,
   });
+
+  useEffect(() => {
+    function syncTransactionSort(event: StorageEvent) {
+      if (event.key !== TRANSACTION_SORT_STORAGE_KEY) return;
+
+      const preference = readTransactionSortPreference({
+        getItem: () => event.newValue,
+      });
+      setQuery((current) => ({ ...current, ...preference, page: 1 }));
+    }
+
+    window.addEventListener("storage", syncTransactionSort);
+    return () => window.removeEventListener("storage", syncTransactionSort);
+  }, []);
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -139,7 +189,12 @@ export function TransactionsPage() {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = undefined;
     setSearchDraft("");
-    setQuery(initialQuery);
+    setQuery((current) => ({
+      ...initialQuery,
+      pageSize: current.pageSize,
+      sortBy: current.sortBy,
+      sortDirection: current.sortDirection,
+    }));
   }
 
   function openCreate() {
@@ -154,14 +209,29 @@ export function TransactionsPage() {
     setFormOpen(true);
   }
 
-  function handleSort(sortBy: TransactionListQuery["sortBy"]) {
-    setQuery((current) => ({
-      ...current,
-      page: 1,
-      sortBy,
-      sortDirection: current.sortBy === sortBy && current.sortDirection === "desc" ? "asc" : "desc",
-    }));
+  function updateSort(
+    sortBy: TransactionListQuery["sortBy"],
+    sortDirection: TransactionListQuery["sortDirection"],
+  ) {
+    persistTransactionSortPreference({ sortBy, sortDirection });
+    setQuery((current) => ({ ...current, page: 1, sortBy, sortDirection }));
   }
+
+  function handleSort(sortBy: TransactionListQuery["sortBy"]) {
+    const sortDirection =
+      query.sortBy === sortBy && query.sortDirection === "desc" ? "asc" : "desc";
+    updateSort(sortBy, sortDirection);
+  }
+
+  function handleSortOption(value: string) {
+    const option = SORT_OPTIONS.find((candidate) => candidate.value === value);
+    if (option) updateSort(option.sortBy, option.sortDirection);
+  }
+
+  const activeSortOption =
+    SORT_OPTIONS.find(
+      (option) => option.sortBy === query.sortBy && option.sortDirection === query.sortDirection,
+    ) ?? SORT_OPTIONS[0]!;
 
   async function handleExport() {
     setExporting(true);
@@ -250,15 +320,30 @@ export function TransactionsPage() {
                   : "Personal workspace · Philippine pesos"}
               </span>
             </div>
-            <button
-              className="refresh-button"
-              type="button"
-              onClick={() => void transactionsQuery.refetch()}
-              disabled={transactionsQuery.isFetching}
-            >
-              <RefreshCw size={15} className={transactionsQuery.isFetching ? "spinning" : ""} />{" "}
-              Refresh
-            </button>
+            <div className="transaction-list-actions">
+              <label className="transaction-sort-control">
+                <span>Sort by</span>
+                <select
+                  value={activeSortOption.value}
+                  onChange={(event) => handleSortOption(event.target.value)}
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="refresh-button"
+                type="button"
+                onClick={() => void transactionsQuery.refetch()}
+                disabled={transactionsQuery.isFetching}
+              >
+                <RefreshCw size={15} className={transactionsQuery.isFetching ? "spinning" : ""} />{" "}
+                Refresh
+              </button>
+            </div>
           </div>
 
           {transactionsQuery.isPending && (

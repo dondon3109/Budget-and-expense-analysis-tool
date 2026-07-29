@@ -116,3 +116,64 @@ describe("TransactionsPage search", () => {
     expect(apiMocks.getTransactions).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("TransactionsPage sorting", () => {
+  beforeEach(() => {
+    apiMocks.getTransactions.mockReset().mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 10,
+      total: 0,
+      totalPages: 1,
+    });
+    apiMocks.getCategories.mockReset().mockResolvedValue([]);
+    apiMocks.getAccounts.mockReset().mockResolvedValue([]);
+    apiMocks.downloadTransactions.mockReset().mockResolvedValue(undefined);
+    window.localStorage.clear();
+  });
+
+  afterEach(cleanup);
+
+  it("updates, saves, and exports the selected sort", async () => {
+    renderPage();
+    await waitFor(() => expect(apiMocks.getTransactions).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: "amount-asc" } });
+
+    await waitFor(() =>
+      expect(apiMocks.getTransactions).toHaveBeenLastCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        expect.objectContaining({ page: 1, sortBy: "amount", sortDirection: "asc" }),
+      ),
+    );
+    expect(window.localStorage.getItem("zoption-transaction-sort")).toBe(
+      JSON.stringify({ sortBy: "amount", sortDirection: "asc" }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    await waitFor(() =>
+      expect(apiMocks.downloadTransactions).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        expect.objectContaining({ sortBy: "amount", sortDirection: "asc" }),
+      ),
+    );
+  });
+
+  it("keeps the selected sort when clearing filters", async () => {
+    renderPage();
+    await waitFor(() => expect(apiMocks.getTransactions).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: "description-asc" } });
+    await waitFor(() => expect(apiMocks.getTransactions).toHaveBeenCalledTimes(2));
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Market" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    await waitFor(() =>
+      expect(apiMocks.getTransactions).toHaveBeenLastCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        expect.objectContaining({ sortBy: "description", sortDirection: "asc" }),
+      ),
+    );
+  });
+});

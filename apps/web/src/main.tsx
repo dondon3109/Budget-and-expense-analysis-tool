@@ -7,6 +7,7 @@ import { App } from "./App";
 import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
 import { AuthProvider } from "./auth/AuthProvider";
 import { CookieConsentExperience } from "./components/consent/CookieConsentExperience";
+import { ReleaseNotesExperience } from "./components/releases/ReleaseNotesExperience";
 import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
 import { CookieConsentProvider } from "./consent/CookieConsentProvider";
 import { ImportDraftProvider } from "./import/ImportDraftProvider";
@@ -35,6 +36,7 @@ createRoot(document.getElementById("root")!).render(
                 <BrowserRouter>
                   <App />
                   <CookieConsentExperience />
+                  <ReleaseNotesExperience />
                 </BrowserRouter>
               </ImportDraftProvider>
             </AssistantSessionProvider>

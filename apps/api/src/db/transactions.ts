@@ -127,6 +127,10 @@ function logicalRowsSql(
         ? "ABS(t.amount_minor)"
         : "t.date";
   const direction = query.sortDirection === "asc" ? "ASC" : "DESC";
+  const orderBy =
+    query.sortBy === "date"
+      ? `${orderColumn} ${direction}, t.created_at DESC, t.id DESC`
+      : `${orderColumn} ${direction}, t.date DESC, t.created_at DESC, t.id DESC`;
   return {
     sql: `
       SELECT
@@ -155,7 +159,7 @@ function logicalRowsSql(
         AND peer.amount_minor > 0
       LEFT JOIN accounts destination ON destination.id = peer.account_id AND destination.tenant_id = t.tenant_id
       WHERE ${where.join(" AND ")}
-      ORDER BY ${orderColumn} ${direction}, t.id DESC`,
+      ORDER BY ${orderBy}`,
     bindings,
   };
 }

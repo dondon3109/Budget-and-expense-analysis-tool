@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 
-const Todo = ({ children }: { children: string }) => <span className="legal-todo">{children}</span>;
 
 export function PrivacyPolicyPage() {
   return (

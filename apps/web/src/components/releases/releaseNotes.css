@@ -1,0 +1,125 @@
+/* Release update dialog owned by the release-notes experience. */
+.release-notes-layer {
+  position: fixed;
+  z-index: 150;
+  inset: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+}
+
+.release-notes-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+}
+
+.release-notes-dialog {
+  position: relative;
+  width: min(580px, 100%);
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  color: var(--ink);
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: 0 30px 90px var(--shadow);
+}
+
+.release-notes-header {
+  padding: 28px 28px 22px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.release-notes-header .eyebrow {
+  margin: 0 0 10px;
+}
+
+.release-notes-header h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(26px, 4vw, 34px);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.release-notes-header p:last-child {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.release-notes-close {
+  flex: 0 0 auto;
+}
+
+.release-notes-list {
+  margin: 0;
+  padding: 8px 28px;
+  list-style: none;
+}
+
+.release-notes-list li {
+  padding: 19px 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 13px;
+  align-items: flex-start;
+}
+
+.release-notes-list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.release-notes-list svg {
+  margin-top: 1px;
+  color: var(--brand);
+}
+
+.release-notes-list strong {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.release-notes-list p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.release-notes-actions {
+  padding: 20px 28px 28px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 560px) {
+  .release-notes-layer {
+    padding: 16px;
+  }
+
+  .release-notes-dialog {
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+  }
+
+  .release-notes-header,
+  .release-notes-list,
+  .release-notes-actions {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .release-notes-actions .button {
+    width: 100%;
+  }
+}
