@@ -47,6 +47,8 @@ function isTheme(value: unknown): value is Theme {
 }
 
 function storedTheme(): Theme | undefined {
+  if (typeof window === "undefined") return undefined;
+
   let legacyValue: string | null;
 
   try {
@@ -71,6 +73,8 @@ function storedTheme(): Theme | undefined {
 }
 
 function systemTheme(): Theme {
+  if (typeof window === "undefined") return "light";
+
   try {
     return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   } catch {
@@ -79,6 +83,13 @@ function systemTheme(): Theme {
 }
 
 function initialThemeState(): ThemeState {
+  const root = typeof document === "undefined" ? undefined : document.getElementById("root");
+  if (typeof window !== "undefined" && !root?.hasChildNodes()) return browserThemeState();
+
+  return { theme: "light", hasThemePreference: false };
+}
+
+function browserThemeState(): ThemeState {
   const preference = storedTheme();
   const documentTheme = document.documentElement.dataset.theme;
 
@@ -107,6 +118,10 @@ function persistTheme(theme: Theme) {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [themeState, setThemeState] = useState<ThemeState>(initialThemeState);
+
+  useEffect(() => {
+    setThemeState(browserThemeState());
+  }, []);
 
   useEffect(() => {
     applyTheme(themeState.theme);

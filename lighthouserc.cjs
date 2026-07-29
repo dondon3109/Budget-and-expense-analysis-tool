@@ -4,8 +4,8 @@ module.exports = {
   ci: {
     collect: {
       staticDistDir: "./apps/web/dist",
-      isSinglePageApplication: true,
-      url: ["/"],
+      isSinglePageApplication: false,
+      url: ["/", "/terms-of-service/", "/privacy-policy/", "/cookie-policy/"],
       numberOfRuns: 3,
       chromePath: chromium.executablePath(),
       settings: {

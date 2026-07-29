@@ -1,0 +1,21 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#F4F1E9"/>
+  <path d="M0 485C192 388 346 507 562 425C782 341 916 337 1200 224V630H0V485Z" fill="#D9E7DD"/>
+  <rect x="80" y="77" width="74" height="74" rx="22" fill="#1C6B4A"/>
+  <path d="M104 101H130L108 127H134" stroke="#F4F1E9" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="176" y="128" fill="#18352A" font-family="Arial, sans-serif" font-size="48" font-weight="700">Zoption</text>
+  <text x="80" y="282" fill="#10291F" font-family="Arial, sans-serif" font-size="58" font-weight="700">See where your money goes.</text>
+  <text x="80" y="355" fill="#10291F" font-family="Arial, sans-serif" font-size="58" font-weight="700">Decide what comes next.</text>
+  <text x="84" y="452" fill="#315044" font-family="Arial, sans-serif" font-size="34">A private budget and expense tracker</text>
+  <g transform="translate(884 112)">
+    <rect width="236" height="322" rx="28" fill="#10291F"/>
+    <rect x="26" y="34" width="86" height="12" rx="6" fill="#B6D4C0"/>
+    <rect x="26" y="69" width="172" height="30" rx="10" fill="#E7F0E9"/>
+    <rect x="26" y="127" width="184" height="12" rx="6" fill="#668D7A"/>
+    <rect x="26" y="162" width="28" height="102" rx="10" fill="#76B697"/>
+    <rect x="70" y="205" width="28" height="59" rx="10" fill="#B6D4C0"/>
+    <rect x="114" y="178" width="28" height="86" rx="10" fill="#76B697"/>
+    <rect x="158" y="145" width="28" height="119" rx="10" fill="#B6D4C0"/>
+    <rect x="26" y="286" width="184" height="10" rx="5" fill="#416755"/>
+  </g>
+</svg>

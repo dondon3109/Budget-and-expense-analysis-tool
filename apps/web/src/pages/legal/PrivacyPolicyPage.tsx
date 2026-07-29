@@ -47,6 +47,12 @@ export function PrivacyPolicyPage() {
             <strong>Preferences and operations:</strong> theme and cookie/storage choices, request
             and security diagnostics, rate-limit data, errors, and service-health information.
           </li>
+          <li>
+            <strong>Optional analytics:</strong> limited page-use and performance information sent to
+            Google Analytics 4 only after you enable Analytics in Cookie Settings. Zoption does not
+            send financial workspace data, account credentials, or assistant conversations to Google
+            Analytics 4.
+          </li>
         </ul>
         <div className="legal-callout">
           <p>
@@ -96,6 +102,11 @@ export function PrivacyPolicyPage() {
             <strong>DeepSeek</strong> only for the separately enabled AI assistant. Zoption may send
             questions, bounded history, and relevant financial tool output to the DeepSeek API
             through the server.
+          </li>
+          <li>
+            <strong>Google Analytics 4</strong> only after you enable Analytics through Cookie
+            Settings. It receives limited page-use and performance information, not financial
+            workspace data, account credentials, or assistant conversations.
           </li>
         </ul>
         <p>

@@ -1,0 +1,24 @@
+# Zoption
+
+> Zoption is a privacy-conscious personal budget and expense tracker for reviewing transactions, budgets, and monthly cash flow in a private workspace.
+
+## Public pages
+
+- [Home](https://zoption.site/): Product overview and account creation.
+- [Terms of Service](https://zoption.site/terms-of-service): Terms governing the service.
+- [Privacy Policy](https://zoption.site/privacy-policy): Account, financial-data, assistant, and provider processing practices.
+- [Cookie Policy](https://zoption.site/cookie-policy): Necessary browser storage and consent-gated Google Analytics 4.
+
+## Product facts
+
+- Users can manually record transactions or import CSV, XLS, and XLSX files.
+- Users review imported rows before saving them.
+- Zoption does not connect directly to banks and does not ask for banking credentials.
+- Each workspace begins empty and contains only records the user chooses to add.
+- The optional AI assistant uses a separate consent flow.
+
+## Boundaries
+
+- Zoption is not financial, investment, tax, or legal advice.
+- Do not describe Zoption as bank-affiliated, bank-connected, or endorsed by financial institutions.
+- Refer to the linked legal pages for current privacy, cookie, and service terms.

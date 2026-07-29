@@ -1,0 +1,23 @@
+.not-found-page {
+  align-items: center;
+  background: var(--page);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.not-found-card {
+  max-width: 38rem;
+  text-align: center;
+}
+
+.not-found-card h1 {
+  margin: 0.5rem 0 1rem;
+}
+
+.not-found-card p:not(.eyebrow) {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+}

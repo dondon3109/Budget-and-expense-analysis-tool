@@ -78,12 +78,13 @@ Safe diagnostic actions:
 
 ## Frontend configuration
 
-Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production API default to `https://api.zoption.site`; Cloudflare Pages environment variables can override it. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`. The tracked Pages `_headers` policy restricts scripts, workers, forms, frames, images, and connections to the application, Supabase, and known API hosts, and enables HSTS on deployed HTTPS responses. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`. Update and verify CSP whenever a new external asset, API, or authentication host is introduced.
+Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production API default to `https://api.zoption.site`; Cloudflare Pages environment variables can override it. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`. Set `VITE_GA_MEASUREMENT_ID` to the approved Google Analytics 4 Measurement ID (`G-…`) in each Pages environment. The browser bundle does not load Google Analytics 4 until a visitor enables Analytics in Cookie Settings; do not set the value until the Cookie Policy and provider review are approved. The tracked Pages `_headers` policy restricts scripts, workers, forms, frames, images, and connections to the application, Supabase, Google Analytics, and known API hosts, and enables HSTS on deployed HTTPS responses. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`. Update and verify CSP whenever a new external asset, API, or authentication host is introduced.
 
 ```bash
 VITE_API_URL=https://PREVIEW_API_HOST \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
+VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
 pnpm --filter @zoption/web build
 ```
 
@@ -107,6 +108,7 @@ Build and deploy the browser app:
 VITE_API_URL=https://PREVIEW_API_HOST \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
+VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
 pnpm --filter @zoption/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIEW_PAGES_PROJECT --branch=main
 ```
@@ -150,12 +152,13 @@ Build and deploy the frontend with production Supabase values. `VITE_API_URL` de
 ```bash
 VITE_SUPABASE_URL=https://PRODUCTION_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PRODUCTION_PUBLISHABLE_KEY \
+VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
 pnpm --filter @zoption/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PRODUCTION_PAGES_PROJECT --branch=main
 WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production
 ```
 
-Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. Direct navigation should work for `/login`, `/signup`, `/forgot-password`, `/auth/callback`, `/update-password`, `/terms-of-service`, `/privacy-policy`, `/cookie-policy`, and `/app/*`; the committed `_redirects` file provides SPA fallback. Confirm the consent banner makes no Analytics or Marketing requests before opt-in and that no provider is present unless its disclosure, vendor inventory, cleanup behavior, and minimal CSP origins have been reviewed. The retired `/demo` route should return visitors to `/`.
+Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. The deployed output pre-renders `/`, `/terms-of-service`, `/privacy-policy`, and `/cookie-policy`; it also publishes `/sitemap.xml`, `/robots.txt`, `/llms.txt`, and a branded `404.html`. The committed `_redirects` file routes only authentication and private application paths to the `spa.html` shell, sends legacy application paths through permanent redirects, and leaves unknown public paths as HTTP 404 responses. Confirm the consent banner makes no Analytics or Marketing requests before opt-in, Google Analytics 4 loads only after Analytics opt-in, and withdrawal removes the in-page Google Analytics integration. The retired `/demo` route should return HTTP 404.
 
 ## Rollback
 
@@ -173,6 +176,16 @@ Before treating the domain migration as complete:
 2. Deploy the production Worker with `apps/api/wrangler.deploy.jsonc` so its Custom Domain is `api.zoption.site`, then confirm `https://api.zoption.site/health` returns `200`.
 3. Add `www.zoption.site` to Pages and configure the canonical redirect, or remove the alias from `ALLOWED_ORIGINS` and Supabase if it will not be served.
 4. Run `WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production` after DNS and custom-domain changes have propagated.
+
+## Search visibility verification
+
+After the apex redirect, public metadata, and production smoke checks pass:
+
+1. Verify `https://zoption.site` as the canonical Google Search Console property and verify the same canonical host in Bing Webmaster Tools.
+2. Submit `https://zoption.site/sitemap.xml` to both services.
+3. Inspect the rendered HTML and URL Inspection result for `/` and each legal page. Confirm the canonical points to `https://zoption.site`, Open Graph tags reference the social image, and the page is indexable.
+4. Confirm `/login`, `/auth/callback`, and `/app/*` return `X-Robots-Tag: noindex, nofollow` and do not enter the sitemap.
+5. Recheck the Coverage, Core Web Vitals, and Performance reports after new or materially updated public content is released.
 
 ## Current hosted resources
 

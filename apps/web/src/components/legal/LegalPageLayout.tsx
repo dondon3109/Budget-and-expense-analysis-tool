@@ -33,7 +33,7 @@ export function LegalPageLayout({
             </Link>
             <h1>{title}</h1>
             <p className="legal-summary">{summary}</p>
-            <p className="legal-updated">Last updated: July 28, 2026</p>
+            <p className="legal-updated">Last updated: July 30, 2026</p>
           </header>
           {children}
         </article>

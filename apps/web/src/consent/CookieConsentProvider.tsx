@@ -35,10 +35,14 @@ interface CookieConsentContextValue {
 const CookieConsentContext = createContext<CookieConsentContextValue | null>(null);
 
 export function CookieConsentProvider({ children }: { children: ReactNode }) {
-  const [consent, setConsent] = useState<ConsentRecord | null>(readConsentRecord);
+  const [consent, setConsent] = useState<ConsentRecord | null>(null);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const preferencesReturnFocusRef = useRef<HTMLElement | null>(null);
   const preferences = consent?.preferences ?? DENIED_OPTIONAL_CONSENT;
+
+  useEffect(() => {
+    setConsent(readConsentRecord());
+  }, []);
 
   useEffect(() => {
     updateConsentGate(preferences);

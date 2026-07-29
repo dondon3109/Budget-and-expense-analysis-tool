@@ -29,7 +29,7 @@ describe("legal pages", () => {
     renderPage(<TermsOfServicePage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Terms of Service" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: July 28, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: July 30, 2026")).toBeInTheDocument();
     expect(
       screen.getByText(/does not currently connect directly to your bank/i),
     ).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe("legal pages", () => {
     renderPage(<CookiePolicyPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Cookie Policy" })).toBeInTheDocument();
-    expect(screen.getByText(/No analytics provider is currently enabled/i)).toBeInTheDocument();
+    expect(screen.getByText(/Google Analytics 4 for optional usage and performance measurement/i)).toBeInTheDocument();
     expect(screen.getByText(/No marketing provider is currently enabled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open Cookie Settings" })).toBeInTheDocument();
     expect(screen.getByText(/assistant has a separate consent flow/i)).toBeInTheDocument();

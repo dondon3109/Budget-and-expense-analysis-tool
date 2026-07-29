@@ -41,9 +41,12 @@ export function parseConsentRecord(value: string | null): ConsentRecord | null {
   }
 }
 
-export function readConsentRecord(storage: Pick<Storage, "getItem"> = window.localStorage) {
+export function readConsentRecord(storage?: Pick<Storage, "getItem">) {
+  const resolvedStorage = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
+  if (!resolvedStorage) return null;
+
   try {
-    return parseConsentRecord(storage.getItem(CONSENT_STORAGE_KEY));
+    return parseConsentRecord(resolvedStorage.getItem(CONSENT_STORAGE_KEY));
   } catch {
     return null;
   }

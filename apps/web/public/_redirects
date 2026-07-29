@@ -1,1 +1,17 @@
-/* /index.html 200
+/assistant /app/assistant 301
+/accounts /app 301
+/calendar /app/calendar 301
+/transactions /app/transactions 301
+/import /app/import 301
+/budgets /app/budgets 301
+/subscriptions /app/subscriptions 301
+/dashboard /app 301
+/app/accounts /app 301
+
+/login /spa.html 200
+/signup /spa.html 200
+/forgot-password /spa.html 200
+/update-password /spa.html 200
+/auth/callback /spa.html 200
+/app /spa.html 200
+/app/* /spa.html 200

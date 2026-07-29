@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { StrictMode, useEffect, useState } from "react";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
+import { GoogleAnalytics } from "./analytics/GoogleAnalytics";
 import { App } from "./App";
 import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
 import { AuthProvider } from "./auth/AuthProvider";
@@ -24,25 +25,54 @@ const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <ThemeProvider>
+function ClientExperiences() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return (
+    <>
       <ThemeChoiceDialog />
-      <CookieConsentProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <AssistantSessionProvider>
-              <ImportDraftProvider>
-                <BrowserRouter>
-                  <App />
-                  <CookieConsentExperience />
-                  <ReleaseNotesExperience />
-                </BrowserRouter>
-              </ImportDraftProvider>
-            </AssistantSessionProvider>
-          </AuthProvider>
-        </QueryClientProvider>
-      </CookieConsentProvider>
-    </ThemeProvider>
-  </StrictMode>,
-);
+      <CookieConsentExperience />
+      <ReleaseNotesExperience />
+      <GoogleAnalytics />
+    </>
+  );
+}
+
+function BrowserApplication() {
+  return (
+    <StrictMode>
+      <ThemeProvider>
+        <CookieConsentProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <AssistantSessionProvider>
+                <ImportDraftProvider>
+                  <BrowserRouter>
+                    <App />
+                    <ClientExperiences />
+                  </BrowserRouter>
+                </ImportDraftProvider>
+              </AssistantSessionProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </CookieConsentProvider>
+      </ThemeProvider>
+    </StrictMode>
+  );
+}
+
+const root = document.getElementById("root");
+if (!root) throw new Error("Zoption could not find the application root.");
+
+const application = <BrowserApplication />;
+if (root.hasChildNodes()) {
+  hydrateRoot(root, application);
+} else {
+  createRoot(root).render(application);
+}

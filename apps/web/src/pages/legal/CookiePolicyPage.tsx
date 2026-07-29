@@ -32,9 +32,10 @@ export function CookiePolicyPage() {
         </p>
         <h3>Analytics — off by default</h3>
         <p>
-          Analytics could help measure usage and performance. No analytics provider is currently
-          enabled. If one is added, its SDK, script, request, beacon, iframe, preconnect, or similar
-          activity must remain blocked until you explicitly enable Analytics.
+          Zoption uses Google Analytics 4 for optional usage and performance measurement. Its SDK,
+          script, request, beacon, or similar activity remains blocked until you explicitly enable
+          Analytics. Zoption does not send your financial workspace data, account credentials, or
+          assistant conversations to Google Analytics 4.
         </p>
         <h3>Marketing — off by default</h3>
         <p>
@@ -79,12 +80,13 @@ export function CookiePolicyPage() {
       </section>
 
       <section>
-        <h2>5. Future providers</h2>
+        <h2>5. Providers and future changes</h2>
         <p>
-          Before enabling any Analytics or Marketing provider, Zoption must connect it to the
-          consent gate, update this policy and its vendor inventory, disclose purposes and
-          retention, and make any minimal Content Security Policy changes deliberately. Optional
-          technology must not load before the corresponding consent.
+          Google Analytics 4 is Zoption&apos;s Analytics provider. Before enabling any additional
+          Analytics or Marketing provider, Zoption must connect it to the consent gate, update this
+          policy and its vendor inventory, disclose purposes and retention, and make any minimal
+          Content Security Policy changes deliberately. Optional technology must not load before the
+          corresponding consent.
         </p>
       </section>
 

@@ -2,11 +2,12 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { PublicOnly, RequireAuth } from "./auth/RouteGuards";
-
-const LandingPage = lazy(async () => {
-  const module = await import("./pages/LandingPage");
-  return { default: module.LandingPage };
-});
+import { CookiePolicyPage } from "./pages/legal/CookiePolicyPage";
+import { PrivacyPolicyPage } from "./pages/legal/PrivacyPolicyPage";
+import { TermsOfServicePage } from "./pages/legal/TermsOfServicePage";
+import { LandingPage } from "./pages/LandingPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
+import { SeoHead } from "./seo/SeoHead";
 const DashboardPage = lazy(async () => {
   const module = await import("./pages/DashboardPage");
   return { default: module.DashboardPage };
@@ -59,19 +60,6 @@ const AuthCallbackPage = lazy(async () => {
   const module = await import("./pages/AuthCallbackPage");
   return { default: module.AuthCallbackPage };
 });
-const TermsOfServicePage = lazy(async () => {
-  const module = await import("./pages/legal/TermsOfServicePage");
-  return { default: module.TermsOfServicePage };
-});
-const PrivacyPolicyPage = lazy(async () => {
-  const module = await import("./pages/legal/PrivacyPolicyPage");
-  return { default: module.PrivacyPolicyPage };
-});
-const CookiePolicyPage = lazy(async () => {
-  const module = await import("./pages/legal/CookiePolicyPage");
-  return { default: module.CookiePolicyPage };
-});
-
 export function RootRoute() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -105,8 +93,10 @@ function SignedOutOnly({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <Suspense fallback={<div className="full-page-status">Loading Zoption…</div>}>
-      <Routes>
+    <>
+      <SeoHead />
+      <Suspense fallback={<div className="full-page-status">Loading Zoption…</div>}>
+        <Routes>
         <Route path="/" element={<RootRoute />} />
         <Route
           path="/login"
@@ -213,19 +203,12 @@ export function App() {
             </Private>
           }
         />
-        <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-        <Route path="/cookie-policy" element={<CookiePolicyPage />} />
-        <Route path="/assistant" element={<Navigate to="/app/assistant" replace />} />
-        <Route path="/accounts" element={<Navigate to="/app" replace />} />
-        <Route path="/calendar" element={<Navigate to="/app/calendar" replace />} />
-        <Route path="/transactions" element={<Navigate to="/app/transactions" replace />} />
-        <Route path="/import" element={<Navigate to="/app/import" replace />} />
-        <Route path="/budgets" element={<Navigate to="/app/budgets" replace />} />
-        <Route path="/subscriptions" element={<Navigate to="/app/subscriptions" replace />} />
-        <Route path="/dashboard" element={<Navigate to="/app" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
+    </>
   );
 }
