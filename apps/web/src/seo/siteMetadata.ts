@@ -2,6 +2,21 @@ export const SITE_ORIGIN = "https://zoption.site";
 export const SITE_NAME = "Zoption";
 export const SOCIAL_IMAGE_PATH = "/og/zoption-social.png";
 export const SOCIAL_IMAGE_URL = `${SITE_ORIGIN}${SOCIAL_IMAGE_PATH}`;
+export const STRUCTURED_DATA_SCRIPT_ID = "zoption-structured-data";
+
+declare const __SEARCH_INDEXING_ENABLED__: boolean;
+
+const searchIndexingEnabled =
+  typeof __SEARCH_INDEXING_ENABLED__ === "undefined" || __SEARCH_INDEXING_ENABLED__;
+
+export type PublicRoutePath = "/" | "/terms-of-service" | "/privacy-policy" | "/cookie-policy";
+
+export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
+  "/",
+  "/terms-of-service",
+  "/privacy-policy",
+  "/cookie-policy",
+];
 
 export interface SeoMetadata {
   title: string;
@@ -11,18 +26,19 @@ export interface SeoMetadata {
   structuredData?: Record<string, unknown>[];
 }
 
-export interface SitemapEntry {
-  path: PublicRoutePath;
+interface SitemapFields {
   lastModified: string;
   changeFrequency: "weekly" | "monthly" | "yearly";
   priority: number;
 }
 
-export type PublicRoutePath =
-  | "/"
-  | "/terms-of-service"
-  | "/privacy-policy"
-  | "/cookie-policy";
+export interface PublicRouteMetadata extends SeoMetadata {
+  sitemap: SitemapFields;
+}
+
+export interface SitemapEntry extends SitemapFields {
+  path: PublicRoutePath;
+}
 
 const WEBSITE_SCHEMA = {
   "@context": "https://schema.org",
@@ -44,14 +60,14 @@ const SOFTWARE_APPLICATION_SCHEMA = {
     "A private budget and expense tracker for reviewing imported transactions, budgets, and monthly cash flow without a direct bank connection.",
 };
 
-function legalPageSchema(name: string, description: string, url: string) {
+function legalPageSchema(name: string, description: string, url: string, dateModified: string) {
   return {
     "@context": "https://schema.org",
     "@type": "WebPage",
     name,
     description,
     url,
-    dateModified: "2026-07-30",
+    dateModified,
     isPartOf: {
       "@type": "WebSite",
       name: SITE_NAME,
@@ -60,7 +76,9 @@ function legalPageSchema(name: string, description: string, url: string) {
   };
 }
 
-export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, SeoMetadata> = {
+const LEGAL_PAGE_LAST_MODIFIED = "2026-07-30";
+
+export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata> = {
   "/": {
     title: "Zoption — Private Budget & Expense Tracker",
     description:
@@ -68,6 +86,11 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, SeoMetadata> = {
     canonical: SITE_ORIGIN,
     robots: "index,follow",
     structuredData: [WEBSITE_SCHEMA, SOFTWARE_APPLICATION_SCHEMA],
+    sitemap: {
+      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 1,
+    },
   },
   "/terms-of-service": {
     title: "Terms of Service — Zoption",
@@ -80,8 +103,14 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, SeoMetadata> = {
         "Terms of Service — Zoption",
         "The terms that govern Zoption accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
         `${SITE_ORIGIN}/terms-of-service`,
+        LEGAL_PAGE_LAST_MODIFIED,
       ),
     ],
+    sitemap: {
+      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      changeFrequency: "yearly",
+      priority: 0.4,
+    },
   },
   "/privacy-policy": {
     title: "Privacy Policy — Zoption",
@@ -94,8 +123,14 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, SeoMetadata> = {
         "Privacy Policy — Zoption",
         "How Zoption handles account, profile, financial workspace, imported transaction, assistant, consent, and operational information.",
         `${SITE_ORIGIN}/privacy-policy`,
+        LEGAL_PAGE_LAST_MODIFIED,
       ),
     ],
+    sitemap: {
+      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      changeFrequency: "yearly",
+      priority: 0.4,
+    },
   },
   "/cookie-policy": {
     title: "Cookie Policy — Zoption",
@@ -108,32 +143,21 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, SeoMetadata> = {
         "Cookie Policy — Zoption",
         "The necessary browser storage Zoption uses and how Google Analytics 4 remains blocked until Analytics consent is granted.",
         `${SITE_ORIGIN}/cookie-policy`,
+        LEGAL_PAGE_LAST_MODIFIED,
       ),
     ],
+    sitemap: {
+      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      changeFrequency: "yearly",
+      priority: 0.4,
+    },
   },
 };
 
-export const SITEMAP_ENTRIES: SitemapEntry[] = [
-  { path: "/", lastModified: "2026-07-30", changeFrequency: "monthly", priority: 1 },
-  {
-    path: "/terms-of-service",
-    lastModified: "2026-07-30",
-    changeFrequency: "yearly",
-    priority: 0.4,
-  },
-  {
-    path: "/privacy-policy",
-    lastModified: "2026-07-30",
-    changeFrequency: "yearly",
-    priority: 0.4,
-  },
-  {
-    path: "/cookie-policy",
-    lastModified: "2026-07-30",
-    changeFrequency: "yearly",
-    priority: 0.4,
-  },
-];
+export const SITEMAP_ENTRIES: SitemapEntry[] = PUBLIC_ROUTE_PATHS.map((path) => {
+  const { sitemap } = PUBLIC_ROUTE_METADATA[path];
+  return { path, ...sitemap };
+});
 
 const PRIVATE_ROUTE_TITLES: Record<string, string> = {
   "/login": "Sign in — Zoption",
@@ -151,21 +175,67 @@ const PRIVATE_ROUTE_TITLES: Record<string, string> = {
   "/app/settings": "Settings — Zoption",
 };
 
-const NOINDEX_DESCRIPTION =
-  "Zoption is a private budget and expense tracking workspace.";
+const NOINDEX_DESCRIPTION = "Zoption is a private budget and expense tracking workspace.";
+const TRACKING_PARAMETER_NAMES = new Set([
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "gclid",
+  "dclid",
+  "fbclid",
+  "msclkid",
+]);
+const SENSITIVE_FRAGMENT_PARAMETER_NAMES = new Set([
+  "code",
+  "token",
+  "access_token",
+  "refresh_token",
+  "error",
+  "error_code",
+  "error_description",
+  "type",
+  "next",
+  "state",
+  "redirect_to",
+]);
 
-function normalizePathname(pathname: string): string {
+export function normalizePathname(pathname: string): string {
   if (!pathname || pathname === "/") return "/";
   return pathname.replace(/\/+$/, "") || "/";
 }
 
-export function getPublicRouteMetadata(pathname: string): SeoMetadata | undefined {
-  return PUBLIC_ROUTE_METADATA[normalizePathname(pathname) as PublicRoutePath];
+function isTrackingOnlySearch(search: string): boolean {
+  const parameters = new URLSearchParams(search);
+  return [...parameters.keys()].every((name) => TRACKING_PARAMETER_NAMES.has(name.toLowerCase()));
 }
 
-export function getRouteSeoMetadata(pathname: string, search = ""): SeoMetadata {
+function hasSensitiveFragment(hash: string): boolean {
+  const fragment = hash.replace(/^#/, "");
+  if (!fragment) return false;
+
+  const parameters = new URLSearchParams(fragment);
+  return [...parameters.keys()].some((name) =>
+    SENSITIVE_FRAGMENT_PARAMETER_NAMES.has(name.toLowerCase()),
+  );
+}
+
+function applyIndexingEnvironment(metadata: PublicRouteMetadata): SeoMetadata {
+  if (searchIndexingEnabled) return metadata;
+  return { ...metadata, robots: "noindex,nofollow" };
+}
+
+export function getPublicRouteMetadata(pathname: string): SeoMetadata | undefined {
+  const metadata = PUBLIC_ROUTE_METADATA[normalizePathname(pathname) as PublicRoutePath];
+  return metadata ? applyIndexingEnvironment(metadata) : undefined;
+}
+
+export function getRouteSeoMetadata(pathname: string, search = "", hash = ""): SeoMetadata {
   const publicMetadata = getPublicRouteMetadata(pathname);
-  if (publicMetadata && !search) return publicMetadata;
+  if (publicMetadata && isTrackingOnlySearch(search) && !hasSensitiveFragment(hash)) {
+    return publicMetadata;
+  }
 
   const normalizedPath = normalizePathname(pathname);
   const title =
@@ -180,6 +250,8 @@ export function getRouteSeoMetadata(pathname: string, search = ""): SeoMetadata 
   };
 }
 
-export function serializeJsonLd(value: Record<string, unknown> | Record<string, unknown>[]): string {
+export function serializeJsonLd(
+  value: Record<string, unknown> | Record<string, unknown>[],
+): string {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }

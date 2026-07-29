@@ -13,6 +13,26 @@ if (typeof rootPackage.version !== "string" || !rootPackage.version.trim()) {
 }
 
 const appVersion = rootPackage.version;
+const deployEnvironments = ["production", "preview", "staging"] as const;
+type DeployEnvironment = (typeof deployEnvironments)[number];
+
+function resolveDeployEnvironment(env: Record<string, string>): DeployEnvironment {
+  const deployEnvironment = env.ZOPTION_DEPLOY_ENV;
+  if (!deployEnvironment) {
+    if (env.CF_PAGES === "1") {
+      throw new Error("ZOPTION_DEPLOY_ENV is required for Cloudflare Pages builds.");
+    }
+    return "production";
+  }
+
+  if (!deployEnvironments.includes(deployEnvironment as DeployEnvironment)) {
+    throw new Error(
+      `ZOPTION_DEPLOY_ENV must be one of: ${deployEnvironments.join(", ")}. Received: ${deployEnvironment}.`,
+    );
+  }
+
+  return deployEnvironment as DeployEnvironment;
+}
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -22,10 +42,13 @@ export default defineConfig(({ command, mode }) => {
     );
   }
 
+  const deployEnvironment = resolveDeployEnvironment(env);
+
   return {
     plugins: [react(), tailwindcss()],
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
+      __SEARCH_INDEXING_ENABLED__: JSON.stringify(deployEnvironment === "production"),
     },
     server: {
       proxy: {

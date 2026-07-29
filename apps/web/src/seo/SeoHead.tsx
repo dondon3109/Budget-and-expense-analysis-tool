@@ -1,11 +1,18 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
-import { getRouteSeoMetadata, serializeJsonLd, SITE_NAME, SOCIAL_IMAGE_URL } from "./siteMetadata";
+import {
+  getRouteSeoMetadata,
+  serializeJsonLd,
+  SITE_NAME,
+  SOCIAL_IMAGE_URL,
+  STRUCTURED_DATA_SCRIPT_ID,
+} from "./siteMetadata";
 
 function upsertMeta(attribute: "name" | "property", key: string, content: string) {
   const selector = `meta[${attribute}="${key}"]`;
-  const element = document.head.querySelector<HTMLMetaElement>(selector) ?? document.createElement("meta");
+  const element =
+    document.head.querySelector<HTMLMetaElement>(selector) ?? document.createElement("meta");
   element.setAttribute(attribute, key);
   element.content = content;
   if (!element.isConnected) document.head.append(element);
@@ -21,10 +28,10 @@ function upsertCanonical(href: string) {
 }
 
 function upsertStructuredData(serialized: string) {
-  const id = "zoption-structured-data";
   const element =
-    document.head.querySelector<HTMLScriptElement>(`script#${id}`) ?? document.createElement("script");
-  element.id = id;
+    document.head.querySelector<HTMLScriptElement>(`script#${STRUCTURED_DATA_SCRIPT_ID}`) ??
+    document.createElement("script");
+  element.id = STRUCTURED_DATA_SCRIPT_ID;
   element.type = "application/ld+json";
   element.text = serialized;
   if (!element.isConnected) document.head.append(element);
@@ -34,7 +41,7 @@ export function SeoHead() {
   const location = useLocation();
 
   useEffect(() => {
-    const metadata = getRouteSeoMetadata(location.pathname, location.search);
+    const metadata = getRouteSeoMetadata(location.pathname, location.search, location.hash);
     document.title = metadata.title;
     upsertMeta("name", "description", metadata.description);
     upsertMeta("name", "robots", metadata.robots);
@@ -59,9 +66,9 @@ export function SeoHead() {
     if (metadata.structuredData?.length) {
       upsertStructuredData(serializeJsonLd(metadata.structuredData));
     } else {
-      document.head.querySelector("script#zoption-structured-data")?.remove();
+      document.head.querySelector(`script#${STRUCTURED_DATA_SCRIPT_ID}`)?.remove();
     }
-  }, [location.pathname, location.search]);
+  }, [location.hash, location.pathname, location.search]);
 
   return null;
 }

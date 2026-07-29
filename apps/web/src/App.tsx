@@ -2,11 +2,9 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { PublicOnly, RequireAuth } from "./auth/RouteGuards";
-import { CookiePolicyPage } from "./pages/legal/CookiePolicyPage";
-import { PrivacyPolicyPage } from "./pages/legal/PrivacyPolicyPage";
-import { TermsOfServicePage } from "./pages/legal/TermsOfServicePage";
 import { LandingPage } from "./pages/LandingPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { publicRouteElements } from "./PublicRoutes";
 import { SeoHead } from "./seo/SeoHead";
 const DashboardPage = lazy(async () => {
   const module = await import("./pages/DashboardPage");
@@ -97,115 +95,112 @@ export function App() {
       <SeoHead />
       <Suspense fallback={<div className="full-page-status">Loading Zoption…</div>}>
         <Routes>
-        <Route path="/" element={<RootRoute />} />
-        <Route
-          path="/login"
-          element={
-            <SignedOutOnly>
-              <LoginPage />
-            </SignedOutOnly>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <SignedOutOnly>
-              <SignupPage />
-            </SignedOutOnly>
-          }
-        />
-        <Route
-          path="/forgot-password"
-          element={
-            <SignedOutOnly>
-              <ForgotPasswordPage />
-            </SignedOutOnly>
-          }
-        />
-        <Route path="/auth/callback" element={<AuthCallbackPage />} />
-        <Route
-          path="/update-password"
-          element={
-            <Private>
-              <UpdatePasswordPage />
-            </Private>
-          }
-        />
-        <Route
-          path="/app"
-          element={
-            <Private>
-              <DashboardPage />
-            </Private>
-          }
-        />
-        <Route
-          path="/app/assistant"
-          element={
-            <Private>
-              <AssistantPage />
-            </Private>
-          }
-        />
-        <Route
-          path="/app/accounts"
-          element={
-            <Private>
-              <Navigate to="/app" replace />
-            </Private>
-          }
-        />
-        <Route
-          path="/app/calendar"
-          element={
-            <Private>
-              <CalendarPage />
-            </Private>
-          }
-        />
-        <Route
-          path="/app/transactions"
-          element={
-            <Private>
-              <TransactionsPage />
-            </Private>
-          }
-        />
-        <Route
-          path="/app/import"
-          element={
-            <Private>
-              <ImportPage />
-            </Private>
-          }
-        />
-        <Route
-          path="/app/budgets"
-          element={
-            <Private>
-              <BudgetsPage />
-            </Private>
-          }
-        />
-        <Route
-          path="/app/subscriptions"
-          element={
-            <Private>
-              <SubscriptionsPage />
-            </Private>
-          }
-        />
-        <Route
-          path="/app/settings"
-          element={
-            <Private>
-              <SettingsPage />
-            </Private>
-          }
-        />
-          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+          {publicRouteElements(<RootRoute />)}
+          <Route
+            path="/login"
+            element={
+              <SignedOutOnly>
+                <LoginPage />
+              </SignedOutOnly>
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              <SignedOutOnly>
+                <SignupPage />
+              </SignedOutOnly>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <SignedOutOnly>
+                <ForgotPasswordPage />
+              </SignedOutOnly>
+            }
+          />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route
+            path="/update-password"
+            element={
+              <Private>
+                <UpdatePasswordPage />
+              </Private>
+            }
+          />
+          <Route
+            path="/app"
+            element={
+              <Private>
+                <DashboardPage />
+              </Private>
+            }
+          />
+          <Route
+            path="/app/assistant"
+            element={
+              <Private>
+                <AssistantPage />
+              </Private>
+            }
+          />
+          <Route
+            path="/app/accounts"
+            element={
+              <Private>
+                <Navigate to="/app" replace />
+              </Private>
+            }
+          />
+          <Route
+            path="/app/calendar"
+            element={
+              <Private>
+                <CalendarPage />
+              </Private>
+            }
+          />
+          <Route
+            path="/app/transactions"
+            element={
+              <Private>
+                <TransactionsPage />
+              </Private>
+            }
+          />
+          <Route
+            path="/app/import"
+            element={
+              <Private>
+                <ImportPage />
+              </Private>
+            }
+          />
+          <Route
+            path="/app/budgets"
+            element={
+              <Private>
+                <BudgetsPage />
+              </Private>
+            }
+          />
+          <Route
+            path="/app/subscriptions"
+            element={
+              <Private>
+                <SubscriptionsPage />
+              </Private>
+            }
+          />
+          <Route
+            path="/app/settings"
+            element={
+              <Private>
+                <SettingsPage />
+              </Private>
+            }
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>

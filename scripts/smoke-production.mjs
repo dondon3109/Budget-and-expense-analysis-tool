@@ -2,6 +2,7 @@ const webUrl = requiredUrl("WEB_URL");
 const apiUrl = requiredUrl("API_URL");
 const origin = new URL(webUrl).origin;
 const seoOrigin = "https://zoption.site";
+const searchIndexingEnabled = process.env.EXPECT_SEARCH_INDEXING !== "0";
 
 function requiredUrl(name) {
   const value = process.env[name];
@@ -44,6 +45,33 @@ function assertIncludes(value, expected, label) {
   if (!value.includes(expected)) throw new Error(`${label} did not include ${expected}.`);
 }
 
+function assertCount(value, expression, expected, label) {
+  const actual = [...value.matchAll(expression)].length;
+  if (actual !== expected)
+    throw new Error(`${label} expected ${expected} matches but found ${actual}.`);
+}
+
+function assertPublicSeoDocument(html, canonical, label) {
+  const robots = searchIndexingEnabled ? "index,follow" : "noindex,nofollow";
+  assertCount(html, /<title\b/gi, 1, `${label} title`);
+  assertCount(html, /<meta\b[^>]*\bname="robots"/gi, 1, `${label} robots meta`);
+  assertCount(html, /<link\b[^>]*\brel="canonical"/gi, 1, `${label} canonical`);
+  assertCount(
+    html,
+    /<script\b[^>]*\bid="zoption-structured-data"/gi,
+    1,
+    `${label} structured data`,
+  );
+  assertIncludes(html, `<link rel="canonical" href="${canonical}"`, label);
+  assertIncludes(html, `<meta id="zoption-robots" name="robots" content="${robots}"`, label);
+
+  const structuredData = html.match(
+    /<script id="zoption-structured-data" type="application\/ld\+json">([\s\S]*?)<\/script>/,
+  )?.[1];
+  if (!structuredData) throw new Error(`${label} did not contain parseable structured data.`);
+  JSON.parse(structuredData);
+}
+
 const apiHeaders = { Origin: origin };
 const publicPages = [
   ["landing page", "/", "See where your money goes. Decide what comes next."],
@@ -57,11 +85,14 @@ for (const [label, path, heading] of publicPages) {
     if (!response.ok) throw new Error(`${label} failed with HTTP ${response.status}.`);
     const html = await response.text();
     const canonical = `${seoOrigin}${path === "/" ? "" : path}`;
-    assertIncludes(html, `<link rel="canonical" href="${canonical}"`, label);
-    assertIncludes(html, '<meta name="robots" content="index,follow"', label);
+    if (!searchIndexingEnabled) {
+      const robots = response.headers.get("x-robots-tag")?.toLowerCase() ?? "";
+      if (!robots.includes("noindex"))
+        throw new Error(`${label} was missing preview X-Robots-Tag: noindex.`);
+    }
+    assertPublicSeoDocument(html, canonical, label);
     assertIncludes(html, '<meta property="og:title"', label);
     assertIncludes(html, '<meta name="twitter:card" content="summary_large_image"', label);
-    assertIncludes(html, 'application/ld+json', label);
     assertIncludes(html, heading, label);
     if (html.includes("www.googletagmanager.com/gtag/js")) {
       throw new Error(`${label} loaded Google Analytics before consent.`);
@@ -71,20 +102,74 @@ for (const [label, path, heading] of publicPages) {
   });
 }
 
-await expectResponse("SEO sitemap", `${webUrl}/sitemap.xml`, undefined, async (response) => {
-  if (!response.ok) throw new Error(`Sitemap failed with HTTP ${response.status}.`);
-  const sitemap = await response.text();
-  for (const [, path] of publicPages) {
-    assertIncludes(sitemap, `${seoOrigin}${path === "/" ? "/" : path}`, "Sitemap");
-  }
-  if (sitemap.includes("/app") || sitemap.includes("/login")) {
-    throw new Error("Sitemap includes a private or authentication route.");
-  }
-});
+for (const path of ["/terms-of-service", "/privacy-policy", "/cookie-policy"]) {
+  await expectResponse(
+    `${path} trailing slash redirect`,
+    `${webUrl}${path}/`,
+    { redirect: "manual" },
+    async (response) => {
+      if (response.status !== 301 || response.headers.get("location") !== path) {
+        throw new Error(`${path}/ did not permanently redirect to its canonical URL.`);
+      }
+    },
+  );
+}
+
+await expectResponse(
+  "tracking query canonical",
+  `${webUrl}/privacy-policy?utm_source=smoke`,
+  undefined,
+  async (response) => {
+    if (!response.ok) throw new Error(`Tracking query failed with HTTP ${response.status}.`);
+    const html = await response.text();
+    assertPublicSeoDocument(html, `${seoOrigin}/privacy-policy`, "tracking query canonical");
+  },
+);
+
+if (searchIndexingEnabled) {
+  await expectResponse("SEO sitemap", `${webUrl}/sitemap.xml`, undefined, async (response) => {
+    if (!response.ok) throw new Error(`Sitemap failed with HTTP ${response.status}.`);
+    const sitemap = await response.text();
+    for (const [, path] of publicPages) {
+      assertIncludes(sitemap, `${seoOrigin}${path === "/" ? "/" : path}`, "Sitemap");
+    }
+    if (sitemap.includes("/app") || sitemap.includes("/login")) {
+      throw new Error("Sitemap includes a private or authentication route.");
+    }
+    const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+    if (new Set(locations).size !== locations.length)
+      throw new Error("Sitemap contains duplicate locations.");
+    for (const match of sitemap.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(match[1])) {
+        throw new Error("Sitemap contains a non-ISO lastmod value.");
+      }
+    }
+  });
+} else {
+  await expectResponse(
+    "preview sitemap omission",
+    `${webUrl}/sitemap.xml`,
+    undefined,
+    async (response) => {
+      if (response.status !== 404)
+        throw new Error(`Preview sitemap returned HTTP ${response.status} instead of 404.`);
+    },
+  );
+}
 
 await expectResponse("robots rules", `${webUrl}/robots.txt`, undefined, async (response) => {
   if (!response.ok) throw new Error(`robots.txt failed with HTTP ${response.status}.`);
-  assertIncludes(await response.text(), `Sitemap: ${seoOrigin}/sitemap.xml`, "robots.txt");
+  const robots = await response.text();
+  if (searchIndexingEnabled) {
+    assertIncludes(robots, `Sitemap: ${seoOrigin}/sitemap.xml`, "robots.txt");
+  } else if (robots.includes("Sitemap:")) {
+    throw new Error("Preview robots.txt must not advertise a sitemap.");
+  }
+  if (/^Disallow:\s*\/app\/?\s*$/im.test(robots)) {
+    throw new Error(
+      "robots.txt must not block private routes before crawlers can see noindex directives.",
+    );
+  }
 });
 
 await expectResponse("LLM guidance", `${webUrl}/llms.txt`, undefined, async (response) => {
@@ -92,34 +177,53 @@ await expectResponse("LLM guidance", `${webUrl}/llms.txt`, undefined, async (res
   assertIncludes(await response.text(), "Zoption", "llms.txt");
 });
 
-await expectResponse("social image", `${webUrl}/og/zoption-social.png`, undefined, async (response) => {
-  if (!response.ok) throw new Error(`Social image failed with HTTP ${response.status}.`);
-  if (!response.headers.get("content-type")?.startsWith("image/png")) {
-    throw new Error("Social image did not return a PNG content type.");
-  }
-});
+await expectResponse(
+  "social image",
+  `${webUrl}/og/zoption-social.png`,
+  undefined,
+  async (response) => {
+    if (!response.ok) throw new Error(`Social image failed with HTTP ${response.status}.`);
+    if (!response.headers.get("content-type")?.startsWith("image/png")) {
+      throw new Error("Social image did not return a PNG content type.");
+    }
+  },
+);
 
 for (const path of ["/login", "/auth/callback", "/app/transactions"]) {
   await expectResponse(`noindex ${path}`, `${webUrl}${path}`, undefined, async (response) => {
     if (!response.ok) throw new Error(`${path} failed with HTTP ${response.status}.`);
     const robots = response.headers.get("x-robots-tag")?.toLowerCase() ?? "";
     if (!robots.includes("noindex")) throw new Error(`${path} was missing X-Robots-Tag: noindex.`);
-    assertIncludes(await response.text(), 'name="robots" content="noindex,nofollow"', path);
+    assertIncludes(
+      await response.text(),
+      'id="zoption-robots" name="robots" content="noindex,nofollow"',
+      path,
+    );
   });
 }
 
-await expectResponse("legacy dashboard redirect", `${webUrl}/dashboard`, { redirect: "manual" }, async (response) => {
-  if (response.status !== 301 || response.headers.get("location") !== "/app") {
-    throw new Error("Legacy dashboard did not permanently redirect to /app.");
-  }
-});
+await expectResponse(
+  "legacy dashboard redirect",
+  `${webUrl}/dashboard`,
+  { redirect: "manual" },
+  async (response) => {
+    if (response.status !== 301 || response.headers.get("location") !== "/app") {
+      throw new Error("Legacy dashboard did not permanently redirect to /app.");
+    }
+  },
+);
 
-await expectResponse("unknown public route", `${webUrl}/this-page-does-not-exist`, undefined, async (response) => {
-  if (response.status !== 404) {
-    throw new Error(`Unknown public route returned HTTP ${response.status} instead of 404.`);
-  }
-  assertIncludes(await response.text(), "That page is not here.", "404 page");
-});
+await expectResponse(
+  "unknown public route",
+  `${webUrl}/this-page-does-not-exist`,
+  undefined,
+  async (response) => {
+    if (response.status !== 404) {
+      throw new Error(`Unknown public route returned HTTP ${response.status} instead of 404.`);
+    }
+    assertIncludes(await response.text(), "That page is not here.", "404 page");
+  },
+);
 
 await expectResponse(
   "API health and D1 readiness",

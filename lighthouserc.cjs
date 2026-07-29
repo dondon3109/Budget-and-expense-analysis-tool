@@ -3,9 +3,15 @@ const { chromium } = require("@playwright/test");
 module.exports = {
   ci: {
     collect: {
-      staticDistDir: "./apps/web/dist",
-      isSinglePageApplication: false,
-      url: ["/", "/terms-of-service/", "/privacy-policy/", "/cookie-policy/"],
+      startServerCommand: "pnpm --dir apps/api exec wrangler pages dev ../web/dist --port 8788",
+      startServerReadyPattern: "Ready on",
+      startServerReadyTimeout: 30_000,
+      url: [
+        "http://localhost:8788/",
+        "http://localhost:8788/terms-of-service",
+        "http://localhost:8788/privacy-policy",
+        "http://localhost:8788/cookie-policy",
+      ],
       numberOfRuns: 3,
       chromePath: chromium.executablePath(),
       settings: {

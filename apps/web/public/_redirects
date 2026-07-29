@@ -8,6 +8,10 @@
 /dashboard /app 301
 /app/accounts /app 301
 
+/terms-of-service/ /terms-of-service 301
+/privacy-policy/ /privacy-policy 301
+/cookie-policy/ /cookie-policy 301
+
 /login /spa.html 200
 /signup /spa.html 200
 /forgot-password /spa.html 200

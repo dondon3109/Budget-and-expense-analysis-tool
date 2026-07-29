@@ -1,4 +1,4 @@
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom";
 
 import { PublicRoutes } from "./PublicRoutes";
@@ -6,10 +6,17 @@ import { CookieConsentProvider } from "./consent/CookieConsentProvider";
 import { getPublicRouteMetadata } from "./seo/siteMetadata";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
-export { SITEMAP_ENTRIES } from "./seo/siteMetadata";
+export {
+  serializeJsonLd,
+  SITE_NAME,
+  SITE_ORIGIN,
+  SOCIAL_IMAGE_URL,
+  SITEMAP_ENTRIES,
+  STRUCTURED_DATA_SCRIPT_ID,
+} from "./seo/siteMetadata";
 
 function renderRoute(pathname: string) {
-  return renderToStaticMarkup(
+  return renderToString(
     <ThemeProvider>
       <CookieConsentProvider>
         <StaticRouter location={pathname}>

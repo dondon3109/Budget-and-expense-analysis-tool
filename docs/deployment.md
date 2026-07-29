@@ -23,6 +23,7 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    ```
 
    Never use this key in `VITE_*` configuration, committed Wrangler `vars`, D1, logs, or browser code.
+
 9. Apply the tracked Supabase migrations to each preview and production project:
 
    ```bash
@@ -80,15 +81,20 @@ Safe diagnostic actions:
 
 Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production API default to `https://api.zoption.site`; Cloudflare Pages environment variables can override it. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`. Set `VITE_GA_MEASUREMENT_ID` to the approved Google Analytics 4 Measurement ID (`G-…`) in each Pages environment. The browser bundle does not load Google Analytics 4 until a visitor enables Analytics in Cookie Settings; do not set the value until the Cookie Policy and provider review are approved. The tracked Pages `_headers` policy restricts scripts, workers, forms, frames, images, and connections to the application, Supabase, Google Analytics, and known API hosts, and enables HSTS on deployed HTTPS responses. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`. Update and verify CSP whenever a new external asset, API, or authentication host is introduced.
 
+Set `ZOPTION_DEPLOY_ENV` explicitly in every Pages build: `production` for the production project and `preview` or `staging` for non-production projects. Preview/staging builds keep the public content and production canonicals for realistic review, but force HTML and HTTP `noindex,nofollow`, do not publish `sitemap.xml`, and do not advertise a sitemap in `robots.txt`. Production intentionally allows crawlers to fetch private routes rather than disallowing them in `robots.txt`, so crawlers can observe their HTML and `X-Robots-Tag` noindex directives.
+
 ```bash
 VITE_API_URL=https://PREVIEW_API_HOST \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
 VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
+ZOPTION_DEPLOY_ENV=preview \
 pnpm --filter @zoption/web build
 ```
 
 The publishable key is intended for browser use. It does not grant access to D1; the Worker still verifies every access token and chooses tenant scope server-side.
+
+Public canonical URLs do not use trailing slashes. The three legal trailing-slash variants permanently redirect to their canonical path. Public pages accept only standard UTM and ad-click identifiers (`utm_*`, `gclid`, `dclid`, `fbclid`, `msclkid`) as indexable query strings; their canonical remains query-free. Any other query parameter and any authentication/error URL state is noindex. Update a public route's manually maintained sitemap `lastModified` value only when its user-visible content changes materially; the same value feeds legal-page structured-data `dateModified`.
 
 ## Preview release
 
@@ -109,6 +115,7 @@ VITE_API_URL=https://PREVIEW_API_HOST \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
 VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
+ZOPTION_DEPLOY_ENV=preview \
 pnpm --filter @zoption/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIEW_PAGES_PROJECT --branch=main
 ```
@@ -116,7 +123,7 @@ pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIE
 Run the non-mutating smoke gate:
 
 ```bash
-WEB_URL=https://PREVIEW_WEB_HOST API_URL=https://PREVIEW_API_HOST pnpm smoke:production
+EXPECT_SEARCH_INDEXING=0 WEB_URL=https://PREVIEW_WEB_HOST API_URL=https://PREVIEW_API_HOST pnpm smoke:production
 ```
 
 Then perform an authenticated browser check with two ordinary preview users:
@@ -147,12 +154,13 @@ pnpm exec wrangler deploy --config wrangler.deploy.jsonc --env production
 cd ../..
 ```
 
-Build and deploy the frontend with production Supabase values. `VITE_API_URL` defaults to `https://api.zoption.site` for production builds, but it may be supplied explicitly by the Pages build environment.
+Build and deploy the frontend with production Supabase values. `VITE_API_URL` defaults to `https://api.zoption.site` for production builds, but it may be supplied explicitly by the Pages build environment. Set `ZOPTION_DEPLOY_ENV=production` in the production Pages project. The web build rejects Cloudflare Pages builds without this explicit environment value so a preview project cannot accidentally publish indexable pages.
 
 ```bash
 VITE_SUPABASE_URL=https://PRODUCTION_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PRODUCTION_PUBLISHABLE_KEY \
 VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
+ZOPTION_DEPLOY_ENV=production \
 pnpm --filter @zoption/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PRODUCTION_PAGES_PROJECT --branch=main
 WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production

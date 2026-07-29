@@ -1,4 +1,5 @@
 declare const __APP_VERSION__: string;
+declare const __SEARCH_INDEXING_ENABLED__: boolean;
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
