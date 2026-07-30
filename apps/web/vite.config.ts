@@ -14,7 +14,15 @@ if (typeof rootPackage.version !== "string" || !rootPackage.version.trim()) {
 
 const appVersion = rootPackage.version;
 const deployEnvironments = ["production", "preview", "staging"] as const;
+const productionApiOrigin = "https://api.zoption.site";
 type DeployEnvironment = (typeof deployEnvironments)[number];
+
+interface ApiUrlValidationInput {
+  command: string;
+  deployEnvironment: DeployEnvironment;
+  effectiveApiUrl?: string;
+  explicitApiUrl?: string;
+}
 
 function resolveDeployEnvironment(env: Record<string, string>): DeployEnvironment {
   const deployEnvironment = env.ZOPTION_DEPLOY_ENV;
@@ -34,15 +42,51 @@ function resolveDeployEnvironment(env: Record<string, string>): DeployEnvironmen
   return deployEnvironment as DeployEnvironment;
 }
 
-export default defineConfig(({ command, mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
-  if (command === "build" && !env.VITE_API_URL?.trim()) {
+export function validateApiUrlForBuild({
+  command,
+  deployEnvironment,
+  effectiveApiUrl,
+  explicitApiUrl,
+}: ApiUrlValidationInput): void {
+  if (command !== "build") return;
+
+  const apiUrl = effectiveApiUrl?.trim();
+  if (!apiUrl) {
     throw new Error(
       "VITE_API_URL is required for production builds so API requests do not fall through to the frontend.",
     );
   }
 
+  if (deployEnvironment === "production") return;
+  if (!explicitApiUrl?.trim()) {
+    throw new Error(
+      `VITE_API_URL must be set explicitly for ${deployEnvironment} builds; the production .env fallback is not allowed.`,
+    );
+  }
+
+  let apiOrigin: string;
+  try {
+    apiOrigin = new URL(apiUrl).origin;
+  } catch {
+    throw new Error(`VITE_API_URL must be a valid absolute URL for ${deployEnvironment} builds.`);
+  }
+
+  if (apiOrigin === productionApiOrigin) {
+    throw new Error(
+      `${deployEnvironment} builds must not use the production API at ${productionApiOrigin}.`,
+    );
+  }
+}
+
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
   const deployEnvironment = resolveDeployEnvironment(env);
+  validateApiUrlForBuild({
+    command,
+    deployEnvironment,
+    effectiveApiUrl: env.VITE_API_URL,
+    explicitApiUrl: process.env.VITE_API_URL,
+  });
 
   return {
     plugins: [react(), tailwindcss()],
