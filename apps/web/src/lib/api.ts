@@ -8,6 +8,10 @@ import type {
   AssistantPreferenceUpdate,
   AssistantThreadPage,
   AssistantTurnResult,
+  BillingCapability,
+  BillingFeature,
+  BillingInterval,
+  BillingSummary,
   BudgetMonthPlan,
   BudgetUpsert,
   CalendarEventInput,
@@ -46,10 +50,89 @@ export class ApiRequestError extends Error {
     message: string,
     readonly status: number,
     readonly code: string,
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = "ApiRequestError";
   }
+}
+
+export interface MonthlyLimitReachedDetails {
+  feature: BillingFeature;
+  limit: number;
+  resetsAt: string;
+}
+
+export interface UpgradeRequiredDetails {
+  capability: BillingCapability;
+}
+
+const billingFeatures = new Set<BillingFeature>(["assistant_question", "file_import"]);
+const billingCapabilities = new Set<BillingCapability>([
+  "assistant_question",
+  "file_import",
+  "category_management",
+  "account_management",
+  "cashflow_analytics",
+  "transaction_export",
+]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function apiErrorPayload(value: unknown): {
+  error?: string;
+  message?: string;
+  details?: unknown;
+} {
+  if (!isRecord(value)) return {};
+  return {
+    error: typeof value.error === "string" ? value.error : undefined,
+    message: typeof value.message === "string" ? value.message : undefined,
+    ...(Object.hasOwn(value, "details") ? { details: value.details } : {}),
+  };
+}
+
+export function isApiRequestError(error: unknown): error is ApiRequestError {
+  return error instanceof ApiRequestError;
+}
+
+export function isMonthlyLimitReachedError(
+  error: unknown,
+): error is ApiRequestError & { details: MonthlyLimitReachedDetails } {
+  if (!isApiRequestError(error) || error.code !== "monthly_limit_reached") return false;
+  if (!isRecord(error.details)) return false;
+  return (
+    typeof error.details.feature === "string" &&
+    billingFeatures.has(error.details.feature as BillingFeature) &&
+    typeof error.details.limit === "number" &&
+    Number.isFinite(error.details.limit) &&
+    error.details.limit >= 0 &&
+    typeof error.details.resetsAt === "string"
+  );
+}
+
+export function isUpgradeRequiredError(
+  error: unknown,
+): error is ApiRequestError & { details: UpgradeRequiredDetails } {
+  if (!isApiRequestError(error) || error.code !== "upgrade_required") return false;
+  if (!isRecord(error.details)) return false;
+  return (
+    typeof error.details.capability === "string" &&
+    billingCapabilities.has(error.details.capability as BillingCapability)
+  );
+}
+
+export function isBillingEnforcementError(error: unknown): error is ApiRequestError {
+  return (
+    isApiRequestError(error) &&
+    (error.code === "monthly_limit_reached" || error.code === "upgrade_required")
+  );
+}
+
+export function isSubscriptionBlocksAccountDeletionError(error: unknown): error is ApiRequestError {
+  return isApiRequestError(error) && error.code === "subscription_blocks_account_deletion";
 }
 
 async function accessToken(workspace: AuthenticatedWorkspace, refresh: boolean): Promise<string> {
@@ -104,26 +187,29 @@ async function requestJson<T>(
   init: RequestInit = {},
   options: { retryUnauthorized?: boolean } = {},
 ): Promise<T> {
-  const response = await workspaceFetch(workspace, path, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...init.headers,
+  const response = await workspaceFetch(
+    workspace,
+    path,
+    {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
     },
-  }, options);
+    options,
+  );
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as {
-      error?: string;
-      message?: string;
-    } | null;
+    const payload = apiErrorPayload(await response.json().catch(() => null));
     throw new ApiRequestError(
-      payload?.message ??
+      payload.message ??
         (response.status === 401
           ? "Your session has expired. Sign in again."
           : "The request could not be completed."),
       response.status,
-      payload?.error ?? "request_failed",
+      payload.error ?? "request_failed",
+      payload.details,
     );
   }
   if (response.status === 204) return undefined as T;
@@ -149,20 +235,38 @@ async function requestJson<T>(
 async function requestBlob(workspace: AuthenticatedWorkspace, path: string): Promise<Blob> {
   const response = await workspaceFetch(workspace, path, { headers: { Accept: "text/csv" } });
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as {
-      error?: string;
-      message?: string;
-    } | null;
+    const payload = apiErrorPayload(await response.json().catch(() => null));
     throw new ApiRequestError(
-      payload?.message ??
+      payload.message ??
         (response.status === 401
           ? "Your session has expired. Sign in again."
           : "The download could not be prepared."),
       response.status,
-      payload?.error ?? "request_failed",
+      payload.error ?? "request_failed",
+      payload.details,
     );
   }
   return response.blob();
+}
+
+export function getBillingSummary(workspace: AuthenticatedWorkspace): Promise<BillingSummary> {
+  return requestJson(workspace, "/api/app/billing");
+}
+
+export function startBillingCheckout(
+  workspace: AuthenticatedWorkspace,
+  interval: BillingInterval,
+): Promise<{ reference: string; priceId: string }> {
+  return requestJson(workspace, "/api/app/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ interval }),
+  });
+}
+
+export function createBillingPortalSession(
+  workspace: AuthenticatedWorkspace,
+): Promise<{ url: string }> {
+  return requestJson(workspace, "/api/app/billing/portal", { method: "POST" });
 }
 
 export function getDashboard(

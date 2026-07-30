@@ -31,6 +31,15 @@ vi.mock("../src/components/layout/AppShell", () => ({
   AppShell: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
 
+vi.mock("../src/components/account/BillingSettings", () => ({
+  BillingSettings: () => (
+    <section>
+      <h2>Plan and billing</h2>
+    </section>
+  ),
+}));
+
+import { ApiRequestError } from "../src/lib/api";
 import { SettingsPage } from "../src/pages/SettingsPage";
 
 function renderSettings(entry = "/app/settings") {
@@ -252,21 +261,33 @@ describe("SettingsPage", () => {
     });
     const dialogQueries = within(dialog);
     expect(dialog).toBeInTheDocument();
-    expect(dialogQueries.getByRole("button", { name: "Permanently delete account" })).toBeDisabled();
+    expect(
+      dialogQueries.getByRole("button", { name: "Permanently delete account" }),
+    ).toBeDisabled();
     expect(document.body).toHaveStyle({ overflow: "hidden" });
 
-    fireEvent.change(dialogQueries.getByLabelText("Current password"), { target: { value: "current-password" } });
-    fireEvent.change(dialogQueries.getByLabelText("Type DELETE to confirm"), { target: { value: "delete" } });
-    expect(dialogQueries.getByRole("button", { name: "Permanently delete account" })).toBeDisabled();
+    fireEvent.change(dialogQueries.getByLabelText("Current password"), {
+      target: { value: "current-password" },
+    });
+    fireEvent.change(dialogQueries.getByLabelText("Type DELETE to confirm"), {
+      target: { value: "delete" },
+    });
+    expect(
+      dialogQueries.getByRole("button", { name: "Permanently delete account" }),
+    ).toBeDisabled();
 
-    fireEvent.change(dialogQueries.getByLabelText("Type DELETE to confirm"), { target: { value: "DELETE" } });
+    fireEvent.change(dialogQueries.getByLabelText("Type DELETE to confirm"), {
+      target: { value: "DELETE" },
+    });
     fireEvent.click(dialogQueries.getByRole("button", { name: "Permanently delete account" }));
 
     await waitFor(() => expect(authState.deleteAccount).toHaveBeenCalledWith("current-password"));
   });
 
   it("shows a generic deletion failure and restores focus after cancellation", async () => {
-    authState.deleteAccount.mockRejectedValue(new Error("The current password could not be verified."));
+    authState.deleteAccount.mockRejectedValue(
+      new Error("The current password could not be verified."),
+    );
     renderSettings();
 
     const trigger = screen.getByRole("button", { name: "Delete account" });
@@ -277,15 +298,58 @@ describe("SettingsPage", () => {
       return element;
     });
     const dialogQueries = within(dialog);
-    fireEvent.change(dialogQueries.getByLabelText("Current password"), { target: { value: "wrong" } });
-    fireEvent.change(dialogQueries.getByLabelText("Type DELETE to confirm"), { target: { value: "DELETE" } });
+    fireEvent.change(dialogQueries.getByLabelText("Current password"), {
+      target: { value: "wrong" },
+    });
+    fireEvent.change(dialogQueries.getByLabelText("Type DELETE to confirm"), {
+      target: { value: "DELETE" },
+    });
     fireEvent.click(dialogQueries.getByRole("button", { name: "Permanently delete account" }));
 
     await waitFor(() =>
-      expect(dialogQueries.getByRole("alert")).toHaveTextContent("current password could not be verified"),
+      expect(dialogQueries.getByRole("alert")).toHaveTextContent(
+        "current password could not be verified",
+      ),
     );
     fireEvent.click(dialogQueries.getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("keeps account deletion open and points blocked subscribers to billing", async () => {
+    authState.deleteAccount.mockRejectedValue(
+      new ApiRequestError(
+        "Cancel or resolve your subscription before deleting your account.",
+        409,
+        "subscription_blocks_account_deletion",
+      ),
+    );
+    renderSettings();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+    const dialog = await waitFor(() => {
+      const element = document.querySelector<HTMLElement>(".account-deletion-dialog");
+      if (!element) throw new Error("Account deletion dialog was not rendered.");
+      return element;
+    });
+    const dialogQueries = within(dialog);
+    fireEvent.change(dialogQueries.getByLabelText("Current password"), {
+      target: { value: "current-password" },
+    });
+    fireEvent.change(dialogQueries.getByLabelText("Type DELETE to confirm"), {
+      target: { value: "DELETE" },
+    });
+    fireEvent.click(dialogQueries.getByRole("button", { name: "Permanently delete account" }));
+
+    await waitFor(() =>
+      expect(dialogQueries.getByRole("alert")).toHaveTextContent("before deleting your account"),
+    );
+    expect(dialog).toBeInTheDocument();
+    expect(
+      dialogQueries.getByRole("button", { name: "Review Plan and billing" }),
+    ).toBeInTheDocument();
+    expect(
+      dialogQueries.getByRole("button", { name: "Permanently delete account" }),
+    ).toBeDisabled();
   });
 
   it("shows cautious copy after an email confirmation callback", () => {

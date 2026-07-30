@@ -1,0 +1,141 @@
+/* Plan and billing owns its status, usage, warning, and action styles. */
+.billing-settings-overview {
+  max-width: 680px;
+  margin-top: 24px;
+  padding: 17px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--success-soft) 48%, var(--surface));
+}
+
+.billing-settings-overview[data-tone="warning"] {
+  background: color-mix(in srgb, var(--warning-soft) 58%, var(--surface));
+}
+
+.billing-settings-overview[data-tone="neutral"] {
+  background: var(--surface-soft);
+}
+
+.billing-settings-overview[data-tone="pending"] {
+  background: color-mix(in srgb, var(--focus) 10%, var(--surface));
+}
+
+.billing-settings-overview strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.billing-settings-overview p {
+  max-width: 53ch;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.billing-settings-overview small {
+  flex: 0 0 auto;
+  color: var(--success);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.billing-settings-overview[data-tone="warning"] small {
+  color: var(--warning);
+}
+
+.billing-settings-overview[data-tone="neutral"] small {
+  color: var(--subtle);
+}
+
+.billing-usage {
+  max-width: 680px;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  list-style: none;
+  border-radius: 12px;
+  background: var(--line);
+}
+
+.billing-usage li {
+  min-width: 0;
+  padding: 14px 16px;
+  display: grid;
+  gap: 4px;
+  background: var(--surface);
+}
+
+.billing-usage span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.billing-usage strong {
+  color: var(--ink);
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.billing-usage small {
+  color: var(--subtle);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.billing-settings-warning {
+  max-width: 680px;
+  margin: 14px 0 0;
+  padding: 11px 13px;
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, var(--line));
+  border-radius: 10px;
+  background: var(--warning-soft);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.billing-settings-actions {
+  max-width: 680px;
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+
+.billing-settings-actions small {
+  flex-basis: 100%;
+  color: var(--subtle);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .billing-settings-overview {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .billing-usage {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-settings-actions {
+    display: grid;
+  }
+
+  .billing-settings-actions .button {
+    width: 100%;
+  }
+}

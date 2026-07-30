@@ -38,8 +38,12 @@ vi.mock("../src/components/transactions/CategoryManager", () => ({
   CategoryManager: () => null,
 }));
 
-vi.mock("../src/lib/api", () => apiMocks);
+vi.mock("../src/lib/api", async (importOriginal) => ({
+  ...(await importOriginal()),
+  ...apiMocks,
+}));
 
+import { ApiRequestError } from "../src/lib/api";
 import { TransactionsPage } from "../src/pages/TransactionsPage";
 
 function renderPage() {
@@ -157,6 +161,23 @@ describe("TransactionsPage sorting", () => {
         expect.objectContaining({ sortBy: "amount", sortDirection: "asc" }),
       ),
     );
+  });
+
+  it("offers Plan and billing when transaction export requires Pro", async () => {
+    apiMocks.downloadTransactions.mockRejectedValueOnce(
+      new ApiRequestError("Zoption Pro is required.", 403, "upgrade_required", {
+        capability: "transaction_export",
+      }),
+    );
+    renderPage();
+    await waitFor(() => expect(apiMocks.getTransactions).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+
+    expect(await screen.findByRole("alert", { name: "Zoption Pro is required" })).toHaveTextContent(
+      "transaction exports",
+    );
+    expect(screen.getByText("0 transactions")).toBeInTheDocument();
   });
 
   it("keeps the selected sort when clearing filters", async () => {

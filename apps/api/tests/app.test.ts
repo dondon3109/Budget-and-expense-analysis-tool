@@ -19,6 +19,7 @@ import type { AccountDeletionService } from "../src/account-deletion";
 import { createApp, type AppOptions } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
 import type { AccountRepository } from "../src/db/accounts";
+import type { BillingRepository } from "../src/db/billing";
 import type { BudgetRepository } from "../src/db/budgets";
 import type { CategoryRepository } from "../src/db/categories";
 import type { CalendarEventRepository } from "../src/db/events";
@@ -290,12 +291,39 @@ function createAllowedRateLimiter(): RateLimiter {
   };
 }
 
+function createAllowedBillingRepository(): BillingRepository {
+  return {
+    getSummary: vi.fn(async () => ({
+      plan: "zoption_pro" as const,
+      status: "active" as const,
+      interval: "month" as const,
+      currentPeriodEndsAt: null,
+      scheduledChangeAt: null,
+      canCheckout: false,
+      canManageBilling: true,
+      nonTerminalSubscriptionCount: 1,
+      usages: [],
+    })),
+    requirePro: vi.fn(async () => undefined),
+    createCheckoutReference: vi.fn(async () => ({ reference: "reference", priceId: "pri_test" })),
+    createUsageStatement: vi.fn(() => ({}) as D1PreparedStatement),
+    consumeUsage: vi.fn(async () => undefined),
+    rethrowUsageError: vi.fn(async (_env, _tenantId, _feature, error) => {
+      throw error;
+    }),
+    hasNonTerminalSubscription: vi.fn(async () => false),
+    getPortalCustomer: vi.fn(async () => null),
+    applySubscriptionEvent: vi.fn(async () => undefined),
+  };
+}
+
 function createTestApp(options: AppOptions = {}) {
   return createApp({
     readinessCheck: vi.fn().mockResolvedValue(undefined),
     authVerifier: createAuthVerifier(),
     tenantResolver: createTenantResolver(),
     rateLimiter: createAllowedRateLimiter(),
+    billing: createAllowedBillingRepository(),
     ...options,
   });
 }

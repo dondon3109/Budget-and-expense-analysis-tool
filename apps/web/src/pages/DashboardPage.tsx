@@ -22,6 +22,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
 import { InsightsPanel } from "../components/dashboard/InsightsPanel";
 import { OverviewStatBar } from "../components/dashboard/OverviewStatBar";
@@ -33,6 +34,7 @@ import {
   deleteAccount,
   getCashflowTrend,
   getDashboard,
+  isBillingEnforcementError,
   updateAccount,
 } from "../lib/api";
 import { currentMonth, daysInMonth, localIsoDate, monthStart } from "../lib/calendar";
@@ -147,6 +149,7 @@ export function DashboardPage() {
       amountMinor / 100,
     );
   const empty = isDashboardEmpty(data, cashflowTrendQuery.data);
+  const accountActionError = renameAccountMutation.error ?? removeAccountMutation.error;
 
   return (
     <AppShell>
@@ -232,11 +235,13 @@ export function DashboardPage() {
                   >
                     {createAccountMutation.isPending ? "Adding…" : "Add"}
                   </button>
-                  {createAccountMutation.error && (
-                    <p className="form-error" role="alert">
-                      {createAccountMutation.error.message}
-                    </p>
-                  )}
+                  <UpgradePrompt error={createAccountMutation.error} />
+                  {createAccountMutation.error &&
+                    !isBillingEnforcementError(createAccountMutation.error) && (
+                      <p className="form-error" role="alert">
+                        {createAccountMutation.error.message}
+                      </p>
+                    )}
                 </form>
               )}
               <ul>
@@ -298,9 +303,10 @@ export function DashboardPage() {
                   </ul>
                 </details>
               )}
-              {(renameAccountMutation.error || removeAccountMutation.error) && (
+              <UpgradePrompt error={accountActionError} />
+              {accountActionError && !isBillingEnforcementError(accountActionError) && (
                 <p className="dashboard-account-error" role="alert">
-                  {renameAccountMutation.error?.message ?? removeAccountMutation.error?.message}
+                  {accountActionError.message}
                 </p>
               )}
             </section>

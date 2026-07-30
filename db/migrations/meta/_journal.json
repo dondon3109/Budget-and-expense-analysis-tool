@@ -85,6 +85,27 @@
       "when": 1785221294001,
       "tag": "0011_assistant_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1785319277000,
+      "tag": "0012_account_deletions",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1785409600000,
+      "tag": "0013_billing_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1785434400000,
+      "tag": "0014_billing_enforcement",
+      "breakpoints": true
     }
   ]
 }

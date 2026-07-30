@@ -2,7 +2,8 @@ import type { Bindings } from "../types";
 import { tenantIdForUser } from "./tenants";
 
 export type AccountDeletionStatus = "deleted" | "cleanup_pending";
-export type AccountDeletionErrorCode = "storage_unavailable" | "auth_unavailable" | "configuration_missing";
+export type AccountDeletionErrorCode =
+  "storage_unavailable" | "auth_unavailable" | "configuration_missing";
 
 export interface AccountDeletionRecord {
   userId: string;
@@ -80,6 +81,10 @@ export const accountDeletionRepository: AccountDeletionRepository = {
       env.DB.prepare("DELETE FROM assistant_messages WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM assistant_threads WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM assistant_preferences WHERE tenant_id = ?").bind(tenantId),
+      env.DB.prepare("DELETE FROM billing_monthly_usage WHERE tenant_id = ?").bind(tenantId),
+      env.DB.prepare("DELETE FROM billing_checkout_references WHERE tenant_id = ?").bind(tenantId),
+      env.DB.prepare("DELETE FROM billing_subscriptions WHERE tenant_id = ?").bind(tenantId),
+      env.DB.prepare("DELETE FROM billing_customers WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM import_previews WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM imports WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM budgets WHERE tenant_id = ?").bind(tenantId),
@@ -124,7 +129,11 @@ export const accountDeletionRepository: AccountDeletionRepository = {
         .bind(lease, row.userId, now())
         .run();
       if ((update.meta.changes ?? 0) > 0) {
-        claimed.push({ ...toRecord(row), cleanupLeaseUntil: lease, cleanupAttempts: row.cleanupAttempts + 1 });
+        claimed.push({
+          ...toRecord(row),
+          cleanupLeaseUntil: lease,
+          cleanupAttempts: row.cleanupAttempts + 1,
+        });
       }
     }
     return claimed;

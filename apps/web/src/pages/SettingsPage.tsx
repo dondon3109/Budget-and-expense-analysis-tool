@@ -4,11 +4,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { evaluatePassword } from "../auth/passwordPolicy";
 import { useAuth } from "../auth/AuthProvider";
 import { AccountDeletionDialog } from "../components/account/AccountDeletionDialog";
+import { BillingSettings } from "../components/account/BillingSettings";
 import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { AppShell } from "../components/layout/AppShell";
 import { UserAvatar } from "../components/profile/UserAvatar";
 import { AVATAR_ACCEPT, avatarPathFromMetadata, validateAvatarFile } from "../lib/avatar";
+import { isSubscriptionBlocksAccountDeletionError } from "../lib/api";
 import "./SettingsPage.css";
 
 const DISPLAY_NAME_LIMIT = 80;
@@ -22,7 +24,6 @@ interface Feedback {
 function displayNameFromMetadata(metadata: Record<string, unknown> | undefined): string {
   return typeof metadata?.display_name === "string" ? metadata.display_name : "";
 }
-
 
 export function SettingsPage() {
   const {
@@ -65,7 +66,7 @@ export function SettingsPage() {
   const [passwordFeedback, setPasswordFeedback] = useState<Feedback>({});
   const [deletionOpen, setDeletionOpen] = useState(false);
   const [deletionBusy, setDeletionBusy] = useState(false);
-  const [deletionError, setDeletionError] = useState<string>();
+  const [deletionError, setDeletionError] = useState<unknown>();
 
   useEffect(() => {
     if (!selectedAvatar) {
@@ -268,9 +269,7 @@ export function SettingsPage() {
       const result = await deleteAccount(password);
       void navigate(`/?accountDeleted=${result.status}`, { replace: true });
     } catch (error) {
-      setDeletionError(
-        error instanceof Error ? error.message : "Your account could not be deleted. Try again.",
-      );
+      setDeletionError(error);
     } finally {
       setDeletionBusy(false);
     }
@@ -280,6 +279,16 @@ export function SettingsPage() {
     if (deletionBusy) return;
     setDeletionOpen(false);
     setDeletionError(undefined);
+  }
+
+  function reviewBillingBeforeDeletion() {
+    setDeletionOpen(false);
+    setDeletionError(undefined);
+    window.requestAnimationFrame(() => {
+      const billingSection = document.getElementById("plan-and-billing");
+      billingSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+      billingSection?.focus({ preventScroll: true });
+    });
   }
 
   function clearProfileFeedback() {
@@ -609,12 +618,18 @@ export function SettingsPage() {
             </form>
           </section>
 
-          <section className="settings-section settings-danger-zone" aria-labelledby="account-deletion-title">
+          {user && <BillingSettings user={user} />}
+
+          <section
+            className="settings-section settings-danger-zone"
+            aria-labelledby="account-deletion-title"
+          >
             <div className="settings-section-heading">
               <div>
                 <h2 id="account-deletion-title">Danger zone</h2>
                 <p>
-                  Permanently remove your Zoption account and the information Zoption controls for it.
+                  Permanently remove your Zoption account and the information Zoption controls for
+                  it.
                 </p>
               </div>
               <span>Cannot be undone</span>
@@ -644,9 +659,17 @@ export function SettingsPage() {
       {deletionOpen && (
         <AccountDeletionDialog
           busy={deletionBusy}
-          error={deletionError}
+          error={
+            deletionError instanceof Error
+              ? deletionError.message
+              : deletionError
+                ? "Your account could not be deleted. Try again."
+                : undefined
+          }
+          billingBlocked={isSubscriptionBlocksAccountDeletionError(deletionError)}
           returnFocus={deletionTriggerRef.current}
           onConfirm={(password) => void handleAccountDeletion(password)}
+          onReviewBilling={reviewBillingBeforeDeletion}
           onClose={closeAccountDeletion}
         />
       )}

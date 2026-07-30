@@ -12,7 +12,8 @@ import { CategoryManager } from "../src/components/transactions/CategoryManager"
 import { createCategory, updateCategory } from "../src/lib/api";
 import type { AuthenticatedWorkspace } from "../src/lib/workspace";
 
-vi.mock("../src/lib/api", () => ({
+vi.mock("../src/lib/api", async (importOriginal) => ({
+  ...(await importOriginal()),
   createCategory: vi.fn(),
   updateCategory: vi.fn(),
 }));

@@ -1,15 +1,20 @@
 import { transactionExportQuerySchema } from "@zoption/shared";
 import { Hono } from "hono";
 
+import type { BillingRepository } from "../db/billing";
 import type { TransactionRepository } from "../db/transactions";
 import { HttpError } from "../errors";
 import { buildTransactionCsv } from "../exports/csv";
 import type { AppEnvironment } from "../types";
 
-export function createExportRoutes(repository: TransactionRepository) {
+export function createExportRoutes(
+  repository: TransactionRepository,
+  billing: Pick<BillingRepository, "requirePro">,
+) {
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/transactions.csv", async (context) => {
+    await billing.requirePro(context.env, context.get("tenant").tenantId, "transaction_export");
     const parsed = transactionExportQuerySchema.safeParse(context.req.query());
     if (!parsed.success) {
       throw new HttpError(

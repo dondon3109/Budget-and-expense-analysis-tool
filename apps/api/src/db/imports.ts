@@ -13,6 +13,7 @@ import { and, eq, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { categories, importPreviews } from "../../../../db/schema";
+import type { BillingRepository } from "./billing";
 import { HttpError } from "../errors";
 import { prepareImportRows, type PreparedImportRecord } from "../imports/prepare";
 import type { Bindings } from "../types";
@@ -243,229 +244,241 @@ async function applyImportOverrides(
   return applyCategoryOverridesToRows(kindAdjusted, input.categoryOverrides, availableCategories);
 }
 
-export const importRepository: ImportRepository = {
-  async preview(env, tenantId, input) {
-    assertImportFileSize(input.csvText);
+export function createImportRepository(
+  billing: Pick<BillingRepository, "createUsageStatement" | "rethrowUsageError">,
+): ImportRepository {
+  return {
+    async preview(env, tenantId, input) {
+      assertImportFileSize(input.csvText);
 
-    let csv;
-    try {
-      csv = parseCsv(input.csvText, { headerRowNumber: input.headerRowNumber });
-    } catch (error) {
-      throw new HttpError(
-        400,
-        "invalid_csv",
-        error instanceof Error ? error.message : "The CSV could not be parsed.",
-      );
-    }
-    if (csv.rows.length === 0) throw new HttpError(400, "empty_csv", "The CSV has no data rows.");
-    assertImportRowCount(csv.rows.length);
+      let csv;
+      try {
+        csv = parseCsv(input.csvText, { headerRowNumber: input.headerRowNumber });
+      } catch (error) {
+        throw new HttpError(
+          400,
+          "invalid_csv",
+          error instanceof Error ? error.message : "The CSV could not be parsed.",
+        );
+      }
+      if (csv.rows.length === 0) throw new HttpError(400, "empty_csv", "The CSV has no data rows.");
+      assertImportRowCount(csv.rows.length);
 
-    const db = drizzle(env.DB);
-    const storedCategories = await db
-      .select({
-        id: categories.id,
-        name: categories.name,
-        kind: categories.kind,
-        color: categories.color,
-        archived: categories.archived,
-        systemKey: categories.systemKey,
-      })
-      .from(categories)
-      .where(and(eq(categories.tenantId, tenantId), eq(categories.archived, false)));
-    const categoryRows = storedCategories.map(({ systemKey, ...category }) => ({
-      ...category,
-      system: systemKey !== null,
-    }));
-    const transactionKinds: TransactionKind[] = ["income", "expense", "transfer"];
-    if (
-      transactionKinds.some(
-        (kind) =>
-          !storedCategories.some(
-            (category) => category.systemKey === `uncategorized:${kind}` && category.kind === kind,
-          ),
-      )
-    ) {
-      throw new HttpError(
-        500,
-        "import_categories_unavailable",
-        "Uncategorized categories are not available. Apply the latest database migration.",
-      );
-    }
-    const defaultAccountId = defaultAccountIdForTenant(tenantId);
+      const db = drizzle(env.DB);
+      const storedCategories = await db
+        .select({
+          id: categories.id,
+          name: categories.name,
+          kind: categories.kind,
+          color: categories.color,
+          archived: categories.archived,
+          systemKey: categories.systemKey,
+        })
+        .from(categories)
+        .where(and(eq(categories.tenantId, tenantId), eq(categories.archived, false)));
+      const categoryRows = storedCategories.map(({ systemKey, ...category }) => ({
+        ...category,
+        system: systemKey !== null,
+      }));
+      const transactionKinds: TransactionKind[] = ["income", "expense", "transfer"];
+      if (
+        transactionKinds.some(
+          (kind) =>
+            !storedCategories.some(
+              (category) =>
+                category.systemKey === `uncategorized:${kind}` && category.kind === kind,
+            ),
+        )
+      ) {
+        throw new HttpError(
+          500,
+          "import_categories_unavailable",
+          "Uncategorized categories are not available. Apply the latest database migration.",
+        );
+      }
+      const defaultAccountId = defaultAccountIdForTenant(tenantId);
 
-    let initial;
-    try {
-      initial = await prepareImportRows(
-        csv,
-        input.mapping,
-        categoryRows,
-        new Set(),
-        defaultAccountId,
-        input.fallbackDate,
-      );
-    } catch (error) {
-      throw new HttpError(
-        400,
-        "invalid_mapping",
-        error instanceof Error ? error.message : "Check the CSV column mapping.",
-      );
-    }
-    const existing = await findExistingFingerprints(
-      env,
-      tenantId,
-      initial.records.map((row) => row.fingerprint),
-    );
-    const prepared =
-      existing.size === 0
-        ? initial
-        : await prepareImportRows(
-            csv,
-            input.mapping,
-            categoryRows,
-            existing,
-            defaultAccountId,
-            input.fallbackDate,
-          );
-
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + PREVIEW_LIFETIME_MS).toISOString();
-    const acceptedCount = prepared.records.length;
-    const rejectedCount = csv.rows.length - acceptedCount;
-    await db
-      .delete(importPreviews)
-      .where(
-        and(
-          eq(importPreviews.tenantId, tenantId),
-          lt(importPreviews.expiresAt, new Date().toISOString()),
-        ),
-      );
-    if (acceptedCount > 0) {
-      await db.insert(importPreviews).values({
-        id: token,
+      let initial;
+      try {
+        initial = await prepareImportRows(
+          csv,
+          input.mapping,
+          categoryRows,
+          new Set(),
+          defaultAccountId,
+          input.fallbackDate,
+        );
+      } catch (error) {
+        throw new HttpError(
+          400,
+          "invalid_mapping",
+          error instanceof Error ? error.message : "Check the CSV column mapping.",
+        );
+      }
+      const existing = await findExistingFingerprints(
+        env,
         tenantId,
-        originalFilename: input.fileName,
-        rowsJson: JSON.stringify(prepared.records),
+        initial.records.map((row) => row.fingerprint),
+      );
+      const prepared =
+        existing.size === 0
+          ? initial
+          : await prepareImportRows(
+              csv,
+              input.mapping,
+              categoryRows,
+              existing,
+              defaultAccountId,
+              input.fallbackDate,
+            );
+
+      const token = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + PREVIEW_LIFETIME_MS).toISOString();
+      const acceptedCount = prepared.records.length;
+      const rejectedCount = csv.rows.length - acceptedCount;
+      await db
+        .delete(importPreviews)
+        .where(
+          and(
+            eq(importPreviews.tenantId, tenantId),
+            lt(importPreviews.expiresAt, new Date().toISOString()),
+          ),
+        );
+      if (acceptedCount > 0) {
+        await db.insert(importPreviews).values({
+          id: token,
+          tenantId,
+          originalFilename: input.fileName,
+          rowsJson: JSON.stringify(prepared.records),
+          rowCount: csv.rows.length,
+          acceptedCount,
+          rejectedCount,
+          expiresAt,
+        });
+      }
+
+      return {
+        token,
+        expiresAt,
+        fileName: input.fileName,
         rowCount: csv.rows.length,
         acceptedCount,
         rejectedCount,
-        expiresAt,
-      });
-    }
+        duplicateCount: prepared.duplicateCount,
+        rows: prepared.rows,
+      };
+    },
 
-    return {
-      token,
-      expiresAt,
-      fileName: input.fileName,
-      rowCount: csv.rows.length,
-      acceptedCount,
-      rejectedCount,
-      duplicateCount: prepared.duplicateCount,
-      rows: prepared.rows,
-    };
-  },
+    async commit(env, tenantId, input) {
+      const db = drizzle(env.DB);
+      const [preview] = await db
+        .select()
+        .from(importPreviews)
+        .where(and(eq(importPreviews.id, input.token), eq(importPreviews.tenantId, tenantId)))
+        .limit(1);
+      if (!preview) throw new HttpError(404, "preview_not_found", "Import preview not found.");
+      if (new Date(preview.expiresAt).valueOf() <= Date.now()) {
+        await db
+          .delete(importPreviews)
+          .where(and(eq(importPreviews.id, input.token), eq(importPreviews.tenantId, tenantId)));
+        throw new HttpError(
+          410,
+          "preview_expired",
+          "This import preview has expired. Preview the file again.",
+        );
+      }
 
-  async commit(env, tenantId, input) {
-    const db = drizzle(env.DB);
-    const [preview] = await db
-      .select()
-      .from(importPreviews)
-      .where(and(eq(importPreviews.id, input.token), eq(importPreviews.tenantId, tenantId)))
-      .limit(1);
-    if (!preview) throw new HttpError(404, "preview_not_found", "Import preview not found.");
-    if (new Date(preview.expiresAt).valueOf() <= Date.now()) {
-      await db
-        .delete(importPreviews)
-        .where(and(eq(importPreviews.id, input.token), eq(importPreviews.tenantId, tenantId)));
-      throw new HttpError(
-        410,
-        "preview_expired",
-        "This import preview has expired. Preview the file again.",
+      const storedRows = parseStoredRows(preview.rowsJson);
+      if (storedRows.length === 0) {
+        throw new HttpError(400, "nothing_to_import", "The preview has no valid rows to import.");
+      }
+      if (storedRows.length !== preview.acceptedCount) invalidStoredPreview();
+      const defaultAccountId = defaultAccountIdForTenant(tenantId);
+      const rows = await applyImportOverrides(env, tenantId, storedRows, input, defaultAccountId);
+      if (input.kindOverrides.length > 0) {
+        const fingerprints = rows.map((row) => row.fingerprint);
+        if (new Set(fingerprints).size !== fingerprints.length) {
+          throw new HttpError(
+            409,
+            "import_conflict",
+            "A transaction type change created a duplicate. Preview the file again.",
+          );
+        }
+        if ((await findExistingFingerprints(env, tenantId, fingerprints)).size > 0) {
+          throw new HttpError(
+            409,
+            "import_conflict",
+            "A matching transaction was imported after this preview. Preview the file again.",
+          );
+        }
+      }
+      const overriddenRowNumbers = new Set(
+        input.categoryOverrides.map((override) => override.rowNumber),
       );
-    }
-
-    const storedRows = parseStoredRows(preview.rowsJson);
-    if (storedRows.length === 0) {
-      throw new HttpError(400, "nothing_to_import", "The preview has no valid rows to import.");
-    }
-    if (storedRows.length !== preview.acceptedCount) invalidStoredPreview();
-    const defaultAccountId = defaultAccountIdForTenant(tenantId);
-    const rows = await applyImportOverrides(env, tenantId, storedRows, input, defaultAccountId);
-    if (input.kindOverrides.length > 0) {
-      const fingerprints = rows.map((row) => row.fingerprint);
-      if (new Set(fingerprints).size !== fingerprints.length) {
-        throw new HttpError(
-          409,
-          "import_conflict",
-          "A transaction type change created a duplicate. Preview the file again.",
-        );
-      }
-      if ((await findExistingFingerprints(env, tenantId, fingerprints)).size > 0) {
-        throw new HttpError(
-          409,
-          "import_conflict",
-          "A matching transaction was imported after this preview. Preview the file again.",
-        );
-      }
-    }
-    const overriddenRowNumbers = new Set(
-      input.categoryOverrides.map((override) => override.rowNumber),
-    );
-    const importId = crypto.randomUUID();
-    const statements = [
-      env.DB.prepare(
-        "INSERT INTO imports (id, tenant_id, original_filename, row_count, accepted_count, rejected_count) VALUES (?, ?, ?, ?, ?, ?)",
-      ).bind(
-        importId,
-        tenantId,
-        preview.originalFilename,
-        preview.rowCount,
-        preview.acceptedCount,
-        preview.rejectedCount,
-      ),
-      ...rows.map((row) => {
-        return env.DB.prepare(
-          buildImportTransactionInsertSql(overriddenRowNumbers.has(row.rowNumber)),
+      const importId = crypto.randomUUID();
+      const statements = [
+        billing.createUsageStatement(env, tenantId, "file_import"),
+        env.DB.prepare(
+          "INSERT INTO imports (id, tenant_id, original_filename, row_count, accepted_count, rejected_count) VALUES (?, ?, ?, ?, ?, ?)",
         ).bind(
-          crypto.randomUUID(),
+          importId,
           tenantId,
-          defaultAccountId,
-          row.categoryId,
+          preview.originalFilename,
+          preview.rowCount,
+          preview.acceptedCount,
+          preview.rejectedCount,
+        ),
+        ...rows.map((row) => {
+          return env.DB.prepare(
+            buildImportTransactionInsertSql(overriddenRowNumbers.has(row.rowNumber)),
+          ).bind(
+            crypto.randomUUID(),
+            tenantId,
+            defaultAccountId,
+            row.categoryId,
+            tenantId,
+            row.kind,
+            row.date,
+            row.description,
+            row.amountMinor,
+            row.kind,
+            row.fingerprint,
+          );
+        }),
+        env.DB.prepare("DELETE FROM import_previews WHERE id = ? AND tenant_id = ?").bind(
+          input.token,
           tenantId,
-          row.kind,
-          row.date,
-          row.description,
-          row.amountMinor,
-          row.kind,
-          row.fingerprint,
-        );
-      }),
-      env.DB.prepare("DELETE FROM import_previews WHERE id = ? AND tenant_id = ?").bind(
-        input.token,
-        tenantId,
-      ),
-    ];
+        ),
+      ];
 
-    try {
-      await env.DB.batch(statements);
-    } catch (error) {
-      const message = error instanceof Error ? error.message.toLocaleLowerCase("en") : "";
-      if (message.includes("unique")) {
-        throw new HttpError(
-          409,
-          "import_conflict",
-          "A matching transaction was imported after this preview. Preview the file again.",
-        );
+      try {
+        await env.DB.batch(statements);
+      } catch (error) {
+        const message = error instanceof Error ? error.message.toLocaleLowerCase("en") : "";
+        if (message.includes("billing_monthly_limit_reached")) {
+          await billing.rethrowUsageError(env, tenantId, "file_import", error);
+        }
+        if (message.includes("unique")) {
+          throw new HttpError(
+            409,
+            "import_conflict",
+            "A matching transaction was imported after this preview. Preview the file again.",
+          );
+        }
+        if (
+          message.includes("transactions.category_id") ||
+          message.includes("not null constraint")
+        ) {
+          throw new HttpError(
+            409,
+            "invalid_category_override",
+            "One or more categories changed after preview. Preview the file again.",
+          );
+        }
+        throw error;
       }
-      if (message.includes("transactions.category_id") || message.includes("not null constraint")) {
-        throw new HttpError(
-          409,
-          "invalid_category_override",
-          "One or more categories changed after preview. Preview the file again.",
-        );
-      }
-      throw error;
-    }
 
-    return { importId, importedCount: rows.length, rejectedCount: preview.rejectedCount };
-  },
-};
+      return { importId, importedCount: rows.length, rejectedCount: preview.rejectedCount };
+    },
+  };
+}

@@ -7,16 +7,20 @@ import "./AccountDeletionDialog.css";
 interface AccountDeletionDialogProps {
   busy: boolean;
   error?: string;
+  billingBlocked?: boolean;
   returnFocus?: HTMLElement | null;
   onConfirm: (password: string) => void;
+  onReviewBilling?: () => void;
   onClose: () => void;
 }
 
 export function AccountDeletionDialog({
   busy,
   error,
+  billingBlocked = false,
   returnFocus,
   onConfirm,
+  onReviewBilling,
   onClose,
 }: AccountDeletionDialogProps) {
   const [password, setPassword] = useState("");
@@ -93,7 +97,7 @@ export function AccountDeletionDialog({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (canSubmit && !busy) onConfirm(password);
+    if (canSubmit && !busy && !billingBlocked) onConfirm(password);
   }
 
   return createPortal(
@@ -152,6 +156,17 @@ export function AccountDeletionDialog({
               {error}
             </p>
           )}
+          {billingBlocked && onReviewBilling && (
+            <div className="account-deletion-billing-action">
+              <p>
+                Cancel or resolve every ongoing Paddle subscription before deleting your Zoption
+                account.
+              </p>
+              <button className="button secondary compact" type="button" onClick={onReviewBilling}>
+                Review Plan and billing
+              </button>
+            </div>
+          )}
           <p className="account-deletion-progress" role="status" aria-live="polite">
             {busy ? "Deleting your account securely…" : ""}
           </p>
@@ -159,7 +174,11 @@ export function AccountDeletionDialog({
             <button className="button secondary" type="button" onClick={close} disabled={busy}>
               Cancel
             </button>
-            <button className="button danger" type="submit" disabled={busy || !canSubmit}>
+            <button
+              className="button danger"
+              type="submit"
+              disabled={busy || !canSubmit || billingBlocked}
+            >
               {busy ? "Deleting account…" : "Permanently delete account"}
             </button>
           </div>

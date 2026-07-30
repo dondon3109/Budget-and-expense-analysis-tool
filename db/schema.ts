@@ -301,6 +301,99 @@ export const accountDeletions = sqliteTable(
   ],
 );
 
+export const billingCustomers = sqliteTable(
+  "billing_customers",
+  {
+    tenantId: text("tenant_id")
+      .primaryKey()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    paddleCustomerId: text("paddle_customer_id").notNull(),
+    email: text("email"),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("billing_customers_paddle_customer_unique").on(table.paddleCustomerId)],
+);
+
+export const billingCheckoutReferences = sqliteTable(
+  "billing_checkout_references",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    plan: text("plan", { enum: ["zoption_pro"] }).notNull(),
+    interval: text("interval", { enum: ["month", "year"] }).notNull(),
+    paddlePriceId: text("paddle_price_id").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    completedAt: text("completed_at"),
+    supersededAt: text("superseded_at"),
+    ...timestamps,
+  },
+  (table) => [
+    index("billing_checkout_references_tenant_expiry_idx").on(table.tenantId, table.expiresAt),
+    uniqueIndex("billing_checkout_references_tenant_open_unique")
+      .on(table.tenantId)
+      .where(sql`${table.completedAt} IS NULL AND ${table.supersededAt} IS NULL`),
+  ],
+);
+
+export const billingSubscriptions = sqliteTable(
+  "billing_subscriptions",
+  {
+    paddleSubscriptionId: text("paddle_subscription_id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    paddleCustomerId: text("paddle_customer_id").notNull(),
+    paddleProductId: text("paddle_product_id").notNull(),
+    paddlePriceId: text("paddle_price_id").notNull(),
+    status: text("status").notNull(),
+    interval: text("interval", { enum: ["month", "year"] }),
+    currentPeriodEndsAt: text("current_period_ends_at"),
+    scheduledChangeAt: text("scheduled_change_at"),
+    lastPaddleOccurredAt: text("last_paddle_occurred_at").notNull(),
+    lastPaddleEventId: text("last_paddle_event_id").notNull().default(""),
+    ...timestamps,
+  },
+  (table) => [index("billing_subscriptions_tenant_status_idx").on(table.tenantId, table.status)],
+);
+
+export const billingWebhookEvents = sqliteTable(
+  "billing_webhook_events",
+  {
+    paddleEventId: text("paddle_event_id").primaryKey(),
+    eventType: text("event_type").notNull(),
+    occurredAt: text("occurred_at").notNull(),
+    processedAt: text("processed_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index("billing_webhook_events_occurred_idx").on(table.occurredAt)],
+);
+
+export const billingMonthlyUsage = sqliteTable(
+  "billing_monthly_usage",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    month: text("month").notNull(),
+    feature: text("feature", { enum: ["assistant_question", "file_import"] }).notNull(),
+    count: integer("count").notNull().default(0),
+    allowance: integer("allowance").notNull().default(0),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    uniqueIndex("billing_monthly_usage_tenant_month_feature_unique").on(
+      table.tenantId,
+      table.month,
+      table.feature,
+    ),
+  ],
+);
+
 export const rateLimits = sqliteTable(
   "rate_limits",
   {

@@ -10,7 +10,7 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImportDraftProvider } from "../src/import/ImportDraftProvider";
-import { commitImport, getCategories, previewImport } from "../src/lib/api";
+import { ApiRequestError, commitImport, getCategories, previewImport } from "../src/lib/api";
 import type { WorkbookConversion } from "../src/lib/workbookParser";
 import { ImportPage } from "../src/pages/ImportPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
@@ -28,7 +28,8 @@ vi.mock("../src/auth/AuthProvider", () => ({
   }),
 }));
 
-vi.mock("../src/lib/api", () => ({
+vi.mock("../src/lib/api", async (importOriginal) => ({
+  ...(await importOriginal()),
   commitImport: vi.fn(),
   getCategories: vi.fn(),
   previewImport: vi.fn(),
@@ -614,6 +615,48 @@ describe("ImportPage", () => {
     expect(request?.categoryOverrides).toHaveLength(101);
     expect(request?.categoryOverrides[0]).toEqual({ rowNumber: 2, categoryId: "food" });
     expect(request?.kindOverrides).toEqual([]);
+  });
+
+  it("keeps the preview and overrides when the monthly import limit is reached", async () => {
+    const user = userEvent.setup();
+    vi.mocked(previewImport).mockResolvedValueOnce({
+      ...preview,
+      rows: [
+        {
+          ...preview.rows[0]!,
+          categoryId: "uncategorized-expense",
+          categoryName: "Uncategorized",
+          categoryIsUncategorized: true,
+        },
+      ],
+    });
+    vi.mocked(commitImport).mockRejectedValueOnce(
+      new ApiRequestError(
+        "You have reached this month’s plan limit.",
+        409,
+        "monthly_limit_reached",
+        {
+          feature: "file_import",
+          limit: 2,
+          resetsAt: "2026-08-01T00:00:00.000Z",
+        },
+      ),
+    );
+    const { container } = renderPage();
+    const csv = "Date,Description,Amount\n2026-07-20,Market,-50.00";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Select row 2" }));
+    await user.selectOptions(screen.getByLabelText("New category (optional)"), "food");
+    await user.click(screen.getByRole("button", { name: "Apply to 1 selected" }));
+    await user.click(screen.getByRole("button", { name: "Import 1 ready rows" }));
+
+    expect(
+      await screen.findByRole("alert", { name: "Monthly plan limit reached" }),
+    ).toHaveTextContent("2 file imports");
+    expect(screen.getByText("Will import as expense · Food & dining")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import 1 ready rows" })).toBeInTheDocument();
   });
 
   it("imports an inferred income row as an expense with an expense category", async () => {

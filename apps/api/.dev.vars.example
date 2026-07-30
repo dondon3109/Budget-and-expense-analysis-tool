@@ -1,3 +1,11 @@
 # Copy to apps/api/.dev.vars for local Worker development.
 # Never commit a real provider key or expose it through VITE_* variables.
 DEEPSEEK_API_KEY=
+
+# Paddle secrets must stay in Worker secrets or this ignored local file.
+PADDLE_API_KEY=
+PADDLE_WEBHOOK_SECRET=
+# Sandbox price IDs are non-secret deployment values.
+PADDLE_ENVIRONMENT=sandbox
+PADDLE_PRO_MONTHLY_PRICE_ID=pri_01kysdkbk80mdwt093dwv9t8wk
+PADDLE_PRO_ANNUAL_PRICE_ID=pri_01kysdkcpe9dsmba69r3etg94p

@@ -32,7 +32,10 @@ vi.mock("../src/components/dashboard/OverviewStatBar", () => ({ OverviewStatBar:
 vi.mock("../src/components/dashboard/SpendingByCategory", () => ({
   SpendingByCategory: () => null,
 }));
-vi.mock("../src/lib/api", () => apiMocks);
+vi.mock("../src/lib/api", async (importOriginal) => ({
+  ...(await importOriginal()),
+  ...apiMocks,
+}));
 
 import { DashboardPage } from "../src/pages/DashboardPage";
 

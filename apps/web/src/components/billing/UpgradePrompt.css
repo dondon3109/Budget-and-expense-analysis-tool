@@ -1,0 +1,77 @@
+/* Billing enforcement prompts own their compact recovery treatment. */
+.upgrade-prompt {
+  min-width: 0;
+  margin: 12px 0;
+  padding: 13px 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--success) 24%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--success-soft) 52%, var(--surface));
+}
+
+.upgrade-prompt-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--success);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.upgrade-prompt-copy {
+  min-width: 0;
+}
+
+.upgrade-prompt-copy strong {
+  display: block;
+  font-size: 12px;
+}
+
+.upgrade-prompt-copy p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.upgrade-prompt-link {
+  min-height: 34px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--solid-text);
+  border-radius: 9px;
+  background: var(--solid-bg);
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.upgrade-prompt-link:hover {
+  filter: brightness(0.94);
+}
+
+.upgrade-prompt-link:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus) 42%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 620px) {
+  .upgrade-prompt {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .upgrade-prompt-link {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}

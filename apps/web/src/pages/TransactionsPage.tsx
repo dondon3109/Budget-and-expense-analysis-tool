@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Download, FolderCog, Plus, RefreshCw } from 
 import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
+import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { CategoryManager } from "../components/transactions/CategoryManager";
 import { TransactionFilters } from "../components/transactions/TransactionFilters";
 import { TransactionForm } from "../components/transactions/TransactionForm";
@@ -21,6 +22,7 @@ import {
   getCategories,
   getAccounts,
   getTransactions,
+  isBillingEnforcementError,
   updateTransaction,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
@@ -88,7 +90,7 @@ export function TransactionsPage() {
   const [editing, setEditing] = useState<TransactionListItem>();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string>();
+  const [exportError, setExportError] = useState<Error>();
 
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories(workspace, true),
@@ -249,7 +251,9 @@ export function TransactionsPage() {
       };
       await downloadTransactions(workspace, filters);
     } catch (error) {
-      setExportError(error instanceof Error ? error.message : "The export could not be prepared.");
+      setExportError(
+        error instanceof Error ? error : new Error("The export could not be prepared."),
+      );
     } finally {
       setExporting(false);
     }
@@ -410,9 +414,10 @@ export function TransactionsPage() {
             {deleteMutation.error.message}
           </p>
         )}
-        {exportError && (
+        <UpgradePrompt error={exportError} />
+        {exportError && !isBillingEnforcementError(exportError) && (
           <p className="page-error" role="alert">
-            {exportError}
+            {exportError.message}
           </p>
         )}
       </div>

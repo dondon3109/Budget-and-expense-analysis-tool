@@ -14,6 +14,7 @@ import { AssistantConsent } from "../components/assistant/AssistantConsent";
 import { AssistantConversation } from "../components/assistant/AssistantConversation";
 import { AssistantIdentityDialog } from "../components/assistant/AssistantIdentityDialog";
 import { AssistantThreadList } from "../components/assistant/AssistantThreadList";
+import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { AppShell } from "../components/layout/AppShell";
 import {
   createAssistantThread,
@@ -23,6 +24,7 @@ import {
   getAssistantPreferences,
   getAssistantThreads,
   grantAssistantConsent,
+  isBillingEnforcementError,
   sendAssistantMessage,
   updateAssistantIdentity,
 } from "../lib/api";
@@ -34,14 +36,14 @@ function requestId(): string {
   return crypto.randomUUID();
 }
 
-
 export function AssistantPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
-  const { activeThreadId, draft, setActiveThreadId, setDraft, startNewChat } = useAssistantSession();
+  const { activeThreadId, draft, setActiveThreadId, setDraft, startNewChat } =
+    useAssistantSession();
   const [pendingMessage, setPendingMessage] = useState<string>();
-  const [sendError, setSendError] = useState<string>();
+  const [sendError, setSendError] = useState<Error>();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
 
@@ -56,8 +58,8 @@ export function AssistantPage() {
     queryFn: () => getAssistantThreads(workspace),
     enabled: Boolean(
       preferences.data?.consentedAt &&
-        preferences.data.assistantName &&
-        preferences.data.userPreferredName,
+      preferences.data.assistantName &&
+      preferences.data.userPreferredName,
     ),
     staleTime: Infinity,
     gcTime: Infinity,
@@ -67,9 +69,9 @@ export function AssistantPage() {
     queryFn: () => getAssistantMessages(workspace, activeThreadId!),
     enabled: Boolean(
       activeThreadId &&
-        preferences.data?.consentedAt &&
-        preferences.data.assistantName &&
-        preferences.data.userPreferredName,
+      preferences.data?.consentedAt &&
+      preferences.data.assistantName &&
+      preferences.data.userPreferredName,
     ),
     staleTime: Infinity,
     gcTime: Infinity,
@@ -133,7 +135,7 @@ export function AssistantPage() {
     },
     onError: (error) => {
       setPendingMessage(undefined);
-      setSendError(error.message);
+      setSendError(error instanceof Error ? error : new Error("Your message could not be sent."));
     },
   });
 
@@ -161,7 +163,8 @@ export function AssistantPage() {
     onSuccess: (_result, threadId) => {
       queryClient.removeQueries({ queryKey: queryKeys.assistantMessages(workspace, threadId) });
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
   });
 
   const deleteAllMutation = useMutation({
@@ -190,7 +193,8 @@ export function AssistantPage() {
           query.queryKey.at(-1) === "messages",
       });
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
   });
 
   function send() {
@@ -245,11 +249,12 @@ export function AssistantPage() {
     );
   }
 
-  const identityRequired =
-    !preferences.data?.assistantName || !preferences.data?.userPreferredName;
+  const identityRequired = !preferences.data?.assistantName || !preferences.data?.userPreferredName;
   const assistantName = preferences.data?.assistantName ?? "Your assistant";
   const profileDisplayName =
-    typeof user?.user_metadata?.display_name === "string" ? user.user_metadata.display_name : undefined;
+    typeof user?.user_metadata?.display_name === "string"
+      ? user.user_metadata.display_name
+      : undefined;
   const busy = sendMutation.isPending || deleteMutation.isPending || deleteAllMutation.isPending;
 
   return (
@@ -312,10 +317,13 @@ export function AssistantPage() {
                 onPrompt={setDraft}
               />
             )}
+            <UpgradePrompt error={sendError} />
             <AssistantComposer
               value={draft}
               busy={sendMutation.isPending}
-              error={sendError}
+              error={
+                sendError && !isBillingEnforcementError(sendError) ? sendError.message : undefined
+              }
               onChange={(value) => {
                 setDraft(value);
                 if (sendError) setSendError(undefined);

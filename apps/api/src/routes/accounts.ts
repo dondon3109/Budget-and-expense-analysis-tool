@@ -2,11 +2,15 @@ import { accountInputSchema, accountUpdateSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { AccountRepository } from "../db/accounts";
+import type { BillingRepository } from "../db/billing";
 import { HttpError } from "../errors";
 import { parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
-export function createAccountRoutes(repository: AccountRepository) {
+export function createAccountRoutes(
+  repository: AccountRepository,
+  billing: Pick<BillingRepository, "requirePro">,
+) {
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/", async (context) =>
@@ -14,6 +18,7 @@ export function createAccountRoutes(repository: AccountRepository) {
   );
 
   routes.post("/", async (context) => {
+    await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
     const parsed = accountInputSchema.safeParse(await readJson(context));
     if (!parsed.success) {
       throw new HttpError(
@@ -30,6 +35,7 @@ export function createAccountRoutes(repository: AccountRepository) {
   });
 
   routes.patch("/:id", async (context) => {
+    await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
     const parsed = accountUpdateSchema.safeParse(await readJson(context));
     if (!parsed.success) {
       throw new HttpError(
@@ -50,6 +56,7 @@ export function createAccountRoutes(repository: AccountRepository) {
   });
 
   routes.delete("/:id", async (context) => {
+    await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
     await repository.remove!(
       context.env,
       context.get("tenant").tenantId,

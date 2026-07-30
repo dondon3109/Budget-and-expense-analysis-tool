@@ -35,8 +35,11 @@ describe("legal pages", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/filtered transaction CSV feature/i)).toBeInTheDocument();
     expect(screen.getByText(/separate consent/i)).toBeInTheDocument();
-    expect(screen.getByText(/monthly or annual paid subscription plans/i)).toBeInTheDocument();
-    expect(screen.getByText(/account deletion control in your account settings/i)).toBeInTheDocument();
+    expect(screen.getByText(/Paddle-hosted checkout/i)).toBeInTheDocument();
+    expect(screen.getByText(/signed notification from Paddle/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/account deletion control in your account settings/i),
+    ).toBeInTheDocument();
   });
 
   it("describes actual processors, financial security, and user rights", () => {
@@ -47,15 +50,21 @@ describe("legal pages", () => {
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/DeepSeek/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Paddle/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/public storage link/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Full payment-card credentials/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/minimal signed-notification event metadata/i)).toBeInTheDocument();
     expect(screen.getByText(/not a complete account-data archive/i)).toBeInTheDocument();
+    expect(screen.getByText(/includes an in-app account-deletion control/i)).toBeInTheDocument();
   });
 
   it("states optional categories are inactive and exposes Cookie Settings", () => {
     renderPage(<CookiePolicyPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Cookie Policy" })).toBeInTheDocument();
-    expect(screen.getByText(/Google Analytics 4 for optional usage and performance measurement/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Google Analytics 4 for optional usage and performance measurement/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/No marketing provider is currently enabled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open Cookie Settings" })).toBeInTheDocument();
     expect(screen.getByText(/assistant has a separate consent flow/i)).toBeInTheDocument();

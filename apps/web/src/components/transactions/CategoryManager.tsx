@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Check, Pencil, Plus, RotateCcw, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { createCategory, updateCategory } from "../../lib/api";
+import { UpgradePrompt } from "../billing/UpgradePrompt";
+import { createCategory, isBillingEnforcementError, updateCategory } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 
@@ -31,7 +32,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
   const [color, setColor] = useState(palette[0]!);
   const [editingId, setEditingId] = useState<string>();
   const [editingName, setEditingName] = useState("");
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<Error>();
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
@@ -51,7 +52,12 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
       setError(undefined);
       await refresh();
     },
-    onError: (mutationError) => setError(mutationError.message),
+    onError: (mutationError) =>
+      setError(
+        mutationError instanceof Error
+          ? mutationError
+          : new Error("The category could not be saved."),
+      ),
   });
   const updateMutation = useMutation({
     mutationFn: (args: Parameters<typeof updateCategory>[1]) => updateCategory(workspace, args),
@@ -62,7 +68,12 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
       await queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
     },
-    onError: (mutationError) => setError(mutationError.message),
+    onError: (mutationError) =>
+      setError(
+        mutationError instanceof Error
+          ? mutationError
+          : new Error("The category could not be saved."),
+      ),
   });
 
   function handleCreate(event: FormEvent) {
@@ -138,9 +149,10 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
             <Plus size={16} /> Add
           </button>
         </form>
-        {error && (
+        <UpgradePrompt error={error} />
+        {error && !isBillingEnforcementError(error) && (
           <p className="form-error" role="alert">
-            {error}
+            {error.message}
           </p>
         )}
         <div className="category-manager-list">

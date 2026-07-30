@@ -10,7 +10,7 @@ vi.mock("../src/lib/supabase", () => ({
   getSupabaseClient: () => ({ auth }),
 }));
 
-import { getDashboard } from "../src/lib/api";
+import { downloadTransactions, getDashboard } from "../src/lib/api";
 import type { AuthenticatedWorkspace } from "../src/lib/workspace";
 
 const userWorkspace: AuthenticatedWorkspace = {
@@ -88,6 +88,58 @@ describe("authenticated API requests", () => {
       status: 502,
       code: "invalid_api_response",
       message: "The API returned an unexpected response. Check the API URL configuration.",
+    });
+  });
+
+  it("preserves validated error details from JSON requests", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: session("token") }, error: null });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: "monthly_limit_reached",
+          message: "You have reached this month’s plan limit.",
+          details: {
+            feature: "assistant_question",
+            limit: 10,
+            resetsAt: "2026-08-01T00:00:00.000Z",
+          },
+        }),
+        { status: 409, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      getDashboard(userWorkspace, { from: "2026-07-01", to: "2026-07-31" }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "monthly_limit_reached",
+      details: {
+        feature: "assistant_question",
+        limit: 10,
+        resetsAt: "2026-08-01T00:00:00.000Z",
+      },
+    });
+  });
+
+  it("preserves error details when a blob download fails", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: session("token") }, error: null });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: "upgrade_required",
+          message: "Zoption Pro is required.",
+          details: { capability: "transaction_export" },
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      downloadTransactions(userWorkspace, { sortBy: "date", sortDirection: "desc" }),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: "upgrade_required",
+      details: { capability: "transaction_export" },
     });
   });
 

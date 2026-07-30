@@ -12,10 +12,10 @@
 /privacy-policy/ /privacy-policy 301
 /cookie-policy/ /cookie-policy 301
 
-/login /spa.html 200
-/signup /spa.html 200
-/forgot-password /spa.html 200
-/update-password /spa.html 200
-/auth/callback /spa.html 200
-/app /spa.html 200
-/app/* /spa.html 200
+/login /spa 200
+/signup /spa 200
+/forgot-password /spa 200
+/update-password /spa 200
+/auth/callback /spa 200
+/app /spa 200
+/app/* /spa 200

@@ -6,6 +6,8 @@ import {
   type AccountDeletionRepository,
   type AccountDeletionStatus,
 } from "./db/account-deletion";
+import type { BillingRepository } from "./db/billing";
+import { tenantIdForUser } from "./db/tenants";
 import { HttpError } from "./errors";
 
 const AVATAR_BUCKET = "avatars";
@@ -38,7 +40,10 @@ export interface AccountDeletionService {
   reconcile(env: Bindings, limit: number): Promise<number>;
 }
 
-function requiredBinding(env: Bindings, key: "SUPABASE_PUBLISHABLE_KEY" | "SUPABASE_SERVICE_ROLE_KEY") {
+function requiredBinding(
+  env: Bindings,
+  key: "SUPABASE_PUBLISHABLE_KEY" | "SUPABASE_SERVICE_ROLE_KEY",
+) {
   const value = env[key]?.trim();
   if (!value) throw new AccountDeletionGatewayError("configuration_missing");
   return value;
@@ -146,7 +151,8 @@ export function createSupabaseDeletionGatewayForEnvironment(
         headers: { apikey: publishableKey, "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      if (response.status === 400 || response.status === 401 || response.status === 422) return false;
+      if (response.status === 400 || response.status === 401 || response.status === 422)
+        return false;
       if (!response.ok) throw new AccountDeletionGatewayError("auth_unavailable");
       const payload = await jsonResponse(response);
       return (
@@ -221,7 +227,10 @@ async function finishExternalCleanup(
 
 export function createAccountDeletionService(
   repository: AccountDeletionRepository = accountDeletionRepository,
-  gatewayFactory: (env: Bindings) => SupabaseDeletionGateway = createSupabaseDeletionGatewayForEnvironment,
+  gatewayFactory: (
+    env: Bindings,
+  ) => SupabaseDeletionGateway = createSupabaseDeletionGatewayForEnvironment,
+  billing?: Pick<BillingRepository, "hasNonTerminalSubscription">,
 ): AccountDeletionService {
   return {
     async deleteAccount({ env, user, accessToken, password }) {
@@ -230,11 +239,27 @@ export function createAccountDeletionService(
         const gateway = gatewayFactory(env);
         const currentUser = await gateway.getCurrentUser(accessToken);
         if (currentUser.id !== user.id) {
-          throw new HttpError(401, "invalid_access_token", "Sign in again before deleting your account.");
+          throw new HttpError(
+            401,
+            "invalid_access_token",
+            "Sign in again before deleting your account.",
+          );
         }
         const verified = await gateway.verifyPassword(currentUser.email, password, user.id);
         if (!verified) {
-          throw new HttpError(400, "invalid_current_password", "The current password could not be verified.");
+          throw new HttpError(
+            400,
+            "invalid_current_password",
+            "The current password could not be verified.",
+          );
+        }
+        if (await billing?.hasNonTerminalSubscription(env, tenantIdForUser(user.id))) {
+          throw new HttpError(
+            409,
+            "subscription_blocks_account_deletion",
+            "Cancel your paid subscription and wait for Paddle to confirm it before deleting your account.",
+            { billingPath: "/app/settings" },
+          );
         }
         record = await repository.purgeTenant(env, user.id);
       }

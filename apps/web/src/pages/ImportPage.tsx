@@ -27,10 +27,11 @@ import {
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
+import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { AppShell } from "../components/layout/AppShell";
 import { emptyImportMapping, localToday, useImportDraft } from "../import/ImportDraftProvider";
 import "../import/import.css";
-import { commitImport, getCategories, previewImport } from "../lib/api";
+import { commitImport, getCategories, isBillingEnforcementError, previewImport } from "../lib/api";
 import { formatMoney } from "../lib/formatters";
 import {
   detectImportPreset,
@@ -1151,7 +1152,8 @@ export function ImportPage() {
                         : `Import ${preview.acceptedCount} ready rows`}
                     </button>
                   </div>
-                  {commitMutation.isError && (
+                  <UpgradePrompt error={commitMutation.error} />
+                  {commitMutation.isError && !isBillingEnforcementError(commitMutation.error) && (
                     <p className="page-error" role="alert">
                       {commitMutation.error.message}
                     </p>

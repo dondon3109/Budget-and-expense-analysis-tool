@@ -5,14 +5,17 @@ import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState, type ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
+  createAssistantThread: vi.fn(),
   deleteAllAssistantThreads: vi.fn(),
   deleteAssistantThread: vi.fn(),
   getAssistantMessages: vi.fn(),
   getAssistantPreferences: vi.fn(),
   getAssistantThreads: vi.fn(),
+  sendAssistantMessage: vi.fn(),
   updateAssistantIdentity: vi.fn(),
 }));
 
@@ -33,8 +36,9 @@ import { AssistantSessionProvider } from "../src/assistant/AssistantSessionProvi
 import { AssistantComposer } from "../src/components/assistant/AssistantComposer";
 import { AssistantConsent } from "../src/components/assistant/AssistantConsent";
 import { AssistantConversation } from "../src/components/assistant/AssistantConversation";
-import { AssistantPage } from "../src/pages/AssistantPage";
+import { ApiRequestError } from "../src/lib/api";
 import { queryKeys } from "../src/lib/queryKeys";
+import { AssistantPage } from "../src/pages/AssistantPage";
 
 const thread = {
   id: "thread-1",
@@ -54,7 +58,9 @@ function renderPage() {
   const result = render(
     <QueryClientProvider client={queryClient}>
       <AssistantSessionProvider>
-        <AssistantPage />
+        <MemoryRouter>
+          <AssistantPage />
+        </MemoryRouter>
       </AssistantSessionProvider>
     </QueryClientProvider>,
   );
@@ -93,6 +99,7 @@ afterEach(cleanup);
 
 describe("assistant UI", () => {
   beforeEach(() => {
+    apiMocks.createAssistantThread.mockReset();
     apiMocks.deleteAllAssistantThreads.mockReset();
     apiMocks.deleteAssistantThread.mockReset();
     apiMocks.getAssistantMessages.mockReset().mockResolvedValue({
@@ -110,6 +117,7 @@ describe("assistant UI", () => {
       items: [thread],
       nextCursor: null,
     });
+    apiMocks.sendAssistantMessage.mockReset();
   });
 
   it("requires an explicit consent action", () => {
@@ -162,9 +170,38 @@ describe("assistant UI", () => {
   it("uses the new assistant message with MONEY emphasized", async () => {
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "Your MONEY, explained." })).toBeInTheDocument();
-    expect(screen.getByText("Ask anything. Zoption already knows the numbers.")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Your MONEY, explained." }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Ask anything. Zoption already knows the numbers."),
+    ).toBeInTheDocument();
     expect(screen.getByText("MONEY")).toHaveClass("assistant-heading-emphasis");
+  });
+
+  it("keeps the draft and shows the monthly reset when the assistant limit is reached", async () => {
+    apiMocks.createAssistantThread.mockRejectedValueOnce(
+      new ApiRequestError(
+        "You have reached this month’s plan limit.",
+        409,
+        "monthly_limit_reached",
+        {
+          feature: "assistant_question",
+          limit: 10,
+          resetsAt: "2026-08-01T00:00:00.000Z",
+        },
+      ),
+    );
+    renderPage();
+
+    const composer = await screen.findByRole("textbox", { name: "Ask about your finances" });
+    fireEvent.change(composer, { target: { value: "Where did my money go?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(
+      await screen.findByRole("alert", { name: "Monthly plan limit reached" }),
+    ).toHaveTextContent("10 AI questions");
+    expect(composer).toHaveValue("Where did my money go?");
   });
 
   it("requires assistant and user names after consent, then displays the saved assistant name", async () => {
@@ -182,19 +219,25 @@ describe("assistant UI", () => {
     });
     renderPage();
 
-    expect(await screen.findByRole("dialog", { name: "Make this assistant yours" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Close assistant name editor" })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Your assistant's name"), { target: { value: "Aster" } });
+    expect(
+      await screen.findByRole("dialog", { name: "Make this assistant yours" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Close assistant name editor" }),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Your assistant's name"), {
+      target: { value: "Aster" },
+    });
     fireEvent.change(screen.getByLabelText("What should your assistant call you?"), {
       target: { value: "Sam" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() =>
-      expect(apiMocks.updateAssistantIdentity).toHaveBeenCalledWith(
-        expect.anything(),
-        { assistantName: "Aster", userPreferredName: "Sam" },
-      ),
+      expect(apiMocks.updateAssistantIdentity).toHaveBeenCalledWith(expect.anything(), {
+        assistantName: "Aster",
+        userPreferredName: "Sam",
+      }),
     );
     expect(await screen.findByRole("heading", { name: "Chats with Aster" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Edit assistant names" }));
@@ -209,7 +252,9 @@ describe("assistant UI", () => {
     const newChat = within(history).getByRole("button", { name: "Start a new chat" });
 
     expect(newChat).toHaveTextContent("New chat");
-    expect(within(history).getByRole("button", { name: "Edit assistant names" })).toBeInTheDocument();
+    expect(
+      within(history).getByRole("button", { name: "Edit assistant names" }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText(thread.title).closest("button")!);
     const composer = await screen.findByRole("textbox", { name: "Ask about your finances" });
@@ -262,7 +307,10 @@ describe("assistant UI", () => {
   it("removes an individual chat from history immediately", async () => {
     let completeDelete: (() => void) | undefined;
     apiMocks.deleteAssistantThread.mockImplementation(
-      () => new Promise<void>((resolve) => { completeDelete = resolve; }),
+      () =>
+        new Promise<void>((resolve) => {
+          completeDelete = resolve;
+        }),
     );
     const { queryClient } = renderPage();
 
@@ -271,7 +319,11 @@ describe("assistant UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
     await waitFor(() => expect(screen.queryByText(thread.title)).not.toBeInTheDocument());
-    expect(queryClient.getQueryData(queryKeys.assistantThreads({ key: "user:user-1", userId: "user-1" }))).toEqual({
+    expect(
+      queryClient.getQueryData(
+        queryKeys.assistantThreads({ key: "user:user-1", userId: "user-1" }),
+      ),
+    ).toEqual({
       items: [],
       nextCursor: null,
     });
@@ -282,16 +334,26 @@ describe("assistant UI", () => {
 
   it("keeps an empty thread-list cache after deleting every chat", async () => {
     let threads = [thread];
-    apiMocks.getAssistantThreads.mockImplementation(() => Promise.resolve({ items: threads, nextCursor: null }));
-    apiMocks.deleteAllAssistantThreads.mockImplementation(async () => { threads = []; });
+    apiMocks.getAssistantThreads.mockImplementation(() =>
+      Promise.resolve({ items: threads, nextCursor: null }),
+    );
+    apiMocks.deleteAllAssistantThreads.mockImplementation(async () => {
+      threads = [];
+    });
     const { queryClient } = renderPage();
 
     await screen.findByText(thread.title);
     fireEvent.click(screen.getByRole("button", { name: "Delete all chats" }));
     fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
 
-    await waitFor(() => expect(screen.getByText("Your recent questions will appear here.")).toBeInTheDocument());
-    expect(queryClient.getQueryData(queryKeys.assistantThreads({ key: "user:user-1", userId: "user-1" }))).toEqual({
+    await waitFor(() =>
+      expect(screen.getByText("Your recent questions will appear here.")).toBeInTheDocument(),
+    );
+    expect(
+      queryClient.getQueryData(
+        queryKeys.assistantThreads({ key: "user:user-1", userId: "user-1" }),
+      ),
+    ).toEqual({
       items: [],
       nextCursor: null,
     });

@@ -269,6 +269,46 @@ export interface DashboardSummary {
   };
 }
 
+export const billingIntervals = ["month", "year"] as const;
+export type BillingInterval = (typeof billingIntervals)[number];
+
+export const billingSubscriptionStatuses = [
+  "active",
+  "trialing",
+  "past_due",
+  "paused",
+  "canceled",
+] as const;
+export type BillingSubscriptionStatus = (typeof billingSubscriptionStatuses)[number];
+
+export type BillingPlan = "free" | "zoption_pro";
+export type BillingFeature = "assistant_question" | "file_import";
+export type BillingCapability =
+  | BillingFeature
+  | "category_management"
+  | "account_management"
+  | "cashflow_analytics"
+  | "transaction_export";
+
+export interface BillingUsage {
+  feature: BillingFeature;
+  used: number;
+  limit: number;
+  resetsAt: string;
+}
+
+export interface BillingSummary {
+  plan: BillingPlan;
+  status: BillingSubscriptionStatus | null;
+  interval: BillingInterval | null;
+  currentPeriodEndsAt: string | null;
+  scheduledChangeAt: string | null;
+  canCheckout: boolean;
+  canManageBilling: boolean;
+  nonTerminalSubscriptionCount: number;
+  usages: BillingUsage[];
+}
+
 export type AssistantMessageRole = "user" | "assistant";
 export type AssistantMessageStatus = "pending" | "completed" | "failed";
 

@@ -11,7 +11,9 @@ import {
 import { useRef } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
+import { isBillingEnforcementError } from "../../lib/api";
 import { formatMoney, formatMonth, formatPeriod } from "../../lib/formatters";
+import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { createMonthlyTrendAxis, formatMonthlyTrendTick } from "../../lib/monthlyTrendAxis";
 
 const trendOptions: Array<{ value: CashflowTrendView; label: string }> = [
@@ -148,15 +150,19 @@ export function MonthlyTrend({
           <p>Loading the selected time range.</p>
         </div>
       ) : error ? (
-        <div className="panel-empty trend-panel-error" role="alert">
-          <strong>The cashflow view could not be loaded.</strong>
-          <p>{error.message}</p>
-          {onRetry && (
-            <button className="button secondary" type="button" onClick={onRetry}>
-              Try again
-            </button>
-          )}
-        </div>
+        isBillingEnforcementError(error) ? (
+          <UpgradePrompt error={error} />
+        ) : (
+          <div className="panel-empty trend-panel-error" role="alert">
+            <strong>The cashflow view could not be loaded.</strong>
+            <p>{error.message}</p>
+            {onRetry && (
+              <button className="button secondary" type="button" onClick={onRetry}>
+                Try again
+              </button>
+            )}
+          </div>
+        )
       ) : !hasActivity || !data ? (
         <div className="panel-empty">
           <strong>No cashflow to show yet</strong>

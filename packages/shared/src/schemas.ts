@@ -21,6 +21,12 @@ export const resourceIdSchema = z
   .max(180)
   .regex(/^[A-Za-z0-9:_-]+$/, "Use a valid resource identifier.");
 
+export const billingCheckoutRequestSchema = z
+  .object({ interval: z.enum(["month", "year"]) })
+  .strict();
+
+export type BillingCheckoutRequest = z.infer<typeof billingCheckoutRequestSchema>;
+
 export const accountDeletionRequestSchema = z
   .object({
     confirmation: z.literal("DELETE"),
