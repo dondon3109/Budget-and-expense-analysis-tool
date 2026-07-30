@@ -18,12 +18,19 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/cookie-policy",
 ];
 
+type StructuredDataNode = Record<string, unknown>;
+
+export interface StructuredDataGraph {
+  "@context": "https://schema.org";
+  "@graph": StructuredDataNode[];
+}
+
 export interface SeoMetadata {
   title: string;
   description: string;
   canonical: string;
   robots: "index,follow" | "noindex,nofollow";
-  structuredData?: Record<string, unknown>[];
+  structuredData?: StructuredDataGraph;
 }
 
 interface SitemapFields {
@@ -40,40 +47,62 @@ export interface SitemapEntry extends SitemapFields {
   path: PublicRoutePath;
 }
 
-const WEBSITE_SCHEMA = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: SITE_NAME,
-  url: SITE_ORIGIN,
-  description:
-    "A private budget and expense tracker for reviewing imported transactions, budgets, and monthly cash flow.",
-};
+const WEBSITE_ID = `${SITE_ORIGIN}/#website`;
+const WEB_APPLICATION_ID = `${SITE_ORIGIN}/#webapplication`;
+const WEBSITE_DESCRIPTION =
+  "A private budget and expense tracker for reviewing imported transactions, budgets, and monthly cash flow.";
 
-const SOFTWARE_APPLICATION_SCHEMA = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: SITE_NAME,
-  applicationCategory: "FinanceApplication",
-  operatingSystem: "Web",
-  url: SITE_ORIGIN,
-  description:
-    "A private budget and expense tracker for reviewing imported transactions, budgets, and monthly cash flow without a direct bank connection.",
-};
-
-function legalPageSchema(name: string, description: string, url: string, dateModified: string) {
+function websiteNode(): StructuredDataNode {
   return {
-    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": WEBSITE_ID,
+    name: SITE_NAME,
+    url: SITE_ORIGIN,
+    description: WEBSITE_DESCRIPTION,
+    inLanguage: "en",
+  };
+}
+
+function structuredDataGraph(...nodes: StructuredDataNode[]): StructuredDataGraph {
+  return { "@context": "https://schema.org", "@graph": nodes };
+}
+
+function homepageStructuredData(): StructuredDataGraph {
+  return structuredDataGraph(websiteNode(), {
+    "@type": "WebApplication",
+    "@id": WEB_APPLICATION_ID,
+    name: SITE_NAME,
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "Web",
+    url: SITE_ORIGIN,
+    description:
+      "A private budget and expense tracker for reviewing imported transactions, budgets, and monthly cash flow without a direct bank connection.",
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+    featureList: [
+      "Map columns, catch errors, and prevent duplicate entries.",
+      "See totals, trends, categories, and budget progress together.",
+      "Start from a clean workspace and add only the records you choose.",
+    ],
+  });
+}
+
+function legalPageStructuredData(
+  name: string,
+  description: string,
+  url: string,
+  dateModified: string,
+): StructuredDataGraph {
+  return structuredDataGraph(websiteNode(), {
     "@type": "WebPage",
+    "@id": `${url}#webpage`,
     name,
     description,
     url,
     dateModified,
-    isPartOf: {
-      "@type": "WebSite",
-      name: SITE_NAME,
-      url: SITE_ORIGIN,
-    },
-  };
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+  });
 }
 
 const LEGAL_PAGE_LAST_MODIFIED = "2026-07-30";
@@ -85,7 +114,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       "Track expenses, review CSV or Excel transaction imports, set practical budgets, and understand monthly cash flow in a private workspace without a direct bank connection.",
     canonical: SITE_ORIGIN,
     robots: "index,follow",
-    structuredData: [WEBSITE_SCHEMA, SOFTWARE_APPLICATION_SCHEMA],
+    structuredData: homepageStructuredData(),
     sitemap: {
       lastModified: LEGAL_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
@@ -98,14 +127,12 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       "Read the terms that govern Zoption accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
     canonical: `${SITE_ORIGIN}/terms-of-service`,
     robots: "index,follow",
-    structuredData: [
-      legalPageSchema(
-        "Terms of Service — Zoption",
-        "The terms that govern Zoption accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
-        `${SITE_ORIGIN}/terms-of-service`,
-        LEGAL_PAGE_LAST_MODIFIED,
-      ),
-    ],
+    structuredData: legalPageStructuredData(
+      "Terms of Service — Zoption",
+      "The terms that govern Zoption accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
+      `${SITE_ORIGIN}/terms-of-service`,
+      LEGAL_PAGE_LAST_MODIFIED,
+    ),
     sitemap: {
       lastModified: LEGAL_PAGE_LAST_MODIFIED,
       changeFrequency: "yearly",
@@ -118,14 +145,12 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       "Learn how Zoption handles account, profile, financial workspace, imported transaction, assistant, consent, and operational information.",
     canonical: `${SITE_ORIGIN}/privacy-policy`,
     robots: "index,follow",
-    structuredData: [
-      legalPageSchema(
-        "Privacy Policy — Zoption",
-        "How Zoption handles account, profile, financial workspace, imported transaction, assistant, consent, and operational information.",
-        `${SITE_ORIGIN}/privacy-policy`,
-        LEGAL_PAGE_LAST_MODIFIED,
-      ),
-    ],
+    structuredData: legalPageStructuredData(
+      "Privacy Policy — Zoption",
+      "How Zoption handles account, profile, financial workspace, imported transaction, assistant, consent, and operational information.",
+      `${SITE_ORIGIN}/privacy-policy`,
+      LEGAL_PAGE_LAST_MODIFIED,
+    ),
     sitemap: {
       lastModified: LEGAL_PAGE_LAST_MODIFIED,
       changeFrequency: "yearly",
@@ -138,14 +163,12 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       "Learn about the necessary browser storage Zoption uses and how Google Analytics 4 remains blocked until Analytics consent is granted.",
     canonical: `${SITE_ORIGIN}/cookie-policy`,
     robots: "index,follow",
-    structuredData: [
-      legalPageSchema(
-        "Cookie Policy — Zoption",
-        "The necessary browser storage Zoption uses and how Google Analytics 4 remains blocked until Analytics consent is granted.",
-        `${SITE_ORIGIN}/cookie-policy`,
-        LEGAL_PAGE_LAST_MODIFIED,
-      ),
-    ],
+    structuredData: legalPageStructuredData(
+      "Cookie Policy — Zoption",
+      "The necessary browser storage Zoption uses and how Google Analytics 4 remains blocked until Analytics consent is granted.",
+      `${SITE_ORIGIN}/cookie-policy`,
+      LEGAL_PAGE_LAST_MODIFIED,
+    ),
     sitemap: {
       lastModified: LEGAL_PAGE_LAST_MODIFIED,
       changeFrequency: "yearly",
@@ -250,8 +273,6 @@ export function getRouteSeoMetadata(pathname: string, search = "", hash = ""): S
   };
 }
 
-export function serializeJsonLd(
-  value: Record<string, unknown> | Record<string, unknown>[],
-): string {
+export function serializeJsonLd(value: unknown): string {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }

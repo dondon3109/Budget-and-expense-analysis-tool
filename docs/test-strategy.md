@@ -13,6 +13,14 @@ Zoption tests financial and identity boundaries at the lowest practical layer, t
 - **Runtime checks:** local D1 migrations, private API denial, production builds, and the empty-workspace path.
 - **Production smoke:** landing, API/D1 readiness, retired endpoint `404`, anonymous private-route denial, and authenticated-request CORS preflight. The smoke check is non-mutating.
 
+## Structured-data verification
+
+Public structured data has three complementary gates:
+
+1. **Unit tests** prove every public metadata entry is an accurate linked Schema.org graph: a shared `WebSite`, a homepage `WebApplication`, and legal `WebPage` entities with stable canonical IDs, visible feature claims, and maintained content dates. They also reject unsupported identity, pricing, review, rating, breadcrumb, FAQ, search-action, and business-location claims.
+2. **Prerender artifact verification** parses each generated managed JSON-LD script and compares it with its route metadata, so a build fails if serialization, route ownership, canonical relationships, or semantic graph structure drift.
+3. **Production smoke** parses deployed public HTML and verifies the same graph shape, IDs, relationships, and noindex boundaries. Private and authentication routes must not emit managed JSON-LD.
+
 ## Repeatable commands
 
 ```bash

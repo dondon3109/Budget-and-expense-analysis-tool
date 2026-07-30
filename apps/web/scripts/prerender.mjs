@@ -61,7 +61,7 @@ function metadataHead(
     '<meta name="twitter:image:alt" content="Zoption private budget and expense tracker" />',
   ];
 
-  if (metadata.structuredData?.length) {
+  if (metadata.structuredData) {
     tags.push(
       `<script id="${structuredDataScriptId}" type="application/ld+json">${serializeJsonLd(metadata.structuredData)}</script>`,
     );

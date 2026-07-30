@@ -9,6 +9,18 @@ import {
   SITE_ORIGIN,
 } from "../src/seo/siteMetadata";
 
+type SchemaNode = Record<string, unknown>;
+
+function structuredDataFor(path: keyof typeof PUBLIC_ROUTE_METADATA) {
+  const structuredData = PUBLIC_ROUTE_METADATA[path].structuredData;
+  if (!structuredData) throw new Error(`${path} is missing structured data.`);
+  return structuredData;
+}
+
+function nodesByType(nodes: SchemaNode[], type: string) {
+  return nodes.filter((node) => node["@type"] === type);
+}
+
 describe("public SEO metadata", () => {
   it("gives every indexable route a unique title, description, and canonical URL", () => {
     const routes = Object.entries(PUBLIC_ROUTE_METADATA);
@@ -37,10 +49,87 @@ describe("public SEO metadata", () => {
     }
   });
 
-  it("uses the sitemap content date in legal-page structured data", () => {
-    for (const path of ["/terms-of-service", "/privacy-policy", "/cookie-policy"] as const) {
-      const schema = PUBLIC_ROUTE_METADATA[path].structuredData?.[0] as { dateModified?: string };
-      expect(schema.dateModified).toBe(PUBLIC_ROUTE_METADATA[path].sitemap.lastModified);
+  it("models public routes as linked, canonical Schema.org graphs", () => {
+    for (const path of PUBLIC_ROUTE_PATHS) {
+      const metadata = PUBLIC_ROUTE_METADATA[path];
+      const graph = structuredDataFor(path);
+      const nodeIds = graph["@graph"].map((node) => node["@id"]);
+      const websiteId = `${SITE_ORIGIN}/#website`;
+      const website = nodesByType(graph["@graph"], "WebSite");
+
+      expect(graph["@context"]).toBe("https://schema.org");
+      expect(new Set(nodeIds)).toHaveLength(nodeIds.length);
+      expect(website).toEqual([
+        expect.objectContaining({
+          "@id": websiteId,
+          url: SITE_ORIGIN,
+          inLanguage: "en",
+        }),
+      ]);
+
+      if (path === "/") {
+        const application = nodesByType(graph["@graph"], "WebApplication");
+        expect(nodesByType(graph["@graph"], "SoftwareApplication")).toHaveLength(0);
+        expect(application).toEqual([
+          expect.objectContaining({
+            "@id": `${SITE_ORIGIN}/#webapplication`,
+            url: metadata.canonical,
+            inLanguage: "en",
+            isPartOf: { "@id": websiteId },
+            featureList: [
+              "Map columns, catch errors, and prevent duplicate entries.",
+              "See totals, trends, categories, and budget progress together.",
+              "Start from a clean workspace and add only the records you choose.",
+            ],
+          }),
+        ]);
+      } else {
+        const page = nodesByType(graph["@graph"], "WebPage");
+        expect(page).toEqual([
+          expect.objectContaining({
+            "@id": `${metadata.canonical}#webpage`,
+            url: metadata.canonical,
+            dateModified: metadata.sitemap.lastModified,
+            inLanguage: "en",
+            isPartOf: { "@id": websiteId },
+          }),
+        ]);
+      }
+    }
+  });
+
+  it("does not claim unsupported business, pricing, review, or navigation markup", () => {
+    const unsupportedTypes = [
+      "Organization",
+      "Person",
+      "Offer",
+      "AggregateRating",
+      "Review",
+      "BreadcrumbList",
+      "FAQPage",
+      "LocalBusiness",
+      "SearchAction",
+      "SoftwareApplication",
+    ];
+    const unsupportedProperties = [
+      "sameAs",
+      "screenshot",
+      "softwareVersion",
+      "price",
+      "priceCurrency",
+      "aggregateRating",
+      "review",
+      "offers",
+    ];
+
+    for (const path of PUBLIC_ROUTE_PATHS) {
+      const serialized = JSON.stringify(structuredDataFor(path));
+      for (const type of unsupportedTypes) {
+        expect(serialized).not.toContain(`"@type":"${type}"`);
+      }
+      for (const property of unsupportedProperties) {
+        expect(serialized).not.toContain(`"${property}":`);
+      }
     }
   });
 

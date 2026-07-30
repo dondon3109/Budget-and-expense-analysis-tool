@@ -30,7 +30,7 @@ describe("SeoHead", () => {
       <meta name="description" content="stale" />
       <meta name="robots" content="index,follow" />
       <link rel="canonical" href="https://zoption.site" />
-      <script id="${STRUCTURED_DATA_SCRIPT_ID}" type="application/ld+json">[{"@type":"WebSite"}]</script>
+      <script id="${STRUCTURED_DATA_SCRIPT_ID}" type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"stale"}]}</script>
     `;
 
     const landing = renderSeoHead("/");
@@ -47,13 +47,21 @@ describe("SeoHead", () => {
     expect(privacyScript).not.toBeNull();
     if (!privacyScript)
       throw new Error("Privacy metadata did not include managed structured data.");
-    const privacySchema = JSON.parse(privacyScript.textContent ?? "[]") as Array<{
-      "@type"?: string;
-      name?: string;
-    }>;
-    expect(privacySchema).toEqual([
-      expect.objectContaining({ "@type": "WebPage", name: "Privacy Policy — Zoption" }),
-    ]);
+    const privacySchema = JSON.parse(privacyScript.textContent ?? "{}") as {
+      "@context"?: string;
+      "@graph"?: Array<Record<string, unknown>>;
+    };
+    expect(privacySchema["@context"]).toBe("https://schema.org");
+    expect(privacySchema["@graph"]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@type": "WebPage",
+          "@id": "https://zoption.site/privacy-policy#webpage",
+          name: "Privacy Policy — Zoption",
+          isPartOf: { "@id": "https://zoption.site/#website" },
+        }),
+      ]),
+    );
     expect(document.head.querySelectorAll('meta[name="description"]')).toHaveLength(1);
     expect(document.head.querySelectorAll('meta[name="robots"]')).toHaveLength(1);
     expect(document.head.querySelectorAll('link[rel="canonical"]')).toHaveLength(1);

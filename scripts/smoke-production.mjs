@@ -1,3 +1,5 @@
+import { assertPublicStructuredDataGraph } from "../apps/web/scripts/verify-prerender.mjs";
+
 const webUrl = requiredUrl("WEB_URL");
 const apiUrl = requiredUrl("API_URL");
 const origin = new URL(webUrl).origin;
@@ -51,7 +53,7 @@ function assertCount(value, expression, expected, label) {
     throw new Error(`${label} expected ${expected} matches but found ${actual}.`);
 }
 
-function assertPublicSeoDocument(html, canonical, label) {
+function assertPublicSeoDocument(html, path, canonical, label) {
   const robots = searchIndexingEnabled ? "index,follow" : "noindex,nofollow";
   assertCount(html, /<title\b/gi, 1, `${label} title`);
   assertCount(html, /<meta\b[^>]*\bname="robots"/gi, 1, `${label} robots meta`);
@@ -69,7 +71,7 @@ function assertPublicSeoDocument(html, canonical, label) {
     /<script id="zoption-structured-data" type="application\/ld\+json">([\s\S]*?)<\/script>/,
   )?.[1];
   if (!structuredData) throw new Error(`${label} did not contain parseable structured data.`);
-  JSON.parse(structuredData);
+  assertPublicStructuredDataGraph(JSON.parse(structuredData), { path, canonical });
 }
 
 const apiHeaders = { Origin: origin };
@@ -90,7 +92,7 @@ for (const [label, path, heading] of publicPages) {
       if (!robots.includes("noindex"))
         throw new Error(`${label} was missing preview X-Robots-Tag: noindex.`);
     }
-    assertPublicSeoDocument(html, canonical, label);
+    assertPublicSeoDocument(html, path, canonical, label);
     assertIncludes(html, '<meta property="og:title"', label);
     assertIncludes(html, '<meta name="twitter:card" content="summary_large_image"', label);
     assertIncludes(html, heading, label);
@@ -122,7 +124,12 @@ await expectResponse(
   async (response) => {
     if (!response.ok) throw new Error(`Tracking query failed with HTTP ${response.status}.`);
     const html = await response.text();
-    assertPublicSeoDocument(html, `${seoOrigin}/privacy-policy`, "tracking query canonical");
+    assertPublicSeoDocument(
+      html,
+      "/privacy-policy",
+      `${seoOrigin}/privacy-policy`,
+      "tracking query canonical",
+    );
   },
 );
 

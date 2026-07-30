@@ -63,7 +63,7 @@ export function SeoHead() {
     upsertMeta("name", "twitter:image", SOCIAL_IMAGE_URL);
     upsertMeta("name", "twitter:image:alt", "Zoption private budget and expense tracker");
 
-    if (metadata.structuredData?.length) {
+    if (metadata.structuredData) {
       upsertStructuredData(serializeJsonLd(metadata.structuredData));
     } else {
       document.head.querySelector(`script#${STRUCTURED_DATA_SCRIPT_ID}`)?.remove();
