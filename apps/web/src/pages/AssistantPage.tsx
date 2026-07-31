@@ -272,6 +272,7 @@ export function AssistantPage() {
   const assistantUsage = billingQuery.data?.usages.find(
     (usage) => usage.feature === "assistant_question",
   );
+  const isFreePlan = billingQuery.data?.plan === "free";
 
   return (
     <AppShell>
@@ -312,22 +313,24 @@ export function AssistantPage() {
           />
           <section className="assistant-chat" aria-label="Financial assistant conversation">
             <div className="assistant-chat-topline">
-              <span>
+              <span className="assistant-chat-status">
                 <Sparkles size={15} aria-hidden="true" /> Read-only financial answers
               </span>
-              <div className="assistant-chat-meta">
-                {assistantUsage && (
+              {assistantUsage && (
+                <div className="assistant-chat-usage">
                   <PlanUsageIndicator
                     compact
-                    label="AI questions this month"
+                    label={
+                      isFreePlan ? "Free plan AI questions this month" : "AI questions this month"
+                    }
                     used={assistantUsage.used}
                     limit={assistantUsage.limit}
                     resetsAt={assistantUsage.resetsAt}
-                    showUpgrade={billingQuery.data?.plan === "free"}
+                    showUpgrade={isFreePlan}
                   />
-                )}
-                <small>90-day private history</small>
-              </div>
+                </div>
+              )}
+              <small className="assistant-chat-retention">90-day private history</small>
             </div>
             {messages.isError ? (
               <div className="assistant-chat-error" role="alert">
