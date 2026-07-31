@@ -80,6 +80,7 @@ export function DashboardPage() {
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const subscribeTriggerRef = useRef<HTMLElement | null>(null);
+  const handledPostAuthCheckoutIntentRef = useRef(false);
   const anchorDate = localIsoDate();
   const summaryMonth = currentMonth();
   const summaryPeriod = {
@@ -95,15 +96,46 @@ export function DashboardPage() {
     queryFn: () => getCashflowTrend(workspace, { view: cashflowView, anchorDate }),
   });
   const billingSummary = useBillingSummary(workspace);
+  const hasPostAuthCheckoutIntent = searchParams.get("proCheckout") === "open";
 
   useEffect(() => {
-    if (searchParams.get("proCheckout") !== "open" || !billingSummary.data) return;
+    if (!hasPostAuthCheckoutIntent) {
+      handledPostAuthCheckoutIntentRef.current = false;
+      return;
+    }
+    if (!billingSummary.data || isProCheckoutOpen || handledPostAuthCheckoutIntentRef.current) {
+      return;
+    }
 
-    const nextSearchParams = new URLSearchParams(searchParams);
-    nextSearchParams.delete("proCheckout");
-    setSearchParams(nextSearchParams, { replace: true });
-    if (billingSummary.data.plan === "free") setIsProCheckoutOpen(true);
-  }, [billingSummary.data, searchParams, setSearchParams]);
+    handledPostAuthCheckoutIntentRef.current = true;
+    if (billingSummary.data.plan === "free") {
+      setIsProCheckoutOpen(true);
+      return;
+    }
+
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("proCheckout");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [billingSummary.data, hasPostAuthCheckoutIntent, isProCheckoutOpen, setSearchParams]);
+
+  function closeProCheckout() {
+    setIsProCheckoutOpen(false);
+    if (!hasPostAuthCheckoutIntent) return;
+
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("proCheckout");
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   const refreshAccountData = async () => {
     await Promise.all([
@@ -532,7 +564,7 @@ export function DashboardPage() {
           workspace={workspace}
           email={user?.email}
           returnFocus={subscribeTriggerRef.current}
-          onClose={() => setIsProCheckoutOpen(false)}
+          onClose={closeProCheckout}
         />
       )}
     </AppShell>

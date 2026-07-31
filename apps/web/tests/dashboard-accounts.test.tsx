@@ -145,13 +145,24 @@ describe("Dashboard checkout intent", () => {
 
   afterEach(cleanup);
 
-  it("opens checkout for a Free user and consumes only the checkout intent", async () => {
+  it("keeps the checkout intent active until a Free user closes the chooser", async () => {
     renderPage("/app?proCheckout=open&source=signup");
 
-    expect(
-      await screen.findByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
-    ).toBeVisible();
-    expect(screen.getByTestId("current-path")).toHaveTextContent("/app?source=signup");
+    const dialog = await screen.findByRole("dialog", {
+      name: "Choose how you want to use Zoption Pro",
+    });
+    expect(screen.getByTestId("current-path")).toHaveTextContent(
+      "/app?proCheckout=open&source=signup",
+    );
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("current-path")).toHaveTextContent("/app?source=signup");
+    });
   });
 
   it("consumes the checkout intent without opening a duplicate checkout for Pro", async () => {
