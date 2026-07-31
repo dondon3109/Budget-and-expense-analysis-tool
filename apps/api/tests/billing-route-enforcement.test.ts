@@ -206,9 +206,9 @@ describe("Pro route enforcement", () => {
     expect(repositoryMethod).not.toHaveBeenCalled();
   });
 
-  it("denies cashflow trend loading before the loader", async () => {
+  it("lets Free users load the weekly cashflow trend without a Pro check", async () => {
     const requirePro = vi.fn(async () => {
-      throw new HttpError(403, "pro_plan_required", "Upgrade to Zoption Pro to use this feature.");
+      throw new Error("weekly cashflow must not require Pro");
     });
     const loader = vi.fn(async () => cashflow);
     const app = testApp({ billing: billing(requirePro), cashflowTrendLoader: loader });
@@ -218,8 +218,50 @@ describe("Pro route enforcement", () => {
       { headers: AUTHORIZATION },
     );
 
-    expect(response.status).toBe(403);
-    expect(requirePro).toHaveBeenCalledWith(undefined, TENANT_ID, "cashflow_analytics");
+    expect(response.status).toBe(200);
+    expect(requirePro).not.toHaveBeenCalled();
+    expect(loader).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      view: "weekly",
+      anchorDate: "2026-07-27",
+    });
+  });
+
+  it.each(["monthly", "sixMonth"] as const)(
+    "denies the %s cashflow trend before the loader",
+    async (view) => {
+      const requirePro = vi.fn(async () => {
+        throw new HttpError(
+          403,
+          "pro_plan_required",
+          "Upgrade to Zoption Pro to use this feature.",
+        );
+      });
+      const loader = vi.fn(async () => cashflow);
+      const app = testApp({ billing: billing(requirePro), cashflowTrendLoader: loader });
+
+      const response = await app.request(
+        `/api/app/dashboard/cashflow-trend?view=${view}&anchorDate=2026-07-27`,
+        { headers: AUTHORIZATION },
+      );
+
+      expect(response.status).toBe(403);
+      expect(requirePro).toHaveBeenCalledWith(undefined, TENANT_ID, "cashflow_analytics");
+      expect(loader).not.toHaveBeenCalled();
+    },
+  );
+
+  it("validates cashflow trend queries before checking the plan", async () => {
+    const requirePro = vi.fn(async () => undefined);
+    const loader = vi.fn(async () => cashflow);
+    const app = testApp({ billing: billing(requirePro), cashflowTrendLoader: loader });
+
+    const response = await app.request(
+      "/api/app/dashboard/cashflow-trend?view=yearly&anchorDate=2026-07-27",
+      { headers: AUTHORIZATION },
+    );
+
+    expect(response.status).toBe(400);
+    expect(requirePro).not.toHaveBeenCalled();
     expect(loader).not.toHaveBeenCalled();
   });
 
@@ -258,7 +300,7 @@ describe("Pro route enforcement", () => {
     );
   });
 
-  it("checks Pro before export repositories and cashflow loaders", async () => {
+  it("checks Pro before export repositories and paid cashflow loaders", async () => {
     const requirePro = vi.fn(async () => undefined);
     const transactionStore = transactions();
     const loader = vi.fn(async () => cashflow);
@@ -272,7 +314,7 @@ describe("Pro route enforcement", () => {
       headers: AUTHORIZATION,
     });
     const cashflowResponse = await app.request(
-      "/api/app/dashboard/cashflow-trend?view=weekly&anchorDate=2026-07-27",
+      "/api/app/dashboard/cashflow-trend?view=monthly&anchorDate=2026-07-27",
       { headers: AUTHORIZATION },
     );
 

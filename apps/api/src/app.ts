@@ -295,11 +295,6 @@ export function createApp(options: AppOptions = {}) {
   });
 
   app.get("/api/app/dashboard/cashflow-trend", async (context) => {
-    await billingStore.requirePro(
-      context.env,
-      context.get("tenant").tenantId,
-      "cashflow_analytics",
-    );
     const parsed = cashflowTrendQuerySchema.safeParse(context.req.query());
     if (!parsed.success) {
       throw new HttpError(
@@ -307,6 +302,13 @@ export function createApp(options: AppOptions = {}) {
         "invalid_request",
         "Choose a valid cashflow trend view.",
         parsed.error.flatten(),
+      );
+    }
+    if (parsed.data.view !== "weekly") {
+      await billingStore.requirePro(
+        context.env,
+        context.get("tenant").tenantId,
+        "cashflow_analytics",
       );
     }
     return context.json(

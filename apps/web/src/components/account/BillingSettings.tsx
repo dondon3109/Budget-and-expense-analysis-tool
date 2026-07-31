@@ -4,47 +4,15 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useBillingSummary } from "../../hooks/useBillingSummary";
-import { createBillingPortalSession, startBillingCheckout } from "../../lib/api";
-import { getPaddle } from "../../lib/paddle";
+import { createBillingPortalSession } from "../../lib/api";
+import { openBillingCheckout } from "../../lib/billingCheckout";
+import { planFeatures } from "../billing/billingPlans";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { userWorkspace } from "../../lib/workspace";
 import "./BillingSettings.css";
 
 const CONFIRMATION_ATTEMPTS = 10;
 const CONFIRMATION_INTERVAL_MS = 2_000;
-
-const planFeatures = [
-  {
-    feature: "AI Assistant",
-    free: "4 questions per Manila month",
-    pro: "100 questions per Manila month",
-  },
-  {
-    feature: "File imports",
-    free: "1 committed import per Manila month",
-    pro: "10 committed imports per Manila month",
-  },
-  {
-    feature: "Custom categories",
-    free: "1 active custom category, plus included starters",
-    pro: "Unlimited active custom categories",
-  },
-  {
-    feature: "Custom accounts",
-    free: "Use included accounts",
-    pro: "Add, rename, and remove custom accounts",
-  },
-  {
-    feature: "Cashflow analytics",
-    free: "Core dashboard summaries",
-    pro: "Weekly, monthly, and six-month cashflow views",
-  },
-  {
-    feature: "Transaction export",
-    free: "Not included",
-    pro: "Filtered CSV export",
-  },
-] as const;
 
 function formatPlanDate(value: string): string {
   return new Intl.DateTimeFormat("en-PH", {
@@ -214,22 +182,7 @@ export function BillingSettings({ user }: { user: User }) {
     setBusy(interval);
     setError(undefined);
     try {
-      const checkout = await startBillingCheckout(workspace, interval);
-      const paddle = await getPaddle();
-      if (!paddle) throw new Error("Paddle checkout could not be loaded.");
-      const successUrl = new URL("/app/settings", window.location.origin);
-      successUrl.searchParams.set("checkout", "completed");
-      paddle.Checkout.open({
-        items: [{ priceId: checkout.priceId, quantity: 1 }],
-        customer: user.email ? { email: user.email } : undefined,
-        customData: { zoption_checkout_reference: checkout.reference },
-        settings: {
-          displayMode: "overlay",
-          variant: "one-page",
-          theme: "light",
-          successUrl: successUrl.toString(),
-        },
-      });
+      await openBillingCheckout(workspace, interval, user.email);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Checkout could not be opened.");
     } finally {

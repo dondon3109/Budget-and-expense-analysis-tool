@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const apiMocks = vi.hoisted(() => ({
   getDashboard: vi.fn(),
   getCashflowTrend: vi.fn(),
+  getBillingSummary: vi.fn(),
   createAccount: vi.fn(),
   updateAccount: vi.fn(),
   deleteAccount: vi.fn(),
@@ -38,6 +39,19 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
 }));
 
 import { DashboardPage } from "../src/pages/DashboardPage";
+
+const billingSummary = {
+  plan: "free" as const,
+  status: null,
+  interval: null,
+  currentPeriodEndsAt: null,
+  scheduledChangeAt: null,
+  canCheckout: true,
+  canManageBilling: false,
+  nonTerminalSubscriptionCount: 0,
+  usages: [],
+  allowances: [],
+};
 
 const dashboard: DashboardSummary = {
   period: { from: "2026-07-01", to: "2026-07-31" },
@@ -113,6 +127,7 @@ function renderPage() {
 
 describe("Profile dashboard account management", () => {
   beforeEach(() => {
+    apiMocks.getBillingSummary.mockReset().mockResolvedValue(billingSummary);
     apiMocks.getDashboard.mockReset().mockResolvedValue(dashboard);
     apiMocks.getCashflowTrend.mockReset().mockResolvedValue({
       view: "weekly",

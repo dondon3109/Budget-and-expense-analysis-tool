@@ -110,6 +110,8 @@ describe("BillingSettings", () => {
       screen.getByText("1 active custom category, plus included starters"),
     ).toBeInTheDocument();
     expect(screen.getByText("Unlimited active custom categories")).toBeInTheDocument();
+    expect(screen.getByText("Weekly cashflow view")).toBeInTheDocument();
+    expect(screen.getByText("Adds monthly and six-month cashflow views")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Active custom categories" })).toHaveAttribute(
       "aria-valuenow",
       "1",

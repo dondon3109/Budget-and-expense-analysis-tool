@@ -18,10 +18,12 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { useBillingSummary } from "../hooks/useBillingSummary";
+import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
 import { InsightsPanel } from "../components/dashboard/InsightsPanel";
@@ -75,6 +77,8 @@ export function DashboardPage() {
   const [editName, setEditName] = useState("");
   const [removingAccount, setRemovingAccount] = useState<AccountBalanceSummaryItem>();
   const [cashflowView, setCashflowView] = useState<CashflowTrendView>("weekly");
+  const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
+  const subscribeTriggerRef = useRef<HTMLElement | null>(null);
   const anchorDate = localIsoDate();
   const summaryMonth = currentMonth();
   const summaryPeriod = {
@@ -89,6 +93,7 @@ export function DashboardPage() {
     queryKey: queryKeys.cashflowTrend(workspace, { view: cashflowView, anchorDate }),
     queryFn: () => getCashflowTrend(workspace, { view: cashflowView, anchorDate }),
   });
+  const billingSummary = useBillingSummary(workspace);
   const refreshAccountData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
@@ -488,6 +493,11 @@ export function DashboardPage() {
                 isLoading={cashflowTrendQuery.isPending}
                 error={cashflowTrendQuery.error}
                 onRetry={() => void cashflowTrendQuery.refetch()}
+                showSubscribeToPro={billingSummary.data?.plan === "free"}
+                onSubscribeToPro={(trigger) => {
+                  subscribeTriggerRef.current = trigger;
+                  setIsProCheckoutOpen(true);
+                }}
               />
               <InsightsPanel data={data.insights} />
               <BudgetProgress data={data.budgetProgress} />
@@ -504,6 +514,16 @@ export function DashboardPage() {
           </>
         )}
       </div>
+      {billingSummary.data && (
+        <ProCheckoutDialog
+          open={isProCheckoutOpen}
+          summary={billingSummary.data}
+          workspace={workspace}
+          email={user?.email}
+          returnFocus={subscribeTriggerRef.current}
+          onClose={() => setIsProCheckoutOpen(false)}
+        />
+      )}
     </AppShell>
   );
 }
