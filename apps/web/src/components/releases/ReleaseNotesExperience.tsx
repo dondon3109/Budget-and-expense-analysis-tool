@@ -22,6 +22,8 @@ export function ReleaseNotesExperience() {
   const [record, setRecord] = useState(readReleaseAwarenessRecord);
   const [acknowledgedThisMount, setAcknowledgedThisMount] = useState(false);
   const isAppRoute = location.pathname === "/app" || location.pathname.startsWith("/app/");
+  const hasPostAuthCheckoutIntent =
+    new URLSearchParams(location.search).get("proCheckout") === "open";
   const hasAcknowledgedCurrentRelease = record?.acknowledgedVersion === currentRelease.version;
   const eligible =
     !loading &&
@@ -29,6 +31,7 @@ export function ReleaseNotesExperience() {
     isAppRoute &&
     hasThemePreference &&
     hasDecision &&
+    !hasPostAuthCheckoutIntent &&
     !hasAcknowledgedCurrentRelease;
 
   useEffect(() => {

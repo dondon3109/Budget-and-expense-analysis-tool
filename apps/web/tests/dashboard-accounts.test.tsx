@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { DashboardSummary } from "@zoption/shared";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
@@ -112,18 +112,69 @@ const dashboard: DashboardSummary = {
   insights: { savingsMinor: 0, savingsRatePercent: null, recurringExpenses: [] },
 };
 
-function renderPage() {
+function CurrentPath() {
+  const location = useLocation();
+  return <output data-testid="current-path">{`${location.pathname}${location.search}`}</output>;
+}
+
+function renderPage(initialEntry = "/app") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <DashboardPage />
+        <CurrentPath />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
+
+describe("Dashboard checkout intent", () => {
+  beforeEach(() => {
+    apiMocks.getBillingSummary.mockReset().mockResolvedValue(billingSummary);
+    apiMocks.getDashboard.mockReset().mockResolvedValue(dashboard);
+    apiMocks.getCashflowTrend.mockReset().mockResolvedValue({
+      view: "weekly",
+      granularity: "day",
+      range: { from: "2026-07-21", to: "2026-07-27" },
+      points: [],
+    });
+  });
+
+  afterEach(cleanup);
+
+  it("keeps the checkout intent active until a Free user closes the chooser", async () => {
+    renderPage("/app?proCheckout=open&source=signup");
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Choose how you want to use Zoption Pro",
+    });
+    expect(screen.getByTestId("current-path")).toHaveTextContent(
+      "/app?proCheckout=open&source=signup",
+    );
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("current-path")).toHaveTextContent("/app?source=signup");
+    });
+  });
+
+  it("consumes the checkout intent without opening a duplicate checkout for Pro", async () => {
+    apiMocks.getBillingSummary.mockResolvedValueOnce({ ...billingSummary, plan: "pro" });
+    renderPage("/app?proCheckout=open");
+
+    await waitFor(() => expect(screen.getByTestId("current-path")).toHaveTextContent("/app"));
+    expect(
+      screen.queryByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
+    ).not.toBeInTheDocument();
+  });
+});
 
 describe("Profile dashboard account management", () => {
   beforeEach(() => {

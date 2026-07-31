@@ -1035,6 +1035,9 @@ margin-top: 28px;
 .dashboard-balance-total {
 min-width: 0;
   padding: 25px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   color: var(--paper);
   background: var(--ink);
 }
@@ -1180,6 +1183,7 @@ min-height: 38px;
   padding: 0 12px;
 }
 
+.dashboard-account-form > .upgrade-prompt,
 .dashboard-account-form .form-error {
 grid-column: 1 / -1;
   margin: 0;

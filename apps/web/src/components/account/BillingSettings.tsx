@@ -1,13 +1,13 @@
-import type { BillingInterval, BillingSubscriptionStatus, BillingSummary } from "@zoption/shared";
+import type { BillingSubscriptionStatus, BillingSummary } from "@zoption/shared";
 import type { User } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useBillingSummary } from "../../hooks/useBillingSummary";
 import { createBillingPortalSession } from "../../lib/api";
-import { openBillingCheckout } from "../../lib/billingCheckout";
 import { planFeatures } from "../billing/billingPlans";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
+import { ProCheckoutDialog } from "../billing/ProCheckoutDialog";
 import { userWorkspace } from "../../lib/workspace";
 import "./BillingSettings.css";
 
@@ -116,7 +116,8 @@ export function BillingSettings({ user }: { user: User }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const checkoutCompleted = searchParams.get("checkout") === "completed";
   const [error, setError] = useState<string>();
-  const [busy, setBusy] = useState<BillingInterval>();
+  const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
+  const checkoutTriggerRef = useRef<HTMLButtonElement>(null);
   const [portalBusy, setPortalBusy] = useState(false);
   const [confirming, setConfirming] = useState(checkoutCompleted);
   const [confirmationDelayed, setConfirmationDelayed] = useState(false);
@@ -176,19 +177,6 @@ export function BillingSettings({ user }: { user: User }) {
       if (timer) clearTimeout(timer);
     };
   }, [checkoutCompleted, refetchBilling, setSearchParams, user.id]);
-
-  async function beginCheckout(interval: BillingInterval) {
-    if (!summary?.canCheckout) return;
-    setBusy(interval);
-    setError(undefined);
-    try {
-      await openBillingCheckout(workspace, interval, user.email);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Checkout could not be opened.");
-    } finally {
-      setBusy(undefined);
-    }
-  }
 
   async function openBillingPortal() {
     if (!summary?.canManageBilling) return;
@@ -280,24 +268,47 @@ export function BillingSettings({ user }: { user: User }) {
           <div className="billing-plan-comparison-wrap">
             <div className="billing-plan-comparison-heading">
               <div>
-                <strong>Free and Pro, side by side</strong>
-                <p>
+                <h3 id="billing-plan-comparison-title">Free and Pro, side by side</h3>
+                <p id="billing-plan-comparison-description">
                   Transactions, budgets, recurring-expense tracking, calendar tools, and included
                   starter data remain available on both plans.
                 </p>
               </div>
-              <span>Effective plan: {isPro ? "Zoption Pro" : "Free"}</span>
             </div>
-            <div className="billing-plan-table-wrap">
+            <p id="billing-plan-scroll-hint" className="billing-plan-scroll-hint">
+              On narrow screens, scroll horizontally to compare both plans.
+            </p>
+            <div
+              className="billing-plan-table-wrap"
+              role="region"
+              aria-labelledby="billing-plan-comparison-title"
+              aria-describedby="billing-plan-comparison-description billing-plan-scroll-hint"
+              tabIndex={0}
+            >
               <table className="billing-plan-comparison">
+                <caption className="sr-only">Free and Zoption Pro plan feature comparison</caption>
                 <thead>
                   <tr>
-                    <th scope="col">Feature</th>
-                    <th scope="col" data-current={!isPro || undefined}>
-                      Free {!isPro && <small>Current</small>}
+                    <th className="billing-plan-feature-heading" scope="col">
+                      Feature
                     </th>
-                    <th scope="col" data-current={isPro || undefined}>
-                      Zoption Pro {isPro && <small>Current</small>}
+                    <th
+                      scope="col"
+                      data-plan="free"
+                      data-current={!isPro || undefined}
+                      aria-current={!isPro ? "true" : undefined}
+                    >
+                      <span className="billing-plan-name">Free</span>
+                      {!isPro && <span className="billing-plan-current">Current plan</span>}
+                    </th>
+                    <th
+                      scope="col"
+                      data-plan="pro"
+                      data-current={isPro || undefined}
+                      aria-current={isPro ? "true" : undefined}
+                    >
+                      <span className="billing-plan-name">Zoption Pro</span>
+                      {isPro && <span className="billing-plan-current">Current plan</span>}
                     </th>
                   </tr>
                 </thead>
@@ -305,8 +316,12 @@ export function BillingSettings({ user }: { user: User }) {
                   {planFeatures.map((item) => (
                     <tr key={item.feature}>
                       <th scope="row">{item.feature}</th>
-                      <td data-current={!isPro || undefined}>{item.free}</td>
-                      <td data-current={isPro || undefined}>{item.pro}</td>
+                      <td data-plan="free" data-current={!isPro || undefined}>
+                        {item.free}
+                      </td>
+                      <td data-plan="pro" data-current={isPro || undefined}>
+                        {item.pro}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -324,24 +339,15 @@ export function BillingSettings({ user }: { user: User }) {
       {(canCheckout || canManageBilling) && (
         <div className="billing-settings-actions">
           {canCheckout && (
-            <>
-              <button
-                className="button primary compact"
-                type="button"
-                disabled={Boolean(busy) || confirming}
-                onClick={() => void beginCheckout("month")}
-              >
-                {busy === "month" ? "Opening checkout…" : "Upgrade monthly · $2.99"}
-              </button>
-              <button
-                className="button secondary compact"
-                type="button"
-                disabled={Boolean(busy) || confirming}
-                onClick={() => void beginCheckout("year")}
-              >
-                {busy === "year" ? "Opening checkout…" : "Upgrade annually · $24.99"}
-              </button>
-            </>
+            <button
+              ref={checkoutTriggerRef}
+              className="button primary compact"
+              type="button"
+              disabled={confirming}
+              onClick={() => setIsProCheckoutOpen(true)}
+            >
+              Choose a Pro plan
+            </button>
           )}
           {canManageBilling && (
             <button
@@ -382,6 +388,16 @@ export function BillingSettings({ user }: { user: User }) {
         <p className="form-error" role="alert">
           {visibleError}
         </p>
+      )}
+      {summary && (
+        <ProCheckoutDialog
+          open={isProCheckoutOpen}
+          summary={summary}
+          workspace={workspace}
+          email={user.email}
+          returnFocus={checkoutTriggerRef.current}
+          onClose={() => setIsProCheckoutOpen(false)}
+        />
       )}
     </section>
   );

@@ -107,8 +107,9 @@
 }
 
 .pro-checkout-actions .button {
-  min-height: 42px;
-  padding: 8px 10px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 11px;
   line-height: 1.25;
 }
 

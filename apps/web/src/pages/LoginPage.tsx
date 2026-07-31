@@ -6,7 +6,7 @@ import { AuthLayout } from "../components/auth/AuthLayout";
 import { PasswordField } from "../components/auth/PasswordField";
 
 function safeRedirect(value: string | null): string {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/app";
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/app?proCheckout=open";
 }
 
 export function LoginPage() {
@@ -26,7 +26,9 @@ export function LoginPage() {
       await signIn(email, password);
       void navigate(safeRedirect(searchParams.get("redirectTo")), { replace: true });
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Sign in could not be completed.");
+      setError(
+        submitError instanceof Error ? submitError.message : "Sign in could not be completed.",
+      );
     } finally {
       setBusy(false);
     }
