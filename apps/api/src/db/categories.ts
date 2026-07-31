@@ -3,7 +3,12 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { categories } from "../../../../db/schema";
-import { customCategoryLimitError, FREE_CUSTOM_CATEGORY_LIMIT } from "./billing";
+import {
+  EFFECTIVE_PRO_SUBSCRIPTION_CONDITION,
+  customCategoryLimitError,
+  FREE_CUSTOM_CATEGORY_LIMIT,
+  hasProEntitlement,
+} from "./billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 
@@ -47,46 +52,64 @@ function rethrowCategoryWriteError(error: unknown): never {
   throw error;
 }
 
+function toCategoryRecord(
+  category: Omit<CategoryRecord, "system" | "locked"> & { systemKey: string | null },
+  hasPro: boolean,
+): CategoryRecord {
+  const { systemKey, ...record } = category;
+  return {
+    ...record,
+    system: systemKey !== null,
+    locked: record.requiredPlan === "zoption_pro" && !hasPro,
+  };
+}
+
 export const categoryRepository: CategoryRepository = {
   async list(env, tenantId, includeArchived = false) {
     const db = drizzle(env.DB);
-    const rows = await db
-      .select({
-        id: categories.id,
-        name: categories.name,
-        kind: categories.kind,
-        color: categories.color,
-        archived: categories.archived,
-        systemKey: categories.systemKey,
-        origin: categories.origin,
-      })
-      .from(categories)
-      .where(
-        includeArchived
-          ? eq(categories.tenantId, tenantId)
-          : and(eq(categories.tenantId, tenantId), eq(categories.archived, false)),
-      )
-      .orderBy(asc(categories.kind), asc(categories.name));
-    return rows.map(({ systemKey, ...category }) => ({
-      ...category,
-      system: systemKey !== null,
-    }));
+    const [rows, hasPro] = await Promise.all([
+      db
+        .select({
+          id: categories.id,
+          name: categories.name,
+          kind: categories.kind,
+          color: categories.color,
+          archived: categories.archived,
+          systemKey: categories.systemKey,
+          origin: categories.origin,
+          requiredPlan: categories.requiredPlan,
+        })
+        .from(categories)
+        .where(
+          includeArchived
+            ? eq(categories.tenantId, tenantId)
+            : and(eq(categories.tenantId, tenantId), eq(categories.archived, false)),
+        )
+        .orderBy(asc(categories.kind), asc(categories.name)),
+      hasProEntitlement(env, tenantId),
+    ]);
+    return rows.map((category) => toCategoryRecord(category, hasPro));
   },
 
   async create(env, tenantId, input) {
+    const db = drizzle(env.DB);
     await ensureUniqueName(env, input.name, tenantId);
     const id = crypto.randomUUID();
     let result: D1Result;
     try {
       result = await env.DB.prepare(
-        `INSERT INTO categories (id, tenant_id, name, kind, color, origin)
-         SELECT ?, ?, ?, ?, ?, 'custom'
+        `INSERT INTO categories (id, tenant_id, name, kind, color, origin, required_plan)
+         SELECT ?, ?, ?, ?, ?, 'custom',
+           CASE WHEN EXISTS (
+             SELECT 1 FROM billing_subscriptions
+             WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
+           ) THEN 'zoption_pro' ELSE 'free' END
          WHERE EXISTS (
            SELECT 1 FROM billing_subscriptions
-           WHERE tenant_id = ? AND status IN ('active', 'trialing')
+           WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
          ) OR (
            SELECT COUNT(*) FROM categories
-           WHERE tenant_id = ? AND origin = 'custom' AND archived = 0
+           WHERE tenant_id = ? AND origin = 'custom' AND required_plan = 'free' AND archived = 0
          ) < ?`,
       )
         .bind(
@@ -97,6 +120,7 @@ export const categoryRepository: CategoryRepository = {
           input.color,
           tenantId,
           tenantId,
+          tenantId,
           FREE_CUSTOM_CATEGORY_LIMIT,
         )
         .run();
@@ -104,7 +128,26 @@ export const categoryRepository: CategoryRepository = {
       rethrowCategoryWriteError(error);
     }
     if ((result.meta.changes ?? 0) !== 1) throw await customCategoryLimitError(env, tenantId);
-    return { id, ...input, archived: false, system: false, origin: "custom" };
+    const [created, hasPro] = await Promise.all([
+      db
+        .select({
+          id: categories.id,
+          name: categories.name,
+          kind: categories.kind,
+          color: categories.color,
+          archived: categories.archived,
+          systemKey: categories.systemKey,
+          origin: categories.origin,
+          requiredPlan: categories.requiredPlan,
+        })
+        .from(categories)
+        .where(and(eq(categories.id, id), eq(categories.tenantId, tenantId)))
+        .limit(1)
+        .then((rows) => rows[0]),
+      hasProEntitlement(env, tenantId),
+    ]);
+    if (!created) throw new Error("Created category could not be read back.");
+    return toCategoryRecord(created, hasPro);
   },
 
   async update(env, tenantId, id, input) {
@@ -118,6 +161,7 @@ export const categoryRepository: CategoryRepository = {
         archived: categories.archived,
         systemKey: categories.systemKey,
         origin: categories.origin,
+        requiredPlan: categories.requiredPlan,
       })
       .from(categories)
       .where(and(eq(categories.id, id), eq(categories.tenantId, tenantId)))
@@ -146,14 +190,20 @@ export const categoryRepository: CategoryRepository = {
          WHERE id = ? AND tenant_id = ?
            AND (
              ? = 0
-             OR EXISTS (
-               SELECT 1 FROM billing_subscriptions
-               WHERE tenant_id = ? AND status IN ('active', 'trialing')
+             OR (
+               ? = 'zoption_pro'
+               AND EXISTS (
+                 SELECT 1 FROM billing_subscriptions
+                 WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
+               )
              )
              OR (
-               SELECT COUNT(*) FROM categories
-               WHERE tenant_id = ? AND origin = 'custom' AND archived = 0
-             ) < ?
+               ? = 'free'
+               AND (
+                 SELECT COUNT(*) FROM categories
+                 WHERE tenant_id = ? AND origin = 'custom' AND required_plan = 'free' AND archived = 0
+               ) < ?
+             )
            )`,
       )
         .bind(
@@ -163,7 +213,9 @@ export const categoryRepository: CategoryRepository = {
           id,
           tenantId,
           restoringCustom ? 1 : 0,
+          existing.requiredPlan,
           tenantId,
+          existing.requiredPlan,
           tenantId,
           FREE_CUSTOM_CATEGORY_LIMIT,
         )
@@ -171,16 +223,30 @@ export const categoryRepository: CategoryRepository = {
     } catch (error) {
       rethrowCategoryWriteError(error);
     }
-    if ((result.meta.changes ?? 0) !== 1) throw await customCategoryLimitError(env, tenantId);
+    if ((result.meta.changes ?? 0) !== 1) {
+      if (restoringCustom && existing.requiredPlan === "zoption_pro") {
+        throw new HttpError(
+          403,
+          "category_requires_pro",
+          "Restore this category with an active Zoption Pro subscription.",
+          { requiredPlan: "zoption_pro", billingPath: "/app/settings" },
+        );
+      }
+      throw await customCategoryLimitError(env, tenantId);
+    }
 
-    return {
-      id: existing.id,
-      name: nextName,
-      kind: existing.kind,
-      color: nextColor,
-      archived: nextArchived,
-      system: false,
-      origin: existing.origin,
-    };
+    return toCategoryRecord(
+      {
+        id: existing.id,
+        name: nextName,
+        kind: existing.kind,
+        color: nextColor,
+        archived: nextArchived,
+        systemKey: existing.systemKey,
+        origin: existing.origin,
+        requiredPlan: existing.requiredPlan,
+      },
+      await hasProEntitlement(env, tenantId),
+    );
   },
 };

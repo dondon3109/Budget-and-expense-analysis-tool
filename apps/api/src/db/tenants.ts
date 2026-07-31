@@ -136,7 +136,7 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
       ),
       ...DEFAULT_CATEGORIES.map((category) =>
         env.DB.prepare(
-          "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, system_key, origin) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, system_key, origin, required_plan) VALUES (?, ?, ?, ?, ?, ?, ?, 'free')",
         ).bind(
           defaultCategoryIdForTenant(tenantId, category.key),
           tenantId,

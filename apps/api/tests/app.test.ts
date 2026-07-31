@@ -128,6 +128,8 @@ const categoryItem: CategoryRecord = {
   archived: false,
   system: false,
   origin: "custom",
+  requiredPlan: "free",
+  locked: false,
 };
 
 const accountItem: AccountRecord = {
@@ -520,18 +522,39 @@ describe("API foundation", () => {
     expect(response.status).toBe(403);
   });
 
-  it("loads the private dashboard for the resolved tenant", async () => {
+  it("loads Expense Breakdown for a Free tenant without requiring Pro", async () => {
     const loader = vi.fn().mockResolvedValue(dashboardFixture);
-    const app = createTestApp({ dashboardLoader: loader });
+    const requirePro = vi.fn(async () => undefined);
+    const billing: BillingRepository = {
+      ...createAllowedBillingRepository(),
+      getSummary: vi.fn(async () => ({
+        plan: "free" as const,
+        status: null,
+        interval: null,
+        currentPeriodEndsAt: null,
+        scheduledChangeAt: null,
+        canCheckout: true,
+        canManageBilling: false,
+        nonTerminalSubscriptionCount: 0,
+        usages: [],
+        allowances: [{ resource: "custom_category" as const, used: 0, limit: 1 }],
+      })),
+      requirePro,
+    };
+    const app = createTestApp({ billing, dashboardLoader: loader });
     const response = await app.request("/api/app/dashboard?from=2026-07-01&to=2026-07-31", {
       headers: AUTHORIZATION,
     });
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
+    await expect(response.json()).resolves.toMatchObject({
+      spendingByCategory: dashboardFixture.spendingByCategory,
+    });
     expect(loader).toHaveBeenCalledWith(undefined, TENANT_ID, {
       from: "2026-07-01",
       to: "2026-07-31",
     });
+    expect(requirePro).not.toHaveBeenCalled();
   });
 
   it("loads a validated cashflow view for the resolved tenant", async () => {

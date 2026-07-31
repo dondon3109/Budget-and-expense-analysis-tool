@@ -1050,8 +1050,13 @@ export function ImportPage() {
                           >
                             <option value="">Use Uncategorized</option>
                             {availableBulkCategories.map((category) => (
-                              <option key={category.id} value={category.id}>
+                              <option
+                                key={category.id}
+                                value={category.id}
+                                disabled={category.locked}
+                              >
                                 {category.name}
+                                {category.locked ? " — Pro required" : ""}
                               </option>
                             ))}
                           </select>

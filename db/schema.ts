@@ -66,11 +66,20 @@ export const categories = sqliteTable(
     origin: text("origin", { enum: ["starter", "custom", "system"] })
       .notNull()
       .default("custom"),
+    requiredPlan: text("required_plan", { enum: ["free", "zoption_pro"] })
+      .notNull()
+      .default("free"),
     ...timestamps,
   },
   (table) => [
     index("categories_tenant_idx").on(table.tenantId),
     index("categories_tenant_origin_archived_idx").on(table.tenantId, table.origin, table.archived),
+    index("categories_tenant_origin_required_plan_archived_idx").on(
+      table.tenantId,
+      table.origin,
+      table.requiredPlan,
+      table.archived,
+    ),
     uniqueIndex("categories_tenant_kind_name_unique").on(table.tenantId, table.kind, table.name),
     uniqueIndex("categories_tenant_system_key_unique").on(table.tenantId, table.systemKey),
   ],

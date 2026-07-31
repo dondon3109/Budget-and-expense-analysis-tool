@@ -33,6 +33,8 @@ const category: CategoryRecord = {
   archived: false,
   system: false,
   origin: "custom",
+  requiredPlan: "free",
+  locked: false,
 };
 
 function renderManager(categories: CategoryRecord[] = [category]) {
@@ -140,6 +142,26 @@ describe("CategoryManager", () => {
     expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
   });
 
+  it("identifies expired-Pro categories and prevents their restoration", async () => {
+    renderManager([
+      {
+        ...category,
+        id: "pro-category",
+        name: "Pro category",
+        archived: true,
+        requiredPlan: "zoption_pro",
+        locked: true,
+      },
+    ]);
+
+    expect(await screen.findByText(/Pro required/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Restore Pro category")).toBeDisabled();
+    expect(screen.getByLabelText("Restore Pro category")).toHaveAttribute(
+      "title",
+      "Upgrade to Zoption Pro before restoring this category.",
+    );
+  });
+
   it("identifies system categories and does not offer edit controls", () => {
     renderManager([
       {
@@ -150,6 +172,8 @@ describe("CategoryManager", () => {
         archived: false,
         system: true,
         origin: "system",
+        requiredPlan: "free",
+        locked: false,
       },
     ]);
 

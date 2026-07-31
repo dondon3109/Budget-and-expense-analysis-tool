@@ -10,6 +10,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { categories, subscriptions } from "../../../../db/schema";
+import { categoryRequiresProError, hasProEntitlement, isCategoryPlanAvailable } from "./billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 
@@ -27,13 +28,20 @@ export interface SubscriptionRepository {
 async function validateCategory(env: Bindings, tenantId: string, categoryId: string) {
   const db = drizzle(env.DB);
   const [category] = await db
-    .select({ kind: categories.kind, archived: categories.archived })
+    .select({
+      kind: categories.kind,
+      archived: categories.archived,
+      requiredPlan: categories.requiredPlan,
+    })
     .from(categories)
     .where(and(eq(categories.id, categoryId), eq(categories.tenantId, tenantId)))
     .limit(1);
 
   if (!category || category.archived || category.kind !== "expense") {
     throw new HttpError(400, "invalid_subscription_category", "Choose an active expense category.");
+  }
+  if (!isCategoryPlanAvailable(category.requiredPlan, await hasProEntitlement(env, tenantId))) {
+    throw categoryRequiresProError();
   }
 }
 

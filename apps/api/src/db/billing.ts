@@ -6,6 +6,7 @@ import type {
   BillingSubscriptionStatus,
   BillingSummary,
   BillingUsage,
+  CategoryRequiredPlan,
 } from "@zoption/shared";
 
 import { HttpError } from "../errors";
@@ -28,6 +29,36 @@ export const NON_TERMINAL_BILLING_STATUSES = ["active", "trialing", "past_due", 
 
 const PRO_STATUS_SET = new Set<BillingSubscriptionStatus>(PRO_BILLING_STATUSES);
 const NON_TERMINAL_STATUS_SET = new Set<BillingSubscriptionStatus>(NON_TERMINAL_BILLING_STATUSES);
+
+export const EFFECTIVE_PRO_SUBSCRIPTION_CONDITION = `status IN ('active', 'trialing')
+  AND current_period_ends_at IS NOT NULL
+  AND datetime(current_period_ends_at) > datetime('now')`;
+
+export function hasEffectiveProEntitlement(
+  status: BillingSubscriptionStatus,
+  currentPeriodEndsAt: string | null,
+  now = new Date(),
+): boolean {
+  if (!isProBillingStatus(status) || !currentPeriodEndsAt) return false;
+  const periodEnd = new Date(currentPeriodEndsAt);
+  return !Number.isNaN(periodEnd.getTime()) && periodEnd.getTime() > now.getTime();
+}
+
+export function isCategoryPlanAvailable(
+  requiredPlan: CategoryRequiredPlan,
+  hasPro: boolean,
+): boolean {
+  return requiredPlan === "free" || hasPro;
+}
+
+export function categoryRequiresProError(): HttpError {
+  return new HttpError(
+    403,
+    "category_requires_pro",
+    "This category requires an active Zoption Pro subscription.",
+    { requiredPlan: "zoption_pro", billingPath: "/app/settings" },
+  );
+}
 
 export function manilaMonth(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -154,9 +185,11 @@ async function currentSubscription(
     .first<SubscriptionSummaryRow>();
 }
 
-async function hasProSubscription(env: Bindings, tenantId: string): Promise<boolean> {
+export async function hasProEntitlement(env: Bindings, tenantId: string): Promise<boolean> {
   const row = await env.DB.prepare(
-    "SELECT 1 AS found FROM billing_subscriptions WHERE tenant_id = ? AND status IN ('active', 'trialing') LIMIT 1",
+    `SELECT 1 AS found FROM billing_subscriptions
+     WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
+     LIMIT 1`,
   )
     .bind(tenantId)
     .first<{ found: number }>();
@@ -192,12 +225,14 @@ export async function getCustomCategoryAllowance(
   tenantId: string,
   isPro?: boolean,
 ): Promise<BillingResourceAllowance> {
+  const hasPro = isPro ?? (await hasProEntitlement(env, tenantId));
   const row = await env.DB.prepare(
-    "SELECT COUNT(*) AS count FROM categories WHERE tenant_id = ? AND origin = 'custom' AND archived = 0",
+    `SELECT COUNT(*) AS count FROM categories
+     WHERE tenant_id = ? AND origin = 'custom' AND archived = 0
+       AND (? = 1 OR required_plan = 'free')`,
   )
-    .bind(tenantId)
+    .bind(tenantId, hasPro ? 1 : 0)
     .first<{ count: number }>();
-  const hasPro = isPro ?? (await hasProSubscription(env, tenantId));
   return {
     resource: "custom_category",
     used: Number(row?.count ?? 0),
@@ -228,7 +263,7 @@ async function monthlyLimitError(
   tenantId: string,
   feature: BillingFeature,
 ): Promise<HttpError> {
-  const isPro = await hasProSubscription(env, tenantId);
+  const isPro = await hasProEntitlement(env, tenantId);
   const limit = (isPro ? PRO_LIMITS : FREE_LIMITS)[feature];
   const item = await usage(env, tenantId, feature, limit);
   return new HttpError(409, "monthly_limit_reached", "You have reached this month’s plan limit.", {
@@ -253,14 +288,14 @@ function buildUsageStatement(
        ?, ?, ?, 1,
        CASE WHEN EXISTS (
          SELECT 1 FROM billing_subscriptions
-         WHERE tenant_id = ? AND status IN ('active', 'trialing')
+         WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
        ) THEN ? ELSE ? END
      )
      ON CONFLICT(tenant_id, month, feature) DO UPDATE SET
        count = billing_monthly_usage.count + 1,
        allowance = CASE WHEN EXISTS (
          SELECT 1 FROM billing_subscriptions
-         WHERE tenant_id = ? AND status IN ('active', 'trialing')
+         WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
        ) THEN ? ELSE ? END,
        updated_at = datetime('now')`,
   ).bind(
@@ -280,7 +315,7 @@ export const billingRepository: BillingRepository = {
   async getSummary(env, tenantId) {
     const [subscription, isPro, nonTerminalCount] = await Promise.all([
       currentSubscription(env, tenantId),
-      hasProSubscription(env, tenantId),
+      hasProEntitlement(env, tenantId),
       nonTerminalSubscriptionCount(env, tenantId),
     ]);
     const plan = isPro ? "zoption_pro" : "free";
@@ -304,7 +339,7 @@ export const billingRepository: BillingRepository = {
   },
 
   async requirePro(env, tenantId, capability) {
-    if (await hasProSubscription(env, tenantId)) return;
+    if (await hasProEntitlement(env, tenantId)) return;
     throw new HttpError(403, "upgrade_required", "This feature requires Zoption Pro.", {
       capability,
       requiredPlan: "zoption_pro",

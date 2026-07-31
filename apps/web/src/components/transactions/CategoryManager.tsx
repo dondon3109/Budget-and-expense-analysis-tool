@@ -193,7 +193,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
               limit={categoryAllowance.limit}
               detail={
                 isFreePlan
-                  ? "Free includes 1 active custom category. Starter and Uncategorized categories stay included; archive your custom category to free the slot."
+                  ? "Free includes 1 active custom category. Pro-required categories stay visible but cannot be used until you upgrade; archive a Free custom category to free the slot."
                   : "Starter and protected Uncategorized categories do not count toward this allowance."
               }
               showUpgrade={isFreePlan}
@@ -265,7 +265,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
         <div className="category-manager-list">
           {categories.map((category) => (
             <div
-              className={category.archived ? "manager-category archived" : "manager-category"}
+              className={`manager-category${category.archived ? " archived" : ""}${category.locked ? " locked" : ""}`}
               key={category.id}
             >
               <i style={{ backgroundColor: category.color }} />
@@ -288,6 +288,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                     {category.archived ? " · Archived" : ""}
                     {category.origin === "starter" ? " · Included starter" : ""}
                     {category.origin === "custom" ? " · Custom" : ""}
+                    {category.requiredPlan === "zoption_pro" ? " · Pro required" : ""}
                     {category.system ? " · Required for imports" : ""}
                   </span>
                 </div>
@@ -329,7 +330,9 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                         type="button"
                         disabled={
                           updateMutation.isPending ||
-                          (category.archived && category.origin === "custom" && categoryAtLimit)
+                          (category.archived &&
+                            category.origin === "custom" &&
+                            (category.locked || categoryAtLimit))
                         }
                         onClick={() =>
                           updateMutation.mutate({
@@ -339,9 +342,11 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                         }
                         aria-label={`${category.archived ? "Restore" : "Archive"} ${category.name}`}
                         title={
-                          category.archived && category.origin === "custom" && categoryAtLimit
-                            ? "Archive an active custom category or upgrade before restoring this one."
-                            : undefined
+                          category.archived && category.locked
+                            ? "Upgrade to Zoption Pro before restoring this category."
+                            : category.archived && category.origin === "custom" && categoryAtLimit
+                              ? "Archive an active Free custom category or upgrade before restoring this one."
+                              : undefined
                         }
                       >
                         {category.archived ? <RotateCcw size={15} /> : <Archive size={15} />}
