@@ -127,8 +127,8 @@ describe("BillingSettings", () => {
     renderSettings(summary(null));
 
     expect(await screen.findByText("Free and Pro, side by side")).toBeInTheDocument();
-    expect(screen.getByText("4 questions per Manila month")).toBeInTheDocument();
-    expect(screen.getByText("10 committed imports per Manila month")).toBeInTheDocument();
+    expect(screen.getByText("4 questions per month")).toBeInTheDocument();
+    expect(screen.getByText("10 committed imports per month")).toBeInTheDocument();
     expect(
       screen.getByText("1 active custom category, plus included starters"),
     ).toBeInTheDocument();

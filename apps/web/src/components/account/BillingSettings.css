@@ -61,20 +61,25 @@
 
 .billing-plan-comparison-wrap {
   max-width: 900px;
-  margin-top: 26px;
+  margin-top: 30px;
+}
+
+.billing-plan-comparison-heading {
+  text-align: center;
 }
 
 .billing-plan-comparison-heading h3 {
   margin: 0;
   color: var(--ink);
   font-family: Georgia, serif;
-  font-size: 18px;
+  font-size: 22px;
+  letter-spacing: -0.025em;
   line-height: 1.1;
 }
 
 .billing-plan-comparison-heading p {
-  max-width: 68ch;
-  margin: 7px 0 0;
+  max-width: 62ch;
+  margin: 9px auto 0;
   color: var(--muted);
   font-size: 10px;
   line-height: 1.55;
@@ -85,11 +90,11 @@
 }
 
 .billing-plan-table-wrap {
-  margin-top: 14px;
+  margin-top: 30px;
   overflow: auto;
   overscroll-behavior-inline: contain;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--surface);
   scrollbar-color: var(--line-strong) transparent;
   scrollbar-width: thin;
@@ -111,13 +116,13 @@
 
 .billing-plan-comparison th,
 .billing-plan-comparison td {
-  padding: 13px 15px;
+  padding: 17px 20px;
   color: var(--muted);
   border-bottom: 1px solid var(--line);
   font-size: 10px;
-  line-height: 1.45;
+  line-height: 1.5;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .billing-plan-comparison tr:last-child th,
@@ -126,45 +131,67 @@
 }
 
 .billing-plan-comparison thead th {
-  padding-top: 16px;
+  padding-top: 15px;
   padding-bottom: 15px;
   color: var(--ink);
-  background: var(--surface-soft);
+  background: var(--surface);
 }
 
 .billing-plan-feature-heading,
 .billing-plan-comparison tbody th {
-  width: 24%;
+  width: 50%;
 }
 
 .billing-plan-feature-heading {
-  color: var(--subtle) !important;
-  font-size: 9px !important;
-  font-weight: 850;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  color: var(--ink) !important;
+  font-size: 10px !important;
+  font-weight: 800;
 }
 
 .billing-plan-comparison tbody th {
   color: var(--ink);
+  background: var(--surface-soft);
   font-weight: 750;
 }
 
-.billing-plan-name {
-  display: block;
-  color: var(--ink);
-  font-family: Georgia, serif;
-  font-size: 17px;
-  line-height: 1.05;
+.billing-plan-comparison tbody th::before {
+  margin-right: 9px;
+  color: var(--subtle);
+  content: "•";
+}
+
+.billing-plan-comparison th[data-plan],
+.billing-plan-comparison td[data-plan] {
+  width: 25%;
+  text-align: center;
+}
+
+.billing-plan-comparison [data-plan="free"] {
+  background: color-mix(in srgb, var(--success-soft) 18%, var(--surface));
 }
 
 .billing-plan-comparison [data-plan="pro"] {
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--action) 42%, transparent);
+  background: color-mix(in srgb, var(--action) 5%, var(--surface));
+}
+
+.billing-plan-comparison thead th[data-plan] {
+  white-space: nowrap;
+}
+
+.billing-plan-comparison thead [data-plan="free"] {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 46%, var(--line));
 }
 
 .billing-plan-comparison thead [data-plan="pro"] {
-  background: color-mix(in srgb, var(--action) 8%, var(--surface-soft));
-  box-shadow: inset 0 3px 0 var(--action);
+  border-top-right-radius: 13px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--action) 46%, var(--line));
+}
+
+.billing-plan-name {
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
 }
 
 .billing-plan-comparison thead [data-plan="pro"] .billing-plan-name {
@@ -172,26 +199,21 @@
 }
 
 .billing-plan-current {
-  width: fit-content;
-  margin-top: 8px;
-  padding: 3px 6px;
-  display: inline-flex;
+  margin-left: 5px;
   color: var(--success);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--success-soft) 72%, var(--surface));
   font-size: 8px;
   font-weight: 850;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   line-height: 1;
   text-transform: uppercase;
 }
 
-.billing-plan-comparison [data-current="true"] {
-  background: color-mix(in srgb, var(--success-soft) 48%, var(--surface));
+.billing-plan-comparison thead [data-plan="free"][data-current="true"] {
+  background: color-mix(in srgb, var(--success-soft) 34%, var(--surface));
 }
 
 .billing-plan-comparison thead [data-plan="pro"][data-current="true"] {
-  background: color-mix(in srgb, var(--success-soft) 42%, var(--action) 8%);
+  background: color-mix(in srgb, var(--action) 12%, var(--surface));
 }
 
 .billing-settings-warning {
@@ -251,15 +273,16 @@
   }
 
   .billing-plan-table-wrap {
-    scroll-padding-left: 24%;
+    scroll-padding-left: 32%;
   }
 
   .billing-plan-comparison .billing-plan-feature-heading,
   .billing-plan-comparison tbody th {
+    width: 32%;
     position: sticky;
     left: 0;
     z-index: 2;
-    background: var(--surface);
+    background: var(--surface-soft);
     box-shadow:
       1px 0 0 var(--line),
       7px 0 12px color-mix(in srgb, var(--ink) 6%, transparent);

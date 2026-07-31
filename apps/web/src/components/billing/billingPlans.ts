@@ -3,13 +3,13 @@ import type { BillingInterval } from "@zoption/shared";
 export const planFeatures = [
   {
     feature: "AI Assistant",
-    free: "4 questions per Manila month",
-    pro: "100 questions per Manila month",
+    free: "4 questions per month",
+    pro: "100 questions per month",
   },
   {
     feature: "File imports",
-    free: "1 committed import per Manila month",
-    pro: "10 committed imports per Manila month",
+    free: "1 committed import per month",
+    pro: "10 committed imports per month",
   },
   {
     feature: "Custom categories",
