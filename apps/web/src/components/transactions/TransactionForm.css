@@ -175,7 +175,8 @@
   border-bottom: 1px solid var(--line);
 }
 
-.manager-category.archived {
+.manager-category.archived,
+.manager-category.locked {
   opacity: 0.58;
 }
 

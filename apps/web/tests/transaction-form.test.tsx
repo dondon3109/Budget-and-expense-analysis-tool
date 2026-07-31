@@ -38,6 +38,8 @@ const category: CategoryRecord = {
   archived: false,
   system: false,
   origin: "custom",
+  requiredPlan: "free",
+  locked: false,
 };
 
 afterEach(cleanup);
@@ -117,6 +119,60 @@ describe("TransactionForm", () => {
           categoryId: "food",
           accountId: "account-savings",
         }),
+      ),
+    );
+  });
+
+  it("marks expired-Pro categories unavailable and skips them for new transactions", () => {
+    const lockedCategory: CategoryRecord = {
+      ...category,
+      id: "pro-food",
+      name: "Pro food",
+      requiredPlan: "zoption_pro",
+      locked: true,
+    };
+    render(
+      <TransactionForm
+        categories={[lockedCategory, category]}
+        accounts={accounts}
+        busy={false}
+        onSubmit={vi.fn(async () => undefined)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Pro food — Pro required" })).toBeDisabled();
+    expect(screen.getByLabelText("Category")).toHaveValue("food");
+  });
+
+  it("keeps a locked historical category selected for non-category edits", async () => {
+    const user = userEvent.setup();
+    const lockedCategory: CategoryRecord = {
+      ...category,
+      id: "pro-food",
+      name: "Pro food",
+      requiredPlan: "zoption_pro",
+      locked: true,
+    };
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <TransactionForm
+        item={{ ...transaction, categoryId: lockedCategory.id, categoryName: lockedCategory.name }}
+        categories={[lockedCategory]}
+        accounts={accounts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Category")).toHaveValue("pro-food");
+    expect(screen.getByRole("option", { name: "Pro food — Pro required" })).toBeDisabled();
+    await user.clear(screen.getByLabelText(/Notes/));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryId: "pro-food", notes: "" }),
       ),
     );
   });

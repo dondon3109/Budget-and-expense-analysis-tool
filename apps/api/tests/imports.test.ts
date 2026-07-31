@@ -28,6 +28,8 @@ const categories: CategoryRecord[] = [
     archived: false,
     system: false,
     origin: "custom",
+    requiredPlan: "free",
+    locked: false,
   },
 ];
 
@@ -40,6 +42,8 @@ const uncategorizedCategories: CategoryRecord[] = [
     archived: false,
     system: true,
     origin: "system",
+    requiredPlan: "free",
+    locked: false,
   },
   {
     id: "uncategorized-expense",
@@ -49,6 +53,8 @@ const uncategorizedCategories: CategoryRecord[] = [
     archived: false,
     system: true,
     origin: "system",
+    requiredPlan: "free",
+    locked: false,
   },
   {
     id: "uncategorized-transfer",
@@ -58,6 +64,8 @@ const uncategorizedCategories: CategoryRecord[] = [
     archived: false,
     system: true,
     origin: "system",
+    requiredPlan: "free",
+    locked: false,
   },
 ];
 
@@ -77,6 +85,8 @@ describe("import commit category guard", () => {
     expect(regularSql).toContain("tenant_id = ? AND archived = 0 AND kind = ?");
     expect(regularSql).not.toContain("system_key IS NULL");
     expect(overrideSql).toContain("system_key IS NULL");
+    expect(overrideSql).toContain("required_plan = 'free'");
+    expect(overrideSql).toContain("current_period_ends_at IS NOT NULL");
     expect(overrideSql).toContain("(SELECT id FROM categories");
   });
 });
@@ -223,6 +233,8 @@ describe("import preparation", () => {
           archived: false,
           system: false,
           origin: "custom",
+          requiredPlan: "free",
+          locked: false,
         },
       ],
       new Set(),
@@ -488,6 +500,28 @@ describe("import category overrides", () => {
     });
     expect(preparedUncategorizedRow.categoryId).toBe("uncategorized-expense");
     expect(rows[0]?.fingerprint).toBe(preparedUncategorizedRow.fingerprint);
+  });
+
+  it("rejects Pro-required category overrides without an effective entitlement", () => {
+    expect(
+      captureError(() =>
+        applyCategoryOverridesToRows(
+          [preparedUncategorizedRow],
+          [{ rowNumber: 2, categoryId: "food" }],
+          [{ ...foodOverrideCategory, requiredPlan: "zoption_pro" }],
+          false,
+        ),
+      ),
+    ).toMatchObject({ status: 400, code: "invalid_category_override" });
+
+    expect(
+      applyCategoryOverridesToRows(
+        [preparedUncategorizedRow],
+        [{ rowNumber: 2, categoryId: "food" }],
+        [{ ...foodOverrideCategory, requiredPlan: "zoption_pro" }],
+        true,
+      )[0],
+    ).toMatchObject({ categoryId: "food", categoryIsUncategorized: false });
   });
 
   it("rejects missing rows, inaccessible categories, archived, system, and wrong-kind targets", () => {

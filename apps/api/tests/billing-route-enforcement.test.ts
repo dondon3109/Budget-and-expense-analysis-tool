@@ -38,6 +38,8 @@ const category: CategoryRecord = {
   archived: false,
   system: false,
   origin: "custom",
+  requiredPlan: "free",
+  locked: false,
 };
 
 const exportedTransaction: TransactionListItem = {

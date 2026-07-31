@@ -14,6 +14,7 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { accounts, categories } from "../../../../db/schema";
+import { categoryRequiresProError, hasProEntitlement, isCategoryPlanAvailable } from "./billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 
@@ -180,10 +181,15 @@ async function validateReferences(
   env: Bindings,
   tenantId: string,
   input: TransactionInput,
+  existingCategoryId?: string,
 ): Promise<void> {
   const db = drizzle(env.DB);
   const [category] = await db
-    .select({ kind: categories.kind, archived: categories.archived })
+    .select({
+      kind: categories.kind,
+      archived: categories.archived,
+      requiredPlan: categories.requiredPlan,
+    })
     .from(categories)
     .where(and(eq(categories.id, input.categoryId), eq(categories.tenantId, tenantId)))
     .limit(1);
@@ -196,6 +202,12 @@ async function validateReferences(
       "category_kind_mismatch",
       "The category type must match the transaction type.",
     );
+  }
+  if (
+    input.categoryId !== existingCategoryId &&
+    !isCategoryPlanAvailable(category.requiredPlan, await hasProEntitlement(env, tenantId))
+  ) {
+    throw categoryRequiresProError();
   }
 
   const accountIds =
@@ -361,10 +373,10 @@ export const transactionRepository: TransactionRepository = {
 
   async update(env, tenantId, id, input) {
     const existing = await env.DB.prepare(
-      "SELECT transfer_group_id AS transferGroupId FROM transactions WHERE id = ? AND tenant_id = ?",
+      "SELECT transfer_group_id AS transferGroupId, category_id AS categoryId FROM transactions WHERE id = ? AND tenant_id = ?",
     )
       .bind(id, tenantId)
-      .first<{ transferGroupId: string | null }>();
+      .first<{ transferGroupId: string | null; categoryId: string }>();
     if (!existing) throw new HttpError(404, "transaction_not_found", "Transaction not found.");
     if (existing.transferGroupId) {
       const parsed = transactionInputSchema.safeParse(input);
@@ -372,7 +384,7 @@ export const transactionRepository: TransactionRepository = {
         throw new HttpError(400, "invalid_transfer_update", "Provide complete transfer details.");
       }
       const transfer = parsed.data;
-      await validateReferences(env, tenantId, transfer);
+      await validateReferences(env, tenantId, transfer, existing.categoryId);
       await env.DB.batch([
         env.DB.prepare(
           `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'transfer', notes = ?, updated_at = datetime('now') WHERE tenant_id = ? AND transfer_group_id = ? AND amount_minor < 0`,
@@ -428,7 +440,7 @@ export const transactionRepository: TransactionRepository = {
       throw new HttpError(400, "invalid_transaction_update", "Provide valid transaction details.");
     }
     const transaction = parsed.data;
-    await validateReferences(env, tenantId, transaction);
+    await validateReferences(env, tenantId, transaction, current.categoryId);
     await env.DB.prepare(
       `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = ?, notes = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
     )

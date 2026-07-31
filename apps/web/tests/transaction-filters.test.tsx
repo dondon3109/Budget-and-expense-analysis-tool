@@ -17,6 +17,8 @@ const categories: CategoryRecord[] = [
     archived: false,
     system: true,
     origin: "system",
+    requiredPlan: "free",
+    locked: false,
   },
   {
     id: "uncategorized-expense",
@@ -26,6 +28,8 @@ const categories: CategoryRecord[] = [
     archived: false,
     system: true,
     origin: "system",
+    requiredPlan: "free",
+    locked: false,
   },
   {
     id: "uncategorized-transfer",
@@ -35,6 +39,8 @@ const categories: CategoryRecord[] = [
     archived: false,
     system: true,
     origin: "system",
+    requiredPlan: "free",
+    locked: false,
   },
 ];
 

@@ -87,6 +87,9 @@ export interface AccountBalanceSummary {
 export const categoryOrigins = ["starter", "custom", "system"] as const;
 export type CategoryOrigin = (typeof categoryOrigins)[number];
 
+export const categoryRequiredPlans = ["free", "zoption_pro"] as const;
+export type CategoryRequiredPlan = (typeof categoryRequiredPlans)[number];
+
 export interface CategoryRecord {
   id: string;
   name: string;
@@ -95,6 +98,8 @@ export interface CategoryRecord {
   archived: boolean;
   system: boolean;
   origin: CategoryOrigin;
+  requiredPlan: CategoryRequiredPlan;
+  locked: boolean;
 }
 
 export const subscriptionBillingCycles = ["monthly", "yearly"] as const;

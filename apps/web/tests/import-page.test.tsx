@@ -181,6 +181,8 @@ describe("ImportPage", () => {
         archived: false,
         system: false,
         origin: "custom",
+        requiredPlan: "free",
+        locked: false,
       },
       {
         id: "uncategorized-expense",
@@ -190,6 +192,8 @@ describe("ImportPage", () => {
         archived: false,
         system: true,
         origin: "system",
+        requiredPlan: "free",
+        locked: false,
       },
     ]);
     vi.mocked(previewImport).mockResolvedValue(preview);

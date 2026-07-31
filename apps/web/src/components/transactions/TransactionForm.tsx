@@ -53,11 +53,19 @@ export function TransactionForm({
     () => categories.filter((category) => !category.archived && category.kind === kind),
     [categories, kind],
   );
+  const selectableCategories = useMemo(
+    () => availableCategories.filter((category) => !category.locked),
+    [availableCategories],
+  );
 
   useEffect(() => {
-    if (!availableCategories.some((category) => category.id === categoryId))
-      setCategoryId(availableCategories[0]?.id ?? "");
-  }, [availableCategories, categoryId]);
+    const selectedCategory = availableCategories.find((category) => category.id === categoryId);
+    const preservesLockedHistoricalCategory =
+      selectedCategory?.locked && item?.categoryId === selectedCategory.id;
+    if (!selectedCategory || (selectedCategory.locked && !preservesLockedHistoricalCategory)) {
+      setCategoryId(selectableCategories[0]?.id ?? "");
+    }
+  }, [availableCategories, categoryId, item?.categoryId, selectableCategories]);
   useEffect(() => {
     if (!activeAccounts.some((account) => account.id === accountId))
       setAccountId(activeAccounts[0]?.id ?? "");
@@ -217,12 +225,13 @@ export function TransactionForm({
                 onChange={(event) => setCategoryId(event.target.value)}
                 required
               >
-                {availableCategories.length === 0 && (
-                  <option value="">Create a {kind} category first</option>
+                {selectableCategories.length === 0 && (
+                  <option value="">Upgrade or create a {kind} category first</option>
                 )}
                 {availableCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
+                  <option key={category.id} value={category.id} disabled={category.locked}>
                     {category.name}
+                    {category.locked ? " — Pro required" : ""}
                   </option>
                 ))}
               </select>

@@ -20,6 +20,8 @@ const categories: CategoryRecord[] = [
     archived: false,
     system: false,
     origin: "custom",
+    requiredPlan: "free",
+    locked: false,
   },
   {
     id: "salary",
@@ -29,6 +31,8 @@ const categories: CategoryRecord[] = [
     archived: false,
     system: false,
     origin: "custom",
+    requiredPlan: "free",
+    locked: false,
   },
   {
     id: "old",
@@ -38,6 +42,8 @@ const categories: CategoryRecord[] = [
     archived: true,
     system: false,
     origin: "custom",
+    requiredPlan: "free",
+    locked: false,
   },
 ];
 
@@ -98,5 +104,26 @@ describe("SubscriptionForm", () => {
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("shows expired-Pro categories as disabled and selects an eligible category", () => {
+    const lockedCategory: CategoryRecord = {
+      ...categories[0]!,
+      id: "pro-entertainment",
+      name: "Pro entertainment",
+      requiredPlan: "zoption_pro",
+      locked: true,
+    };
+    render(
+      <SubscriptionForm
+        categories={[lockedCategory, categories[0]!]}
+        busy={false}
+        onSubmit={vi.fn(async () => undefined)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Pro entertainment — Pro required" })).toBeDisabled();
+    expect(screen.getByLabelText("Category")).toHaveValue("entertainment");
   });
 });

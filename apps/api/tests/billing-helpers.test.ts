@@ -4,6 +4,8 @@ import {
   billingRepository,
   customCategoryLimitError,
   getCustomCategoryAllowance,
+  hasEffectiveProEntitlement,
+  isCategoryPlanAvailable,
   isMonthlyLimitDatabaseError,
   isNonTerminalBillingStatus,
   isProBillingStatus,
@@ -54,6 +56,25 @@ describe("billing time and status helpers", () => {
   ] as const)("classifies %s subscriptions", (status, isPro, isNonTerminal) => {
     expect(isProBillingStatus(status)).toBe(isPro);
     expect(isNonTerminalBillingStatus(status)).toBe(isNonTerminal);
+  });
+
+  it.each([
+    ["active", "2026-08-01T00:00:00.001Z", true],
+    ["trialing", "2026-08-01T00:00:00.001Z", true],
+    ["active", "2026-08-01T00:00:00.000Z", false],
+    ["active", "2026-07-31T23:59:59.999Z", false],
+    ["active", null, false],
+    ["past_due", "2026-08-01T00:00:00.001Z", false],
+  ] as const)("grants Pro only before an eligible period ends", (status, periodEnd, expected) => {
+    expect(
+      hasEffectiveProEntitlement(status, periodEnd, new Date("2026-08-01T00:00:00.000Z")),
+    ).toBe(expected);
+  });
+
+  it("locks Pro-required categories when the entitlement is unavailable", () => {
+    expect(isCategoryPlanAvailable("free", false)).toBe(true);
+    expect(isCategoryPlanAvailable("zoption_pro", true)).toBe(true);
+    expect(isCategoryPlanAvailable("zoption_pro", false)).toBe(false);
   });
 });
 

@@ -41,12 +41,16 @@ export function SubscriptionForm({
     () => categories.filter((category) => !category.archived && category.kind === "expense"),
     [categories],
   );
+  const selectableCategories = useMemo(
+    () => availableCategories.filter((category) => !category.locked),
+    [availableCategories],
+  );
 
   useEffect(() => {
-    if (!availableCategories.some((category) => category.id === categoryId)) {
-      setCategoryId(availableCategories[0]?.id ?? "");
+    if (!selectableCategories.some((category) => category.id === categoryId)) {
+      setCategoryId(selectableCategories[0]?.id ?? "");
     }
-  }, [availableCategories, categoryId]);
+  }, [categoryId, selectableCategories]);
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
@@ -171,12 +175,13 @@ export function SubscriptionForm({
                 onChange={(event) => setCategoryId(event.target.value)}
                 required
               >
-                {availableCategories.length === 0 && (
-                  <option value="">Create an expense category first</option>
+                {selectableCategories.length === 0 && (
+                  <option value="">Upgrade or create an expense category first</option>
                 )}
                 {availableCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
+                  <option key={category.id} value={category.id} disabled={category.locked}>
                     {category.name}
+                    {category.locked ? " — Pro required" : ""}
                   </option>
                 ))}
               </select>
