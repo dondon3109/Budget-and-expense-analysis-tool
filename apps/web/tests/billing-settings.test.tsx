@@ -5,7 +5,7 @@ import "@testing-library/jest-dom/vitest";
 import type { User } from "@supabase/supabase-js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { BillingSubscriptionStatus, BillingSummary } from "@zoption/shared";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -96,8 +96,31 @@ describe("BillingSettings", () => {
     renderSettings(summary(null));
 
     expect(await screen.findByText("You’re using the Free plan")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Upgrade monthly/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose a Pro plan" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Upgrade monthly|Upgrade annually/ }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Manage billing" })).not.toBeInTheDocument();
+  });
+
+  it("opens the Pro plan chooser and returns focus to its Settings trigger", async () => {
+    renderSettings(summary(null));
+
+    const trigger = await screen.findByRole("button", { name: "Choose a Pro plan" });
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Choose how you want to use Zoption Pro",
+    });
+    expect(screen.getByRole("button", { name: "Subscribe Monthly · $2.99/month" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Subscribe Annual · $24.99/year" })).toBeVisible();
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(
+      screen.queryByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
+    ).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
   it("shows exact Free and Pro limits, including the category allowance", async () => {
@@ -118,6 +141,43 @@ describe("BillingSettings", () => {
     );
   });
 
+  it("labels the comparison and clearly identifies the Free plan as current", async () => {
+    renderSettings(summary(null));
+
+    const comparison = await screen.findByRole("region", { name: "Free and Pro, side by side" });
+    const table = within(comparison).getByRole("table", {
+      name: "Free and Zoption Pro plan feature comparison",
+    });
+    const freeHeader = within(table).getByRole("columnheader", { name: /Free\s*Current plan/ });
+    const proHeader = within(table).getByRole("columnheader", { name: "Zoption Pro" });
+
+    expect(comparison).toHaveAttribute("tabindex", "0");
+    expect(comparison).toHaveAttribute(
+      "aria-describedby",
+      "billing-plan-comparison-description billing-plan-scroll-hint",
+    );
+    expect(freeHeader).toHaveAttribute("aria-current", "true");
+    expect(proHeader).not.toHaveAttribute("aria-current");
+    expect(within(table).getAllByText("Current plan")).toHaveLength(1);
+    expect(screen.queryByText(/Effective plan:/)).not.toBeInTheDocument();
+  });
+
+  it("identifies Zoption Pro as current for active subscriptions", async () => {
+    renderSettings(summary("active"));
+
+    const table = await screen.findByRole("table", {
+      name: "Free and Zoption Pro plan feature comparison",
+    });
+    const freeHeader = within(table).getByRole("columnheader", { name: "Free" });
+    const proHeader = within(table).getByRole("columnheader", {
+      name: /Zoption Pro\s*Current plan/,
+    });
+
+    expect(freeHeader).not.toHaveAttribute("aria-current");
+    expect(proHeader).toHaveAttribute("aria-current", "true");
+    expect(within(table).getAllByText("Current plan")).toHaveLength(1);
+  });
+
   it("uses capability flags for billing actions", async () => {
     renderSettings(
       summary("past_due", {
@@ -127,7 +187,7 @@ describe("BillingSettings", () => {
     );
 
     expect(await screen.findByRole("button", { name: "Manage billing" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Upgrade monthly/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose a Pro plan" })).not.toBeInTheDocument();
     expect(screen.getByText(/new checkout is unavailable/i)).toBeInTheDocument();
   });
 

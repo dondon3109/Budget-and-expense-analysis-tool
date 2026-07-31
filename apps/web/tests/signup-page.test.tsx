@@ -37,7 +37,8 @@ vi.mock("../src/components/auth/AuthLayout", () => ({
 import { SignupPage } from "../src/pages/SignupPage";
 
 function CurrentPath() {
-  return <output data-testid="current-path">{useLocation().pathname}</output>;
+  const location = useLocation();
+  return <output data-testid="current-path">{`${location.pathname}${location.search}`}</output>;
 }
 
 function renderSignup(initialEntry = "/signup") {
@@ -157,7 +158,9 @@ describe("SignupPage", () => {
     fillValidCredentials();
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
-    await waitFor(() => expect(screen.getByTestId("current-path")).toHaveTextContent("/app"));
+    await waitFor(() =>
+      expect(screen.getByTestId("current-path")).toHaveTextContent("/app?proCheckout=open"),
+    );
   });
 
   it("disables the form while signup is pending", async () => {

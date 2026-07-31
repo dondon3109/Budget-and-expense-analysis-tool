@@ -18,8 +18,8 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { useBillingSummary } from "../hooks/useBillingSummary";
@@ -78,6 +78,7 @@ export function DashboardPage() {
   const [removingAccount, setRemovingAccount] = useState<AccountBalanceSummaryItem>();
   const [cashflowView, setCashflowView] = useState<CashflowTrendView>("weekly");
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const subscribeTriggerRef = useRef<HTMLElement | null>(null);
   const anchorDate = localIsoDate();
   const summaryMonth = currentMonth();
@@ -94,6 +95,16 @@ export function DashboardPage() {
     queryFn: () => getCashflowTrend(workspace, { view: cashflowView, anchorDate }),
   });
   const billingSummary = useBillingSummary(workspace);
+
+  useEffect(() => {
+    if (searchParams.get("proCheckout") !== "open" || !billingSummary.data) return;
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete("proCheckout");
+    setSearchParams(nextSearchParams, { replace: true });
+    if (billingSummary.data.plan === "free") setIsProCheckoutOpen(true);
+  }, [billingSummary.data, searchParams, setSearchParams]);
+
   const refreshAccountData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),

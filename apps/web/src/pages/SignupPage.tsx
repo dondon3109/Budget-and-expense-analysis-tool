@@ -57,7 +57,7 @@ export function SignupPage() {
     try {
       const result = await signUp(normalizedEmail, password);
       if (result.confirmationRequired) setConfirmationSent(true);
-      else void navigate("/app", { replace: true });
+      else void navigate("/app?proCheckout=open", { replace: true });
     } catch (submitError) {
       setError(
         submitError instanceof AuthOperationError
