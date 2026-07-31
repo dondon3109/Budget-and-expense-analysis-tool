@@ -5,16 +5,12 @@ import {
 } from "@zoption/shared";
 import { Hono } from "hono";
 
-import type { BillingRepository } from "../db/billing";
 import type { CategoryRepository } from "../db/categories";
 import { HttpError } from "../errors";
 import { parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
-export function createCategoryRoutes(
-  repository: CategoryRepository,
-  billing: Pick<BillingRepository, "requirePro">,
-) {
+export function createCategoryRoutes(repository: CategoryRepository) {
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/", async (context) => {
@@ -32,7 +28,6 @@ export function createCategoryRoutes(
   });
 
   routes.post("/", async (context) => {
-    await billing.requirePro(context.env, context.get("tenant").tenantId, "category_management");
     const body = await readJson(context);
     const parsed = categoryInputSchema.safeParse(body);
     if (!parsed.success) {
@@ -50,7 +45,6 @@ export function createCategoryRoutes(
   });
 
   routes.patch("/:id", async (context) => {
-    await billing.requirePro(context.env, context.get("tenant").tenantId, "category_management");
     const body = await readJson(context);
     const parsed = categoryUpdateSchema.safeParse(body);
     if (!parsed.success) {

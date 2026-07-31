@@ -2,6 +2,7 @@ import type {
   BillingCapability,
   BillingFeature,
   BillingInterval,
+  BillingResourceAllowance,
   BillingSubscriptionStatus,
   BillingSummary,
   BillingUsage,
@@ -19,6 +20,8 @@ const PRO_LIMITS: Record<BillingFeature, number> = {
   assistant_question: 100,
   file_import: 10,
 };
+
+export const FREE_CUSTOM_CATEGORY_LIMIT = 1;
 
 export const PRO_BILLING_STATUSES = ["active", "trialing"] as const;
 export const NON_TERMINAL_BILLING_STATUSES = ["active", "trialing", "past_due", "paused"] as const;
@@ -184,6 +187,42 @@ async function usage(
   return { feature, used: Number(row?.count ?? 0), limit, resetsAt: nextManilaMonth() };
 }
 
+export async function getCustomCategoryAllowance(
+  env: Bindings,
+  tenantId: string,
+  isPro?: boolean,
+): Promise<BillingResourceAllowance> {
+  const row = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM categories WHERE tenant_id = ? AND origin = 'custom' AND archived = 0",
+  )
+    .bind(tenantId)
+    .first<{ count: number }>();
+  const hasPro = isPro ?? (await hasProSubscription(env, tenantId));
+  return {
+    resource: "custom_category",
+    used: Number(row?.count ?? 0),
+    limit: hasPro ? null : FREE_CUSTOM_CATEGORY_LIMIT,
+  };
+}
+
+export async function customCategoryLimitError(
+  env: Bindings,
+  tenantId: string,
+): Promise<HttpError> {
+  const allowance = await getCustomCategoryAllowance(env, tenantId, false);
+  return new HttpError(
+    409,
+    "resource_limit_reached",
+    "You have reached your custom category limit.",
+    {
+      resource: allowance.resource,
+      used: allowance.used,
+      limit: FREE_CUSTOM_CATEGORY_LIMIT,
+      billingPath: "/app/settings#plan-and-billing",
+    },
+  );
+}
+
 async function monthlyLimitError(
   env: Bindings,
   tenantId: string,
@@ -260,6 +299,7 @@ export const billingRepository: BillingRepository = {
           usage(env, tenantId, feature, limits[feature]),
         ),
       ),
+      allowances: [await getCustomCategoryAllowance(env, tenantId, isPro)],
     };
   },
 

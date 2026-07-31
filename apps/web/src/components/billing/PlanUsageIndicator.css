@@ -1,0 +1,134 @@
+/* Shared plan usage indicators own metered and persistent allowance states. */
+.plan-usage-indicator {
+  min-width: 0;
+  padding: 13px 14px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.plan-usage-heading,
+.plan-usage-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plan-usage-heading span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.plan-usage-heading strong {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.plan-usage-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-soft);
+}
+
+.plan-usage-track i {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--action);
+}
+
+.plan-usage-meta small,
+.plan-usage-indicator > p {
+  color: var(--subtle);
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.plan-usage-indicator > p {
+  margin: 0;
+  font-weight: 500;
+}
+
+.plan-usage-meta a {
+  flex: 0 0 auto;
+  color: var(--action);
+  font-size: 9px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.plan-usage-meta a:hover {
+  text-decoration: underline;
+}
+
+.plan-usage-indicator[data-state="warning"] {
+  border-color: color-mix(in srgb, var(--warning) 32%, var(--line));
+  background: color-mix(in srgb, var(--warning-soft) 55%, var(--surface));
+}
+
+.plan-usage-indicator[data-state="warning"] .plan-usage-track i {
+  background: var(--warning);
+}
+
+.plan-usage-indicator[data-state="warning"] .plan-usage-heading strong {
+  color: var(--warning);
+}
+
+.plan-usage-indicator[data-state="exhausted"] {
+  border-color: color-mix(in srgb, var(--danger) 28%, var(--line));
+  background: color-mix(in srgb, var(--danger-soft) 48%, var(--surface));
+}
+
+.plan-usage-indicator[data-state="exhausted"] .plan-usage-track i {
+  background: var(--danger);
+}
+
+.plan-usage-indicator[data-state="exhausted"] .plan-usage-heading strong {
+  color: var(--danger);
+}
+
+.plan-usage-indicator[data-state="unlimited"] {
+  background: color-mix(in srgb, var(--success-soft) 45%, var(--surface));
+}
+
+.plan-usage-indicator[data-state="unlimited"] .plan-usage-heading strong {
+  color: var(--success);
+}
+
+.plan-usage-indicator.compact {
+  min-width: 190px;
+  padding: 7px 9px;
+  gap: 3px;
+  border-radius: 9px;
+  background: var(--surface-soft);
+}
+
+.plan-usage-indicator.compact .plan-usage-heading span,
+.plan-usage-indicator.compact .plan-usage-heading strong,
+.plan-usage-indicator.compact .plan-usage-meta small,
+.plan-usage-indicator.compact .plan-usage-meta a {
+  font-size: 8px;
+}
+
+.plan-usage-indicator.compact .plan-usage-heading span {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+@media (max-width: 620px) {
+  .plan-usage-indicator.compact {
+    width: 100%;
+    min-width: 0;
+  }
+}

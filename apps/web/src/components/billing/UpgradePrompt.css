@@ -13,6 +13,15 @@
   background: color-mix(in srgb, var(--success-soft) 52%, var(--surface));
 }
 
+.upgrade-prompt[data-tone="warning"] {
+  border-color: color-mix(in srgb, var(--warning) 30%, var(--line));
+  background: color-mix(in srgb, var(--warning-soft) 58%, var(--surface));
+}
+
+.upgrade-prompt[data-tone="warning"] .upgrade-prompt-icon {
+  color: var(--warning);
+}
+
 .upgrade-prompt-icon {
   width: 30px;
   height: 30px;
@@ -41,7 +50,7 @@
 }
 
 .upgrade-prompt-link {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 10px;
   display: inline-flex;
   align-items: center;

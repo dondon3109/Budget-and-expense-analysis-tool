@@ -10,7 +10,13 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImportDraftProvider } from "../src/import/ImportDraftProvider";
-import { ApiRequestError, commitImport, getCategories, previewImport } from "../src/lib/api";
+import {
+  ApiRequestError,
+  commitImport,
+  getBillingSummary,
+  getCategories,
+  previewImport,
+} from "../src/lib/api";
 import type { WorkbookConversion } from "../src/lib/workbookParser";
 import { ImportPage } from "../src/pages/ImportPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
@@ -31,6 +37,7 @@ vi.mock("../src/auth/AuthProvider", () => ({
 vi.mock("../src/lib/api", async (importOriginal) => ({
   ...(await importOriginal()),
   commitImport: vi.fn(),
+  getBillingSummary: vi.fn(),
   getCategories: vi.fn(),
   previewImport: vi.fn(),
 }));
@@ -140,6 +147,31 @@ afterEach(cleanup);
 describe("ImportPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getBillingSummary).mockResolvedValue({
+      plan: "free",
+      status: null,
+      interval: null,
+      currentPeriodEndsAt: null,
+      scheduledChangeAt: null,
+      canCheckout: true,
+      canManageBilling: false,
+      nonTerminalSubscriptionCount: 0,
+      usages: [
+        {
+          feature: "assistant_question",
+          used: 0,
+          limit: 4,
+          resetsAt: "2026-08-01T00:00:00.000Z",
+        },
+        {
+          feature: "file_import",
+          used: 0,
+          limit: 1,
+          resetsAt: "2026-08-01T00:00:00.000Z",
+        },
+      ],
+      allowances: [{ resource: "custom_category", used: 0, limit: 1 }],
+    });
     vi.mocked(getCategories).mockResolvedValue([
       {
         id: "food",
@@ -148,6 +180,7 @@ describe("ImportPage", () => {
         color: "#dc8b3f",
         archived: false,
         system: false,
+        origin: "custom",
       },
       {
         id: "uncategorized-expense",
@@ -156,6 +189,7 @@ describe("ImportPage", () => {
         color: "#6b7280",
         archived: false,
         system: true,
+        origin: "system",
       },
     ]);
     vi.mocked(previewImport).mockResolvedValue(preview);
@@ -164,6 +198,15 @@ describe("ImportPage", () => {
       importedCount: 1,
       rejectedCount: 0,
     });
+  });
+
+  it("shows the committed import allowance before file preparation", async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole("progressbar", { name: "Committed file imports this month" }),
+    ).toHaveAttribute("aria-valuenow", "0");
+    expect(screen.getByText(/Previewing is free/)).toBeInTheDocument();
   });
 
   it("keeps CSV imports on the existing mapping and preview path", async () => {
@@ -637,7 +680,8 @@ describe("ImportPage", () => {
         "monthly_limit_reached",
         {
           feature: "file_import",
-          limit: 2,
+          used: 1,
+          limit: 1,
           resetsAt: "2026-08-01T00:00:00.000Z",
         },
       ),
@@ -653,8 +697,11 @@ describe("ImportPage", () => {
     await user.click(screen.getByRole("button", { name: "Import 1 ready rows" }));
 
     expect(
-      await screen.findByRole("alert", { name: "Monthly plan limit reached" }),
-    ).toHaveTextContent("2 file imports");
+      await screen.findByRole("dialog", { name: "No file imports remaining this month" }),
+    ).toHaveTextContent("1 of 1 file imports");
+    expect(screen.getByRole("alert", { name: "Monthly plan limit reached" })).toHaveTextContent(
+      "1 of 1 file imports",
+    );
     expect(screen.getByText("Will import as expense · Food & dining")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Import 1 ready rows" })).toBeInTheDocument();
   });

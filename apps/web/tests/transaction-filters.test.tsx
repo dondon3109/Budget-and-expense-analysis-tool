@@ -16,6 +16,7 @@ const categories: CategoryRecord[] = [
     color: "#6b7280",
     archived: false,
     system: true,
+    origin: "system",
   },
   {
     id: "uncategorized-expense",
@@ -24,6 +25,7 @@ const categories: CategoryRecord[] = [
     color: "#6b7280",
     archived: false,
     system: true,
+    origin: "system",
   },
   {
     id: "uncategorized-transfer",
@@ -32,6 +34,7 @@ const categories: CategoryRecord[] = [
     color: "#6b7280",
     archived: false,
     system: true,
+    origin: "system",
   },
 ];
 

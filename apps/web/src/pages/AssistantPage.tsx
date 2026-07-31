@@ -5,7 +5,7 @@ import type {
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { useAssistantSession } from "../assistant/AssistantSessionProvider";
 import { useAuth } from "../auth/AuthProvider";
@@ -14,8 +14,11 @@ import { AssistantConsent } from "../components/assistant/AssistantConsent";
 import { AssistantConversation } from "../components/assistant/AssistantConversation";
 import { AssistantIdentityDialog } from "../components/assistant/AssistantIdentityDialog";
 import { AssistantThreadList } from "../components/assistant/AssistantThreadList";
+import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
+import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { AppShell } from "../components/layout/AppShell";
+import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
   createAssistantThread,
   deleteAllAssistantThreads,
@@ -25,6 +28,7 @@ import {
   getAssistantThreads,
   grantAssistantConsent,
   isBillingEnforcementError,
+  isMonthlyLimitReachedError,
   sendAssistantMessage,
   updateAssistantIdentity,
 } from "../lib/api";
@@ -40,10 +44,13 @@ export function AssistantPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
+  const billingQuery = useBillingSummary(workspace);
   const { activeThreadId, draft, setActiveThreadId, setDraft, startNewChat } =
     useAssistantSession();
+  const limitTriggerRef = useRef<HTMLElement | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string>();
   const [sendError, setSendError] = useState<Error>();
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
 
@@ -135,8 +142,12 @@ export function AssistantPage() {
     },
     onError: (error) => {
       setPendingMessage(undefined);
-      setSendError(error instanceof Error ? error : new Error("Your message could not be sent."));
+      const nextError =
+        error instanceof Error ? error : new Error("Your message could not be sent.");
+      setSendError(nextError);
+      if (isMonthlyLimitReachedError(nextError)) setLimitDialogOpen(true);
     },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.billing(workspace) }),
   });
 
   const deleteMutation = useMutation({
@@ -200,6 +211,8 @@ export function AssistantPage() {
   function send() {
     const message = draft.trim();
     if (!message || sendMutation.isPending) return;
+    limitTriggerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setPendingMessage(message);
     setSendError(undefined);
     sendMutation.mutate(message);
@@ -256,6 +269,9 @@ export function AssistantPage() {
       ? user.user_metadata.display_name
       : undefined;
   const busy = sendMutation.isPending || deleteMutation.isPending || deleteAllMutation.isPending;
+  const assistantUsage = billingQuery.data?.usages.find(
+    (usage) => usage.feature === "assistant_question",
+  );
 
   return (
     <AppShell>
@@ -299,7 +315,19 @@ export function AssistantPage() {
               <span>
                 <Sparkles size={15} aria-hidden="true" /> Read-only financial answers
               </span>
-              <small>90-day private history</small>
+              <div className="assistant-chat-meta">
+                {assistantUsage && (
+                  <PlanUsageIndicator
+                    compact
+                    label="AI questions this month"
+                    used={assistantUsage.used}
+                    limit={assistantUsage.limit}
+                    resetsAt={assistantUsage.resetsAt}
+                    showUpgrade={billingQuery.data?.plan === "free"}
+                  />
+                )}
+                <small>90-day private history</small>
+              </div>
             </div>
             {messages.isError ? (
               <div className="assistant-chat-error" role="alert">
@@ -343,6 +371,13 @@ export function AssistantPage() {
           serverError={identityMutation.error?.message}
           onSubmit={(identity) => identityMutation.mutate(identity)}
           onClose={() => setEditingIdentity(false)}
+        />
+      )}
+      {limitDialogOpen && (
+        <BillingLimitDialog
+          error={sendError}
+          returnFocus={limitTriggerRef.current}
+          onClose={() => setLimitDialogOpen(false)}
         />
       )}
     </AppShell>

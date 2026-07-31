@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { evaluatePassword } from "../auth/passwordPolicy";
 import { useAuth } from "../auth/AuthProvider";
@@ -36,6 +36,7 @@ export function SettingsPage() {
     updatePassword,
     deleteAccount,
   } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const savedDisplayName = displayNameFromMetadata(user?.user_metadata);
@@ -78,6 +79,16 @@ export function SettingsPage() {
     setAvatarPreviewUrl(previewUrl);
     return () => URL.revokeObjectURL(previewUrl);
   }, [selectedAvatar]);
+
+  useEffect(() => {
+    if (location.hash !== "#plan-and-billing") return;
+    const frame = window.requestAnimationFrame(() => {
+      const section = document.getElementById("plan-and-billing");
+      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+      section?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.hash]);
 
   const normalizedDisplayName = displayName.trim();
   const displayNameUnchanged = normalizedDisplayName === savedDisplayName.trim();

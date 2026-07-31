@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   billingRepository,
+  customCategoryLimitError,
+  getCustomCategoryAllowance,
   isMonthlyLimitDatabaseError,
   isNonTerminalBillingStatus,
   isProBillingStatus,
@@ -52,6 +54,50 @@ describe("billing time and status helpers", () => {
   ] as const)("classifies %s subscriptions", (status, isPro, isNonTerminal) => {
     expect(isProBillingStatus(status)).toBe(isPro);
     expect(isNonTerminalBillingStatus(status)).toBe(isNonTerminal);
+  });
+});
+
+describe("custom category allowances", () => {
+  function categoryEnvironment(used: number): Bindings {
+    return {
+      DB: {
+        prepare: vi.fn(() => ({
+          bind: vi.fn(() => ({ first: vi.fn(async () => ({ count: used })) })),
+        })),
+      } as unknown as D1Database,
+    };
+  }
+
+  it("returns one Free custom category and unlimited Pro categories", async () => {
+    await expect(
+      getCustomCategoryAllowance(categoryEnvironment(0), "user:user-1", false),
+    ).resolves.toEqual({
+      resource: "custom_category",
+      used: 0,
+      limit: 1,
+    });
+    await expect(
+      getCustomCategoryAllowance(categoryEnvironment(8), "user:user-1", true),
+    ).resolves.toEqual({
+      resource: "custom_category",
+      used: 8,
+      limit: null,
+    });
+  });
+
+  it("returns a stable resource-limit response with current usage", async () => {
+    await expect(
+      customCategoryLimitError(categoryEnvironment(2), "user:user-1"),
+    ).resolves.toMatchObject({
+      status: 409,
+      code: "resource_limit_reached",
+      details: {
+        resource: "custom_category",
+        used: 2,
+        limit: 1,
+        billingPath: "/app/settings#plan-and-billing",
+      },
+    });
   });
 });
 

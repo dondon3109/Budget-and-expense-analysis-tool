@@ -319,7 +319,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/assistant", createAssistantRoutes(assistantService));
   app.route("/api/app/transactions", createTransactionRoutes(transactionStore));
   app.route("/api/app/accounts", createAccountRoutes(accountStore, billingStore));
-  app.route("/api/app/categories", createCategoryRoutes(categoryStore, billingStore));
+  app.route("/api/app/categories", createCategoryRoutes(categoryStore));
   app.route("/api/app/budgets", createBudgetRoutes(budgetStore));
   app.route("/api/app/billing", createBillingRoutes(billingStore));
   app.route("/api/app/subscriptions", createSubscriptionRoutes(subscriptionStore));

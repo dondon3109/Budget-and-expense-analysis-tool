@@ -27,6 +27,7 @@ const categories: CategoryRecord[] = [
     color: "#dc8b3f",
     archived: false,
     system: false,
+    origin: "custom",
   },
 ];
 
@@ -38,6 +39,7 @@ const uncategorizedCategories: CategoryRecord[] = [
     color: "#6b7280",
     archived: false,
     system: true,
+    origin: "system",
   },
   {
     id: "uncategorized-expense",
@@ -46,6 +48,7 @@ const uncategorizedCategories: CategoryRecord[] = [
     color: "#6b7280",
     archived: false,
     system: true,
+    origin: "system",
   },
   {
     id: "uncategorized-transfer",
@@ -54,6 +57,7 @@ const uncategorizedCategories: CategoryRecord[] = [
     color: "#6b7280",
     archived: false,
     system: true,
+    origin: "system",
   },
 ];
 
@@ -218,6 +222,7 @@ describe("import preparation", () => {
           color: "#2a78d6",
           archived: false,
           system: false,
+          origin: "custom",
         },
       ],
       new Set(),

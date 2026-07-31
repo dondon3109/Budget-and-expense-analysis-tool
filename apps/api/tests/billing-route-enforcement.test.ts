@@ -37,6 +37,7 @@ const category: CategoryRecord = {
   color: "#4f7faf",
   archived: false,
   system: false,
+  origin: "custom",
 };
 
 const exportedTransaction: TransactionListItem = {
@@ -136,32 +137,6 @@ function testApp(options: Parameters<typeof createApp>[0]) {
 describe("Pro route enforcement", () => {
   it.each([
     {
-      name: "category creation",
-      request: {
-        path: "/api/app/categories",
-        init: {
-          method: "POST",
-          headers: JSON_HEADERS,
-          body: JSON.stringify({ name: "Health", kind: "expense", color: "#4f7faf" }),
-        },
-      },
-      repositoryCall: "category.create" as const,
-      capability: "category_management" as const,
-    },
-    {
-      name: "category update",
-      request: {
-        path: "/api/app/categories/category-1",
-        init: {
-          method: "PATCH",
-          headers: JSON_HEADERS,
-          body: JSON.stringify({ name: "Medical" }),
-        },
-      },
-      repositoryCall: "category.update" as const,
-      capability: "category_management" as const,
-    },
-    {
       name: "account creation",
       request: {
         path: "/api/app/accounts",
@@ -227,11 +202,7 @@ describe("Pro route enforcement", () => {
           ? vi.mocked(stores.accounts.update!)
           : repositoryCall === "account.remove"
             ? vi.mocked(stores.accounts.remove!)
-            : repositoryCall === "category.create"
-              ? vi.mocked(stores.categories.create)
-              : repositoryCall === "category.update"
-                ? vi.mocked(stores.categories.update)
-                : vi.mocked(stores.transactions.export);
+            : vi.mocked(stores.transactions.export);
     expect(repositoryMethod).not.toHaveBeenCalled();
   });
 
@@ -252,7 +223,7 @@ describe("Pro route enforcement", () => {
     expect(loader).not.toHaveBeenCalled();
   });
 
-  it("checks Pro before category and account writes", async () => {
+  it("lets the category repository enforce its allowance while account writes remain Pro-gated", async () => {
     const requirePro = vi.fn(async () => undefined);
     const accountStore = accounts();
     const categoryStore = categories();
@@ -274,13 +245,15 @@ describe("Pro route enforcement", () => {
     });
 
     expect(categoryResponse.status).toBe(201);
+    expect(categoryStore.create).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      name: "Health",
+      kind: "expense",
+      color: "#4f7faf",
+    });
     expect(accountResponse.status).toBe(201);
-    expect(requirePro).toHaveBeenNthCalledWith(1, undefined, TENANT_ID, "category_management");
-    expect(requirePro).toHaveBeenNthCalledWith(2, undefined, TENANT_ID, "account_management");
+    expect(requirePro).toHaveBeenCalledOnce();
+    expect(requirePro).toHaveBeenCalledWith(undefined, TENANT_ID, "account_management");
     expect(requirePro.mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(categoryStore.create).mock.invocationCallOrder[0]!,
-    );
-    expect(requirePro.mock.invocationCallOrder[1]).toBeLessThan(
       vi.mocked(accountStore.create!).mock.invocationCallOrder[0]!,
     );
   });

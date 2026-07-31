@@ -100,6 +100,7 @@ describe("authenticated API requests", () => {
           message: "You have reached this month’s plan limit.",
           details: {
             feature: "assistant_question",
+            used: 10,
             limit: 10,
             resetsAt: "2026-08-01T00:00:00.000Z",
           },
@@ -115,6 +116,7 @@ describe("authenticated API requests", () => {
       code: "monthly_limit_reached",
       details: {
         feature: "assistant_question",
+        used: 10,
         limit: 10,
         resetsAt: "2026-08-01T00:00:00.000Z",
       },

@@ -84,6 +84,9 @@ export interface AccountBalanceSummary {
   items: AccountBalanceSummaryItem[];
 }
 
+export const categoryOrigins = ["starter", "custom", "system"] as const;
+export type CategoryOrigin = (typeof categoryOrigins)[number];
+
 export interface CategoryRecord {
   id: string;
   name: string;
@@ -91,6 +94,7 @@ export interface CategoryRecord {
   color: string;
   archived: boolean;
   system: boolean;
+  origin: CategoryOrigin;
 }
 
 export const subscriptionBillingCycles = ["monthly", "yearly"] as const;
@@ -283,6 +287,7 @@ export type BillingSubscriptionStatus = (typeof billingSubscriptionStatuses)[num
 
 export type BillingPlan = "free" | "zoption_pro";
 export type BillingFeature = "assistant_question" | "file_import";
+export type BillingResource = "custom_category";
 export type BillingCapability =
   | BillingFeature
   | "category_management"
@@ -297,6 +302,12 @@ export interface BillingUsage {
   resetsAt: string;
 }
 
+export interface BillingResourceAllowance {
+  resource: BillingResource;
+  used: number;
+  limit: number | null;
+}
+
 export interface BillingSummary {
   plan: BillingPlan;
   status: BillingSubscriptionStatus | null;
@@ -307,6 +318,7 @@ export interface BillingSummary {
   canManageBilling: boolean;
   nonTerminalSubscriptionCount: number;
   usages: BillingUsage[];
+  allowances: BillingResourceAllowance[];
 }
 
 export type AssistantMessageRole = "user" | "assistant";

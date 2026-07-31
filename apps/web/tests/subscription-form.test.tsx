@@ -19,6 +19,7 @@ const categories: CategoryRecord[] = [
     color: "#7363a6",
     archived: false,
     system: false,
+    origin: "custom",
   },
   {
     id: "salary",
@@ -27,6 +28,7 @@ const categories: CategoryRecord[] = [
     color: "#2a78d6",
     archived: false,
     system: false,
+    origin: "custom",
   },
   {
     id: "old",
@@ -35,6 +37,7 @@ const categories: CategoryRecord[] = [
     color: "#eda100",
     archived: true,
     system: false,
+    origin: "custom",
   },
 ];
 

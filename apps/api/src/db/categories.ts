@@ -3,6 +3,7 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { categories } from "../../../../db/schema";
+import { customCategoryLimitError, FREE_CUSTOM_CATEGORY_LIMIT } from "./billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 
@@ -34,6 +35,18 @@ async function ensureUniqueName(env: Bindings, name: string, tenantId: string, e
   }
 }
 
+function rethrowCategoryWriteError(error: unknown): never {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (
+    message.includes("unique constraint failed") &&
+    message.includes("categories.tenant_id") &&
+    message.includes("categories.name")
+  ) {
+    throw new HttpError(409, "category_name_exists", "A category with this name already exists.");
+  }
+  throw error;
+}
+
 export const categoryRepository: CategoryRepository = {
   async list(env, tenantId, includeArchived = false) {
     const db = drizzle(env.DB);
@@ -45,6 +58,7 @@ export const categoryRepository: CategoryRepository = {
         color: categories.color,
         archived: categories.archived,
         systemKey: categories.systemKey,
+        origin: categories.origin,
       })
       .from(categories)
       .where(
@@ -62,9 +76,35 @@ export const categoryRepository: CategoryRepository = {
   async create(env, tenantId, input) {
     await ensureUniqueName(env, input.name, tenantId);
     const id = crypto.randomUUID();
-    const db = drizzle(env.DB);
-    await db.insert(categories).values({ id, tenantId, ...input });
-    return { id, ...input, archived: false, system: false };
+    let result: D1Result;
+    try {
+      result = await env.DB.prepare(
+        `INSERT INTO categories (id, tenant_id, name, kind, color, origin)
+         SELECT ?, ?, ?, ?, ?, 'custom'
+         WHERE EXISTS (
+           SELECT 1 FROM billing_subscriptions
+           WHERE tenant_id = ? AND status IN ('active', 'trialing')
+         ) OR (
+           SELECT COUNT(*) FROM categories
+           WHERE tenant_id = ? AND origin = 'custom' AND archived = 0
+         ) < ?`,
+      )
+        .bind(
+          id,
+          tenantId,
+          input.name,
+          input.kind,
+          input.color,
+          tenantId,
+          tenantId,
+          FREE_CUSTOM_CATEGORY_LIMIT,
+        )
+        .run();
+    } catch (error) {
+      rethrowCategoryWriteError(error);
+    }
+    if ((result.meta.changes ?? 0) !== 1) throw await customCategoryLimitError(env, tenantId);
+    return { id, ...input, archived: false, system: false, origin: "custom" };
   },
 
   async update(env, tenantId, id, input) {
@@ -77,6 +117,7 @@ export const categoryRepository: CategoryRepository = {
         color: categories.color,
         archived: categories.archived,
         systemKey: categories.systemKey,
+        origin: categories.origin,
       })
       .from(categories)
       .where(and(eq(categories.id, id), eq(categories.tenantId, tenantId)))
@@ -91,17 +132,55 @@ export const categoryRepository: CategoryRepository = {
     }
     if (input.name) await ensureUniqueName(env, input.name, tenantId, id);
 
-    await db
-      .update(categories)
-      .set({ ...input, updatedAt: sql`(datetime('now'))` })
-      .where(and(eq(categories.id, id), eq(categories.tenantId, tenantId)));
+    const nextName = input.name ?? existing.name;
+    const nextColor = input.color ?? existing.color;
+    const nextArchived = input.archived ?? existing.archived;
+    const restoringCustom =
+      existing.origin === "custom" && existing.archived && input.archived === false;
+
+    let result: D1Result;
+    try {
+      result = await env.DB.prepare(
+        `UPDATE categories
+         SET name = ?, color = ?, archived = ?, updated_at = datetime('now')
+         WHERE id = ? AND tenant_id = ?
+           AND (
+             ? = 0
+             OR EXISTS (
+               SELECT 1 FROM billing_subscriptions
+               WHERE tenant_id = ? AND status IN ('active', 'trialing')
+             )
+             OR (
+               SELECT COUNT(*) FROM categories
+               WHERE tenant_id = ? AND origin = 'custom' AND archived = 0
+             ) < ?
+           )`,
+      )
+        .bind(
+          nextName,
+          nextColor,
+          nextArchived ? 1 : 0,
+          id,
+          tenantId,
+          restoringCustom ? 1 : 0,
+          tenantId,
+          tenantId,
+          FREE_CUSTOM_CATEGORY_LIMIT,
+        )
+        .run();
+    } catch (error) {
+      rethrowCategoryWriteError(error);
+    }
+    if ((result.meta.changes ?? 0) !== 1) throw await customCategoryLimitError(env, tenantId);
+
     return {
       id: existing.id,
-      name: input.name ?? existing.name,
+      name: nextName,
       kind: existing.kind,
-      color: input.color ?? existing.color,
-      archived: input.archived ?? existing.archived,
+      color: nextColor,
+      archived: nextArchived,
       system: false,
+      origin: existing.origin,
     };
   },
 };

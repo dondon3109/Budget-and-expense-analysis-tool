@@ -1,11 +1,21 @@
 /* Import styles extracted from the private application surface. */
 
 .import-page {
-max-width: 1180px;
+  min-width: 0;
+  max-width: 1180px;
+}
+
+.import-plan-usage {
+  width: min(520px, 100%);
+  margin-top: 22px;
+}
+
+.import-plan-usage + .import-safety-note {
+  margin-top: 12px;
 }
 
 .import-safety-note {
-margin: 22px 0;
+  margin: 22px 0;
   padding: 14px 17px;
   display: flex;
   align-items: center;
@@ -17,26 +27,29 @@ margin: 22px 0;
 }
 
 .import-safety-note div {
-display: grid;
+  display: grid;
   gap: 2px;
 }
 
 .import-safety-note strong {
-font-size: 12px;
+  font-size: 12px;
 }
 
 .import-safety-note span {
-color: var(--muted);
+  color: var(--muted);
   font-size: 10px;
 }
 
 .import-layout {
-display: grid;
+  min-width: 0;
+  display: grid;
   gap: 16px;
 }
 
-.import-card,.import-success {
-padding: 24px;
+.import-card,
+.import-success {
+  min-width: 0;
+  padding: 24px;
   border: 1px solid var(--line);
   border-radius: 19px;
   background: var(--paper);
@@ -44,18 +57,18 @@ padding: 24px;
 }
 
 .disabled-card {
-opacity: 0.64;
+  opacity: 0.64;
 }
 
 .import-step-heading {
-margin-bottom: 19px;
+  margin-bottom: 19px;
   display: flex;
   align-items: center;
   gap: 11px;
 }
 
 .import-step-heading > span {
-width: 29px;
+  width: 29px;
   height: 29px;
   display: grid;
   place-items: center;
@@ -68,22 +81,22 @@ width: 29px;
 }
 
 .import-step-heading div {
-display: grid;
+  display: grid;
   gap: 2px;
 }
 
 .import-step-heading strong {
-color: var(--ink);
+  color: var(--ink);
   font-size: 14px;
 }
 
 .import-step-heading small {
-color: var(--subtle);
+  color: var(--subtle);
   font-size: 9px;
 }
 
 .file-drop {
-min-height: 150px;
+  min-height: 150px;
   padding: 24px;
   display: flex;
   align-items: center;
@@ -100,34 +113,37 @@ min-height: 150px;
     background 0.18s ease;
 }
 
-.file-drop:hover,.file-drop:focus-within,.file-drop.selected,.file-drop.drag-active {
-color: var(--success);
+.file-drop:hover,
+.file-drop:focus-within,
+.file-drop.selected,
+.file-drop.drag-active {
+  color: var(--success);
   border-color: var(--sage);
   background: var(--success-soft);
 }
 
 .file-drop.drag-active {
-border-style: solid;
+  border-style: solid;
   box-shadow: 0 0 0 4px rgba(111, 157, 140, 0.16);
 }
 
 .file-drop.rejected {
-color: var(--danger);
+  color: var(--danger);
   border-color: var(--danger);
   background: var(--danger-soft);
 }
 
 .file-drop strong {
-color: var(--ink);
+  color: var(--ink);
   font-size: 13px;
 }
 
 .file-drop span {
-font-size: 9px;
+  font-size: 9px;
 }
 
 .file-drop input {
-position: absolute;
+  position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
@@ -135,24 +151,24 @@ position: absolute;
 }
 
 .worksheet-picker {
-margin-top: 14px;
+  margin-top: 14px;
   display: grid;
   gap: 8px;
 }
 
 .worksheet-picker label {
-display: grid;
+  display: grid;
   gap: 6px;
 }
 
 .worksheet-picker label > span {
-color: var(--muted);
+  color: var(--muted);
   font-size: 9px;
   font-weight: 750;
 }
 
 .worksheet-picker select {
-height: 42px;
+  height: 42px;
   padding: 0 10px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
@@ -161,8 +177,9 @@ height: 42px;
   font-size: 10px;
 }
 
-.worksheet-loading,.worksheet-summary {
-display: flex;
+.worksheet-loading,
+.worksheet-summary {
+  display: flex;
   align-items: center;
   gap: 7px;
   color: var(--muted);
@@ -170,11 +187,11 @@ display: flex;
 }
 
 .worksheet-loading {
-margin-top: 12px;
+  margin-top: 12px;
 }
 
 .workbook-warning {
-margin-top: 12px;
+  margin-top: 12px;
   padding: 11px 13px;
   display: grid;
   gap: 4px;
@@ -186,24 +203,25 @@ margin-top: 12px;
 }
 
 .mapping-grid {
-display: grid;
+  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
 .mapping-grid label {
-display: grid;
+  display: grid;
   gap: 6px;
 }
 
 .mapping-grid label > span {
-color: var(--muted);
+  color: var(--muted);
   font-size: 9px;
   font-weight: 750;
 }
 
-.mapping-grid select,.mapping-grid input {
-min-width: 0;
+.mapping-grid select,
+.mapping-grid input {
+  min-width: 0;
   height: 42px;
   padding: 0 10px;
   color: var(--ink);
@@ -214,26 +232,28 @@ min-width: 0;
 }
 
 .import-source-controls {
-margin-bottom: 12px;
+  margin-bottom: 12px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
 .import-source-controls label {
-display: grid;
+  display: grid;
   align-content: start;
   gap: 6px;
 }
 
-.import-source-controls label > span,.bulk-category-controls label > span {
-color: var(--muted);
+.import-source-controls label > span,
+.bulk-category-controls label > span {
+  color: var(--muted);
   font-size: 9px;
   font-weight: 750;
 }
 
-.import-source-controls select,.bulk-category-controls select {
-min-width: 0;
+.import-source-controls select,
+.bulk-category-controls select {
+  min-width: 0;
   height: 42px;
   padding: 0 10px;
   color: var(--ink);
@@ -244,13 +264,13 @@ min-width: 0;
 }
 
 .import-source-controls small {
-color: var(--subtle);
+  color: var(--subtle);
   font-size: 8px;
   line-height: 1.35;
 }
 
 .import-preset-guidance {
-margin: 0 0 14px;
+  margin: 0 0 14px;
   padding: 9px 11px;
   color: var(--muted);
   border-radius: 9px;
@@ -260,7 +280,7 @@ margin: 0 0 14px;
 }
 
 .php-import-warning {
-margin-top: 15px;
+  margin-top: 15px;
   padding: 13px 14px;
   display: flex;
   align-items: flex-start;
@@ -272,30 +292,33 @@ margin-top: 15px;
 }
 
 .php-import-warning > svg {
-flex: 0 0 auto;
+  flex: 0 0 auto;
 }
 
 .php-import-warning > div {
-display: grid;
+  display: grid;
   gap: 5px;
 }
 
-.php-import-warning strong,.php-import-warning span,.php-import-warning small {
-display: block;
+.php-import-warning strong,
+.php-import-warning span,
+.php-import-warning small {
+  display: block;
 }
 
 .php-import-warning strong {
-color: var(--warning);
+  color: var(--warning);
   font-size: 11px;
 }
 
-.php-import-warning span,.php-import-warning small {
-font-size: 9px;
+.php-import-warning span,
+.php-import-warning small {
+  font-size: 9px;
   line-height: 1.45;
 }
 
 .php-import-warning label {
-margin-top: 3px;
+  margin-top: 3px;
   display: flex;
   align-items: flex-start;
   gap: 7px;
@@ -307,18 +330,18 @@ margin-top: 3px;
 }
 
 .php-import-warning input {
-margin-top: 1px;
+  margin-top: 1px;
 }
 
 .import-counts {
-margin-bottom: 15px;
+  margin-bottom: 15px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 9px;
 }
 
 .import-counts div {
-padding: 12px;
+  padding: 12px;
   display: grid;
   gap: 2px;
   border-radius: 11px;
@@ -326,19 +349,19 @@ padding: 12px;
 }
 
 .import-counts strong {
-color: var(--ink);
+  color: var(--ink);
   font-size: 19px;
 }
 
 .import-counts span {
-color: var(--muted);
+  color: var(--muted);
   font-size: 8px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .bulk-category-toolbar {
-margin-bottom: 15px;
+  margin-bottom: 15px;
   padding: 14px;
   display: grid;
   gap: 12px;
@@ -348,64 +371,68 @@ margin-bottom: 15px;
 }
 
 .bulk-category-heading {
-display: flex;
+  display: flex;
   align-items: center;
   gap: 9px;
   color: var(--success);
 }
 
 .bulk-category-heading div {
-display: grid;
+  display: grid;
   gap: 2px;
 }
 
 .bulk-category-heading strong {
-font-size: 11px;
+  font-size: 11px;
 }
 
 .bulk-category-heading span {
-color: var(--muted);
+  color: var(--muted);
   font-size: 8px;
 }
 
 .bulk-category-controls {
-display: grid;
+  display: grid;
   grid-template-columns: minmax(130px, 0.8fr) auto minmax(180px, 1fr) auto;
   align-items: end;
   gap: 9px;
 }
 
 .bulk-category-controls label {
-display: grid;
+  display: grid;
   gap: 6px;
 }
 
 .bulk-category-controls .button {
-min-height: 42px;
+  min-height: 42px;
   white-space: nowrap;
 }
 
 .import-table-wrap {
-overflow-x: auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 12px;
 }
 
 .import-table {
-width: 100%;
+  width: 100%;
   min-width: 760px;
   border-collapse: collapse;
   font-size: 10px;
 }
 
-.import-table th,.import-table td {
-padding: 11px 12px;
+.import-table th,
+.import-table td {
+  padding: 11px 12px;
   text-align: left;
   border-bottom: 1px solid var(--line);
 }
 
 .import-table th {
-color: var(--subtle);
+  color: var(--subtle);
   background: var(--surface-soft);
   font-size: 8px;
   letter-spacing: 0.05em;
@@ -413,35 +440,36 @@ color: var(--subtle);
 }
 
 .import-table tr:last-child td {
-border-bottom: 0;
+  border-bottom: 0;
 }
 
 .import-table td:nth-child(4) {
-min-width: 210px;
+  min-width: 210px;
 }
 
-.import-table td:nth-child(4) strong,.import-table td:nth-child(4) small {
-display: block;
+.import-table td:nth-child(4) strong,
+.import-table td:nth-child(4) small {
+  display: block;
 }
 
 .import-table td:nth-child(4) small {
-margin-top: 3px;
+  margin-top: 3px;
   color: var(--subtle);
   font-size: 8px;
 }
 
 .import-select-column {
-width: 54px;
+  width: 54px;
   text-align: center !important;
 }
 
 .import-select-column input {
-accent-color: var(--sage);
+  accent-color: var(--sage);
   cursor: pointer;
 }
 
 .import-status {
-padding: 4px 7px;
+  padding: 4px 7px;
   border-radius: 999px;
   font-size: 7px;
   font-weight: 850;
@@ -449,28 +477,28 @@ padding: 4px 7px;
 }
 
 .import-status.ready {
-color: var(--success);
+  color: var(--success);
   background: var(--success-soft);
 }
 
 .import-status.invalid {
-color: var(--danger);
+  color: var(--danger);
   background: var(--danger-soft);
 }
 
 .import-status.duplicate {
-color: var(--warning);
+  color: var(--warning);
   background: var(--warning-soft);
 }
 
 .import-table-note {
-margin: 8px 0 0;
+  margin: 8px 0 0;
   color: var(--subtle);
   font-size: 9px;
 }
 
 .import-pagination {
-margin-top: 12px;
+  margin-top: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -478,17 +506,17 @@ margin-top: 12px;
 }
 
 .import-pagination span {
-color: var(--muted);
+  color: var(--muted);
   font-size: 9px;
 }
 
 .import-pagination .button {
-min-height: 34px;
+  min-height: 34px;
   padding: 0 12px;
 }
 
 .import-commit-row {
-margin-top: 17px;
+  margin-top: 17px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -496,16 +524,23 @@ margin-top: 17px;
 }
 
 .import-commit-row > span {
-color: var(--subtle);
+  color: var(--subtle);
   font-size: 9px;
+  line-height: 1.55;
+}
+
+.import-commit-usage {
+  display: block;
+  color: var(--ink);
+  font-size: 10px;
 }
 
 .import-commit-row .button {
-border: 0;
+  border: 0;
 }
 
 .import-success {
-min-height: 360px;
+  min-height: 360px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -515,14 +550,14 @@ min-height: 360px;
 }
 
 .import-success h2 {
-margin: 3px 0 8px;
+  margin: 3px 0 8px;
   color: var(--ink);
   font-family: Georgia, serif;
   font-size: 30px;
 }
 
 .import-success > p:not(.eyebrow) {
-max-width: 520px;
+  max-width: 520px;
   margin: 0 0 22px;
   color: var(--muted);
   font-size: 12px;
@@ -530,53 +565,53 @@ max-width: 520px;
 }
 
 .import-success .eyebrow {
-margin-top: 14px;
+  margin-top: 14px;
 }
 
 .import-success .button {
-border: 0;
+  border: 0;
 }
 
 @media (max-width: 1050px) {
-.mapping-grid,
-.import-source-controls {
-grid-template-columns: repeat(2, minmax(0, 1fr));
-}
+  .mapping-grid,
+  .import-source-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-.bulk-category-controls {
-grid-template-columns: repeat(2, minmax(0, 1fr));
-}
+  .bulk-category-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
-.import-card {
-padding: 18px 14px;
-}
+  .import-card {
+    padding: 18px 14px;
+  }
 
-.mapping-grid,
-.import-source-controls,
-.bulk-category-controls {
-grid-template-columns: 1fr;
-}
+  .mapping-grid,
+  .import-source-controls,
+  .bulk-category-controls {
+    grid-template-columns: 1fr;
+  }
 
-.bulk-category-controls .button {
-width: 100%;
-}
+  .bulk-category-controls .button {
+    width: 100%;
+  }
 
-.import-pagination {
-align-items: stretch;
+  .import-pagination {
+    align-items: stretch;
     flex-direction: column;
     text-align: center;
-}
+  }
 
-.import-commit-row {
-align-items: stretch;
+  .import-commit-row {
+    align-items: stretch;
     flex-direction: column;
-}
+  }
 
-.import-counts {
-gap: 5px;
-}
+  .import-counts {
+    gap: 5px;
+  }
 }
 
 .mapping-field-invalid select,

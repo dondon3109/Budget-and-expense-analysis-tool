@@ -24,18 +24,33 @@ describe("UpgradePrompt", () => {
     renderPrompt(
       new ApiRequestError("Limit reached", 409, "monthly_limit_reached", {
         feature: "assistant_question",
+        used: 12,
         limit: 12,
         resetsAt: "2026-08-01T00:00:00.000Z",
       }),
     );
 
     expect(screen.getByRole("alert", { name: "Monthly plan limit reached" })).toHaveTextContent(
-      "12 AI questions",
+      "12 of 12 AI questions",
     );
     expect(screen.getByRole("alert")).toHaveTextContent("Asia/Manila");
     expect(screen.getByRole("link", { name: /Plan and billing/ })).toHaveAttribute(
       "href",
-      "/app/settings",
+      "/app/settings#plan-and-billing",
+    );
+  });
+
+  it("explains the persistent custom category allowance", () => {
+    renderPrompt(
+      new ApiRequestError("Limit reached", 409, "resource_limit_reached", {
+        resource: "custom_category",
+        used: 1,
+        limit: 1,
+      }),
+    );
+
+    expect(screen.getByRole("alert", { name: "Custom category limit reached" })).toHaveTextContent(
+      "1 of 1 active custom categories",
     );
   });
 

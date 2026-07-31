@@ -51,45 +51,103 @@
   color: var(--subtle);
 }
 
-.billing-usage {
-  max-width: 680px;
-  margin: 14px 0 0;
-  padding: 0;
+.billing-usage-grid {
+  max-width: 900px;
+  margin-top: 14px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  overflow: hidden;
-  list-style: none;
-  border-radius: 12px;
-  background: var(--line);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.billing-usage li {
-  min-width: 0;
-  padding: 14px 16px;
-  display: grid;
-  gap: 4px;
+.billing-plan-comparison-wrap {
+  max-width: 900px;
+  margin-top: 24px;
+}
+
+.billing-plan-comparison-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.billing-plan-comparison-heading strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.billing-plan-comparison-heading p {
+  max-width: 68ch;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.billing-plan-comparison-heading > span {
+  flex: 0 0 auto;
+  color: var(--action);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.billing-plan-table-wrap {
+  margin-top: 11px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.billing-plan-comparison {
+  width: 100%;
+  min-width: 660px;
+  border-collapse: collapse;
   background: var(--surface);
 }
 
-.billing-usage span {
+.billing-plan-comparison th,
+.billing-plan-comparison td {
+  padding: 11px 13px;
   color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  line-height: 1.45;
+  text-align: left;
+  vertical-align: top;
+}
+
+.billing-plan-comparison tr:last-child th,
+.billing-plan-comparison tr:last-child td {
+  border-bottom: 0;
+}
+
+.billing-plan-comparison thead th {
+  color: var(--ink);
+  background: var(--surface-soft);
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
-.billing-usage strong {
+.billing-plan-comparison tbody th {
+  width: 24%;
   color: var(--ink);
-  font-size: 17px;
-  letter-spacing: -0.02em;
+  font-weight: 750;
 }
 
-.billing-usage small {
-  color: var(--subtle);
-  font-size: 10px;
-  font-weight: 600;
+.billing-plan-comparison [data-current="true"] {
+  background: color-mix(in srgb, var(--success-soft) 48%, var(--surface));
+}
+
+.billing-plan-comparison thead [data-current="true"] {
+  color: var(--success);
+}
+
+.billing-plan-comparison th small {
+  margin-left: 5px;
+  color: var(--success);
+  font-size: 8px;
+  font-weight: 850;
+  text-transform: uppercase;
 }
 
 .billing-settings-warning {
@@ -127,8 +185,13 @@
     flex-direction: column;
   }
 
-  .billing-usage {
+  .billing-usage-grid {
     grid-template-columns: 1fr;
+  }
+
+  .billing-plan-comparison-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .billing-settings-actions {

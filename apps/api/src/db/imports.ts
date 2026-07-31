@@ -273,6 +273,7 @@ export function createImportRepository(
           color: categories.color,
           archived: categories.archived,
           systemKey: categories.systemKey,
+          origin: categories.origin,
         })
         .from(categories)
         .where(and(eq(categories.tenantId, tenantId), eq(categories.archived, false)));

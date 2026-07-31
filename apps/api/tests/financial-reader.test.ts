@@ -44,6 +44,7 @@ const category: CategoryRecord = {
   color: "#dc8b3f",
   archived: false,
   system: false,
+  origin: "custom",
 };
 const transaction: TransactionListItem = {
   id: "transaction-1",

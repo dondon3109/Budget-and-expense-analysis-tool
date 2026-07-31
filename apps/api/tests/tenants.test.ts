@@ -109,6 +109,7 @@ describe("tenant bootstrap", () => {
       "expense",
       "#e87ba4",
       null,
+      "starter",
     ]);
     expect(
       captured.find((statement) =>
@@ -121,6 +122,7 @@ describe("tenant bootstrap", () => {
       "expense",
       "#6b7280",
       "uncategorized:expense",
+      "system",
     ]);
     expect(
       captured

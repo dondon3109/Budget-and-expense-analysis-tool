@@ -127,6 +127,7 @@ const categoryItem: CategoryRecord = {
   color: "#dc8b3f",
   archived: false,
   system: false,
+  origin: "custom",
 };
 
 const accountItem: AccountRecord = {
@@ -303,6 +304,7 @@ function createAllowedBillingRepository(): BillingRepository {
       canManageBilling: true,
       nonTerminalSubscriptionCount: 1,
       usages: [],
+      allowances: [{ resource: "custom_category" as const, used: 0, limit: null }],
     })),
     requirePro: vi.fn(async () => undefined),
     createCheckoutReference: vi.fn(async () => ({ reference: "reference", priceId: "pri_test" })),

@@ -27,11 +27,20 @@ import {
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
+import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
+import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { AppShell } from "../components/layout/AppShell";
+import { useBillingSummary } from "../hooks/useBillingSummary";
 import { emptyImportMapping, localToday, useImportDraft } from "../import/ImportDraftProvider";
 import "../import/import.css";
-import { commitImport, getCategories, isBillingEnforcementError, previewImport } from "../lib/api";
+import {
+  commitImport,
+  getCategories,
+  isBillingEnforcementError,
+  isMonthlyLimitReachedError,
+  previewImport,
+} from "../lib/api";
 import { formatMoney } from "../lib/formatters";
 import {
   detectImportPreset,
@@ -84,6 +93,9 @@ export function ImportPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
+  const billingQuery = useBillingSummary(workspace);
+  const limitTriggerRef = useRef<HTMLElement | null>(null);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const {
     fileName,
     setFileName,
@@ -188,6 +200,10 @@ export function ImportPage() {
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
       ]);
     },
+    onError: (error) => {
+      if (isMonthlyLimitReachedError(error)) setLimitDialogOpen(true);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.billing(workspace) }),
   });
 
   function invalidatePreview() {
@@ -604,6 +620,7 @@ export function ImportPage() {
         })),
       }
     : undefined;
+  const importUsage = billingQuery.data?.usages.find((usage) => usage.feature === "file_import");
 
   return (
     <AppShell>
@@ -618,6 +635,19 @@ export function ImportPage() {
             <Download size={17} /> Download template
           </button>
         </header>
+
+        {importUsage && (
+          <div className="import-plan-usage">
+            <PlanUsageIndicator
+              label="Committed file imports this month"
+              used={importUsage.used}
+              limit={importUsage.limit}
+              resetsAt={importUsage.resetsAt}
+              detail="Previewing is free. One import is used only when ready rows are saved."
+              showUpgrade={billingQuery.data?.plan === "free"}
+            />
+          </div>
+        )}
 
         <div className="import-safety-note">
           <ShieldCheck size={19} />
@@ -1133,6 +1163,9 @@ export function ImportPage() {
 
                   <div className="import-commit-row">
                     <span>
+                      <strong className="import-commit-usage">
+                        Saving uses 1 monthly file import.
+                      </strong>
                       Preview expires in 15 minutes.
                       {Object.keys(kindOverrides).length > 0 &&
                         ` ${Object.keys(kindOverrides).length} transaction type ${Object.keys(kindOverrides).length === 1 ? "change" : "changes"} will be applied.`}
@@ -1145,7 +1178,14 @@ export function ImportPage() {
                       disabled={
                         preview.acceptedCount === 0 || commitMutation.isPending || !commitRequest
                       }
-                      onClick={() => commitRequest && commitMutation.mutate(commitRequest)}
+                      onClick={() => {
+                        if (!commitRequest) return;
+                        limitTriggerRef.current =
+                          document.activeElement instanceof HTMLElement
+                            ? document.activeElement
+                            : null;
+                        commitMutation.mutate(commitRequest);
+                      }}
                     >
                       {commitMutation.isPending
                         ? "Importing…"
@@ -1164,6 +1204,13 @@ export function ImportPage() {
           </div>
         )}
       </div>
+      {limitDialogOpen && (
+        <BillingLimitDialog
+          error={commitMutation.error}
+          returnFocus={limitTriggerRef.current}
+          onClose={() => setLimitDialogOpen(false)}
+        />
+      )}
     </AppShell>
   );
 }

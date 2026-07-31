@@ -11,6 +11,7 @@ import type {
   BillingCapability,
   BillingFeature,
   BillingInterval,
+  BillingResource,
   BillingSummary,
   BudgetMonthPlan,
   BudgetUpsert,
@@ -59,8 +60,17 @@ export class ApiRequestError extends Error {
 
 export interface MonthlyLimitReachedDetails {
   feature: BillingFeature;
+  used: number;
   limit: number;
   resetsAt: string;
+  billingPath?: string;
+}
+
+export interface ResourceLimitReachedDetails {
+  resource: BillingResource;
+  used: number;
+  limit: number;
+  billingPath?: string;
 }
 
 export interface UpgradeRequiredDetails {
@@ -68,6 +78,7 @@ export interface UpgradeRequiredDetails {
 }
 
 const billingFeatures = new Set<BillingFeature>(["assistant_question", "file_import"]);
+const billingResources = new Set<BillingResource>(["custom_category"]);
 const billingCapabilities = new Set<BillingCapability>([
   "assistant_question",
   "file_import",
@@ -106,10 +117,30 @@ export function isMonthlyLimitReachedError(
   return (
     typeof error.details.feature === "string" &&
     billingFeatures.has(error.details.feature as BillingFeature) &&
+    typeof error.details.used === "number" &&
+    Number.isFinite(error.details.used) &&
+    error.details.used >= 0 &&
     typeof error.details.limit === "number" &&
     Number.isFinite(error.details.limit) &&
     error.details.limit >= 0 &&
     typeof error.details.resetsAt === "string"
+  );
+}
+
+export function isResourceLimitReachedError(
+  error: unknown,
+): error is ApiRequestError & { details: ResourceLimitReachedDetails } {
+  if (!isApiRequestError(error) || error.code !== "resource_limit_reached") return false;
+  if (!isRecord(error.details)) return false;
+  return (
+    typeof error.details.resource === "string" &&
+    billingResources.has(error.details.resource as BillingResource) &&
+    typeof error.details.used === "number" &&
+    Number.isFinite(error.details.used) &&
+    error.details.used >= 0 &&
+    typeof error.details.limit === "number" &&
+    Number.isFinite(error.details.limit) &&
+    error.details.limit >= 0
   );
 }
 
@@ -127,7 +158,9 @@ export function isUpgradeRequiredError(
 export function isBillingEnforcementError(error: unknown): error is ApiRequestError {
   return (
     isApiRequestError(error) &&
-    (error.code === "monthly_limit_reached" || error.code === "upgrade_required")
+    (error.code === "monthly_limit_reached" ||
+      error.code === "resource_limit_reached" ||
+      error.code === "upgrade_required")
   );
 }
 

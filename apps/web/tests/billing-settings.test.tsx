@@ -3,6 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import type { User } from "@supabase/supabase-js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { BillingSubscriptionStatus, BillingSummary } from "@zoption/shared";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -43,26 +44,30 @@ function summary(
       {
         feature: "assistant_question",
         used: 2,
-        limit: paid ? 100 : 10,
+        limit: paid ? 100 : 4,
         resetsAt: "2026-08-01T00:00:00.000Z",
       },
       {
         feature: "file_import",
         used: 1,
-        limit: paid ? 20 : 2,
+        limit: paid ? 10 : 1,
         resetsAt: "2026-08-01T00:00:00.000Z",
       },
     ],
+    allowances: [{ resource: "custom_category", used: 1, limit: paid ? null : 1 }],
     ...overrides,
   };
 }
 
 function renderSettings(value: BillingSummary) {
   apiMocks.getBillingSummary.mockResolvedValue(value);
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <BillingSettings user={user} />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <BillingSettings user={user} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -93,6 +98,22 @@ describe("BillingSettings", () => {
     expect(await screen.findByText("You’re using the Free plan")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Upgrade monthly/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Manage billing" })).not.toBeInTheDocument();
+  });
+
+  it("shows exact Free and Pro limits, including the category allowance", async () => {
+    renderSettings(summary(null));
+
+    expect(await screen.findByText("Free and Pro, side by side")).toBeInTheDocument();
+    expect(screen.getByText("4 questions per Manila month")).toBeInTheDocument();
+    expect(screen.getByText("10 committed imports per Manila month")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 active custom category, plus included starters"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unlimited active custom categories")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Active custom categories" })).toHaveAttribute(
+      "aria-valuenow",
+      "1",
+    );
   });
 
   it("uses capability flags for billing actions", async () => {

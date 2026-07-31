@@ -1,8 +1,11 @@
 import type { CategoryInput, CategoryRecord, TransactionKind } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Check, Pencil, Plus, RotateCcw, X } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 
+import { useBillingSummary } from "../../hooks/useBillingSummary";
+import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { createCategory, isBillingEnforcementError, updateCategory } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
@@ -27,6 +30,11 @@ const palette = [
 
 export function CategoryManager({ workspace, categories, onClose }: CategoryManagerProps) {
   const queryClient = useQueryClient();
+  const billingQuery = useBillingSummary(workspace);
+  const dialogRef = useRef<HTMLElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<TransactionKind>("expense");
   const [color, setColor] = useState(palette[0]!);
@@ -34,16 +42,39 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
   const [editingName, setEditingName] = useState("");
   const [error, setError] = useState<Error>();
 
-  useEffect(() => {
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+  useLayoutEffect(() => {
+    const root = document.getElementById("root");
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
+    const previousInert = root?.inert ?? false;
+    const activeElement = document.activeElement;
+
+    if (activeElement instanceof HTMLElement && activeElement !== document.body) {
+      openerRef.current = activeElement;
     }
-    window.addEventListener("keydown", handleKeydown);
-    return () => window.removeEventListener("keydown", handleKeydown);
-  }, [onClose]);
+    if (root) {
+      root.inert = true;
+      root.setAttribute("aria-hidden", "true");
+    }
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    return () => {
+      if (root) {
+        root.inert = previousInert;
+        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
+        else root.setAttribute("aria-hidden", previousAriaHidden);
+      }
+      document.body.style.overflow = previousBodyOverflow;
+      if (openerRef.current?.isConnected) openerRef.current.focus();
+    };
+  }, []);
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.allCategories(workspace) });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.allCategories(workspace) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.billing(workspace) }),
+    ]);
   };
   const createMutation = useMutation({
     mutationFn: (input: CategoryInput) => createCategory(workspace, input),
@@ -76,13 +107,52 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
       ),
   });
 
+  const categoryAllowance = billingQuery.data?.allowances.find(
+    (allowance) => allowance.resource === "custom_category",
+  );
+  const categoryAtLimit =
+    categoryAllowance?.limit !== null &&
+    categoryAllowance?.limit !== undefined &&
+    categoryAllowance.used >= categoryAllowance.limit;
+  const createDisabled = createMutation.isPending || categoryAtLimit;
+
   function handleCreate(event: FormEvent) {
     event.preventDefault();
+    if (createDisabled) return;
     const input: CategoryInput = { name, kind, color };
     createMutation.mutate(input);
   }
 
-  return (
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+
+    const focusable = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    ).filter((element) => element.tabIndex >= 0);
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (!first || !last) return;
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    } else if (!dialogRef.current?.contains(document.activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    }
+  }
+
+  return createPortal(
     <div
       className="modal-backdrop"
       role="presentation"
@@ -91,28 +161,54 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
       }}
     >
       <section
+        ref={dialogRef}
         className="form-modal category-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="category-manager-title"
+        aria-describedby={categoryAllowance ? "category-manager-limit-copy" : undefined}
+        onKeyDown={handleKeyDown}
       >
         <header className="modal-header">
           <div>
             <p className="eyebrow">Organize spending</p>
             <h2 id="category-manager-title">Manage categories</h2>
           </div>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Close">
+          <button
+            ref={closeButtonRef}
+            className="icon-button"
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+          >
             <X size={19} />
           </button>
         </header>
-        <form className="new-category-form" onSubmit={handleCreate}>
+        {categoryAllowance && (
+          <div id="category-manager-limit-copy" className="category-manager-limit">
+            <PlanUsageIndicator
+              label="Active custom categories"
+              used={categoryAllowance.used}
+              limit={categoryAllowance.limit}
+              detail="The seven starter categories and protected Uncategorized categories do not use this allowance. Archiving a custom category frees the slot."
+              showUpgrade={billingQuery.data?.plan === "free"}
+            />
+          </div>
+        )}
+        <form
+          className={`new-category-form${categoryAtLimit ? " limit-reached" : ""}`}
+          onSubmit={handleCreate}
+          aria-disabled={categoryAtLimit}
+        >
           <label>
             <span>New category</span>
             <input
+              ref={nameInputRef}
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="e.g. Health"
               maxLength={80}
+              disabled={createDisabled}
               required
             />
           </label>
@@ -120,6 +216,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
             <span>Type</span>
             <select
               value={kind}
+              disabled={createDisabled}
               onChange={(event) => setKind(event.target.value as TransactionKind)}
             >
               <option value="expense">Money out</option>
@@ -136,6 +233,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                   type="button"
                   className={color === option ? "selected" : ""}
                   style={{ backgroundColor: option }}
+                  disabled={createDisabled}
                   onClick={() => setColor(option)}
                   aria-label={`Use color ${option}`}
                   aria-pressed={color === option}
@@ -145,7 +243,11 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
               ))}
             </div>
           </fieldset>
-          <button className="button primary" type="submit" disabled={createMutation.isPending}>
+          <button
+            className={categoryAtLimit ? "button secondary category-limit-add" : "button primary"}
+            type="submit"
+            disabled={createDisabled}
+          >
             <Plus size={16} /> Add
           </button>
         </form>
@@ -179,6 +281,8 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                         ? "Money out"
                         : "Transfer"}
                     {category.archived ? " · Archived" : ""}
+                    {category.origin === "starter" ? " · Included starter" : ""}
+                    {category.origin === "custom" ? " · Custom" : ""}
                     {category.system ? " · Required for imports" : ""}
                   </span>
                 </div>
@@ -218,6 +322,10 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                       </button>
                       <button
                         type="button"
+                        disabled={
+                          updateMutation.isPending ||
+                          (category.archived && category.origin === "custom" && categoryAtLimit)
+                        }
                         onClick={() =>
                           updateMutation.mutate({
                             id: category.id,
@@ -225,6 +333,11 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                           })
                         }
                         aria-label={`${category.archived ? "Restore" : "Archive"} ${category.name}`}
+                        title={
+                          category.archived && category.origin === "custom" && categoryAtLimit
+                            ? "Archive an active custom category or upgrade before restoring this one."
+                            : undefined
+                        }
                       >
                         {category.archived ? <RotateCcw size={15} /> : <Archive size={15} />}
                       </button>
@@ -235,6 +348,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
           ))}
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

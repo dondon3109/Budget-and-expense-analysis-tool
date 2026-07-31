@@ -39,6 +39,7 @@ const category: CategoryRecord = {
   color: "#7363a6",
   archived: false,
   system: false,
+  origin: "custom",
 };
 
 const record: SubscriptionRecord = {

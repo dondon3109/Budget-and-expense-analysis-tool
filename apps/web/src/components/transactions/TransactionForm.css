@@ -1,18 +1,21 @@
 /* Transaction Form styles extracted from the private application surface. */
 
 .transaction-form {
-margin-top: 24px;
+  margin-top: 24px;
   display: grid;
   gap: 17px;
 }
 
-.transaction-form label,.new-category-form label {
-display: grid;
+.transaction-form label,
+.new-category-form label {
+  display: grid;
   gap: 7px;
 }
 
-.transaction-form label > span,.new-category-form label > span,.new-category-form legend {
-color: var(--muted);
+.transaction-form label > span,
+.new-category-form label > span,
+.new-category-form legend {
+  color: var(--muted);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -20,13 +23,18 @@ color: var(--muted);
 }
 
 .transaction-form label small {
-color: var(--subtle);
+  color: var(--subtle);
   font-weight: 600;
   text-transform: none;
 }
 
-.transaction-form input,.transaction-form select,.transaction-form textarea,.new-category-form input,.new-category-form select,.manager-category input {
-width: 100%;
+.transaction-form input,
+.transaction-form select,
+.transaction-form textarea,
+.new-category-form input,
+.new-category-form select,
+.manager-category input {
+  width: 100%;
   min-height: 43px;
   padding: 10px 12px;
   color: var(--ink);
@@ -38,26 +46,31 @@ width: 100%;
 }
 
 .transaction-form textarea {
-resize: vertical;
+  resize: vertical;
 }
 
-.transaction-form input:focus,.transaction-form select:focus,.transaction-form textarea:focus,.new-category-form input:focus,.new-category-form select:focus,.manager-category input:focus {
-border-color: #76a994;
+.transaction-form input:focus,
+.transaction-form select:focus,
+.transaction-form textarea:focus,
+.new-category-form input:focus,
+.new-category-form select:focus,
+.manager-category input:focus {
+  border-color: #76a994;
   box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
 }
 
 .form-row.split {
-display: grid;
+  display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
 
 .money-input {
-position: relative;
+  position: relative;
 }
 
 .money-input b {
-position: absolute;
+  position: absolute;
   left: 12px;
   top: 50%;
   z-index: 1;
@@ -67,15 +80,23 @@ position: absolute;
 }
 
 .money-input input {
-padding-left: 29px;
+  padding-left: 29px;
 }
 
 .category-modal {
-width: min(700px, 100%);
+  width: min(700px, 100%);
+}
+
+.category-manager-limit {
+  margin-top: 18px;
+}
+
+.category-manager-limit + .new-category-form {
+  margin-top: 12px;
 }
 
 .new-category-form {
-margin: 22px 0 18px;
+  margin: 22px 0 18px;
   padding: 16px;
   display: grid;
   grid-template-columns: 1.3fr 0.8fr 1fr auto;
@@ -85,30 +106,47 @@ margin: 22px 0 18px;
   background: var(--surface-soft);
 }
 
+.new-category-form.limit-reached {
+  background: color-mix(in srgb, var(--surface-soft) 72%, var(--line));
+}
+
+.new-category-form.limit-reached label,
+.new-category-form.limit-reached fieldset {
+  opacity: 0.64;
+}
+
 .new-category-form fieldset {
-margin: 0;
+  margin: 0;
   padding: 0;
   border: 0;
 }
 
 .new-category-form legend {
-margin-bottom: 7px;
+  margin-bottom: 7px;
 }
 
 .new-category-form .button {
-min-height: 43px;
+  min-height: 43px;
   border: 0;
 }
 
+.new-category-form .category-limit-add:disabled {
+  color: var(--subtle);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-hover);
+  box-shadow: none;
+  opacity: 1;
+}
+
 .color-picker {
-min-height: 43px;
+  min-height: 43px;
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
 .color-picker button {
-width: 25px;
+  width: 25px;
   height: 25px;
   padding: 0;
   display: grid;
@@ -119,16 +157,16 @@ width: 25px;
 }
 
 .color-picker button.selected {
-border-color: #fff;
+  border-color: #fff;
   box-shadow: 0 0 0 2px var(--ink);
 }
 
 .category-manager-list {
-display: grid;
+  display: grid;
 }
 
 .manager-category {
-min-height: 58px;
+  min-height: 58px;
   padding: 8px 4px;
   display: grid;
   grid-template-columns: 10px 1fr auto;
@@ -138,37 +176,37 @@ min-height: 58px;
 }
 
 .manager-category.archived {
-opacity: 0.58;
+  opacity: 0.58;
 }
 
 .manager-category > i {
-width: 9px;
+  width: 9px;
   height: 9px;
   border-radius: 50%;
 }
 
 .manager-category > div:not(.manager-actions) {
-display: grid;
+  display: grid;
   gap: 2px;
 }
 
 .manager-category strong {
-color: var(--ink);
+  color: var(--ink);
   font-size: 11px;
 }
 
 .manager-category span {
-color: var(--subtle);
+  color: var(--subtle);
   font-size: 9px;
 }
 
 .manager-actions {
-display: flex;
+  display: flex;
   gap: 4px;
 }
 
 .manager-actions button {
-width: 31px;
+  width: 31px;
   height: 31px;
   display: grid;
   place-items: center;
@@ -178,25 +216,30 @@ width: 31px;
   background: var(--surface);
 }
 
-@media (max-width: 1050px) {
-.new-category-form {
-grid-template-columns: 1fr 1fr;
+.manager-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
+
+@media (max-width: 1050px) {
+  .new-category-form {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 760px) {
-.form-row.split,
-.new-category-form {
-grid-template-columns: 1fr;
-}
+  .form-row.split,
+  .new-category-form {
+    grid-template-columns: 1fr;
+  }
 
-.new-category-form .button {
-width: 100%;
-}
+  .new-category-form .button {
+    width: 100%;
+  }
 
-.manager-category {
-grid-template-columns: 10px minmax(0, 1fr) auto;
-}
+  .manager-category {
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+  }
 }
 :root[data-theme="dark"] .transaction-form input:focus,
 :root[data-theme="dark"] .transaction-form select:focus,

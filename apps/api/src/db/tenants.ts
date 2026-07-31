@@ -8,14 +8,29 @@ const SYSTEM_ACCOUNTS = [
 ] as const;
 
 const DEFAULT_CATEGORIES = [
-  { key: "salary", name: "Salary", kind: "income", color: "#2a78d6", systemKey: null },
-  { key: "housing", name: "Housing", kind: "expense", color: "#008300", systemKey: null },
+  {
+    key: "salary",
+    name: "Salary",
+    kind: "income",
+    color: "#2a78d6",
+    systemKey: null,
+    origin: "starter",
+  },
+  {
+    key: "housing",
+    name: "Housing",
+    kind: "expense",
+    color: "#008300",
+    systemKey: null,
+    origin: "starter",
+  },
   {
     key: "food",
     name: "Food & dining",
     kind: "expense",
     color: "#e87ba4",
     systemKey: null,
+    origin: "starter",
   },
   {
     key: "transport",
@@ -23,6 +38,7 @@ const DEFAULT_CATEGORIES = [
     kind: "expense",
     color: "#eda100",
     systemKey: null,
+    origin: "starter",
   },
   {
     key: "utilities",
@@ -30,6 +46,7 @@ const DEFAULT_CATEGORIES = [
     kind: "expense",
     color: "#1baf7a",
     systemKey: null,
+    origin: "starter",
   },
   {
     key: "leisure",
@@ -37,6 +54,7 @@ const DEFAULT_CATEGORIES = [
     kind: "expense",
     color: "#eb6834",
     systemKey: null,
+    origin: "starter",
   },
   {
     key: "savings-transfer",
@@ -44,6 +62,7 @@ const DEFAULT_CATEGORIES = [
     kind: "transfer",
     color: "#4a3aa7",
     systemKey: null,
+    origin: "starter",
   },
   {
     key: "uncategorized-income",
@@ -51,6 +70,7 @@ const DEFAULT_CATEGORIES = [
     kind: "income",
     color: "#6b7280",
     systemKey: "uncategorized:income",
+    origin: "system",
   },
   {
     key: "uncategorized-expense",
@@ -58,6 +78,7 @@ const DEFAULT_CATEGORIES = [
     kind: "expense",
     color: "#6b7280",
     systemKey: "uncategorized:expense",
+    origin: "system",
   },
   {
     key: "uncategorized-transfer",
@@ -65,6 +86,7 @@ const DEFAULT_CATEGORIES = [
     kind: "transfer",
     color: "#6b7280",
     systemKey: "uncategorized:transfer",
+    origin: "system",
   },
 ] as const;
 
@@ -114,7 +136,7 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
       ),
       ...DEFAULT_CATEGORIES.map((category) =>
         env.DB.prepare(
-          "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, system_key) VALUES (?, ?, ?, ?, ?, ?)",
+          "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, system_key, origin) VALUES (?, ?, ?, ?, ?, ?, ?)",
         ).bind(
           defaultCategoryIdForTenant(tenantId, category.key),
           tenantId,
@@ -122,6 +144,7 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
           category.kind,
           category.color,
           category.systemKey,
+          category.origin,
         ),
       ),
     ];

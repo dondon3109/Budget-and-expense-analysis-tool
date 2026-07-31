@@ -15,6 +15,7 @@ const apiMocks = vi.hoisted(() => ({
   getAssistantMessages: vi.fn(),
   getAssistantPreferences: vi.fn(),
   getAssistantThreads: vi.fn(),
+  getBillingSummary: vi.fn(),
   sendAssistantMessage: vi.fn(),
   updateAssistantIdentity: vi.fn(),
 }));
@@ -117,6 +118,31 @@ describe("assistant UI", () => {
       items: [thread],
       nextCursor: null,
     });
+    apiMocks.getBillingSummary.mockReset().mockResolvedValue({
+      plan: "free",
+      status: null,
+      interval: null,
+      currentPeriodEndsAt: null,
+      scheduledChangeAt: null,
+      canCheckout: true,
+      canManageBilling: false,
+      nonTerminalSubscriptionCount: 0,
+      usages: [
+        {
+          feature: "assistant_question",
+          used: 1,
+          limit: 4,
+          resetsAt: "2026-08-01T00:00:00.000Z",
+        },
+        {
+          feature: "file_import",
+          used: 0,
+          limit: 1,
+          resetsAt: "2026-08-01T00:00:00.000Z",
+        },
+      ],
+      allowances: [{ resource: "custom_category", used: 0, limit: 1 }],
+    });
     apiMocks.sendAssistantMessage.mockReset();
   });
 
@@ -177,6 +203,9 @@ describe("assistant UI", () => {
       screen.getByText("Ask anything. Zoption already knows the numbers."),
     ).toBeInTheDocument();
     expect(screen.getByText("MONEY")).toHaveClass("assistant-heading-emphasis");
+    expect(
+      await screen.findByRole("progressbar", { name: "AI questions this month" }),
+    ).toHaveAttribute("aria-valuenow", "1");
   });
 
   it("keeps the draft and shows the monthly reset when the assistant limit is reached", async () => {
@@ -187,7 +216,8 @@ describe("assistant UI", () => {
         "monthly_limit_reached",
         {
           feature: "assistant_question",
-          limit: 10,
+          used: 4,
+          limit: 4,
           resetsAt: "2026-08-01T00:00:00.000Z",
         },
       ),
@@ -199,8 +229,11 @@ describe("assistant UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(
-      await screen.findByRole("alert", { name: "Monthly plan limit reached" }),
-    ).toHaveTextContent("10 AI questions");
+      await screen.findByRole("dialog", { name: "No AI questions remaining this month" }),
+    ).toHaveTextContent("4 of 4 AI questions");
+    expect(screen.getByRole("alert", { name: "Monthly plan limit reached" })).toHaveTextContent(
+      "4 of 4 AI questions",
+    );
     expect(composer).toHaveValue("Where did my money go?");
   });
 
