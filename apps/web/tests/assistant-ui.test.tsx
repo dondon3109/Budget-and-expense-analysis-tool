@@ -203,9 +203,57 @@ describe("assistant UI", () => {
       screen.getByText("Ask anything. Zoption already knows the numbers."),
     ).toBeInTheDocument();
     expect(screen.getByText("MONEY")).toHaveClass("assistant-heading-emphasis");
-    expect(
-      await screen.findByRole("progressbar", { name: "AI questions this month" }),
-    ).toHaveAttribute("aria-valuenow", "1");
+    const usage = await screen.findByRole("progressbar", {
+      name: "Free plan AI questions this month",
+    });
+    expect(usage).toHaveAttribute("aria-valuenow", "1");
+    expect(usage).toHaveAttribute("aria-valuemax", "4");
+
+    const topline = usage.closest(".assistant-chat-topline");
+    expect(topline).not.toBeNull();
+    expect(Array.from(topline!.children)).toHaveLength(3);
+    expect(topline!.children[0]).toHaveClass("assistant-chat-status");
+    expect(topline!.children[0]).toHaveTextContent("Read-only financial answers");
+    expect(topline!.children[1]).toHaveClass("assistant-chat-usage");
+    const usageContainer = topline!.querySelector<HTMLElement>(":scope > .assistant-chat-usage");
+    expect(usageContainer).not.toBeNull();
+    expect(within(usageContainer!).getByRole("progressbar")).toBe(usage);
+    expect(topline!.children[2]).toHaveClass("assistant-chat-retention");
+    expect(topline!.children[2]).toHaveTextContent("90-day private history");
+  });
+
+  it("keeps the exhausted assistant allowance clear and actionable", async () => {
+    apiMocks.getBillingSummary.mockResolvedValueOnce({
+      plan: "free",
+      status: null,
+      interval: null,
+      currentPeriodEndsAt: null,
+      scheduledChangeAt: null,
+      canCheckout: true,
+      canManageBilling: false,
+      nonTerminalSubscriptionCount: 0,
+      usages: [
+        {
+          feature: "assistant_question",
+          used: 4,
+          limit: 4,
+          resetsAt: "2026-08-01T00:00:00.000Z",
+        },
+      ],
+      allowances: [],
+    });
+    renderPage();
+
+    const usage = await screen.findByRole("progressbar", {
+      name: "Free plan AI questions this month",
+    });
+    expect(usage).toHaveAttribute("data-state", "exhausted");
+    expect(usage).toHaveAttribute("aria-valuenow", "4");
+    expect(usage).toHaveTextContent("Limit reached · resets Aug 1, 2026");
+    expect(screen.getByRole("link", { name: "View Pro limits" })).toHaveAttribute(
+      "href",
+      "/app/settings#plan-and-billing",
+    );
   });
 
   it("keeps the draft and shows the monthly reset when the assistant limit is reached", async () => {
