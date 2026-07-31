@@ -272,6 +272,7 @@ export function AssistantPage() {
   const assistantUsage = billingQuery.data?.usages.find(
     (usage) => usage.feature === "assistant_question",
   );
+  const isFreePlan = billingQuery.data?.plan === "free";
 
   return (
     <AppShell>
@@ -319,11 +320,13 @@ export function AssistantPage() {
                 {assistantUsage && (
                   <PlanUsageIndicator
                     compact
-                    label="AI questions this month"
+                    label={
+                      isFreePlan ? "Free plan AI questions this month" : "AI questions this month"
+                    }
                     used={assistantUsage.used}
                     limit={assistantUsage.limit}
                     resetsAt={assistantUsage.resetsAt}
-                    showUpgrade={billingQuery.data?.plan === "free"}
+                    showUpgrade={isFreePlan}
                   />
                 )}
                 <small>90-day private history</small>

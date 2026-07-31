@@ -107,7 +107,12 @@ describe("CategoryManager", () => {
       { ...category, id: "starter", name: "Starter", archived: true, origin: "starter" },
     ]);
 
-    expect(await screen.findByText("1 / 1")).toBeInTheDocument();
+    const usage = await screen.findByRole("progressbar", {
+      name: "Free plan custom categories",
+    });
+    expect(usage).toHaveAttribute("aria-valuenow", "1");
+    expect(usage).toHaveAttribute("aria-valuemax", "1");
+    expect(screen.getByText(/Free includes 1 active custom category/)).toBeInTheDocument();
     expect(screen.getByLabelText("New category")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Restore Archived custom" })).toBeDisabled();

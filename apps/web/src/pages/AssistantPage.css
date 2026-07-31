@@ -356,7 +356,13 @@
 }
 
 .assistant-chat-meta .plan-usage-indicator {
+  min-width: 0;
+  width: auto;
+  gap: 2px;
+  padding: 0;
   border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .assistant-empty {

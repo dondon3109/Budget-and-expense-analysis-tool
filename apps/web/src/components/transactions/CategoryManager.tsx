@@ -114,6 +114,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
     categoryAllowance?.limit !== null &&
     categoryAllowance?.limit !== undefined &&
     categoryAllowance.used >= categoryAllowance.limit;
+  const isFreePlan = billingQuery.data?.plan === "free";
   const createDisabled = createMutation.isPending || categoryAtLimit;
 
   function handleCreate(event: FormEvent) {
@@ -187,11 +188,15 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
         {categoryAllowance && (
           <div id="category-manager-limit-copy" className="category-manager-limit">
             <PlanUsageIndicator
-              label="Active custom categories"
+              label={isFreePlan ? "Free plan custom categories" : "Active custom categories"}
               used={categoryAllowance.used}
               limit={categoryAllowance.limit}
-              detail="The seven starter categories and protected Uncategorized categories do not use this allowance. Archiving a custom category frees the slot."
-              showUpgrade={billingQuery.data?.plan === "free"}
+              detail={
+                isFreePlan
+                  ? "Free includes 1 active custom category. Starter and Uncategorized categories stay included; archive your custom category to free the slot."
+                  : "Starter and protected Uncategorized categories do not count toward this allowance."
+              }
+              showUpgrade={isFreePlan}
             />
           </div>
         )}

@@ -203,9 +203,11 @@ describe("assistant UI", () => {
       screen.getByText("Ask anything. Zoption already knows the numbers."),
     ).toBeInTheDocument();
     expect(screen.getByText("MONEY")).toHaveClass("assistant-heading-emphasis");
-    expect(
-      await screen.findByRole("progressbar", { name: "AI questions this month" }),
-    ).toHaveAttribute("aria-valuenow", "1");
+    const usage = await screen.findByRole("progressbar", {
+      name: "Free plan AI questions this month",
+    });
+    expect(usage).toHaveAttribute("aria-valuenow", "1");
+    expect(usage).toHaveAttribute("aria-valuemax", "4");
   });
 
   it("keeps the draft and shows the monthly reset when the assistant limit is reached", async () => {

@@ -621,6 +621,7 @@ export function ImportPage() {
       }
     : undefined;
   const importUsage = billingQuery.data?.usages.find((usage) => usage.feature === "file_import");
+  const isFreePlan = billingQuery.data?.plan === "free";
 
   return (
     <AppShell>
@@ -639,12 +640,20 @@ export function ImportPage() {
         {importUsage && (
           <div className="import-plan-usage">
             <PlanUsageIndicator
-              label="Committed file imports this month"
+              label={
+                isFreePlan
+                  ? "Free plan committed file imports this month"
+                  : "Committed file imports this month"
+              }
               used={importUsage.used}
               limit={importUsage.limit}
               resetsAt={importUsage.resetsAt}
-              detail="Previewing is free. One import is used only when ready rows are saved."
-              showUpgrade={billingQuery.data?.plan === "free"}
+              detail={
+                isFreePlan
+                  ? "Free includes 1 saved file import each month. Previewing files does not use it."
+                  : "One import is used only when ready rows are saved."
+              }
+              showUpgrade={isFreePlan}
             />
           </div>
         )}

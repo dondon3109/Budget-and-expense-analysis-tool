@@ -515,6 +515,21 @@
   padding: 0 12px;
 }
 
+.preview-import-button {
+  position: relative;
+  min-height: 38px;
+  margin-top: 16px;
+  padding: 0 14px;
+  font-size: 11px;
+  box-shadow: 0 8px 18px rgba(23, 52, 46, 0.14);
+}
+
+.preview-import-button::before {
+  position: absolute;
+  inset: -3px 0;
+  content: "";
+}
+
 .import-commit-row {
   margin-top: 17px;
   display: flex;

@@ -203,10 +203,13 @@ describe("ImportPage", () => {
   it("shows the committed import allowance before file preparation", async () => {
     renderPage();
 
-    expect(
-      await screen.findByRole("progressbar", { name: "Committed file imports this month" }),
-    ).toHaveAttribute("aria-valuenow", "0");
-    expect(screen.getByText(/Previewing is free/)).toBeInTheDocument();
+    const usage = await screen.findByRole("progressbar", {
+      name: "Free plan committed file imports this month",
+    });
+    expect(usage).toHaveAttribute("aria-valuenow", "0");
+    expect(usage).toHaveAttribute("aria-valuemax", "1");
+    expect(screen.getByText(/Free includes 1 saved file import each month/)).toBeInTheDocument();
+    expect(screen.getByText(/Previewing files does not use it/)).toBeInTheDocument();
   });
 
   it("keeps CSV imports on the existing mapping and preview path", async () => {
