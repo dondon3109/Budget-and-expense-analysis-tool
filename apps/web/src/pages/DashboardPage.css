@@ -401,6 +401,11 @@ height: 257px;
 min-height: 257px;
 }
 
+.trend-panel-empty .button {
+  width: fit-content;
+  margin: 16px auto 0;
+}
+
 .trend-panel-error .button {
 margin-top: 16px;
 }

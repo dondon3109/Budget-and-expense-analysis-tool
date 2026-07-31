@@ -29,6 +29,8 @@ interface Props {
   isLoading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
+  showSubscribeToPro?: boolean;
+  onSubscribeToPro?: (trigger: HTMLButtonElement) => void;
 }
 
 function formatTrendDate(date: string, granularity: CashflowTrend["granularity"]): string {
@@ -71,6 +73,8 @@ export function MonthlyTrend({
   isLoading = false,
   error,
   onRetry,
+  showSubscribeToPro = false,
+  onSubscribeToPro,
 }: Props) {
   const reduceMotion = useReducedMotion();
   const optionRefs = useRef<Partial<Record<CashflowTrendView, HTMLButtonElement | null>>>({});
@@ -164,12 +168,33 @@ export function MonthlyTrend({
           </div>
         )
       ) : !hasActivity || !data ? (
-        <div className="panel-empty">
-          <strong>No cashflow to show yet</strong>
-          <p>
-            Add transactions to build your {selectedLabel?.toLocaleLowerCase("en")} income and
-            expense view.
-          </p>
+        <div className="panel-empty trend-panel-empty">
+          {data && selectedView === "weekly" ? (
+            <>
+              <strong>No money in or out for this week</strong>
+              <p>
+                No transactions fall within {formatPeriod(data.range.from, data.range.to)}.
+                Transactions outside these displayed dates are not included in the weekly view.
+              </p>
+              {showSubscribeToPro && onSubscribeToPro && (
+                <button
+                  className="button primary compact"
+                  type="button"
+                  onClick={(event) => onSubscribeToPro(event.currentTarget)}
+                >
+                  Subscribe to Pro
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <strong>No money in or out for this period</strong>
+              <p>
+                Add transactions dated within this {selectedLabel?.toLocaleLowerCase("en")} range to
+                see your cashflow here.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <>
