@@ -1,14 +1,35 @@
 /* Sponsored Pro seat administration is owned by this Settings component. */
 .sponsored-pro-seats-add {
-  max-width: 680px;
-  margin-top: 22px;
+  margin-top: 26px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--action) 24%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--action) 4%, var(--surface));
+}
+
+.sponsored-pro-seats-add-heading {
+  margin-bottom: 16px;
+}
+
+.sponsored-pro-seats-add-heading h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.sponsored-pro-seats-add-heading p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .sponsored-pro-seats-add > label {
   display: block;
   margin-bottom: 7px;
   color: var(--ink);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -22,19 +43,36 @@
 
 .sponsored-pro-seats input {
   min-width: min(100%, 250px);
+  min-height: 46px;
+  padding: 11px 13px;
   flex: 1 1 220px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  font-size: 14px;
+}
+
+.sponsored-pro-seats input:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 28%, transparent);
+}
+
+.sponsored-pro-seats input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .sponsored-pro-seats-add small {
   display: block;
   margin-top: 7px;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
 .sponsored-pro-seats-invite {
-  max-width: 680px;
   margin-top: 13px;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--focus) 30%, var(--line));
@@ -47,12 +85,11 @@
 .sponsored-pro-seat p {
   margin: 0 0 9px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .sponsored-pro-seats-list {
-  max-width: 900px;
   margin-top: 22px;
 }
 
@@ -72,7 +109,7 @@
 
 .sponsored-pro-seat strong {
   color: var(--ink);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .sponsored-pro-seat p {
@@ -82,7 +119,7 @@
 
 .sponsored-pro-seat small {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .sponsored-pro-seat-actions {
@@ -95,11 +132,23 @@
   align-items: center;
   justify-content: flex-end;
   color: var(--danger);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 750;
 }
 
 @media (max-width: 760px) {
+  .sponsored-pro-seats-add {
+    padding: 16px;
+  }
+
+  .sponsored-pro-seats-add > div {
+    display: grid;
+  }
+
+  .sponsored-pro-seats-add .button {
+    width: 100%;
+  }
+
   .sponsored-pro-seat {
     flex-direction: column;
   }

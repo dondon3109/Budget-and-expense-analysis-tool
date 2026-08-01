@@ -10,8 +10,15 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
+  addSponsoredProSeat: vi.fn(),
   createBillingPortalSession: vi.fn(),
   getBillingSummary: vi.fn(),
+  getSponsoredProSeats: vi.fn(),
+  inviteSponsoredProRecipient: vi.fn(),
+  isApiRequestError: vi.fn(),
+  replaceSponsoredProSeat: vi.fn(),
+  resendSponsoredProInvitation: vi.fn(),
+  revokeSponsoredProSeat: vi.fn(),
   startBillingCheckout: vi.fn(),
 }));
 
@@ -81,7 +88,14 @@ function renderSettings(value: BillingSummary) {
 describe("BillingSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.addSponsoredProSeat.mockResolvedValue({});
     apiMocks.createBillingPortalSession.mockResolvedValue({ url: "https://example.test/portal" });
+    apiMocks.getSponsoredProSeats.mockResolvedValue({
+      activeCount: 0,
+      availableCount: 5,
+      pendingCount: 0,
+      seats: [],
+    });
     apiMocks.startBillingCheckout.mockResolvedValue({ reference: "ref", priceId: "pri" });
   });
 
@@ -145,6 +159,54 @@ describe("BillingSettings", () => {
     expect(trigger).toHaveFocus();
   });
 
+  it("shows a verified administrator a usable recipient email form before the comparison", async () => {
+    renderSettings(
+      summary(null, {
+        plan: "zoption_pro",
+        entitlementSource: "platform_admin",
+        canCheckout: false,
+        canManageSponsoredSeats: true,
+      }),
+    );
+
+    const email = await screen.findByLabelText("Recipient email");
+    const addSeat = screen.getByRole("button", { name: "Add seat" });
+    const sponsoredSection = screen
+      .getByRole("heading", { name: "Sponsored Pro seats" })
+      .closest("section");
+    const comparisonSection = screen
+      .getByRole("heading", { name: "Free and Pro, side by side" })
+      .closest("section");
+
+    expect(email).toBeVisible();
+    expect(email).toBeEnabled();
+    expect(email).toHaveAccessibleDescription(
+      /must sign in and confirm their email before a seat can be active/i,
+    );
+    expect(addSeat).toBeDisabled();
+    expect(sponsoredSection?.nextElementSibling).toBe(comparisonSection);
+
+    fireEvent.change(email, { target: { value: "recipient@example.com" } });
+    expect(addSeat).toBeEnabled();
+    fireEvent.click(addSeat);
+
+    expect(await screen.findByText("Sponsored Pro seat added.")).toBeInTheDocument();
+    expect(apiMocks.addSponsoredProSeat).toHaveBeenCalledWith(
+      { key: "user:user-1", userId: "user-1" },
+      "recipient@example.com",
+    );
+  });
+
+  it("does not mount sponsored seat management for a non-administrator", async () => {
+    renderSettings(summary(null));
+
+    await screen.findByText("Free and Pro, side by side");
+
+    expect(screen.queryByRole("heading", { name: "Sponsored Pro seats" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Recipient email")).not.toBeInTheDocument();
+    expect(apiMocks.getSponsoredProSeats).not.toHaveBeenCalled();
+  });
+
   it("shows exact Free and Pro limits, including the category allowance", async () => {
     renderSettings(summary(null));
 
@@ -166,7 +228,8 @@ describe("BillingSettings", () => {
   it("labels the comparison and clearly identifies the Free plan as current", async () => {
     renderSettings(summary(null));
 
-    const comparison = await screen.findByRole("region", { name: "Free and Pro, side by side" });
+    const regions = await screen.findAllByRole("region", { name: "Free and Pro, side by side" });
+    const comparison = regions.find((el) => el.getAttribute("tabindex") === "0")!;
     const table = within(comparison).getByRole("table", {
       name: "Free and Zoption Pro plan feature comparison",
     });

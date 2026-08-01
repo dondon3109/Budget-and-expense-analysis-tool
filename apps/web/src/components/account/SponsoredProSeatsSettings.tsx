@@ -117,6 +117,7 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
 
   return (
     <section
+      id="sponsored-pro-seats"
       className="settings-section sponsored-pro-seats"
       aria-labelledby="sponsored-pro-seats-title"
     >
@@ -136,12 +137,17 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
           void add.mutateAsync();
         }}
       >
+        <div className="sponsored-pro-seats-add-heading">
+          <h3>Add a sponsored recipient</h3>
+          <p>Assign one available complimentary Pro seat to a recipient.</p>
+        </div>
         <label htmlFor="sponsored-seat-email">Recipient email</label>
         <div>
           <input
             id="sponsored-seat-email"
             type="email"
             autoComplete="email"
+            aria-describedby="sponsored-seat-email-help"
             value={email}
             onChange={(event) => {
               setEmail(event.target.value);
@@ -154,7 +160,7 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
             {add.isPending ? "Adding…" : "Add seat"}
           </button>
         </div>
-        <small>
+        <small id="sponsored-seat-email-help">
           A person must sign in and confirm their email before a seat can be active. Their email is
           never shown in this list.
         </small>

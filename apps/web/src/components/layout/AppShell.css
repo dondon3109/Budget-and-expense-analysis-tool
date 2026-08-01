@@ -6,6 +6,41 @@
   grid-template-columns: 245px 1fr;
 }
 
+/* Shared private-page layout, used by Dashboard and Account Settings. */
+.dashboard-page {
+  width: min(1270px, calc(100% - 64px));
+  margin: 0 auto;
+  padding: 60px 0 72px;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.dashboard-heading {
+  max-width: 680px;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: clamp(36px, 3.2vw, 44px);
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 1.04;
+}
+
+.dashboard-header p:not(.eyebrow) {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -232,6 +267,20 @@
 }
 
 @media (max-width: 760px) {
+  .dashboard-page {
+    width: calc(100% - 28px);
+    padding: 30px 0 46px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 31px;
+  }
+
   .app-shell {
     display: block;
     padding-top: 66px;

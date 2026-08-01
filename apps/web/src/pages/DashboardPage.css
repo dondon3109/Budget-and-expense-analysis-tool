@@ -1,37 +1,5 @@
 /* Dashboard styles extracted from the private application surface. */
 
-.dashboard-page {
-width: min(1270px, calc(100% - 64px));
-  margin: 0 auto;
-  padding: 54px 0 64px;
-}
-
-.dashboard-header {
-display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 28px;
-}
-
-.dashboard-heading {
-max-width: 680px;
-}
-
-.dashboard-header h1 {
-margin: 0;
-  color: var(--ink);
-  font-family: Georgia, serif;
-  font-size: clamp(36px, 3.2vw, 44px);
-  line-height: 1.04;
-  letter-spacing: -0.03em;
-}
-
-.dashboard-header p:not(.eyebrow) {
-margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
 .workspace-onboarding {
 margin-top: 32px;
   padding: clamp(30px, 5vw, 58px);
@@ -842,11 +810,6 @@ grid-column: auto;
 }
 
 @media (max-width: 760px) {
-.dashboard-page {
-width: calc(100% - 28px);
-    padding: 30px 0 46px;
-}
-
 .dashboard-page .panel {
 padding: 20px 17px;
     border-radius: 16px;
@@ -864,15 +827,6 @@ padding: 20px;
 
 .dashboard-balance-total > strong {
 margin-top: 22px;
-}
-
-.dashboard-header {
-align-items: flex-start;
-    flex-direction: column;
-}
-
-.dashboard-header h1 {
-font-size: 31px;
 }
 
 .trend-panel-heading {
@@ -951,21 +905,6 @@ grid-column: 1 / -1;
 
 .dashboard-page .button:hover {
 transform: translateY(-1px);
-}
-
-@media (min-width: 761px) {
-.dashboard-page {
-padding: 60px 0 72px;
-}
-}
-
-.dashboard-header h1 {
-font-weight: 600;
-  letter-spacing: -0.028em;
-}
-
-.dashboard-header p:not(.eyebrow) {
-line-height: 1.55;
 }
 
 .workspace-onboarding {

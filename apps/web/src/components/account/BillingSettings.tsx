@@ -269,100 +269,32 @@ export function BillingSettings({ user }: { user: User }) {
           {billingPeriodLabel && <small>{billingPeriodLabel}</small>}
         </div>
         {summary && (
-          <>
-            <div className="billing-usage-grid" aria-label="Current plan usage and allowances">
-              {assistantUsage && (
-                <PlanUsageIndicator
-                  label="AI questions this month"
-                  used={assistantUsage.used}
-                  limit={assistantUsage.limit}
-                  resetsAt={assistantUsage.resetsAt}
-                />
-              )}
-              {importUsage && (
-                <PlanUsageIndicator
-                  label="Committed imports this month"
-                  used={importUsage.used}
-                  limit={importUsage.limit}
-                  resetsAt={importUsage.resetsAt}
-                />
-              )}
-              {categoryAllowance && (
-                <PlanUsageIndicator
-                  label="Active custom categories"
-                  used={categoryAllowance.used}
-                  limit={categoryAllowance.limit}
-                  detail="Included starter and protected Uncategorized categories do not count."
-                />
-              )}
-            </div>
-
-            <div className="billing-plan-comparison-wrap">
-              <div className="billing-plan-comparison-heading">
-                <div>
-                  <h3 id="billing-plan-comparison-title">Free and Pro, side by side</h3>
-                  <p id="billing-plan-comparison-description">
-                    Transactions, budgets, recurring-expense tracking, calendar tools, and included
-                    starter data remain available on both plans.
-                  </p>
-                </div>
-              </div>
-              <p id="billing-plan-scroll-hint" className="billing-plan-scroll-hint">
-                On narrow screens, scroll horizontally to compare both plans.
-              </p>
-              <div
-                className="billing-plan-table-wrap"
-                role="region"
-                aria-labelledby="billing-plan-comparison-title"
-                aria-describedby="billing-plan-comparison-description billing-plan-scroll-hint"
-                tabIndex={0}
-              >
-                <table className="billing-plan-comparison">
-                  <caption className="sr-only">
-                    Free and Zoption Pro plan feature comparison
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th className="billing-plan-feature-heading" scope="col">
-                        Feature
-                      </th>
-                      <th
-                        scope="col"
-                        data-plan="free"
-                        data-current={!isPro || undefined}
-                        aria-current={!isPro ? "true" : undefined}
-                      >
-                        <span className="billing-plan-name">Free</span>
-                        {!isPro && <span className="billing-plan-current">Current plan</span>}
-                      </th>
-                      <th
-                        scope="col"
-                        data-plan="pro"
-                        data-current={isPro || undefined}
-                        aria-current={isPro ? "true" : undefined}
-                      >
-                        <span className="billing-plan-name">Zoption Pro</span>
-                        {isPro && <span className="billing-plan-current">Current plan</span>}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {planFeatures.map((item) => (
-                      <tr key={item.feature}>
-                        <th scope="row">{item.feature}</th>
-                        <td data-plan="free" data-current={!isPro || undefined}>
-                          {item.free}
-                        </td>
-                        <td data-plan="pro" data-current={isPro || undefined}>
-                          {item.pro}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
+          <div className="billing-usage-grid" aria-label="Current plan usage and allowances">
+            {assistantUsage && (
+              <PlanUsageIndicator
+                label="AI questions this month"
+                used={assistantUsage.used}
+                limit={assistantUsage.limit}
+                resetsAt={assistantUsage.resetsAt}
+              />
+            )}
+            {importUsage && (
+              <PlanUsageIndicator
+                label="Committed imports this month"
+                used={importUsage.used}
+                limit={importUsage.limit}
+                resetsAt={importUsage.resetsAt}
+              />
+            )}
+            {categoryAllowance && (
+              <PlanUsageIndicator
+                label="Active custom categories"
+                used={categoryAllowance.used}
+                limit={categoryAllowance.limit}
+                detail="Included starter and protected Uncategorized categories do not count."
+              />
+            )}
+          </div>
         )}
         {duplicateSubscriptions && (
           <p className="billing-settings-warning" role="alert">
@@ -435,6 +367,73 @@ export function BillingSettings({ user }: { user: User }) {
         )}
       </section>
       {summary?.canManageSponsoredSeats && <SponsoredProSeatsSettings workspace={workspace} />}
+      {summary && (
+        <section id="plan-comparison" className="settings-section billing-plan-comparison-section">
+          <div className="billing-plan-comparison-wrap">
+            <div className="billing-plan-comparison-heading">
+              <div>
+                <h2 id="billing-plan-comparison-title">Free and Pro, side by side</h2>
+                <p id="billing-plan-comparison-description">
+                  Transactions, budgets, recurring-expense tracking, calendar tools, and included
+                  starter data remain available on both plans.
+                </p>
+              </div>
+            </div>
+            <p id="billing-plan-scroll-hint" className="billing-plan-scroll-hint">
+              On narrow screens, scroll horizontally to compare both plans.
+            </p>
+            <div
+              className="billing-plan-table-wrap"
+              role="region"
+              aria-labelledby="billing-plan-comparison-title"
+              aria-describedby="billing-plan-comparison-description billing-plan-scroll-hint"
+              tabIndex={0}
+            >
+              <table className="billing-plan-comparison">
+                <caption className="sr-only">Free and Zoption Pro plan feature comparison</caption>
+                <thead>
+                  <tr>
+                    <th className="billing-plan-feature-heading" scope="col">
+                      Feature
+                    </th>
+                    <th
+                      scope="col"
+                      data-plan="free"
+                      data-current={!isPro || undefined}
+                      aria-current={!isPro ? "true" : undefined}
+                    >
+                      <span className="billing-plan-name">Free</span>
+                      {!isPro && <span className="billing-plan-current">Current plan</span>}
+                    </th>
+                    <th
+                      scope="col"
+                      data-plan="pro"
+                      data-current={isPro || undefined}
+                      aria-current={isPro ? "true" : undefined}
+                    >
+                      <span className="billing-plan-name">Zoption Pro</span>
+                      {isPro && <span className="billing-plan-current">Current plan</span>}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {planFeatures.map((item) => (
+                    <tr key={item.feature}>
+                      <th scope="row">{item.feature}</th>
+                      <td data-plan="free" data-current={!isPro || undefined}>
+                        {item.free}
+                      </td>
+                      <td data-plan="pro" data-current={isPro || undefined}>
+                        {item.pro}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
     </>
   );
 }

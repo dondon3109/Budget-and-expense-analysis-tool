@@ -1,8 +1,7 @@
 /* Plan and billing owns its status, usage, warning, and action styles. */
 .billing-settings-overview {
-  max-width: 680px;
-  margin-top: 24px;
-  padding: 17px;
+  margin-top: 26px;
+  padding: 20px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -25,21 +24,21 @@
 
 .billing-settings-overview strong {
   color: var(--ink);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .billing-settings-overview p {
   max-width: 53ch;
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
 .billing-settings-overview small {
   flex: 0 0 auto;
   color: var(--success);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -52,23 +51,37 @@
 }
 
 .billing-usage-grid {
-  max-width: 900px;
   margin-top: 14px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.billing-plan-comparison-wrap {
-  max-width: 900px;
-  margin-top: 30px;
+.billing-settings .plan-usage-indicator {
+  padding: 15px 16px;
+  gap: 9px;
+}
+
+.billing-settings .plan-usage-heading span {
+  font-size: 11px;
+}
+
+.billing-settings .plan-usage-heading strong {
+  font-size: 16px;
+}
+
+.billing-settings .plan-usage-meta small,
+.billing-settings .plan-usage-indicator > p,
+.billing-settings .plan-usage-meta a {
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .billing-plan-comparison-heading {
   text-align: center;
 }
 
-.billing-plan-comparison-heading h3 {
+.billing-plan-comparison-heading h2 {
   margin: 0;
   color: var(--ink);
   font-family: Georgia, serif;
@@ -81,7 +94,7 @@
   max-width: 62ch;
   margin: 9px auto 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -116,11 +129,11 @@
 
 .billing-plan-comparison th,
 .billing-plan-comparison td {
-  padding: 17px 20px;
+  padding: 18px 16px;
   color: var(--muted);
   border-bottom: 1px solid var(--line);
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.55;
   text-align: left;
   vertical-align: middle;
 }
@@ -131,26 +144,30 @@
 }
 
 .billing-plan-comparison thead th {
-  padding-top: 15px;
-  padding-bottom: 15px;
+  padding-top: 18px;
+  padding-bottom: 18px;
   color: var(--ink);
   background: var(--surface);
 }
 
 .billing-plan-feature-heading,
 .billing-plan-comparison tbody th {
-  width: 50%;
+  width: 38%;
 }
 
 .billing-plan-feature-heading {
   color: var(--ink) !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 800;
+}
+
+.billing-plan-comparison thead .billing-plan-feature-heading,
+.billing-plan-comparison tbody th {
+  background: var(--surface-soft);
 }
 
 .billing-plan-comparison tbody th {
   color: var(--ink);
-  background: var(--surface-soft);
   font-weight: 750;
 }
 
@@ -162,7 +179,7 @@
 
 .billing-plan-comparison th[data-plan],
 .billing-plan-comparison td[data-plan] {
-  width: 25%;
+  width: 31%;
   text-align: center;
 }
 
@@ -188,10 +205,11 @@
 }
 
 .billing-plan-name {
+  display: block;
   color: var(--success);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 850;
-  line-height: 1;
+  line-height: 1.1;
 }
 
 .billing-plan-comparison thead [data-plan="pro"] .billing-plan-name {
@@ -199,9 +217,10 @@
 }
 
 .billing-plan-current {
-  margin-left: 5px;
+  display: block;
+  margin-top: 6px;
   color: var(--success);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -209,27 +228,29 @@
 }
 
 .billing-plan-comparison thead [data-plan="free"][data-current="true"] {
-  background: color-mix(in srgb, var(--success-soft) 34%, var(--surface));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--success) 46%, var(--line)),
+    inset 0 -3px 0 var(--success);
 }
 
 .billing-plan-comparison thead [data-plan="pro"][data-current="true"] {
-  background: color-mix(in srgb, var(--action) 12%, var(--surface));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--action) 46%, var(--line)),
+    inset 0 -3px 0 var(--action);
 }
 
 .billing-settings-warning {
-  max-width: 680px;
   margin: 14px 0 0;
   padding: 11px 13px;
   color: var(--warning);
   border: 1px solid color-mix(in srgb, var(--warning) 30%, var(--line));
   border-radius: 10px;
   background: var(--warning-soft);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.55;
 }
 
 .billing-settings-actions {
-  max-width: 680px;
   margin-top: 16px;
   display: flex;
   flex-wrap: wrap;
@@ -240,7 +261,7 @@
 .billing-settings-actions small {
   flex-basis: 100%;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
 }
