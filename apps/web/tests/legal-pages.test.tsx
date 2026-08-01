@@ -29,14 +29,15 @@ describe("legal pages", () => {
     renderPage(<TermsOfServicePage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Terms of Service" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: July 30, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: August 2, 2026")).toBeInTheDocument();
     expect(
       screen.getByText(/does not currently connect directly to your bank/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/filtered transaction CSV feature/i)).toBeInTheDocument();
     expect(screen.getByText(/separate consent/i)).toBeInTheDocument();
-    expect(screen.getByText(/Paddle-hosted checkout/i)).toBeInTheDocument();
-    expect(screen.getByText(/signed notification from Paddle/i)).toBeInTheDocument();
+    expect(screen.getByText(/through PayPal/i)).toBeInTheDocument();
+    expect(screen.getByText(/renew automatically/i)).toBeInTheDocument();
+    expect(screen.getByText(/verified PayPal webhook notification/i)).toBeInTheDocument();
     expect(
       screen.getByText(/account deletion control in your account settings/i),
     ).toBeInTheDocument();
@@ -50,10 +51,10 @@ describe("legal pages", () => {
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/DeepSeek/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Paddle/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/PayPal/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/public storage link/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Full payment-card credentials/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/minimal signed-notification event metadata/i)).toBeInTheDocument();
+    expect(screen.getByText(/minimal verified-webhook event metadata/i)).toBeInTheDocument();
     expect(screen.getByText(/not a complete account-data archive/i)).toBeInTheDocument();
     expect(screen.getByText(/includes an in-app account-deletion control/i)).toBeInTheDocument();
   });

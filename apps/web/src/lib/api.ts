@@ -291,17 +291,20 @@ export function getBillingSummary(workspace: AuthenticatedWorkspace): Promise<Bi
 export function startBillingCheckout(
   workspace: AuthenticatedWorkspace,
   interval: BillingInterval,
-): Promise<{ reference: string; priceId: string }> {
+): Promise<{ approvalUrl: string }> {
   return requestJson(workspace, "/api/app/billing/checkout", {
     method: "POST",
     body: JSON.stringify({ interval }),
   });
 }
 
-export function createBillingPortalSession(
+export function cancelBillingSubscription(
   workspace: AuthenticatedWorkspace,
-): Promise<{ url: string }> {
-  return requestJson(workspace, "/api/app/billing/portal", { method: "POST" });
+): Promise<{ cancellationRequested: true }> {
+  return requestJson(workspace, "/api/app/billing/cancel", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
 
 export function syncVerifiedIdentity(workspace: AuthenticatedWorkspace): Promise<void> {

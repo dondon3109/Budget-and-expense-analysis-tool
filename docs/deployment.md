@@ -53,6 +53,22 @@ After changing redirect or template settings, request a fresh recovery email; pr
 
 8. Keep `DEEPSEEK_MODEL=deepseek-v4-flash`, `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
 9. Before enabling sponsored-seat invitations, onboard a verified sender domain in Cloudflare Email Service, confirm the target account is eligible for Workers Email Sending, and retain the `EMAIL` `send_email` binding in both deployment environments. Set `WEB_APP_URL` to the exact HTTPS Pages origin and `EMAIL_FROM` to the approved sender address; neither value belongs in browser `VITE_*` configuration. Send a controlled invitation to an address you manage before enabling the production platform-admin grant.
+10. Configure PayPal subscriptions before enabling paid checkout:
+    - Create separate Sandbox and live PayPal API apps. Do not share credentials, webhook IDs, products, or plans between environments.
+    - Create one product and two recurring PHP plans in each environment: ₱149 monthly and ₱1,299 annually, with no trial. Confirm the PayPal account can approve those PHP subscription plans before release.
+    - Set the non-secret Worker variables for each environment: `PAYPAL_ENVIRONMENT` (`sandbox` for preview, `production` for production), `PAYPAL_PRO_MONTHLY_PLAN_ID`, `PAYPAL_PRO_ANNUAL_PLAN_ID`, and the exact HTTPS `WEB_APP_URL`. Do not put any of these in `VITE_*` configuration.
+    - Store `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `PAYPAL_WEBHOOK_ID` as Worker secrets in each environment. The browser has no PayPal SDK, client ID, iframe, or API connection.
+
+    ```bash
+    pnpm --filter @zoption/api exec wrangler secret put PAYPAL_CLIENT_ID --config wrangler.deploy.jsonc --env preview
+    pnpm --filter @zoption/api exec wrangler secret put PAYPAL_CLIENT_SECRET --config wrangler.deploy.jsonc --env preview
+    pnpm --filter @zoption/api exec wrangler secret put PAYPAL_WEBHOOK_ID --config wrangler.deploy.jsonc --env preview
+    pnpm --filter @zoption/api exec wrangler secret put PAYPAL_CLIENT_ID --config wrangler.deploy.jsonc --env production
+    pnpm --filter @zoption/api exec wrangler secret put PAYPAL_CLIENT_SECRET --config wrangler.deploy.jsonc --env production
+    pnpm --filter @zoption/api exec wrangler secret put PAYPAL_WEBHOOK_ID --config wrangler.deploy.jsonc --env production
+    ```
+
+    Register one webhook per environment at `https://PREVIEW_API_HOST/api/billing/paypal/webhook` and `https://api.zoption.site/api/billing/paypal/webhook`. Subscribe only to `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.EXPIRED`, and `BILLING.SUBSCRIPTION.PAYMENT.FAILED`. Record the matching webhook ID as the environment secret. Never copy OAuth tokens, webhook headers, payer data, or secret values into source code, tracked configuration, or logs.
 
 ### Platform-admin recovery operation
 

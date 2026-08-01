@@ -29,6 +29,12 @@ export interface Bindings {
   PADDLE_PRO_ANNUAL_PRICE_ID?: string;
   PADDLE_API_KEY?: string;
   PADDLE_WEBHOOK_SECRET?: string;
+  PAYPAL_ENVIRONMENT?: "sandbox" | "production";
+  PAYPAL_PRO_MONTHLY_PLAN_ID?: string;
+  PAYPAL_PRO_ANNUAL_PLAN_ID?: string;
+  PAYPAL_CLIENT_ID?: string;
+  PAYPAL_CLIENT_SECRET?: string;
+  PAYPAL_WEBHOOK_ID?: string;
 }
 
 export interface AuthUser {

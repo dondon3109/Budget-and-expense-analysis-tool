@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
   addSponsoredProSeat: vi.fn(),
+  cancelBillingSubscription: vi.fn(),
   createBillingPortalSession: vi.fn(),
   getBillingSummary: vi.fn(),
   getSponsoredProSeats: vi.fn(),
@@ -23,8 +24,6 @@ const apiMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../src/lib/api", () => apiMocks);
-vi.mock("../src/lib/paddle", () => ({ getPaddle: vi.fn() }));
-
 import { BillingSettings } from "../src/components/account/BillingSettings";
 
 const user = {
@@ -40,11 +39,13 @@ function summary(
   const paid = status === "active" || status === "trialing";
   const base = {
     plan: paid ? "zoption_pro" : "free",
-    entitlementSource: paid ? "paddle" : null,
+    entitlementSource: paid ? "paypal" : null,
+    provider: status ? "paypal" : null,
     status,
     interval: status ? "month" : null,
     currentPeriodEndsAt: status ? "2026-08-30T00:00:00.000Z" : null,
     scheduledChangeAt: null,
+    cancelAtPeriodEnd: false,
     canCheckout: status === null || status === "canceled",
     canManageBilling: status !== null,
     canManageSponsoredSeats: false,
@@ -97,6 +98,7 @@ describe("BillingSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiMocks.addSponsoredProSeat.mockResolvedValue({});
+    apiMocks.cancelBillingSubscription.mockResolvedValue({ cancellationRequested: true });
     apiMocks.createBillingPortalSession.mockResolvedValue({ url: "https://example.test/portal" });
     apiMocks.getSponsoredProSeats.mockResolvedValue({
       activeCount: 0,
@@ -142,10 +144,7 @@ describe("BillingSettings", () => {
   it("automatically reflects an activated checkout in Plan and billing", async () => {
     vi.useFakeTimers();
     const freeSummary = summary(null);
-    renderSettings(
-      freeSummary,
-      "/app/settings?checkout=completed&source=paddle#plan-and-billing",
-    );
+    renderSettings(freeSummary, "/app/settings?checkout=completed#plan-and-billing");
 
     await act(async () => {
       await Promise.resolve();
@@ -159,7 +158,7 @@ describe("BillingSettings", () => {
 
     expect(screen.getByText("Zoption Pro is active")).toBeInTheDocument();
     expect(screen.getByTestId("current-location")).toHaveTextContent(
-      "/app/settings?source=paddle#plan-and-billing",
+      "/app/settings#plan-and-billing",
     );
     expect(screen.queryByText("Confirming your payment")).not.toBeInTheDocument();
   });
@@ -185,8 +184,8 @@ describe("BillingSettings", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Choose how you want to use Zoption Pro",
     });
-    expect(screen.getByRole("button", { name: "Subscribe Monthly · $2.99/month" })).toHaveFocus();
-    expect(screen.getByRole("button", { name: "Subscribe Annual · $24.99/year" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Subscribe Monthly · ₱149/month" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Subscribe Annual · ₱1,299/year" })).toBeVisible();
 
     fireEvent.keyDown(dialog, { key: "Escape" });
     expect(
@@ -311,16 +310,75 @@ describe("BillingSettings", () => {
       }),
     );
 
-    expect(await screen.findByRole("button", { name: "Manage billing" })).toBeInTheDocument();
+    expect(await screen.findByText(/new checkout is unavailable/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Choose a Pro plan" })).not.toBeInTheDocument();
-    expect(screen.getByText(/new checkout is unavailable/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel renewal" })).not.toBeInTheDocument();
   });
 
-  it("warns when Paddle reports duplicate ongoing subscriptions", async () => {
+  it("warns when PayPal reports duplicate ongoing subscriptions", async () => {
     renderSettings(summary("active", { nonTerminalSubscriptionCount: 2 }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "more than one ongoing subscription",
+      "More than one ongoing subscription",
     );
+  });
+
+  it("shows a brief neutral message when PayPal checkout is canceled", async () => {
+    renderSettings(summary(null), "/app/settings?checkout=cancelled#plan-and-billing");
+
+    expect(
+      await screen.findByText("Checkout was canceled. No payment was made."),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings#plan-and-billing",
+    );
+  });
+
+  it("waits for a verified cancellation before updating the billing state", async () => {
+    vi.useFakeTimers();
+    const active = summary("active");
+    const canceled = summary("canceled", {
+      plan: "zoption_pro",
+      entitlementSource: "paypal",
+      cancelAtPeriodEnd: true,
+      canCheckout: false,
+      nonTerminalSubscriptionCount: 0,
+    });
+    apiMocks.getBillingSummary
+      .mockResolvedValueOnce(active)
+      .mockResolvedValueOnce(active)
+      .mockResolvedValueOnce(canceled);
+    renderSettings(active);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    const trigger = screen.getByRole("button", { name: "Cancel renewal" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: "Cancel renewal?" });
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel renewal" }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(apiMocks.cancelBillingSubscription).toHaveBeenCalledWith({
+      key: "user:user-1",
+      userId: "user-1",
+    });
+    expect(screen.getByText("Confirming your cancellation")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(
+      screen.getByText("Your Pro access remains available until the paid period ends"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Period ends Aug 30, 2026")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel renewal" })).not.toBeInTheDocument();
   });
 });

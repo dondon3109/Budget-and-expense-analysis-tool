@@ -1,7 +1,11 @@
 import { billingCheckoutRequestSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
-import { createCustomerPortalSession } from "../billing/paddle";
+import {
+  cancelPayPalSubscription,
+  createPayPalSubscription,
+  getPayPalSubscription,
+} from "../billing/paypal";
 import type { BillingRepository } from "../db/billing";
 import { HttpError } from "../errors";
 import { readJson } from "../request";
@@ -19,32 +23,47 @@ export function createBillingRoutes(repository: BillingRepository) {
     if (!parsed.success) {
       throw new HttpError(400, "invalid_request", "Choose a valid billing interval.");
     }
-    const reference = await repository.createCheckoutReference(
-      context.env,
-      context.get("tenant").tenantId,
-      parsed.data.interval,
-    );
-    return context.json(reference, 201);
-  });
+    const tenantId = context.get("tenant").tenantId;
+    const checkout = await repository.createCheckoutReference(context.env, tenantId, parsed.data.interval);
+    if (checkout.provider !== "paypal") {
+      throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
+    }
 
-  routes.post("/portal", async (context) => {
-    const customer = await repository.getPortalCustomer(
-      context.env,
-      context.get("tenant").tenantId,
-    );
-    if (!customer) {
-      throw new HttpError(
-        409,
-        "billing_customer_missing",
-        "Complete a subscription checkout first.",
+    const subscription = checkout.providerSubscriptionId
+      ? await getPayPalSubscription(context.env, checkout.providerSubscriptionId)
+      : await createPayPalSubscription(context.env, {
+          planId: checkout.providerPlanId,
+          checkoutReference: checkout.reference,
+        });
+    if (subscription.planId !== checkout.providerPlanId || subscription.customId !== checkout.reference) {
+      throw new HttpError(502, "billing_provider_error", "The billing provider could not complete the request.");
+    }
+    if (!checkout.providerSubscriptionId) {
+      await repository.bindCheckoutProviderSubscription(
+        context.env,
+        tenantId,
+        checkout.reference,
+        "paypal",
+        subscription.id,
       );
     }
-    const url = await createCustomerPortalSession(
+    if (!subscription.approvalUrl) {
+      throw new HttpError(409, "checkout_not_approvable", "This checkout is awaiting confirmation.");
+    }
+    return context.json({ approvalUrl: subscription.approvalUrl }, 201);
+  });
+
+  routes.post("/cancel", async (context) => {
+    const subscription = await repository.getProviderSubscription(
       context.env,
-      customer.customerId,
-      customer.subscriptionIds,
+      context.get("tenant").tenantId,
+      "paypal",
     );
-    return context.json({ url });
+    if (!subscription || subscription.cancelAtPeriodEnd || subscription.status === "canceled") {
+      throw new HttpError(409, "subscription_not_cancelable", "There is no active subscription to cancel.");
+    }
+    await cancelPayPalSubscription(context.env, subscription.providerSubscriptionId);
+    return context.json({ cancellationRequested: true });
   });
 
   return routes;

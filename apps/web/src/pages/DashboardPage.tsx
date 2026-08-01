@@ -715,7 +715,6 @@ export function DashboardPage() {
               open={isProCheckoutOpen}
               summary={billingSummary.data}
               workspace={workspace}
-              email={user?.email}
               returnFocus={subscribeTriggerRef.current}
               onClose={closeProCheckout}
             />

@@ -122,17 +122,20 @@ export function createPaddleWebhookRoutes(repository: BillingRepository) {
     }
 
     await repository.applySubscriptionEvent(context.env, {
-      id: eventId,
+      provider: "paddle",
+      providerEventId: eventId,
       type: eventType,
       occurredAt,
-      subscriptionId,
-      customerId,
-      productId,
-      priceId,
+      providerSubscriptionId: subscriptionId,
+      providerCustomerId: customerId,
+      providerProductId: productId,
+      providerPlanId: priceId,
+      providerStatus: statusValue,
       status: statusValue as BillingSubscriptionStatus,
       interval,
       currentPeriodEndsAt,
       scheduledChangeAt,
+      cancelAtPeriodEnd: scheduledChange?.action === "cancel",
       checkoutReference: customData ? stringAt(customData, "zoption_checkout_reference") : null,
     });
 

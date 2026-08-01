@@ -266,7 +266,7 @@ export function createAccountDeletionService(
           throw new HttpError(
             409,
             "subscription_blocks_account_deletion",
-            "Cancel your paid subscription and wait for Paddle to confirm it before deleting your account.",
+            "Cancel your paid subscription and wait for the provider to confirm it before deleting your account.",
             { billingPath: "/app/settings" },
           );
         }

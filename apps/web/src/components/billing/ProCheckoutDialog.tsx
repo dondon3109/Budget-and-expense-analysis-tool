@@ -13,7 +13,6 @@ interface ProCheckoutDialogProps {
   open: boolean;
   summary: BillingSummary;
   workspace: AuthenticatedWorkspace;
-  email?: string;
   returnFocus?: HTMLElement | null;
   onClose: () => void;
 }
@@ -22,7 +21,6 @@ export function ProCheckoutDialog({
   open,
   summary,
   workspace,
-  email,
   returnFocus,
   onClose,
 }: ProCheckoutDialogProps) {
@@ -102,7 +100,7 @@ export function ProCheckoutDialog({
     setBusy(interval);
     setError(undefined);
     try {
-      await openBillingCheckout(workspace, interval, email);
+      await openBillingCheckout(workspace, interval);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Checkout could not be opened.");
     } finally {

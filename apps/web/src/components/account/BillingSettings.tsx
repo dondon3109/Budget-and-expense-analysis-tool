@@ -8,11 +8,12 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useBillingSummary } from "../../hooks/useBillingSummary";
-import { createBillingPortalSession } from "../../lib/api";
+import { cancelBillingSubscription } from "../../lib/api";
 import { planFeatures } from "../billing/billingPlans";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { ProCheckoutDialog } from "../billing/ProCheckoutDialog";
 import { userWorkspace } from "../../lib/workspace";
+import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
 import { SponsoredProSeatsSettings } from "./SponsoredProSeatsSettings";
 import "./BillingSettings.css";
 
@@ -32,14 +33,25 @@ function statusCopy(
   status: BillingSubscriptionStatus | null | undefined,
   plan: BillingSummary["plan"] | undefined,
   entitlementSource: ProEntitlementSource | null | undefined,
-  confirming: boolean,
+  confirmingPayment: boolean,
+  confirmingCancellation: boolean,
 ): { label: string; heading: string; description: string; tone: string } {
-  if (confirming) {
+  if (confirmingPayment) {
     return {
       label: "Confirming payment",
       heading: "Confirming your payment",
       description:
-        "Paddle is confirming your purchase. Paid access begins only after the signed notification reaches Zoption.",
+        "PayPal is confirming your subscription. Paid access begins only after Zoption receives a verified provider notification.",
+      tone: "pending",
+    };
+  }
+
+  if (confirmingCancellation) {
+    return {
+      label: "Confirming cancellation",
+      heading: "Confirming your cancellation",
+      description:
+        "PayPal has received your cancellation request. Renewal stops after Zoption receives its verified provider notification.",
       tone: "pending",
     };
   }
@@ -83,7 +95,7 @@ function statusCopy(
         label: "Payment issue",
         heading: "Your payment needs attention",
         description:
-          "Paddle has reported a payment issue. Review your billing details to restore confirmed paid access.",
+          "PayPal has reported a payment issue. Review your PayPal subscription to restore confirmed paid access.",
         tone: "warning",
       };
     case "paused":
@@ -91,17 +103,25 @@ function statusCopy(
         label: "Subscription paused",
         heading: "Your subscription is paused",
         description:
-          "Pro access is not active while the subscription is paused. Use Paddle’s portal to review the subscription.",
+          "Pro access is not active while the subscription is paused. Review the subscription in PayPal.",
         tone: "warning",
       };
     case "canceled":
-      return {
-        label: "Subscription ended",
-        heading: "Your previous subscription has ended",
-        description:
-          "You can continue on the Free plan or start a new Pro subscription when eligible.",
-        tone: "neutral",
-      };
+      return plan === "zoption_pro"
+        ? {
+            label: "Renewal canceled",
+            heading: "Your Pro access remains available until the paid period ends",
+            description:
+              "Renewal is canceled. No automatic refund is issued for the current paid period.",
+            tone: "success",
+          }
+        : {
+            label: "Subscription ended",
+            heading: "Your previous subscription has ended",
+            description:
+              "You can continue on the Free plan or start a new Pro subscription when eligible.",
+            tone: "neutral",
+          };
     default:
       return plan === "zoption_pro"
         ? {
@@ -121,7 +141,9 @@ function statusCopy(
 }
 
 function periodLabel(summary: BillingSummary): string | undefined {
-  if (summary.entitlementSource && summary.entitlementSource !== "paddle") return undefined;
+  if (summary.entitlementSource === "platform_admin" || summary.entitlementSource === "sponsored") {
+    return undefined;
+  }
   if (summary.scheduledChangeAt) {
     return `Change scheduled ${formatPlanDate(summary.scheduledChangeAt)}`;
   }
@@ -143,12 +165,18 @@ export function BillingSettings({ user }: { user: User }) {
   const location = useLocation();
   const navigate = useNavigate();
   const checkoutCompleted = searchParams.get("checkout") === "completed";
+  const checkoutCancelled = searchParams.get("checkout") === "cancelled";
   const [error, setError] = useState<string>();
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
   const checkoutTriggerRef = useRef<HTMLButtonElement>(null);
-  const [portalBusy, setPortalBusy] = useState(false);
-  const [confirming, setConfirming] = useState(checkoutCompleted);
-  const [confirmationDelayed, setConfirmationDelayed] = useState(false);
+  const cancellationTriggerRef = useRef<HTMLButtonElement>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(checkoutCompleted);
+  const [paymentConfirmationDelayed, setPaymentConfirmationDelayed] = useState(false);
+  const [confirmingCancellation, setConfirmingCancellation] = useState(false);
+  const [cancellationConfirmationDelayed, setCancellationConfirmationDelayed] = useState(false);
+  const [checkoutCancelledNotice, setCheckoutCancelledNotice] = useState(false);
 
   useEffect(() => {
     if (!checkoutCompleted) return;
@@ -157,8 +185,8 @@ export function BillingSettings({ user }: { user: User }) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
 
-    setConfirming(true);
-    setConfirmationDelayed(false);
+    setConfirmingPayment(true);
+    setPaymentConfirmationDelayed(false);
     setError(undefined);
 
     async function confirmPayment() {
@@ -173,7 +201,7 @@ export function BillingSettings({ user }: { user: User }) {
           nextSummary.plan === "zoption_pro" &&
           (nextSummary.status === "active" || nextSummary.status === "trialing")
         ) {
-          setConfirming(false);
+          setConfirmingPayment(false);
           const nextSearch = new URLSearchParams(location.search);
           nextSearch.delete("checkout");
           void navigate(
@@ -194,8 +222,8 @@ export function BillingSettings({ user }: { user: User }) {
       }
 
       if (attempts >= CONFIRMATION_ATTEMPTS) {
-        setConfirming(false);
-        setConfirmationDelayed(true);
+        setConfirmingPayment(false);
+        setPaymentConfirmationDelayed(true);
         return;
       }
       timer = setTimeout(() => void confirmPayment(), CONFIRMATION_INTERVAL_MS);
@@ -206,18 +234,94 @@ export function BillingSettings({ user }: { user: User }) {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [checkoutCompleted, location.hash, location.pathname, location.search, navigate, refetchBilling, user.id]);
+  }, [
+    checkoutCompleted,
+    location.hash,
+    location.pathname,
+    location.search,
+    navigate,
+    refetchBilling,
+    user.id,
+  ]);
 
-  async function openBillingPortal() {
-    if (!summary?.canManageBilling) return;
-    setPortalBusy(true);
+  useEffect(() => {
+    if (!checkoutCancelled) return;
+
+    setCheckoutCancelledNotice(true);
+    const nextSearch = new URLSearchParams(location.search);
+    nextSearch.delete("checkout");
+    void navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearch.size ? `?${nextSearch.toString()}` : "",
+        hash: location.hash,
+      },
+      { replace: true },
+    );
+  }, [checkoutCancelled, location.hash, location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    if (!checkoutCancelledNotice) return;
+    const timer = setTimeout(() => setCheckoutCancelledNotice(false), 7_000);
+    return () => clearTimeout(timer);
+  }, [checkoutCancelledNotice]);
+
+  useEffect(() => {
+    if (!confirmingCancellation) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+
+    async function confirmCancellation() {
+      attempts += 1;
+      try {
+        const result = await refetchBilling();
+        if (cancelled) return;
+        if (result.error) throw result.error;
+        if (result.data?.cancelAtPeriodEnd) {
+          setConfirmingCancellation(false);
+          setCancellationConfirmationDelayed(false);
+          return;
+        }
+      } catch (cause) {
+        if (cancelled) return;
+        if (attempts >= CONFIRMATION_ATTEMPTS) {
+          setError(
+            cause instanceof Error ? cause.message : "Your cancellation could not be confirmed.",
+          );
+        }
+      }
+
+      if (attempts >= CONFIRMATION_ATTEMPTS) {
+        setConfirmingCancellation(false);
+        setCancellationConfirmationDelayed(true);
+        return;
+      }
+      timer = setTimeout(() => void confirmCancellation(), CONFIRMATION_INTERVAL_MS);
+    }
+
+    void confirmCancellation();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [confirmingCancellation, refetchBilling]);
+
+  async function requestCancellation() {
+    setCancelBusy(true);
     setError(undefined);
     try {
-      const portal = await createBillingPortalSession(workspace);
-      window.location.assign(portal.url);
+      await cancelBillingSubscription(workspace);
+      setCancelDialogOpen(false);
+      setCancellationConfirmationDelayed(false);
+      setConfirmingCancellation(true);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The billing portal could not be opened.");
-      setPortalBusy(false);
+      setError(
+        cause instanceof Error ? cause.message : "The cancellation request could not be sent.",
+      );
+    } finally {
+      setCancelBusy(false);
     }
   }
 
@@ -226,7 +330,8 @@ export function BillingSettings({ user }: { user: User }) {
     summary?.status,
     summary?.plan,
     summary?.entitlementSource,
-    confirming,
+    confirmingPayment,
+    confirmingCancellation,
   );
   const isPro = summary?.plan === "zoption_pro";
   const duplicateSubscriptions = (summary?.nonTerminalSubscriptionCount ?? 0) > 1;
@@ -324,13 +429,17 @@ export function BillingSettings({ user }: { user: User }) {
         <div
           className="billing-settings-overview"
           data-tone={presentation.tone}
-          aria-busy={(!summary && !visibleError) || confirming}
+          aria-busy={(!summary && !visibleError) || confirmingPayment || confirmingCancellation}
           aria-live="polite"
         >
           <div>
-            <strong>{summary || confirming ? presentation.heading : "Loading your plan"}</strong>
+            <strong>
+              {summary || confirmingPayment || confirmingCancellation
+                ? presentation.heading
+                : "Loading your plan"}
+            </strong>
             <p>
-              {summary || confirming
+              {summary || confirmingPayment || confirmingCancellation
                 ? presentation.description
                 : visibleError
                   ? "Your current billing state is temporarily unavailable."
@@ -369,8 +478,8 @@ export function BillingSettings({ user }: { user: User }) {
         )}
         {duplicateSubscriptions && (
           <p className="billing-settings-warning" role="alert">
-            Paddle reports more than one ongoing subscription for this account. Review billing
-            before starting another checkout or deleting your Zoption account.
+            More than one ongoing subscription is linked to this account. Resolve billing before
+            starting another checkout or deleting your Zoption account.
           </p>
         )}
         {(canCheckout || canManageBilling) && (
@@ -380,33 +489,37 @@ export function BillingSettings({ user }: { user: User }) {
                 ref={checkoutTriggerRef}
                 className="button primary compact"
                 type="button"
-                disabled={confirming}
+                disabled={confirmingPayment || confirmingCancellation}
                 onClick={() => setIsProCheckoutOpen(true)}
               >
                 Choose a Pro plan
               </button>
             )}
-            {canManageBilling && (
-              <button
-                className="button secondary compact"
-                type="button"
-                disabled={portalBusy}
-                onClick={() => void openBillingPortal()}
-              >
-                {portalBusy ? "Opening billing portal…" : "Manage billing"}
-              </button>
-            )}
+            {canManageBilling &&
+              summary?.provider === "paypal" &&
+              summary.status === "active" &&
+              !summary.cancelAtPeriodEnd && (
+                <button
+                  ref={cancellationTriggerRef}
+                  className="button secondary compact"
+                  type="button"
+                  disabled={cancelBusy || confirmingCancellation || summary.status !== "active"}
+                  onClick={() => setCancelDialogOpen(true)}
+                >
+                  Cancel renewal
+                </button>
+              )}
             <small>
               {canCheckout
-                ? "Prices are charged in USD. Your bank may show an approximate PHP conversion. Paddle securely hosts checkout."
-                : "Paddle securely hosts payment-method updates, invoices, and subscription management."}
+                ? "Prices are charged in Philippine pesos. PayPal securely hosts checkout. Taxes if applicable may apply."
+                : "PayPal processes subscription payments. Cancellation stops future renewal; no automatic refund is issued."}
             </small>
           </div>
         )}
         {summary && !isPro && !canCheckout && canManageBilling && (
           <p className="settings-helper">
-            A new checkout is unavailable while this subscription state is being resolved. Use
-            Manage billing to review it in Paddle.
+            A new checkout is unavailable while this subscription state is being resolved. Review
+            the subscription in PayPal if action is needed.
           </p>
         )}
         {summary && !isPro && !canCheckout && !canManageBilling && (
@@ -415,10 +528,22 @@ export function BillingSettings({ user }: { user: User }) {
             support if this continues.
           </p>
         )}
-        {confirmationDelayed && (
+        {paymentConfirmationDelayed && (
           <p className="settings-helper" role="status">
             Payment confirmation is taking longer than expected. You can safely refresh this page in
-            a moment—Paddle’s signed notification will update your plan automatically.
+            a moment—Zoption updates your plan after receiving PayPal’s verified notification.
+          </p>
+        )}
+        {cancellationConfirmationDelayed && (
+          <p className="settings-helper" role="status">
+            Cancellation confirmation is taking longer than expected. Your renewal request remains
+            pending until Zoption receives PayPal’s verified notification. You can safely refresh
+            this page in a moment.
+          </p>
+        )}
+        {checkoutCancelledNotice && (
+          <p className="settings-helper" role="status">
+            Checkout was canceled. No payment was made.
           </p>
         )}
         {visibleError && (
@@ -431,12 +556,19 @@ export function BillingSettings({ user }: { user: User }) {
             open={isProCheckoutOpen}
             summary={summary}
             workspace={workspace}
-            email={user.email}
             returnFocus={checkoutTriggerRef.current}
             onClose={() => setIsProCheckoutOpen(false)}
           />
         )}
       </section>
+      <CancelSubscriptionDialog
+        open={cancelDialogOpen}
+        busy={cancelBusy}
+        periodEndsAt={summary?.currentPeriodEndsAt ?? null}
+        returnFocus={cancellationTriggerRef.current}
+        onClose={() => setCancelDialogOpen(false)}
+        onConfirm={() => void requestCancellation()}
+      />
       {summary?.canManageSponsoredSeats && <SponsoredProSeatsSettings workspace={workspace} />}
     </>
   );

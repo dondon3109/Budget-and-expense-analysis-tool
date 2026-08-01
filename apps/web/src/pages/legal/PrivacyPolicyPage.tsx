@@ -41,11 +41,10 @@ export function PrivacyPolicyPage() {
             results, import audit information, and requested filtered transaction CSV exports.
           </li>
           <li>
-            <strong>Plan and billing:</strong> Paddle customer, subscription, transaction, price,
-            and checkout-reference identifiers; subscription status and billing interval;
-            current-period and scheduled-change timestamps; monthly feature usage; and minimal
-            signed-notification event metadata needed to process an event and avoid processing it
-            twice.
+            <strong>Plan and billing:</strong> PayPal payer, subscription, plan, and
+            checkout-reference identifiers; subscription status and billing interval; current-period
+            and scheduled-change timestamps; monthly feature usage; and minimal verified-webhook
+            event metadata needed to process an event and avoid processing it twice.
           </li>
           <li>
             <strong>Assistant:</strong> consent state, questions, bounded conversation history, and
@@ -67,8 +66,8 @@ export function PrivacyPolicyPage() {
             <strong>Do not submit banking credentials.</strong> Zoption does not currently connect
             to banks. Do not enter full account numbers, passwords, PINs, security codes, or bank
             credentials unless a future feature explicitly supports secure handling of that data.
-            Full payment-card credentials entered during checkout or billing management are handled
-            by Paddle&apos;s hosted interface and are not stored by this Zoption integration.
+            Full payment-card credentials entered during PayPal approval are handled by PayPal and
+            are not stored by this Zoption integration.
           </p>
         </div>
       </section>
@@ -83,8 +82,8 @@ export function PrivacyPolicyPage() {
           </li>
           <li>provide the AI assistant only after separate assistant consent;</li>
           <li>
-            open Paddle-hosted checkout and customer-portal sessions, reconcile signed billing
-            notifications, apply paid access, and enforce plan limits;
+            initiate PayPal subscription approval, reconcile verified PayPal billing webhooks, apply
+            paid access, and enforce plan limits;
           </li>
           <li>remember browser preferences and honor privacy choices;</li>
           <li>
@@ -124,9 +123,9 @@ export function PrivacyPolicyPage() {
             through the server.
           </li>
           <li>
-            <strong>Paddle</strong> for hosted checkout and the hosted customer portal. Paddle
-            handles payment details in those interfaces and sends signed billing notifications to
-            Zoption so the server can reconcile subscription state and paid access.
+            <strong>PayPal</strong> for subscription approval and payment processing. PayPal handles
+            payment details in its interfaces and sends billing webhooks that Zoption verifies on
+            its server before reconciling subscription state and paid access.
           </li>
           <li>
             <strong>Google Analytics 4</strong> only after you enable Analytics through Cookie
@@ -236,7 +235,7 @@ export function PrivacyPolicyPage() {
           fraud prevention, dispute resolution, or legal claims. * **Billing integration records:**
           Zoption stores the provider identifiers, subscription state, period timestamps, usage, and
           minimal event metadata described above as needed to operate paid access and the account.
-          Full payment-card credentials are handled by Paddle and are not stored by this
+          Full payment-card credentials are handled by PayPal and are not stored by this
           integration. [TODO: Confirm and publish the retention period for Zoption-controlled
           billing records.] * **Provider backups:** Deleted database information may remain in
           encrypted provider backups until the applicable backup-retention cycle expires, which may
@@ -279,9 +278,9 @@ export function PrivacyPolicyPage() {
         <p>
           The product currently exports filtered transactions as CSV. That export is not a complete
           account-data archive and does not by itself satisfy every portability request. Account
-          Settings includes an in-app account-deletion control; an ongoing Paddle subscription must
-          be canceled or otherwise resolved before deletion can proceed. For browser tracking
-          choices, use Cookie Settings or read the <Link to="/cookie-policy">Cookie Policy</Link>.
+          Settings includes an in-app account-deletion control; an ongoing paid subscription must be
+          canceled or otherwise resolved before deletion can proceed. For browser tracking choices,
+          use Cookie Settings or read the <Link to="/cookie-policy">Cookie Policy</Link>.
         </p>
       </section>
 

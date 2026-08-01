@@ -2,10 +2,21 @@
 # Never commit a real provider key or expose it through VITE_* variables.
 DEEPSEEK_API_KEY=
 
-# Paddle secrets must stay in Worker secrets or this ignored local file.
+# Dormant Paddle configuration is retained only for a future, deliberate provider rollout.
+# It is not used by the current PayPal checkout path. Keep any real values in Worker secrets or
+# this ignored local file.
 PADDLE_API_KEY=
 PADDLE_WEBHOOK_SECRET=
-# Sandbox price IDs are non-secret deployment values.
+# Sandbox price IDs are non-secret deployment values when Paddle is deliberately reactivated.
 PADDLE_ENVIRONMENT=sandbox
 PADDLE_PRO_MONTHLY_PRICE_ID=pri_01kysdkbk80mdwt093dwv9t8wk
 PADDLE_PRO_ANNUAL_PRICE_ID=pri_01kysdkcpe9dsmba69r3etg94p
+
+# PayPal is the active subscription provider. Keep the client secret and webhook ID
+# in this ignored file or Worker secrets; plan IDs and environment are non-secret.
+PAYPAL_ENVIRONMENT=sandbox
+PAYPAL_PRO_MONTHLY_PLAN_ID=
+PAYPAL_PRO_ANNUAL_PLAN_ID=
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_WEBHOOK_ID=

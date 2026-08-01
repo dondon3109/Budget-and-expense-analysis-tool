@@ -1,0 +1,13 @@
+.cancel-subscription-dialog {
+  max-width: 32rem;
+}
+
+.cancel-subscription-dialog h2 {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.cancel-subscription-dialog p:not(.eyebrow) {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}

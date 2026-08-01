@@ -281,6 +281,9 @@ export interface DashboardSummary {
 export const billingIntervals = ["month", "year"] as const;
 export type BillingInterval = (typeof billingIntervals)[number];
 
+export const billingProviders = ["paddle", "paypal"] as const;
+export type BillingProvider = (typeof billingProviders)[number];
+
 export const billingSubscriptionStatuses = [
   "active",
   "trialing",
@@ -313,7 +316,7 @@ export interface BillingResourceAllowance {
   limit: number | null;
 }
 
-export const proEntitlementSources = ["paddle", "platform_admin", "sponsored"] as const;
+export const proEntitlementSources = ["paypal", "paddle", "platform_admin", "sponsored"] as const;
 export type ProEntitlementSource = (typeof proEntitlementSources)[number];
 
 export type SponsoredProSeatState = "pending" | "active";
@@ -338,10 +341,12 @@ export interface SponsoredProSeatSummary {
 export interface BillingSummary {
   plan: BillingPlan;
   entitlementSource: ProEntitlementSource | null;
+  provider: BillingProvider | null;
   status: BillingSubscriptionStatus | null;
   interval: BillingInterval | null;
   currentPeriodEndsAt: string | null;
   scheduledChangeAt: string | null;
+  cancelAtPeriodEnd: boolean;
   canCheckout: boolean;
   canManageBilling: boolean;
   canManageSponsoredSeats: boolean;

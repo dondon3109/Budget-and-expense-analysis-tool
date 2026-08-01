@@ -105,7 +105,7 @@ function legalPageStructuredData(
   });
 }
 
-const LEGAL_PAGE_LAST_MODIFIED = "2026-07-30";
+const LEGAL_PAGE_LAST_MODIFIED = "2026-08-02";
 
 export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata> = {
   "/": {

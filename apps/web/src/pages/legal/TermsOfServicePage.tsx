@@ -110,23 +110,24 @@ export function TermsOfServicePage() {
       <section>
         <h2>8. Subscriptions and billing</h2>
         <p>
-          Zoption offers monthly and annual paid subscription options through Paddle-hosted
-          checkout. The price, billing interval, and plan presented in checkout apply to the
-          purchase you confirm there. Paddle&apos;s customer portal is used for available
-          payment-method, invoice, cancellation, and other subscription-management actions.
+          Zoption offers monthly and annual paid subscription options through PayPal. Prices are
+          charged in Philippine pesos; the price, billing interval, and plan shown in PayPal
+          approval apply to the subscription you confirm. Subscriptions renew automatically for the
+          selected interval unless you cancel renewal. Taxes may apply.
         </p>
 
         <p>
-          A completed checkout screen does not by itself activate paid access. Zoption grants,
-          changes, pauses, or removes paid access after its server receives and processes the
-          corresponding signed notification from Paddle. A short confirmation delay may occur after
-          checkout or a billing change.
+          You can request cancellation through Plan and billing in Zoption. Cancellation stops
+          future renewal, and your paid access remains available through the end of the current paid
+          period. Zoption does not issue automatic refunds for the current paid period.
         </p>
 
         <p>
-          Your Paddle checkout and customer-portal use may also be subject to Paddle&apos;s terms
-          and privacy notices. [TODO: Add finalized refund and tax terms without characterizing
-          Paddle&apos;s legal role beyond the verified integration.]
+          A completed PayPal approval screen does not by itself activate or change paid access.
+          Zoption grants, changes, pauses, or removes paid access only after its server receives and
+          processes a verified PayPal webhook notification. A short confirmation delay may occur
+          after checkout or a billing change. Your use of PayPal may also be subject to
+          PayPal&apos;s terms and privacy notices.
         </p>
       </section>
 
@@ -137,8 +138,8 @@ export function TermsOfServicePage() {
           uninterrupted operation, preservation of every draft, or compatibility with every file or
           device. You may stop using Zoption at any time. You may request deletion of your account
           and associated data through the account deletion control in your account settings. An
-          ongoing Paddle subscription must be canceled or otherwise resolved before Zoption can
-          delete the linked account. Account deletion may be permanent and may result in the loss of
+          ongoing paid subscription must be canceled or otherwise resolved before Zoption can delete
+          the linked account. Account deletion may be permanent and may result in the loss of
           content, records, and other information associated with your account. We may retain
           certain information where reasonably necessary to comply with legal obligations, resolve
           disputes, prevent fraud or abuse, enforce these Terms, or complete the deletion process

@@ -19,10 +19,12 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
   const base = {
     plan: "free",
     entitlementSource: null,
+    provider: null,
     status: null,
     interval: null,
     currentPeriodEndsAt: null,
     scheduledChangeAt: null,
+    cancelAtPeriodEnd: false,
     canCheckout: true,
     canManageBilling: false,
     canManageSponsoredSeats: false,
@@ -45,7 +47,6 @@ function renderDialog(value = summary(), onClose = vi.fn()) {
         open
         summary={value}
         workspace={workspace}
-        email="user@example.com"
         onClose={onClose}
       />
     </MemoryRouter>,
@@ -71,8 +72,8 @@ describe("ProCheckoutDialog", () => {
       screen.getByText(/does not add or move transactions into the week/i),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Subscribe Annual · $24.99/year" }));
-    expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "year", "user@example.com");
+    fireEvent.click(screen.getByRole("button", { name: "Subscribe Annual · ₱1,299/year" }));
+    expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "year");
   });
 
   it("closes on Escape and explains unavailable checkout", () => {

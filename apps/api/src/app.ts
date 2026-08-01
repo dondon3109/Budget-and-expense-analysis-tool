@@ -39,7 +39,7 @@ import { createCategoryRoutes } from "./routes/categories";
 import { createCalendarEventRoutes } from "./routes/events";
 import { createExportRoutes } from "./routes/exports";
 import { createImportRoutes } from "./routes/imports";
-import { createPaddleWebhookRoutes } from "./routes/paddle-webhooks";
+import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
 import { createTransactionRoutes } from "./routes/transactions";
@@ -49,6 +49,7 @@ const WRITE_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 const JSON_METHODS = new Set(["POST", "PATCH", "PUT"]);
 const DEFAULT_JSON_BODY_LIMIT = 64 * 1024;
 const IMPORT_PREVIEW_BODY_LIMIT = 3 * 1024 * 1024;
+const PAYPAL_WEBHOOK_BODY_LIMIT = 128 * 1024;
 
 function isJsonContentType(contentType: string | undefined): boolean {
   if (!contentType) return false;
@@ -331,7 +332,18 @@ export function createApp(options: AppOptions = {}) {
     );
   });
 
-  app.route("/api/billing/paddle/webhook", createPaddleWebhookRoutes(billingStore));
+  app.use(
+    "/api/billing/paypal/webhook",
+    bodyLimit({
+      maxSize: PAYPAL_WEBHOOK_BODY_LIMIT,
+      onError: (limitedContext) =>
+        limitedContext.json(
+          { error: "payload_too_large", message: "The request body is too large." },
+          413,
+        ),
+    }) as MiddlewareHandler<AppEnvironment>,
+  );
+  app.route("/api/billing/paypal/webhook", createPayPalWebhookRoutes(billingStore));
   app.route("/api/app/account", createAccountDeletionRoutes(accountDeletionService));
   app.route("/api/app/identity", createIdentityRoutes(platformAdminService));
   app.route("/api/app/admin", createPlatformAdminRoutes(platformAdminService));

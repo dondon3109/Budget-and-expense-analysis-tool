@@ -159,7 +159,7 @@ export function AccountDeletionDialog({
           {billingBlocked && onReviewBilling && (
             <div className="account-deletion-billing-action">
               <p>
-                Cancel or resolve every ongoing Paddle subscription before deleting your Zoption
+                Cancel or resolve every ongoing paid subscription before deleting your Zoption
                 account.
               </p>
               <button className="button secondary compact" type="button" onClick={onReviewBilling}>

@@ -1,8 +1,11 @@
+import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../src/app";
 import type { BillingRepository } from "../src/db/billing";
-import type { Bindings } from "../src/types";
+import { HttpError } from "../src/errors";
+import { createPaddleWebhookRoutes } from "../src/routes/paddle-webhooks";
+import type { AppEnvironment, Bindings } from "../src/types";
 
 const WEBHOOK_SECRET = "pdl_ntfset_test_secret";
 const NOW = Date.parse("2026-07-30T12:00:00.000Z");
@@ -11,6 +14,21 @@ function repository() {
   return {
     applySubscriptionEvent: vi.fn(async () => undefined),
   } as unknown as BillingRepository;
+}
+
+function paddleWebhookApp(billing: BillingRepository) {
+  const app = new Hono<AppEnvironment>();
+  app.route("/", createPaddleWebhookRoutes(billing));
+  app.onError((error, context) => {
+    if (error instanceof HttpError) {
+      return context.json(
+        { error: error.code, message: error.message, details: error.details },
+        error.status,
+      );
+    }
+    return context.json({ error: "internal_server_error" }, 500);
+  });
+  return app;
 }
 
 function environment(): Bindings {
@@ -68,13 +86,10 @@ async function signature(rawBody: string): Promise<string> {
 }
 
 async function postWebhook(billing: BillingRepository, payload: unknown) {
-  const app = createApp({
-    billing,
-    readinessCheck: vi.fn(async () => undefined),
-  });
+  const app = paddleWebhookApp(billing);
   const rawBody = JSON.stringify(payload);
   return app.request(
-    "/api/billing/paddle/webhook",
+    "/",
     {
       method: "POST",
       headers: {
@@ -92,6 +107,21 @@ afterEach(() => {
 });
 
 describe("Paddle webhook payload validation", () => {
+  it("keeps the dormant webhook route out of the active application", async () => {
+    const app = createApp({
+      billing: repository(),
+      readinessCheck: vi.fn(async () => undefined),
+    });
+
+    const response = await app.request(
+      "/api/billing/paddle/webhook",
+      { method: "POST" },
+      environment(),
+    );
+
+    expect(response.status).toBe(404);
+  });
+
   it.each(["created", "updated", "pending", "mystery_status"])(
     "rejects unknown subscription status %s",
     async (status) => {

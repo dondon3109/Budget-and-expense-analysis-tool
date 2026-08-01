@@ -5,43 +5,30 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const apiMocks = vi.hoisted(() => ({
   startBillingCheckout: vi.fn(),
 }));
-const paddleMocks = vi.hoisted(() => ({
-  getPaddle: vi.fn(),
-}));
 
 vi.mock("../src/lib/api", () => apiMocks);
-vi.mock("../src/lib/paddle", () => paddleMocks);
 
 import { openBillingCheckout } from "../src/lib/billingCheckout";
 
 describe("openBillingCheckout", () => {
-  const checkoutOpen = vi.fn();
   const workspace = { key: "user:user-1" as const, userId: "user-1" };
+  const assign = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    apiMocks.startBillingCheckout.mockResolvedValue({ reference: "checkout-ref", priceId: "pri_month" });
-    paddleMocks.getPaddle.mockResolvedValue({ Checkout: { open: checkoutOpen } });
+    apiMocks.startBillingCheckout.mockResolvedValue({
+      approvalUrl: "https://www.sandbox.paypal.com/checkoutnow?token=example",
+    });
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { assign },
+    });
   });
 
-  it("returns purchasers to the confirmed billing section", async () => {
-    await openBillingCheckout(workspace, "month", "user@example.com");
+  it("redirects only to the API-provided PayPal approval URL", async () => {
+    await openBillingCheckout(workspace, "month");
 
-    const checkoutInput = checkoutOpen.mock.calls[0]?.[0] as
-      | { settings: { successUrl: string } }
-      | undefined;
-    expect(checkoutInput).toBeDefined();
-    const successUrl = new URL(checkoutInput!.settings.successUrl);
-
-    expect(successUrl.pathname).toBe("/app/settings");
-    expect(successUrl.searchParams.get("checkout")).toBe("completed");
-    expect(successUrl.hash).toBe("#plan-and-billing");
-    expect(checkoutOpen).toHaveBeenCalledWith(
-      expect.objectContaining({
-        customer: { email: "user@example.com" },
-        customData: { zoption_checkout_reference: "checkout-ref" },
-        items: [{ priceId: "pri_month", quantity: 1 }],
-      }),
-    );
+    expect(apiMocks.startBillingCheckout).toHaveBeenCalledWith(workspace, "month");
+    expect(assign).toHaveBeenCalledWith("https://www.sandbox.paypal.com/checkoutnow?token=example");
   });
 });

@@ -378,13 +378,19 @@ export const billingCustomers = sqliteTable(
   "billing_customers",
   {
     tenantId: text("tenant_id")
-      .primaryKey()
+      .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
-    paddleCustomerId: text("paddle_customer_id").notNull(),
+    provider: text("provider", { enum: ["paddle", "paypal"] }).notNull(),
+    providerCustomerId: text("provider_customer_id"),
     email: text("email"),
     ...timestamps,
   },
-  (table) => [uniqueIndex("billing_customers_paddle_customer_unique").on(table.paddleCustomerId)],
+  (table) => [
+    primaryKey({ columns: [table.tenantId, table.provider] }),
+    uniqueIndex("billing_customers_provider_customer_unique")
+      .on(table.provider, table.providerCustomerId)
+      .where(sql`${table.providerCustomerId} IS NOT NULL`),
+  ],
 );
 
 export const billingCheckoutReferences = sqliteTable(
@@ -394,9 +400,11 @@ export const billingCheckoutReferences = sqliteTable(
     tenantId: text("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
+    provider: text("provider", { enum: ["paddle", "paypal"] }).notNull(),
     plan: text("plan", { enum: ["zoption_pro"] }).notNull(),
     interval: text("interval", { enum: ["month", "year"] }).notNull(),
-    paddlePriceId: text("paddle_price_id").notNull(),
+    providerPlanId: text("provider_plan_id").notNull(),
+    providerSubscriptionId: text("provider_subscription_id"),
     expiresAt: text("expires_at").notNull(),
     completedAt: text("completed_at"),
     supersededAt: text("superseded_at"),
@@ -413,35 +421,46 @@ export const billingCheckoutReferences = sqliteTable(
 export const billingSubscriptions = sqliteTable(
   "billing_subscriptions",
   {
-    paddleSubscriptionId: text("paddle_subscription_id").primaryKey(),
+    provider: text("provider", { enum: ["paddle", "paypal"] }).notNull(),
+    providerSubscriptionId: text("provider_subscription_id").notNull(),
     tenantId: text("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
-    paddleCustomerId: text("paddle_customer_id").notNull(),
-    paddleProductId: text("paddle_product_id").notNull(),
-    paddlePriceId: text("paddle_price_id").notNull(),
+    providerCustomerId: text("provider_customer_id"),
+    providerProductId: text("provider_product_id"),
+    providerPlanId: text("provider_plan_id").notNull(),
+    providerStatus: text("provider_status").notNull(),
     status: text("status").notNull(),
     interval: text("interval", { enum: ["month", "year"] }),
     currentPeriodEndsAt: text("current_period_ends_at"),
     scheduledChangeAt: text("scheduled_change_at"),
-    lastPaddleOccurredAt: text("last_paddle_occurred_at").notNull(),
-    lastPaddleEventId: text("last_paddle_event_id").notNull().default(""),
+    cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).notNull().default(false),
+    lastProviderOccurredAt: text("last_provider_occurred_at").notNull(),
+    lastProviderEventId: text("last_provider_event_id").notNull().default(""),
     ...timestamps,
   },
-  (table) => [index("billing_subscriptions_tenant_status_idx").on(table.tenantId, table.status)],
+  (table) => [
+    primaryKey({ columns: [table.provider, table.providerSubscriptionId] }),
+    index("billing_subscriptions_tenant_status_idx").on(table.tenantId, table.status),
+    index("billing_subscriptions_tenant_provider_idx").on(table.tenantId, table.provider),
+  ],
 );
 
 export const billingWebhookEvents = sqliteTable(
   "billing_webhook_events",
   {
-    paddleEventId: text("paddle_event_id").primaryKey(),
+    provider: text("provider", { enum: ["paddle", "paypal"] }).notNull(),
+    providerEventId: text("provider_event_id").notNull(),
     eventType: text("event_type").notNull(),
     occurredAt: text("occurred_at").notNull(),
     processedAt: text("processed_at")
       .notNull()
       .default(sql`(datetime('now'))`),
   },
-  (table) => [index("billing_webhook_events_occurred_idx").on(table.occurredAt)],
+  (table) => [
+    primaryKey({ columns: [table.provider, table.providerEventId] }),
+    index("billing_webhook_events_occurred_idx").on(table.occurredAt),
+  ],
 );
 
 export const billingMonthlyUsage = sqliteTable(

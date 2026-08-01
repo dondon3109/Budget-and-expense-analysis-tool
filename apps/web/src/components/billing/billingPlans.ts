@@ -38,9 +38,9 @@ export const proCheckoutOptions: Array<{
   label: string;
   price: string;
 }> = [
-  { interval: "month", label: "Monthly", price: "$2.99/month" },
-  { interval: "year", label: "Annual", price: "$24.99/year" },
+  { interval: "month", label: "Monthly", price: "₱149/month" },
+  { interval: "year", label: "Annual", price: "₱1,299/year" },
 ];
 
 export const paymentDisclosure =
-  "Prices are charged in USD. Your bank may show an approximate PHP conversion. Paddle securely hosts checkout.";
+  "Prices are charged in Philippine pesos. PayPal securely hosts subscription approval. Taxes if applicable may apply.";

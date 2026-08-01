@@ -299,10 +299,12 @@ function createAllowedBillingRepository(): BillingRepository {
     getSummary: vi.fn(async () => ({
       plan: "zoption_pro" as const,
       entitlementSource: "paddle" as const,
+      provider: "paddle" as const,
       status: "active" as const,
       interval: "month" as const,
       currentPeriodEndsAt: null,
       scheduledChangeAt: null,
+      cancelAtPeriodEnd: false,
       canCheckout: false,
       canManageBilling: true,
       canManageSponsoredSeats: false,
@@ -311,7 +313,13 @@ function createAllowedBillingRepository(): BillingRepository {
       allowances: [{ resource: "custom_category" as const, used: 0, limit: null }],
     })),
     requirePro: vi.fn(async () => undefined),
-    createCheckoutReference: vi.fn(async () => ({ reference: "reference", priceId: "pri_test" })),
+    createCheckoutReference: vi.fn(async () => ({
+      reference: "reference",
+      provider: "paypal" as const,
+      interval: "month" as const,
+      providerPlanId: "P-test",
+      providerSubscriptionId: null,
+    })),
     createUsageStatement: vi.fn(() => ({}) as D1PreparedStatement),
     consumeUsage: vi.fn(async () => undefined),
     rethrowUsageError: vi.fn(async (_env, _tenantId, _feature, error) => {
@@ -319,6 +327,8 @@ function createAllowedBillingRepository(): BillingRepository {
     }),
     hasNonTerminalSubscription: vi.fn(async () => false),
     getPortalCustomer: vi.fn(async () => null),
+    getProviderSubscription: vi.fn(async () => null),
+    bindCheckoutProviderSubscription: vi.fn(async () => undefined),
     applySubscriptionEvent: vi.fn(async () => undefined),
   };
 }
@@ -532,10 +542,12 @@ describe("API foundation", () => {
       getSummary: vi.fn(async () => ({
         plan: "free" as const,
         entitlementSource: null,
+        provider: null,
         status: null,
         interval: null,
         currentPeriodEndsAt: null,
         scheduledChangeAt: null,
+        cancelAtPeriodEnd: false,
         canCheckout: true,
         canManageBilling: false,
         canManageSponsoredSeats: false,
