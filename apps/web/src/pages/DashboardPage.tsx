@@ -4,8 +4,9 @@ import type {
   CashflowTrend,
   CashflowTrendView,
   DashboardSummary,
+  TransactionListQuery,
 } from "@zoption/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -26,6 +27,7 @@ import { useBillingSummary } from "../hooks/useBillingSummary";
 import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
+import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
 import { InsightsPanel } from "../components/dashboard/InsightsPanel";
 import { OverviewStatBar } from "../components/dashboard/OverviewStatBar";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
@@ -36,20 +38,26 @@ import {
   deleteAccount,
   getCashflowTrend,
   getDashboard,
+  getTransactions,
   isBillingEnforcementError,
   updateAccount,
 } from "../lib/api";
-import { currentMonth, daysInMonth, localIsoDate, monthStart } from "../lib/calendar";
-import { formatPeriod } from "../lib/formatters";
+import { currentMonth, daysInMonth, isMonth, localIsoDate, monthStart } from "../lib/calendar";
+import { formatFullMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import "./DashboardPage.css";
 
-export function isDashboardEmpty(data: DashboardSummary, cashflowTrend?: CashflowTrend): boolean {
+export function isDashboardEmpty(
+  data: DashboardSummary,
+  cashflowTrend?: CashflowTrend,
+  transactionCount?: number,
+): boolean {
   const hasCashflowActivity = cashflowTrend?.points.some(
     (point) => point.incomeMinor !== 0 || point.expenseMinor !== 0,
   );
   return (
+    (transactionCount === undefined || transactionCount === 0) &&
     !hasCashflowActivity &&
     data.metrics.moneyInMinor === 0 &&
     data.metrics.moneyOutMinor === 0 &&
@@ -66,6 +74,8 @@ const accountTypes: Array<{ value: AccountInput["type"]; label: string }> = [
   { value: "other", label: "Other" },
 ];
 
+const dashboardHistoryPageSize = 8;
+
 export function DashboardPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
@@ -77,16 +87,24 @@ export function DashboardPage() {
   const [editName, setEditName] = useState("");
   const [removingAccount, setRemovingAccount] = useState<AccountBalanceSummaryItem>();
   const [cashflowView, setCashflowView] = useState<CashflowTrendView>("weekly");
+  const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const subscribeTriggerRef = useRef<HTMLElement | null>(null);
   const handledPostAuthCheckoutIntentRef = useRef(false);
-  const anchorDate = localIsoDate();
-  const summaryMonth = currentMonth();
+  const today = localIsoDate();
+  const currentDashboardMonth = currentMonth();
+  const requestedMonth = searchParams.get("month");
+  const summaryMonth =
+    isMonth(requestedMonth) && requestedMonth <= currentDashboardMonth
+      ? requestedMonth
+      : currentDashboardMonth;
   const summaryPeriod = {
     from: monthStart(summaryMonth),
     to: `${summaryMonth}-${String(daysInMonth(summaryMonth)).padStart(2, "0")}`,
   };
+  const anchorDate = summaryMonth === currentDashboardMonth ? today : summaryPeriod.to;
+  const selectedMonthLabel = formatFullMonth(summaryMonth);
   const { data, isError, error, refetch } = useQuery({
     queryKey: queryKeys.dashboardSummary(workspace, summaryPeriod),
     queryFn: () => getDashboard(workspace, summaryPeriod),
@@ -94,6 +112,17 @@ export function DashboardPage() {
   const cashflowTrendQuery = useQuery({
     queryKey: queryKeys.cashflowTrend(workspace, { view: cashflowView, anchorDate }),
     queryFn: () => getCashflowTrend(workspace, { view: cashflowView, anchorDate }),
+  });
+  const historyQuery: TransactionListQuery = {
+    page: historyPage,
+    pageSize: dashboardHistoryPageSize,
+    sortBy: "date",
+    sortDirection: "desc",
+  };
+  const transactionHistoryQuery = useQuery({
+    queryKey: queryKeys.transactions(workspace, historyQuery),
+    queryFn: () => getTransactions(workspace, historyQuery),
+    placeholderData: keepPreviousData,
   });
   const billingSummary = useBillingSummary(workspace);
   const hasPostAuthCheckoutIntent = searchParams.get("proCheckout") === "open";
@@ -196,7 +225,9 @@ export function DashboardPage() {
     new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
       amountMinor / 100,
     );
-  const empty = isDashboardEmpty(data, cashflowTrendQuery.data);
+  const empty =
+    transactionHistoryQuery.data !== undefined &&
+    isDashboardEmpty(data, cashflowTrendQuery.data, transactionHistoryQuery.data.total);
   const accountActionError = renameAccountMutation.error ?? removeAccountMutation.error;
 
   return (
@@ -208,10 +239,22 @@ export function DashboardPage() {
             <h1>Your month, at a glance</h1>
             <p>See what came in, what went out, and what is still available.</p>
           </div>
-          <span className="date-button">
-            <CalendarDays size={17} aria-hidden="true" />{" "}
-            {formatPeriod(data.period.from, data.period.to)}
-          </span>
+          <label className="budget-month-picker dashboard-month-picker">
+            <CalendarDays size={17} aria-hidden="true" />
+            <span className="sr-only">Dashboard month</span>
+            <input
+              type="month"
+              value={summaryMonth}
+              max={currentDashboardMonth}
+              onChange={(event) => {
+                setSearchParams((current) => {
+                  const next = new URLSearchParams(current);
+                  next.set("month", event.target.value);
+                  return next;
+                });
+              }}
+            />
+          </label>
         </header>
 
         {accountBalances && (
@@ -504,7 +547,7 @@ export function DashboardPage() {
                 {
                   label: "Income",
                   amountMinor: metrics.moneyInMinor,
-                  detail: "Income received this month",
+                  detail: `Income received in ${selectedMonthLabel}`,
                   icon: ArrowDownRight,
                   tone: "income",
                 },
@@ -513,8 +556,8 @@ export function DashboardPage() {
                   amountMinor: metrics.moneyOutMinor,
                   detail:
                     metrics.moneyInMinor === 0
-                      ? "No income recorded this month"
-                      : `${Math.round((metrics.moneyOutMinor / metrics.moneyInMinor) * 100)}% of monthly income`,
+                      ? `No income recorded in ${selectedMonthLabel}`
+                      : `${Math.round((metrics.moneyOutMinor / metrics.moneyInMinor) * 100)}% of ${selectedMonthLabel} income`,
                   icon: ArrowUpRight,
                   tone: "expense",
                 },
@@ -542,18 +585,30 @@ export function DashboardPage() {
                   setIsProCheckoutOpen(true);
                 }}
               />
-              <InsightsPanel data={data.insights} />
-              <BudgetProgress data={data.budgetProgress} />
+              <InsightsPanel data={data.insights} monthLabel={selectedMonthLabel} />
+              <BudgetProgress
+                data={data.budgetProgress}
+                month={summaryMonth}
+                monthLabel={selectedMonthLabel}
+              />
             </div>
             <details className="calculation-note">
               <summary>How these numbers are calculated</summary>
               <p>
                 Income includes income transactions. Expenses include expense transactions only;
-                transfers move money between accounts and do not change your overall balance. The
-                remaining budget is your total category plan minus recorded expenses for the
-                selected month.
+                transfers move money between accounts and do not change your overall balance.
+                Income left after expenses is income minus expenses for {selectedMonthLabel}. Remaining
+                budget is that month’s category plan minus its recorded expenses and does not carry over.
               </p>
             </details>
+            <DashboardTransactionHistory
+              page={transactionHistoryQuery.data}
+              isPending={transactionHistoryQuery.isPending}
+              isFetching={transactionHistoryQuery.isFetching}
+              error={transactionHistoryQuery.error}
+              onRetry={() => void transactionHistoryQuery.refetch()}
+              onPageChange={setHistoryPage}
+            />
           </>
         )}
       </div>

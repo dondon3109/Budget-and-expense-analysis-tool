@@ -16,6 +16,7 @@ describe("InsightsPanel", () => {
   it("marks positive savings with a positive state", () => {
     render(
       <InsightsPanel
+        monthLabel="July 2026"
         data={{
           savingsMinor: 12_500,
           savingsRatePercent: 25,
@@ -24,15 +25,17 @@ describe("InsightsPanel", () => {
       />,
     );
 
-    const savings = screen.getByText("Kept after spending").closest("article");
+    const savings = screen.getByText("Income left after expenses").closest("article");
 
     expect(savings).toHaveAttribute("data-state", "positive");
-    expect(savings).toHaveTextContent("Kept after spending");
+    expect(savings).toHaveTextContent("25% of July 2026 income remained after expenses");
+    expect(savings).toHaveTextContent("Transfers are excluded.");
   });
 
   it("marks a monthly shortfall with a negative state", () => {
     render(
       <InsightsPanel
+        monthLabel="July 2026"
         data={{
           savingsMinor: -4_200,
           savingsRatePercent: null,
@@ -41,9 +44,10 @@ describe("InsightsPanel", () => {
       />,
     );
 
-    const savings = screen.getByText("Monthly shortfall").closest("article");
+    const savings = screen.getByText("Expenses exceeded income by").closest("article");
 
     expect(savings).toHaveAttribute("data-state", "negative");
-    expect(savings).toHaveTextContent("Add an income transaction to calculate a savings rate.");
+    expect(savings).toHaveTextContent("No income was recorded in July 2026.");
+    expect(savings).toHaveTextContent("Transfers are excluded.");
   });
 });

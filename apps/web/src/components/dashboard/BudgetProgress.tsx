@@ -5,9 +5,11 @@ import { formatMoney } from "../../lib/formatters";
 
 interface Props {
   data: DashboardSummary["budgetProgress"];
+  month: string;
+  monthLabel: string;
 }
 
-export function BudgetProgress({ data }: Props) {
+export function BudgetProgress({ data, month, monthLabel }: Props) {
   return (
     <section className="panel budget-panel" aria-labelledby="budget-title">
       <div className="panel-heading">
@@ -15,13 +17,13 @@ export function BudgetProgress({ data }: Props) {
           <p className="eyebrow">Monthly plan</p>
           <h2 id="budget-title">Budget progress</h2>
         </div>
-        <Link to="/app/budgets" className="text-button">
+        <Link to={`/app/budgets?month=${month}`} className="text-button">
           Edit budgets
         </Link>
       </div>
       {data.length === 0 ? (
         <div className="panel-empty">
-          <strong>No budget plan for this month</strong>
+          <strong>No budget plan for {monthLabel}</strong>
           <p>Set category limits to compare your plan with actual spending.</p>
         </div>
       ) : (

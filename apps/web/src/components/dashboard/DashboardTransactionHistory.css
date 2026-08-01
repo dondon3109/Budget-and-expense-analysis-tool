@@ -1,0 +1,299 @@
+/* All-time transaction history shown on the Profile dashboard. */
+
+.dashboard-history {
+  margin-top: 17px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--paper);
+  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
+}
+
+.dashboard-history-heading {
+  padding: 23px 23px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.dashboard-history-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 19px;
+}
+
+.dashboard-history-heading > div > p:not(.eyebrow) {
+  max-width: 62ch;
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.dashboard-history-link {
+  min-height: 34px;
+  padding: 0 10px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--brand-strong);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 10px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.dashboard-history-link:hover {
+  background: var(--brand-soft);
+}
+
+.dashboard-history-link:focus-visible,
+.dashboard-history-pagination button:focus-visible {
+  outline: 3px solid rgba(63, 143, 116, 0.25);
+  outline-offset: 2px;
+}
+
+.dashboard-history-status {
+  min-height: 150px;
+  padding: 28px;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.dashboard-history-status strong {
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 17px;
+}
+
+.dashboard-history-status button,
+.dashboard-history-status a {
+  justify-self: center;
+  color: var(--brand-strong);
+  font: inherit;
+  font-weight: 750;
+}
+
+.dashboard-history-status button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.dashboard-history-status.error strong {
+  color: var(--danger);
+}
+
+.dashboard-history-meta {
+  min-height: 42px;
+  padding: 0 23px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--subtle);
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+}
+
+.dashboard-history-table-wrap {
+  overflow-x: auto;
+}
+
+.dashboard-history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dashboard-history-table th,
+.dashboard-history-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.dashboard-history-table th {
+  color: var(--subtle);
+  background: var(--surface-soft);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-history-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.dashboard-history-table tbody tr:hover {
+  background: var(--surface-soft);
+}
+
+.dashboard-history-description strong,
+.dashboard-history-description span {
+  display: block;
+}
+
+.dashboard-history-description strong {
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.dashboard-history-description span {
+  margin-top: 3px;
+  color: var(--subtle);
+  font-size: 10px;
+}
+
+.dashboard-history-category,
+.dashboard-history-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dashboard-history-category i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dashboard-history-kind.income,
+.dashboard-history-amount-income {
+  color: var(--income);
+}
+
+.dashboard-history-kind.expense,
+.dashboard-history-amount-expense {
+  color: var(--expense-text);
+}
+
+.dashboard-history-amount {
+  text-align: right !important;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.dashboard-history-pagination {
+  min-height: 58px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+}
+
+.dashboard-history-pagination > div {
+  display: flex;
+  gap: 5px;
+}
+
+.dashboard-history-pagination button {
+  width: 33px;
+  height: 33px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.dashboard-history-pagination button:disabled {
+  opacity: 0.35;
+}
+
+@media (max-width: 760px) {
+  .dashboard-history-heading {
+    padding: 18px 16px;
+    display: grid;
+    gap: 15px;
+  }
+
+  .dashboard-history-link {
+    justify-self: start;
+  }
+
+  .dashboard-history-meta {
+    min-height: 0;
+    padding: 12px 16px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dashboard-history-table-wrap {
+    overflow-x: visible;
+  }
+
+  .dashboard-history-table,
+  .dashboard-history-table tbody,
+  .dashboard-history-table tr,
+  .dashboard-history-table td {
+    display: block;
+  }
+
+  .dashboard-history-table thead {
+    display: none;
+  }
+
+  .dashboard-history-table tr {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .dashboard-history-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .dashboard-history-table td {
+    padding: 5px 0;
+    border: 0;
+  }
+
+  .dashboard-history-table td::before {
+    width: 82px;
+    display: inline-block;
+    color: var(--subtle);
+    content: attr(data-label);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .dashboard-history-table td:nth-child(2)::before {
+    display: none;
+  }
+
+  .dashboard-history-table td:nth-child(2) {
+    padding-bottom: 9px;
+  }
+
+  .dashboard-history-description {
+    padding-left: 82px;
+  }
+
+  .dashboard-history-pagination {
+    padding: 0 16px;
+  }
+}

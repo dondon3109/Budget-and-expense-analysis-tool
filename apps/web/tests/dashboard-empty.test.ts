@@ -21,8 +21,12 @@ const emptyDashboard: DashboardSummary = {
 };
 
 describe("dashboard empty state", () => {
-  it("recognizes a newly bootstrapped workspace", () => {
-    expect(isDashboardEmpty(emptyDashboard)).toBe(true);
+  it("recognizes a newly bootstrapped workspace after all-time history loads empty", () => {
+    expect(isDashboardEmpty(emptyDashboard, undefined, 0)).toBe(true);
+  });
+
+  it("does not hide historical transactions when the current month is quiet", () => {
+    expect(isDashboardEmpty(emptyDashboard, undefined, 1)).toBe(false);
   });
 
   it("shows the normal dashboard after financial activity exists", () => {

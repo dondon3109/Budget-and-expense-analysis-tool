@@ -56,7 +56,7 @@ describe("BudgetsPage", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <ThemeProvider>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={["/app/budgets?month=2026-07"]}>
           <QueryClientProvider client={queryClient}>
             <BudgetsPage />
           </QueryClientProvider>

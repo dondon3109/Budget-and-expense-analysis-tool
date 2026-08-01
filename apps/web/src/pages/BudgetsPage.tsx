@@ -2,10 +2,12 @@ import { parseAmountToMinor, type BudgetUpsert } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Check, CircleDollarSign, PiggyBank, TrendingDown } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { getBudgets, saveBudgets } from "../lib/api";
+import { currentMonth, isMonth } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
@@ -20,7 +22,9 @@ export function BudgetsPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
-  const [month, setMonth] = useState("2026-07");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedMonth = searchParams.get("month");
+  const month = isMonth(requestedMonth) ? requestedMonth : currentMonth();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [clientError, setClientError] = useState<string>();
   const monthStart = `${month}-01`;
@@ -76,7 +80,17 @@ export function BudgetsPage() {
           <label className="budget-month-picker">
             <CalendarDays size={17} aria-hidden="true" />
             <span className="sr-only">Budget month</span>
-            <input type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
+            <input
+              type="month"
+              value={month}
+              onChange={(event) => {
+                setSearchParams((current) => {
+                  const next = new URLSearchParams(current);
+                  next.set("month", event.target.value);
+                  return next;
+                });
+              }}
+            />
           </label>
         </header>
 

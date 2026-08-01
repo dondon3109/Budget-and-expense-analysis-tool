@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const apiMocks = vi.hoisted(() => ({
   getDashboard: vi.fn(),
   getCashflowTrend: vi.fn(),
+  getTransactions: vi.fn(),
   getBillingSummary: vi.fn(),
   createAccount: vi.fn(),
   updateAccount: vi.fn(),
@@ -141,6 +142,13 @@ describe("Dashboard checkout intent", () => {
       range: { from: "2026-07-21", to: "2026-07-27" },
       points: [],
     });
+    apiMocks.getTransactions.mockReset().mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 8,
+      total: 0,
+      totalPages: 1,
+    });
   });
 
   afterEach(cleanup);
@@ -185,6 +193,13 @@ describe("Profile dashboard account management", () => {
       granularity: "day",
       range: { from: "2026-07-21", to: "2026-07-27" },
       points: [],
+    });
+    apiMocks.getTransactions.mockReset().mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 8,
+      total: 0,
+      totalPages: 1,
     });
     apiMocks.createAccount.mockReset().mockResolvedValue({});
     apiMocks.updateAccount.mockReset().mockResolvedValue({});
@@ -241,5 +256,69 @@ describe("Profile dashboard account management", () => {
         { name: "SeaBank", type: "savings" },
       ),
     );
+  });
+
+  it("keeps historical records visible when the current month has no activity", async () => {
+    apiMocks.getTransactions.mockResolvedValueOnce({
+      items: [
+        {
+          id: "july-groceries",
+          date: "2026-07-14",
+          description: "Last month groceries",
+          amountMinor: 2_300,
+          currency: "PHP",
+          kind: "expense",
+          categoryId: "groceries",
+          categoryName: "Groceries",
+          categoryColor: "#d16b55",
+          accountId: "cash",
+          accountName: "Cash",
+          notes: null,
+        },
+      ],
+      page: 1,
+      pageSize: 8,
+      total: 1,
+      totalPages: 1,
+    });
+    renderPage();
+
+    expect(await screen.findByText("Last month groceries")).toBeInTheDocument();
+    expect(screen.queryByText("Build your first monthly picture")).not.toBeInTheDocument();
+    expect(apiMocks.getTransactions).toHaveBeenCalledWith(
+      { key: "user:user-1", userId: "user-1" },
+      { page: 1, pageSize: 8, sortBy: "date", sortDirection: "desc" },
+    );
+  });
+
+  it("loads a selected month and keeps all-time history unfiltered", async () => {
+    renderPage("/app?month=2026-07&source=profile");
+
+    await waitFor(() =>
+      expect(apiMocks.getDashboard).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        { from: "2026-07-01", to: "2026-07-31" },
+      ),
+    );
+    expect(apiMocks.getCashflowTrend).toHaveBeenCalledWith(
+      { key: "user:user-1", userId: "user-1" },
+      { view: "weekly", anchorDate: "2026-07-31" },
+    );
+    expect(apiMocks.getTransactions).toHaveBeenCalledWith(
+      { key: "user:user-1", userId: "user-1" },
+      { page: 1, pageSize: 8, sortBy: "date", sortDirection: "desc" },
+    );
+
+    fireEvent.change(await screen.findByLabelText("Dashboard month"), {
+      target: { value: "2026-06" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("current-path")).toHaveTextContent("/app?month=2026-06&source=profile");
+      expect(apiMocks.getDashboard).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        { from: "2026-06-01", to: "2026-06-30" },
+      );
+    });
   });
 });

@@ -5,6 +5,7 @@ import { formatMoney } from "../../lib/formatters";
 
 interface InsightsPanelProps {
   data: DashboardSummary["insights"];
+  monthLabel: string;
 }
 
 function formatMonth(value: string): string {
@@ -15,14 +16,14 @@ function formatMonth(value: string): string {
   }).format(new Date(`${value}-01T00:00:00Z`));
 }
 
-export function InsightsPanel({ data }: InsightsPanelProps) {
+export function InsightsPanel({ data, monthLabel }: InsightsPanelProps) {
   const hasIncome = data.savingsRatePercent !== null;
   return (
     <section className="panel insights-panel" aria-labelledby="insights-title">
       <div className="panel-heading">
         <div>
           <h2 id="insights-title">Savings and recurring costs</h2>
-          <p>Patterns from the selected month and the latest six months.</p>
+          <p>Results for {monthLabel} and recurring costs from the six months ending then.</p>
         </div>
       </div>
       <div className="insights-layout">
@@ -34,12 +35,14 @@ export function InsightsPanel({ data }: InsightsPanelProps) {
             <PiggyBank size={18} />
           </span>
           <div>
-            <span>{data.savingsMinor >= 0 ? "Kept after spending" : "Monthly shortfall"}</span>
+            <span>
+              {data.savingsMinor >= 0 ? "Income left after expenses" : "Expenses exceeded income by"}
+            </span>
             <strong>{formatMoney(Math.abs(data.savingsMinor))}</strong>
             <p>
               {hasIncome
-                ? `${data.savingsRatePercent}% of money in remained after expenses.`
-                : "Add an income transaction to calculate a savings rate."}
+                ? `${data.savingsRatePercent}% of ${monthLabel} income remained after expenses. Transfers are excluded.`
+                : `No income was recorded in ${monthLabel}. Transfers are excluded.`}
             </p>
           </div>
         </article>
