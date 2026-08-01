@@ -309,9 +309,8 @@ describe("Profile dashboard account management", () => {
       { page: 1, pageSize: 8, sortBy: "date", sortDirection: "desc" },
     );
 
-    fireEvent.change(await screen.findByLabelText("Dashboard month"), {
-      target: { value: "2026-06" },
-    });
+    fireEvent.click(await screen.findByRole("button", { name: /Dashboard month: July 2026/ }));
+    fireEvent.click(screen.getByRole("button", { name: "June 2026" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("current-path")).toHaveTextContent("/app?month=2026-06&source=profile");

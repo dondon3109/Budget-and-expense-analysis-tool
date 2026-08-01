@@ -125,7 +125,7 @@ grid-template-columns: 1fr;
 grid-column: auto;
 }
 
-.subscriptions-header-actions .budget-month-picker,
+.subscriptions-header-actions .month-selector,
 .subscriptions-header-actions .button {
 width: 100%;
 }

@@ -1,11 +1,12 @@
 import { parseAmountToMinor, type BudgetUpsert } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Check, CircleDollarSign, PiggyBank, TrendingDown } from "lucide-react";
+import { Check, CircleDollarSign, PiggyBank, TrendingDown } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
+import { MonthSelector } from "../components/month/MonthSelector";
 import { getBudgets, saveBudgets } from "../lib/api";
 import { currentMonth, isMonth } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
@@ -77,21 +78,17 @@ export function BudgetsPage() {
             <h1>Budgets</h1>
             <p>Set practical limits by category and compare them with actual spending.</p>
           </div>
-          <label className="budget-month-picker">
-            <CalendarDays size={17} aria-hidden="true" />
-            <span className="sr-only">Budget month</span>
-            <input
-              type="month"
-              value={month}
-              onChange={(event) => {
-                setSearchParams((current) => {
-                  const next = new URLSearchParams(current);
-                  next.set("month", event.target.value);
-                  return next;
-                });
-              }}
-            />
-          </label>
+          <MonthSelector
+            label="Budget month"
+            value={month}
+            onChange={(selectedMonth) => {
+              setSearchParams((current) => {
+                const next = new URLSearchParams(current);
+                next.set("month", selectedMonth);
+                return next;
+              });
+            }}
+          />
         </header>
 
         {budgetQuery.isPending && (

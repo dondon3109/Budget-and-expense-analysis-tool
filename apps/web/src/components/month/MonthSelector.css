@@ -1,0 +1,123 @@
+/* Reusable month selection popover for reporting and planning surfaces. */
+
+.month-selector {
+  position: relative;
+  display: inline-flex;
+}
+
+.month-selector-trigger {
+  min-height: 44px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-glass);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.month-selector-trigger:hover {
+  background: var(--surface-hover);
+}
+
+.month-selector-trigger:focus-visible,
+.month-selector-year button:focus-visible,
+.month-selector-option:focus-visible {
+  outline: 3px solid rgba(63, 143, 116, 0.25);
+  outline-offset: 2px;
+}
+
+.month-selector-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(300px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 16px 34px var(--shadow);
+}
+
+.month-selector-year {
+  min-height: 34px;
+  padding: 0 2px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.month-selector-year button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.month-selector-year button:disabled,
+.month-selector-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.month-selector-grid {
+  padding-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.month-selector-option {
+  min-height: 34px;
+  padding: 0 6px;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.month-selector-option:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+}
+
+.month-selector-option[aria-pressed="true"] {
+  color: var(--brand-strong);
+  border-color: var(--brand-strong);
+  background: var(--brand-soft);
+}
+
+@media (max-width: 760px) {
+  .month-selector {
+    width: 100%;
+  }
+
+  .month-selector-trigger {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .month-selector-popover {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}

@@ -4,12 +4,27 @@ import { Link } from "react-router-dom";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { formatMoney } from "../../lib/formatters";
+import { MonthSelector } from "../month/MonthSelector";
 
 interface Props {
   data: DashboardSummary["spendingByCategory"];
+  month: string;
+  maxMonth: string;
+  isLoading?: boolean;
+  error?: Error | null;
+  onMonthChange: (month: string) => void;
+  onRetry?: () => void;
 }
 
-export function SpendingByCategory({ data }: Props) {
+export function SpendingByCategory({
+  data,
+  month,
+  maxMonth,
+  isLoading = false,
+  error,
+  onMonthChange,
+  onRetry,
+}: Props) {
   const reduceMotion = useReducedMotion();
 
   return (
@@ -19,13 +34,36 @@ export function SpendingByCategory({ data }: Props) {
           <p className="eyebrow">Breakdown</p>
           <h2 id="spending-title">Spending by category</h2>
         </div>
-        <Link to="/app/transactions" className="text-button">
-          View details
-        </Link>
+        <div className="category-panel-actions">
+          <MonthSelector
+            className="category-month-picker"
+            label="Spending breakdown month"
+            value={month}
+            max={maxMonth}
+            onChange={onMonthChange}
+          />
+          <Link to="/app/transactions" className="text-button">
+            View details
+          </Link>
+        </div>
       </div>
-      {data.length === 0 ? (
+      {isLoading ? (
         <div className="panel-empty">
-          <strong>No expenses in this period</strong>
+          <strong>Loading category spending…</strong>
+        </div>
+      ) : error ? (
+        <div className="panel-empty" role="alert">
+          <strong>Category spending could not be loaded.</strong>
+          <p>{error.message}</p>
+          {onRetry && (
+            <button type="button" className="text-button" onClick={onRetry}>
+              Try again
+            </button>
+          )}
+        </div>
+      ) : data.length === 0 ? (
+        <div className="panel-empty">
+          <strong>No expenses in this Month</strong>
           <p>Add or import expense transactions to see how spending is distributed.</p>
         </div>
       ) : (

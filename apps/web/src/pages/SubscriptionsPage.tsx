@@ -1,11 +1,12 @@
 import type { SubscriptionInput, SubscriptionStatus } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Plus, RefreshCw, Repeat2 } from "lucide-react";
+import { Plus, RefreshCw, Repeat2 } from "lucide-react";
 import { useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import { MetricCard } from "../components/dashboard/MetricCard";
 import { AppShell } from "../components/layout/AppShell";
+import { MonthSelector } from "../components/month/MonthSelector";
 import { SubscriptionForm } from "../components/subscriptions/SubscriptionForm";
 import { SubscriptionTable } from "../components/subscriptions/SubscriptionTable";
 import {
@@ -14,18 +15,11 @@ import {
   getSubscriptions,
   setSubscriptionStatus,
 } from "../lib/api";
+import { currentMonth } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import "./SubscriptionsPage.css";
-
-function currentMonth(): string {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
-}
-
 
 export function SubscriptionsPage() {
   const { user } = useAuth();
@@ -78,15 +72,11 @@ export function SubscriptionsPage() {
             <p>Track recurring charges and see what they add up to.</p>
           </div>
           <div className="header-actions subscriptions-header-actions">
-            <label className="budget-month-picker">
-              <CalendarDays size={17} aria-hidden="true" />
-              <span className="sr-only">Subscription month</span>
-              <input
-                type="month"
-                value={month}
-                onChange={(event) => setMonth(event.target.value)}
-              />
-            </label>
+            <MonthSelector
+              label="Subscription month"
+              value={month}
+              onChange={setMonth}
+            />
             <button className="button primary" type="button" onClick={openForm}>
               <Plus size={17} aria-hidden="true" /> Add a subscription
             </button>

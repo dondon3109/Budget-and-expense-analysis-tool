@@ -544,6 +544,7 @@ min-width: 0;
 .recurring-heading {
 display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   color: var(--muted);
   font-size: 11px;
@@ -753,12 +754,45 @@ color: var(--action);
 color: var(--info);
 }
 
+.category-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-page .category-month-picker {
+  width: auto;
+}
+
+.dashboard-page .category-month-picker .month-selector-trigger {
+  min-height: 32px;
+  padding: 0 9px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
 .dashboard-page .trend-panel .eyebrow {
 color: var(--income);
 }
 
 .dashboard-page .budget-panel .eyebrow {
 color: var(--budget);
+}
+
+@media (max-width: 470px) {
+  .category-panel .panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .category-panel-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dashboard-page .category-month-picker {
+    width: auto;
+  }
 }
 
 @media (max-width: 1050px) {

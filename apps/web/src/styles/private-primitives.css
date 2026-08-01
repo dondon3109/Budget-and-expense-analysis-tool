@@ -240,28 +240,6 @@ padding-top: 4px;
   gap: 9px;
 }
 
-.budget-month-picker {
-min-height: 44px;
-  padding: 0 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--surface-glass);
-}
-
-.budget-month-picker input {
-color: inherit;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 750;
-}
-
 .inline-status {
 min-height: 280px;
 }
@@ -319,11 +297,6 @@ width: 100%;
     max-height: 94vh;
     padding: 21px 16px 24px;
     border-radius: 22px 22px 0 0;
-}
-
-.budget-month-picker {
-width: 100%;
-    justify-content: center;
 }
 
 .date-button {

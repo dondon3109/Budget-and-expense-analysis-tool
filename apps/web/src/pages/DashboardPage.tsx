@@ -10,7 +10,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import {
   ArrowDownRight,
   ArrowUpRight,
-  CalendarDays,
   FileUp,
   Pencil,
   PiggyBank,
@@ -32,6 +31,7 @@ import { InsightsPanel } from "../components/dashboard/InsightsPanel";
 import { OverviewStatBar } from "../components/dashboard/OverviewStatBar";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
+import { MonthSelector } from "../components/month/MonthSelector";
 import { AppShell } from "../components/layout/AppShell";
 import {
   createAccount,
@@ -105,9 +105,19 @@ export function DashboardPage() {
   };
   const anchorDate = summaryMonth === currentDashboardMonth ? today : summaryPeriod.to;
   const selectedMonthLabel = formatFullMonth(summaryMonth);
+  const [categoryMonth, setCategoryMonth] = useState(summaryMonth);
+  const categoryPeriod = {
+    from: monthStart(categoryMonth),
+    to: `${categoryMonth}-${String(daysInMonth(categoryMonth)).padStart(2, "0")}`,
+  };
   const { data, isError, error, refetch } = useQuery({
     queryKey: queryKeys.dashboardSummary(workspace, summaryPeriod),
     queryFn: () => getDashboard(workspace, summaryPeriod),
+  });
+  const categorySummaryQuery = useQuery({
+    queryKey: queryKeys.dashboardSummary(workspace, categoryPeriod),
+    queryFn: () => getDashboard(workspace, categoryPeriod),
+    enabled: categoryMonth !== summaryMonth,
   });
   const cashflowTrendQuery = useQuery({
     queryKey: queryKeys.cashflowTrend(workspace, { view: cashflowView, anchorDate }),
@@ -239,22 +249,19 @@ export function DashboardPage() {
             <h1>Your month, at a glance</h1>
             <p>See what came in, what went out, and what is still available.</p>
           </div>
-          <label className="budget-month-picker dashboard-month-picker">
-            <CalendarDays size={17} aria-hidden="true" />
-            <span className="sr-only">Dashboard month</span>
-            <input
-              type="month"
-              value={summaryMonth}
-              max={currentDashboardMonth}
-              onChange={(event) => {
-                setSearchParams((current) => {
-                  const next = new URLSearchParams(current);
-                  next.set("month", event.target.value);
-                  return next;
-                });
-              }}
-            />
-          </label>
+          <MonthSelector
+            className="dashboard-month-picker"
+            label="Dashboard month"
+            value={summaryMonth}
+            max={currentDashboardMonth}
+            onChange={(month) => {
+              setSearchParams((current) => {
+                const next = new URLSearchParams(current);
+                next.set("month", month);
+                return next;
+              });
+            }}
+          />
         </header>
 
         {accountBalances && (
@@ -571,7 +578,19 @@ export function DashboardPage() {
               ]}
             />
             <div className="dashboard-grid">
-              <SpendingByCategory data={data.spendingByCategory} />
+              <SpendingByCategory
+                data={
+                  categoryMonth === summaryMonth
+                    ? data.spendingByCategory
+                    : (categorySummaryQuery.data?.spendingByCategory ?? [])
+                }
+                month={categoryMonth}
+                maxMonth={currentDashboardMonth}
+                isLoading={categoryMonth !== summaryMonth && categorySummaryQuery.isPending}
+                error={categoryMonth !== summaryMonth ? categorySummaryQuery.error : null}
+                onMonthChange={setCategoryMonth}
+                onRetry={() => void categorySummaryQuery.refetch()}
+              />
               <MonthlyTrend
                 data={cashflowTrendQuery.data}
                 selectedView={cashflowView}
