@@ -1,5 +1,12 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 const timestamps = {
   createdAt: text("created_at")
@@ -29,6 +36,59 @@ export const userTenants = sqliteTable(
       .default(sql`(datetime('now'))`),
   },
   (table) => [uniqueIndex("user_tenants_tenant_unique").on(table.tenantId)],
+);
+
+export const platformAdminGrants = sqliteTable("platform_admin_grants", {
+  userId: text("user_id").primaryKey(),
+  complimentaryProEnabled: integer("complimentary_pro_enabled", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  disabledAt: text("disabled_at"),
+  ...timestamps,
+});
+
+export const appUserIdentities = sqliteTable(
+  "app_user_identities",
+  {
+    userId: text("user_id").primaryKey(),
+    verifiedEmail: text("verified_email").notNull(),
+    verifiedAt: text("verified_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("app_user_identities_verified_email_unique").on(table.verifiedEmail)],
+);
+
+export const sponsoredProSeats = sqliteTable(
+  "sponsored_pro_seats",
+  {
+    sponsorUserId: text("sponsor_user_id")
+      .notNull()
+      .references(() => platformAdminGrants.userId, { onDelete: "cascade" }),
+    slotNumber: integer("slot_number").notNull(),
+    state: text("state", { enum: ["empty", "pending", "active"] })
+      .notNull()
+      .default("empty"),
+    pendingEmail: text("pending_email"),
+    beneficiaryUserId: text("beneficiary_user_id"),
+    invitedAt: text("invited_at"),
+    inviteLastSentAt: text("invite_last_sent_at"),
+    inviteSendLeaseUntil: text("invite_send_lease_until"),
+    inviteSendLeaseToken: text("invite_send_lease_token"),
+    assignedAt: text("assigned_at"),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.sponsorUserId, table.slotNumber] }),
+    index("sponsored_pro_seats_sponsor_state_idx").on(table.sponsorUserId, table.state),
+    uniqueIndex("sponsored_pro_seats_active_beneficiary_unique")
+      .on(table.beneficiaryUserId)
+      .where(sql`${table.state} = 'active'`),
+    uniqueIndex("sponsored_pro_seats_pending_email_unique")
+      .on(table.pendingEmail)
+      .where(sql`${table.state} = 'pending'`),
+  ],
 );
 
 export const accounts = sqliteTable(

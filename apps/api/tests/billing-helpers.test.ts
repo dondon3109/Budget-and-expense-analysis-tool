@@ -23,6 +23,9 @@ function usageEnvironment(options: { pro: boolean; used: number }): Bindings {
             return options.pro ? { found: 1 } : null;
           }
           if (sql.includes("FROM billing_monthly_usage")) return { count: options.used };
+          if (sql.includes("FROM effective_pro_entitlements")) {
+            return options.pro ? { source: "paddle" } : null;
+          }
           throw new Error(`Unexpected SQL in test: ${sql}`);
         }),
       })),

@@ -31,14 +31,16 @@ function summary(
   overrides: Partial<BillingSummary> = {},
 ): BillingSummary {
   const paid = status === "active" || status === "trialing";
-  return {
+  const base = {
     plan: paid ? "zoption_pro" : "free",
+    entitlementSource: paid ? "paddle" : null,
     status,
     interval: status ? "month" : null,
     currentPeriodEndsAt: status ? "2026-08-30T00:00:00.000Z" : null,
     scheduledChangeAt: null,
     canCheckout: status === null || status === "canceled",
     canManageBilling: status !== null,
+    canManageSponsoredSeats: false,
     nonTerminalSubscriptionCount: status && status !== "canceled" ? 1 : 0,
     usages: [
       {
@@ -55,7 +57,12 @@ function summary(
       },
     ],
     allowances: [{ resource: "custom_category", used: 1, limit: paid ? null : 1 }],
+  } satisfies BillingSummary;
+  return {
+    ...base,
     ...overrides,
+    entitlementSource: overrides.entitlementSource ?? base.entitlementSource,
+    canManageSponsoredSeats: overrides.canManageSponsoredSeats ?? base.canManageSponsoredSeats,
   };
 }
 
@@ -90,6 +97,21 @@ describe("BillingSettings", () => {
     renderSettings(summary(status));
 
     expect(await screen.findByText(heading)).toBeInTheDocument();
+  });
+
+  it("describes permanent complementary Pro without a renewal date", async () => {
+    renderSettings(
+      summary(null, {
+        plan: "zoption_pro",
+        entitlementSource: "platform_admin",
+        canCheckout: true,
+      }),
+    );
+
+    expect(
+      await screen.findByText("Your permanent complimentary Pro access is active"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Renews|Period ends/)).not.toBeInTheDocument();
   });
 
   it("shows the Free plan with checkout when there is no subscription", async () => {

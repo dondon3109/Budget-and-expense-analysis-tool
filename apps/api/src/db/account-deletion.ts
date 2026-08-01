@@ -78,6 +78,14 @@ export const accountDeletionRepository: AccountDeletionRepository = {
         `INSERT OR IGNORE INTO account_deletions (user_id, requested_at, tenant_deleted_at)
          VALUES (?, ?, ?)`,
       ).bind(userId, deletedAt, deletedAt),
+      env.DB.prepare(
+        `UPDATE sponsored_pro_seats
+         SET state = 'empty', pending_email = NULL, beneficiary_user_id = NULL,
+             invited_at = NULL, invite_last_sent_at = NULL, invite_send_lease_until = NULL,
+             invite_send_lease_token = NULL, assigned_at = NULL, updated_at = datetime('now')
+         WHERE state = 'active' AND beneficiary_user_id = ?`,
+      ).bind(userId),
+      env.DB.prepare("DELETE FROM app_user_identities WHERE user_id = ?").bind(userId),
       env.DB.prepare("DELETE FROM assistant_messages WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM assistant_threads WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM assistant_preferences WHERE tenant_id = ?").bind(tenantId),

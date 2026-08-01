@@ -1,3 +1,13 @@
+export interface WorkerEmailSender {
+  send(message: {
+    to: string;
+    from: { email: string; name?: string };
+    subject: string;
+    html: string;
+    text: string;
+  }): Promise<unknown>;
+}
+
 export interface Bindings {
   DB: D1Database;
   ALLOWED_ORIGINS?: string;
@@ -5,6 +15,9 @@ export interface Bindings {
   SUPABASE_JWT_AUDIENCE?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  EMAIL?: WorkerEmailSender;
+  WEB_APP_URL?: string;
+  EMAIL_FROM?: string;
   DEEPSEEK_API_KEY?: string;
   DEEPSEEK_MODEL?: string;
   ASSISTANT_ENABLED?: string;

@@ -14,6 +14,10 @@ vi.mock("../src/pages/AuthCallbackPage", () => ({
   AuthCallbackPage: () => <div>Account callback</div>,
 }));
 
+vi.mock("../src/auth/AuthProvider", () => ({
+  useAuth: () => ({ user: null }),
+}));
+
 import { App } from "../src/App";
 
 function CurrentLocation() {

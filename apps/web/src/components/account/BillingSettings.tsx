@@ -1,4 +1,8 @@
-import type { BillingSubscriptionStatus, BillingSummary } from "@zoption/shared";
+import type {
+  BillingSubscriptionStatus,
+  BillingSummary,
+  ProEntitlementSource,
+} from "@zoption/shared";
 import type { User } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -9,6 +13,7 @@ import { planFeatures } from "../billing/billingPlans";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { ProCheckoutDialog } from "../billing/ProCheckoutDialog";
 import { userWorkspace } from "../../lib/workspace";
+import { SponsoredProSeatsSettings } from "./SponsoredProSeatsSettings";
 import "./BillingSettings.css";
 
 const CONFIRMATION_ATTEMPTS = 10;
@@ -26,6 +31,7 @@ function formatPlanDate(value: string): string {
 function statusCopy(
   status: BillingSubscriptionStatus | null | undefined,
   plan: BillingSummary["plan"] | undefined,
+  entitlementSource: ProEntitlementSource | null | undefined,
   confirming: boolean,
 ): { label: string; heading: string; description: string; tone: string } {
   if (confirming) {
@@ -35,6 +41,25 @@ function statusCopy(
       description:
         "Paddle is confirming your purchase. Paid access begins only after the signed notification reaches Zoption.",
       tone: "pending",
+    };
+  }
+
+  if (entitlementSource === "platform_admin") {
+    return {
+      label: "Permanent Pro",
+      heading: "Your permanent complimentary Pro access is active",
+      description:
+        "Platform administration includes Pro limits and capabilities until trusted operations disable it.",
+      tone: "success",
+    };
+  }
+  if (entitlementSource === "sponsored") {
+    return {
+      label: "Sponsored Pro",
+      heading: "Your sponsored Pro access is active",
+      description:
+        "Your sponsor currently includes Pro limits and capabilities for this personal workspace.",
+      tone: "success",
     };
   }
 
@@ -96,6 +121,7 @@ function statusCopy(
 }
 
 function periodLabel(summary: BillingSummary): string | undefined {
+  if (summary.entitlementSource && summary.entitlementSource !== "paddle") return undefined;
   if (summary.scheduledChangeAt) {
     return `Change scheduled ${formatPlanDate(summary.scheduledChangeAt)}`;
   }
@@ -192,7 +218,12 @@ export function BillingSettings({ user }: { user: User }) {
   }
 
   const visibleError = error ?? (billingError instanceof Error ? billingError.message : undefined);
-  const presentation = statusCopy(summary?.status, summary?.plan, confirming);
+  const presentation = statusCopy(
+    summary?.status,
+    summary?.plan,
+    summary?.entitlementSource,
+    confirming,
+  );
   const isPro = summary?.plan === "zoption_pro";
   const duplicateSubscriptions = (summary?.nonTerminalSubscriptionCount ?? 0) > 1;
   const assistantUsage = summary?.usages.find((usage) => usage.feature === "assistant_question");
@@ -205,200 +236,205 @@ export function BillingSettings({ user }: { user: User }) {
   const billingPeriodLabel = summary ? periodLabel(summary) : undefined;
 
   return (
-    <section
-      id="plan-and-billing"
-      className="settings-section billing-settings"
-      aria-labelledby="billing-settings-title"
-      tabIndex={-1}
-    >
-      <div className="settings-section-heading">
-        <div>
-          <h2 id="billing-settings-title">Plan and billing</h2>
-          <p>Review your limits and upgrade only when Zoption Pro is useful for your workflow.</p>
-        </div>
-        <span>{presentation.label}</span>
-      </div>
-      <div
-        className="billing-settings-overview"
-        data-tone={presentation.tone}
-        aria-busy={(!summary && !visibleError) || confirming}
-        aria-live="polite"
+    <>
+      <section
+        id="plan-and-billing"
+        className="settings-section billing-settings"
+        aria-labelledby="billing-settings-title"
+        tabIndex={-1}
       >
-        <div>
-          <strong>{summary || confirming ? presentation.heading : "Loading your plan"}</strong>
-          <p>
-            {summary || confirming
-              ? presentation.description
-              : visibleError
-                ? "Your current billing state is temporarily unavailable."
-                : "Checking your plan and monthly usage."}
-          </p>
-        </div>
-        {billingPeriodLabel && <small>{billingPeriodLabel}</small>}
-      </div>
-      {summary && (
-        <>
-          <div className="billing-usage-grid" aria-label="Current plan usage and allowances">
-            {assistantUsage && (
-              <PlanUsageIndicator
-                label="AI questions this month"
-                used={assistantUsage.used}
-                limit={assistantUsage.limit}
-                resetsAt={assistantUsage.resetsAt}
-              />
-            )}
-            {importUsage && (
-              <PlanUsageIndicator
-                label="Committed imports this month"
-                used={importUsage.used}
-                limit={importUsage.limit}
-                resetsAt={importUsage.resetsAt}
-              />
-            )}
-            {categoryAllowance && (
-              <PlanUsageIndicator
-                label="Active custom categories"
-                used={categoryAllowance.used}
-                limit={categoryAllowance.limit}
-                detail="Included starter and protected Uncategorized categories do not count."
-              />
-            )}
+        <div className="settings-section-heading">
+          <div>
+            <h2 id="billing-settings-title">Plan and billing</h2>
+            <p>Review your limits and upgrade only when Zoption Pro is useful for your workflow.</p>
           </div>
+          <span>{presentation.label}</span>
+        </div>
+        <div
+          className="billing-settings-overview"
+          data-tone={presentation.tone}
+          aria-busy={(!summary && !visibleError) || confirming}
+          aria-live="polite"
+        >
+          <div>
+            <strong>{summary || confirming ? presentation.heading : "Loading your plan"}</strong>
+            <p>
+              {summary || confirming
+                ? presentation.description
+                : visibleError
+                  ? "Your current billing state is temporarily unavailable."
+                  : "Checking your plan and monthly usage."}
+            </p>
+          </div>
+          {billingPeriodLabel && <small>{billingPeriodLabel}</small>}
+        </div>
+        {summary && (
+          <>
+            <div className="billing-usage-grid" aria-label="Current plan usage and allowances">
+              {assistantUsage && (
+                <PlanUsageIndicator
+                  label="AI questions this month"
+                  used={assistantUsage.used}
+                  limit={assistantUsage.limit}
+                  resetsAt={assistantUsage.resetsAt}
+                />
+              )}
+              {importUsage && (
+                <PlanUsageIndicator
+                  label="Committed imports this month"
+                  used={importUsage.used}
+                  limit={importUsage.limit}
+                  resetsAt={importUsage.resetsAt}
+                />
+              )}
+              {categoryAllowance && (
+                <PlanUsageIndicator
+                  label="Active custom categories"
+                  used={categoryAllowance.used}
+                  limit={categoryAllowance.limit}
+                  detail="Included starter and protected Uncategorized categories do not count."
+                />
+              )}
+            </div>
 
-          <div className="billing-plan-comparison-wrap">
-            <div className="billing-plan-comparison-heading">
-              <div>
-                <h3 id="billing-plan-comparison-title">Free and Pro, side by side</h3>
-                <p id="billing-plan-comparison-description">
-                  Transactions, budgets, recurring-expense tracking, calendar tools, and included
-                  starter data remain available on both plans.
-                </p>
+            <div className="billing-plan-comparison-wrap">
+              <div className="billing-plan-comparison-heading">
+                <div>
+                  <h3 id="billing-plan-comparison-title">Free and Pro, side by side</h3>
+                  <p id="billing-plan-comparison-description">
+                    Transactions, budgets, recurring-expense tracking, calendar tools, and included
+                    starter data remain available on both plans.
+                  </p>
+                </div>
+              </div>
+              <p id="billing-plan-scroll-hint" className="billing-plan-scroll-hint">
+                On narrow screens, scroll horizontally to compare both plans.
+              </p>
+              <div
+                className="billing-plan-table-wrap"
+                role="region"
+                aria-labelledby="billing-plan-comparison-title"
+                aria-describedby="billing-plan-comparison-description billing-plan-scroll-hint"
+                tabIndex={0}
+              >
+                <table className="billing-plan-comparison">
+                  <caption className="sr-only">
+                    Free and Zoption Pro plan feature comparison
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th className="billing-plan-feature-heading" scope="col">
+                        Feature
+                      </th>
+                      <th
+                        scope="col"
+                        data-plan="free"
+                        data-current={!isPro || undefined}
+                        aria-current={!isPro ? "true" : undefined}
+                      >
+                        <span className="billing-plan-name">Free</span>
+                        {!isPro && <span className="billing-plan-current">Current plan</span>}
+                      </th>
+                      <th
+                        scope="col"
+                        data-plan="pro"
+                        data-current={isPro || undefined}
+                        aria-current={isPro ? "true" : undefined}
+                      >
+                        <span className="billing-plan-name">Zoption Pro</span>
+                        {isPro && <span className="billing-plan-current">Current plan</span>}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {planFeatures.map((item) => (
+                      <tr key={item.feature}>
+                        <th scope="row">{item.feature}</th>
+                        <td data-plan="free" data-current={!isPro || undefined}>
+                          {item.free}
+                        </td>
+                        <td data-plan="pro" data-current={isPro || undefined}>
+                          {item.pro}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-            <p id="billing-plan-scroll-hint" className="billing-plan-scroll-hint">
-              On narrow screens, scroll horizontally to compare both plans.
-            </p>
-            <div
-              className="billing-plan-table-wrap"
-              role="region"
-              aria-labelledby="billing-plan-comparison-title"
-              aria-describedby="billing-plan-comparison-description billing-plan-scroll-hint"
-              tabIndex={0}
-            >
-              <table className="billing-plan-comparison">
-                <caption className="sr-only">Free and Zoption Pro plan feature comparison</caption>
-                <thead>
-                  <tr>
-                    <th className="billing-plan-feature-heading" scope="col">
-                      Feature
-                    </th>
-                    <th
-                      scope="col"
-                      data-plan="free"
-                      data-current={!isPro || undefined}
-                      aria-current={!isPro ? "true" : undefined}
-                    >
-                      <span className="billing-plan-name">Free</span>
-                      {!isPro && <span className="billing-plan-current">Current plan</span>}
-                    </th>
-                    <th
-                      scope="col"
-                      data-plan="pro"
-                      data-current={isPro || undefined}
-                      aria-current={isPro ? "true" : undefined}
-                    >
-                      <span className="billing-plan-name">Zoption Pro</span>
-                      {isPro && <span className="billing-plan-current">Current plan</span>}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {planFeatures.map((item) => (
-                    <tr key={item.feature}>
-                      <th scope="row">{item.feature}</th>
-                      <td data-plan="free" data-current={!isPro || undefined}>
-                        {item.free}
-                      </td>
-                      <td data-plan="pro" data-current={isPro || undefined}>
-                        {item.pro}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          </>
+        )}
+        {duplicateSubscriptions && (
+          <p className="billing-settings-warning" role="alert">
+            Paddle reports more than one ongoing subscription for this account. Review billing
+            before starting another checkout or deleting your Zoption account.
+          </p>
+        )}
+        {(canCheckout || canManageBilling) && (
+          <div className="billing-settings-actions">
+            {canCheckout && (
+              <button
+                ref={checkoutTriggerRef}
+                className="button primary compact"
+                type="button"
+                disabled={confirming}
+                onClick={() => setIsProCheckoutOpen(true)}
+              >
+                Choose a Pro plan
+              </button>
+            )}
+            {canManageBilling && (
+              <button
+                className="button secondary compact"
+                type="button"
+                disabled={portalBusy}
+                onClick={() => void openBillingPortal()}
+              >
+                {portalBusy ? "Opening billing portal…" : "Manage billing"}
+              </button>
+            )}
+            <small>
+              {canCheckout
+                ? "Prices are charged in USD. Your bank may show an approximate PHP conversion. Paddle securely hosts checkout."
+                : "Paddle securely hosts payment-method updates, invoices, and subscription management."}
+            </small>
           </div>
-        </>
-      )}
-      {duplicateSubscriptions && (
-        <p className="billing-settings-warning" role="alert">
-          Paddle reports more than one ongoing subscription for this account. Review billing before
-          starting another checkout or deleting your Zoption account.
-        </p>
-      )}
-      {(canCheckout || canManageBilling) && (
-        <div className="billing-settings-actions">
-          {canCheckout && (
-            <button
-              ref={checkoutTriggerRef}
-              className="button primary compact"
-              type="button"
-              disabled={confirming}
-              onClick={() => setIsProCheckoutOpen(true)}
-            >
-              Choose a Pro plan
-            </button>
-          )}
-          {canManageBilling && (
-            <button
-              className="button secondary compact"
-              type="button"
-              disabled={portalBusy}
-              onClick={() => void openBillingPortal()}
-            >
-              {portalBusy ? "Opening billing portal…" : "Manage billing"}
-            </button>
-          )}
-          <small>
-            {canCheckout
-              ? "Prices are charged in USD. Your bank may show an approximate PHP conversion. Paddle securely hosts checkout."
-              : "Paddle securely hosts payment-method updates, invoices, and subscription management."}
-          </small>
-        </div>
-      )}
-      {summary && !isPro && !canCheckout && canManageBilling && (
-        <p className="settings-helper">
-          A new checkout is unavailable while this subscription state is being resolved. Use Manage
-          billing to review it in Paddle.
-        </p>
-      )}
-      {summary && !isPro && !canCheckout && !canManageBilling && (
-        <p className="settings-helper">
-          Upgrade and billing management are temporarily unavailable. Refresh the page or contact
-          support if this continues.
-        </p>
-      )}
-      {confirmationDelayed && (
-        <p className="settings-helper" role="status">
-          Payment confirmation is taking longer than expected. You can safely refresh this page in a
-          moment—Paddle’s signed notification will update your plan automatically.
-        </p>
-      )}
-      {visibleError && (
-        <p className="form-error" role="alert">
-          {visibleError}
-        </p>
-      )}
-      {summary && (
-        <ProCheckoutDialog
-          open={isProCheckoutOpen}
-          summary={summary}
-          workspace={workspace}
-          email={user.email}
-          returnFocus={checkoutTriggerRef.current}
-          onClose={() => setIsProCheckoutOpen(false)}
-        />
-      )}
-    </section>
+        )}
+        {summary && !isPro && !canCheckout && canManageBilling && (
+          <p className="settings-helper">
+            A new checkout is unavailable while this subscription state is being resolved. Use
+            Manage billing to review it in Paddle.
+          </p>
+        )}
+        {summary && !isPro && !canCheckout && !canManageBilling && (
+          <p className="settings-helper">
+            Upgrade and billing management are temporarily unavailable. Refresh the page or contact
+            support if this continues.
+          </p>
+        )}
+        {confirmationDelayed && (
+          <p className="settings-helper" role="status">
+            Payment confirmation is taking longer than expected. You can safely refresh this page in
+            a moment—Paddle’s signed notification will update your plan automatically.
+          </p>
+        )}
+        {visibleError && (
+          <p className="form-error" role="alert">
+            {visibleError}
+          </p>
+        )}
+        {summary && (
+          <ProCheckoutDialog
+            open={isProCheckoutOpen}
+            summary={summary}
+            workspace={workspace}
+            email={user.email}
+            returnFocus={checkoutTriggerRef.current}
+            onClose={() => setIsProCheckoutOpen(false)}
+          />
+        )}
+      </section>
+      {summary?.canManageSponsoredSeats && <SponsoredProSeatsSettings workspace={workspace} />}
+    </>
   );
 }

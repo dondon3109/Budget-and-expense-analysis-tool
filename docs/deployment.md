@@ -52,6 +52,28 @@ After changing redirect or template settings, request a fresh recovery email; pr
    ```
 
 8. Keep `DEEPSEEK_MODEL=deepseek-v4-flash`, `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
+9. Before enabling sponsored-seat invitations, onboard a verified sender domain in Cloudflare Email Service, confirm the target account is eligible for Workers Email Sending, and retain the `EMAIL` `send_email` binding in both deployment environments. Set `WEB_APP_URL` to the exact HTTPS Pages origin and `EMAIL_FROM` to the approved sender address; neither value belongs in browser `VITE_*` configuration. Send a controlled invitation to an address you manage before enabling the production platform-admin grant.
+
+### Platform-admin recovery operation
+
+The platform administrator is stored only as a Supabase Auth UUID in D1. Do not grant or revoke this role by email, profile metadata, a JWT custom claim, or browser code. Self-service deletion is intentionally blocked while its D1 grant row exists.
+
+To disable complementary platform-admin Pro access and revoke every sponsored seat, run the following only through a trusted D1/server operation after making a recovery point:
+
+```sql
+BEGIN;
+UPDATE platform_admin_grants
+SET complimentary_pro_enabled = 0, disabled_at = datetime('now'), updated_at = datetime('now')
+WHERE user_id = '08060c19-8a55-4046-a2e7-7384808dd81c';
+UPDATE sponsored_pro_seats
+SET state = 'empty', pending_email = NULL, beneficiary_user_id = NULL,
+    invited_at = NULL, invite_last_sent_at = NULL, invite_send_lease_until = NULL,
+    assigned_at = NULL, updated_at = datetime('now')
+WHERE sponsor_user_id = '08060c19-8a55-4046-a2e7-7384808dd81c';
+COMMIT;
+```
+
+To restore the permanent complementary grant without restoring former beneficiaries, set `complimentary_pro_enabled = 1`, clear `disabled_at`, and leave all five slots empty. Never expose either operation through a browser route.
 
 ### Assistant deployment preflight
 

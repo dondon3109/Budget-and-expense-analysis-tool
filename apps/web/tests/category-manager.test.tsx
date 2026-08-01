@@ -56,12 +56,14 @@ describe("CategoryManager", () => {
     vi.mocked(updateCategory).mockResolvedValue(category);
     vi.mocked(getBillingSummary).mockResolvedValue({
       plan: "free",
+      entitlementSource: null,
       status: null,
       interval: null,
       currentPeriodEndsAt: null,
       scheduledChangeAt: null,
       canCheckout: true,
       canManageBilling: false,
+      canManageSponsoredSeats: false,
       nonTerminalSubscriptionCount: 0,
       usages: [],
       allowances: [{ resource: "custom_category", used: 0, limit: 1 }],
@@ -92,12 +94,14 @@ describe("CategoryManager", () => {
   it("greys out category creation and custom restoration at the Free limit", async () => {
     vi.mocked(getBillingSummary).mockResolvedValueOnce({
       plan: "free",
+      entitlementSource: null,
       status: null,
       interval: null,
       currentPeriodEndsAt: null,
       scheduledChangeAt: null,
       canCheckout: true,
       canManageBilling: false,
+      canManageSponsoredSeats: false,
       nonTerminalSubscriptionCount: 0,
       usages: [],
       allowances: [{ resource: "custom_category", used: 1, limit: 1 }],
@@ -124,12 +128,14 @@ describe("CategoryManager", () => {
   it("shows unlimited categories and keeps creation available on Pro", async () => {
     vi.mocked(getBillingSummary).mockResolvedValueOnce({
       plan: "zoption_pro",
+      entitlementSource: "paddle",
       status: "active",
       interval: "month",
       currentPeriodEndsAt: "2026-08-31T16:00:00.000Z",
       scheduledChangeAt: null,
       canCheckout: false,
       canManageBilling: true,
+      canManageSponsoredSeats: false,
       nonTerminalSubscriptionCount: 1,
       usages: [],
       allowances: [{ resource: "custom_category", used: 12, limit: null }],

@@ -14,7 +14,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { categories, importPreviews } from "../../../../db/schema";
 import {
-  EFFECTIVE_PRO_SUBSCRIPTION_CONDITION,
+  EFFECTIVE_PRO_ENTITLEMENT_CONDITION,
   hasProEntitlement,
   isCategoryPlanAvailable,
   type BillingRepository,
@@ -30,7 +30,7 @@ const PREVIEW_LIFETIME_MS = 15 * 60 * 1000;
 
 export function buildImportTransactionInsertSql(requireNonSystemCategory: boolean): string {
   const systemConstraint = requireNonSystemCategory ? " AND system_key IS NULL" : "";
-  return `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint) VALUES (?, ?, ?, (SELECT id FROM categories WHERE id = ? AND tenant_id = ? AND archived = 0 AND kind = ?${systemConstraint} AND (required_plan = 'free' OR EXISTS (SELECT 1 FROM billing_subscriptions WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}))), ?, ?, ?, 'PHP', ?, ?)`;
+  return `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint) VALUES (?, ?, ?, (SELECT id FROM categories WHERE id = ? AND tenant_id = ? AND archived = 0 AND kind = ?${systemConstraint} AND (required_plan = 'free' OR ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION})), ?, ?, ?, 'PHP', ?, ?)`;
 }
 
 export function assertImportFileSize(csvText: string): void {

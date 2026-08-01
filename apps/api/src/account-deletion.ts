@@ -7,6 +7,7 @@ import {
   type AccountDeletionStatus,
 } from "./db/account-deletion";
 import type { BillingRepository } from "./db/billing";
+import type { PlatformAdminRepository } from "./db/platform-admin";
 import { tenantIdForUser } from "./db/tenants";
 import { HttpError } from "./errors";
 
@@ -231,6 +232,7 @@ export function createAccountDeletionService(
     env: Bindings,
   ) => SupabaseDeletionGateway = createSupabaseDeletionGatewayForEnvironment,
   billing?: Pick<BillingRepository, "hasNonTerminalSubscription">,
+  platformAdmins?: Pick<PlatformAdminRepository, "isPlatformAdminIdentity">,
 ): AccountDeletionService {
   return {
     async deleteAccount({ env, user, accessToken, password }) {
@@ -251,6 +253,13 @@ export function createAccountDeletionService(
             400,
             "invalid_current_password",
             "The current password could not be verified.",
+          );
+        }
+        if (await platformAdmins?.isPlatformAdminIdentity(env, user.id)) {
+          throw new HttpError(
+            409,
+            "platform_admin_account_protected",
+            "This platform administrator account can only be retired through a trusted operational process.",
           );
         }
         if (await billing?.hasNonTerminalSubscription(env, tenantIdForUser(user.id))) {

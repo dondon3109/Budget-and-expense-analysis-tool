@@ -16,18 +16,25 @@ import { ProCheckoutDialog } from "../src/components/billing/ProCheckoutDialog";
 const workspace = { key: "user:user-1" as const, userId: "user-1" };
 
 function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
-  return {
+  const base = {
     plan: "free",
+    entitlementSource: null,
     status: null,
     interval: null,
     currentPeriodEndsAt: null,
     scheduledChangeAt: null,
     canCheckout: true,
     canManageBilling: false,
+    canManageSponsoredSeats: false,
     nonTerminalSubscriptionCount: 0,
     usages: [],
     allowances: [],
+  } satisfies BillingSummary;
+  return {
+    ...base,
     ...overrides,
+    entitlementSource: overrides.entitlementSource ?? base.entitlementSource,
+    canManageSponsoredSeats: overrides.canManageSponsoredSeats ?? base.canManageSponsoredSeats,
   };
 }
 

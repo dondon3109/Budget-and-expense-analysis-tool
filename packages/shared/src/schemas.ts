@@ -27,6 +27,14 @@ export const billingCheckoutRequestSchema = z
 
 export type BillingCheckoutRequest = z.infer<typeof billingCheckoutRequestSchema>;
 
+export const sponsoredSeatEmailRequestSchema = z
+  .object({ email: z.string().trim().email().max(320) })
+  .strict();
+
+export type SponsoredSeatEmailRequest = z.infer<typeof sponsoredSeatEmailRequestSchema>;
+
+export const sponsoredSeatSlotSchema = z.coerce.number().int().min(1).max(5);
+
 export const accountDeletionRequestSchema = z
   .object({
     confirmation: z.literal("DELETE"),

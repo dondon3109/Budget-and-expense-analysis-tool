@@ -313,14 +313,38 @@ export interface BillingResourceAllowance {
   limit: number | null;
 }
 
+export const proEntitlementSources = ["paddle", "platform_admin", "sponsored"] as const;
+export type ProEntitlementSource = (typeof proEntitlementSources)[number];
+
+export type SponsoredProSeatState = "pending" | "active";
+
+export interface SponsoredProSeat {
+  slotNumber: number;
+  state: SponsoredProSeatState;
+  beneficiaryUserId: string | null;
+  invitedAt: string | null;
+  assignedAt: string | null;
+  canResendInvitation: boolean;
+}
+
+export interface SponsoredProSeatSummary {
+  capacity: 5;
+  activeCount: number;
+  pendingCount: number;
+  availableCount: number;
+  seats: SponsoredProSeat[];
+}
+
 export interface BillingSummary {
   plan: BillingPlan;
+  entitlementSource: ProEntitlementSource | null;
   status: BillingSubscriptionStatus | null;
   interval: BillingInterval | null;
   currentPeriodEndsAt: string | null;
   scheduledChangeAt: string | null;
   canCheckout: boolean;
   canManageBilling: boolean;
+  canManageSponsoredSeats: boolean;
   nonTerminalSubscriptionCount: number;
   usages: BillingUsage[];
   allowances: BillingResourceAllowance[];

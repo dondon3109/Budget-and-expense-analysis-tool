@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { categories } from "../../../../db/schema";
 import {
-  EFFECTIVE_PRO_SUBSCRIPTION_CONDITION,
+  EFFECTIVE_PRO_ENTITLEMENT_CONDITION,
   customCategoryLimitError,
   FREE_CUSTOM_CATEGORY_LIMIT,
   hasProEntitlement,
@@ -100,14 +100,8 @@ export const categoryRepository: CategoryRepository = {
       result = await env.DB.prepare(
         `INSERT INTO categories (id, tenant_id, name, kind, color, origin, required_plan)
          SELECT ?, ?, ?, ?, ?, 'custom',
-           CASE WHEN EXISTS (
-             SELECT 1 FROM billing_subscriptions
-             WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
-           ) THEN 'zoption_pro' ELSE 'free' END
-         WHERE EXISTS (
-           SELECT 1 FROM billing_subscriptions
-           WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
-         ) OR (
+           CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN 'zoption_pro' ELSE 'free' END
+         WHERE ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} OR (
            SELECT COUNT(*) FROM categories
            WHERE tenant_id = ? AND origin = 'custom' AND required_plan = 'free' AND archived = 0
          ) < ?`,
@@ -192,10 +186,7 @@ export const categoryRepository: CategoryRepository = {
              ? = 0
              OR (
                ? = 'zoption_pro'
-               AND EXISTS (
-                 SELECT 1 FROM billing_subscriptions
-                 WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
-               )
+               AND ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION}
              )
              OR (
                ? = 'free'

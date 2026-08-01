@@ -7,6 +7,7 @@
   "env": {
     "preview": {
       "name": "budget-expense-api-preview",
+      "send_email": [{ "name": "EMAIL" }],
       "d1_databases": [
         {
           "binding": "DB",
@@ -19,6 +20,8 @@
         "ALLOWED_ORIGINS": "https://REPLACE_WITH_PREVIEW_WEB_HOST",
         "SUPABASE_URL": "https://REPLACE_WITH_SUPABASE_PROJECT_REF.supabase.co",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
+        "WEB_APP_URL": "https://REPLACE_WITH_WEB_APP_HOST",
+        "EMAIL_FROM": "REPLACE_WITH_VERIFIED_SENDER_EMAIL",
         "ASSISTANT_ENABLED": "true",
         "DEEPSEEK_MODEL": "deepseek-v4-flash",
         "ASSISTANT_TIME_ZONE": "Asia/Manila",
@@ -28,6 +31,7 @@
     },
     "production": {
       "name": "budget-expense-api-production",
+      "send_email": [{ "name": "EMAIL" }],
       "routes": [{ "pattern": "api.zoption.site", "custom_domain": true }],
       "d1_databases": [
         {
@@ -41,6 +45,8 @@
         "ALLOWED_ORIGINS": "https://zoption.site,https://www.zoption.site",
         "SUPABASE_URL": "https://REPLACE_WITH_SUPABASE_PROJECT_REF.supabase.co",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
+        "WEB_APP_URL": "https://REPLACE_WITH_WEB_APP_HOST",
+        "EMAIL_FROM": "REPLACE_WITH_VERIFIED_SENDER_EMAIL",
         "ASSISTANT_ENABLED": "true",
         "DEEPSEEK_MODEL": "deepseek-v4-flash",
         "ASSISTANT_TIME_ZONE": "Asia/Manila",

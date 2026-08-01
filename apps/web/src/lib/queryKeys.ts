@@ -6,6 +6,8 @@ export const queryKeys = {
   workspace: (workspace: AuthenticatedWorkspace) => ["workspace", workspace.key] as const,
   billing: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "billing"] as const,
+  sponsoredProSeats: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "sponsored-pro-seats"] as const,
   dashboard: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "dashboard"] as const,
   dashboardSummary: (workspace: AuthenticatedWorkspace, period: { from: string; to: string }) =>

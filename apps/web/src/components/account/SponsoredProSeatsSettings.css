@@ -1,0 +1,120 @@
+/* Sponsored Pro seat administration is owned by this Settings component. */
+.sponsored-pro-seats-add {
+  max-width: 680px;
+  margin-top: 22px;
+}
+
+.sponsored-pro-seats-add > label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sponsored-pro-seats-add > div,
+.sponsored-pro-seat-actions form,
+.sponsored-pro-seat-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sponsored-pro-seats input {
+  min-width: min(100%, 250px);
+  flex: 1 1 220px;
+}
+
+.sponsored-pro-seats-add small {
+  display: block;
+  margin-top: 7px;
+  color: var(--subtle);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.sponsored-pro-seats-invite {
+  max-width: 680px;
+  margin-top: 13px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--focus) 30%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--focus) 7%, var(--surface));
+}
+
+.sponsored-pro-seats-invite p,
+.sponsored-pro-seats-capacity,
+.sponsored-pro-seat p {
+  margin: 0 0 9px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.sponsored-pro-seats-list {
+  max-width: 900px;
+  margin-top: 22px;
+}
+
+.sponsored-pro-seats-capacity {
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.sponsored-pro-seat {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.sponsored-pro-seat strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.sponsored-pro-seat p {
+  max-width: 38ch;
+  overflow-wrap: anywhere;
+}
+
+.sponsored-pro-seat small {
+  color: var(--subtle);
+  font-size: 10px;
+}
+
+.sponsored-pro-seat-actions {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.sponsored-pro-seat-confirm {
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--danger);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .sponsored-pro-seat {
+    flex-direction: column;
+  }
+
+  .sponsored-pro-seat-actions {
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .sponsored-pro-seat-actions form,
+  .sponsored-pro-seat-confirm {
+    display: grid;
+  }
+
+  .sponsored-pro-seat-actions .button {
+    width: 100%;
+  }
+}

@@ -291,9 +291,9 @@ export function PrivacyPolicyPage() {
           Zoption uses service providers that may process personal data outside the Philippines or
           the country where you live. Our primary database and application data are processed
           through Supabase cloud infrastructure, although Supabase and its subprocessors may process
-          limited information in other locations where they operate. Resend processes email
-          addresses, email content, delivery information, and related technical data in the United
-          States and through its subprocessors. When you use the AI assistant, assistant questions,
+          limited information in other locations where they operate. Cloudflare processes email
+          addresses, email content, delivery information, and related technical data through its
+          Email Service and subprocessors. When you use the AI assistant, assistant questions,
           related context, and generated responses may be transferred to and processed by DeepSeek
           in the People’s Republic of China. The privacy and data-protection laws in these locations
           may differ from those in your country. Zoption remains responsible for personal data under

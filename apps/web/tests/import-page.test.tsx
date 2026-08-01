@@ -149,12 +149,14 @@ describe("ImportPage", () => {
     vi.clearAllMocks();
     vi.mocked(getBillingSummary).mockResolvedValue({
       plan: "free",
+      entitlementSource: null,
       status: null,
       interval: null,
       currentPeriodEndsAt: null,
       scheduledChangeAt: null,
       canCheckout: true,
       canManageBilling: false,
+      canManageSponsoredSeats: false,
       nonTerminalSubscriptionCount: 0,
       usages: [
         {

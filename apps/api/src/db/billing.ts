@@ -5,6 +5,7 @@ import type {
   BillingResourceAllowance,
   BillingSubscriptionStatus,
   BillingSummary,
+  ProEntitlementSource,
   BillingUsage,
   CategoryRequiredPlan,
 } from "@zoption/shared";
@@ -33,6 +34,10 @@ const NON_TERMINAL_STATUS_SET = new Set<BillingSubscriptionStatus>(NON_TERMINAL_
 export const EFFECTIVE_PRO_SUBSCRIPTION_CONDITION = `status IN ('active', 'trialing')
   AND current_period_ends_at IS NOT NULL
   AND datetime(current_period_ends_at) > datetime('now')`;
+
+export const EFFECTIVE_PRO_ENTITLEMENT_CONDITION = `EXISTS (
+  SELECT 1 FROM effective_pro_entitlements WHERE tenant_id = ?
+)`;
 
 export function hasEffectiveProEntitlement(
   status: BillingSubscriptionStatus,
@@ -185,10 +190,36 @@ async function currentSubscription(
     .first<SubscriptionSummaryRow>();
 }
 
-export async function hasProEntitlement(env: Bindings, tenantId: string): Promise<boolean> {
+export async function getProEntitlementSource(
+  env: Bindings,
+  tenantId: string,
+): Promise<ProEntitlementSource | null> {
   const row = await env.DB.prepare(
-    `SELECT 1 AS found FROM billing_subscriptions
-     WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
+    `SELECT source FROM effective_pro_entitlements
+     WHERE tenant_id = ?
+     ORDER BY CASE source
+       WHEN 'paddle' THEN 0
+       WHEN 'platform_admin' THEN 1
+       WHEN 'sponsored' THEN 2
+       ELSE 3
+     END
+     LIMIT 1`,
+  )
+    .bind(tenantId)
+    .first<{ source: ProEntitlementSource }>();
+  return row?.source ?? null;
+}
+
+export async function hasProEntitlement(env: Bindings, tenantId: string): Promise<boolean> {
+  return (await getProEntitlementSource(env, tenantId)) !== null;
+}
+
+async function canManageSponsoredSeats(env: Bindings, tenantId: string): Promise<boolean> {
+  const row = await env.DB.prepare(
+    `SELECT 1 AS found
+     FROM user_tenants AS user_tenant
+     JOIN platform_admin_grants AS grant ON grant.user_id = user_tenant.user_id
+     WHERE user_tenant.tenant_id = ? AND grant.complimentary_pro_enabled = 1
      LIMIT 1`,
   )
     .bind(tenantId)
@@ -286,17 +317,11 @@ function buildUsageStatement(
     `INSERT INTO billing_monthly_usage (tenant_id, month, feature, count, allowance)
      VALUES (
        ?, ?, ?, 1,
-       CASE WHEN EXISTS (
-         SELECT 1 FROM billing_subscriptions
-         WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
-       ) THEN ? ELSE ? END
+       CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN ? ELSE ? END
      )
      ON CONFLICT(tenant_id, month, feature) DO UPDATE SET
        count = billing_monthly_usage.count + 1,
-       allowance = CASE WHEN EXISTS (
-         SELECT 1 FROM billing_subscriptions
-         WHERE tenant_id = ? AND ${EFFECTIVE_PRO_SUBSCRIPTION_CONDITION}
-       ) THEN ? ELSE ? END,
+       allowance = CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN ? ELSE ? END,
        updated_at = datetime('now')`,
   ).bind(
     tenantId,
@@ -313,21 +338,26 @@ function buildUsageStatement(
 
 export const billingRepository: BillingRepository = {
   async getSummary(env, tenantId) {
-    const [subscription, isPro, nonTerminalCount] = await Promise.all([
-      currentSubscription(env, tenantId),
-      hasProEntitlement(env, tenantId),
-      nonTerminalSubscriptionCount(env, tenantId),
-    ]);
+    const [subscription, entitlementSource, nonTerminalCount, adminSeatManagement] =
+      await Promise.all([
+        currentSubscription(env, tenantId),
+        getProEntitlementSource(env, tenantId),
+        nonTerminalSubscriptionCount(env, tenantId),
+        canManageSponsoredSeats(env, tenantId),
+      ]);
+    const isPro = entitlementSource !== null;
     const plan = isPro ? "zoption_pro" : "free";
     const limits = isPro ? PRO_LIMITS : FREE_LIMITS;
     return {
       plan,
+      entitlementSource,
       status: subscription?.status ?? null,
       interval: subscription?.interval ?? null,
       currentPeriodEndsAt: subscription?.currentPeriodEndsAt ?? null,
       scheduledChangeAt: subscription?.scheduledChangeAt ?? null,
       canCheckout: nonTerminalCount === 0,
       canManageBilling: Boolean(subscription),
+      canManageSponsoredSeats: adminSeatManagement,
       nonTerminalSubscriptionCount: nonTerminalCount,
       usages: await Promise.all(
         (Object.keys(limits) as BillingFeature[]).map((feature) =>

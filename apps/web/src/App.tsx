@@ -1,7 +1,10 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { PublicOnly, RequireAuth } from "./auth/RouteGuards";
+import { useAuth } from "./auth/AuthProvider";
+import { syncVerifiedIdentity } from "./lib/api";
+import { userWorkspace } from "./lib/workspace";
 import { LandingPage } from "./pages/LandingPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { publicRouteElements } from "./PublicRoutes";
@@ -89,10 +92,24 @@ function SignedOutOnly({ children }: { children: React.ReactNode }) {
   return <PublicOnly>{children}</PublicOnly>;
 }
 
+function VerifiedIdentitySync() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    void syncVerifiedIdentity(userWorkspace(user)).catch(() => {
+      // The next signed-in request can retry identity synchronization. A failure must not log out a user.
+    });
+  }, [user]);
+
+  return null;
+}
+
 export function App() {
   return (
     <>
       <SeoHead />
+      <VerifiedIdentitySync />
       <Suspense fallback={<div className="full-page-status">Loading Zoption…</div>}>
         <Routes>
           {publicRouteElements(<RootRoute />)}

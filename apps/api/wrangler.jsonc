@@ -3,6 +3,7 @@
   "name": "budget-expense-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
+  "send_email": [{ "name": "EMAIL" }],
   "d1_databases": [
     {
       "binding": "DB",
@@ -15,6 +16,8 @@
     "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://zoption.site,https://www.zoption.site",
     "SUPABASE_URL": "http://127.0.0.1:54321",
     "SUPABASE_JWT_AUDIENCE": "authenticated",
+    "WEB_APP_URL": "http://localhost:5173",
+    "EMAIL_FROM": "hello@zoption.site",
     "ASSISTANT_ENABLED": "true",
     "DEEPSEEK_MODEL": "deepseek-v4-flash",
     "ASSISTANT_TIME_ZONE": "Asia/Manila",

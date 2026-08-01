@@ -23,11 +23,13 @@ import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { loadCashflowTrend, loadDashboard } from "./db/dashboard";
 import { calendarEventRepository, type CalendarEventRepository } from "./db/events";
 import { createImportRepository, type ImportRepository } from "./db/imports";
+import { platformAdminRepository, type PlatformAdminRepository } from "./db/platform-admin";
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
 import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
 import { HttpError } from "./errors";
 import { d1RateLimiter, type RateLimiter } from "./rate-limit";
+import { createPlatformAdminService, type PlatformAdminService } from "./platform-admin";
 import { createAccountDeletionRoutes } from "./routes/account-deletion";
 import { createAccountRoutes } from "./routes/accounts";
 import { createAssistantRoutes } from "./routes/assistant";
@@ -38,6 +40,7 @@ import { createCalendarEventRoutes } from "./routes/events";
 import { createExportRoutes } from "./routes/exports";
 import { createImportRoutes } from "./routes/imports";
 import { createPaddleWebhookRoutes } from "./routes/paddle-webhooks";
+import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
 import { createTransactionRoutes } from "./routes/transactions";
 import type { AppEnvironment, Bindings } from "./types";
@@ -84,6 +87,8 @@ export interface AppOptions {
   assistantProvider?: AssistantProvider;
   assistantService?: AssistantService;
   accountDeletionService?: AccountDeletionService;
+  platformAdmins?: PlatformAdminRepository;
+  platformAdminService?: PlatformAdminService;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -120,9 +125,12 @@ export function createApp(options: AppOptions = {}) {
       undefined,
       billingStore,
     );
+  const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
+  const platformAdminService =
+    options.platformAdminService ?? createPlatformAdminService(platformAdminStore);
   const accountDeletionService =
     options.accountDeletionService ??
-    createAccountDeletionService(undefined, undefined, billingStore);
+    createAccountDeletionService(undefined, undefined, billingStore, platformAdminStore);
   const readinessCheck =
     options.readinessCheck ??
     (async (env: Bindings) => {
@@ -168,7 +176,8 @@ export function createApp(options: AppOptions = {}) {
     createAuthMiddleware(
       authVerifier,
       resolveTenant,
-      (path, method) => method === "DELETE" && path === "/api/app/account",
+      (path, method) =>
+        (method === "DELETE" && path === "/api/app/account") || path.startsWith("/api/app/admin/"),
     ),
   );
   app.use("/api/app/*", async (context, next) => {
@@ -206,6 +215,7 @@ export function createApp(options: AppOptions = {}) {
   app.use("/api/app/*", async (context, next) => {
     const isAccountDeletion =
       context.req.method === "DELETE" && context.req.path === "/api/app/account";
+    const isPlatformAdminRoute = context.req.path.startsWith("/api/app/admin/");
     const isAssistantGeneration =
       context.req.method === "POST" &&
       (context.req.path === "/api/app/assistant/threads" ||
@@ -216,31 +226,36 @@ export function createApp(options: AppOptions = {}) {
       context.req.method === "GET" && context.req.path.startsWith("/api/app/assistant/threads");
     const policies = isAccountDeletion
       ? [{ scope: "user-account-deletion", limit: 5, windowSeconds: 15 * 60 }]
-      : isAssistantGeneration
-        ? [
-            { scope: "tenant-assistant-minute", limit: 10, windowSeconds: 60 },
-            { scope: "tenant-assistant-day", limit: 100, windowSeconds: 24 * 60 * 60 },
-          ]
-        : isExportRead
-          ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
-          : isAssistantHistoryRead
-            ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
-            : WRITE_METHODS.has(context.req.method)
-              ? [
-                  context.req.path.startsWith("/api/app/imports")
-                    ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
-                    : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
-                ]
-              : [];
+      : isPlatformAdminRoute && WRITE_METHODS.has(context.req.method)
+        ? [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: 15 * 60 }]
+        : isPlatformAdminRoute
+          ? [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: 60 }]
+          : isAssistantGeneration
+            ? [
+                { scope: "tenant-assistant-minute", limit: 10, windowSeconds: 60 },
+                { scope: "tenant-assistant-day", limit: 100, windowSeconds: 24 * 60 * 60 },
+              ]
+            : isExportRead
+              ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
+              : isAssistantHistoryRead
+                ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
+                : WRITE_METHODS.has(context.req.method)
+                  ? [
+                      context.req.path.startsWith("/api/app/imports")
+                        ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
+                        : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
+                    ]
+                  : [];
 
     if (policies.length === 0) {
       await next();
       return;
     }
 
-    const rateLimitIdentity = isAccountDeletion
-      ? context.get("authUser").id
-      : context.get("tenant").tenantId;
+    const rateLimitIdentity =
+      isAccountDeletion || isPlatformAdminRoute
+        ? context.get("authUser").id
+        : context.get("tenant").tenantId;
 
     for (const policy of policies) {
       const decision = await rateLimiter.consume(context.env, rateLimitIdentity, policy);
@@ -318,6 +333,8 @@ export function createApp(options: AppOptions = {}) {
 
   app.route("/api/billing/paddle/webhook", createPaddleWebhookRoutes(billingStore));
   app.route("/api/app/account", createAccountDeletionRoutes(accountDeletionService));
+  app.route("/api/app/identity", createIdentityRoutes(platformAdminService));
+  app.route("/api/app/admin", createPlatformAdminRoutes(platformAdminService));
   app.route("/api/app/assistant", createAssistantRoutes(assistantService));
   app.route("/api/app/transactions", createTransactionRoutes(transactionStore));
   app.route("/api/app/accounts", createAccountRoutes(accountStore, billingStore));
