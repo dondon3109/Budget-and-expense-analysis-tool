@@ -1,0 +1,260 @@
+/* Initial dashboard bootstrap overlay. */
+.dashboard-startup-experience {
+  position: fixed;
+  z-index: 260;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  color: var(--ink);
+  background: var(--page);
+  isolation: isolate;
+}
+
+.dashboard-startup-experience::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: radial-gradient(circle at center, var(--brand-glow), transparent 38%);
+  content: "";
+  opacity: 0.72;
+}
+
+.dashboard-startup-experience-content {
+  display: grid;
+  justify-items: center;
+  gap: 17px;
+  width: min(100%, 27rem);
+  text-align: center;
+}
+
+.dashboard-startup-logo {
+  position: relative;
+  display: grid;
+  width: 88px;
+  height: 88px;
+  place-items: center;
+}
+
+.dashboard-startup-logo .brand-mark {
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  box-shadow: 0 15px 35px var(--shadow);
+  clip-path: inset(0 100% 0 0 round 18px);
+}
+
+.dashboard-startup-logo .brand-monogram {
+  color: var(--solid-text);
+  font-size: 34px;
+}
+
+.dashboard-startup-highlight {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  border: 1px solid color-mix(in srgb, var(--brand) 45%, transparent);
+  border-radius: 24px;
+  clip-path: inset(0 100% 0 0);
+  opacity: 0.66;
+  pointer-events: none;
+}
+
+.dashboard-startup-arc {
+  position: absolute;
+  inset: 2px;
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, transparent);
+  border-radius: 38% 62% 55% 45%;
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dashboard-startup-wordmark {
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.55rem, 4vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  clip-path: inset(0 100% 0 0);
+}
+
+.dashboard-startup-copy {
+  display: grid;
+  gap: 7px;
+  max-width: 24rem;
+}
+
+.dashboard-startup-copy strong {
+  color: var(--ink);
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  letter-spacing: -0.02em;
+}
+
+.dashboard-startup-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-startup-experience[data-phase="intro"] .dashboard-startup-logo .brand-mark {
+    animation: dashboard-startup-mark-reveal 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .dashboard-startup-experience[data-phase="intro"] .dashboard-startup-highlight {
+    animation: dashboard-startup-mask-reveal 490ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both;
+  }
+
+  .dashboard-startup-experience[data-phase="intro"] .dashboard-startup-wordmark {
+    animation: dashboard-startup-wordmark-reveal 430ms cubic-bezier(0.16, 1, 0.3, 1) 290ms both;
+  }
+
+  .dashboard-startup-experience[data-phase="loading"] .dashboard-startup-logo .brand-mark,
+  .dashboard-startup-experience[data-phase="complete"] .dashboard-startup-logo .brand-mark {
+    clip-path: inset(0 0 0 0 round 18px);
+    opacity: 1;
+  }
+
+  .dashboard-startup-experience[data-phase="loading"] .dashboard-startup-highlight,
+  .dashboard-startup-experience[data-phase="complete"] .dashboard-startup-highlight,
+  .dashboard-startup-experience[data-phase="loading"] .dashboard-startup-wordmark,
+  .dashboard-startup-experience[data-phase="complete"] .dashboard-startup-wordmark {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+
+  .dashboard-startup-experience[data-phase="loading"] .dashboard-startup-logo {
+    animation: dashboard-startup-breathe 1.2s ease-in-out infinite;
+  }
+
+  .dashboard-startup-experience[data-phase="loading"] .dashboard-startup-arc {
+    animation: dashboard-startup-arc-sweep 1.2s linear infinite;
+  }
+
+  .dashboard-startup-experience[data-phase="complete"] {
+    animation: dashboard-startup-overlay-exit 480ms cubic-bezier(0.4, 0, 1, 1) both;
+  }
+
+  .dashboard-startup-experience[data-phase="complete"] .dashboard-startup-logo {
+    animation: dashboard-startup-complete-pulse 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes dashboard-startup-mark-reveal {
+  from {
+    clip-path: inset(0 100% 0 0 round 18px);
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  72% {
+    clip-path: inset(0 0 0 0 round 18px);
+    opacity: 1;
+    transform: scale(1.035);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0 round 18px);
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes dashboard-startup-mask-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes dashboard-startup-wordmark-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashboard-startup-breathe {
+  0%,
+  100% {
+    transform: scale(0.98);
+  }
+
+  50% {
+    transform: scale(1);
+  }
+}
+
+@keyframes dashboard-startup-arc-sweep {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 0.8;
+  }
+
+  72% {
+    clip-path: inset(0 0 0 0);
+    opacity: 0.52;
+  }
+
+  to {
+    clip-path: inset(0 0 0 100%);
+    opacity: 0;
+  }
+}
+
+@keyframes dashboard-startup-complete-pulse {
+  35% {
+    transform: scale(1.05);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes dashboard-startup-overlay-exit {
+  to {
+    clip-path: inset(0 0 100% 0);
+    opacity: 0;
+  }
+}
+
+.dashboard-startup-experience[data-reduced-motion] .dashboard-startup-logo .brand-mark,
+.dashboard-startup-experience[data-reduced-motion] .dashboard-startup-highlight,
+.dashboard-startup-experience[data-reduced-motion] .dashboard-startup-wordmark {
+  clip-path: none;
+  opacity: 1;
+}
+
+.dashboard-startup-experience[data-reduced-motion] .dashboard-startup-arc {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-startup-experience,
+  .dashboard-startup-experience *,
+  .dashboard-startup-experience *::before,
+  .dashboard-startup-experience *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -103,12 +103,11 @@
 }
 
 .billing-plan-table-wrap {
-  margin-top: 30px;
+  margin-top: 28px;
   overflow: auto;
   overscroll-behavior-inline: contain;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
+  border-block: 1px solid var(--line);
+  background: transparent;
   scrollbar-color: var(--line-strong) transparent;
   scrollbar-width: thin;
 }
@@ -122,20 +121,23 @@
   width: 100%;
   min-width: 660px;
   table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0;
-  background: var(--surface);
+  border-collapse: collapse;
+  background: transparent;
 }
 
 .billing-plan-comparison th,
 .billing-plan-comparison td {
-  padding: 18px 16px;
+  padding: 18px 20px;
   color: var(--muted);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
   font-size: 12px;
   line-height: 1.55;
   text-align: left;
   vertical-align: middle;
+}
+
+.billing-plan-comparison tbody tr {
+  height: 76px;
 }
 
 .billing-plan-comparison tr:last-child th,
@@ -144,10 +146,11 @@
 }
 
 .billing-plan-comparison thead th {
-  padding-top: 18px;
+  padding-top: 20px;
   padding-bottom: 18px;
   color: var(--ink);
-  background: var(--surface);
+  background: transparent;
+  vertical-align: top;
 }
 
 .billing-plan-feature-heading,
@@ -161,47 +164,20 @@
   font-weight: 800;
 }
 
-.billing-plan-comparison thead .billing-plan-feature-heading,
-.billing-plan-comparison tbody th {
-  background: var(--surface-soft);
-}
-
 .billing-plan-comparison tbody th {
   color: var(--ink);
   font-weight: 750;
 }
 
-.billing-plan-comparison tbody th::before {
-  margin-right: 9px;
-  color: var(--subtle);
-  content: "•";
-}
-
 .billing-plan-comparison th[data-plan],
 .billing-plan-comparison td[data-plan] {
   width: 31%;
+  border-left: 1px solid var(--line);
   text-align: center;
-}
-
-.billing-plan-comparison [data-plan="free"] {
-  background: color-mix(in srgb, var(--success-soft) 18%, var(--surface));
-}
-
-.billing-plan-comparison [data-plan="pro"] {
-  background: color-mix(in srgb, var(--action) 5%, var(--surface));
 }
 
 .billing-plan-comparison thead th[data-plan] {
   white-space: nowrap;
-}
-
-.billing-plan-comparison thead [data-plan="free"] {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 46%, var(--line));
-}
-
-.billing-plan-comparison thead [data-plan="pro"] {
-  border-top-right-radius: 13px;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--action) 46%, var(--line));
 }
 
 .billing-plan-name {
@@ -218,7 +194,7 @@
 
 .billing-plan-current {
   display: block;
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--success);
   font-size: 10px;
   font-weight: 850;
@@ -227,16 +203,8 @@
   text-transform: uppercase;
 }
 
-.billing-plan-comparison thead [data-plan="free"][data-current="true"] {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--success) 46%, var(--line)),
-    inset 0 -3px 0 var(--success);
-}
-
-.billing-plan-comparison thead [data-plan="pro"][data-current="true"] {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--action) 46%, var(--line)),
-    inset 0 -3px 0 var(--action);
+.billing-plan-comparison thead [data-plan="pro"] .billing-plan-current {
+  color: var(--action);
 }
 
 .billing-settings-warning {
@@ -303,15 +271,13 @@
     position: sticky;
     left: 0;
     z-index: 2;
-    background: var(--surface-soft);
-    box-shadow:
-      1px 0 0 var(--line),
-      7px 0 12px color-mix(in srgb, var(--ink) 6%, transparent);
+    border-right: 1px solid var(--line);
+    background: var(--surface);
   }
 
   .billing-plan-comparison .billing-plan-feature-heading {
     z-index: 3;
-    background: var(--surface-soft);
+    background: var(--surface);
   }
 
   .billing-settings-actions {

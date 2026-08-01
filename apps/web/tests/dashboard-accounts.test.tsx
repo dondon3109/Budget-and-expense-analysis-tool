@@ -3,7 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { DashboardSummary } from "@zoption/shared";
 import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -18,9 +18,16 @@ const apiMocks = vi.hoisted(() => ({
   updateAccount: vi.fn(),
   deleteAccount: vi.fn(),
 }));
+const dashboardExperienceState = vi.hoisted(() => ({
+  hasCompletedInitialDashboardExperience: true,
+  completeInitialDashboardExperience: vi.fn(),
+}));
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { id: "user-1", email: "user@example.com" } }),
+}));
+vi.mock("../src/components/dashboard/InitialDashboardExperienceProvider", () => ({
+  useInitialDashboardExperience: () => dashboardExperienceState,
 }));
 
 vi.mock("../src/components/layout/AppShell", () => ({
@@ -131,6 +138,67 @@ function renderPage(initialEntry = "/app") {
     </QueryClientProvider>,
   );
 }
+
+describe("Dashboard loading", () => {
+  beforeEach(() => {
+    dashboardExperienceState.hasCompletedInitialDashboardExperience = true;
+    dashboardExperienceState.completeInitialDashboardExperience.mockReset();
+    apiMocks.getBillingSummary.mockReset().mockResolvedValue(billingSummary);
+    apiMocks.getCashflowTrend.mockReset().mockResolvedValue({
+      view: "weekly",
+      granularity: "day",
+      range: { from: "2026-07-21", to: "2026-07-27" },
+      points: [],
+    });
+    apiMocks.getTransactions.mockReset().mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 8,
+      total: 0,
+      totalPages: 1,
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    dashboardExperienceState.hasCompletedInitialDashboardExperience = true;
+    vi.useRealTimers();
+  });
+
+  it("keeps the branded startup experience visible until the summary and minimum duration complete", async () => {
+    vi.useFakeTimers();
+    dashboardExperienceState.hasCompletedInitialDashboardExperience = false;
+    let resolveDashboard: ((value: DashboardSummary) => void) | undefined;
+    apiMocks.getDashboard.mockReset().mockImplementation(
+      () =>
+        new Promise<DashboardSummary>((resolve) => {
+          resolveDashboard = resolve;
+        }),
+    );
+    renderPage();
+
+    expect(screen.getByText("Opening Zoption")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveDashboard?.(dashboard);
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    expect(screen.getByText("Your dashboard is ready")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Account management" })).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(480);
+    });
+
+    expect(screen.queryByRole("status", { name: "Your dashboard is ready" })).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+});
 
 describe("Dashboard checkout intent", () => {
   beforeEach(() => {

@@ -4,7 +4,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { PasswordField } from "../components/auth/PasswordField";
-
 function safeRedirect(value: string | null): string {
   return value?.startsWith("/") && !value.startsWith("//") ? value : "/app?proCheckout=open";
 }
@@ -33,7 +32,6 @@ export function LoginPage() {
       setBusy(false);
     }
   }
-
   return (
     <AuthLayout
       eyebrow="Welcome back"
@@ -45,7 +43,7 @@ export function LoginPage() {
         </p>
       }
     >
-      <form className="auth-form" onSubmit={(event) => void handleSubmit(event)}>
+      <form className="auth-form" onSubmit={(event) => void handleSubmit(event)} aria-busy={busy}>
         <label>
           <span>Email address</span>
           <input
@@ -53,6 +51,7 @@ export function LoginPage() {
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            disabled={busy}
             required
           />
         </label>
@@ -62,6 +61,7 @@ export function LoginPage() {
           autoComplete="current-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
+          disabled={busy}
           minLength={8}
           required
         />

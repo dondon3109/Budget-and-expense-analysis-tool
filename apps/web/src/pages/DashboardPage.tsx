@@ -18,7 +18,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -26,9 +26,14 @@ import { useBillingSummary } from "../hooks/useBillingSummary";
 import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
+import {
+  DashboardStartupExperience,
+  type DashboardStartupPhase,
+} from "../components/dashboard/DashboardStartupExperience";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
 import { InsightsPanel } from "../components/dashboard/InsightsPanel";
 import { OverviewStatBar } from "../components/dashboard/OverviewStatBar";
+import { useInitialDashboardExperience } from "../components/dashboard/InitialDashboardExperienceProvider";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
 import { MonthSelector } from "../components/month/MonthSelector";
@@ -78,8 +83,20 @@ const dashboardHistoryPageSize = 8;
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const {
+    hasCompletedInitialDashboardExperience,
+    completeInitialDashboardExperience,
+  } = useInitialDashboardExperience();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
+  const [startupPhase, setStartupPhase] = useState<DashboardStartupPhase>(() =>
+    hasCompletedInitialDashboardExperience ? "hidden" : "intro",
+  );
+  const [dashboardEntranceState, setDashboardEntranceState] = useState<
+    "waiting" | "revealing" | "ready"
+  >(() => (hasCompletedInitialDashboardExperience ? "ready" : "waiting"));
+  const dashboardHeadingRef = useRef<HTMLHeadingElement>(null);
+  const shouldRestoreDashboardFocusRef = useRef(!hasCompletedInitialDashboardExperience);
   const [isAddingAccount, setIsAddingAccount] = useState(false);
   const [accountName, setAccountName] = useState("");
   const [accountType, setAccountType] = useState<AccountInput["type"]>("checking");
@@ -113,6 +130,7 @@ export function DashboardPage() {
   const { data, isError, error, refetch } = useQuery({
     queryKey: queryKeys.dashboardSummary(workspace, summaryPeriod),
     queryFn: () => getDashboard(workspace, summaryPeriod),
+    placeholderData: keepPreviousData,
   });
   const categorySummaryQuery = useQuery({
     queryKey: queryKeys.dashboardSummary(workspace, categoryPeriod),
@@ -136,13 +154,35 @@ export function DashboardPage() {
   });
   const billingSummary = useBillingSummary(workspace);
   const hasPostAuthCheckoutIntent = searchParams.get("proCheckout") === "open";
+  const isAppReady = data !== undefined;
+  const isAppSettled = isAppReady || isError;
+  const handleStartupPhaseChange = useCallback((phase: DashboardStartupPhase) => {
+    setStartupPhase(phase);
+    if (phase === "complete") setDashboardEntranceState("revealing");
+  }, []);
+
+  useEffect(() => {
+    if (startupPhase !== "hidden" || !shouldRestoreDashboardFocusRef.current) return undefined;
+
+    shouldRestoreDashboardFocusRef.current = false;
+    const focusFrame = window.requestAnimationFrame(() => {
+      const activeDialog = document.querySelector('[role="dialog"][aria-modal="true"]');
+      if (!activeDialog) dashboardHeadingRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [startupPhase]);
 
   useEffect(() => {
     if (!hasPostAuthCheckoutIntent) {
       handledPostAuthCheckoutIntentRef.current = false;
       return;
     }
-    if (!billingSummary.data || isProCheckoutOpen || handledPostAuthCheckoutIntentRef.current) {
+    if (
+      startupPhase !== "hidden" ||
+      !billingSummary.data ||
+      isProCheckoutOpen ||
+      handledPostAuthCheckoutIntentRef.current
+    ) {
       return;
     }
 
@@ -160,7 +200,13 @@ export function DashboardPage() {
       },
       { replace: true },
     );
-  }, [billingSummary.data, hasPostAuthCheckoutIntent, isProCheckoutOpen, setSearchParams]);
+  }, [
+    billingSummary.data,
+    hasPostAuthCheckoutIntent,
+    isProCheckoutOpen,
+    setSearchParams,
+    startupPhase,
+  ]);
 
   function closeProCheckout() {
     setIsProCheckoutOpen(false);
@@ -207,20 +253,48 @@ export function DashboardPage() {
     },
   });
 
+  const startupExperience = (
+    <DashboardStartupExperience
+      isAppReady={isAppReady}
+      isAppSettled={isAppSettled}
+      hasCompleted={hasCompletedInitialDashboardExperience}
+      onComplete={completeInitialDashboardExperience}
+      onPhaseChange={handleStartupPhaseChange}
+    />
+  );
+
   if (isError) {
     return (
-      <AppShell>
-        <div className="full-page-status error-state">
-          <strong>The dashboard could not be loaded.</strong>
-          <span>{error.message}</span>
-          <button className="button primary" type="button" onClick={() => void refetch()}>
-            Try again
-          </button>
+      <>
+        {startupExperience}
+        <div className="dashboard-entrance" data-entrance-state={dashboardEntranceState}>
+          <AppShell>
+            <div className="full-page-status error-state">
+              <strong>The dashboard could not be loaded.</strong>
+              <span>{error.message}</span>
+              <button className="button primary" type="button" onClick={() => void refetch()}>
+                Try again
+              </button>
+            </div>
+          </AppShell>
         </div>
-      </AppShell>
+      </>
     );
   }
-  if (!data) return <div className="full-page-status">Preparing your dashboard…</div>;
+  if (!data) {
+    return (
+      <>
+        {startupExperience}
+        {hasCompletedInitialDashboardExperience && (
+          <AppShell>
+            <div className="dashboard-refetch-skeleton" role="status" aria-live="polite">
+              <span className="sr-only">Refreshing your dashboard</span>
+            </div>
+          </AppShell>
+        )}
+      </>
+    );
+  }
 
   const { metrics } = data;
   const accountBalances = data.accountBalances;
@@ -241,12 +315,17 @@ export function DashboardPage() {
   const accountActionError = renameAccountMutation.error ?? removeAccountMutation.error;
 
   return (
-    <AppShell>
-      <div className="dashboard-page">
+    <>
+      {startupExperience}
+      <div className="dashboard-entrance" data-entrance-state={dashboardEntranceState}>
+        <AppShell>
+          <div className="dashboard-page">
         <header className="dashboard-header">
           <div className="dashboard-heading">
             <p className="eyebrow">Profile Overview</p>
-            <h1>Your month, at a glance</h1>
+            <h1 ref={dashboardHeadingRef} tabIndex={-1}>
+              Your month, at a glance
+            </h1>
             <p>See what came in, what went out, and what is still available.</p>
           </div>
           <MonthSelector
@@ -630,17 +709,19 @@ export function DashboardPage() {
             />
           </>
         )}
+          </div>
+          {billingSummary.data && (
+            <ProCheckoutDialog
+              open={isProCheckoutOpen}
+              summary={billingSummary.data}
+              workspace={workspace}
+              email={user?.email}
+              returnFocus={subscribeTriggerRef.current}
+              onClose={closeProCheckout}
+            />
+          )}
+        </AppShell>
       </div>
-      {billingSummary.data && (
-        <ProCheckoutDialog
-          open={isProCheckoutOpen}
-          summary={billingSummary.data}
-          workspace={workspace}
-          email={user?.email}
-          returnFocus={subscribeTriggerRef.current}
-          onClose={closeProCheckout}
-        />
-      )}
-    </AppShell>
+    </>
   );
 }

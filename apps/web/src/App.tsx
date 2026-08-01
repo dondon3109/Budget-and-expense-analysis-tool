@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { PublicOnly, RequireAuth } from "./auth/RouteGuards";
 import { useAuth } from "./auth/AuthProvider";
+import { FullPageLoadingStatus } from "./components/layout/FullPageLoadingStatus";
 import { syncVerifiedIdentity } from "./lib/api";
 import { userWorkspace } from "./lib/workspace";
 import { LandingPage } from "./pages/LandingPage";
@@ -110,7 +111,14 @@ export function App() {
     <>
       <SeoHead />
       <VerifiedIdentitySync />
-      <Suspense fallback={<div className="full-page-status">Loading Zoption…</div>}>
+      <Suspense
+        fallback={
+          <FullPageLoadingStatus
+            title="Loading Zoption"
+            description="Bringing your workspace into view."
+          />
+        }
+      >
         <Routes>
           {publicRouteElements(<RootRoute />)}
           <Route

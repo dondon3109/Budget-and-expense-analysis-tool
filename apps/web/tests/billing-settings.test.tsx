@@ -5,8 +5,8 @@ import "@testing-library/jest-dom/vitest";
 import type { User } from "@supabase/supabase-js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { BillingSubscriptionStatus, BillingSummary } from "@zoption/shared";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
@@ -73,13 +73,21 @@ function summary(
   };
 }
 
-function renderSettings(value: BillingSummary) {
+function CurrentLocation() {
+  const location = useLocation();
+  return (
+    <output data-testid="current-location">{`${location.pathname}${location.search}${location.hash}`}</output>
+  );
+}
+
+function renderSettings(value: BillingSummary, initialEntry = "/app/settings") {
   apiMocks.getBillingSummary.mockResolvedValue(value);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <BillingSettings user={user} />
+        <CurrentLocation />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -99,7 +107,10 @@ describe("BillingSettings", () => {
     apiMocks.startBillingCheckout.mockResolvedValue({ reference: "ref", priceId: "pri" });
   });
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   it.each([
     ["active", "Zoption Pro is active"],
@@ -126,6 +137,31 @@ describe("BillingSettings", () => {
       await screen.findByText("Your permanent complimentary Pro access is active"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Renews|Period ends/)).not.toBeInTheDocument();
+  });
+
+  it("automatically reflects an activated checkout in Plan and billing", async () => {
+    vi.useFakeTimers();
+    const freeSummary = summary(null);
+    renderSettings(
+      freeSummary,
+      "/app/settings?checkout=completed&source=paddle#plan-and-billing",
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Confirming your payment")).toBeInTheDocument();
+
+    apiMocks.getBillingSummary.mockResolvedValue(summary("active"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(screen.getByText("Zoption Pro is active")).toBeInTheDocument();
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings?source=paddle#plan-and-billing",
+    );
+    expect(screen.queryByText("Confirming your payment")).not.toBeInTheDocument();
   });
 
   it("shows the Free plan with checkout when there is no subscription", async () => {
@@ -159,7 +195,7 @@ describe("BillingSettings", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("shows a verified administrator a usable recipient email form before the comparison", async () => {
+  it("places the comparison before billing and sponsored-seat management", async () => {
     renderSettings(
       summary(null, {
         plan: "zoption_pro",
@@ -171,11 +207,14 @@ describe("BillingSettings", () => {
 
     const email = await screen.findByLabelText("Recipient email");
     const addSeat = screen.getByRole("button", { name: "Add seat" });
-    const sponsoredSection = screen
-      .getByRole("heading", { name: "Sponsored Pro seats" })
-      .closest("section");
     const comparisonSection = screen
       .getByRole("heading", { name: "Free and Pro, side by side" })
+      .closest("section");
+    const billingSection = screen
+      .getByRole("heading", { name: "Plan and billing" })
+      .closest("section");
+    const sponsoredSection = screen
+      .getByRole("heading", { name: "Sponsored Pro seats" })
       .closest("section");
 
     expect(email).toBeVisible();
@@ -184,7 +223,8 @@ describe("BillingSettings", () => {
       /must sign in and confirm their email before a seat can be active/i,
     );
     expect(addSeat).toBeDisabled();
-    expect(sponsoredSection?.nextElementSibling).toBe(comparisonSection);
+    expect(comparisonSection?.nextElementSibling).toBe(billingSection);
+    expect(billingSection?.nextElementSibling).toBe(sponsoredSection);
 
     fireEvent.change(email, { target: { value: "recipient@example.com" } });
     expect(addSeat).toBeEnabled();

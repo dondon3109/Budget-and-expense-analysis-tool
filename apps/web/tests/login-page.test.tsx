@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,6 +81,32 @@ describe("LoginPage", () => {
 
     await waitFor(() =>
       expect(authState.signIn).toHaveBeenCalledWith("user@example.com", "Budgeting-2026!"),
+    );
+  });
+
+  it("keeps the sign-in form available but disabled while sign-in is pending", async () => {
+    let resolveSignIn: (() => void) | undefined;
+    authState.signIn.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSignIn = resolve;
+        }),
+    );
+    renderLogin();
+    fillCredentials();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    const form = screen.getByLabelText("Email address").closest("form");
+    expect(form).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByLabelText("Email address")).toBeDisabled();
+    expect(screen.getByLabelText("Password")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Signing in…" })).toBeDisabled();
+    expect(screen.queryByText("Preparing your workspace")).not.toBeInTheDocument();
+
+    await act(async () => resolveSignIn?.());
+    await waitFor(() =>
+      expect(screen.getByTestId("current-path")).toHaveTextContent("/app?proCheckout=open"),
     );
   });
 

@@ -8,6 +8,7 @@ import { App } from "./App";
 import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
 import { AuthProvider } from "./auth/AuthProvider";
 import { CookieConsentExperience } from "./components/consent/CookieConsentExperience";
+import { InitialDashboardExperienceProvider } from "./components/dashboard/InitialDashboardExperienceProvider";
 import { ReleaseNotesExperience } from "./components/releases/ReleaseNotesExperience";
 import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
 import { CookieConsentProvider } from "./consent/CookieConsentProvider";
@@ -51,14 +52,16 @@ function BrowserApplication() {
         <CookieConsentProvider>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <AssistantSessionProvider>
-                <ImportDraftProvider>
-                  <BrowserRouter>
-                    <App />
-                    <ClientExperiences />
-                  </BrowserRouter>
-                </ImportDraftProvider>
-              </AssistantSessionProvider>
+              <InitialDashboardExperienceProvider>
+                <AssistantSessionProvider>
+                  <ImportDraftProvider>
+                    <BrowserRouter>
+                      <App />
+                      <ClientExperiences />
+                    </BrowserRouter>
+                  </ImportDraftProvider>
+                </AssistantSessionProvider>
+              </InitialDashboardExperienceProvider>
             </AuthProvider>
           </QueryClientProvider>
         </CookieConsentProvider>

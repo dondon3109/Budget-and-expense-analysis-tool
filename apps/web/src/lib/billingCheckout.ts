@@ -15,6 +15,7 @@ export async function openBillingCheckout(
 
   const successUrl = new URL("/app/settings", window.location.origin);
   successUrl.searchParams.set("checkout", "completed");
+  successUrl.hash = "plan-and-billing";
   paddle.Checkout.open({
     items: [{ priceId: checkout.priceId, quantity: 1 }],
     customer: email ? { email } : undefined,

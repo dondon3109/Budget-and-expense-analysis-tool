@@ -1,6 +1,19 @@
+import { readFileSync } from "node:fs";
+
 import { defineConfig } from "vitest/config";
 
+const rootPackage = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+) as { version?: unknown };
+
+if (typeof rootPackage.version !== "string" || !rootPackage.version.trim()) {
+  throw new Error("The root package.json must provide a valid version.");
+}
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(rootPackage.version),
+  },
   test: {
     include: ["packages/**/tests/**/*.test.{ts,tsx}", "apps/**/tests/**/*.test.{ts,tsx}"],
     coverage: {
