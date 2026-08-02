@@ -187,8 +187,10 @@ export interface BillingProviderSubscription {
   cancelAtPeriodEnd: boolean;
 }
 
-interface BillingProviderSubscriptionRow
-  extends Omit<BillingProviderSubscription, "cancelAtPeriodEnd"> {
+interface BillingProviderSubscriptionRow extends Omit<
+  BillingProviderSubscription,
+  "cancelAtPeriodEnd"
+> {
   cancelAtPeriodEnd: number;
 }
 
@@ -207,10 +209,7 @@ export interface BillingDueCheckout extends BillingCheckoutReference {
 }
 
 export type BillingSubscriptionApplyOutcome =
-  | "applied"
-  | "duplicate_or_stale"
-  | "unmatched"
-  | "rejected_plan";
+  "applied" | "duplicate_or_stale" | "unmatched" | "rejected_plan";
 
 export type BillingSubscriptionSnapshot = Omit<
   BillingSubscriptionEvent,
@@ -254,11 +253,7 @@ export interface BillingRepository {
     providerStatus: string | null,
     errorCode: string | null,
   ): Promise<void>;
-  supersedePendingCheckout(
-    env: Bindings,
-    tenantId: string,
-    reference: string,
-  ): Promise<void>;
+  supersedePendingCheckout(env: Bindings, tenantId: string, reference: string): Promise<void>;
   bindCheckoutProviderSubscription(
     env: Bindings,
     tenantId: string,
@@ -542,31 +537,20 @@ async function applySubscriptionUpdate(
           .first<{ tenantId: string; providerPlanId: string }>()
       : null;
 
-  const knownCustomer =
-    !existingSubscription && update.providerCustomerId
-      ? await env.DB.prepare(
-          `SELECT tenant_id AS tenantId FROM billing_customers
-           WHERE provider = ? AND provider_customer_id = ?`,
-        )
-          .bind(update.provider, update.providerCustomerId)
-          .first<{ tenantId: string }>()
-      : null;
-  const tenantId = existingSubscription?.tenantId ?? reference?.tenantId ?? knownCustomer?.tenantId;
+  const tenantId = existingSubscription?.tenantId ?? reference?.tenantId;
   if (!tenantId) return "unmatched";
 
   if (update.providerCustomerId) {
-    const customerLinks = await env.DB.prepare(
-      `SELECT tenant_id AS tenantId, provider_customer_id AS providerCustomerId
+    const customerLink = await env.DB.prepare(
+      `SELECT provider_customer_id AS providerCustomerId
        FROM billing_customers
-       WHERE provider = ? AND (tenant_id = ? OR provider_customer_id = ?)`,
+       WHERE provider = ? AND tenant_id = ?`,
     )
-      .bind(update.provider, tenantId, update.providerCustomerId)
-      .all<{ tenantId: string; providerCustomerId: string | null }>();
+      .bind(update.provider, tenantId)
+      .first<{ providerCustomerId: string | null }>();
     if (
-      customerLinks.results.some(
-        (customer) =>
-          customer.tenantId !== tenantId || customer.providerCustomerId !== update.providerCustomerId,
-      )
+      customerLink?.providerCustomerId &&
+      customerLink.providerCustomerId !== update.providerCustomerId
     ) {
       throw new HttpError(409, "invalid_webhook_ownership", "Invalid billing ownership.");
     }
@@ -670,14 +654,19 @@ async function applySubscriptionUpdate(
 
 export const billingRepository: BillingRepository = {
   async getSummary(env, tenantId) {
-    const [subscription, entitlementSource, nonTerminalCount, adminSeatManagement, pendingCheckout] =
-      await Promise.all([
-        currentSubscription(env, tenantId),
-        getProEntitlementSource(env, tenantId),
-        nonTerminalSubscriptionCount(env, tenantId),
-        canManageSponsoredSeats(env, tenantId),
-        pendingCheckoutReference(env, tenantId),
-      ]);
+    const [
+      subscription,
+      entitlementSource,
+      nonTerminalCount,
+      adminSeatManagement,
+      pendingCheckout,
+    ] = await Promise.all([
+      currentSubscription(env, tenantId),
+      getProEntitlementSource(env, tenantId),
+      nonTerminalSubscriptionCount(env, tenantId),
+      canManageSponsoredSeats(env, tenantId),
+      pendingCheckoutReference(env, tenantId),
+    ]);
     const isPro = entitlementSource !== null;
     const plan = isPro ? "zoption_pro" : "free";
     const limits = isPro ? PRO_LIMITS : FREE_LIMITS;
@@ -897,13 +886,7 @@ export const billingRepository: BillingRepository = {
     return rows.results;
   },
 
-  async recordCheckoutReconciliation(
-    env,
-    tenantId,
-    reference,
-    providerStatus,
-    errorCode,
-  ) {
+  async recordCheckoutReconciliation(env, tenantId, reference, providerStatus, errorCode) {
     await env.DB.prepare(
       `UPDATE billing_checkout_references
        SET last_reconciled_at = datetime('now'),
@@ -926,11 +909,21 @@ export const billingRepository: BillingRepository = {
       .bind(new Date().toISOString(), reference, tenantId)
       .run();
     if ((result.meta.changes ?? 0) !== 1) {
-      throw new HttpError(409, "invalid_checkout_reference", "This checkout is no longer available.");
+      throw new HttpError(
+        409,
+        "invalid_checkout_reference",
+        "This checkout is no longer available.",
+      );
     }
   },
 
-  async bindCheckoutProviderSubscription(env, tenantId, reference, provider, providerSubscriptionId) {
+  async bindCheckoutProviderSubscription(
+    env,
+    tenantId,
+    reference,
+    provider,
+    providerSubscriptionId,
+  ) {
     const result = await env.DB.prepare(
       `UPDATE billing_checkout_references
        SET provider_subscription_id = ?, updated_at = datetime('now')
@@ -941,7 +934,11 @@ export const billingRepository: BillingRepository = {
       .bind(providerSubscriptionId, reference, tenantId, provider, providerSubscriptionId)
       .run();
     if ((result.meta.changes ?? 0) !== 1) {
-      throw new HttpError(409, "invalid_checkout_reference", "This checkout is no longer available.");
+      throw new HttpError(
+        409,
+        "invalid_checkout_reference",
+        "This checkout is no longer available.",
+      );
     }
   },
 

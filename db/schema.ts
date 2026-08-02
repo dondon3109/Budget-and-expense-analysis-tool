@@ -385,12 +385,7 @@ export const billingCustomers = sqliteTable(
     email: text("email"),
     ...timestamps,
   },
-  (table) => [
-    primaryKey({ columns: [table.tenantId, table.provider] }),
-    uniqueIndex("billing_customers_provider_customer_unique")
-      .on(table.provider, table.providerCustomerId)
-      .where(sql`${table.providerCustomerId} IS NOT NULL`),
-  ],
+  (table) => [primaryKey({ columns: [table.tenantId, table.provider] })],
 );
 
 export const billingCheckoutReferences = sqliteTable(
@@ -443,7 +438,9 @@ export const billingSubscriptions = sqliteTable(
     interval: text("interval", { enum: ["month", "year"] }),
     currentPeriodEndsAt: text("current_period_ends_at"),
     scheduledChangeAt: text("scheduled_change_at"),
-    cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).notNull().default(false),
+    cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" })
+      .notNull()
+      .default(false),
     lastProviderOccurredAt: text("last_provider_occurred_at").notNull(),
     lastProviderEventId: text("last_provider_event_id").notNull().default(""),
     ...timestamps,
