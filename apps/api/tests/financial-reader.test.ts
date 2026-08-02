@@ -153,18 +153,23 @@ function createReader() {
     remove: vi.fn(async () => undefined),
     export: vi.fn(async () => [transaction]),
   };
-  return createFinancialReader({
+  const dashboardLoader = vi.fn(async () => dashboardSummary);
+  return {
+    reader: createFinancialReader({
+      accounts,
+      budgets,
+      categories,
+      transactions,
+      dashboardLoader,
+    }),
     accounts,
-    budgets,
-    categories,
-    transactions,
-    dashboardLoader: vi.fn(async () => dashboardSummary),
-  });
+    dashboardLoader,
+  };
 }
 
 describe("assistant financial reader money formatting", () => {
   it("returns backend-formatted PHP strings instead of model-scaled minor units", async () => {
-    const reader = createReader();
+    const { reader } = createReader();
     const balances = await reader.getAccountBalances(context);
     const period = await reader.getPeriodSummary(context, dashboardSummary.period);
     const budget = await reader.getBudgetStatus(context, "2026-07-01");
@@ -193,5 +198,63 @@ describe("assistant financial reader money formatting", () => {
     });
     expect(transactions).toMatchObject({ items: [{ amount: "PHP -696.00" }] });
     expect(JSON.stringify({ balances, period, budget, transactions })).not.toContain("Minor");
+  });
+});
+
+// Account-name filters are resolved only against the current tenant's repository results.
+describe("assistant financial reader account filters", () => {
+  it("returns a canonical, single-account balance without exposing its internal identifier", async () => {
+    const { reader, accounts } = createReader();
+
+    const result = await reader.getAccountBalances(context, { accountName: "sAvInGs" });
+
+    expect(result).toMatchObject({
+      accountName: "Savings",
+      filterMatched: true,
+      overallBalance: "PHP 1,234.56",
+      items: [{ name: "Savings", balance: "PHP 1,234.56" }],
+    });
+    expect(JSON.stringify(result)).not.toContain(savingsAccount.id);
+    expect(accounts.list).toHaveBeenCalledWith(env, "tenant-1");
+  });
+
+  it("uses a tenant-resolved account identifier only in the aggregate loader", async () => {
+    const { reader, dashboardLoader } = createReader();
+
+    const result = await reader.getPeriodSummary(context, {
+      from: "2026-07-01",
+      to: "2026-07-31",
+      accountName: "SAVINGS",
+    });
+
+    expect(result).toMatchObject({
+      accountName: "Savings",
+      filterMatched: true,
+      expenses: "PHP 696.00",
+    });
+    expect(dashboardLoader).toHaveBeenCalledWith(
+      env,
+      "tenant-1",
+      { from: "2026-07-01", to: "2026-07-31" },
+      savingsAccount.id,
+    );
+    expect(JSON.stringify(result)).not.toContain(savingsAccount.id);
+  });
+
+  it("returns no balances or totals when the named account is not in the tenant", async () => {
+    const { reader, dashboardLoader } = createReader();
+
+    await expect(reader.getAccountBalances(context, { accountName: "Unknown" })).resolves.toEqual({
+      accountName: "Unknown",
+      filterMatched: false,
+    });
+    await expect(
+      reader.getPeriodSummary(context, {
+        from: "2026-07-01",
+        to: "2026-07-31",
+        accountName: "Unknown",
+      }),
+    ).resolves.toEqual({ accountName: "Unknown", filterMatched: false });
+    expect(dashboardLoader).not.toHaveBeenCalled();
   });
 });

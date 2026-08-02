@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createAssistantOrchestrator } from "../src/assistant/orchestrator";
-import type {
-  FinancialReadContext,
-  FinancialReader,
-  PeriodSummaryInput,
-} from "../src/assistant/financial-reader";
+import type { FinancialReadContext, PeriodSummaryInput } from "../src/assistant/financial-reader";
 import type {
   AssistantProvider,
   ProviderCompletion,
@@ -20,7 +16,7 @@ const env = {
   ASSISTANT_TIME_ZONE: "Asia/Manila",
 } satisfies Bindings;
 
-function createReader(): FinancialReader {
+function createReader() {
   return {
     getAccountBalances: vi.fn(async () => ({ netPosition: "PHP 1,000.00" })),
     getPeriodSummary: vi.fn(async (_context: FinancialReadContext, input: PeriodSummaryInput) => ({
@@ -57,7 +53,11 @@ describe("assistant orchestration", () => {
                     type: "function",
                     function: {
                       name: "get_period_summary",
-                      arguments: JSON.stringify({ from: "2026-07-01", to: "2026-07-27" }),
+                      arguments: JSON.stringify({
+                        from: "2026-07-01",
+                        to: "2026-07-27",
+                        accountName: "Bank",
+                      }),
                     },
                   },
                 ],
@@ -79,18 +79,20 @@ describe("assistant orchestration", () => {
     const orchestrator = createAssistantOrchestrator(provider, reader);
 
     const answer = await orchestrator.answer(env, "tenant-secret", [], "How much did I spend?", {
-        assistantName: "Aster",
-        userPreferredName: "Sam",
-      });
+      assistantName: "Aster",
+      userPreferredName: "Sam",
+    });
 
     expect(answer.content).toContain("₱12,450");
     expect(reader.getPeriodSummary).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: "tenant-secret" }),
-      { from: "2026-07-01", to: "2026-07-27" },
+      { from: "2026-07-01", to: "2026-07-27", accountName: "Bank" },
     );
     expect(JSON.stringify(requests)).not.toContain("tenant-secret");
     expect(requests[0]?.messages[0]?.role).toBe("system");
     expect(requests[0]?.messages[0]?.content).toContain("Return plain text only");
+    expect(requests[0]?.messages[0]?.content).toContain("list_transactions is detail-only");
+    expect(requests[0]?.messages[0]?.content).toContain("filterMatched false");
     expect(requests[0]?.messages[0]?.content).toContain('"assistantName":"Aster"');
     expect(requests[0]?.messages[0]?.content).toContain('"userPreferredName":"Sam"');
     expect(requests[1]?.messages).toContainEqual(
@@ -143,6 +145,43 @@ describe("assistant orchestration", () => {
       "list_categories",
     ]);
     expect(names.join(" ")).not.toMatch(/sql|secret|token|create|update|delete/i);
+    const balanceTool = assistantToolDefinitions.find(
+      (tool) => tool.function.name === "get_account_balances",
+    );
+    const periodTool = assistantToolDefinitions.find(
+      (tool) => tool.function.name === "get_period_summary",
+    );
+    expect(balanceTool?.function.parameters).toMatchObject({
+      properties: { accountName: { type: "string" } },
+      additionalProperties: false,
+    });
+    expect(periodTool?.function.parameters).toMatchObject({
+      properties: { accountName: { type: "string" } },
+      additionalProperties: false,
+    });
+    expect(JSON.stringify([balanceTool, periodTool])).not.toMatch(/accountId|tenantId/);
+  });
+
+  it("passes validated account names to the financial reader", async () => {
+    const reader = createReader();
+    const context = { env, tenantId: "tenant-1" };
+
+    await executeAssistantTool(
+      reader,
+      context,
+      "get_account_balances",
+      JSON.stringify({ accountName: "Bank" }),
+    );
+
+    expect(reader.getAccountBalances).toHaveBeenCalledWith(context, { accountName: "Bank" });
+    await expect(
+      executeAssistantTool(
+        reader,
+        context,
+        "get_account_balances",
+        JSON.stringify({ accountId: "account-1" }),
+      ),
+    ).rejects.toThrow("arguments were invalid");
   });
 
   it("rejects unknown tools before reaching a financial reader", async () => {

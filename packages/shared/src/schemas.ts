@@ -160,10 +160,17 @@ export const assistantMessageListQuerySchema = z
 
 export type AssistantMessageListQuery = z.infer<typeof assistantMessageListQuerySchema>;
 
+export const assistantAccountBalancesToolSchema = z
+  .object({
+    accountName: z.string().trim().min(1).max(120).optional(),
+  })
+  .strict();
+
 export const assistantPeriodSummaryToolSchema = z
   .object({
     from: isoDateSchema,
     to: isoDateSchema,
+    accountName: z.string().trim().min(1).max(120).optional(),
   })
   .strict()
   .refine((value) => value.from <= value.to, {

@@ -1,5 +1,6 @@
 import {
   summarizeAccountBalances,
+  type AccountRecord,
   type DashboardSummary,
   type TransactionKind,
 } from "@zoption/shared";
@@ -16,10 +17,17 @@ export interface FinancialReadContext {
   tenantId: string;
 }
 
+export interface AccountBalancesInput {
+  accountName?: string;
+}
+
 export interface PeriodSummaryInput {
   from: string;
   to: string;
+  accountName?: string;
 }
+
+type DashboardPeriod = Pick<PeriodSummaryInput, "from" | "to">;
 
 export interface TransactionReadInput {
   from?: string;
@@ -32,7 +40,7 @@ export interface TransactionReadInput {
 }
 
 export interface FinancialReader {
-  getAccountBalances(context: FinancialReadContext): Promise<unknown>;
+  getAccountBalances(context: FinancialReadContext, input?: AccountBalancesInput): Promise<unknown>;
   getPeriodSummary(context: FinancialReadContext, input: PeriodSummaryInput): Promise<unknown>;
   getBudgetStatus(context: FinancialReadContext, month: string): Promise<unknown>;
   listTransactions(context: FinancialReadContext, input: TransactionReadInput): Promise<unknown>;
@@ -42,7 +50,8 @@ export interface FinancialReader {
 type DashboardLoader = (
   env: Bindings,
   tenantId: string,
-  period: PeriodSummaryInput,
+  period: DashboardPeriod,
+  accountId?: string,
 ) => Promise<DashboardSummary>;
 
 function differenceInMonths(from: string, to: string): number {
@@ -66,6 +75,12 @@ function formatMoney(amountMinor: number): string {
   return `PHP ${moneyFormatter.format(amountMinor / 100)}`;
 }
 
+function findAccountByName(items: AccountRecord[], accountName: string): AccountRecord | undefined {
+  return items.find(
+    (account) => account.name.toLocaleLowerCase("en") === accountName.toLocaleLowerCase("en"),
+  );
+}
+
 export function createFinancialReader(
   options: {
     accounts?: AccountRepository;
@@ -82,9 +97,18 @@ export function createFinancialReader(
   const dashboardLoader = options.dashboardLoader ?? loadDashboard;
 
   return {
-    async getAccountBalances(context) {
-      const summary = summarizeAccountBalances(await accounts.list(context.env, context.tenantId));
+    async getAccountBalances(context, input = {}) {
+      const accountItems = await accounts.list(context.env, context.tenantId);
+      const account = input.accountName
+        ? findAccountByName(accountItems, input.accountName)
+        : undefined;
+      if (input.accountName && !account) {
+        return { accountName: input.accountName, filterMatched: false };
+      }
+
+      const summary = summarizeAccountBalances(account ? [account] : accountItems);
       return {
+        ...(account ? { accountName: account.name, filterMatched: true } : {}),
         currency: summary.currency,
         overallBalance: formatMoney(summary.overallBalanceMinor),
         items: summary.items.map((item) => ({
@@ -99,8 +123,25 @@ export function createFinancialReader(
     async getPeriodSummary(context, input) {
       if (differenceInMonths(input.from, input.to) > 24)
         throw new Error("Choose a date range of 24 months or less.");
-      const summary = await dashboardLoader(context.env, context.tenantId, input);
+
+      const accountItems = input.accountName
+        ? await accounts.list(context.env, context.tenantId)
+        : undefined;
+      const account = input.accountName
+        ? findAccountByName(accountItems!, input.accountName)
+        : undefined;
+      if (input.accountName && !account) {
+        return { accountName: input.accountName, filterMatched: false };
+      }
+
+      const summary = await dashboardLoader(
+        context.env,
+        context.tenantId,
+        { from: input.from, to: input.to },
+        account?.id,
+      );
       return {
+        ...(account ? { accountName: account.name, filterMatched: true } : {}),
         period: summary.period,
         currency: summary.currency,
         income: formatMoney(summary.metrics.moneyInMinor),
@@ -154,10 +195,7 @@ export function createFinancialReader(
         input.categoryName ? categories.list(context.env, context.tenantId) : Promise.resolve([]),
       ]);
       const accountId = input.accountName
-        ? accountItems.find(
-            (account) =>
-              account.name.toLocaleLowerCase("en") === input.accountName!.toLocaleLowerCase("en"),
-          )?.id
+        ? findAccountByName(accountItems, input.accountName)?.id
         : undefined;
       const categoryId = input.categoryName
         ? categoryItems.find(

@@ -1,15 +1,14 @@
 import {
+  assistantAccountBalancesToolSchema,
   assistantBudgetStatusToolSchema,
   assistantCategoryToolSchema,
   assistantPeriodSummaryToolSchema,
   assistantTransactionToolSchema,
 } from "@zoption/shared";
-import { z } from "zod";
+import type { z } from "zod";
 
-import type { AssistantToolDefinition } from "./provider";
 import type { FinancialReadContext, FinancialReader } from "./financial-reader";
-
-const emptyArgumentsSchema = z.object({}).strict();
+import type { AssistantToolDefinition } from "./provider";
 const MAX_TOOL_RESULT_CHARACTERS = 24_000;
 
 export const assistantToolDefinitions: AssistantToolDefinition[] = [
@@ -18,8 +17,14 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
     function: {
       name: "get_account_balances",
       description:
-        "Get the user's manually recorded account balance snapshots and verified aggregate net position. Use for balance questions.",
-      parameters: { type: "object", properties: {}, additionalProperties: false },
+        "Get balances calculated from the user's recorded transactions. Optionally select one account by its name for a balance question.",
+      parameters: {
+        type: "object",
+        properties: {
+          accountName: { type: "string", description: "Optional exact account name" },
+        },
+        additionalProperties: false,
+      },
     },
   },
   {
@@ -27,12 +32,13 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
     function: {
       name: "get_period_summary",
       description:
-        "Get verified income, expense, net, category, savings-rate, and monthly trend totals for a date range. Prefer this for aggregate questions.",
+        "Get authoritative income, expense, net, category, savings-rate, and monthly trend totals for a date range. Use accountName for named-account spending totals.",
       parameters: {
         type: "object",
         properties: {
           from: { type: "string", description: "ISO date YYYY-MM-DD" },
           to: { type: "string", description: "ISO date YYYY-MM-DD" },
+          accountName: { type: "string", description: "Optional exact account name" },
         },
         required: ["from", "to"],
         additionalProperties: false,
@@ -131,8 +137,8 @@ export async function executeAssistantTool(
   try {
     switch (name) {
       case "get_account_balances": {
-        parseWithSchema(emptyArgumentsSchema, rawArguments);
-        return compactResult(await reader.getAccountBalances(context));
+        const input = parseWithSchema(assistantAccountBalancesToolSchema, rawArguments);
+        return compactResult(await reader.getAccountBalances(context, input));
       }
       case "get_period_summary": {
         const input = parseWithSchema(assistantPeriodSummaryToolSchema, rawArguments);

@@ -61,6 +61,7 @@ type DashboardLoader = (
   env: Bindings,
   tenantId: string,
   period: { from: string; to: string },
+  accountId?: string,
 ) => Promise<DashboardSummary>;
 
 type CashflowTrendLoader = (

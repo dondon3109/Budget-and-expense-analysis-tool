@@ -49,6 +49,7 @@ export async function loadDashboard(
   env: Bindings,
   tenantId: string,
   period: { from: string; to: string },
+  accountId?: string,
 ): Promise<DashboardSummary> {
   const db = drizzle(env.DB);
   const trendFrom = sixMonthWindowStart(period.to);
@@ -80,6 +81,7 @@ export async function loadDashboard(
       .where(
         and(
           eq(transactions.tenantId, tenantId),
+          ...(accountId ? [eq(transactions.accountId, accountId)] : []),
           gte(transactions.date, queryFrom),
           lte(transactions.date, period.to),
         ),
