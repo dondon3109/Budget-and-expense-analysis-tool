@@ -6,18 +6,19 @@ Zoption's AI Financial Assistant is a read-only interface over the authenticated
 
 1. The browser sends one user message and an idempotency UUID to `/api/app/assistant/*` with the normal Supabase bearer token.
 2. Existing Worker middleware verifies the JWT and resolves the user's D1 tenant.
-3. The Worker loads a bounded tenant-owned chat history and calls `deepseek-v4-flash`.
-4. DeepSeek may request one of the fixed financial tools below.
-5. The Worker validates the arguments and runs a tenant-scoped repository/calculation.
-6. DeepSeek explains the compact verified result.
-7. D1 stores the user message and final answer for 90 days. Tool calls, tool results, reasoning content, credentials, and provider payloads are not stored.
+3. The Worker loads a bounded tenant-owned chat history and checks whether a period-bound aggregate question includes a month or date range.
+4. If the period is missing, the Worker stores and returns a clarification without calling DeepSeek or a financial tool. It never defaults to the current month, month-to-date, or all history.
+5. Otherwise, the Worker calls `deepseek-v4-flash`, which may request one of the fixed financial tools below.
+6. The Worker validates the arguments and runs a tenant-scoped repository/calculation.
+7. DeepSeek explains the compact verified result.
+8. D1 stores the user message and final answer for 90 days. Tool calls, tool results, reasoning content, credentials, and provider payloads are not stored.
 
 The browser cannot submit a tenant ID, model, system prompt, tool definition, assistant message, or tool result.
 
 ## Allowed tools
 
 - `get_account_balances` — manually entered balance snapshots and server-calculated net position.
-- `get_period_summary` — income, expenses, net, categories, savings rate, and trends for a bounded date range.
+- `get_period_summary` — income, expenses, net, categories, savings rate, trends, and backend-calculated monthly averages for a bounded date range. Monthly averages divide by every covered calendar month, including months with no transactions.
 - `get_budget_status` — one month's category limits and verified spending.
 - `list_transactions` — a bounded filtered page of transactions without notes or internal IDs.
 - `list_categories` — active category names and kinds.
@@ -62,6 +63,8 @@ Non-secret Worker variables:
 - `ASSISTANT_TIME_ZONE=Asia/Manila`
 - `ASSISTANT_PROVIDER_TIMEOUT_MS=12000`
 - `ASSISTANT_OVERALL_TIMEOUT_MS=25000`
+
+Keep `DEEPSEEK_MODEL` on `deepseek-v4-flash`. The legacy `deepseek-chat` alias was retired by DeepSeek in July 2026.
 
 Set the secret separately for preview and production:
 

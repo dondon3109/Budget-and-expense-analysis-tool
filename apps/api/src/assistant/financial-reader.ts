@@ -75,10 +75,22 @@ function formatMoney(amountMinor: number): string {
   return `PHP ${moneyFormatter.format(amountMinor / 100)}`;
 }
 
+function normalizedAccountName(value: string): string {
+  return value.trim().toLocaleLowerCase("en");
+}
+
 function findAccountByName(items: AccountRecord[], accountName: string): AccountRecord | undefined {
-  return items.find(
-    (account) => account.name.toLocaleLowerCase("en") === accountName.toLocaleLowerCase("en"),
+  const requestedName = normalizedAccountName(accountName);
+  const exact = items.find((account) => normalizedAccountName(account.name) === requestedName);
+  if (exact) return exact;
+
+  const withoutGenericSuffix = requestedName.replace(/\s+account$/, "").trim();
+  if (!withoutGenericSuffix || withoutGenericSuffix === requestedName) return undefined;
+
+  const matches = items.filter(
+    (account) => normalizedAccountName(account.name) === withoutGenericSuffix,
   );
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 export function createFinancialReader(
@@ -140,6 +152,7 @@ export function createFinancialReader(
         { from: input.from, to: input.to },
         account?.id,
       );
+      const coveredMonthCount = differenceInMonths(input.from, input.to) + 1;
       return {
         ...(account ? { accountName: account.name, filterMatched: true } : {}),
         period: summary.period,
@@ -147,6 +160,13 @@ export function createFinancialReader(
         income: formatMoney(summary.metrics.moneyInMinor),
         expenses: formatMoney(summary.metrics.moneyOutMinor),
         net: formatMoney(summary.metrics.netMinor),
+        monthlyAverages: {
+          coveredMonthCount,
+          includesZeroTransactionMonths: true,
+          income: formatMoney(Math.round(summary.metrics.moneyInMinor / coveredMonthCount)),
+          expenses: formatMoney(Math.round(summary.metrics.moneyOutMinor / coveredMonthCount)),
+          net: formatMoney(Math.round(summary.metrics.netMinor / coveredMonthCount)),
+        },
         savingsRatePercent: summary.insights.savingsRatePercent,
         spendingByCategory: summary.spendingByCategory.map((item) => ({
           name: item.name,

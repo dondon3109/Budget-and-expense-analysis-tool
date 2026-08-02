@@ -32,7 +32,7 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
     function: {
       name: "get_period_summary",
       description:
-        "Get authoritative income, expense, net, category, savings-rate, and monthly trend totals for a date range. Use accountName for named-account spending totals.",
+        "Get authoritative income, expenses, net, categories, savings rate, monthly averages, and trends for a date range. Use accountName for all named-account totals, including income and expenses.",
       parameters: {
         type: "object",
         properties: {

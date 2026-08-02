@@ -131,9 +131,11 @@ const dashboardSummary: DashboardSummary = {
   },
 };
 
-function createReader() {
+function createReader(
+  options: { accountItems?: AccountRecord[]; summary?: DashboardSummary } = {},
+) {
   const accounts: AccountRepository = {
-    list: vi.fn(async () => [savingsAccount, creditAccount]),
+    list: vi.fn(async () => options.accountItems ?? [savingsAccount, creditAccount]),
     setBalance: vi.fn(async () => savingsAccount),
   };
   const budgets: BudgetRepository = {
@@ -153,7 +155,7 @@ function createReader() {
     remove: vi.fn(async () => undefined),
     export: vi.fn(async () => [transaction]),
   };
-  const dashboardLoader = vi.fn(async () => dashboardSummary);
+  const dashboardLoader = vi.fn(async () => options.summary ?? dashboardSummary);
   return {
     reader: createFinancialReader({
       accounts,
@@ -186,6 +188,13 @@ describe("assistant financial reader money formatting", () => {
       income: "PHP 1,000.00",
       expenses: "PHP 696.00",
       net: "PHP 304.00",
+      monthlyAverages: {
+        coveredMonthCount: 1,
+        includesZeroTransactionMonths: true,
+        income: "PHP 1,000.00",
+        expenses: "PHP 696.00",
+        net: "PHP 304.00",
+      },
       spendingByCategory: [{ amount: "PHP 696.00" }],
       monthlyTrend: [{ income: "PHP 1,000.00", expenses: "PHP 696.00" }],
       recurringExpenses: [{ average: "PHP 123.45" }],
@@ -198,6 +207,39 @@ describe("assistant financial reader money formatting", () => {
     });
     expect(transactions).toMatchObject({ items: [{ amount: "PHP -696.00" }] });
     expect(JSON.stringify({ balances, period, budget, transactions })).not.toContain("Minor");
+  });
+
+  it("calculates averages across every covered calendar month with centavo rounding", async () => {
+    const summary: DashboardSummary = {
+      ...dashboardSummary,
+      period: { from: "2026-01-01", to: "2026-03-31" },
+      metrics: {
+        ...dashboardSummary.metrics,
+        moneyInMinor: 100_001,
+        moneyOutMinor: 50_000,
+        netMinor: 50_001,
+      },
+      monthlyTrend: [
+        { month: "2026-01", incomeMinor: 100_001, expenseMinor: 0 },
+        { month: "2026-03", incomeMinor: 0, expenseMinor: 50_000 },
+      ],
+    };
+    const { reader } = createReader({ summary });
+
+    const period = await reader.getPeriodSummary(context, summary.period);
+
+    expect(period).toMatchObject({
+      income: "PHP 1,000.01",
+      expenses: "PHP 500.00",
+      net: "PHP 500.01",
+      monthlyAverages: {
+        coveredMonthCount: 3,
+        includesZeroTransactionMonths: true,
+        income: "PHP 333.34",
+        expenses: "PHP 166.67",
+        net: "PHP 166.67",
+      },
+    });
   });
 });
 
@@ -239,6 +281,59 @@ describe("assistant financial reader account filters", () => {
       savingsAccount.id,
     );
     expect(JSON.stringify(result)).not.toContain(savingsAccount.id);
+  });
+
+  it("resolves a trailing generic account suffix to a canonical account name", async () => {
+    const bankAccount: AccountRecord = {
+      ...savingsAccount,
+      id: "account-bank",
+      name: "Bank",
+    };
+    const { reader, dashboardLoader } = createReader({ accountItems: [bankAccount] });
+
+    const result = await reader.getPeriodSummary(context, {
+      from: "2026-07-01",
+      to: "2026-07-31",
+      accountName: "bank account",
+    });
+
+    expect(result).toMatchObject({ accountName: "Bank", filterMatched: true });
+    expect(dashboardLoader).toHaveBeenCalledWith(
+      env,
+      "tenant-1",
+      { from: "2026-07-01", to: "2026-07-31" },
+      bankAccount.id,
+    );
+  });
+
+  it("prefers an exact account name before removing the generic suffix", async () => {
+    const bankAccount: AccountRecord = {
+      ...savingsAccount,
+      id: "account-bank",
+      name: "Bank",
+    };
+    const customBankAccount: AccountRecord = {
+      ...savingsAccount,
+      id: "account-custom-bank",
+      name: "Bank Account",
+    };
+    const { reader, dashboardLoader } = createReader({
+      accountItems: [bankAccount, customBankAccount],
+    });
+
+    const result = await reader.getPeriodSummary(context, {
+      from: "2026-07-01",
+      to: "2026-07-31",
+      accountName: "bank account",
+    });
+
+    expect(result).toMatchObject({ accountName: "Bank Account", filterMatched: true });
+    expect(dashboardLoader).toHaveBeenCalledWith(
+      env,
+      "tenant-1",
+      { from: "2026-07-01", to: "2026-07-31" },
+      customBankAccount.id,
+    );
   });
 
   it("returns no balances or totals when the named account is not in the tenant", async () => {

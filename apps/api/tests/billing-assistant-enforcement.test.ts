@@ -91,7 +91,7 @@ function orchestrator(): AssistantOrchestrator {
   return {
     answer: vi.fn(async () => ({
       content: ASSISTANT_MESSAGE.content,
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
       finishReason: "stop",
     })),
   };

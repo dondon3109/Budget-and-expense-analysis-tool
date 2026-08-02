@@ -2,6 +2,10 @@ import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import type { AssistantHistoryMessage } from "../db/assistant";
 import type { FinancialReader } from "./financial-reader";
+import {
+  needsPeriodClarification,
+  PERIOD_CLARIFICATION_RESPONSE,
+} from "./period-policy";
 import { buildAssistantSystemPrompt } from "./prompt";
 import type { AssistantProvider, AssistantProviderMessage, ProviderCompletion } from "./provider";
 import { AssistantToolError, assistantToolDefinitions, executeAssistantTool } from "./tools";
@@ -92,6 +96,14 @@ export function createAssistantOrchestrator(
 ): AssistantOrchestrator {
   return {
     async answer(env, tenantId, history, message, identity) {
+      if (needsPeriodClarification(history, message)) {
+        return {
+          content: PERIOD_CLARIFICATION_RESPONSE,
+          model: "zoption-period-policy",
+          finishReason: "clarification",
+        };
+      }
+
       const timeZone = env.ASSISTANT_TIME_ZONE?.trim() || "Asia/Manila";
       const messages = providerMessages(history, message, timeZone, identity);
       const overallTimeoutMs = configuredNumber(env.ASSISTANT_OVERALL_TIMEOUT_MS, 25_000);

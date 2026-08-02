@@ -31,6 +31,37 @@ function createReader() {
 }
 
 describe("assistant orchestration", () => {
+  it("clarifies an ambiguous aggregate period without calling the provider or reader", async () => {
+    const provider: AssistantProvider = {
+      complete: vi.fn(async () => {
+        throw new Error("The provider should not be called for deterministic clarification.");
+      }),
+    };
+    const reader = createReader();
+    const orchestrator = createAssistantOrchestrator(provider, reader);
+
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-1",
+      [],
+      "How much is my income on my bank account?",
+      {
+        assistantName: "Aster",
+        userPreferredName: "Sam",
+      },
+    );
+
+    expect(answer).toEqual({
+      content:
+        "Which month or date range should I use? For example, August 2026 or July 1 to August 2, 2026.",
+      model: "zoption-period-policy",
+      finishReason: "clarification",
+    });
+    expect(provider.complete).not.toHaveBeenCalled();
+    expect(reader.getPeriodSummary).not.toHaveBeenCalled();
+    expect(reader.getAccountBalances).not.toHaveBeenCalled();
+  });
+
   it("executes an allowlisted tool with the server-owned tenant", async () => {
     const requests: ProviderCompletionRequest[] = [];
     const provider: AssistantProvider = {
@@ -78,7 +109,7 @@ describe("assistant orchestration", () => {
     const reader = createReader();
     const orchestrator = createAssistantOrchestrator(provider, reader);
 
-    const answer = await orchestrator.answer(env, "tenant-secret", [], "How much did I spend?", {
+    const answer = await orchestrator.answer(env, "tenant-secret", [], "How much did I spend in July 2026?", {
       assistantName: "Aster",
       userPreferredName: "Sam",
     });
@@ -93,6 +124,12 @@ describe("assistant orchestration", () => {
     expect(requests[0]?.messages[0]?.content).toContain("Return plain text only");
     expect(requests[0]?.messages[0]?.content).toContain("list_transactions is detail-only");
     expect(requests[0]?.messages[0]?.content).toContain("filterMatched false");
+    expect(requests[0]?.messages[0]?.content).toContain(
+      "never default to the current month, month-to-date, or all history",
+    );
+    expect(requests[0]?.messages[0]?.content).toContain(
+      "include income, expenses, and net remaining",
+    );
     expect(requests[0]?.messages[0]?.content).toContain('"assistantName":"Aster"');
     expect(requests[0]?.messages[0]?.content).toContain('"userPreferredName":"Sam"');
     expect(requests[1]?.messages).toContainEqual(
@@ -124,7 +161,7 @@ describe("assistant orchestration", () => {
     const orchestrator = createAssistantOrchestrator(provider, createReader());
 
     await expect(
-      orchestrator.answer(env, "tenant-1", [], "How much did I spend?", {
+      orchestrator.answer(env, "tenant-1", [], "How much did I spend in July 2026?", {
         assistantName: "Aster",
         userPreferredName: "Sam",
       }),
