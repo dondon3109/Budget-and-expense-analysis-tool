@@ -1,6 +1,6 @@
 import type { AssistantMessage, AssistantSourceMetadata } from "@zoption/shared";
 import { Bot, Database, Sparkles, UserRound } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 const QUICK_PROMPTS = [
   "How much did I spend this month?",
@@ -22,6 +22,36 @@ function messageTime(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function renderAssistantContent(content: string): ReactNode[] {
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+
+  while (cursor < content.length) {
+    const opening = content.indexOf("**", cursor);
+    if (opening === -1) {
+      parts.push(content.slice(cursor));
+      break;
+    }
+
+    const closing = content.indexOf("**", opening + 2);
+    if (closing === -1) {
+      parts.push(content.slice(cursor));
+      break;
+    }
+
+    if (opening > cursor) parts.push(content.slice(cursor, opening));
+    const emphasized = content.slice(opening + 2, closing);
+    if (emphasized) {
+      parts.push(<strong key={opening}>{emphasized}</strong>);
+    } else {
+      parts.push("****");
+    }
+    cursor = closing + 2;
+  }
+
+  return parts;
 }
 
 function formatDate(value: string): string {
@@ -173,7 +203,11 @@ export function AssistantConversation({
               <strong>{message.role === "assistant" ? assistantName : "You"}</strong>
               <time dateTime={message.createdAt}>{messageTime(message.createdAt)}</time>
             </div>
-            <p>{message.content}</p>
+            <p>
+              {message.role === "assistant"
+                ? renderAssistantContent(message.content)
+                : message.content}
+            </p>
             {message.role === "assistant" && <AssistantMessageEvidence message={message} />}
             {message.status === "failed" && <small>Not sent. Try asking again.</small>}
           </div>

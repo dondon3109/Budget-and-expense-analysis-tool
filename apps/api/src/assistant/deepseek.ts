@@ -102,6 +102,7 @@ export class DeepSeekProvider implements AssistantProvider {
           messages: request.messages,
           tools: request.tools,
           tool_choice: request.toolChoice ?? "auto",
+          thinking: { type: "disabled" },
           temperature: 0.15,
           max_tokens: 800,
           stream: false,

@@ -31,6 +31,7 @@ function completionResponse(
   message: {
     role: "assistant";
     content: string | null;
+    reasoning_content?: string;
     tool_calls?: Array<{
       id: string;
       type: "function";
@@ -199,7 +200,15 @@ describe("DeepSeekProvider", () => {
     const requestBody = fetcher.mock.calls[0]?.[1]?.body;
     expect(typeof requestBody).toBe("string");
     if (typeof requestBody !== "string") throw new Error("Expected a JSON request body.");
-    expect(requestBody).toContain('"max_tokens":800');
+    expect(JSON.parse(requestBody)).toMatchObject({
+      model: "deepseek-v4-flash",
+      messages: request.messages,
+      tools: request.tools,
+      tool_choice: "auto",
+      thinking: { type: "disabled" },
+      max_tokens: 800,
+      stream: false,
+    });
   });
 
   it("parses a successful tool call", async () => {
@@ -210,19 +219,24 @@ describe("DeepSeekProvider", () => {
         function: { name: "get_account_balances", arguments: "{}" },
       },
     ];
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        completionResponse(
-          { role: "assistant", content: null, tool_calls: toolCalls },
-          "tool_calls",
-        ),
-      );
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      completionResponse(
+        {
+          role: "assistant",
+          content: null,
+          reasoning_content: "hidden provider reasoning",
+          tool_calls: toolCalls,
+        },
+        "tool_calls",
+      ),
+    );
     const provider = new DeepSeekProvider(fetcher);
 
-    await expect(provider.complete(env, request)).resolves.toMatchObject({
+    await expect(provider.complete(env, request)).resolves.toEqual({
+      model: "deepseek-v4-flash",
       message: { role: "assistant", content: null, tool_calls: toolCalls },
       finishReason: "tool_calls",
+      usage: { promptTokens: 12, completionTokens: 4 },
     });
   });
 });

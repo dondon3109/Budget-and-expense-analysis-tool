@@ -202,6 +202,88 @@ describe("assistant UI", () => {
     expect(document.querySelector("img")).toBeNull();
   });
 
+  it("renders assistant bold markers as safe emphasis", () => {
+    const { container } = render(
+      <AssistantConversation
+        assistantName="Aster"
+        messages={[
+          {
+            id: "assistant-1",
+            threadId: "thread-1",
+            role: "assistant",
+            content:
+              "Your total bank income is **PHP 6,500.00**.\nYour balance is **PHP 5,800.00**.",
+            status: "completed",
+            createdAt: "2026-07-27T10:00:00.000Z",
+          },
+        ]}
+        loading={false}
+        onPrompt={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText("PHP 6,500.00").tagName).toBe("STRONG");
+    expect(screen.getByText("PHP 5,800.00").tagName).toBe("STRONG");
+    expect(container.querySelector(".assistant-message > div > p")?.textContent).not.toContain(
+      "**",
+    );
+  });
+
+  it("keeps unmatched markers and user formatting literal", () => {
+    render(
+      <AssistantConversation
+        assistantName="Aster"
+        messages={[
+          {
+            id: "assistant-1",
+            threadId: "thread-1",
+            role: "assistant",
+            content: "This **marker is unmatched.",
+            status: "completed",
+            createdAt: "2026-07-27T10:00:00.000Z",
+          },
+          {
+            id: "user-1",
+            threadId: "thread-1",
+            role: "user",
+            content: "Show **my income** this year.",
+            status: "completed",
+            createdAt: "2026-07-27T10:01:00.000Z",
+          },
+        ]}
+        loading={false}
+        onPrompt={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText("This **marker is unmatched.")).toBeInTheDocument();
+    expect(screen.getByText("Show **my income** this year.")).toBeInTheDocument();
+    expect(document.querySelector(".assistant-message.user p strong")).toBeNull();
+  });
+
+  it("escapes HTML inside assistant bold markers", () => {
+    render(
+      <AssistantConversation
+        assistantName="Aster"
+        messages={[
+          {
+            id: "assistant-1",
+            threadId: "thread-1",
+            role: "assistant",
+            content: '**<img src=x onerror="alert(1)">**',
+            status: "completed",
+            createdAt: "2026-07-27T10:00:00.000Z",
+          },
+        ]}
+        loading={false}
+        onPrompt={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText(/<img src=x/).tagName).toBe("STRONG");
+    expect(document.querySelector("img")).toBeNull();
+  });
+
   it("renders trusted source details and topic disclaimers from response metadata", () => {
     render(
       <AssistantConversation
