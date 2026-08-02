@@ -35,9 +35,11 @@ export default tseslint.config(
     languageOptions: {
       ...tseslint.configs.disableTypeChecked.languageOptions,
       globals: {
+        AbortSignal: "readonly",
         console: "readonly",
         fetch: "readonly",
         process: "readonly",
+        Response: "readonly",
         document: "readonly",
         localStorage: "readonly",
         matchMedia: "readonly",

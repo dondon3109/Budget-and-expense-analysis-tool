@@ -70,6 +70,43 @@ After changing redirect or template settings, request a fresh recovery email; pr
 
     Register one webhook per environment at `https://PREVIEW_API_HOST/api/billing/paypal/webhook` and `https://api.zoption.site/api/billing/paypal/webhook`. Subscribe only to `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.EXPIRED`, and `BILLING.SUBSCRIPTION.PAYMENT.FAILED`. Record the matching webhook ID as the environment secret. Never copy OAuth tokens, webhook headers, payer data, or secret values into source code, tracked configuration, or logs.
 
+### PayPal Sandbox Preview setup
+
+The repository setup utility is intentionally locked to PayPal Sandbox and the approved Preview Worker webhook endpoint. It never calls the live PayPal API, patches/deletes existing resources, or changes Cloudflare by itself. It reconciles the `Zoption Pro` product, the ₱149 monthly and ₱1,299 annual PHP plans, and the six-event Preview webhook. A conflicting same-name resource, duplicate webhook, or mismatched webhook event set stops the operation for review.
+
+Use the ignored `apps/api/.dev.vars` file for the Sandbox client ID and secret. Run the default non-mutating preflight first:
+
+```bash
+PAYPAL_WEBHOOK_URL=https://budget-expense-api-preview.dondon3109.workers.dev/api/billing/paypal/webhook \
+  pnpm paypal:sandbox:setup
+```
+
+Review the create/reuse actions, then explicitly apply them:
+
+```bash
+PAYPAL_WEBHOOK_URL=https://budget-expense-api-preview.dondon3109.workers.dev/api/billing/paypal/webhook \
+  pnpm paypal:sandbox:setup --apply
+```
+
+Ordinary output intentionally omits the webhook ID. To transfer it directly to the Preview Worker secret without writing it to a tracked file or shell argument, rerun the idempotent apply in machine-output mode and pipe only the ID to Wrangler:
+
+```bash
+PAYPAL_WEBHOOK_URL=https://budget-expense-api-preview.dondon3109.workers.dev/api/billing/paypal/webhook \
+  node --env-file=apps/api/.dev.vars scripts/setup-paypal-sandbox.mjs --apply --json \
+  | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => process.stdout.write(JSON.parse(input).webhook_id))' \
+  | pnpm --filter @zoption/api exec wrangler secret put PAYPAL_WEBHOOK_ID \
+      --config wrangler.deploy.jsonc --env preview
+```
+
+Copy only the returned non-secret plan IDs into the Preview `vars` block in the ignored `apps/api/wrangler.deploy.jsonc`, set `WEB_APP_URL=https://clarity-budget-preview.pages.dev`, and keep the production block unchanged. Confirm the Preview Worker has all three secret names before deployment:
+
+```bash
+pnpm --filter @zoption/api exec wrangler secret list \
+  --config wrangler.deploy.jsonc --env preview
+```
+
+The expected names are `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `PAYPAL_WEBHOOK_ID`; `secret list` confirms presence only and does not reveal values.
+
 ### Platform-admin recovery operation
 
 The platform administrator is stored only as a Supabase Auth UUID in D1. Do not grant or revoke this role by email, profile metadata, a JWT custom claim, or browser code. Self-service deletion is intentionally blocked while its D1 grant row exists.

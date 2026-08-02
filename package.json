@@ -20,6 +20,7 @@
     "test:e2e": "pnpm test:e2e:prepare && playwright test",
     "lighthouse": "lhci autorun",
     "smoke:production": "node scripts/smoke-production.mjs",
+    "paypal:sandbox:setup": "node --env-file=apps/api/.dev.vars scripts/setup-paypal-sandbox.mjs",
     "capture:screenshots": "node scripts/capture-portfolio.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "pnpm --filter @zoption/api exec wrangler d1 migrations apply budget-expense-local --local"

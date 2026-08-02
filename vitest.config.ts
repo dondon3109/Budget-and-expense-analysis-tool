@@ -15,7 +15,11 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(rootPackage.version),
   },
   test: {
-    include: ["packages/**/tests/**/*.test.{ts,tsx}", "apps/**/tests/**/*.test.{ts,tsx}"],
+    include: [
+      "packages/**/tests/**/*.test.{ts,tsx}",
+      "apps/**/tests/**/*.test.{ts,tsx}",
+      "scripts/**/*.test.mjs",
+    ],
     coverage: {
       reporter: ["text", "html"],
     },
