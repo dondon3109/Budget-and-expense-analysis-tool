@@ -25,6 +25,7 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
     currentPeriodEndsAt: null,
     scheduledChangeAt: null,
     cancelAtPeriodEnd: false,
+    pendingCheckout: null,
     canCheckout: true,
     canManageBilling: false,
     canManageSponsoredSeats: false,
@@ -74,6 +75,22 @@ describe("ProCheckoutDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Subscribe Annual · ₱1,299/year" }));
     expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "year");
+  });
+
+  it("explains when payment confirmation is already pending", () => {
+    renderDialog(
+      summary({
+        canCheckout: false,
+        pendingCheckout: {
+          provider: "paypal",
+          interval: "month",
+          createdAt: "2026-08-01T00:00:00.000Z",
+        },
+      }),
+    );
+
+    expect(screen.getByText(/Payment confirmation is already in progress/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Subscribe Monthly/ })).not.toBeInTheDocument();
   });
 
   it("closes on Escape and explains unavailable checkout", () => {

@@ -305,6 +305,7 @@ function createAllowedBillingRepository(): BillingRepository {
       currentPeriodEndsAt: null,
       scheduledChangeAt: null,
       cancelAtPeriodEnd: false,
+      pendingCheckout: null,
       canCheckout: false,
       canManageBilling: true,
       canManageSponsoredSeats: false,
@@ -319,6 +320,7 @@ function createAllowedBillingRepository(): BillingRepository {
       interval: "month" as const,
       providerPlanId: "P-test",
       providerSubscriptionId: null,
+      createdAt: "2026-08-01T00:00:00.000Z",
     })),
     createUsageStatement: vi.fn(() => ({}) as D1PreparedStatement),
     consumeUsage: vi.fn(async () => undefined),
@@ -328,8 +330,11 @@ function createAllowedBillingRepository(): BillingRepository {
     hasNonTerminalSubscription: vi.fn(async () => false),
     getPortalCustomer: vi.fn(async () => null),
     getProviderSubscription: vi.fn(async () => null),
+    getPendingCheckout: vi.fn(async () => null),
+    supersedePendingCheckout: vi.fn(async () => undefined),
     bindCheckoutProviderSubscription: vi.fn(async () => undefined),
     applySubscriptionEvent: vi.fn(async () => undefined),
+    applySubscriptionSnapshot: vi.fn(async () => undefined),
   };
 }
 
@@ -548,6 +553,7 @@ describe("API foundation", () => {
         currentPeriodEndsAt: null,
         scheduledChangeAt: null,
         cancelAtPeriodEnd: false,
+        pendingCheckout: null,
         canCheckout: true,
         canManageBilling: false,
         canManageSponsoredSeats: false,

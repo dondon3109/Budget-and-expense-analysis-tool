@@ -9,6 +9,7 @@ import type {
   AssistantThreadPage,
   AssistantTurnResult,
   BillingCapability,
+  BillingCheckoutReconciliation,
   BillingFeature,
   BillingInterval,
   BillingResource,
@@ -286,6 +287,15 @@ async function requestBlob(workspace: AuthenticatedWorkspace, path: string): Pro
 
 export function getBillingSummary(workspace: AuthenticatedWorkspace): Promise<BillingSummary> {
   return requestJson(workspace, "/api/app/billing");
+}
+
+export function reconcileBillingCheckout(
+  workspace: AuthenticatedWorkspace,
+): Promise<BillingCheckoutReconciliation> {
+  return requestJson(workspace, "/api/app/billing/reconcile", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
 
 export function startBillingCheckout(

@@ -29,10 +29,12 @@ export function ProCheckoutDialog({
   const openerRef = useRef<HTMLElement | null>(null);
   const [busy, setBusy] = useState<BillingInterval>();
   const [error, setError] = useState<string>();
-  const canCheckout = summary.canCheckout;
-  const checkoutUnavailable = summary.canManageBilling
-    ? "Review your existing subscription before starting another checkout."
-    : "Checkout is temporarily unavailable for this account.";
+  const canCheckout = summary.canCheckout && !summary.pendingCheckout;
+  const checkoutUnavailable = summary.pendingCheckout
+    ? "Payment confirmation is already in progress. Check Plan and billing for the latest PayPal verification status."
+    : summary.canManageBilling
+      ? "Review your existing subscription before starting another checkout."
+      : "Checkout is temporarily unavailable for this account.";
 
   useLayoutEffect(() => {
     if (!open) return;

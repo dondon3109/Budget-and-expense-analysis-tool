@@ -1,7 +1,10 @@
-import type { BillingSubscriptionStatus } from "@zoption/shared";
 import { Hono } from "hono";
 
-import { getPayPalSubscription, verifyPayPalWebhook } from "../billing/paypal";
+import {
+  getPayPalSubscription,
+  normalizePayPalSubscriptionStatus,
+  verifyPayPalWebhook,
+} from "../billing/paypal";
 import type { BillingRepository } from "../db/billing";
 import { HttpError } from "../errors";
 import type { AppEnvironment } from "../types";
@@ -28,21 +31,6 @@ function canonicalTimestamp(value: string | null): string | null {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? null : date.toISOString();
-}
-
-function normalizedStatus(eventType: string, providerStatus: string): BillingSubscriptionStatus | null {
-  if (eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED") return "past_due";
-  switch (providerStatus) {
-    case "ACTIVE":
-      return "active";
-    case "SUSPENDED":
-      return "paused";
-    case "CANCELLED":
-    case "EXPIRED":
-      return "canceled";
-    default:
-      return null;
-  }
 }
 
 export function createPayPalWebhookRoutes(repository: BillingRepository) {
@@ -79,7 +67,10 @@ export function createPayPalWebhookRoutes(repository: BillingRepository) {
     if (!subscriptionId) throw new HttpError(400, "invalid_webhook", "Invalid webhook request.");
 
     const subscription = await getPayPalSubscription(context.env, subscriptionId);
-    const status = normalizedStatus(eventType, subscription.status);
+    const status =
+      eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED"
+        ? "past_due"
+        : normalizePayPalSubscriptionStatus(subscription.status);
     if (!status || !subscription.customId) return context.json({ received: true });
 
     await repository.applySubscriptionEvent(context.env, {

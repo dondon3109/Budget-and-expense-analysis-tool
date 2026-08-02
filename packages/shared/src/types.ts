@@ -338,6 +338,12 @@ export interface SponsoredProSeatSummary {
   seats: SponsoredProSeat[];
 }
 
+export interface BillingPendingCheckout {
+  provider: BillingProvider;
+  interval: BillingInterval;
+  createdAt: string;
+}
+
 export interface BillingSummary {
   plan: BillingPlan;
   entitlementSource: ProEntitlementSource | null;
@@ -347,12 +353,20 @@ export interface BillingSummary {
   currentPeriodEndsAt: string | null;
   scheduledChangeAt: string | null;
   cancelAtPeriodEnd: boolean;
+  pendingCheckout: BillingPendingCheckout | null;
   canCheckout: boolean;
   canManageBilling: boolean;
   canManageSponsoredSeats: boolean;
   nonTerminalSubscriptionCount: number;
   usages: BillingUsage[];
   allowances: BillingResourceAllowance[];
+}
+
+export type BillingCheckoutReconciliationOutcome = "confirmed" | "pending" | "closed" | "none";
+
+export interface BillingCheckoutReconciliation {
+  outcome: BillingCheckoutReconciliationOutcome;
+  summary: BillingSummary;
 }
 
 export type AssistantMessageRole = "user" | "assistant";

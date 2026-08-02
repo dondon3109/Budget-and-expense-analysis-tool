@@ -156,6 +156,7 @@ describe("ImportPage", () => {
       currentPeriodEndsAt: null,
       scheduledChangeAt: null,
       cancelAtPeriodEnd: false,
+      pendingCheckout: null,
       canCheckout: true,
       canManageBilling: false,
       canManageSponsoredSeats: false,

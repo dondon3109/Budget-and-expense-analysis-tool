@@ -4,11 +4,11 @@ import type {
   ProEntitlementSource,
 } from "@zoption/shared";
 import type { User } from "@supabase/supabase-js";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useBillingSummary } from "../../hooks/useBillingSummary";
-import { cancelBillingSubscription } from "../../lib/api";
+import { cancelBillingSubscription, reconcileBillingCheckout } from "../../lib/api";
 import { planFeatures } from "../billing/billingPlans";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { ProCheckoutDialog } from "../billing/ProCheckoutDialog";
@@ -159,7 +159,7 @@ function periodLabel(summary: BillingSummary): string | undefined {
 }
 
 export function BillingSettings({ user }: { user: User }) {
-  const workspace = userWorkspace(user);
+  const workspace = useMemo(() => userWorkspace(user), [user]);
   const {
     data: summary,
     error: billingError,
@@ -174,17 +174,20 @@ export function BillingSettings({ user }: { user: User }) {
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
   const checkoutTriggerRef = useRef<HTMLButtonElement>(null);
   const cancellationTriggerRef = useRef<HTMLButtonElement>(null);
+  const reconciledCheckoutRef = useRef<string | undefined>(undefined);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [paymentRefreshBusy, setPaymentRefreshBusy] = useState(false);
   const [paymentConfirmationDelayed, setPaymentConfirmationDelayed] = useState(false);
   const [paymentPollingExhausted, setPaymentPollingExhausted] = useState(false);
+  const [paymentStatusNotice, setPaymentStatusNotice] = useState<string>();
   const [confirmingCancellation, setConfirmingCancellation] = useState(false);
   const [cancellationConfirmationDelayed, setCancellationConfirmationDelayed] = useState(false);
   const [checkoutCancelledNotice, setCheckoutCancelledNotice] = useState(false);
 
   useEffect(() => {
-    if (!checkoutCompleted) return;
+    const pendingCheckoutKey = summary?.pendingCheckout?.createdAt;
+    if (!checkoutCompleted && !pendingCheckoutKey) return;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -193,6 +196,7 @@ export function BillingSettings({ user }: { user: User }) {
 
     setPaymentConfirmationDelayed(false);
     setPaymentPollingExhausted(false);
+    setPaymentStatusNotice(undefined);
     setError(undefined);
 
     function completePaymentConfirmation() {
@@ -212,10 +216,34 @@ export function BillingSettings({ user }: { user: User }) {
       attempts += 1;
       setPaymentRefreshBusy(true);
       try {
+        let nextSummary: BillingSummary | undefined;
+        const reconciliationKey = pendingCheckoutKey ?? "checkout-return";
+        if (reconciledCheckoutRef.current !== reconciliationKey) {
+          reconciledCheckoutRef.current = reconciliationKey;
+          const reconciliation = await reconcileBillingCheckout(workspace);
+          if (cancelled) return;
+          if (reconciliation.summary.pendingCheckout) {
+            reconciledCheckoutRef.current = reconciliation.summary.pendingCheckout.createdAt;
+          }
+          if (reconciliation.outcome === "closed" || reconciliation.outcome === "none") {
+            setPaymentConfirmationDelayed(false);
+            setPaymentPollingExhausted(false);
+            setPaymentStatusNotice(
+              reconciliation.outcome === "closed"
+                ? "PayPal reports that this checkout is no longer active. No Pro access was started, and you can begin a new checkout."
+                : "Zoption could not find a payment awaiting confirmation. If PayPal shows a completed charge, contact support with the PayPal transaction details.",
+            );
+            await refetchBilling();
+            if (!cancelled) completePaymentConfirmation();
+            return;
+          }
+          nextSummary = reconciliation.summary;
+        }
+
         const result = await refetchBilling();
         if (cancelled) return;
         if (result.error) throw result.error;
-        const nextSummary = result.data;
+        nextSummary = result.data ?? nextSummary;
         if (!nextSummary) throw new Error("Your plan could not be refreshed.");
         lastError = undefined;
         if (
@@ -266,7 +294,9 @@ export function BillingSettings({ user }: { user: User }) {
     location.search,
     navigate,
     refetchBilling,
+    summary?.pendingCheckout?.createdAt,
     user.id,
+    workspace,
   ]);
 
   useEffect(() => {
@@ -353,17 +383,40 @@ export function BillingSettings({ user }: { user: User }) {
   async function checkPaymentStatus() {
     setPaymentRefreshBusy(true);
     setError(undefined);
+    setPaymentStatusNotice(undefined);
     try {
+      const reconciliation = await reconcileBillingCheckout(workspace);
+      if (reconciliation.summary.pendingCheckout) {
+        reconciledCheckoutRef.current = reconciliation.summary.pendingCheckout.createdAt;
+      }
       const result = await refetchBilling();
       if (result.error) throw result.error;
-      const nextSummary = result.data;
-      if (!nextSummary) throw new Error("Your plan could not be refreshed.");
+      const nextSummary = result.data ?? reconciliation.summary;
       if (
-        nextSummary.plan === "zoption_pro" &&
-        (nextSummary.status === "active" || nextSummary.status === "trialing")
+        reconciliation.outcome === "confirmed" ||
+        (nextSummary.plan === "zoption_pro" &&
+          (nextSummary.status === "active" || nextSummary.status === "trialing"))
       ) {
         setPaymentConfirmationDelayed(false);
         setPaymentPollingExhausted(false);
+        const nextSearch = new URLSearchParams(location.search);
+        nextSearch.delete("checkout");
+        void navigate(
+          {
+            pathname: location.pathname,
+            search: nextSearch.size ? `?${nextSearch.toString()}` : "",
+            hash: location.hash,
+          },
+          { replace: true },
+        );
+      } else if (reconciliation.outcome === "closed" || reconciliation.outcome === "none") {
+        setPaymentConfirmationDelayed(false);
+        setPaymentPollingExhausted(false);
+        setPaymentStatusNotice(
+          reconciliation.outcome === "closed"
+            ? "PayPal reports that this checkout is no longer active. No Pro access was started, and you can begin a new checkout."
+            : "Zoption could not find a payment awaiting confirmation. If PayPal shows a completed charge, contact support with the PayPal transaction details.",
+        );
         const nextSearch = new URLSearchParams(location.search);
         nextSearch.delete("checkout");
         void navigate(
@@ -382,7 +435,7 @@ export function BillingSettings({ user }: { user: User }) {
     }
   }
 
-  const paymentPending = checkoutCompleted;
+  const paymentPending = Boolean(checkoutCompleted || summary?.pendingCheckout);
   const visibleError = error ?? (billingError instanceof Error ? billingError.message : undefined);
   const presentation = statusCopy(
     summary?.status,
@@ -585,10 +638,15 @@ export function BillingSettings({ user }: { user: User }) {
             the subscription in PayPal if action is needed.
           </p>
         )}
-        {summary && !isPro && !canCheckout && !canManageBilling && (
+        {summary && !isPro && !canCheckout && !canManageBilling && !paymentPending && (
           <p className="settings-helper">
             Upgrade and billing management are temporarily unavailable. Refresh the page or contact
             support if this continues.
+          </p>
+        )}
+        {paymentStatusNotice && (
+          <p className="billing-payment-status-notice" role="status">
+            {paymentStatusNotice}
           </p>
         )}
         {paymentConfirmationDelayed && (

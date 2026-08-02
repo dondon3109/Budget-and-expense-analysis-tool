@@ -1,3 +1,5 @@
+import type { BillingSubscriptionStatus } from "@zoption/shared";
+
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 
@@ -12,7 +14,28 @@ export interface PayPalSubscription {
   customId: string | null;
   payerId: string | null;
   currentPeriodEndsAt: string | null;
+  statusUpdatedAt: string | null;
   approvalUrl: string | null;
+}
+
+export function normalizePayPalSubscriptionStatus(
+  providerStatus: string,
+): BillingSubscriptionStatus | null {
+  switch (providerStatus) {
+    case "ACTIVE":
+      return "active";
+    case "SUSPENDED":
+      return "paused";
+    case "CANCELLED":
+    case "EXPIRED":
+      return "canceled";
+    default:
+      return null;
+  }
+}
+
+export function isPayPalCheckoutPending(providerStatus: string): boolean {
+  return providerStatus === "APPROVAL_PENDING" || providerStatus === "APPROVED";
 }
 
 function asRecord(value: unknown): RecordValue | null {
@@ -140,6 +163,9 @@ function parseSubscription(env: Bindings, payload: unknown): PayPalSubscription 
     customId: stringAt(value, "custom_id"),
     payerId: stringAt(subscriber, "payer_id"),
     currentPeriodEndsAt: canonicalTimestamp(stringAt(billingInfo, "next_billing_time")),
+    statusUpdatedAt:
+      canonicalTimestamp(stringAt(value, "status_update_time")) ??
+      canonicalTimestamp(stringAt(value, "create_time")),
     approvalUrl: approvalUrl(env, value),
   };
 }

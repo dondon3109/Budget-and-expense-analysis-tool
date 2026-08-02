@@ -3,6 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cancelPayPalSubscription,
   createPayPalSubscription,
+  getPayPalSubscription,
+  isPayPalCheckoutPending,
+  normalizePayPalSubscriptionStatus,
   verifyPayPalWebhook,
 } from "../src/billing/paypal";
 import { HttpError } from "../src/errors";
@@ -114,6 +117,46 @@ describe("PayPal subscription gateway", () => {
     ).rejects.toEqual(
       new HttpError(502, "billing_provider_error", "The billing provider could not complete the request."),
     );
+  });
+
+  it("parses canonical subscription timing for reconciliation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(tokenResponse())
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: "I-subscription",
+              status: "ACTIVE",
+              status_update_time: "2026-08-01T00:00:00Z",
+              plan_id: "P-monthly",
+              custom_id: "checkout-reference",
+              subscriber: { payer_id: "payer-id" },
+              billing_info: { next_billing_time: "2026-09-01T00:00:00Z" },
+            }),
+            { status: 200 },
+          ),
+        ),
+    );
+
+    await expect(getPayPalSubscription(bindings(), "I-subscription")).resolves.toMatchObject({
+      status: "ACTIVE",
+      statusUpdatedAt: "2026-08-01T00:00:00.000Z",
+      currentPeriodEndsAt: "2026-09-01T00:00:00.000Z",
+      payerId: "payer-id",
+    });
+  });
+
+  it("classifies pending and settled PayPal subscription states", () => {
+    expect(isPayPalCheckoutPending("APPROVAL_PENDING")).toBe(true);
+    expect(isPayPalCheckoutPending("APPROVED")).toBe(true);
+    expect(isPayPalCheckoutPending("ACTIVE")).toBe(false);
+    expect(normalizePayPalSubscriptionStatus("ACTIVE")).toBe("active");
+    expect(normalizePayPalSubscriptionStatus("SUSPENDED")).toBe("paused");
+    expect(normalizePayPalSubscriptionStatus("CANCELLED")).toBe("canceled");
+    expect(normalizePayPalSubscriptionStatus("APPROVAL_PENDING")).toBeNull();
   });
 
   it("uses the stored subscription identifier for cancellation", async () => {

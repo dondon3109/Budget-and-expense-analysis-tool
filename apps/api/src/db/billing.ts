@@ -217,7 +217,15 @@ export interface BillingCheckoutReference {
   interval: BillingInterval;
   providerPlanId: string;
   providerSubscriptionId: string | null;
+  createdAt: string;
 }
+
+export type BillingSubscriptionSnapshot = Omit<
+  BillingSubscriptionEvent,
+  "providerEventId" | "type"
+> & {
+  providerUpdateId: string;
+};
 
 export interface BillingRepository {
   getSummary(env: Bindings, tenantId: string): Promise<BillingSummary>;
@@ -249,6 +257,12 @@ export interface BillingRepository {
     tenantId: string,
     provider: BillingProvider,
   ): Promise<BillingProviderSubscription | null>;
+  getPendingCheckout(env: Bindings, tenantId: string): Promise<BillingCheckoutReference | null>;
+  supersedePendingCheckout(
+    env: Bindings,
+    tenantId: string,
+    reference: string,
+  ): Promise<void>;
   bindCheckoutProviderSubscription(
     env: Bindings,
     tenantId: string,
@@ -257,6 +271,7 @@ export interface BillingRepository {
     providerSubscriptionId: string,
   ): Promise<void>;
   applySubscriptionEvent(env: Bindings, event: BillingSubscriptionEvent): Promise<void>;
+  applySubscriptionSnapshot(env: Bindings, snapshot: BillingSubscriptionSnapshot): Promise<void>;
 }
 
 async function currentSubscription(
@@ -329,6 +344,24 @@ async function nonTerminalSubscriptionCount(env: Bindings, tenantId: string): Pr
     .bind(tenantId)
     .first<{ count: number }>();
   return Number(row?.count ?? 0);
+}
+
+async function pendingCheckoutReference(
+  env: Bindings,
+  tenantId: string,
+): Promise<BillingCheckoutReference | null> {
+  const checkout = await env.DB.prepare(
+    `SELECT id AS reference, provider, interval, provider_plan_id AS providerPlanId,
+            provider_subscription_id AS providerSubscriptionId, created_at AS createdAt
+     FROM billing_checkout_references
+     WHERE tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL
+       AND provider_subscription_id IS NOT NULL
+     ORDER BY created_at DESC
+     LIMIT 1`,
+  )
+    .bind(tenantId)
+    .first<BillingCheckoutReference>();
+  return checkout ?? null;
 }
 
 async function usage(
@@ -430,14 +463,202 @@ function buildUsageStatement(
   );
 }
 
+async function applySubscriptionUpdate(
+  env: Bindings,
+  update: BillingSubscriptionSnapshot,
+  webhook?: { providerEventId: string; type: string },
+): Promise<void> {
+  const interval = configuredInterval(env, update.provider, update.providerPlanId);
+  if (!interval || (update.interval && update.interval !== interval)) return;
+
+  if (webhook) {
+    const existingEvent = await env.DB.prepare(
+      `SELECT 1 AS found FROM billing_webhook_events
+       WHERE provider = ? AND provider_event_id = ?`,
+    )
+      .bind(update.provider, webhook.providerEventId)
+      .first();
+    if (existingEvent) return;
+  }
+
+  const existingSubscription = await env.DB.prepare(
+    `SELECT tenant_id AS tenantId, provider_customer_id AS providerCustomerId
+     FROM billing_subscriptions
+     WHERE provider = ? AND provider_subscription_id = ?`,
+  )
+    .bind(update.provider, update.providerSubscriptionId)
+    .first<{ tenantId: string; providerCustomerId: string | null }>();
+  if (
+    existingSubscription?.providerCustomerId &&
+    update.providerCustomerId &&
+    existingSubscription.providerCustomerId !== update.providerCustomerId
+  ) {
+    throw new HttpError(409, "invalid_webhook_ownership", "Invalid billing ownership.");
+  }
+
+  const reference =
+    !existingSubscription && update.checkoutReference
+      ? await env.DB.prepare(
+          `SELECT tenant_id AS tenantId, provider_plan_id AS providerPlanId
+           FROM billing_checkout_references
+           WHERE id = ? AND provider = ? AND completed_at IS NULL
+             AND provider_plan_id = ?
+             AND (
+               provider_subscription_id = ?
+               OR (
+                 provider_subscription_id IS NULL
+                 AND datetime(?) >= datetime(created_at)
+                 AND datetime(?) <= datetime(expires_at)
+                 AND (superseded_at IS NULL OR datetime(?) <= datetime(superseded_at))
+               )
+             )`,
+        )
+          .bind(
+            update.checkoutReference,
+            update.provider,
+            update.providerPlanId,
+            update.providerSubscriptionId,
+            update.occurredAt,
+            update.occurredAt,
+            update.occurredAt,
+          )
+          .first<{ tenantId: string; providerPlanId: string }>()
+      : null;
+
+  const knownCustomer =
+    !existingSubscription && update.providerCustomerId
+      ? await env.DB.prepare(
+          `SELECT tenant_id AS tenantId FROM billing_customers
+           WHERE provider = ? AND provider_customer_id = ?`,
+        )
+          .bind(update.provider, update.providerCustomerId)
+          .first<{ tenantId: string }>()
+      : null;
+  const tenantId = existingSubscription?.tenantId ?? reference?.tenantId ?? knownCustomer?.tenantId;
+  if (!tenantId) return;
+
+  if (update.providerCustomerId) {
+    const customerLinks = await env.DB.prepare(
+      `SELECT tenant_id AS tenantId, provider_customer_id AS providerCustomerId
+       FROM billing_customers
+       WHERE provider = ? AND (tenant_id = ? OR provider_customer_id = ?)`,
+    )
+      .bind(update.provider, tenantId, update.providerCustomerId)
+      .all<{ tenantId: string; providerCustomerId: string | null }>();
+    if (
+      customerLinks.results.some(
+        (customer) =>
+          customer.tenantId !== tenantId || customer.providerCustomerId !== update.providerCustomerId,
+      )
+    ) {
+      throw new HttpError(409, "invalid_webhook_ownership", "Invalid billing ownership.");
+    }
+  }
+
+  const statements: D1PreparedStatement[] = [];
+  if (webhook) {
+    statements.push(
+      env.DB.prepare(
+        `INSERT INTO billing_webhook_events
+           (provider, provider_event_id, event_type, occurred_at)
+         VALUES (?, ?, ?, ?)`,
+      ).bind(update.provider, webhook.providerEventId, webhook.type, update.occurredAt),
+    );
+  }
+  if (update.providerCustomerId) {
+    statements.push(
+      env.DB.prepare(
+        `INSERT INTO billing_customers (tenant_id, provider, provider_customer_id)
+         VALUES (?, ?, ?)
+         ON CONFLICT(tenant_id, provider) DO UPDATE SET
+           provider_customer_id = excluded.provider_customer_id,
+           updated_at = datetime('now')
+         WHERE billing_customers.provider_customer_id IS NULL
+            OR billing_customers.provider_customer_id = excluded.provider_customer_id`,
+      ).bind(tenantId, update.provider, update.providerCustomerId),
+    );
+  }
+  statements.push(
+    env.DB.prepare(
+      `INSERT INTO billing_subscriptions
+         (provider, provider_subscription_id, tenant_id, provider_customer_id,
+          provider_product_id, provider_plan_id, provider_status, status, interval,
+          current_period_ends_at, scheduled_change_at, cancel_at_period_end,
+          last_provider_occurred_at, last_provider_event_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(provider, provider_subscription_id) DO UPDATE SET
+         provider_customer_id = COALESCE(excluded.provider_customer_id, billing_subscriptions.provider_customer_id),
+         provider_product_id = COALESCE(excluded.provider_product_id, billing_subscriptions.provider_product_id),
+         provider_plan_id = excluded.provider_plan_id,
+         provider_status = excluded.provider_status,
+         status = excluded.status,
+         interval = excluded.interval,
+         current_period_ends_at = CASE
+           WHEN excluded.status = 'canceled'
+             AND excluded.cancel_at_period_end = 1
+             AND excluded.current_period_ends_at IS NULL
+           THEN billing_subscriptions.current_period_ends_at
+           ELSE excluded.current_period_ends_at
+         END,
+         scheduled_change_at = excluded.scheduled_change_at,
+         cancel_at_period_end = excluded.cancel_at_period_end,
+         last_provider_occurred_at = excluded.last_provider_occurred_at,
+         last_provider_event_id = excluded.last_provider_event_id,
+         updated_at = datetime('now')
+       WHERE excluded.last_provider_occurred_at > billing_subscriptions.last_provider_occurred_at
+          OR (
+            excluded.last_provider_occurred_at = billing_subscriptions.last_provider_occurred_at
+            AND excluded.last_provider_event_id > billing_subscriptions.last_provider_event_id
+          )`,
+    ).bind(
+      update.provider,
+      update.providerSubscriptionId,
+      tenantId,
+      update.providerCustomerId,
+      update.providerProductId,
+      update.providerPlanId,
+      update.providerStatus,
+      update.status,
+      interval,
+      update.currentPeriodEndsAt,
+      update.scheduledChangeAt,
+      update.cancelAtPeriodEnd ? 1 : 0,
+      update.occurredAt,
+      update.providerUpdateId,
+    ),
+  );
+  if (reference && update.checkoutReference) {
+    statements.push(
+      env.DB.prepare(
+        `UPDATE billing_checkout_references
+         SET completed_at = ?, updated_at = datetime('now')
+         WHERE id = ? AND provider = ? AND provider_subscription_id = ? AND completed_at IS NULL`,
+      ).bind(
+        update.occurredAt,
+        update.checkoutReference,
+        update.provider,
+        update.providerSubscriptionId,
+      ),
+    );
+  }
+
+  try {
+    await env.DB.batch(statements);
+  } catch (error) {
+    if (webhook && isWebhookDuplicateError(error)) return;
+    throw error;
+  }
+}
+
 export const billingRepository: BillingRepository = {
   async getSummary(env, tenantId) {
-    const [subscription, entitlementSource, nonTerminalCount, adminSeatManagement] =
+    const [subscription, entitlementSource, nonTerminalCount, adminSeatManagement, pendingCheckout] =
       await Promise.all([
         currentSubscription(env, tenantId),
         getProEntitlementSource(env, tenantId),
         nonTerminalSubscriptionCount(env, tenantId),
         canManageSponsoredSeats(env, tenantId),
+        pendingCheckoutReference(env, tenantId),
       ]);
     const isPro = entitlementSource !== null;
     const plan = isPro ? "zoption_pro" : "free";
@@ -451,7 +672,14 @@ export const billingRepository: BillingRepository = {
       currentPeriodEndsAt: subscription?.currentPeriodEndsAt ?? null,
       scheduledChangeAt: subscription?.scheduledChangeAt ?? null,
       cancelAtPeriodEnd: Boolean(subscription?.cancelAtPeriodEnd),
-      canCheckout: nonTerminalCount === 0,
+      pendingCheckout: pendingCheckout
+        ? {
+            provider: pendingCheckout.provider,
+            interval: pendingCheckout.interval,
+            createdAt: pendingCheckout.createdAt,
+          }
+        : null,
+      canCheckout: nonTerminalCount === 0 && pendingCheckout === null,
       canManageBilling: Boolean(subscription),
       canManageSponsoredSeats: adminSeatManagement,
       nonTerminalSubscriptionCount: nonTerminalCount,
@@ -526,7 +754,7 @@ export const billingRepository: BillingRepository = {
       ) {
         const existing = await env.DB.prepare(
           `SELECT id, provider, interval, provider_plan_id AS providerPlanId,
-                  provider_subscription_id AS providerSubscriptionId
+                  provider_subscription_id AS providerSubscriptionId, created_at AS createdAt
            FROM billing_checkout_references
            WHERE tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL
              AND (
@@ -542,6 +770,7 @@ export const billingRepository: BillingRepository = {
             interval: BillingInterval;
             providerPlanId: string;
             providerSubscriptionId: string | null;
+            createdAt: string;
           }>();
         if (
           existing?.provider === provider &&
@@ -554,6 +783,7 @@ export const billingRepository: BillingRepository = {
             interval: existing.interval,
             providerPlanId: existing.providerPlanId,
             providerSubscriptionId: existing.providerSubscriptionId,
+            createdAt: existing.createdAt,
           };
         }
         throw new HttpError(
@@ -570,6 +800,7 @@ export const billingRepository: BillingRepository = {
       interval,
       providerPlanId: selectedPlanId,
       providerSubscriptionId: null,
+      createdAt: now,
     };
   },
 
@@ -644,6 +875,23 @@ export const billingRepository: BillingRepository = {
     return { ...subscription, cancelAtPeriodEnd: Boolean(subscription.cancelAtPeriodEnd) };
   },
 
+  async getPendingCheckout(env, tenantId) {
+    return pendingCheckoutReference(env, tenantId);
+  },
+
+  async supersedePendingCheckout(env, tenantId, reference) {
+    const result = await env.DB.prepare(
+      `UPDATE billing_checkout_references
+       SET superseded_at = ?, updated_at = datetime('now')
+       WHERE id = ? AND tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL`,
+    )
+      .bind(new Date().toISOString(), reference, tenantId)
+      .run();
+    if ((result.meta.changes ?? 0) !== 1) {
+      throw new HttpError(409, "invalid_checkout_reference", "This checkout is no longer available.");
+    }
+  },
+
   async bindCheckoutProviderSubscription(env, tenantId, reference, provider, providerSubscriptionId) {
     const result = await env.DB.prepare(
       `UPDATE billing_checkout_references
@@ -660,182 +908,15 @@ export const billingRepository: BillingRepository = {
   },
 
   async applySubscriptionEvent(env, event) {
-    const interval = configuredInterval(env, event.provider, event.providerPlanId);
-    if (!interval || (event.interval && event.interval !== interval)) return;
+    await applySubscriptionUpdate(
+      env,
+      { ...event, providerUpdateId: event.providerEventId },
+      { providerEventId: event.providerEventId, type: event.type },
+    );
+  },
 
-    const existingEvent = await env.DB.prepare(
-      `SELECT 1 AS found FROM billing_webhook_events
-       WHERE provider = ? AND provider_event_id = ?`,
-    )
-      .bind(event.provider, event.providerEventId)
-      .first();
-    if (existingEvent) return;
-
-    const existingSubscription = await env.DB.prepare(
-      `SELECT tenant_id AS tenantId, provider_customer_id AS providerCustomerId
-       FROM billing_subscriptions
-       WHERE provider = ? AND provider_subscription_id = ?`,
-    )
-      .bind(event.provider, event.providerSubscriptionId)
-      .first<{ tenantId: string; providerCustomerId: string | null }>();
-    if (
-      existingSubscription?.providerCustomerId &&
-      event.providerCustomerId &&
-      existingSubscription.providerCustomerId !== event.providerCustomerId
-    ) {
-      throw new HttpError(409, "invalid_webhook_ownership", "Invalid webhook ownership.");
-    }
-
-    const reference =
-      !existingSubscription && event.checkoutReference
-        ? await env.DB.prepare(
-            `SELECT tenant_id AS tenantId, provider_plan_id AS providerPlanId
-             FROM billing_checkout_references
-             WHERE id = ? AND provider = ? AND completed_at IS NULL
-               AND provider_plan_id = ?
-               AND (
-                 provider_subscription_id = ?
-                 OR (
-                   provider_subscription_id IS NULL
-                   AND datetime(?) >= datetime(created_at)
-                   AND datetime(?) <= datetime(expires_at)
-                   AND (superseded_at IS NULL OR datetime(?) <= datetime(superseded_at))
-                 )
-               )`,
-          )
-            .bind(
-              event.checkoutReference,
-              event.provider,
-              event.providerPlanId,
-              event.providerSubscriptionId,
-              event.occurredAt,
-              event.occurredAt,
-              event.occurredAt,
-            )
-            .first<{ tenantId: string; providerPlanId: string }>()
-        : null;
-
-    const knownCustomer =
-      !existingSubscription && event.providerCustomerId
-        ? await env.DB.prepare(
-            `SELECT tenant_id AS tenantId FROM billing_customers
-             WHERE provider = ? AND provider_customer_id = ?`,
-          )
-            .bind(event.provider, event.providerCustomerId)
-            .first<{ tenantId: string }>()
-        : null;
-    const tenantId =
-      existingSubscription?.tenantId ?? reference?.tenantId ?? knownCustomer?.tenantId;
-    if (!tenantId) return;
-
-    if (event.providerCustomerId) {
-      const customerLinks = await env.DB.prepare(
-        `SELECT tenant_id AS tenantId, provider_customer_id AS providerCustomerId
-         FROM billing_customers
-         WHERE provider = ? AND (tenant_id = ? OR provider_customer_id = ?)`,
-      )
-        .bind(event.provider, tenantId, event.providerCustomerId)
-        .all<{ tenantId: string; providerCustomerId: string | null }>();
-      if (
-        customerLinks.results.some(
-          (customer) =>
-            customer.tenantId !== tenantId || customer.providerCustomerId !== event.providerCustomerId,
-        )
-      ) {
-        throw new HttpError(409, "invalid_webhook_ownership", "Invalid webhook ownership.");
-      }
-    }
-
-    const statements: D1PreparedStatement[] = [
-      env.DB.prepare(
-        `INSERT INTO billing_webhook_events
-           (provider, provider_event_id, event_type, occurred_at)
-         VALUES (?, ?, ?, ?)`,
-      ).bind(event.provider, event.providerEventId, event.type, event.occurredAt),
-      env.DB.prepare(
-        `INSERT INTO billing_subscriptions
-           (provider, provider_subscription_id, tenant_id, provider_customer_id,
-            provider_product_id, provider_plan_id, provider_status, status, interval,
-            current_period_ends_at, scheduled_change_at, cancel_at_period_end,
-            last_provider_occurred_at, last_provider_event_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(provider, provider_subscription_id) DO UPDATE SET
-           provider_customer_id = COALESCE(excluded.provider_customer_id, billing_subscriptions.provider_customer_id),
-           provider_product_id = COALESCE(excluded.provider_product_id, billing_subscriptions.provider_product_id),
-           provider_plan_id = excluded.provider_plan_id,
-           provider_status = excluded.provider_status,
-           status = excluded.status,
-           interval = excluded.interval,
-           current_period_ends_at = CASE
-             WHEN excluded.status = 'canceled'
-               AND excluded.cancel_at_period_end = 1
-               AND excluded.current_period_ends_at IS NULL
-             THEN billing_subscriptions.current_period_ends_at
-             ELSE excluded.current_period_ends_at
-           END,
-           scheduled_change_at = excluded.scheduled_change_at,
-           cancel_at_period_end = excluded.cancel_at_period_end,
-           last_provider_occurred_at = excluded.last_provider_occurred_at,
-           last_provider_event_id = excluded.last_provider_event_id,
-           updated_at = datetime('now')
-         WHERE excluded.last_provider_occurred_at > billing_subscriptions.last_provider_occurred_at
-            OR (
-              excluded.last_provider_occurred_at = billing_subscriptions.last_provider_occurred_at
-              AND excluded.last_provider_event_id > billing_subscriptions.last_provider_event_id
-            )`,
-      ).bind(
-        event.provider,
-        event.providerSubscriptionId,
-        tenantId,
-        event.providerCustomerId,
-        event.providerProductId,
-        event.providerPlanId,
-        event.providerStatus,
-        event.status,
-        interval,
-        event.currentPeriodEndsAt,
-        event.scheduledChangeAt,
-        event.cancelAtPeriodEnd ? 1 : 0,
-        event.occurredAt,
-        event.providerEventId,
-      ),
-    ];
-    if (event.providerCustomerId) {
-      statements.splice(
-        1,
-        0,
-        env.DB.prepare(
-          `INSERT INTO billing_customers (tenant_id, provider, provider_customer_id)
-           VALUES (?, ?, ?)
-           ON CONFLICT(tenant_id, provider) DO UPDATE SET
-             provider_customer_id = excluded.provider_customer_id,
-             updated_at = datetime('now')
-           WHERE billing_customers.provider_customer_id IS NULL
-              OR billing_customers.provider_customer_id = excluded.provider_customer_id`,
-        ).bind(tenantId, event.provider, event.providerCustomerId),
-      );
-    }
-    if (reference && event.checkoutReference) {
-      statements.push(
-        env.DB.prepare(
-          `UPDATE billing_checkout_references
-           SET completed_at = ?, updated_at = datetime('now')
-           WHERE id = ? AND provider = ? AND provider_subscription_id = ? AND completed_at IS NULL`,
-        ).bind(
-          event.occurredAt,
-          event.checkoutReference,
-          event.provider,
-          event.providerSubscriptionId,
-        ),
-      );
-    }
-
-    try {
-      await env.DB.batch(statements);
-    } catch (error) {
-      if (isWebhookDuplicateError(error)) return;
-      throw error;
-    }
+  async applySubscriptionSnapshot(env, snapshot) {
+    await applySubscriptionUpdate(env, snapshot);
   },
 };
 

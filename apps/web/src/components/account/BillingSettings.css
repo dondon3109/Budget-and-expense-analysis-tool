@@ -234,6 +234,18 @@
   line-height: 1.5;
 }
 
+.billing-payment-status-notice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
 .billing-confirmation-delayed {
   margin-top: 12px;
   display: flex;

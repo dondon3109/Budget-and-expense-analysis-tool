@@ -18,6 +18,7 @@ const apiMocks = vi.hoisted(() => ({
   inviteSponsoredProRecipient: vi.fn(),
   isApiRequestError: vi.fn(),
   replaceSponsoredProSeat: vi.fn(),
+  reconcileBillingCheckout: vi.fn(),
   resendSponsoredProInvitation: vi.fn(),
   revokeSponsoredProSeat: vi.fn(),
   startBillingCheckout: vi.fn(),
@@ -46,6 +47,7 @@ function summary(
     currentPeriodEndsAt: status ? "2026-08-30T00:00:00.000Z" : null,
     scheduledChangeAt: null,
     cancelAtPeriodEnd: false,
+    pendingCheckout: null,
     canCheckout: status === null || status === "canceled",
     canManageBilling: status !== null,
     canManageSponsoredSeats: false,
@@ -83,6 +85,18 @@ function CurrentLocation() {
 
 function renderSettings(value: BillingSummary, initialEntry = "/app/settings") {
   apiMocks.getBillingSummary.mockResolvedValue(value);
+  apiMocks.reconcileBillingCheckout.mockResolvedValue({
+    outcome: "pending",
+    summary: {
+      ...value,
+      pendingCheckout: {
+        provider: "paypal",
+        interval: "month",
+        createdAt: "2026-08-01T00:00:00.000Z",
+      },
+      canCheckout: false,
+    },
+  });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -139,6 +153,23 @@ describe("BillingSettings", () => {
       await screen.findByText("Your permanent complimentary Pro access is active"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Renews|Period ends/)).not.toBeInTheDocument();
+  });
+
+  it("restores payment confirmation from a durable pending checkout", async () => {
+    const pending = summary(null, {
+      pendingCheckout: {
+        provider: "paypal",
+        interval: "month",
+        createdAt: "2026-08-01T00:00:00.000Z",
+      },
+      canCheckout: false,
+    });
+    renderSettings(pending);
+
+    expect(await screen.findByText("Confirming your payment")).toBeInTheDocument();
+    expect(screen.queryByText("You’re using the Free plan")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose a Pro plan" })).not.toBeInTheDocument();
+    expect(apiMocks.reconcileBillingCheckout).toHaveBeenCalledTimes(1);
   });
 
   it("automatically reflects an activated checkout in Plan and billing", async () => {
@@ -426,6 +457,7 @@ describe("BillingSettings", () => {
       plan: "zoption_pro",
       entitlementSource: "paypal",
       cancelAtPeriodEnd: true,
+      pendingCheckout: null,
       canCheckout: false,
       nonTerminalSubscriptionCount: 0,
     });
