@@ -298,8 +298,8 @@ function createAllowedBillingRepository(): BillingRepository {
   return {
     getSummary: vi.fn(async () => ({
       plan: "zoption_pro" as const,
-      entitlementSource: "paddle" as const,
-      provider: "paddle" as const,
+      entitlementSource: "paypal" as const,
+      provider: "paypal" as const,
       status: "active" as const,
       interval: "month" as const,
       currentPeriodEndsAt: null,
@@ -321,6 +321,7 @@ function createAllowedBillingRepository(): BillingRepository {
       providerPlanId: "P-test",
       providerSubscriptionId: null,
       createdAt: "2026-08-01T00:00:00.000Z",
+      expiresAt: "2026-08-01T00:15:00.000Z",
     })),
     createUsageStatement: vi.fn(() => ({}) as D1PreparedStatement),
     consumeUsage: vi.fn(async () => undefined),
@@ -328,13 +329,14 @@ function createAllowedBillingRepository(): BillingRepository {
       throw error;
     }),
     hasNonTerminalSubscription: vi.fn(async () => false),
-    getPortalCustomer: vi.fn(async () => null),
     getProviderSubscription: vi.fn(async () => null),
     getPendingCheckout: vi.fn(async () => null),
+    listDuePendingCheckouts: vi.fn(async () => []),
+    recordCheckoutReconciliation: vi.fn(async () => undefined),
     supersedePendingCheckout: vi.fn(async () => undefined),
     bindCheckoutProviderSubscription: vi.fn(async () => undefined),
-    applySubscriptionEvent: vi.fn(async () => undefined),
-    applySubscriptionSnapshot: vi.fn(async () => undefined),
+    applySubscriptionEvent: vi.fn(async () => "applied" as const),
+    applySubscriptionSnapshot: vi.fn(async () => "applied" as const),
   };
 }
 

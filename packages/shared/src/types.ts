@@ -281,7 +281,7 @@ export interface DashboardSummary {
 export const billingIntervals = ["month", "year"] as const;
 export type BillingInterval = (typeof billingIntervals)[number];
 
-export const billingProviders = ["paddle", "paypal"] as const;
+export const billingProviders = ["paypal"] as const;
 export type BillingProvider = (typeof billingProviders)[number];
 
 export const billingSubscriptionStatuses = [
@@ -316,7 +316,7 @@ export interface BillingResourceAllowance {
   limit: number | null;
 }
 
-export const proEntitlementSources = ["paypal", "paddle", "platform_admin", "sponsored"] as const;
+export const proEntitlementSources = ["paypal", "platform_admin", "sponsored"] as const;
 export type ProEntitlementSource = (typeof proEntitlementSources)[number];
 
 export type SponsoredProSeatState = "pending" | "active";
@@ -342,6 +342,7 @@ export interface BillingPendingCheckout {
   provider: BillingProvider;
   interval: BillingInterval;
   createdAt: string;
+  expiresAt: string;
 }
 
 export interface BillingSummary {
@@ -362,7 +363,12 @@ export interface BillingSummary {
   allowances: BillingResourceAllowance[];
 }
 
-export type BillingCheckoutReconciliationOutcome = "confirmed" | "pending" | "closed" | "none";
+export type BillingCheckoutReconciliationOutcome =
+  | "confirmed"
+  | "pending"
+  | "review_required"
+  | "closed"
+  | "none";
 
 export interface BillingCheckoutReconciliation {
   outcome: BillingCheckoutReconciliationOutcome;

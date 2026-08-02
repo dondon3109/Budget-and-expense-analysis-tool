@@ -33,6 +33,7 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
       provider: "paypal",
       interval: "month",
       createdAt: "2026-08-01T00:00:00.000Z",
+      expiresAt: "2099-08-01T00:15:00.000Z",
     },
     canCheckout: false,
     canManageBilling: false,
@@ -55,8 +56,19 @@ function repository(summaryValue = summary()): BillingRepository {
       throw error;
     }),
     hasNonTerminalSubscription: vi.fn(async () => false),
-    getPortalCustomer: vi.fn(async () => null),
-    getProviderSubscription: vi.fn(async () => null),
+    getProviderSubscription: vi.fn(async () =>
+      summaryValue.status === "active"
+        ? {
+            provider: "paypal" as const,
+            providerSubscriptionId: "I-subscription",
+            providerCustomerId: "payer-id",
+            providerPlanId: "P-monthly",
+            status: "active" as const,
+            currentPeriodEndsAt: "2099-09-01T00:00:00.000Z",
+            cancelAtPeriodEnd: false,
+          }
+        : null,
+    ),
     getPendingCheckout: vi.fn(async () => ({
       reference: "checkout-reference",
       provider: "paypal" as const,
@@ -64,11 +76,14 @@ function repository(summaryValue = summary()): BillingRepository {
       providerPlanId: "P-monthly",
       providerSubscriptionId: "I-subscription",
       createdAt: "2026-08-01T00:00:00.000Z",
+      expiresAt: "2099-08-01T00:15:00.000Z",
     })),
+    listDuePendingCheckouts: vi.fn(async () => []),
+    recordCheckoutReconciliation: vi.fn(async () => undefined),
     supersedePendingCheckout: vi.fn(async () => undefined),
     bindCheckoutProviderSubscription: vi.fn(async () => undefined),
-    applySubscriptionEvent: vi.fn(async () => undefined),
-    applySubscriptionSnapshot: vi.fn(async () => undefined),
+    applySubscriptionEvent: vi.fn(async () => "applied" as const),
+    applySubscriptionSnapshot: vi.fn(async () => "applied" as const),
   };
 }
 
@@ -120,6 +135,7 @@ function subscriptionResponse(status: string) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -148,6 +164,39 @@ describe("billing checkout reconciliation", () => {
     await expect(response.json()).resolves.toMatchObject({ outcome: "pending" });
     expect(billing.applySubscriptionSnapshot).not.toHaveBeenCalled();
     expect(billing.supersedePendingCheckout).not.toHaveBeenCalled();
+  });
+
+  it("moves an expired provider-pending checkout to review-required", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-02T00:00:00.000Z"));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(subscriptionResponse("APPROVED")),
+    );
+    const billing = repository();
+    vi.mocked(billing.getPendingCheckout).mockResolvedValueOnce({
+      reference: "checkout-reference",
+      provider: "paypal",
+      interval: "month",
+      providerPlanId: "P-monthly",
+      providerSubscriptionId: "I-subscription",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      expiresAt: "2026-08-01T00:15:00.000Z",
+    });
+
+    const response = await app(billing).request(
+      "/api/app/billing/reconcile",
+      {
+        method: "POST",
+        headers: { ...AUTHORIZATION, "Content-Type": "application/json" },
+        body: "{}",
+      },
+      environment(),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ outcome: "review_required" });
+    expect(billing.applySubscriptionSnapshot).not.toHaveBeenCalled();
   });
 
   it("confirms active access from the canonical PayPal subscription", async () => {
@@ -199,6 +248,36 @@ describe("billing checkout reconciliation", () => {
     );
   });
 
+  it("does not report confirmation when the canonical subscription cannot be applied", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(subscriptionResponse("ACTIVE")),
+    );
+    const billing = repository(
+      summary({
+        plan: "zoption_pro",
+        entitlementSource: "paypal",
+        provider: "paypal",
+        status: "active",
+        pendingCheckout: null,
+      }),
+    );
+    vi.mocked(billing.applySubscriptionSnapshot).mockResolvedValueOnce("unmatched");
+
+    const response = await app(billing).request(
+      "/api/app/billing/reconcile",
+      {
+        method: "POST",
+        headers: { ...AUTHORIZATION, "Content-Type": "application/json" },
+        body: "{}",
+      },
+      environment(),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toMatchObject({ error: "billing_provider_error" });
+  });
+
   it("closes a provider-terminal checkout and allows recovery", async () => {
     vi.stubGlobal(
       "fetch",
@@ -221,11 +300,13 @@ describe("billing checkout reconciliation", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ outcome: "closed" });
-    expect(billing.applySubscriptionSnapshot).not.toHaveBeenCalled();
-    expect(billing.supersedePendingCheckout).toHaveBeenCalledWith(
+    expect(billing.applySubscriptionSnapshot).toHaveBeenCalledWith(
       expect.anything(),
-      TENANT_ID,
-      "checkout-reference",
+      expect.objectContaining({
+        providerSubscriptionId: "I-subscription",
+        status: "canceled",
+      }),
     );
+    expect(billing.supersedePendingCheckout).not.toHaveBeenCalled();
   });
 });

@@ -24,11 +24,6 @@ export interface Bindings {
   ASSISTANT_TIME_ZONE?: string;
   ASSISTANT_PROVIDER_TIMEOUT_MS?: string;
   ASSISTANT_OVERALL_TIMEOUT_MS?: string;
-  PADDLE_ENVIRONMENT?: "sandbox" | "production";
-  PADDLE_PRO_MONTHLY_PRICE_ID?: string;
-  PADDLE_PRO_ANNUAL_PRICE_ID?: string;
-  PADDLE_API_KEY?: string;
-  PADDLE_WEBHOOK_SECRET?: string;
   PAYPAL_ENVIRONMENT?: "sandbox" | "production";
   PAYPAL_PRO_MONTHLY_PLAN_ID?: string;
   PAYPAL_PRO_ANNUAL_PLAN_ID?: string;

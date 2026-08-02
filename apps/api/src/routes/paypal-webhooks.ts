@@ -2,6 +2,7 @@ import { Hono } from "hono";
 
 import {
   getPayPalSubscription,
+  isPayPalCheckoutPending,
   normalizePayPalSubscriptionStatus,
   verifyPayPalWebhook,
 } from "../billing/paypal";
@@ -67,13 +68,47 @@ export function createPayPalWebhookRoutes(repository: BillingRepository) {
     if (!subscriptionId) throw new HttpError(400, "invalid_webhook", "Invalid webhook request.");
 
     const subscription = await getPayPalSubscription(context.env, subscriptionId);
+    if (isPayPalCheckoutPending(subscription.status)) {
+      console.warn(
+        JSON.stringify({
+          message: "PayPal webhook canonical state is still pending",
+          eventId,
+          eventType,
+          subscriptionId,
+          providerStatus: subscription.status,
+        }),
+      );
+      throw new HttpError(
+        503,
+        "billing_provider_pending",
+        "The billing provider has not finalized the subscription yet.",
+      );
+    }
+
     const status =
       eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED"
         ? "past_due"
         : normalizePayPalSubscriptionStatus(subscription.status);
-    if (!status || !subscription.customId) return context.json({ received: true });
+    if (!status || !subscription.statusUpdatedAt) {
+      throw new HttpError(
+        503,
+        "billing_provider_pending",
+        "The billing provider returned an incomplete subscription status.",
+      );
+    }
+    if (
+      status === "active" &&
+      (!subscription.currentPeriodEndsAt ||
+        new Date(subscription.currentPeriodEndsAt).getTime() <= Date.now())
+    ) {
+      throw new HttpError(
+        503,
+        "billing_provider_pending",
+        "The billing provider has not confirmed the paid period yet.",
+      );
+    }
 
-    await repository.applySubscriptionEvent(context.env, {
+    const applyOutcome = await repository.applySubscriptionEvent(context.env, {
       provider: "paypal",
       providerEventId: eventId,
       type: eventType,
@@ -90,7 +125,34 @@ export function createPayPalWebhookRoutes(repository: BillingRepository) {
       cancelAtPeriodEnd: status === "canceled",
       checkoutReference: subscription.customId,
     });
+    if (applyOutcome === "unmatched" || applyOutcome === "rejected_plan") {
+      console.warn(
+        JSON.stringify({
+          message: "PayPal webhook subscription was not applied",
+          eventId,
+          eventType,
+          subscriptionId,
+          providerStatus: subscription.status,
+          applyOutcome,
+        }),
+      );
+      throw new HttpError(
+        503,
+        "billing_provider_pending",
+        "The billing provider subscription could not be matched yet.",
+      );
+    }
 
+    console.log(
+      JSON.stringify({
+        message: "PayPal webhook processed",
+        eventId,
+        eventType,
+        subscriptionId,
+        providerStatus: subscription.status,
+        applyOutcome,
+      }),
+    );
     return context.json({ received: true });
   });
 

@@ -58,7 +58,7 @@ export function hasEffectiveProEntitlement(
   status: BillingSubscriptionStatus,
   currentPeriodEndsAt: string | null,
   now = new Date(),
-  provider: BillingProvider = "paddle",
+  provider: BillingProvider = "paypal",
   cancelAtPeriodEnd = false,
 ): boolean {
   const isEligibleStatus =
@@ -118,37 +118,18 @@ export function nextManilaMonth(now = new Date()): string {
   return new Date(Date.UTC(year, month, 0, 16)).toISOString();
 }
 
-function configuredPlanId(
-  env: Bindings,
-  provider: BillingProvider,
-  interval: BillingInterval,
-): string {
+function configuredPlanId(env: Bindings, interval: BillingInterval): string {
   const value =
-    provider === "paypal"
-      ? interval === "month"
-        ? env.PAYPAL_PRO_MONTHLY_PLAN_ID
-        : env.PAYPAL_PRO_ANNUAL_PLAN_ID
-      : interval === "month"
-        ? env.PADDLE_PRO_MONTHLY_PRICE_ID
-        : env.PADDLE_PRO_ANNUAL_PRICE_ID;
-  const expectedPrefix = provider === "paypal" ? "P-" : "pri_";
-  if (!value?.startsWith(expectedPrefix)) {
+    interval === "month" ? env.PAYPAL_PRO_MONTHLY_PLAN_ID : env.PAYPAL_PRO_ANNUAL_PLAN_ID;
+  if (!value?.startsWith("P-")) {
     throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
   }
   return value;
 }
 
-function configuredInterval(
-  env: Bindings,
-  provider: BillingProvider,
-  providerPlanId: string,
-): BillingInterval | null {
-  const monthlyPlanId =
-    provider === "paypal" ? env.PAYPAL_PRO_MONTHLY_PLAN_ID : env.PADDLE_PRO_MONTHLY_PRICE_ID;
-  const annualPlanId =
-    provider === "paypal" ? env.PAYPAL_PRO_ANNUAL_PLAN_ID : env.PADDLE_PRO_ANNUAL_PRICE_ID;
-  if (providerPlanId === monthlyPlanId) return "month";
-  if (providerPlanId === annualPlanId) return "year";
+function configuredInterval(env: Bindings, providerPlanId: string): BillingInterval | null {
+  if (providerPlanId === env.PAYPAL_PRO_MONTHLY_PLAN_ID) return "month";
+  if (providerPlanId === env.PAYPAL_PRO_ANNUAL_PLAN_ID) return "year";
   return null;
 }
 
@@ -218,7 +199,18 @@ export interface BillingCheckoutReference {
   providerPlanId: string;
   providerSubscriptionId: string | null;
   createdAt: string;
+  expiresAt: string;
 }
+
+export interface BillingDueCheckout extends BillingCheckoutReference {
+  tenantId: string;
+}
+
+export type BillingSubscriptionApplyOutcome =
+  | "applied"
+  | "duplicate_or_stale"
+  | "unmatched"
+  | "rejected_plan";
 
 export type BillingSubscriptionSnapshot = Omit<
   BillingSubscriptionEvent,
@@ -248,16 +240,20 @@ export interface BillingRepository {
     error: unknown,
   ): Promise<never>;
   hasNonTerminalSubscription(env: Bindings, tenantId: string): Promise<boolean>;
-  getPortalCustomer(
-    env: Bindings,
-    tenantId: string,
-  ): Promise<{ customerId: string; subscriptionIds: string[] } | null>;
   getProviderSubscription(
     env: Bindings,
     tenantId: string,
     provider: BillingProvider,
   ): Promise<BillingProviderSubscription | null>;
   getPendingCheckout(env: Bindings, tenantId: string): Promise<BillingCheckoutReference | null>;
+  listDuePendingCheckouts(env: Bindings, limit: number): Promise<BillingDueCheckout[]>;
+  recordCheckoutReconciliation(
+    env: Bindings,
+    tenantId: string,
+    reference: string,
+    providerStatus: string | null,
+    errorCode: string | null,
+  ): Promise<void>;
   supersedePendingCheckout(
     env: Bindings,
     tenantId: string,
@@ -270,8 +266,14 @@ export interface BillingRepository {
     provider: BillingProvider,
     providerSubscriptionId: string,
   ): Promise<void>;
-  applySubscriptionEvent(env: Bindings, event: BillingSubscriptionEvent): Promise<void>;
-  applySubscriptionSnapshot(env: Bindings, snapshot: BillingSubscriptionSnapshot): Promise<void>;
+  applySubscriptionEvent(
+    env: Bindings,
+    event: BillingSubscriptionEvent,
+  ): Promise<BillingSubscriptionApplyOutcome>;
+  applySubscriptionSnapshot(
+    env: Bindings,
+    snapshot: BillingSubscriptionSnapshot,
+  ): Promise<BillingSubscriptionApplyOutcome>;
 }
 
 async function currentSubscription(
@@ -307,10 +309,9 @@ export async function getProEntitlementSource(
      WHERE tenant_id = ?
      ORDER BY CASE source
        WHEN 'paypal' THEN 0
-       WHEN 'paddle' THEN 1
-       WHEN 'platform_admin' THEN 2
-       WHEN 'sponsored' THEN 3
-       ELSE 4
+       WHEN 'platform_admin' THEN 1
+       WHEN 'sponsored' THEN 2
+       ELSE 3
      END
      LIMIT 1`,
   )
@@ -352,7 +353,8 @@ async function pendingCheckoutReference(
 ): Promise<BillingCheckoutReference | null> {
   const checkout = await env.DB.prepare(
     `SELECT id AS reference, provider, interval, provider_plan_id AS providerPlanId,
-            provider_subscription_id AS providerSubscriptionId, created_at AS createdAt
+            provider_subscription_id AS providerSubscriptionId, created_at AS createdAt,
+            expires_at AS expiresAt
      FROM billing_checkout_references
      WHERE tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL
        AND provider_subscription_id IS NOT NULL
@@ -467,9 +469,9 @@ async function applySubscriptionUpdate(
   env: Bindings,
   update: BillingSubscriptionSnapshot,
   webhook?: { providerEventId: string; type: string },
-): Promise<void> {
-  const interval = configuredInterval(env, update.provider, update.providerPlanId);
-  if (!interval || (update.interval && update.interval !== interval)) return;
+): Promise<BillingSubscriptionApplyOutcome> {
+  const interval = configuredInterval(env, update.providerPlanId);
+  if (!interval || (update.interval && update.interval !== interval)) return "rejected_plan";
 
   if (webhook) {
     const existingEvent = await env.DB.prepare(
@@ -478,22 +480,37 @@ async function applySubscriptionUpdate(
     )
       .bind(update.provider, webhook.providerEventId)
       .first();
-    if (existingEvent) return;
+    if (existingEvent) return "duplicate_or_stale";
   }
 
   const existingSubscription = await env.DB.prepare(
-    `SELECT tenant_id AS tenantId, provider_customer_id AS providerCustomerId
+    `SELECT tenant_id AS tenantId, provider_customer_id AS providerCustomerId,
+            last_provider_occurred_at AS lastProviderOccurredAt,
+            last_provider_event_id AS lastProviderEventId
      FROM billing_subscriptions
      WHERE provider = ? AND provider_subscription_id = ?`,
   )
     .bind(update.provider, update.providerSubscriptionId)
-    .first<{ tenantId: string; providerCustomerId: string | null }>();
+    .first<{
+      tenantId: string;
+      providerCustomerId: string | null;
+      lastProviderOccurredAt: string;
+      lastProviderEventId: string;
+    }>();
   if (
     existingSubscription?.providerCustomerId &&
     update.providerCustomerId &&
     existingSubscription.providerCustomerId !== update.providerCustomerId
   ) {
     throw new HttpError(409, "invalid_webhook_ownership", "Invalid billing ownership.");
+  }
+  if (
+    existingSubscription &&
+    (update.occurredAt < existingSubscription.lastProviderOccurredAt ||
+      (update.occurredAt === existingSubscription.lastProviderOccurredAt &&
+        update.providerUpdateId <= existingSubscription.lastProviderEventId))
+  ) {
+    return "duplicate_or_stale";
   }
 
   const reference =
@@ -535,7 +552,7 @@ async function applySubscriptionUpdate(
           .first<{ tenantId: string }>()
       : null;
   const tenantId = existingSubscription?.tenantId ?? reference?.tenantId ?? knownCustomer?.tenantId;
-  if (!tenantId) return;
+  if (!tenantId) return "unmatched";
 
   if (update.providerCustomerId) {
     const customerLinks = await env.DB.prepare(
@@ -645,9 +662,10 @@ async function applySubscriptionUpdate(
   try {
     await env.DB.batch(statements);
   } catch (error) {
-    if (webhook && isWebhookDuplicateError(error)) return;
+    if (webhook && isWebhookDuplicateError(error)) return "duplicate_or_stale";
     throw error;
   }
+  return "applied";
 }
 
 export const billingRepository: BillingRepository = {
@@ -677,6 +695,7 @@ export const billingRepository: BillingRepository = {
             provider: pendingCheckout.provider,
             interval: pendingCheckout.interval,
             createdAt: pendingCheckout.createdAt,
+            expiresAt: pendingCheckout.expiresAt,
           }
         : null,
       canCheckout: nonTerminalCount === 0 && pendingCheckout === null,
@@ -724,7 +743,7 @@ export const billingRepository: BillingRepository = {
       .run();
 
     const id = crypto.randomUUID();
-    const selectedPlanId = configuredPlanId(env, provider, interval);
+    const selectedPlanId = configuredPlanId(env, interval);
     const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
     try {
       const result = await env.DB.prepare(
@@ -754,7 +773,8 @@ export const billingRepository: BillingRepository = {
       ) {
         const existing = await env.DB.prepare(
           `SELECT id, provider, interval, provider_plan_id AS providerPlanId,
-                  provider_subscription_id AS providerSubscriptionId, created_at AS createdAt
+                  provider_subscription_id AS providerSubscriptionId, created_at AS createdAt,
+                  expires_at AS expiresAt
            FROM billing_checkout_references
            WHERE tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL
              AND (
@@ -771,6 +791,7 @@ export const billingRepository: BillingRepository = {
             providerPlanId: string;
             providerSubscriptionId: string | null;
             createdAt: string;
+            expiresAt: string;
           }>();
         if (
           existing?.provider === provider &&
@@ -784,6 +805,7 @@ export const billingRepository: BillingRepository = {
             providerPlanId: existing.providerPlanId,
             providerSubscriptionId: existing.providerSubscriptionId,
             createdAt: existing.createdAt,
+            expiresAt: existing.expiresAt,
           };
         }
         throw new HttpError(
@@ -801,6 +823,7 @@ export const billingRepository: BillingRepository = {
       providerPlanId: selectedPlanId,
       providerSubscriptionId: null,
       createdAt: now,
+      expiresAt,
     };
   },
 
@@ -834,30 +857,6 @@ export const billingRepository: BillingRepository = {
     return Boolean(row);
   },
 
-  async getPortalCustomer(env, tenantId) {
-    const customer = await env.DB.prepare(
-      `SELECT provider_customer_id AS customerId FROM billing_customers
-       WHERE tenant_id = ? AND provider = 'paddle' AND provider_customer_id IS NOT NULL`,
-    )
-      .bind(tenantId)
-      .first<{ customerId: string }>();
-    if (!customer) return null;
-
-    const subscriptions = await env.DB.prepare(
-      `SELECT provider_subscription_id AS subscriptionId
-       FROM billing_subscriptions
-       WHERE tenant_id = ? AND provider = 'paddle'
-         AND ${CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION}
-       ORDER BY last_provider_occurred_at DESC, last_provider_event_id DESC`,
-    )
-      .bind(tenantId)
-      .all<{ subscriptionId: string }>();
-    return {
-      customerId: customer.customerId,
-      subscriptionIds: subscriptions.results.map((row) => row.subscriptionId),
-    };
-  },
-
   async getProviderSubscription(env, tenantId, provider) {
     const subscription = await env.DB.prepare(
       `SELECT provider, provider_subscription_id AS providerSubscriptionId,
@@ -877,6 +876,45 @@ export const billingRepository: BillingRepository = {
 
   async getPendingCheckout(env, tenantId) {
     return pendingCheckoutReference(env, tenantId);
+  },
+
+  async listDuePendingCheckouts(env, limit) {
+    const boundedLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+    const rows = await env.DB.prepare(
+      `SELECT id AS reference, tenant_id AS tenantId, provider, interval,
+              provider_plan_id AS providerPlanId,
+              provider_subscription_id AS providerSubscriptionId,
+              created_at AS createdAt, expires_at AS expiresAt
+       FROM billing_checkout_references
+       WHERE provider = 'paypal' AND completed_at IS NULL AND superseded_at IS NULL
+         AND provider_subscription_id IS NOT NULL
+         AND datetime(COALESCE(last_reconciled_at, created_at)) <= datetime('now', '-5 minutes')
+       ORDER BY COALESCE(last_reconciled_at, created_at), created_at
+       LIMIT ?`,
+    )
+      .bind(boundedLimit)
+      .all<BillingDueCheckout>();
+    return rows.results;
+  },
+
+  async recordCheckoutReconciliation(
+    env,
+    tenantId,
+    reference,
+    providerStatus,
+    errorCode,
+  ) {
+    await env.DB.prepare(
+      `UPDATE billing_checkout_references
+       SET last_reconciled_at = datetime('now'),
+           reconciliation_attempts = reconciliation_attempts + 1,
+           last_provider_status = ?,
+           last_reconciliation_error = ?,
+           updated_at = datetime('now')
+       WHERE id = ? AND tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL`,
+    )
+      .bind(providerStatus, errorCode, reference, tenantId)
+      .run();
   },
 
   async supersedePendingCheckout(env, tenantId, reference) {
@@ -908,7 +946,7 @@ export const billingRepository: BillingRepository = {
   },
 
   async applySubscriptionEvent(env, event) {
-    await applySubscriptionUpdate(
+    return applySubscriptionUpdate(
       env,
       { ...event, providerUpdateId: event.providerEventId },
       { providerEventId: event.providerEventId, type: event.type },
@@ -916,7 +954,7 @@ export const billingRepository: BillingRepository = {
   },
 
   async applySubscriptionSnapshot(env, snapshot) {
-    await applySubscriptionUpdate(env, snapshot);
+    return applySubscriptionUpdate(env, snapshot);
   },
 };
 

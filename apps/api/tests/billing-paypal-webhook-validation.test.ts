@@ -14,8 +14,10 @@ function environment(): Bindings {
   };
 }
 
-function repository() {
-  return { applySubscriptionEvent: vi.fn(async () => undefined) } as unknown as BillingRepository;
+function repository(outcome: "applied" | "unmatched" = "applied") {
+  return {
+    applySubscriptionEvent: vi.fn(async () => outcome),
+  } as unknown as BillingRepository;
 }
 
 function payload() {
@@ -60,6 +62,18 @@ afterEach(() => {
 });
 
 describe("PayPal webhook validation", () => {
+  it("does not expose the retired Paddle webhook route", async () => {
+    const app = createApp({ billing: repository(), readinessCheck: vi.fn(async () => undefined) });
+
+    const response = await app.request(
+      "/api/billing/paddle/webhook",
+      { method: "POST" },
+      environment(),
+    );
+
+    expect(response.status).toBe(404);
+  });
+
   it("rejects an event without required transmission headers", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -83,6 +97,7 @@ describe("PayPal webhook validation", () => {
           JSON.stringify({
             id: "I-subscription",
             status: "ACTIVE",
+            status_update_time: "2026-08-01T00:00:00.000Z",
             plan_id: "P-monthly",
             custom_id: "checkout-reference",
             subscriber: { payer_id: "payer-id" },
@@ -109,6 +124,63 @@ describe("PayPal webhook validation", () => {
         checkoutReference: "checkout-reference",
       }),
     );
+  });
+
+  it("returns a retryable response when canonical activation is still pending", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(new Response(JSON.stringify({ verification_status: "SUCCESS" }), { status: 200 }))
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "I-subscription",
+            status: "APPROVED",
+            status_update_time: "2026-08-01T00:00:00.000Z",
+            plan_id: "P-monthly",
+            custom_id: "checkout-reference",
+          }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const billing = repository();
+
+    const response = await post(billing);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({ error: "billing_provider_pending" });
+    expect(vi.mocked(billing.applySubscriptionEvent)).not.toHaveBeenCalled();
+  });
+
+  it("does not acknowledge a canonical subscription that cannot be matched", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(new Response(JSON.stringify({ verification_status: "SUCCESS" }), { status: 200 }))
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "I-subscription",
+            status: "ACTIVE",
+            status_update_time: "2026-08-01T00:00:00.000Z",
+            plan_id: "P-monthly",
+            custom_id: "checkout-reference",
+            subscriber: { payer_id: "payer-id" },
+            billing_info: { next_billing_time: "2099-09-01T00:00:00.000Z" },
+          }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const billing = repository("unmatched");
+
+    const response = await post(billing);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({ error: "billing_provider_pending" });
   });
 
   it("rejects failed verification before loading subscription state", async () => {

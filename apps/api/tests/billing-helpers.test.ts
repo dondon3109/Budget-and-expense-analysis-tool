@@ -25,7 +25,7 @@ function usageEnvironment(options: { pro: boolean; used: number }): Bindings {
           }
           if (sql.includes("FROM billing_monthly_usage")) return { count: options.used };
           if (sql.includes("FROM effective_pro_entitlements")) {
-            return options.pro ? { source: "paddle" } : null;
+            return options.pro ? { source: "paypal" } : null;
           }
           throw new Error(`Unexpected SQL in test: ${sql}`);
         }),
@@ -93,15 +93,6 @@ describe("billing time and status helpers", () => {
         now,
         "paypal",
         false,
-      ),
-    ).toBe(false);
-    expect(
-      hasEffectiveProEntitlement(
-        "canceled",
-        "2026-08-01T00:00:00.001Z",
-        now,
-        "paddle",
-        true,
       ),
     ).toBe(false);
   });

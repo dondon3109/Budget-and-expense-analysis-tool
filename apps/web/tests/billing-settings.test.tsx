@@ -4,7 +4,11 @@ import "@testing-library/jest-dom/vitest";
 
 import type { User } from "@supabase/supabase-js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { BillingSubscriptionStatus, BillingSummary } from "@zoption/shared";
+import type {
+  BillingCheckoutReconciliation,
+  BillingSubscriptionStatus,
+  BillingSummary,
+} from "@zoption/shared";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,7 +16,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const apiMocks = vi.hoisted(() => ({
   addSponsoredProSeat: vi.fn(),
   cancelBillingSubscription: vi.fn(),
-  createBillingPortalSession: vi.fn(),
   getBillingSummary: vi.fn(),
   getSponsoredProSeats: vi.fn(),
   inviteSponsoredProRecipient: vi.fn(),
@@ -83,9 +86,13 @@ function CurrentLocation() {
   );
 }
 
-function renderSettings(value: BillingSummary, initialEntry = "/app/settings") {
+function renderSettings(
+  value: BillingSummary,
+  initialEntry = "/app/settings",
+  reconciliations?: BillingCheckoutReconciliation[],
+) {
   apiMocks.getBillingSummary.mockResolvedValue(value);
-  apiMocks.reconcileBillingCheckout.mockResolvedValue({
+  const defaultReconciliation = {
     outcome: "pending",
     summary: {
       ...value,
@@ -93,10 +100,17 @@ function renderSettings(value: BillingSummary, initialEntry = "/app/settings") {
         provider: "paypal",
         interval: "month",
         createdAt: "2026-08-01T00:00:00.000Z",
+        expiresAt: "2099-08-01T00:15:00.000Z",
       },
       canCheckout: false,
     },
-  });
+  } satisfies BillingCheckoutReconciliation;
+  const responses = reconciliations?.length ? reconciliations : [defaultReconciliation];
+  apiMocks.reconcileBillingCheckout.mockReset();
+  for (const response of responses) {
+    apiMocks.reconcileBillingCheckout.mockResolvedValueOnce(response);
+  }
+  apiMocks.reconcileBillingCheckout.mockResolvedValue(responses[responses.length - 1]!);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -113,14 +127,15 @@ describe("BillingSettings", () => {
     vi.clearAllMocks();
     apiMocks.addSponsoredProSeat.mockResolvedValue({});
     apiMocks.cancelBillingSubscription.mockResolvedValue({ cancellationRequested: true });
-    apiMocks.createBillingPortalSession.mockResolvedValue({ url: "https://example.test/portal" });
     apiMocks.getSponsoredProSeats.mockResolvedValue({
       activeCount: 0,
       availableCount: 5,
       pendingCount: 0,
       seats: [],
     });
-    apiMocks.startBillingCheckout.mockResolvedValue({ reference: "ref", priceId: "pri" });
+    apiMocks.startBillingCheckout.mockResolvedValue({
+      approvalUrl: "https://www.sandbox.paypal.com/checkoutnow?token=test",
+    });
   });
 
   afterEach(() => {
@@ -161,6 +176,7 @@ describe("BillingSettings", () => {
         provider: "paypal",
         interval: "month",
         createdAt: "2026-08-01T00:00:00.000Z",
+        expiresAt: "2099-08-01T00:15:00.000Z",
       },
       canCheckout: false,
     });
@@ -170,6 +186,25 @@ describe("BillingSettings", () => {
     expect(screen.queryByText("You’re using the Free plan")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Choose a Pro plan" })).not.toBeInTheDocument();
     expect(apiMocks.reconcileBillingCheckout).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows durable review copy after the PayPal confirmation window expires", async () => {
+    const pending = summary(null, {
+      pendingCheckout: {
+        provider: "paypal",
+        interval: "month",
+        createdAt: "2026-08-01T00:00:00.000Z",
+        expiresAt: "2026-08-01T00:15:00.000Z",
+      },
+      canCheckout: false,
+    });
+    renderSettings(pending, "/app/settings#plan-and-billing", [
+      { outcome: "review_required", summary: pending },
+    ]);
+
+    expect(await screen.findByText("PayPal confirmation needs more time")).toBeInTheDocument();
+    expect(screen.getByText(/No paid access has been granted yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/do not start another subscription/i)).toBeInTheDocument();
   });
 
   it("automatically reflects an activated checkout in Plan and billing", async () => {
@@ -222,6 +257,79 @@ describe("BillingSettings", () => {
     );
   });
 
+  it("retries canonical reconciliation until PayPal confirms the subscription", async () => {
+    vi.useFakeTimers();
+    const pending = summary(null, {
+      pendingCheckout: {
+        provider: "paypal",
+        interval: "month",
+        createdAt: "2026-08-01T00:00:00.000Z",
+        expiresAt: "2099-08-01T00:15:00.000Z",
+      },
+      canCheckout: false,
+    });
+    const active = summary("active");
+    renderSettings(pending, "/app/settings?checkout=completed&source=account#plan-and-billing", [
+      { outcome: "pending", summary: pending },
+      { outcome: "confirmed", summary: active },
+    ]);
+    apiMocks.getBillingSummary.mockImplementation(async () =>
+      apiMocks.reconcileBillingCheckout.mock.calls.length >= 2 ? active : pending,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(apiMocks.reconcileBillingCheckout).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Confirming your payment")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+    expect(apiMocks.reconcileBillingCheckout).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(apiMocks.reconcileBillingCheckout).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Zoption Pro is active")).toBeInTheDocument();
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings?source=account#plan-and-billing",
+    );
+
+    const summaryCallsAfterConfirmation = apiMocks.getBillingSummary.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(apiMocks.reconcileBillingCheckout).toHaveBeenCalledTimes(2);
+    expect(apiMocks.getBillingSummary).toHaveBeenCalledTimes(summaryCallsAfterConfirmation);
+  });
+
+  it("accepts an active PayPal summary when a webhook wins the reconciliation race", async () => {
+    const pending = summary(null, {
+      pendingCheckout: {
+        provider: "paypal",
+        interval: "month",
+        createdAt: "2026-08-01T00:00:00.000Z",
+        expiresAt: "2099-08-01T00:15:00.000Z",
+      },
+      canCheckout: false,
+    });
+    const active = summary("active");
+    renderSettings(pending, "/app/settings?checkout=completed#plan-and-billing", [
+      { outcome: "none", summary: active },
+    ]);
+
+    expect(await screen.findByText("Zoption Pro is active")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/could not find a payment awaiting confirmation/i),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings#plan-and-billing",
+    );
+  });
+
   it("stops bounded polling and confirms Pro through a manual status check", async () => {
     vi.useFakeTimers();
     const freeSummary = summary(null);
@@ -237,12 +345,16 @@ describe("BillingSettings", () => {
     expect(refresh).toBeEnabled();
 
     const callsAfterPolling = apiMocks.getBillingSummary.mock.calls.length;
+    const reconciliationsAfterPolling = apiMocks.reconcileBillingCheckout.mock.calls.length;
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000);
     });
     expect(apiMocks.getBillingSummary).toHaveBeenCalledTimes(callsAfterPolling);
+    expect(apiMocks.reconcileBillingCheckout).toHaveBeenCalledTimes(reconciliationsAfterPolling);
 
-    apiMocks.getBillingSummary.mockResolvedValue(summary("active"));
+    const active = summary("active");
+    apiMocks.reconcileBillingCheckout.mockResolvedValue({ outcome: "confirmed", summary: active });
+    apiMocks.getBillingSummary.mockResolvedValue(active);
     fireEvent.click(refresh);
     await act(async () => {
       await Promise.resolve();
@@ -443,7 +555,7 @@ describe("BillingSettings", () => {
     renderSettings(summary(null), "/app/settings?checkout=cancelled#plan-and-billing");
 
     expect(
-      await screen.findByText("Checkout was canceled. No payment was made."),
+      await screen.findByText(/PayPal checkout was closed.*verified subscription status/i),
     ).toBeInTheDocument();
     expect(screen.getByTestId("current-location")).toHaveTextContent(
       "/app/settings#plan-and-billing",

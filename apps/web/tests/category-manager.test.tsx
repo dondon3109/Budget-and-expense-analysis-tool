@@ -134,8 +134,8 @@ describe("CategoryManager", () => {
   it("shows unlimited categories and keeps creation available on Pro", async () => {
     vi.mocked(getBillingSummary).mockResolvedValueOnce({
       plan: "zoption_pro",
-      entitlementSource: "paddle",
-      provider: "paddle",
+      entitlementSource: "paypal",
+      provider: "paypal",
       status: "active",
       interval: "month",
       currentPeriodEndsAt: "2026-08-31T16:00:00.000Z",

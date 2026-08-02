@@ -85,6 +85,7 @@ describe("ProCheckoutDialog", () => {
           provider: "paypal",
           interval: "month",
           createdAt: "2026-08-01T00:00:00.000Z",
+          expiresAt: "2099-08-01T00:15:00.000Z",
         },
       }),
     );
