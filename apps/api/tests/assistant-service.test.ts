@@ -31,9 +31,31 @@ const input: AssistantMessageInput = {
 };
 const preferences: AssistantPreferences = {
   consentedAt: "2026-07-27T00:00:00.000Z",
+  consentVersion: 2,
   retentionDays: 90,
   assistantName: "Aster",
   userPreferredName: "Sam",
+  responseDetail: "concise",
+  coachingStyle: "gentle",
+};
+const policy = {
+  currentDate: "2026-08-02",
+  timeZone: "Asia/Manila",
+  compliance: { posture: "budgeting_allowed" as const, topics: [] },
+  requiredToolGroups: ["account_balance" as const],
+};
+const responseMetadata = {
+  promptVersion: "expert-v1",
+  compliance: policy.compliance,
+  sources: [],
+};
+const audit = {
+  promptVersion: "expert-v1",
+  compliancePolicyJson: JSON.stringify(policy),
+  requiredToolGroupsJson: JSON.stringify(policy.requiredToolGroups),
+  providerCallCount: 1,
+  validationStatus: "passed" as const,
+  toolCalls: [],
 };
 const thread: AssistantThread = {
   id: threadId,
@@ -74,6 +96,7 @@ function createRepository(): AssistantRepository {
     getPreferences: vi.fn(async () => preferences),
     grantConsent: vi.fn(async () => preferences),
     setAssistantIdentity: vi.fn(async () => preferences),
+    setResponsePreferences: vi.fn(async () => preferences),
     listThreads: vi.fn(async () => ({ items: [], nextCursor: null })),
     listMessages: vi.fn(async () => ({ items: [], nextCursor: null })),
     createThread: vi.fn(async () => thread),
@@ -88,6 +111,7 @@ function createRepository(): AssistantRepository {
 
 function failingOrchestrator(error: Error): AssistantOrchestrator {
   return {
+    plan: vi.fn(async () => policy),
     answer: vi.fn(async () => {
       throw error;
     }),
@@ -225,12 +249,12 @@ describe("assistant service provider failures", () => {
   it("blocks generation before persistence when assistant identity is incomplete", async () => {
     const repository = createRepository();
     vi.mocked(repository.getPreferences).mockResolvedValue({
-      consentedAt: preferences.consentedAt,
-      retentionDays: 90,
+      ...preferences,
       assistantName: null,
       userPreferredName: null,
     });
     const orchestrator: AssistantOrchestrator = {
+      plan: vi.fn(async () => policy),
       answer: vi.fn(),
     };
     const service = createAssistantService(repository, orchestrator);
@@ -247,10 +271,13 @@ describe("assistant service provider failures", () => {
     const repository = createRepository();
     const reporter = vi.fn<AssistantDiagnosticReporter>();
     const orchestrator: AssistantOrchestrator = {
+      plan: vi.fn(async () => policy),
       answer: vi.fn(async () => ({
         content: assistantMessage.content,
         model: "deepseek-v4-flash",
         finishReason: "stop",
+        responseMetadata,
+        audit,
       })),
     };
     const service = createAssistantService(repository, orchestrator, reporter);

@@ -30,7 +30,7 @@ const PREVIEW_LIFETIME_MS = 15 * 60 * 1000;
 
 export function buildImportTransactionInsertSql(requireNonSystemCategory: boolean): string {
   const systemConstraint = requireNonSystemCategory ? " AND system_key IS NULL" : "";
-  return `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint) VALUES (?, ?, ?, (SELECT id FROM categories WHERE id = ? AND tenant_id = ? AND archived = 0 AND kind = ?${systemConstraint} AND (required_plan = 'free' OR ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION})), ?, ?, ?, 'PHP', ?, ?)`;
+  return `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint, source_kind, import_id, import_row_number) VALUES (?, ?, ?, (SELECT id FROM categories WHERE id = ? AND tenant_id = ? AND archived = 0 AND kind = ?${systemConstraint} AND (required_plan = 'free' OR ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION})), ?, ?, ?, 'PHP', ?, ?, 'import', ?, ?)`;
 }
 
 export function assertImportFileSize(csvText: string): void {
@@ -469,6 +469,8 @@ export function createImportRepository(
             row.amountMinor,
             row.kind,
             row.fingerprint,
+            importId,
+            row.rowNumber,
           );
         }),
         env.DB.prepare("DELETE FROM import_previews WHERE id = ? AND tenant_id = ?").bind(

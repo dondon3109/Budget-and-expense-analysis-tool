@@ -27,6 +27,12 @@ import type {
   CategoryRecord,
   CategoryUpdate,
   DashboardSummary,
+  Debt,
+  DebtInput,
+  DebtUpdate,
+  FinancialGoal,
+  FinancialGoalInput,
+  FinancialGoalUpdate,
   ImportCommitRequest,
   ImportCommitResult,
   ImportPreview,
@@ -552,6 +558,16 @@ export function updateAssistantIdentity(
   });
 }
 
+export function updateAssistantResponsePreferences(
+  workspace: AuthenticatedWorkspace,
+  input: Extract<AssistantPreferenceUpdate, { responseDetail: string }>,
+): Promise<AssistantPreferences> {
+  return requestJson(workspace, "/api/app/assistant/preferences", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
 export function getAssistantThreads(
   workspace: AuthenticatedWorkspace,
   cursor?: string,
@@ -662,6 +678,65 @@ export function saveBudgets(
   return requestJson(workspace, "/api/app/budgets", {
     method: "PUT",
     body: JSON.stringify(input),
+  });
+}
+
+export function getFinancialGoals(
+  workspace: AuthenticatedWorkspace,
+): Promise<{ items: FinancialGoal[] }> {
+  return requestJson(workspace, "/api/app/goals");
+}
+
+export function createFinancialGoal(
+  workspace: AuthenticatedWorkspace,
+  input: FinancialGoalInput,
+): Promise<FinancialGoal> {
+  return requestJson(workspace, "/api/app/goals", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateFinancialGoal(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; input: FinancialGoalUpdate },
+): Promise<FinancialGoal> {
+  return requestJson(workspace, `/api/app/goals/${encodeURIComponent(args.id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(args.input),
+  });
+}
+
+export function deleteFinancialGoal(workspace: AuthenticatedWorkspace, id: string): Promise<void> {
+  return requestJson(workspace, `/api/app/goals/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function getDebts(workspace: AuthenticatedWorkspace): Promise<{ items: Debt[] }> {
+  return requestJson(workspace, "/api/app/debts");
+}
+
+export function createDebt(workspace: AuthenticatedWorkspace, input: DebtInput): Promise<Debt> {
+  return requestJson(workspace, "/api/app/debts", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateDebt(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; input: DebtUpdate },
+): Promise<Debt> {
+  return requestJson(workspace, `/api/app/debts/${encodeURIComponent(args.id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(args.input),
+  });
+}
+
+export function deleteDebt(workspace: AuthenticatedWorkspace, id: string): Promise<void> {
+  return requestJson(workspace, `/api/app/debts/${encodeURIComponent(id)}`, {
+    method: "DELETE",
   });
 }
 

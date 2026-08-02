@@ -1,7 +1,8 @@
-import type {
-  AssistantMessagePage,
-  AssistantThreadPage,
-  AssistantTurnResult,
+import {
+  CURRENT_ASSISTANT_CONSENT_VERSION,
+  type AssistantMessagePage,
+  type AssistantThreadPage,
+  type AssistantTurnResult,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, Sparkles, X } from "lucide-react";
@@ -248,7 +249,10 @@ export function AssistantPage() {
       </AppShell>
     );
   }
-  if (!preferences.data?.consentedAt) {
+  if (
+    !preferences.data?.consentedAt ||
+    preferences.data.consentVersion !== CURRENT_ASSISTANT_CONSENT_VERSION
+  ) {
     return (
       <AppShell>
         <div className="assistant-page consent-view">
@@ -283,7 +287,7 @@ export function AssistantPage() {
             <h1>
               Your <span className="assistant-heading-emphasis">MONEY</span>, explained.
             </h1>
-            <p>Ask anything. Zoption already knows the numbers.</p>
+            <p>Ask about your records, budgets, goals, and debt. Zoption verifies the numbers.</p>
           </div>
           <div className="assistant-header-actions">
             <button
@@ -332,6 +336,10 @@ export function AssistantPage() {
               )}
               <small className="assistant-chat-retention">90-day private history</small>
             </div>
+            <p className="assistant-education-notice">
+              Educational budgeting information only. Zoption does not provide personalized
+              financial, investment, tax, legal, or insurance advice.
+            </p>
             {messages.isError ? (
               <div className="assistant-chat-error" role="alert">
                 <strong>This chat could not be loaded.</strong>

@@ -210,9 +210,9 @@ Then perform an authenticated browser check with two ordinary preview users:
 5. Upload an avatar as user A and confirm it appears in Settings and the sidebar. Confirm user A cannot upload into user B's folder and user B cannot delete user A's object; then confirm each user can replace and remove their own avatar.
 6. Confirm unsupported or oversized avatar files are rejected and that the public avatar URL is readable as documented.
 7. Sign out and confirm `/app` redirects to login.
-8. Give user A and user B distinct manual account balances, then confirm each assistant answer uses only the signed-in user's snapshots and transactions.
-9. Confirm the assistant requires one-time DeepSeek consent, refuses mutation/credential/SQL requests, treats instructions inside transaction descriptions as data, and deletes one/all chats correctly.
-10. Inspect Worker logs and confirm they contain no prompts, responses, tool payloads, account names, transaction descriptions, JWTs, or API keys.
+8. Give user A and user B distinct transaction ledgers, goals, and debt records, then confirm calculated balances, planning records, and assistant answers remain scoped to the signed-in user.
+9. Confirm the assistant requires current versioned DeepSeek consent, refuses mutation/credential/SQL requests, treats instructions inside stored text as data, shows source/data-quality details, applies regulated-topic redirects, and deletes one/all chats with their audit snapshots.
+10. Inspect Worker logs and confirm they contain no prompts, responses, tool payloads, account names, transaction descriptions, JWTs, or API keys. Inspect active D1 assistant audits separately and confirm snapshots exclude notes, secrets, tenant/user IDs, and provider payloads.
 
 The normal application path needs no browser access to a service-role key. Account deletion is the narrow Worker-only exception: it writes an irreversible D1 tombstone before purging the tenant, then clears avatar Storage and hard-deletes the Auth identity. The tombstone blocks a retained access token from creating a replacement tenant; the daily Worker cron retries pending external cleanup. Display names and avatar metadata are presentation-only and must not change Worker tenant resolution or D1 authorization.
 

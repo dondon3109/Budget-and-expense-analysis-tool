@@ -218,6 +218,45 @@ export interface BudgetMonthPlan {
   items: BudgetPlanItem[];
 }
 
+export const financialGoalStatuses = ["active", "paused", "completed"] as const;
+export type FinancialGoalStatus = (typeof financialGoalStatuses)[number];
+
+export interface FinancialGoal {
+  id: string;
+  name: string;
+  targetAmountMinor: number;
+  currentAmountMinor: number;
+  targetDate: string;
+  status: FinancialGoalStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const debtTypes = [
+  "credit_card",
+  "personal_loan",
+  "auto_loan",
+  "mortgage",
+  "other",
+] as const;
+export type DebtType = (typeof debtTypes)[number];
+
+export const debtStatuses = ["active", "paid"] as const;
+export type DebtStatus = (typeof debtStatuses)[number];
+
+export interface Debt {
+  id: string;
+  name: string;
+  type: DebtType;
+  balanceMinor: number;
+  aprBasisPoints: number;
+  minimumPaymentMinor: number;
+  balanceAsOf: string;
+  status: DebtStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const cashflowTrendViews = ["weekly", "monthly", "sixMonth"] as const;
 export type CashflowTrendView = (typeof cashflowTrendViews)[number];
 
@@ -364,11 +403,7 @@ export interface BillingSummary {
 }
 
 export type BillingCheckoutReconciliationOutcome =
-  | "confirmed"
-  | "pending"
-  | "review_required"
-  | "closed"
-  | "none";
+  "confirmed" | "pending" | "review_required" | "closed" | "none";
 
 export interface BillingCheckoutReconciliation {
   outcome: BillingCheckoutReconciliationOutcome;
@@ -378,11 +413,78 @@ export interface BillingCheckoutReconciliation {
 export type AssistantMessageRole = "user" | "assistant";
 export type AssistantMessageStatus = "pending" | "completed" | "failed";
 
+export type AssistantResponseDetail = "concise" | "standard";
+export type AssistantCoachingStyle = "gentle" | "direct";
+export type AssistantComplianceTopic =
+  "investment" | "tax" | "retirement" | "insurance" | "estate_legal";
+export type AssistantCompliancePosture =
+  | "budgeting_allowed"
+  | "general_education"
+  | "restricted_topic_education"
+  | "personalized_recommendation_redirect";
+export type AssistantDataQualityStatus = "reliable" | "limited" | "insufficient";
+
+export interface AssistantDateRange {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface AssistantDataQualitySignal {
+  code: string;
+  message: string;
+  count?: number;
+}
+
+export interface AssistantSourceMetadata {
+  label: string;
+  sourceType: "transactions" | "budgets" | "accounts" | "goals" | "debts";
+  period?: AssistantDateRange;
+  baselinePeriod?: AssistantDateRange;
+  filters?: {
+    accountName?: string;
+    categoryName?: string;
+    goalName?: string;
+    debtNames?: string[];
+  };
+  recordCount?: number;
+  dataQualityStatus: AssistantDataQualityStatus;
+  limitations: string[];
+}
+
+export interface AssistantResponseMetadata {
+  promptVersion: string;
+  compliance: {
+    posture: AssistantCompliancePosture;
+    topics: AssistantComplianceTopic[];
+  };
+  resolvedPeriod?: AssistantDateRange;
+  disclaimer?: {
+    text: string;
+    topics: AssistantComplianceTopic[];
+  };
+  sources: AssistantSourceMetadata[];
+}
+
+export const CURRENT_ASSISTANT_CONSENT_VERSION = 2;
+
+export interface AssistantToolResultEnvelope<T> {
+  data: T;
+  source: Omit<AssistantSourceMetadata, "label" | "dataQualityStatus" | "limitations">;
+  dataQuality: {
+    status: AssistantDataQualityStatus;
+    signals: AssistantDataQualitySignal[];
+  };
+}
+
 export interface AssistantPreferences {
   consentedAt: string | null;
+  consentVersion: number;
   retentionDays: number;
   assistantName: string | null;
   userPreferredName: string | null;
+  responseDetail: AssistantResponseDetail;
+  coachingStyle: AssistantCoachingStyle;
 }
 
 export interface AssistantThread {
@@ -398,6 +500,7 @@ export interface AssistantMessage {
   role: AssistantMessageRole;
   content: string;
   status: AssistantMessageStatus;
+  metadata?: AssistantResponseMetadata;
   createdAt: string;
 }
 

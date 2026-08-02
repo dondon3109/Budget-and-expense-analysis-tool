@@ -23,10 +23,11 @@ People use Zoption as an authenticated personal workspace. Supabase owns identit
 - Account and financial features require an active authenticated session.
 - Supabase user IDs establish application ownership; user-editable metadata is presentation-only and must never control authorization, tenant selection, or data access.
 - The browser uses only a Supabase publishable key. Privileged account administration credentials must never be exposed to it.
-- Browser-based account deletion is not offered because deleting identity and financial data requires a coordinated trusted-server workflow.
+- Account Settings offers coordinated permanent deletion of the authenticated D1 workspace, owned avatar, and Supabase Auth identity, with fail-closed retry handling when a provider step remains pending.
 - The AI Financial Assistant is read-only. Zoption calculates financial results from the authenticated tenant; DeepSeek only interprets questions and explains verified tool output.
-- Assistant use requires one-time provider data-sharing consent, and chat history expires after 90 days unless deleted sooner.
-- Account balances are manually maintained snapshots with explicit as-of dates.
+- Assistant use requires current versioned provider data-sharing consent. Chat messages and sanitized audit snapshots share a 90-day thread-retention window unless deleted sooner.
+- Account balances are calculated from recorded transaction ledger entries. They are not live bank balances and have no opening-balance snapshot.
+- Users explicitly manage savings goals, debt-planning records, and assistant coaching preferences; chat can read but never mutate them.
 
 ## Brand Commitments
 
@@ -37,5 +38,5 @@ The product is named Zoption. Account and financial language should be direct, c
 - Keep personal financial data private and clearly scoped to its owner.
 - Make consequential account actions understandable before they happen.
 - Report success, pending confirmation, and failure states honestly.
-- Keep AI answers brief, evidence-led, and explicit about date ranges, missing data, and balance freshness.
+- Keep AI answers brief, evidence-led, and explicit about date ranges, data-quality limitations, provenance, and ledger coverage.
 - Preserve familiar, low-friction workflows for routine financial management.

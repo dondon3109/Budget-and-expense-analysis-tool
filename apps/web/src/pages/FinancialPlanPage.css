@@ -1,0 +1,533 @@
+/* Financial planning is a single ledger: progress, obligations, and coaching preferences stay visibly user-managed. */
+
+.financial-plan-page {
+  max-width: 1180px;
+}
+
+.financial-plan-header {
+  align-items: flex-end;
+}
+
+.financial-plan-header > div:first-child {
+  max-width: 670px;
+}
+
+.financial-plan-actions {
+  display: flex;
+  gap: 9px;
+}
+
+.planning-trust-strip {
+  margin: 22px 0 14px;
+  padding: 14px 17px;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+
+.planning-trust-strip svg {
+  flex: 0 0 auto;
+  color: var(--sage);
+}
+
+.planning-trust-strip div {
+  display: grid;
+  gap: 3px;
+}
+
+.planning-trust-strip strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.planning-trust-strip span {
+  max-width: 74ch;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.planning-overview {
+  min-height: 164px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  color: var(--paper);
+  border-radius: 16px;
+  background: var(--action);
+  box-shadow: 0 15px 34px rgba(28, 55, 45, 0.16);
+}
+
+.planning-overview > div {
+  padding: 24px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+}
+
+.planning-overview > div + div {
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.planning-overview span,
+.planning-overview small {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.planning-overview span {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.planning-overview strong {
+  color: #fff;
+  font-family: Georgia, serif;
+  font-size: clamp(23px, 3vw, 36px);
+  letter-spacing: -0.025em;
+}
+
+.planning-overview small {
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.planning-overview-lead strong {
+  font-size: clamp(30px, 4vw, 47px);
+}
+
+.planning-ledger {
+  margin-top: 15px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--paper);
+  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
+}
+
+.planning-column + .planning-column {
+  border-left: 1px solid var(--line);
+}
+
+.planning-section-heading {
+  min-height: 104px;
+  padding: 21px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+
+.planning-section-heading > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.planning-section-heading svg {
+  margin-top: 2px;
+  flex: 0 0 auto;
+  color: var(--sage);
+}
+
+.planning-section-heading h2,
+.planning-preferences h2 {
+  margin: 0 0 5px;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 20px;
+  letter-spacing: -0.015em;
+}
+
+.planning-section-heading p,
+.planning-preferences p {
+  max-width: 44ch;
+  margin: 0;
+  color: var(--subtle);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.planning-section-heading .text-button,
+.planning-preferences .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.planning-record-list {
+  display: grid;
+}
+
+.planning-record {
+  min-height: 156px;
+  padding: 20px 21px;
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  transition: background-color 0.16s ease;
+}
+
+.planning-record:last-child {
+  border-bottom: 0;
+}
+
+.planning-record:hover {
+  background: var(--surface-soft);
+}
+
+.planning-record.paused,
+.planning-record.completed,
+.planning-record.paid {
+  opacity: 0.72;
+}
+
+.planning-record-topline,
+.goal-amount-line,
+.debt-balance-line,
+.planning-record-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.planning-record-topline > div:first-child {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planning-record-topline strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planning-record-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.planning-status {
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.planning-status.active {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.planning-status.paused {
+  color: var(--expense-text);
+  background: var(--amber-soft);
+}
+
+.planning-status.completed,
+.planning-status.paid {
+  color: var(--muted);
+  background: var(--surface-hover);
+}
+
+.goal-amount-line strong,
+.debt-balance-line strong {
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.goal-amount-line span,
+.debt-balance-line span,
+.planning-record-meta,
+.planning-record > small {
+  color: var(--subtle);
+  font-size: 9px;
+}
+
+.debt-balance-line span {
+  color: var(--expense-text);
+  font-weight: 800;
+}
+
+.goal-progress {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-hover);
+}
+
+.goal-progress span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--sage);
+}
+
+.planning-empty {
+  min-height: 310px;
+  padding: 44px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.planning-empty strong {
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 18px;
+}
+
+.planning-empty p {
+  max-width: 36ch;
+  margin: 0;
+  color: var(--subtle);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.planning-empty .button {
+  margin-top: 8px;
+}
+
+.planning-preferences {
+  margin-top: 15px;
+  padding: 22px;
+  display: grid;
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
+  align-items: center;
+  gap: 28px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--paper);
+  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
+}
+
+.planning-preferences-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.planning-preferences-heading > svg {
+  margin-top: 2px;
+  flex: 0 0 auto;
+  color: var(--sage);
+}
+
+.planning-preference-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.planning-preference-controls fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  border: 0;
+}
+
+.planning-preference-controls legend {
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.planning-preference-controls label {
+  position: relative;
+  cursor: pointer;
+}
+
+.planning-preference-controls input {
+  position: absolute;
+  opacity: 0;
+}
+
+.planning-preference-controls label > span {
+  min-height: 66px;
+  padding: 11px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.planning-preference-controls input:checked + span {
+  border-color: var(--sage);
+  background: var(--sage-soft);
+}
+
+.planning-preference-controls input:focus-visible + span {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+.planning-preference-controls strong {
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.planning-preference-controls small,
+.planning-preferences-status {
+  color: var(--subtle);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.planning-form-modal {
+  width: min(680px, 100%);
+}
+
+.planning-record-form {
+  margin-top: 22px;
+}
+
+.planning-form-three {
+  grid-template-columns: 0.75fr 1.25fr 0.8fr;
+}
+
+.percentage-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  background: var(--paper);
+}
+
+.percentage-input:focus-within {
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px var(--sage-soft);
+}
+
+.percentage-input input {
+  min-width: 0;
+  border: 0;
+  box-shadow: none !important;
+}
+
+.percentage-input b {
+  padding-right: 12px;
+  color: var(--subtle);
+  font-size: 11px;
+}
+
+.planning-form-note {
+  margin: -2px 0 0;
+  padding: 11px 12px;
+  color: var(--muted);
+  border-radius: 11px;
+  background: var(--surface-soft);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+@media (max-width: 900px) {
+  .planning-overview {
+    grid-template-columns: 1.2fr 1fr;
+  }
+
+  .planning-overview > div:last-child {
+    grid-column: 1 / -1;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    border-left: 0;
+  }
+
+  .planning-ledger {
+    grid-template-columns: 1fr;
+  }
+
+  .planning-column + .planning-column {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .planning-preferences {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .financial-plan-header {
+    align-items: stretch;
+  }
+
+  .financial-plan-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .financial-plan-actions .button {
+    width: 100%;
+  }
+
+  .planning-overview {
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .planning-overview > div {
+    padding: 20px;
+  }
+
+  .planning-overview > div + div,
+  .planning-overview > div:last-child {
+    grid-column: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    border-left: 0;
+  }
+
+  .planning-section-heading {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .planning-section-heading > .text-button {
+    font-size: 0;
+  }
+
+  .planning-section-heading > .text-button svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .planning-record {
+    padding: 18px;
+  }
+
+  .planning-preference-controls,
+  .planning-preference-controls fieldset {
+    grid-template-columns: 1fr;
+  }
+
+  .planning-form-three {
+    grid-template-columns: 1fr;
+  }
+}

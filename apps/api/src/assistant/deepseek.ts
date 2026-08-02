@@ -101,7 +101,7 @@ export class DeepSeekProvider implements AssistantProvider {
           model: env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
           messages: request.messages,
           tools: request.tools,
-          tool_choice: "auto",
+          tool_choice: request.toolChoice ?? "auto",
           temperature: 0.15,
           max_tokens: 800,
           stream: false,

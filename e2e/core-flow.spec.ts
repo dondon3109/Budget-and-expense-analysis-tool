@@ -102,37 +102,29 @@ test("landing page leads visitors to account creation or sign in", async ({ page
   expect(privateWrite.status()).toBe(401);
 });
 
-test("retired demo route returns to the landing page", async ({ page }) => {
+test("retired demo route renders the not-found page", async ({ page }) => {
   await page.goto("/demo");
-  await expect(page).toHaveURL(/\/$/);
-  await expect(
-    page.getByRole("heading", { name: "See where your money goes. Decide what comes next." }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/demo$/);
+  await expect(page.getByRole("heading", { name: "That page is not here." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Go to Zoption home" })).toHaveAttribute("href", "/");
 });
 
 test("private pages redirect signed-out users to login", async ({ page }) => {
-  await page.goto("/app/transactions");
-  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Ftransactions$/);
-  await expect(page.getByRole("heading", { name: "Sign in to Zoption" })).toBeVisible();
+  const privatePaths = [
+    "/app",
+    "/app/assistant",
+    "/app/calendar",
+    "/app/transactions",
+    "/app/import",
+    "/app/budgets",
+    "/app/subscriptions",
+    "/app/plan",
+    "/app/settings",
+  ];
 
-  await page.goto("/transactions");
-  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Ftransactions$/);
-
-  await page.goto("/app/calendar");
-  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Fcalendar$/);
-
-  await page.goto("/calendar");
-  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Fcalendar$/);
-
-  await page.goto("/app/budgets");
-  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Fbudgets$/);
-
-  await page.goto("/app/subscriptions");
-  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Fsubscriptions$/);
-
-  await page.goto("/app/settings");
-  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Fsettings$/);
-
-  await page.goto("/subscriptions");
-  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fapp%2Fsubscriptions$/);
+  for (const path of privatePaths) {
+    await page.goto(path);
+    await expect(page).toHaveURL(new RegExp(`/login\\?redirectTo=${encodeURIComponent(path)}$`));
+    await expect(page.getByRole("heading", { name: "Sign in to Zoption" })).toBeVisible();
+  }
 });

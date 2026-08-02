@@ -6,6 +6,8 @@ import {
   type CalendarEventRecord,
   type CategoryRecord,
   type DashboardSummary,
+  type Debt,
+  type FinancialGoal,
   type ImportPreviewRequest,
   type SubscriptionMonthSummary,
   type SubscriptionRecord,
@@ -22,7 +24,9 @@ import type { AccountRepository } from "../src/db/accounts";
 import type { BillingRepository } from "../src/db/billing";
 import type { BudgetRepository } from "../src/db/budgets";
 import type { CategoryRepository } from "../src/db/categories";
+import type { DebtRepository } from "../src/db/debts";
 import type { CalendarEventRepository } from "../src/db/events";
+import type { FinancialGoalRepository } from "../src/db/goals";
 import type { ImportRepository } from "../src/db/imports";
 import type { SubscriptionRepository } from "../src/db/subscriptions";
 import type { TenantResolver } from "../src/db/tenants";
@@ -1080,5 +1084,131 @@ describe("API foundation", () => {
         sortDirection: "asc",
       }),
     );
+  });
+
+  it("supports tenant-scoped financial goal CRUD", async () => {
+    const goal: FinancialGoal = {
+      id: "goal-1",
+      name: "Emergency fund",
+      targetAmountMinor: 120_000_00,
+      currentAmountMinor: 30_000_00,
+      targetDate: "2027-08-01",
+      status: "active",
+      createdAt: "2026-08-02T00:00:00.000Z",
+      updatedAt: "2026-08-02T00:00:00.000Z",
+    };
+    const goals = {
+      list: vi.fn(async () => [goal]),
+      create: vi.fn(async () => goal),
+      update: vi.fn(async () => ({ ...goal, status: "paused" as const })),
+      remove: vi.fn(async () => undefined),
+    } satisfies FinancialGoalRepository;
+    const app = createTestApp({ goals });
+
+    const listResponse = await app.request("/api/app/goals", { headers: AUTHORIZATION });
+    expect(listResponse.status).toBe(200);
+    await expect(listResponse.json()).resolves.toEqual({ items: [goal] });
+    expect(goals.list).toHaveBeenCalledWith(undefined, TENANT_ID);
+
+    const createInput = {
+      name: goal.name,
+      targetAmountMinor: goal.targetAmountMinor,
+      currentAmountMinor: goal.currentAmountMinor,
+      targetDate: goal.targetDate,
+      status: goal.status,
+    };
+    const createResponse = await app.request("/api/app/goals", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(createInput),
+    });
+    expect(createResponse.status).toBe(201);
+    expect(goals.create).toHaveBeenCalledWith(undefined, TENANT_ID, createInput);
+
+    const updateResponse = await app.request("/api/app/goals/goal-1", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ status: "paused" }),
+    });
+    expect(updateResponse.status).toBe(200);
+    expect(goals.update).toHaveBeenCalledWith(undefined, TENANT_ID, "goal-1", {
+      status: "paused",
+    });
+
+    const deleteResponse = await app.request("/api/app/goals/goal-1", {
+      method: "DELETE",
+      headers: AUTHORIZATION,
+    });
+    expect(deleteResponse.status).toBe(204);
+    expect(goals.remove).toHaveBeenCalledWith(undefined, TENANT_ID, "goal-1");
+  });
+
+  it("supports tenant-scoped debt CRUD and rejects invalid inputs", async () => {
+    const debt: Debt = {
+      id: "debt-1",
+      name: "Main card",
+      type: "credit_card",
+      balanceMinor: 45_000_00,
+      aprBasisPoints: 1800,
+      minimumPaymentMinor: 2_500_00,
+      balanceAsOf: "2026-08-01",
+      status: "active",
+      createdAt: "2026-08-02T00:00:00.000Z",
+      updatedAt: "2026-08-02T00:00:00.000Z",
+    };
+    const debts = {
+      list: vi.fn(async () => [debt]),
+      create: vi.fn(async () => debt),
+      update: vi.fn(async () => ({ ...debt, status: "paid" as const })),
+      remove: vi.fn(async () => undefined),
+    } satisfies DebtRepository;
+    const app = createTestApp({ debts });
+
+    const listResponse = await app.request("/api/app/debts", { headers: AUTHORIZATION });
+    expect(listResponse.status).toBe(200);
+    await expect(listResponse.json()).resolves.toEqual({ items: [debt] });
+
+    const invalidResponse = await app.request("/api/app/debts", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ name: "Incomplete debt" }),
+    });
+    expect(invalidResponse.status).toBe(400);
+    expect(debts.create).not.toHaveBeenCalled();
+
+    const createInput = {
+      name: debt.name,
+      type: debt.type,
+      balanceMinor: debt.balanceMinor,
+      aprBasisPoints: debt.aprBasisPoints,
+      minimumPaymentMinor: debt.minimumPaymentMinor,
+      balanceAsOf: debt.balanceAsOf,
+      status: debt.status,
+    };
+    const createResponse = await app.request("/api/app/debts", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(createInput),
+    });
+    expect(createResponse.status).toBe(201);
+    expect(debts.create).toHaveBeenCalledWith(undefined, TENANT_ID, createInput);
+
+    const updateResponse = await app.request("/api/app/debts/debt-1", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ status: "paid", balanceMinor: 0 }),
+    });
+    expect(updateResponse.status).toBe(200);
+    expect(debts.update).toHaveBeenCalledWith(undefined, TENANT_ID, "debt-1", {
+      status: "paid",
+      balanceMinor: 0,
+    });
+
+    const deleteResponse = await app.request("/api/app/debts/debt-1", {
+      method: "DELETE",
+      headers: AUTHORIZATION,
+    });
+    expect(deleteResponse.status).toBe(204);
+    expect(debts.remove).toHaveBeenCalledWith(undefined, TENANT_ID, "debt-1");
   });
 });

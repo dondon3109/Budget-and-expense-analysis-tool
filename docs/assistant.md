@@ -1,58 +1,90 @@
 # AI Financial Assistant
 
-Zoption's AI Financial Assistant is a read-only interface over the authenticated user's financial workspace. DeepSeek interprets questions and explains results; Zoption's Worker queries D1 and calculates every amount.
+Zoption's AI Financial Assistant is a read-only budgeting and financial-wellness interface over the authenticated user's financial workspace. DeepSeek interprets questions and explains verified results; Zoption's Worker owns tenant scope, compliance classification, date resolution, financial calculations, data-quality checks, and final-answer validation.
 
 ## Data flow
 
 1. The browser sends one user message and an idempotency UUID to `/api/app/assistant/*` with the normal Supabase bearer token.
 2. Existing Worker middleware verifies the JWT and resolves the user's D1 tenant.
-3. The Worker loads a bounded tenant-owned chat history and checks whether a period-bound aggregate question includes a month or date range.
-4. If the period is missing, the Worker stores and returns a clarification without calling DeepSeek or a financial tool. It never defaults to the current month, month-to-date, or all history.
-5. Otherwise, the Worker calls `deepseek-v4-flash`, which may request one of the fixed financial tools below.
-6. The Worker validates the arguments and runs a tenant-scoped repository/calculation.
-7. DeepSeek explains the compact verified result.
-8. D1 stores the user message and final answer for 90 days. Tool calls, tool results, reasoning content, credentials, and provider payloads are not stored.
+3. The Worker loads bounded tenant-owned chat history and creates a trusted turn policy. The policy classifies regulated topics, resolves dates in `Asia/Manila`, and identifies required tool groups.
+4. Ambiguous dates and personalized regulated-topic recommendation requests receive deterministic server responses without a DeepSeek call or AI-question charge.
+5. Provider-backed turns call `deepseek-v4-flash` with the trusted policy, bounded history, approved tool definitions, and no tenant or user identifier.
+6. While required tool groups remain unsatisfied, the Worker requires tool use. It validates every argument against strict schemas and the server-resolved date range before running tenant-scoped reads or calculations.
+7. The Worker validates the final answer against successful tool output. Unsupported money, percentages, dates, counts, internal identifiers, unsafe formats, named-filter substitutions, and disallowed regulated recommendations are rejected. One corrective retry is allowed; otherwise Zoption returns a deterministic safe fallback.
+8. D1 stores the user message, final answer, structured response metadata, and a sanitized run/tool audit snapshot. Raw provider payloads, hidden reasoning, credentials, notes, secrets, tenant IDs, and user IDs are not stored in the audit trail.
+9. Threads, messages, runs, and tool snapshots share the thread's 90-day retention lifecycle and are deleted together.
 
 The browser cannot submit a tenant ID, model, system prompt, tool definition, assistant message, or tool result.
 
 ## Allowed tools
 
-- `get_account_balances` — manually entered balance snapshots and server-calculated net position.
-- `get_period_summary` — income, expenses, net, categories, savings rate, trends, and backend-calculated monthly averages for a bounded date range. Monthly averages divide by every covered calendar month, including months with no transactions.
-- `get_budget_status` — one month's category limits and verified spending.
-- `list_transactions` — a bounded filtered page of transactions without notes or internal IDs.
+- `get_account_balances` — balances calculated from recorded transaction ledger entries, optionally filtered to a tenant-owned account.
+- `get_period_summary` — income, expenses, net, savings rate, monthly averages, and bounded trends for the trusted date range.
+- `get_spending_by_category` — category totals and an optional exact named-category filter.
+- `get_budget_vs_actual` — monthly and category budget limits, actual spending, remaining amounts, utilization, and full/partial-month coverage.
+- `detect_recurring_charges` — recurring expense patterns and backend-calculated price movement over a labeled trailing analysis window.
+- `detect_spending_anomalies` — unusual transactions and category spikes compared with labeled prior windows; returns insufficient history rather than guessing.
+- `calculate_debt_payoff` — deterministic avalanche or snowball projections from saved debts or validated hypothetical inputs.
+- `calculate_savings_goal` — deterministic target-date contributions from a saved goal or validated hypothetical inputs.
+- `list_transactions` — a bounded filtered page of transaction details without notes or internal IDs. It is detail-only and must not be totaled by the model.
 - `list_categories` — active category names and kinds.
 
 There is no SQL, D1, arbitrary HTTP, environment, credential, secret, import, create, update, or delete tool. Tenant identity is injected by the Worker and is never model-visible.
 
 ## Account balances
 
-Balances are manual snapshots with an “as of” date. Transactions and imports do not automatically update them.
+Account balances are sums of the user's recorded transaction ledger entries. They are not live bank balances and Zoption does not currently store an opening-balance snapshot.
 
-- Cash/checking/savings/other balances contribute directly to net position.
-- A positive credit-account balance represents debt and reduces net position.
-- Missing snapshots are excluded from totals and disclosed in answers.
-- Existing accounts migrate with an unknown balance, not a zero balance.
+- A balance can omit activity that occurred before the user began recording or importing transactions.
+- An account with no recorded ledger entries appears as zero, which does not prove the real-world account has a zero balance.
+- Imported and manually entered transactions affect the calculated ledger balance.
+- The assistant always discloses the ledger/opening-balance limitation when reporting balances.
 
-Users maintain snapshots on the Accounts page. The assistant can read them but cannot change them.
+## Goals and debts
+
+Users explicitly manage savings goals and debt records on the **Goals & debt** page. Chat never extracts, creates, edits, or deletes these records.
+
+- Savings goals contain a target, current saved amount, target date, and status. Required monthly contributions use integer-centavo ceiling division and assume no investment return.
+- Debt records contain a balance, fixed APR, minimum payment, balance-as-of date, and status. Avalanche and snowball projections apply monthly interest, pay minimums first, roll released payments forward, use stable tie-breakers, detect non-amortizing inputs, and stop at a 600-month safety cap.
+- Projections are educational estimates based on the saved or hypothetical inputs; they are not lender statements or guaranteed outcomes.
+
+## Compliance and disclaimers
+
+Budgeting, cash-flow, savings, and debt-planning support are allowed. Investment, tax, retirement, insurance, estate, and legal topics are limited to general education. A request for a personalized regulated recommendation receives a deterministic jurisdiction-neutral redirect to an appropriately qualified professional.
+
+The assistant surface always displays an educational-use notice. Topic-specific disclaimers come from structured backend metadata, not model-authored legal text.
+
+## Data quality and provenance
+
+Each financial tool returns structured source and data-quality metadata. Relevant signals include thin history, uncategorized or unassigned records, possible exact duplicates, legacy import provenance, possible merchant/category inconsistency, and possible coverage gaps. Heuristic findings are labeled as possible, not certain.
+
+Assistant responses can display:
+
+- the requested and comparison periods;
+- canonical account, category, goal, or debt filters;
+- record counts;
+- data-quality status and limitations; and
+- an expandable **Data used** view.
+
+Historical messages without structured metadata continue to render normally.
 
 ## Consent, retention, and deletion
 
-The first DeepSeek request requires a one-time acknowledgment that the question and only the necessary financial data are sent to DeepSeek. Chats expire after 90 days. Users can delete one chat or all chats sooner; deletion removes active D1 rows and cascades to their messages. Cloudflare infrastructure recovery copies follow Cloudflare's own lifecycle.
+Assistant consent is versioned. Consent version 2 explains that the question and necessary tenant-scoped financial context may be sent to DeepSeek and that validated tool arguments plus compact sanitized results are retained with the chat for up to 90 days.
 
-A daily Worker cron deletes expired threads in bounded batches. Thread listing also performs tenant-scoped lazy cleanup.
+Users can delete one chat or all chats sooner. D1 foreign-key cascades remove messages, assistant runs, and tool-call snapshots with the thread. A daily Worker cron deletes expired threads in bounded batches, and thread listing also performs tenant-scoped lazy cleanup.
 
 ## Security controls
 
 - Supabase credentials and sessions remain in Supabase and the browser's authenticated session flow.
 - `DEEPSEEK_API_KEY` is a Worker secret and never appears in browser configuration, D1, tool payloads, or logs.
-- Assistant generation is limited per tenant by minute and day before a provider call is made.
+- Monthly billing usage is consumed only immediately before a provider-backed turn; deterministic clarifications and compliance redirects do not consume an AI-question allowance.
 - One short lease prevents concurrent sends in the same thread.
 - Client request UUIDs make completed turns idempotent.
 - Tool names, JSON arguments, result size, history size, date ranges, page sizes, provider calls, and total tool calls are bounded.
-- Transaction descriptions and account/category names are treated as untrusted data, not instructions.
-- Assistant output is rendered as plain text.
-- Logs must contain operational counts/status only, never messages, tool payloads, account names, transaction descriptions, JWTs, or keys.
+- Stored names and transaction descriptions are untrusted data, not instructions.
+- Assistant output and metadata are rendered as React text, not HTML.
+- Operational logs contain status and diagnostic categories, not messages, tool payloads, account names, transaction descriptions, JWTs, or keys.
 
 ## Configuration
 
@@ -84,4 +116,4 @@ For local development, put `DEEPSEEK_API_KEY=...` in ignored `apps/api/.dev.vars
 
 Provider timeouts, outages, invalid responses, and blocked responses are mapped to stable user-safe API errors. DeepSeek response bodies and authorization headers are not returned or logged. `/health` checks D1 only and does not depend on DeepSeek availability.
 
-The assistant provides descriptive financial observations, not financial, investment, tax, legal, lending, or insurance advice.
+The assistant provides educational budgeting and financial-wellness information, not personalized financial, investment, tax, legal, retirement-allocation, or insurance advice.

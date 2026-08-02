@@ -1,13 +1,19 @@
+import type { AssistantToolResultEnvelope } from "@zoption/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import { createAssistantOrchestrator } from "../src/assistant/orchestrator";
-import type { FinancialReadContext, PeriodSummaryInput } from "../src/assistant/financial-reader";
+import type {
+  FinancialReadContext,
+  FinancialReader,
+  PeriodSummaryInput,
+} from "../src/assistant/financial-reader";
 import type {
   AssistantProvider,
   ProviderCompletion,
   ProviderCompletionRequest,
 } from "../src/assistant/provider";
 import { assistantToolDefinitions, executeAssistantTool } from "../src/assistant/tools";
+import type { AssistantTurnPolicy } from "../src/assistant/turn-policy";
 import type { Bindings } from "../src/types";
 
 const env = {
@@ -16,91 +22,123 @@ const env = {
   ASSISTANT_TIME_ZONE: "Asia/Manila",
 } satisfies Bindings;
 
-function createReader() {
+const identity = {
+  assistantName: "Aster",
+  userPreferredName: "Sam",
+  responseDetail: "concise" as const,
+  coachingStyle: "gentle" as const,
+};
+
+const policy: AssistantTurnPolicy = {
+  currentDate: "2026-08-02",
+  timeZone: "Asia/Manila",
+  compliance: { posture: "budgeting_allowed", topics: [] },
+  resolvedPeriod: { from: "2026-07-01", to: "2026-07-31", label: "July 2026" },
+  requiredToolGroups: ["period_summary"],
+};
+
+function envelope<T>(
+  data: T,
+  sourceType: "transactions" | "budgets" | "accounts" | "goals" | "debts" = "transactions",
+): AssistantToolResultEnvelope<T> {
   return {
-    getAccountBalances: vi.fn(async () => ({ netPosition: "PHP 1,000.00" })),
-    getPeriodSummary: vi.fn(async (_context: FinancialReadContext, input: PeriodSummaryInput) => ({
-      period: input,
-      currency: "PHP",
-      expenses: "PHP 12,450.00",
+    data,
+    source: {
+      sourceType,
+      period: { from: "2026-07-01", to: "2026-07-31" },
+      recordCount: 4,
+    },
+    dataQuality: { status: "reliable", signals: [] },
+  };
+}
+
+function createReader(): FinancialReader {
+  return {
+    getTransactionDateBounds: vi.fn(async () => ({
+      from: "2026-01-01",
+      to: "2026-08-02",
+      transactionCount: 20,
     })),
-    getBudgetStatus: vi.fn(async () => ({})),
-    listTransactions: vi.fn(async () => ({ items: [] })),
-    listCategories: vi.fn(async () => ({ items: [] })),
+    getAccountBalances: vi.fn(async () => envelope({ overallBalance: "PHP 1,000.00" }, "accounts")),
+    getPeriodSummary: vi.fn(async (_context: FinancialReadContext, input: PeriodSummaryInput) =>
+      envelope({
+        period: { from: input.from, to: input.to },
+        currency: "PHP",
+        expenses: "PHP 12,450.00",
+        transactionCount: 4,
+      }),
+    ),
+    getSpendingByCategory: vi.fn(async () => envelope({ items: [] })),
+    getBudgetVsActual: vi.fn(async () => envelope({ months: [] }, "budgets")),
+    getBudgetStatus: vi.fn(async () => envelope({ months: [] }, "budgets")),
+    detectRecurringCharges: vi.fn(async () => envelope({ items: [] })),
+    detectSpendingAnomalies: vi.fn(async () => envelope({ items: [] })),
+    calculateDebtPayoff: vi.fn(async () => envelope({ items: [] }, "debts")),
+    calculateSavingsGoal: vi.fn(async () => envelope({ items: [] }, "goals")),
+    listTransactions: vi.fn(async () => envelope({ items: [] })),
+    listCategories: vi.fn(async () => envelope({ items: [] })),
+  };
+}
+
+function toolCompletion(): ProviderCompletion {
+  return {
+    model: "deepseek-v4-flash",
+    finishReason: "tool_calls",
+    message: {
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        {
+          id: "call-1",
+          type: "function",
+          function: {
+            name: "get_period_summary",
+            arguments: JSON.stringify({ from: "2026-07-01", to: "2026-07-31" }),
+          },
+        },
+      ],
+    },
   };
 }
 
 describe("assistant orchestration", () => {
-  it("clarifies an ambiguous aggregate period without calling the provider or reader", async () => {
+  it("clarifies an ambiguous aggregate period without calling the provider", async () => {
     const provider: AssistantProvider = {
-      complete: vi.fn(async () => {
+      complete: vi.fn(async (): Promise<ProviderCompletion> => {
         throw new Error("The provider should not be called for deterministic clarification.");
       }),
     };
     const reader = createReader();
     const orchestrator = createAssistantOrchestrator(provider, reader);
 
-    const answer = await orchestrator.answer(
+    const planned = await orchestrator.plan(
       env,
       "tenant-1",
       [],
       "How much is my income on my bank account?",
-      {
-        assistantName: "Aster",
-        userPreferredName: "Sam",
-      },
     );
 
-    expect(answer).toEqual({
-      content:
-        "Which month or date range should I use? For example, August 2026 or July 1 to August 2, 2026.",
-      model: "zoption-period-policy",
-      finishReason: "clarification",
-    });
+    expect(planned.deterministicResponse).toBe(
+      "Which month or date range should I use? For example, August 2026 or July 1 to August 2, 2026.",
+    );
     expect(provider.complete).not.toHaveBeenCalled();
     expect(reader.getPeriodSummary).not.toHaveBeenCalled();
-    expect(reader.getAccountBalances).not.toHaveBeenCalled();
   });
 
-  it("executes an allowlisted tool with the server-owned tenant", async () => {
+  it("requires and audits a trusted-period tool before accepting grounded figures", async () => {
     const requests: ProviderCompletionRequest[] = [];
     const provider: AssistantProvider = {
       complete: vi.fn(
         async (_env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion> => {
-          requests.push({
-            messages: structuredClone(request.messages),
-            tools: structuredClone(request.tools),
-          });
-          if (requests.length === 1) {
-            return {
-              model: "deepseek-v4-flash",
-              finishReason: "tool_calls",
-              message: {
-                role: "assistant",
-                content: null,
-                tool_calls: [
-                  {
-                    id: "call-1",
-                    type: "function",
-                    function: {
-                      name: "get_period_summary",
-                      arguments: JSON.stringify({
-                        from: "2026-07-01",
-                        to: "2026-07-27",
-                        accountName: "Bank",
-                      }),
-                    },
-                  },
-                ],
-              },
-            };
-          }
+          requests.push(structuredClone(request));
+          if (requests.length === 1) return toolCompletion();
           return {
             model: "deepseek-v4-flash",
             finishReason: "stop",
             message: {
               role: "assistant",
-              content: "You spent ₱12,450 from July 1–27.",
+              content:
+                "From 2026-07-01 to 2026-07-31, your recorded expenses were PHP 12,450.00 across 4 transactions.",
             },
           };
         },
@@ -109,67 +147,94 @@ describe("assistant orchestration", () => {
     const reader = createReader();
     const orchestrator = createAssistantOrchestrator(provider, reader);
 
-    const answer = await orchestrator.answer(env, "tenant-secret", [], "How much did I spend in July 2026?", {
-      assistantName: "Aster",
-      userPreferredName: "Sam",
-    });
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-secret",
+      [],
+      "How much did I spend in July 2026?",
+      identity,
+      policy,
+    );
 
-    expect(answer.content).toContain("₱12,450");
+    expect(answer.content).toContain("PHP 12,450.00");
+    expect(answer.audit).toMatchObject({
+      providerCallCount: 2,
+      validationStatus: "passed",
+      toolCalls: [{ toolName: "get_period_summary" }],
+    });
+    expect(answer.responseMetadata.sources).toHaveLength(1);
     expect(reader.getPeriodSummary).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: "tenant-secret" }),
-      { from: "2026-07-01", to: "2026-07-27", accountName: "Bank" },
+      { from: "2026-07-01", to: "2026-07-31" },
     );
+    expect(requests[0]?.toolChoice).toBe("required");
+    expect(requests[1]?.toolChoice).toBe("auto");
     expect(JSON.stringify(requests)).not.toContain("tenant-secret");
-    expect(requests[0]?.messages[0]?.role).toBe("system");
     expect(requests[0]?.messages[0]?.content).toContain("Return plain text only");
-    expect(requests[0]?.messages[0]?.content).toContain("list_transactions is detail-only");
-    expect(requests[0]?.messages[0]?.content).toContain("filterMatched false");
-    expect(requests[0]?.messages[0]?.content).toContain(
-      "never default to the current month, month-to-date, or all history",
-    );
-    expect(requests[0]?.messages[0]?.content).toContain(
-      "include income, expenses, and net remaining",
-    );
     expect(requests[0]?.messages[0]?.content).toContain('"assistantName":"Aster"');
-    expect(requests[0]?.messages[0]?.content).toContain('"userPreferredName":"Sam"');
-    expect(requests[1]?.messages).toContainEqual(
-      expect.objectContaining({ role: "tool", tool_call_id: "call-1" }),
-    );
   });
 
-  it("retries an empty completion before returning an error", async () => {
-    const requests: ProviderCompletionRequest[] = [];
+  it("retries once when a draft uses an unverified peso format", async () => {
+    let calls = 0;
     const provider: AssistantProvider = {
-      complete: vi.fn(
-        async (_env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion> => {
-          requests.push(structuredClone(request));
-          if (requests.length === 1) {
-            return {
-              model: "deepseek-v4-flash",
-              finishReason: "stop",
-              message: { role: "assistant", content: null },
-            };
-          }
-          return {
-            model: "deepseek-v4-flash",
-            finishReason: "stop",
-            message: { role: "assistant", content: "You spent ₱12,450 this month." },
-          };
-        },
-      ),
+      complete: vi.fn(async (): Promise<ProviderCompletion> => {
+        calls += 1;
+        if (calls === 1) return toolCompletion();
+        return {
+          model: "deepseek-v4-flash",
+          finishReason: "stop",
+          message: {
+            role: "assistant",
+            content:
+              calls === 2 ? "You spent ₱12,450.00." : "Your recorded expenses were PHP 12,450.00.",
+          },
+        };
+      }),
     };
     const orchestrator = createAssistantOrchestrator(provider, createReader());
 
-    await expect(
-      orchestrator.answer(env, "tenant-1", [], "How much did I spend in July 2026?", {
-        assistantName: "Aster",
-        userPreferredName: "Sam",
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-1",
+      [],
+      "How much did I spend in July 2026?",
+      identity,
+      policy,
+    );
+
+    expect(answer.content).toBe("Your recorded expenses were PHP 12,450.00.");
+    expect(answer.audit.validationStatus).toBe("passed");
+    expect(provider.complete).toHaveBeenCalledTimes(3);
+    expect(vi.mocked(provider.complete).mock.calls[2]?.[1].toolChoice).toBe("none");
+  });
+
+  it("returns a deterministic fallback when the corrective answer is still invalid", async () => {
+    let calls = 0;
+    const provider: AssistantProvider = {
+      complete: vi.fn(async (): Promise<ProviderCompletion> => {
+        calls += 1;
+        if (calls === 1) return toolCompletion();
+        return {
+          model: "deepseek-v4-flash",
+          finishReason: "stop",
+          message: { role: "assistant", content: "You spent ₱99,999.00." },
+        };
       }),
-    ).resolves.toMatchObject({ content: "You spent ₱12,450 this month." });
-    expect(requests).toHaveLength(2);
-    const retryMessage = requests[1]?.messages.at(-1);
-    expect(retryMessage?.role).toBe("user");
-    expect(retryMessage?.content).toContain("Provide the final answer now in plain text");
+    };
+    const orchestrator = createAssistantOrchestrator(provider, createReader());
+
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-1",
+      [],
+      "How much did I spend in July 2026?",
+      identity,
+      policy,
+    );
+
+    expect(answer.content).toContain("couldn’t safely verify");
+    expect(answer.audit.validationStatus).toBe("fallback");
+    expect(provider.complete).toHaveBeenCalledTimes(3);
   });
 
   it("exposes no SQL, secret, or mutation tools", () => {
@@ -177,26 +242,17 @@ describe("assistant orchestration", () => {
     expect(names).toEqual([
       "get_account_balances",
       "get_period_summary",
-      "get_budget_status",
+      "get_spending_by_category",
+      "get_budget_vs_actual",
+      "detect_recurring_charges",
+      "detect_spending_anomalies",
+      "calculate_debt_payoff",
+      "calculate_savings_goal",
       "list_transactions",
       "list_categories",
     ]);
     expect(names.join(" ")).not.toMatch(/sql|secret|token|create|update|delete/i);
-    const balanceTool = assistantToolDefinitions.find(
-      (tool) => tool.function.name === "get_account_balances",
-    );
-    const periodTool = assistantToolDefinitions.find(
-      (tool) => tool.function.name === "get_period_summary",
-    );
-    expect(balanceTool?.function.parameters).toMatchObject({
-      properties: { accountName: { type: "string" } },
-      additionalProperties: false,
-    });
-    expect(periodTool?.function.parameters).toMatchObject({
-      properties: { accountName: { type: "string" } },
-      additionalProperties: false,
-    });
-    expect(JSON.stringify([balanceTool, periodTool])).not.toMatch(/accountId|tenantId/);
+    expect(JSON.stringify(assistantToolDefinitions)).not.toMatch(/accountId|tenantId/);
   });
 
   it("passes validated account names to the financial reader", async () => {

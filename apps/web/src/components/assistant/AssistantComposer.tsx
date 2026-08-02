@@ -38,7 +38,7 @@ export function AssistantComposer({
         value={value}
         maxLength={2_000}
         rows={2}
-        placeholder="Ask about your spending, balances, budgets, or trends…"
+        placeholder="Ask about spending, budgets, recurring charges, goals, or debt…"
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={handleKeyDown}
         disabled={busy}
@@ -53,7 +53,7 @@ export function AssistantComposer({
       </button>
       <div className="assistant-composer-note">
         <span>
-          <ShieldCheck size={13} aria-hidden="true" /> Read-only · Zoption calculates the amounts
+          <ShieldCheck size={13} aria-hidden="true" /> Read-only · Server-verified calculations
         </span>
         <small>{value.length}/2,000</small>
       </div>

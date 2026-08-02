@@ -23,8 +23,9 @@ The implementation includes:
 - Transaction CRUD, category management, filters, pagination, and CSV export.
 - Preview-first CSV/XLS/XLSX selection or drag-and-drop import with header detection, BPI/BDO/MariBank/Bank of America/JPMorgan presets, signed or Debit/Credit amounts, U.S. slash dates, bulk categorization, duplicate prevention, and atomic commit.
 - Editable monthly budgets, category spending, six-month trends, savings rate, and recurring-expense insights.
-- Manual account-balance snapshots with explicit as-of dates and credit-debt semantics.
-- A tenant-scoped, read-only AI Financial Assistant using DeepSeek v4 Flash, verified backend tools, one-time provider consent, and 90-day D1 chat retention.
+- Account balances calculated from recorded transaction ledgers, with explicit disclosure that they are not live bank balances and have no opening-balance snapshot.
+- A Goals & debt planning ledger with tenant-owned savings goals, debt inputs, deterministic target-date contributions, and avalanche/snowball projections.
+- A tenant-scoped, read-only AI Financial Assistant using DeepSeek v4 Flash, deterministic compliance/date policy, required backend tools, grounded-answer validation, versioned provider consent, response provenance, and 90-day chat plus sanitized-audit retention.
 - Tenant-scoped rate limiting for authenticated writes, imports, and assistant generation.
 - Accessible chart tables, keyboard-visible focus states, mobile layouts, and route-level code splitting.
 - Public Terms of Service, Privacy Policy, and Cookie Policy routes plus a shared legal footer.
@@ -102,6 +103,6 @@ scripts/           Non-mutating smoke checks and screenshot capture
 
 ## Privacy and scope
 
-Authenticated financial records and assistant history are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions or budgets. Assistant questions require one-time DeepSeek data-sharing consent, use allowlisted read-only tools, and expire after 90 days. Browser tracking consent is separate: no Analytics or Marketing provider is currently enabled, and future optional integrations must remain blocked until their category is explicitly granted. Zoption does not connect to banks and does not provide financial, tax, investment, or legal advice. Resolve every legal-policy `[TODO: fill in]` through business and legal review before publication. See [AI Financial Assistant](docs/assistant.md).
+Authenticated financial records, user-managed goals/debts, assistant history, and sanitized assistant audit snapshots are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions, budgets, goals, or debts. Assistant questions require current versioned DeepSeek data-sharing consent, use allowlisted read-only tools, and expire with their sanitized audit snapshots after the thread's 90-day retention window. Browser tracking consent is separate: no Analytics or Marketing provider is currently enabled, and future optional integrations must remain blocked until their category is explicitly granted. Zoption does not connect to banks and does not provide personalized financial, tax, investment, legal, retirement-allocation, or insurance advice. Remaining provider-retention and legal-policy claims require business/legal confirmation before publication. See [AI Financial Assistant](docs/assistant.md).
 
 Engineering evidence is summarized in the [test strategy](docs/test-strategy.md), [performance report](docs/performance.md), [deployment runbook](docs/deployment.md), and [case study](docs/case-study.md).

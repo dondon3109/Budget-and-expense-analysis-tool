@@ -14,7 +14,7 @@ The public landing page contains a static dashboard illustration only. It does n
 4. **First access bootstraps structure, not financial history.** The first authenticated request creates the personal tenant, mapping, Everyday account, and starter categories. It creates no transactions or budgets.
 5. **Deletion tombstones block re-bootstrap.** A permanent account-deletion marker is checked before tenant resolution. It stays after the tenant is purged so a retained but unexpired JWT cannot create a replacement workspace; normal private requests for that identity return `410 account_deleted`.
 6. **Tenant scope is mandatory.** Repositories require a tenant ID in every method signature. Route handlers obtain it only from authenticated Hono context; ownership is never accepted from request input.
-6. **Browser caches are user-scoped.** Every TanStack Query key begins with `user:<id>`, and the cache is cancelled and cleared when the authenticated identity changes or signs out.
+7. **Browser caches are user-scoped.** Every TanStack Query key begins with `user:<id>`, and the cache is cancelled and cleared when the authenticated identity changes or signs out.
 
 ## Other engineering decisions
 
@@ -31,8 +31,8 @@ The public landing page contains a static dashboard illustration only. It does n
 - Browser tracking consent remains separate from server-persisted DeepSeek assistant consent.
 - The pre-render theme bootstrap is a same-origin static script so the deployed `script-src 'self'` policy does not require inline-script exceptions.
 - Authenticated write, import, and assistant-generation throttles use the verified tenant as their client identity.
-- Account balances are manual snapshots with explicit as-of dates; transaction mutations do not reconcile them automatically.
-- The AI assistant calls DeepSeek directly from the Worker, exposes only fixed read-only financial tools, and stores only user/final-assistant messages for 90 days.
+- Account balances are calculated from recorded transaction ledger entries. They are not live bank balances and may omit activity before tracking began because there is no opening-balance snapshot.
+- The AI assistant calls DeepSeek directly from the Worker, exposes only fixed read-only financial tools, and retains messages plus sanitized run/tool audit snapshots with the thread for up to 90 days.
 - The first release is intentionally light-themed; a complete dark token set is a separate enhancement.
 
 ## Data conventions
@@ -56,9 +56,11 @@ Authenticated (`Authorization: Bearer <Supabase access token>`):
 - `GET /api/app/me` — verified identity and resolved D1 tenant.
 - `GET /api/app/dashboard?from=&to=` — tenant-scoped dashboard aggregates.
 - `GET/POST/PATCH/DELETE /api/app/transactions/*` — transaction search and CRUD.
-- `GET /api/app/accounts` and `PUT /api/app/accounts/:id/balance` — account metadata and manual balance snapshots.
-- `GET/PATCH /api/app/assistant/preferences` — one-time provider consent and retention settings.
+- `GET/POST/PATCH /api/app/accounts/*` — account metadata, creation, rename, and archive state; displayed balances are transaction-derived.
+- `GET/PATCH /api/app/assistant/preferences` — versioned provider consent, assistant identity, response detail, and coaching style.
 - `GET/POST/DELETE /api/app/assistant/threads/*` — tenant-owned chat history and read-only financial questions.
+- `GET/POST/PATCH/DELETE /api/app/goals/*` — tenant-owned savings goals.
+- `GET/POST/PATCH/DELETE /api/app/debts/*` — tenant-owned debt-planning records.
 - `GET/POST/PATCH /api/app/categories/*` — category management.
 - `POST /api/app/imports/preview` and `POST /api/app/imports/commit` — tenant-scoped CSV/Excel-derived preview and atomic commit with validated category overrides.
 - `GET/PUT /api/app/budgets` — monthly budget plans.
@@ -70,7 +72,7 @@ Browser origins are checked through the configured allow-list. CORS preflight al
 
 - JWT tests use generated local key pairs, not a live Supabase project or checked-in credentials.
 - API tests inject auth verification and tenant resolution while asserting that repositories receive authenticated scope.
-- Assistant tests inject a fake provider, prove the tenant remains server-owned, verify the fixed tool allowlist, and never require a live DeepSeek key.
+- Assistant tests inject a fake provider, prove the tenant remains server-owned, verify deterministic compliance/date policy, required-tool enforcement, backend-formatted money, answer validation and fallback, sanitized audits, data-quality limitations, and goal/debt projections without a live DeepSeek key.
 - Tenant bootstrap tests prove deterministic IDs and atomic idempotent creation.
 - Repository joins and mutations include tenant predicates, preventing guessed cross-tenant references.
 - Frontend tests verify route guards, bearer attachment, one refresh retry, final unauthorized sign-out, and user-scoped query keys.

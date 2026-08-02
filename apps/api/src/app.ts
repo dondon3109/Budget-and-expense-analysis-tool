@@ -21,7 +21,9 @@ import { billingRepository, type BillingRepository } from "./db/billing";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { loadCashflowTrend, loadDashboard } from "./db/dashboard";
+import { debtRepository, type DebtRepository } from "./db/debts";
 import { calendarEventRepository, type CalendarEventRepository } from "./db/events";
+import { financialGoalRepository, type FinancialGoalRepository } from "./db/goals";
 import { createImportRepository, type ImportRepository } from "./db/imports";
 import { platformAdminRepository, type PlatformAdminRepository } from "./db/platform-admin";
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
@@ -36,8 +38,10 @@ import { createAssistantRoutes } from "./routes/assistant";
 import { createBillingRoutes } from "./routes/billing";
 import { createBudgetRoutes } from "./routes/budgets";
 import { createCategoryRoutes } from "./routes/categories";
+import { createDebtRoutes } from "./routes/debts";
 import { createCalendarEventRoutes } from "./routes/events";
 import { createExportRoutes } from "./routes/exports";
+import { createFinancialGoalRoutes } from "./routes/goals";
 import { createImportRoutes } from "./routes/imports";
 import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
@@ -81,6 +85,8 @@ export interface AppOptions {
   billing?: BillingRepository;
   subscriptions?: SubscriptionRepository;
   events?: CalendarEventRepository;
+  goals?: FinancialGoalRepository;
+  debts?: DebtRepository;
   imports?: ImportRepository;
   rateLimiter?: RateLimiter;
   authVerifier?: AuthVerifier;
@@ -104,6 +110,8 @@ export function createApp(options: AppOptions = {}) {
   const billingStore = options.billing ?? billingRepository;
   const subscriptionStore = options.subscriptions ?? subscriptionRepository;
   const eventStore = options.events ?? calendarEventRepository;
+  const goalStore = options.goals ?? financialGoalRepository;
+  const debtStore = options.debts ?? debtRepository;
   const importStore = options.imports ?? createImportRepository(billingStore);
   const rateLimiter = options.rateLimiter ?? d1RateLimiter;
   const authVerifier = options.authVerifier ?? supabaseAuthVerifier;
@@ -121,6 +129,8 @@ export function createApp(options: AppOptions = {}) {
           budgets: budgetStore,
           categories: categoryStore,
           transactions: transactionStore,
+          goals: goalStore,
+          debts: debtStore,
           dashboardLoader,
         }),
       ),
@@ -356,6 +366,8 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/billing", createBillingRoutes(billingStore));
   app.route("/api/app/subscriptions", createSubscriptionRoutes(subscriptionStore));
   app.route("/api/app/events", createCalendarEventRoutes(eventStore));
+  app.route("/api/app/goals", createFinancialGoalRoutes(goalStore));
+  app.route("/api/app/debts", createDebtRoutes(debtStore));
   app.route("/api/app/imports", createImportRoutes(importStore));
   app.route("/api/app/exports", createExportRoutes(transactionStore, billingStore));
 

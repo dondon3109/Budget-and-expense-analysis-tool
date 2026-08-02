@@ -163,6 +163,11 @@ export const transactions = sqliteTable(
     kind: text("kind", { enum: ["income", "expense", "transfer"] }).notNull(),
     transferGroupId: text("transfer_group_id"),
     importFingerprint: text("import_fingerprint"),
+    sourceKind: text("source_kind", { enum: ["manual", "import"] })
+      .notNull()
+      .default("manual"),
+    importId: text("import_id"),
+    importRowNumber: integer("import_row_number"),
     notes: text("notes"),
     ...timestamps,
   },
@@ -171,6 +176,7 @@ export const transactions = sqliteTable(
     index("transactions_tenant_category_idx").on(table.tenantId, table.categoryId),
     index("transactions_tenant_account_idx").on(table.tenantId, table.accountId),
     index("transactions_tenant_transfer_group_idx").on(table.tenantId, table.transferGroupId),
+    index("transactions_tenant_import_idx").on(table.tenantId, table.importId),
     uniqueIndex("transactions_tenant_fingerprint_unique").on(
       table.tenantId,
       table.importFingerprint,
@@ -246,6 +252,54 @@ export const budgets = sqliteTable(
   ],
 );
 
+export const financialGoals = sqliteTable(
+  "financial_goals",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    targetAmountMinor: integer("target_amount_minor").notNull(),
+    currentAmountMinor: integer("current_amount_minor").notNull().default(0),
+    targetDate: text("target_date").notNull(),
+    status: text("status", { enum: ["active", "paused", "completed"] })
+      .notNull()
+      .default("active"),
+    ...timestamps,
+  },
+  (table) => [
+    index("financial_goals_tenant_status_idx").on(table.tenantId, table.status),
+    uniqueIndex("financial_goals_tenant_name_unique").on(table.tenantId, table.name),
+  ],
+);
+
+export const debts = sqliteTable(
+  "debts",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type", {
+      enum: ["credit_card", "personal_loan", "auto_loan", "mortgage", "other"],
+    }).notNull(),
+    balanceMinor: integer("balance_minor").notNull(),
+    aprBasisPoints: integer("apr_basis_points").notNull(),
+    minimumPaymentMinor: integer("minimum_payment_minor").notNull(),
+    balanceAsOf: text("balance_as_of").notNull(),
+    status: text("status", { enum: ["active", "paid"] })
+      .notNull()
+      .default("active"),
+    ...timestamps,
+  },
+  (table) => [
+    index("debts_tenant_status_idx").on(table.tenantId, table.status),
+    uniqueIndex("debts_tenant_name_unique").on(table.tenantId, table.name),
+  ],
+);
+
 export const assistantThreads = sqliteTable(
   "assistant_threads",
   {
@@ -287,6 +341,7 @@ export const assistantMessages = sqliteTable(
     promptTokens: integer("prompt_tokens"),
     completionTokens: integer("completion_tokens"),
     finishReason: text("finish_reason"),
+    responseMetadataJson: text("response_metadata_json"),
     createdAt: text("created_at")
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -309,11 +364,72 @@ export const assistantPreferences = sqliteTable("assistant_preferences", {
     .primaryKey()
     .references(() => tenants.id, { onDelete: "cascade" }),
   consentedAt: text("consented_at"),
+  consentVersion: integer("consent_version").notNull().default(0),
   assistantName: text("assistant_name"),
   userPreferredName: text("user_preferred_name"),
+  responseDetail: text("response_detail", { enum: ["concise", "standard"] })
+    .notNull()
+    .default("concise"),
+  coachingStyle: text("coaching_style", { enum: ["gentle", "direct"] })
+    .notNull()
+    .default("gentle"),
   retentionDays: integer("retention_days").notNull().default(90),
   ...timestamps,
 });
+
+export const assistantRuns = sqliteTable(
+  "assistant_runs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => assistantThreads.id, { onDelete: "cascade" }),
+    userMessageId: text("user_message_id").notNull(),
+    assistantMessageId: text("assistant_message_id"),
+    promptVersion: text("prompt_version").notNull(),
+    compliancePolicyJson: text("compliance_policy_json").notNull(),
+    resolvedPeriodJson: text("resolved_period_json"),
+    requiredToolGroupsJson: text("required_tool_groups_json").notNull(),
+    providerCallCount: integer("provider_call_count").notNull().default(0),
+    validationStatus: text("validation_status", {
+      enum: ["not_required", "passed", "fallback"],
+    }).notNull(),
+    status: text("status", { enum: ["completed", "failed"] }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index("assistant_runs_tenant_thread_idx").on(table.tenantId, table.threadId),
+    uniqueIndex("assistant_runs_user_message_unique").on(table.userMessageId),
+  ],
+);
+
+export const assistantToolCalls = sqliteTable(
+  "assistant_tool_calls",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => assistantRuns.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    toolName: text("tool_name").notNull(),
+    argumentsJson: text("arguments_json").notNull(),
+    resultJson: text("result_json"),
+    errorCode: text("error_code"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("assistant_tool_calls_tenant_run_idx").on(table.tenantId, table.runId),
+    uniqueIndex("assistant_tool_calls_run_sequence_unique").on(table.runId, table.sequence),
+  ],
+);
 
 export const imports = sqliteTable(
   "imports",

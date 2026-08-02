@@ -5,6 +5,7 @@ import {
   List,
   LogOut,
   Menu,
+  Milestone,
   PiggyBank,
   Repeat2,
   Settings,
@@ -34,6 +35,7 @@ const navItems = [
   { label: "Transactions", icon: List, to: "/app/transactions" },
   { label: "Import", icon: FileUp, to: "/app/import" },
   { label: "Budgets", icon: PiggyBank, to: "/app/budgets" },
+  { label: "Goals & debt", icon: Milestone, to: "/app/plan" },
   { label: "Subscriptions", icon: Repeat2, to: "/app/subscriptions" },
 ];
 

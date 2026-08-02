@@ -57,6 +57,7 @@ describe("AppShell", () => {
       "Transactions",
       "Import",
       "Budgets",
+      "Goals & debt",
       "Subscriptions",
     ]);
     expect(screen.getByRole("link", { name: "Subscriptions" })).toHaveClass("current");
@@ -115,6 +116,7 @@ describe("AppShell", () => {
       "Transactions",
       "Import",
       "Budgets",
+      "Goals & debt",
       "Subscriptions",
     ]);
   });

@@ -30,6 +30,7 @@ export interface AssistantToolDefinition {
 export interface ProviderCompletionRequest {
   messages: AssistantProviderMessage[];
   tools: AssistantToolDefinition[];
+  toolChoice?: "auto" | "required" | "none";
   signal?: AbortSignal;
 }
 

@@ -1,12 +1,12 @@
-import type { AssistantMessage } from "@zoption/shared";
-import { Bot, Sparkles, UserRound } from "lucide-react";
+import type { AssistantMessage, AssistantSourceMetadata } from "@zoption/shared";
+import { Bot, Database, Sparkles, UserRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 const QUICK_PROMPTS = [
   "How much did I spend this month?",
-  "How are my budgets doing?",
-  "What are my current account balances?",
-  "Show my recent expenses.",
+  "Why did I overspend last month?",
+  "Which debt should I pay first?",
+  "How much should I save monthly for my goal?",
 ];
 
 interface AssistantConversationProps {
@@ -22,6 +22,106 @@ function messageTime(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function formatPeriod(period: { from: string; to: string }): string {
+  if (period.from === period.to) return formatDate(period.from);
+  return `${formatDate(period.from)} – ${formatDate(period.to)}`;
+}
+
+function sourceTypeLabel(source: AssistantSourceMetadata): string {
+  if (source.recordCount !== undefined) {
+    const label = {
+      transactions: "transaction",
+      budgets: "budget record",
+      accounts: "account",
+      goals: "goal",
+      debts: "debt",
+    }[source.sourceType];
+    return `${source.recordCount} ${label}${source.recordCount === 1 ? "" : "s"}`;
+  }
+  return source.label.toLocaleLowerCase("en-PH");
+}
+
+function sourceName(source: AssistantSourceMetadata): string {
+  return {
+    transactions: "Transactions",
+    budgets: "Budgets",
+    accounts: "Accounts",
+    goals: "Goals",
+    debts: "Debts",
+  }[source.sourceType];
+}
+
+function sourceSummary(source: AssistantSourceMetadata): string {
+  const parts = [sourceTypeLabel(source)];
+  if (source.period) parts.push(formatPeriod(source.period));
+  return `Based on ${parts.join(" · ")}`;
+}
+
+function sourceFilters(source: AssistantSourceMetadata): string[] {
+  if (!source.filters) return [];
+  return [
+    source.filters.accountName ? `Account: ${source.filters.accountName}` : undefined,
+    source.filters.categoryName ? `Category: ${source.filters.categoryName}` : undefined,
+    source.filters.goalName ? `Goal: ${source.filters.goalName}` : undefined,
+    source.filters.debtNames?.length ? `Debts: ${source.filters.debtNames.join(", ")}` : undefined,
+  ].filter((item): item is string => Boolean(item));
+}
+
+function AssistantMessageEvidence({ message }: { message: AssistantMessage }) {
+  const metadata = message.metadata;
+  if (!metadata) return null;
+  const primarySource = metadata.sources[0];
+
+  return (
+    <div className="assistant-message-evidence">
+      {primarySource && (
+        <p className="assistant-source-line">
+          <Database size={12} aria-hidden="true" /> {sourceSummary(primarySource)}
+        </p>
+      )}
+      {metadata.sources.length > 0 && (
+        <details className="assistant-data-used">
+          <summary>Data used</summary>
+          <div>
+            {metadata.sources.map((source, index) => (
+              <section key={`${source.label}-${index}`}>
+                <strong>{source.label}</strong>
+                <ul>
+                  {source.period && <li>Requested period: {formatPeriod(source.period)}</li>}
+                  {source.baselinePeriod && (
+                    <li>Comparison baseline: {formatPeriod(source.baselinePeriod)}</li>
+                  )}
+                  <li>Source: {sourceName(source)}</li>
+                  {source.recordCount !== undefined && <li>Records: {source.recordCount}</li>}
+                  {sourceFilters(source).map((filter) => (
+                    <li key={filter}>{filter}</li>
+                  ))}
+                  <li>Data quality: {source.dataQualityStatus}</li>
+                  {source.limitations.map((limitation) => (
+                    <li key={limitation}>{limitation}</li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </details>
+      )}
+      {metadata.disclaimer && (
+        <p className="assistant-topic-disclaimer">{metadata.disclaimer.text}</p>
+      )}
+    </div>
+  );
 }
 
 export function AssistantConversation({
@@ -45,9 +145,11 @@ export function AssistantConversation({
         <span aria-hidden="true">
           <Sparkles size={25} />
         </span>
-        <p className="eyebrow">Verified answers from your records</p>
+        <p className="eyebrow">Evidence-led answers from your records</p>
         <h2>What would you like to understand?</h2>
-        <p>Ask about balances, spending, income, budgets, categories, transactions, or trends.</p>
+        <p>
+          Ask about balances, cash flow, budgets, recurring charges, goals, or debt payoff planning.
+        </p>
         <div className="assistant-quick-prompts">
           {QUICK_PROMPTS.map((prompt) => (
             <button type="button" key={prompt} onClick={() => onPrompt(prompt)}>
@@ -72,6 +174,7 @@ export function AssistantConversation({
               <time dateTime={message.createdAt}>{messageTime(message.createdAt)}</time>
             </div>
             <p>{message.content}</p>
+            {message.role === "assistant" && <AssistantMessageEvidence message={message} />}
             {message.status === "failed" && <small>Not sent. Try asking again.</small>}
           </div>
         </article>

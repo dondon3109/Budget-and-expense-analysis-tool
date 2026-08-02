@@ -156,6 +156,21 @@ function createReader(
     export: vi.fn(async () => [transaction]),
   };
   const dashboardLoader = vi.fn(async () => options.summary ?? dashboardSummary);
+  const analysisLoader = vi.fn(async () => [
+    {
+      id: transaction.id,
+      date: transaction.date,
+      description: transaction.description,
+      amountMinor: transaction.amountMinor,
+      kind: transaction.kind,
+      categoryId: transaction.categoryId,
+      categoryName: transaction.categoryName,
+      accountId: transaction.accountId,
+      accountName: transaction.accountName,
+      sourceKind: "manual" as const,
+      importId: null,
+    },
+  ]);
   return {
     reader: createFinancialReader({
       accounts,
@@ -163,6 +178,7 @@ function createReader(
       categories,
       transactions,
       dashboardLoader,
+      analysisLoader,
     }),
     accounts,
     dashboardLoader,
@@ -177,14 +193,14 @@ describe("assistant financial reader money formatting", () => {
     const budget = await reader.getBudgetStatus(context, "2026-07-01");
     const transactions = await reader.listTransactions(context, { page: 1 });
 
-    expect(balances).toMatchObject({
+    expect(balances.data).toMatchObject({
       overallBalance: "PHP 1,690.56",
       items: [
         { name: "Savings", balance: "PHP 1,234.56" },
         { name: "Credit card", balance: "PHP 456.00" },
       ],
     });
-    expect(period).toMatchObject({
+    expect(period.data).toMatchObject({
       income: "PHP 1,000.00",
       expenses: "PHP 696.00",
       net: "PHP 304.00",
@@ -197,15 +213,18 @@ describe("assistant financial reader money formatting", () => {
       },
       spendingByCategory: [{ amount: "PHP 696.00" }],
       monthlyTrend: [{ income: "PHP 1,000.00", expenses: "PHP 696.00" }],
-      recurringExpenses: [{ average: "PHP 123.45" }],
     });
-    expect(budget).toMatchObject({
+    expect(budget.data).toMatchObject({
       totalLimit: "PHP 1,000.00",
       totalSpent: "PHP 696.00",
       remaining: "PHP 304.00",
-      items: [{ limit: "PHP 1,000.00", spent: "PHP 696.00", remaining: "PHP 304.00" }],
+      months: [
+        {
+          items: [{ limit: "PHP 1,000.00", spent: "PHP 696.00", remaining: "PHP 304.00" }],
+        },
+      ],
     });
-    expect(transactions).toMatchObject({ items: [{ amount: "PHP -696.00" }] });
+    expect(transactions.data).toMatchObject({ items: [{ amount: "PHP -696.00" }] });
     expect(JSON.stringify({ balances, period, budget, transactions })).not.toContain("Minor");
   });
 
@@ -228,7 +247,7 @@ describe("assistant financial reader money formatting", () => {
 
     const period = await reader.getPeriodSummary(context, summary.period);
 
-    expect(period).toMatchObject({
+    expect(period.data).toMatchObject({
       income: "PHP 1,000.01",
       expenses: "PHP 500.00",
       net: "PHP 500.01",
@@ -250,7 +269,7 @@ describe("assistant financial reader account filters", () => {
 
     const result = await reader.getAccountBalances(context, { accountName: "sAvInGs" });
 
-    expect(result).toMatchObject({
+    expect(result.data).toMatchObject({
       accountName: "Savings",
       filterMatched: true,
       overallBalance: "PHP 1,234.56",
@@ -269,7 +288,7 @@ describe("assistant financial reader account filters", () => {
       accountName: "SAVINGS",
     });
 
-    expect(result).toMatchObject({
+    expect(result.data).toMatchObject({
       accountName: "Savings",
       filterMatched: true,
       expenses: "PHP 696.00",
@@ -297,7 +316,7 @@ describe("assistant financial reader account filters", () => {
       accountName: "bank account",
     });
 
-    expect(result).toMatchObject({ accountName: "Bank", filterMatched: true });
+    expect(result.data).toMatchObject({ accountName: "Bank", filterMatched: true });
     expect(dashboardLoader).toHaveBeenCalledWith(
       env,
       "tenant-1",
@@ -327,7 +346,7 @@ describe("assistant financial reader account filters", () => {
       accountName: "bank account",
     });
 
-    expect(result).toMatchObject({ accountName: "Bank Account", filterMatched: true });
+    expect(result.data).toMatchObject({ accountName: "Bank Account", filterMatched: true });
     expect(dashboardLoader).toHaveBeenCalledWith(
       env,
       "tenant-1",
@@ -339,17 +358,16 @@ describe("assistant financial reader account filters", () => {
   it("returns no balances or totals when the named account is not in the tenant", async () => {
     const { reader, dashboardLoader } = createReader();
 
-    await expect(reader.getAccountBalances(context, { accountName: "Unknown" })).resolves.toEqual({
-      accountName: "Unknown",
-      filterMatched: false,
-    });
+    await expect(
+      reader.getAccountBalances(context, { accountName: "Unknown" }),
+    ).resolves.toMatchObject({ data: { accountName: "Unknown", filterMatched: false } });
     await expect(
       reader.getPeriodSummary(context, {
         from: "2026-07-01",
         to: "2026-07-31",
         accountName: "Unknown",
       }),
-    ).resolves.toEqual({ accountName: "Unknown", filterMatched: false });
+    ).resolves.toMatchObject({ data: { accountName: "Unknown", filterMatched: false } });
     expect(dashboardLoader).not.toHaveBeenCalled();
   });
 });

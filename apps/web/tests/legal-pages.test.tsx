@@ -34,7 +34,9 @@ describe("legal pages", () => {
       screen.getByText(/does not currently connect directly to your bank/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/filtered transaction CSV feature/i)).toBeInTheDocument();
-    expect(screen.getByText(/separate consent/i)).toBeInTheDocument();
+    expect(screen.getByText(/separate, versioned consent/i)).toBeInTheDocument();
+    expect(screen.getByText(/calculated from the transactions recorded/i)).toBeInTheDocument();
+    expect(screen.getByText(/sanitized audit snapshots/i)).toBeInTheDocument();
     expect(screen.getByText(/through PayPal/i)).toBeInTheDocument();
     expect(screen.getByText(/renew automatically/i)).toBeInTheDocument();
     expect(screen.getByText(/verified PayPal webhook notification/i)).toBeInTheDocument();
@@ -55,6 +57,8 @@ describe("legal pages", () => {
     expect(screen.getByText(/public storage link/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Full payment-card credentials/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/minimal verified-webhook event metadata/i)).toBeInTheDocument();
+    expect(screen.getByText(/transaction-derived balances/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/sanitized audit/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/not a complete account-data archive/i)).toBeInTheDocument();
     expect(screen.getByText(/includes an in-app account-deletion control/i)).toBeInTheDocument();
   });

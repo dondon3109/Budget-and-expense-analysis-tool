@@ -68,5 +68,6 @@ Status: implemented; deployment verification remains.
 - [ ] Configure hosted Supabase callback URLs and environment values.
 - [ ] Complete preview and production two-user isolation checks.
 - [ ] Rehearse Pages, Worker, and D1 rollback.
-- [ ] Add complete account-data export, account deletion, and formal retention/privacy controls.
+- [x] Add coordinated account deletion and 90-day assistant message/audit retention controls.
+- [ ] Add complete account-data export and complete final provider-retention/privacy legal review.
 - [ ] Add field performance monitoring and review Worker logs after normal traffic.

@@ -1,3 +1,4 @@
+import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
 import type {
   AssistantMessageInput,
   AssistantMessageListQuery,
@@ -15,6 +16,7 @@ import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { DeepSeekError, type DeepSeekErrorKind, type DeepSeekFailureReason } from "./deepseek";
 import type { AssistantOrchestrator } from "./orchestrator";
+import { responseMetadataForPolicy, serializeTurnPolicy } from "./turn-policy";
 
 export interface AssistantService {
   getPreferences(env: Bindings, tenantId: string): Promise<AssistantPreferences>;
@@ -115,7 +117,10 @@ export function createAssistantService(
     tenantId: string,
   ): Promise<AssistantPreferences & { assistantName: string; userPreferredName: string }> {
     const preferences = await repository.getPreferences(env, tenantId);
-    if (!preferences.consentedAt) {
+    if (
+      !preferences.consentedAt ||
+      preferences.consentVersion !== CURRENT_ASSISTANT_CONSENT_VERSION
+    ) {
       throw new HttpError(
         409,
         "assistant_consent_required",
@@ -144,16 +149,48 @@ export function createAssistantService(
     if (start.duplicate) return start.duplicate;
 
     try {
+      const policy = await orchestrator.plan(env, tenantId, start.history, input.message);
+      if (policy.deterministicResponse) {
+        const responseMetadata = responseMetadataForPolicy(policy);
+        return await repository.completeTurn(env, tenantId, start, policy.deterministicResponse, {
+          model: "zoption-turn-policy",
+          finishReason: "policy",
+          responseMetadata,
+          audit: {
+            promptVersion: responseMetadata.promptVersion,
+            compliancePolicyJson: serializeTurnPolicy(policy),
+            ...(policy.resolvedPeriod
+              ? { resolvedPeriodJson: JSON.stringify(policy.resolvedPeriod) }
+              : {}),
+            requiredToolGroupsJson: JSON.stringify(policy.requiredToolGroups),
+            providerCallCount: 0,
+            validationStatus: "not_required",
+            toolCalls: [],
+          },
+        });
+      }
+
       await billing?.consumeUsage(env, tenantId, "assistant_question");
-      const answer = await orchestrator.answer(env, tenantId, start.history, input.message, {
-        assistantName: preferences.assistantName,
-        userPreferredName: preferences.userPreferredName,
-      });
+      const answer = await orchestrator.answer(
+        env,
+        tenantId,
+        start.history,
+        input.message,
+        {
+          assistantName: preferences.assistantName,
+          userPreferredName: preferences.userPreferredName,
+          responseDetail: preferences.responseDetail,
+          coachingStyle: preferences.coachingStyle,
+        },
+        policy,
+      );
       return await repository.completeTurn(env, tenantId, start, answer.content, {
         model: answer.model,
         promptTokens: answer.promptTokens,
         completionTokens: answer.completionTokens,
         finishReason: answer.finishReason,
+        responseMetadata: answer.responseMetadata,
+        audit: answer.audit,
       });
     } catch (error) {
       if (error instanceof DeepSeekError) reportProviderFailure(error, reporter);
@@ -164,10 +201,11 @@ export function createAssistantService(
 
   return {
     getPreferences: (env, tenantId) => repository.getPreferences(env, tenantId),
-    updatePreferences: (env, tenantId, input) =>
-      "consented" in input
-        ? repository.grantConsent(env, tenantId)
-        : repository.setAssistantIdentity(env, tenantId, input),
+    updatePreferences: (env, tenantId, input) => {
+      if ("consented" in input) return repository.grantConsent(env, tenantId);
+      if ("assistantName" in input) return repository.setAssistantIdentity(env, tenantId, input);
+      return repository.setResponsePreferences(env, tenantId, input);
+    },
     listThreads: (env, tenantId, query) => repository.listThreads(env, tenantId, query),
     listMessages: (env, tenantId, threadId, query) =>
       repository.listMessages(env, tenantId, threadId, query),

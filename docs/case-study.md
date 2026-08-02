@@ -24,4 +24,4 @@ The measured landing build is held to Lighthouse performance, accessibility, bes
 
 Zoption now provides authenticated transaction CRUD, account filtering, recategorization, mixed-row import, budgets, recurring/savings insights, dashboard recalculation, and export in isolated personal workspaces. New users get an intentional onboarding state instead of fictional records. Public visitors can understand the product and choose signup or login without exposing a shared financial dataset.
 
-Separate preview and production Pages, Worker, and D1 resources are documented for deployment. Bank connections, multiple currencies, financial advice, complete account-data export, and formal retention/deletion controls remain outside the current scope.
+Separate preview and production Pages, Worker, and D1 resources are documented for deployment. Coordinated account deletion and 90-day assistant message/audit retention are implemented. Bank connections, multiple currencies, personalized financial advice, complete account-data export, and final provider-retention/legal review remain outside the current scope.

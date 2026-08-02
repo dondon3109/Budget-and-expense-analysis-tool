@@ -25,7 +25,7 @@ export function hasExplicitPeriod(value: string): boolean {
   );
 }
 
-function isPeriodBoundAggregateRequest(message: string): boolean {
+export function isPeriodBoundAggregateRequest(message: string): boolean {
   return AGGREGATE_TERM_PATTERN.test(message) && AGGREGATE_REQUEST_PATTERN.test(message);
 }
 
@@ -37,7 +37,8 @@ function hasRecentPeriodContext(history: AssistantHistoryMessage[]): boolean {
       break;
     }
   }
-  if (lastAssistantIndex < 0 || !hasExplicitPeriod(history[lastAssistantIndex]!.content)) return false;
+  if (lastAssistantIndex < 0 || !hasExplicitPeriod(history[lastAssistantIndex]!.content))
+    return false;
 
   for (let index = lastAssistantIndex - 1; index >= 0; index -= 1) {
     const item = history[index];

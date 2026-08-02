@@ -109,9 +109,12 @@ describe("assistant UI", () => {
     });
     apiMocks.getAssistantPreferences.mockReset().mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
+      consentVersion: 2,
       retentionDays: 90,
       assistantName: "Aster",
       userPreferredName: "Sam",
+      responseDetail: "concise",
+      coachingStyle: "gentle",
     });
     apiMocks.updateAssistantIdentity.mockReset();
     apiMocks.getAssistantThreads.mockReset().mockResolvedValue({
@@ -150,8 +153,31 @@ describe("assistant UI", () => {
     const accept = vi.fn();
     render(<AssistantConsent accepting={false} onAccept={accept} />);
     expect(screen.getByText(/only the financial data needed/i)).toBeInTheDocument();
+    expect(screen.getByText(/sanitized audit snapshots are kept/i)).toBeInTheDocument();
+    expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
     expect(accept).toHaveBeenCalledOnce();
+  });
+
+  it("requires renewed consent when the stored disclosure version is stale", async () => {
+    apiMocks.getAssistantPreferences.mockResolvedValueOnce({
+      consentedAt: "2026-07-27T10:00:00.000Z",
+      consentVersion: 1,
+      retentionDays: 90,
+      assistantName: "Aster",
+      userPreferredName: "Sam",
+      responseDetail: "concise",
+      coachingStyle: "gentle",
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: /Your data, your boundaries/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Your MONEY, explained." }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders model output as text instead of HTML", () => {
@@ -174,6 +200,51 @@ describe("assistant UI", () => {
     );
     expect(screen.getByText(/<img src=x/)).toBeInTheDocument();
     expect(document.querySelector("img")).toBeNull();
+  });
+
+  it("renders trusted source details and topic disclaimers from response metadata", () => {
+    render(
+      <AssistantConversation
+        assistantName="Aster"
+        messages={[
+          {
+            id: "assistant-1",
+            threadId: "thread-1",
+            role: "assistant",
+            content: "Your recorded expenses were PHP 1,234.56.",
+            status: "completed",
+            metadata: {
+              promptVersion: "expert-v1",
+              compliance: { posture: "restricted_topic_education", topics: ["investment"] },
+              resolvedPeriod: { from: "2026-07-01", to: "2026-07-31" },
+              disclaimer: {
+                text: "General investment education only. For advice tailored to you, consult a licensed financial professional.",
+                topics: ["investment"],
+              },
+              sources: [
+                {
+                  label: "Period summary",
+                  sourceType: "transactions",
+                  period: { from: "2026-07-01", to: "2026-07-31" },
+                  recordCount: 4,
+                  dataQualityStatus: "limited",
+                  limitations: ["Some transactions are uncategorized."],
+                },
+              ],
+            },
+            createdAt: "2026-07-27T10:00:00.000Z",
+          },
+        ]}
+        loading={false}
+        onPrompt={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText(/Based on 4 transactions/)).toBeInTheDocument();
+    expect(screen.getByText(/General investment education only/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Data used"));
+    expect(screen.getByText("Data quality: limited")).toBeInTheDocument();
+    expect(screen.getByText("Some transactions are uncategorized.")).toBeInTheDocument();
   });
 
   it("uses Enter to send and Shift+Enter for a new line", () => {
@@ -200,8 +271,11 @@ describe("assistant UI", () => {
       await screen.findByRole("heading", { name: "Your MONEY, explained." }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Ask anything. Zoption already knows the numbers."),
+      screen.getByText(
+        "Ask about your records, budgets, goals, and debt. Zoption verifies the numbers.",
+      ),
     ).toBeInTheDocument();
+    expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     expect(screen.getByText("MONEY")).toHaveClass("assistant-heading-emphasis");
     const usage = await screen.findByRole("progressbar", {
       name: "Free plan AI questions this month",
@@ -288,15 +362,21 @@ describe("assistant UI", () => {
   it("requires assistant and user names after consent, then displays the saved assistant name", async () => {
     apiMocks.getAssistantPreferences.mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
+      consentVersion: 2,
       retentionDays: 90,
       assistantName: null,
       userPreferredName: null,
+      responseDetail: "concise",
+      coachingStyle: "gentle",
     });
     apiMocks.updateAssistantIdentity.mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
+      consentVersion: 2,
       retentionDays: 90,
       assistantName: "Aster",
       userPreferredName: "Sam",
+      responseDetail: "concise",
+      coachingStyle: "gentle",
     });
     renderPage();
 

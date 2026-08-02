@@ -257,8 +257,8 @@ function insertStatement(
 ) {
   return env.DB.prepare(
     `INSERT INTO transactions (
-      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, transfer_group_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, transfer_group_id, source_kind
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')`,
   ).bind(
     values.id,
     values.tenantId,

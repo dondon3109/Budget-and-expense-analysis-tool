@@ -46,9 +46,11 @@ export function TermsOfServicePage() {
         <h2>4. Your financial workspace</h2>
         <p>
           Zoption lets you manually enter financial records and import CSV, XLS, or XLSX files. It
-          does not currently connect directly to your bank. You decide what to add and remain
-          responsible for reviewing imported rows, categories, dates, amounts, balances, and balance
-          snapshots for accuracy.
+          does not currently connect directly to your bank. Account balances are calculated from the
+          transactions recorded in Zoption; they are not live bank balances and may omit activity
+          from before you began tracking. You decide what to add and remain responsible for
+          reviewing imported rows, categories, dates, amounts, calculated balances, savings goals,
+          and debt planning inputs for accuracy.
         </p>
         <p>
           Available exports are limited to the current filtered transaction CSV feature. Zoption
@@ -68,16 +70,21 @@ export function TermsOfServicePage() {
       <section>
         <h2>5. AI financial assistant</h2>
         <p>
-          The optional assistant requires separate consent. When enabled, Zoption sends your
-          questions, bounded chat history, and financial information needed to answer a request to
-          the API through Zoption&apos;s server. The assistant is read-only: it does not create,
-          edit, or delete your financial records.
+          The optional assistant requires separate, versioned consent. When enabled, Zoption sends
+          your question, bounded chat history, trusted policy and date context, approved tool
+          definitions, and tenant-scoped financial results needed to answer the request to the AI
+          provider through Zoption&apos;s server. Those results may use recorded transactions,
+          calculated balances, budgets, categories, savings goals, debt inputs, and deterministic
+          planning projections. The assistant is read-only: it does not create, edit, or delete your
+          financial records.
         </p>
         <p>
-          AI output can be incomplete or wrong. It is for general informational support and is not
-          financial, investment, tax, accounting, or legal advice. Verify important decisions with
-          qualified professionals. Zoption assistant conversations are designed to expire after 90
-          days, subject to operational and backup limitations described in the Privacy Policy.
+          AI output and planning projections can be incomplete or wrong. They provide educational
+          budgeting and financial-wellness information, not personalized financial, investment, tax,
+          accounting, legal, retirement-allocation, or insurance advice. Verify important decisions
+          and consult an appropriately qualified professional when needed. Zoption assistant
+          conversations and their compact sanitized audit snapshots are designed to expire together
+          after the thread&apos;s 90-day retention window, subject to the Privacy Policy.
         </p>
       </section>
 

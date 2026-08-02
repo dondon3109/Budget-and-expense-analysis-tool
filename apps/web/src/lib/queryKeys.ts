@@ -40,6 +40,10 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "assistant", "threads", threadId, "messages"] as const,
   budgets: (workspace: AuthenticatedWorkspace, month: string) =>
     [...queryKeys.workspace(workspace), "budgets", month] as const,
+  financialGoals: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "financial-goals"] as const,
+  debts: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "debts"] as const,
   subscriptions: (workspace: AuthenticatedWorkspace, month: string) =>
     [...queryKeys.workspace(workspace), "subscriptions", month] as const,
   allSubscriptions: (workspace: AuthenticatedWorkspace) =>

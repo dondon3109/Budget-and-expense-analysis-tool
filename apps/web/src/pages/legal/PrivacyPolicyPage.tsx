@@ -33,8 +33,10 @@ export function PrivacyPolicyPage() {
             sensitive image.
           </li>
           <li>
-            <strong>Financial workspace:</strong> manually entered or imported accounts, balance
-            snapshots, transactions, categories, budgets, subscriptions, and calendar records.
+            <strong>Financial workspace:</strong> manually entered or imported accounts,
+            transaction-derived balances, transactions, categories, budgets, subscriptions, calendar
+            records, savings goals, and debt-planning records such as balances, APRs, minimum
+            payments, as-of dates, target amounts, target dates, and statuses.
           </li>
           <li>
             <strong>Imports and exports:</strong> filenames, mappings, preview and validation
@@ -47,8 +49,10 @@ export function PrivacyPolicyPage() {
             event metadata needed to process an event and avoid processing it twice.
           </li>
           <li>
-            <strong>Assistant:</strong> consent state, questions, bounded conversation history, and
-            financial tool output needed to answer an enabled assistant request.
+            <strong>Assistant:</strong> versioned consent state, display-name preferences, response
+            and coaching preferences, questions, bounded conversation history, final responses,
+            source and data-quality metadata, and compact sanitized run/tool audit snapshots used to
+            trace enabled assistant requests.
           </li>
           <li>
             <strong>Preferences and operations:</strong> theme and cookie/storage choices, request
@@ -119,8 +123,9 @@ export function PrivacyPolicyPage() {
           </li>
           <li>
             <strong>DeepSeek</strong> only for the separately enabled AI assistant. Zoption may send
-            questions, bounded history, and relevant financial tool output to the DeepSeek API
-            through the server.
+            the current question, bounded prior chat, assistant and user display-name profile,
+            trusted policy and date context, approved tool definitions, and only the tenant-scoped
+            tool results needed for the answer through Zoption&apos;s server.
           </li>
           <li>
             <strong>PayPal</strong> for subscription approval and payment processing. PayPal handles
@@ -150,22 +155,18 @@ export function PrivacyPolicyPage() {
         </p>
         <p>
           We use reasonable administrative and technical safeguards designed to protect personal
-          data against unauthorized access, loss, alteration, disclosure, or misuse. Zoption uses
-          Supabase-hosted infrastructure, which encrypts project data at rest and supports encrypted
-          connections in transit. We use Row Level Security policies to restrict access to database
-          records according to the authenticated user and the permissions assigned to them. Our
-          database provider performs automated backups according to the backup availability and
-          retention applicable to our service plan. These backups may cover database records but may
-          not include all files, storage objects, external services, or information stored outside
-          the database. Backups are intended for service recovery and may not allow restoration of
-          individual records or user accounts. We maintain a documented process for assessing and
-          responding to suspected security incidents. This process may include investigating the
-          incident, containing unauthorized access, mitigating potential harm, restoring affected
-          systems, and notifying affected individuals or relevant authorities when required by
-          applicable law. Despite these safeguards, no internet-based service or method of
-          electronic storage can guarantee absolute security. You should keep your login credentials
-          confidential, use a unique password, protect the devices you use to access Zoption, and
-          promptly report suspected unauthorized access to support@zoption.site.
+          data against unauthorized access, loss, alteration, disclosure, or misuse. Supabase
+          manages identity, sessions, profile metadata, and avatar storage. Cloudflare D1 stores
+          application and financial records behind Worker routes that derive the tenant from a
+          verified Supabase token and apply tenant predicates to database access. Supabase Storage
+          access policies restrict avatar uploads and deletion to the authenticated owner. Provider
+          backup and recovery controls apply according to the services and plans in use and may not
+          allow restoration of an individual record or account. We maintain a documented process for
+          assessing and responding to suspected security incidents. Despite these safeguards, no
+          internet-based service or method of electronic storage can guarantee absolute security.
+          Keep your login credentials confidential, use a unique password, protect the devices you
+          use to access Zoption, and promptly report suspected unauthorized access to
+          support@zoption.site.
         </p>
       </section>
 
@@ -173,81 +174,56 @@ export function PrivacyPolicyPage() {
         <h2>6. Assistant processing</h2>
         <p>
           Browser cookie consent does not enable the assistant. The assistant has separate,
-          server-persisted consent. It is read-only and may retrieve bounded financial information
-          needed to answer a question. Zoption assistant conversations are designed to expire after
-          90 days.
+          versioned, server-persisted consent. It is read-only and may retrieve bounded
+          tenant-scoped financial information needed to answer a question. Saved goals and
+          debt-planning records may be used for deterministic projections. Zoption assistant
+          conversations and their sanitized audit snapshots share a 90-day thread-retention window.
         </p>
         <p>
-          When you use Zoption’s AI assistant, we send the text of your question and any additional
-          context reasonably necessary to answer it to DeepSeek, a third-party
-          artificial-intelligence service provider. DeepSeek processes this information to generate
-          a response and may also process related technical information for service operation,
-          security, abuse prevention, and troubleshooting. DeepSeek may process and store
-          information on servers located in the People’s Republic of China. DeepSeek’s published
-          materials indicate that some user inputs may be used to improve or optimize its services
-          and models, subject to available opt-out controls. Zoption has not confirmed whether its
-          DeepSeek account has opted out of model training. DeepSeek does not publicly specify a
-          fixed retention period for all API inputs or a precise schedule for deleting data from
-          backups. Zoption DOES store assistant questions and generated responses in your account
-          history. If assistant history is stored, you may delete it through the Assistant page’s
-          “Delete chat” or “Delete all chats” controls. Deleting information from Zoption may not
-          immediately remove copies independently retained by DeepSeek for security, legal,
-          operational, or other permitted purposes. Requests concerning information processed by
-          DeepSeek may require coordination with that provider. Do not include passwords,
-          authentication credentials, payment-card details, government identification numbers,
-          medical information, or other sensitive, confidential, or unnecessary personal information
-          in assistant questions. Only provide information reasonably necessary for the assistant to
-          respond to your request.
+          For a provider-backed request, DeepSeek may receive the current question, bounded prior
+          chat, assistant and user display-name profile, trusted compliance and date context,
+          approved tool definitions, and only the financial tool results needed for the answer. Tool
+          results may include transaction descriptions, categories, account names, calculated
+          balances, budgets, trends, recurring or anomaly analysis, and saved goal/debt inputs or
+          projections. Zoption excludes transaction notes, internal record identifiers, tenant and
+          user identifiers, credentials, secrets, and hidden reasoning from tool results and
+          sanitized audit snapshots. Do not type passwords, authentication credentials, payment-card
+          details, government identification numbers, medical information, or other sensitive or
+          unnecessary personal information into assistant questions. DeepSeek may process request
+          and technical information for response generation, security, abuse prevention, and service
+          operation under its own terms and privacy practices. Provider processing locations,
+          retention, backup deletion, and model-improvement treatment require current provider and
+          legal confirmation. Deleting a chat removes Zoption-controlled active D1 messages and
+          audit rows, but may not immediately remove information independently retained by the
+          provider where its terms or law permit retention.
         </p>
       </section>
 
       <section>
         <h2>7. Retention</h2>
         <p>
-          Account and financial records are generally retained while the account is active and as
-          needed to operate the service. Assistant conversations are designed to expire after 90
-          days. Import previews are temporary and commit tokens expire; successfully committed
-          records become part of the financial workspace.
+          Account, profile, billing, and financial workspace records are generally retained while
+          the account is active and as needed to operate, secure, and support the service. Import
+          previews and commit tokens are temporary; successfully committed records become part of
+          the financial workspace. Billing provider identifiers, subscription state, usage, and
+          minimal verified event metadata are retained as needed to operate paid access, resolve
+          billing issues, meet legal obligations, and defend claims. Full payment-card credentials
+          are handled by PayPal and are not stored by this integration.
         </p>
         <p>
-          We retain personal data only for as long as reasonably necessary for the purposes
-          described in this Privacy Policy, subject to the following general retention periods: *
-          **Account and profile information:** Retained while your account remains active. When you
-          request account deletion, we place your account and associated information into our
-          deletion process and aim to remove them from active systems within 30 days, unless
-          continued retention is required by law. * **Profile pictures and avatars:** Retained while
-          associated with an active account. They are deleted from active storage when you remove
-          them or as part of the account-deletion process, ordinarily within 30 days. * **Financial
-          records you create in Zoption:** Budgets, expenses, income entries, categories, uploaded
-          records, analyses, and related information are retained until you delete them or delete
-          your account. Information remaining when an account is deleted is ordinarily removed from
-          active systems within 30 days. * **Assistant conversations:** Questions submitted to the
-          AI assistant and generated responses are retained in your account history until you delete
-          an individual chat, delete all chats, or delete your account. Information independently
-          retained by DeepSeek is subject to DeepSeek’s own retention practices, as described in the
-          Assistant Processing section. * **Diagnostic and security information:** Application logs,
-          authentication records, error reports, and security-event information are generally
-          retained for up to 90 days. We may retain relevant records for longer when reasonably
-          necessary to investigate a security incident, prevent fraud or abuse, comply with law, or
-          establish, exercise, or defend legal claims. * **Account-deletion queue:**
-          Account-deletion requests are ordinarily processed within 30 days. Some information may be
-          excluded from deletion where retention is legally required or necessary for security,
-          fraud prevention, dispute resolution, or legal claims. * **Billing integration records:**
-          Zoption stores the provider identifiers, subscription state, period timestamps, usage, and
-          minimal event metadata described above as needed to operate paid access and the account.
-          Full payment-card credentials are handled by PayPal and are not stored by this
-          integration. [TODO: Confirm and publish the retention period for Zoption-controlled
-          billing records.] * **Provider backups:** Deleted database information may remain in
-          encrypted provider backups until the applicable backup-retention cycle expires, which may
-          be up to 30 days under our current infrastructure arrangements. Backup copies are
-          maintained for disaster recovery and are not ordinarily accessed or restored except when
-          necessary to recover the service. If a backup containing previously deleted information is
-          restored, we will take reasonable steps to reapply completed deletion requests. We may
-          retain specific information for longer when required to comply with a legal obligation,
-          regulatory request, court order, investigation, dispute, or the establishment, exercise,
-          or defense of legal claims. Aggregated or anonymized information that no longer identifies
-          an individual may be retained for longer for statistical, security, and
-          service-improvement purposes.
+          Each assistant thread has a 90-day retention window measured from its latest completed
+          turn. The thread, messages, response metadata, assistant run, and sanitized tool-call
+          snapshots are deleted together when the thread expires or when you delete that chat, all
+          chats, or your account. Account deletion purges the tenant&apos;s active D1 financial
+          records, goals, debts, chats, and assistant audits. Avatar or Supabase Auth cleanup can
+          remain pending and be retried if a provider step is temporarily unavailable; a minimal
+          deletion tombstone is retained to stop an unexpired token from recreating the workspace.
+          Specific records may be retained longer where required by law or reasonably necessary for
+          security, fraud prevention, dispute resolution, or legal claims. Deleted information may
+          remain temporarily in provider recovery copies according to provider backup lifecycles and
+          is not ordinarily available for individual restoration. Provider-side retention of
+          information sent to DeepSeek is governed by that provider&apos;s practices as described
+          above.
         </p>
       </section>
 
@@ -288,22 +264,16 @@ export function PrivacyPolicyPage() {
         <h2>9. International transfers</h2>
         <p>
           Zoption uses service providers that may process personal data outside the Philippines or
-          the country where you live. Our primary database and application data are processed
-          through Supabase cloud infrastructure, although Supabase and its subprocessors may process
-          limited information in other locations where they operate. Cloudflare processes email
-          addresses, email content, delivery information, and related technical data through its
-          Email Service and subprocessors. When you use the AI assistant, assistant questions,
-          related context, and generated responses may be transferred to and processed by DeepSeek
-          in the People’s Republic of China. The privacy and data-protection laws in these locations
-          may differ from those in your country. Zoption remains responsible for personal data under
-          its control when it is transferred to a service provider. We use contractual or other
-          reasonable measures designed to provide a comparable level of protection, including
-          applicable provider data-processing terms, reviewing provider privacy and security
-          practices, restricting transfers to information reasonably necessary to provide the
-          relevant service, and applying appropriate access and security controls. Where applicable
-          law requires additional consent or another transfer mechanism, we will take the required
-          steps before making the transfer. You may contact us at
-          [support@zoption.site](mailto:support@zoption.site) for more information about relevant
+          the country where you live. Cloudflare hosts the application, API, and primary D1
+          financial database. Supabase processes identity, session, profile, and avatar information.
+          PayPal processes subscription approval and payment information. When you enable the AI
+          assistant, the request context described above may be transferred to and processed by
+          DeepSeek in locations where it or its subprocessors operate. Privacy laws in those
+          locations may differ from those in your country. Zoption remains responsible for personal
+          data under its control and restricts transfers to information reasonably necessary for the
+          relevant service. We use applicable provider terms and reasonable access and security
+          controls, and will use any additional consent or transfer mechanism required by law.
+          Contact [support@zoption.site](mailto:support@zoption.site) for information about relevant
           processing locations or safeguards.
         </p>
       </section>

@@ -1,21 +1,46 @@
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import type { AssistantHistoryMessage } from "../db/assistant";
-import type { FinancialReader } from "./financial-reader";
+import type {
+  AssistantAuditToolCall,
+  AssistantHistoryMessage,
+  AssistantRunAudit,
+} from "../db/assistant";
+import type { AssistantResponseMetadata } from "@zoption/shared";
 import {
-  needsPeriodClarification,
-  PERIOD_CLARIFICATION_RESPONSE,
-} from "./period-policy";
-import { buildAssistantSystemPrompt } from "./prompt";
+  correctivePrompt,
+  safeFallback,
+  sanitizedAuditJson,
+  sourceFromExecution,
+  toolGroupForName,
+  validateAssistantAnswer,
+  validateToolArguments,
+} from "./answer-validation";
+import type { FinancialReader } from "./financial-reader";
+import { ASSISTANT_PROMPT_VERSION, buildAssistantSystemPrompt } from "./prompt";
+import {
+  createAssistantTurnPolicy,
+  responseMetadataForPolicy,
+  serializeTurnPolicy,
+  type AssistantTurnPolicy,
+  type RequiredToolGroup,
+} from "./turn-policy";
 import type { AssistantProvider, AssistantProviderMessage, ProviderCompletion } from "./provider";
-import { AssistantToolError, assistantToolDefinitions, executeAssistantTool } from "./tools";
+import {
+  AssistantToolError,
+  assistantToolDefinitions,
+  executeAssistantToolDetailed,
+  type AssistantToolExecution,
+} from "./tools";
 
-const MAX_PROVIDER_CALLS = 3;
+const MAX_PROVIDER_CALLS = 4;
 const MAX_TOOL_CALLS_PER_RESPONSE = 4;
 const MAX_TOOL_CALLS_TOTAL = 6;
 const MAX_HISTORY_CHARACTERS = 12_000;
+const MAX_TOOL_VALIDATION_ERRORS = 2;
 const EMPTY_RESPONSE_RETRY_PROMPT =
   "Provide the final answer now in plain text. Use verified tool results already present; if none are present and financial data is needed, call an approved tool.";
+const REQUIRED_TOOL_RETRY_PROMPT =
+  "Required financial lookups are still missing. Call the approved tools needed by the trusted server policy before answering.";
 
 export interface AssistantAnswer {
   content: string;
@@ -23,20 +48,31 @@ export interface AssistantAnswer {
   finishReason: string;
   promptTokens?: number;
   completionTokens?: number;
+  responseMetadata: AssistantResponseMetadata;
+  audit: AssistantRunAudit;
 }
 
 export interface AssistantIdentity {
   assistantName: string;
   userPreferredName: string;
+  responseDetail: "concise" | "standard";
+  coachingStyle: "gentle" | "direct";
 }
 
 export interface AssistantOrchestrator {
+  plan(
+    env: Bindings,
+    tenantId: string,
+    history: AssistantHistoryMessage[],
+    message: string,
+  ): Promise<AssistantTurnPolicy>;
   answer(
     env: Bindings,
     tenantId: string,
     history: AssistantHistoryMessage[],
     message: string,
     identity: AssistantIdentity,
+    policy: AssistantTurnPolicy,
   ): Promise<AssistantAnswer>;
 }
 
@@ -71,13 +107,13 @@ function boundedHistory(history: AssistantHistoryMessage[]): AssistantHistoryMes
 function providerMessages(
   history: AssistantHistoryMessage[],
   message: string,
-  timeZone: string,
   identity: AssistantIdentity,
+  policy: AssistantTurnPolicy,
 ): AssistantProviderMessage[] {
   return [
     {
       role: "system",
-      content: buildAssistantSystemPrompt(currentDateInTimeZone(timeZone), timeZone, identity),
+      content: buildAssistantSystemPrompt(policy.currentDate, policy.timeZone, identity, policy),
     },
     ...boundedHistory(history).map((item) => ({ role: item.role, content: item.content }) as const),
     { role: "user", content: message },
@@ -90,40 +126,106 @@ function addUsage(total: AssistantAnswer, completion: ProviderCompletion) {
     (total.completionTokens ?? 0) + (completion.usage?.completionTokens ?? 0);
 }
 
+function parseAuditArguments(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return { invalidJson: true };
+  }
+}
+
+function auditForPolicy(
+  policy: AssistantTurnPolicy,
+  providerCallCount: number,
+  validationStatus: AssistantRunAudit["validationStatus"],
+  toolCalls: AssistantAuditToolCall[],
+): AssistantRunAudit {
+  return {
+    promptVersion: ASSISTANT_PROMPT_VERSION,
+    compliancePolicyJson: serializeTurnPolicy(policy),
+    ...(policy.resolvedPeriod ? { resolvedPeriodJson: JSON.stringify(policy.resolvedPeriod) } : {}),
+    requiredToolGroupsJson: JSON.stringify(policy.requiredToolGroups),
+    providerCallCount,
+    validationStatus,
+    toolCalls,
+  };
+}
+
+function responseMetadata(
+  policy: AssistantTurnPolicy,
+  executions: readonly AssistantToolExecution[],
+): AssistantResponseMetadata {
+  const sources = executions
+    .map(sourceFromExecution)
+    .filter((source): source is NonNullable<typeof source> => source !== null);
+  return responseMetadataForPolicy(policy, sources, ASSISTANT_PROMPT_VERSION);
+}
+
 export function createAssistantOrchestrator(
   provider: AssistantProvider,
   reader: FinancialReader,
 ): AssistantOrchestrator {
   return {
-    async answer(env, tenantId, history, message, identity) {
-      if (needsPeriodClarification(history, message)) {
+    async plan(env, tenantId, history, message) {
+      const timeZone = env.ASSISTANT_TIME_ZONE?.trim() || "Asia/Manila";
+      const currentDate = currentDateInTimeZone(timeZone);
+      const transactionBounds = await reader.getTransactionDateBounds({ env, tenantId });
+      return createAssistantTurnPolicy({
+        history,
+        message,
+        currentDate,
+        timeZone,
+        transactionBounds,
+      });
+    },
+
+    async answer(env, tenantId, history, message, identity, policy) {
+      if (policy.deterministicResponse) {
         return {
-          content: PERIOD_CLARIFICATION_RESPONSE,
-          model: "zoption-period-policy",
-          finishReason: "clarification",
+          content: policy.deterministicResponse,
+          model: "zoption-turn-policy",
+          finishReason: "policy",
+          responseMetadata: responseMetadataForPolicy(policy, [], ASSISTANT_PROMPT_VERSION),
+          audit: auditForPolicy(policy, 0, "not_required", []),
         };
       }
 
-      const timeZone = env.ASSISTANT_TIME_ZONE?.trim() || "Asia/Manila";
-      const messages = providerMessages(history, message, timeZone, identity);
+      const messages = providerMessages(history, message, identity, policy);
       const overallTimeoutMs = configuredNumber(env.ASSISTANT_OVERALL_TIMEOUT_MS, 25_000);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("assistant_timeout"), overallTimeoutMs);
       let totalToolCalls = 0;
       let toolValidationErrors = 0;
+      let providerCallCount = 0;
+      let answerValidationRetryUsed = false;
+      const executions: AssistantToolExecution[] = [];
+      const satisfiedGroups = new Set<RequiredToolGroup>();
+      const auditToolCalls: AssistantAuditToolCall[] = [];
       const totals: AssistantAnswer = {
         content: "",
         model: env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
         finishReason: "",
+        responseMetadata: responseMetadataForPolicy(policy, [], ASSISTANT_PROMPT_VERSION),
+        audit: auditForPolicy(policy, 0, "fallback", []),
       };
 
       try {
         for (let invocation = 0; invocation < MAX_PROVIDER_CALLS; invocation += 1) {
+          const missingRequiredGroups = policy.requiredToolGroups.filter(
+            (group) => !satisfiedGroups.has(group),
+          );
           const completion = await provider.complete(env, {
             messages,
             tools: assistantToolDefinitions,
+            toolChoice:
+              missingRequiredGroups.length > 0
+                ? "required"
+                : answerValidationRetryUsed
+                  ? "none"
+                  : "auto",
             signal: controller.signal,
           });
+          providerCallCount += 1;
           totals.model = completion.model;
           totals.finishReason = completion.finishReason;
           addUsage(totals, completion);
@@ -136,13 +238,43 @@ export function createAssistantOrchestrator(
                 messages.push({ role: "user", content: EMPTY_RESPONSE_RETRY_PROMPT });
                 continue;
               }
-              throw new HttpError(
-                502,
-                "assistant_provider_error",
-                "The assistant returned an empty response.",
-              );
+              totals.content = safeFallback(policy);
+              totals.finishReason = "validation_fallback";
+              totals.responseMetadata = responseMetadata(policy, executions);
+              totals.audit = auditForPolicy(policy, providerCallCount, "fallback", auditToolCalls);
+              return totals;
             }
-            totals.content = content;
+
+            const validation = validateAssistantAnswer(
+              content,
+              policy,
+              executions,
+              satisfiedGroups,
+            );
+            if (validation.valid) {
+              totals.content = content;
+              totals.responseMetadata = responseMetadata(policy, executions);
+              totals.audit = auditForPolicy(policy, providerCallCount, "passed", auditToolCalls);
+              return totals;
+            }
+
+            if (!answerValidationRetryUsed && invocation + 1 < MAX_PROVIDER_CALLS) {
+              answerValidationRetryUsed = true;
+              messages.push({ role: "assistant", content });
+              messages.push({
+                role: "user",
+                content:
+                  missingRequiredGroups.length > 0
+                    ? REQUIRED_TOOL_RETRY_PROMPT
+                    : correctivePrompt(validation, policy, executions),
+              });
+              continue;
+            }
+
+            totals.content = safeFallback(policy);
+            totals.finishReason = "validation_fallback";
+            totals.responseMetadata = responseMetadata(policy, executions);
+            totals.audit = auditForPolicy(policy, providerCallCount, "fallback", auditToolCalls);
             return totals;
           }
 
@@ -164,42 +296,67 @@ export function createAssistantOrchestrator(
 
           messages.push(completion.message);
           for (const toolCall of toolCalls) {
-            let content: string;
+            const sequence = auditToolCalls.length + 1;
             try {
-              content = await executeAssistantTool(
+              const execution = await executeAssistantToolDetailed(
                 reader,
                 { env, tenantId },
                 toolCall.function.name,
                 toolCall.function.arguments,
+                (name, args) => validateToolArguments(name, args, policy),
               );
+              executions.push(execution);
+              const group = toolGroupForName(execution.name);
+              if (group) satisfiedGroups.add(group);
+              auditToolCalls.push({
+                sequence,
+                toolName: execution.name,
+                argumentsJson: sanitizedAuditJson(execution.arguments),
+                resultJson: sanitizedAuditJson(execution.result),
+              });
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: execution.content,
+              });
             } catch (error) {
               toolValidationErrors += 1;
-              if (toolValidationErrors > 1) {
+              const errorCode =
+                error instanceof AssistantToolError ? error.message : "financial_lookup_failed";
+              auditToolCalls.push({
+                sequence,
+                toolName: toolCall.function.name,
+                argumentsJson: sanitizedAuditJson(parseAuditArguments(toolCall.function.arguments)),
+                errorCode,
+              });
+              if (toolValidationErrors > MAX_TOOL_VALIDATION_ERRORS) {
                 throw new HttpError(
                   502,
                   "assistant_tool_error",
                   "The assistant could not complete a valid financial lookup.",
                 );
               }
-              content = JSON.stringify({
-                error:
-                  error instanceof AssistantToolError
-                    ? error.message
-                    : "The financial lookup could not be completed.",
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  error: errorCode,
+                  instruction:
+                    "Use the trusted server policy dates and a valid approved tool request.",
+                }),
               });
             }
-            messages.push({ role: "tool", tool_call_id: toolCall.id, content });
           }
         }
       } finally {
         clearTimeout(timeout);
       }
 
-      throw new HttpError(
-        502,
-        "assistant_tool_loop_exceeded",
-        "The assistant could not finish within the lookup limit.",
-      );
+      totals.content = safeFallback(policy);
+      totals.finishReason = "validation_fallback";
+      totals.responseMetadata = responseMetadata(policy, executions);
+      totals.audit = auditForPolicy(policy, providerCallCount, "fallback", auditToolCalls);
+      return totals;
     },
   };
 }

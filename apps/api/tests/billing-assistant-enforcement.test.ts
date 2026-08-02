@@ -27,9 +27,32 @@ const INPUT: AssistantMessageInput = {
 
 const PREFERENCES: AssistantPreferences = {
   consentedAt: "2026-07-27T00:00:00.000Z",
+  consentVersion: 2,
   retentionDays: 90,
   assistantName: "Aster",
   userPreferredName: "Sam",
+  responseDetail: "concise",
+  coachingStyle: "gentle",
+};
+
+const POLICY = {
+  currentDate: "2026-08-02",
+  timeZone: "Asia/Manila",
+  compliance: { posture: "budgeting_allowed" as const, topics: [] },
+  requiredToolGroups: ["period_summary" as const],
+};
+const RESPONSE_METADATA = {
+  promptVersion: "expert-v1",
+  compliance: POLICY.compliance,
+  sources: [],
+};
+const AUDIT = {
+  promptVersion: "expert-v1",
+  compliancePolicyJson: JSON.stringify(POLICY),
+  requiredToolGroupsJson: JSON.stringify(POLICY.requiredToolGroups),
+  providerCallCount: 1,
+  validationStatus: "passed" as const,
+  toolCalls: [],
 };
 
 const THREAD: AssistantThread = {
@@ -75,6 +98,7 @@ function repository(beginTurn: AssistantRepository["beginTurn"] = vi.fn(async ()
     getPreferences: vi.fn(async () => PREFERENCES),
     grantConsent: vi.fn(async () => PREFERENCES),
     setAssistantIdentity: vi.fn(async () => PREFERENCES),
+    setResponsePreferences: vi.fn(async () => PREFERENCES),
     listThreads: vi.fn(async () => ({ items: [], nextCursor: null })),
     listMessages: vi.fn(async () => ({ items: [], nextCursor: null })),
     createThread: vi.fn(async () => THREAD),
@@ -89,10 +113,13 @@ function repository(beginTurn: AssistantRepository["beginTurn"] = vi.fn(async ()
 
 function orchestrator(): AssistantOrchestrator {
   return {
+    plan: vi.fn(async () => POLICY),
     answer: vi.fn(async () => ({
       content: ASSISTANT_MESSAGE.content,
       model: "deepseek-v4-flash",
       finishReason: "stop",
+      responseMetadata: RESPONSE_METADATA,
+      audit: AUDIT,
     })),
   };
 }

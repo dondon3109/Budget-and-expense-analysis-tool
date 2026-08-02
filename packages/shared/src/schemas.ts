@@ -2,6 +2,9 @@ import { z } from "zod";
 
 import {
   accountTypes,
+  debtStatuses,
+  debtTypes,
+  financialGoalStatuses,
   subscriptionBillingCycles,
   subscriptionStatuses,
   transactionKinds,
@@ -138,6 +141,12 @@ export const assistantPreferenceUpdateSchema = z.union([
       userPreferredName: assistantIdentityNameSchema,
     })
     .strict(),
+  z
+    .object({
+      responseDetail: z.enum(["concise", "standard"]),
+      coachingStyle: z.enum(["gentle", "direct"]),
+    })
+    .strict(),
 ]);
 
 export type AssistantPreferenceUpdate = z.infer<typeof assistantPreferenceUpdateSchema>;
@@ -206,6 +215,92 @@ export const assistantTransactionToolSchema = z
 export const assistantCategoryToolSchema = z
   .object({ kind: z.enum(transactionKinds).optional() })
   .strict();
+
+const assistantDateRangeShape = {
+  from: isoDateSchema,
+  to: isoDateSchema,
+} as const;
+
+export const assistantSpendingByCategoryToolSchema = z
+  .object({
+    ...assistantDateRangeShape,
+    categoryName: z.string().trim().min(1).max(80).optional(),
+  })
+  .strict()
+  .refine((value) => value.from <= value.to, {
+    message: "The start date must not be after the end date.",
+    path: ["from"],
+  });
+
+export const assistantBudgetVsActualToolSchema = z
+  .object(assistantDateRangeShape)
+  .strict()
+  .refine((value) => value.from <= value.to, {
+    message: "The start date must not be after the end date.",
+    path: ["from"],
+  });
+
+export const assistantRecurringChargesToolSchema = z
+  .object({
+    through: isoDateSchema,
+  })
+  .strict();
+
+export const assistantSpendingAnomaliesToolSchema = z
+  .object(assistantDateRangeShape)
+  .strict()
+  .refine((value) => value.from <= value.to, {
+    message: "The start date must not be after the end date.",
+    path: ["from"],
+  });
+
+export const decimalMoneyStringSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+(?:\.\d{1,2})?$/, "Use a positive amount with no more than two decimals.")
+  .refine((value) => Number(value) <= 9_000_000_000_000, "The amount is too large.");
+
+const assistantDebtProjectionItemSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    balance: decimalMoneyStringSchema,
+    aprPercent: z.number().min(0).max(100),
+    minimumPayment: decimalMoneyStringSchema,
+  })
+  .strict();
+
+export const assistantDebtPayoffToolSchema = z
+  .object({
+    strategy: z.enum(["avalanche", "snowball"]),
+    extraPayment: decimalMoneyStringSchema.optional(),
+    debtNames: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+    debts: z.array(assistantDebtProjectionItemSchema).min(1).max(20).optional(),
+    startDate: isoDateSchema,
+  })
+  .strict()
+  .refine((value) => Boolean(value.debts?.length || value.debtNames?.length), {
+    message: "Choose saved debts or provide a hypothetical debt list.",
+    path: ["debts"],
+  });
+
+export const assistantSavingsGoalToolSchema = z
+  .object({
+    goalName: z.string().trim().min(1).max(80).optional(),
+    targetAmount: decimalMoneyStringSchema.optional(),
+    targetDate: isoDateSchema.optional(),
+    currentSaved: decimalMoneyStringSchema.optional(),
+    currentDate: isoDateSchema,
+  })
+  .strict()
+  .refine(
+    (value) =>
+      Boolean(value.goalName) ||
+      Boolean(value.targetAmount && value.targetDate && value.currentSaved !== undefined),
+    {
+      message: "Choose a saved goal or provide target amount, target date, and current savings.",
+      path: ["goalName"],
+    },
+  );
 
 export const accountTypeSchema = z.enum(accountTypes);
 
@@ -407,6 +502,62 @@ export const budgetUpsertSchema = z
   .strict();
 
 export type BudgetUpsert = z.infer<typeof budgetUpsertSchema>;
+
+const financialGoalBaseSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    targetAmountMinor: z.number().int().safe().min(1).max(900_000_000_000_000),
+    currentAmountMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    targetDate: isoDateSchema,
+    status: z.enum(financialGoalStatuses).default("active"),
+  })
+  .strict()
+  .refine((value) => value.currentAmountMinor <= value.targetAmountMinor, {
+    message: "Current savings cannot exceed the target amount.",
+    path: ["currentAmountMinor"],
+  });
+
+export const financialGoalInputSchema = financialGoalBaseSchema;
+export type FinancialGoalInput = z.infer<typeof financialGoalInputSchema>;
+
+export const financialGoalUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    targetAmountMinor: z.number().int().safe().min(1).max(900_000_000_000_000).optional(),
+    currentAmountMinor: z.number().int().safe().min(0).max(900_000_000_000_000).optional(),
+    targetDate: isoDateSchema.optional(),
+    status: z.enum(financialGoalStatuses).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
+export type FinancialGoalUpdate = z.infer<typeof financialGoalUpdateSchema>;
+
+export const debtInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    type: z.enum(debtTypes),
+    balanceMinor: z.number().int().safe().min(1).max(900_000_000_000_000),
+    aprBasisPoints: z.number().int().min(0).max(10_000),
+    minimumPaymentMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    balanceAsOf: isoDateSchema,
+    status: z.enum(debtStatuses).default("active"),
+  })
+  .strict();
+export type DebtInput = z.infer<typeof debtInputSchema>;
+
+export const debtUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    type: z.enum(debtTypes).optional(),
+    balanceMinor: z.number().int().safe().min(0).max(900_000_000_000_000).optional(),
+    aprBasisPoints: z.number().int().min(0).max(10_000).optional(),
+    minimumPaymentMinor: z.number().int().safe().min(0).max(900_000_000_000_000).optional(),
+    balanceAsOf: isoDateSchema.optional(),
+    status: z.enum(debtStatuses).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
+export type DebtUpdate = z.infer<typeof debtUpdateSchema>;
 
 export const subscriptionQuerySchema = z.object({ month: monthStartSchema }).strict();
 
