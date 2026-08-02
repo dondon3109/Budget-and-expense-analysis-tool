@@ -17,8 +17,12 @@ import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
 import { SponsoredProSeatsSettings } from "./SponsoredProSeatsSettings";
 import "./BillingSettings.css";
 
-const CONFIRMATION_ATTEMPTS = 10;
-const CONFIRMATION_INTERVAL_MS = 2_000;
+const PAYMENT_FAST_CONFIRMATION_ATTEMPTS = 10;
+const PAYMENT_TOTAL_CONFIRMATION_ATTEMPTS = 21;
+const PAYMENT_FAST_CONFIRMATION_INTERVAL_MS = 2_000;
+const PAYMENT_SLOW_CONFIRMATION_INTERVAL_MS = 10_000;
+const CANCELLATION_CONFIRMATION_ATTEMPTS = 10;
+const CANCELLATION_CONFIRMATION_INTERVAL_MS = 2_000;
 
 function formatPlanDate(value: string): string {
   return new Intl.DateTimeFormat("en-PH", {
@@ -33,10 +37,10 @@ function statusCopy(
   status: BillingSubscriptionStatus | null | undefined,
   plan: BillingSummary["plan"] | undefined,
   entitlementSource: ProEntitlementSource | null | undefined,
-  confirmingPayment: boolean,
+  paymentPending: boolean,
   confirmingCancellation: boolean,
 ): { label: string; heading: string; description: string; tone: string } {
-  if (confirmingPayment) {
+  if (paymentPending) {
     return {
       label: "Confirming payment",
       heading: "Confirming your payment",
@@ -172,8 +176,9 @@ export function BillingSettings({ user }: { user: User }) {
   const cancellationTriggerRef = useRef<HTMLButtonElement>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
-  const [confirmingPayment, setConfirmingPayment] = useState(checkoutCompleted);
+  const [paymentRefreshBusy, setPaymentRefreshBusy] = useState(false);
   const [paymentConfirmationDelayed, setPaymentConfirmationDelayed] = useState(false);
+  const [paymentPollingExhausted, setPaymentPollingExhausted] = useState(false);
   const [confirmingCancellation, setConfirmingCancellation] = useState(false);
   const [cancellationConfirmationDelayed, setCancellationConfirmationDelayed] = useState(false);
   const [checkoutCancelledNotice, setCheckoutCancelledNotice] = useState(false);
@@ -184,49 +189,69 @@ export function BillingSettings({ user }: { user: User }) {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
+    let lastError: unknown;
 
-    setConfirmingPayment(true);
     setPaymentConfirmationDelayed(false);
+    setPaymentPollingExhausted(false);
     setError(undefined);
+
+    function completePaymentConfirmation() {
+      const nextSearch = new URLSearchParams(location.search);
+      nextSearch.delete("checkout");
+      void navigate(
+        {
+          pathname: location.pathname,
+          search: nextSearch.size ? `?${nextSearch.toString()}` : "",
+          hash: location.hash,
+        },
+        { replace: true },
+      );
+    }
 
     async function confirmPayment() {
       attempts += 1;
+      setPaymentRefreshBusy(true);
       try {
         const result = await refetchBilling();
         if (cancelled) return;
         if (result.error) throw result.error;
         const nextSummary = result.data;
         if (!nextSummary) throw new Error("Your plan could not be refreshed.");
+        lastError = undefined;
         if (
           nextSummary.plan === "zoption_pro" &&
           (nextSummary.status === "active" || nextSummary.status === "trialing")
         ) {
-          setConfirmingPayment(false);
-          const nextSearch = new URLSearchParams(location.search);
-          nextSearch.delete("checkout");
-          void navigate(
-            {
-              pathname: location.pathname,
-              search: nextSearch.size ? `?${nextSearch.toString()}` : "",
-              hash: location.hash,
-            },
-            { replace: true },
-          );
+          setPaymentConfirmationDelayed(false);
+          setPaymentPollingExhausted(false);
+          completePaymentConfirmation();
           return;
         }
       } catch (cause) {
         if (cancelled) return;
-        if (attempts >= CONFIRMATION_ATTEMPTS) {
-          setError(cause instanceof Error ? cause.message : "Your plan could not be refreshed.");
-        }
+        lastError = cause;
+      } finally {
+        if (!cancelled) setPaymentRefreshBusy(false);
       }
 
-      if (attempts >= CONFIRMATION_ATTEMPTS) {
-        setConfirmingPayment(false);
+      if (attempts >= PAYMENT_FAST_CONFIRMATION_ATTEMPTS) {
         setPaymentConfirmationDelayed(true);
+      }
+      if (attempts >= PAYMENT_TOTAL_CONFIRMATION_ATTEMPTS) {
+        setPaymentPollingExhausted(true);
+        if (lastError) {
+          setError(
+            lastError instanceof Error ? lastError.message : "Your plan could not be refreshed.",
+          );
+        }
         return;
       }
-      timer = setTimeout(() => void confirmPayment(), CONFIRMATION_INTERVAL_MS);
+
+      const interval =
+        attempts < PAYMENT_FAST_CONFIRMATION_ATTEMPTS
+          ? PAYMENT_FAST_CONFIRMATION_INTERVAL_MS
+          : PAYMENT_SLOW_CONFIRMATION_INTERVAL_MS;
+      timer = setTimeout(() => void confirmPayment(), interval);
     }
 
     void confirmPayment();
@@ -286,19 +311,19 @@ export function BillingSettings({ user }: { user: User }) {
         }
       } catch (cause) {
         if (cancelled) return;
-        if (attempts >= CONFIRMATION_ATTEMPTS) {
+        if (attempts >= CANCELLATION_CONFIRMATION_ATTEMPTS) {
           setError(
             cause instanceof Error ? cause.message : "Your cancellation could not be confirmed.",
           );
         }
       }
 
-      if (attempts >= CONFIRMATION_ATTEMPTS) {
+      if (attempts >= CANCELLATION_CONFIRMATION_ATTEMPTS) {
         setConfirmingCancellation(false);
         setCancellationConfirmationDelayed(true);
         return;
       }
-      timer = setTimeout(() => void confirmCancellation(), CONFIRMATION_INTERVAL_MS);
+      timer = setTimeout(() => void confirmCancellation(), CANCELLATION_CONFIRMATION_INTERVAL_MS);
     }
 
     void confirmCancellation();
@@ -325,15 +350,49 @@ export function BillingSettings({ user }: { user: User }) {
     }
   }
 
+  async function checkPaymentStatus() {
+    setPaymentRefreshBusy(true);
+    setError(undefined);
+    try {
+      const result = await refetchBilling();
+      if (result.error) throw result.error;
+      const nextSummary = result.data;
+      if (!nextSummary) throw new Error("Your plan could not be refreshed.");
+      if (
+        nextSummary.plan === "zoption_pro" &&
+        (nextSummary.status === "active" || nextSummary.status === "trialing")
+      ) {
+        setPaymentConfirmationDelayed(false);
+        setPaymentPollingExhausted(false);
+        const nextSearch = new URLSearchParams(location.search);
+        nextSearch.delete("checkout");
+        void navigate(
+          {
+            pathname: location.pathname,
+            search: nextSearch.size ? `?${nextSearch.toString()}` : "",
+            hash: location.hash,
+          },
+          { replace: true },
+        );
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Your plan could not be refreshed.");
+    } finally {
+      setPaymentRefreshBusy(false);
+    }
+  }
+
+  const paymentPending = checkoutCompleted;
   const visibleError = error ?? (billingError instanceof Error ? billingError.message : undefined);
   const presentation = statusCopy(
     summary?.status,
     summary?.plan,
     summary?.entitlementSource,
-    confirmingPayment,
+    paymentPending,
     confirmingCancellation,
   );
   const isPro = summary?.plan === "zoption_pro";
+  const currentPlanKnown = !paymentPending;
   const duplicateSubscriptions = (summary?.nonTerminalSubscriptionCount ?? 0) > 1;
   const assistantUsage = summary?.usages.find((usage) => usage.feature === "assistant_question");
   const importUsage = summary?.usages.find((usage) => usage.feature === "file_import");
@@ -378,20 +437,24 @@ export function BillingSettings({ user }: { user: User }) {
                     <th
                       scope="col"
                       data-plan="free"
-                      data-current={!isPro || undefined}
-                      aria-current={!isPro ? "true" : undefined}
+                      data-current={(currentPlanKnown && !isPro) || undefined}
+                      aria-current={currentPlanKnown && !isPro ? "true" : undefined}
                     >
                       <span className="billing-plan-name">Free</span>
-                      {!isPro && <span className="billing-plan-current">Current plan</span>}
+                      {currentPlanKnown && !isPro && (
+                        <span className="billing-plan-current">Current plan</span>
+                      )}
                     </th>
                     <th
                       scope="col"
                       data-plan="pro"
-                      data-current={isPro || undefined}
-                      aria-current={isPro ? "true" : undefined}
+                      data-current={(currentPlanKnown && isPro) || undefined}
+                      aria-current={currentPlanKnown && isPro ? "true" : undefined}
                     >
                       <span className="billing-plan-name">Zoption Pro</span>
-                      {isPro && <span className="billing-plan-current">Current plan</span>}
+                      {currentPlanKnown && isPro && (
+                        <span className="billing-plan-current">Current plan</span>
+                      )}
                     </th>
                   </tr>
                 </thead>
@@ -399,10 +462,10 @@ export function BillingSettings({ user }: { user: User }) {
                   {planFeatures.map((item) => (
                     <tr key={item.feature}>
                       <th scope="row">{item.feature}</th>
-                      <td data-plan="free" data-current={!isPro || undefined}>
+                      <td data-plan="free" data-current={(currentPlanKnown && !isPro) || undefined}>
                         {item.free}
                       </td>
-                      <td data-plan="pro" data-current={isPro || undefined}>
+                      <td data-plan="pro" data-current={(currentPlanKnown && isPro) || undefined}>
                         {item.pro}
                       </td>
                     </tr>
@@ -429,17 +492,17 @@ export function BillingSettings({ user }: { user: User }) {
         <div
           className="billing-settings-overview"
           data-tone={presentation.tone}
-          aria-busy={(!summary && !visibleError) || confirmingPayment || confirmingCancellation}
+          aria-busy={(!summary && !visibleError) || paymentRefreshBusy || confirmingCancellation}
           aria-live="polite"
         >
           <div>
             <strong>
-              {summary || confirmingPayment || confirmingCancellation
+              {summary || paymentPending || confirmingCancellation
                 ? presentation.heading
                 : "Loading your plan"}
             </strong>
             <p>
-              {summary || confirmingPayment || confirmingCancellation
+              {summary || paymentPending || confirmingCancellation
                 ? presentation.description
                 : visibleError
                   ? "Your current billing state is temporarily unavailable."
@@ -448,7 +511,7 @@ export function BillingSettings({ user }: { user: User }) {
           </div>
           {billingPeriodLabel && <small>{billingPeriodLabel}</small>}
         </div>
-        {summary && (
+        {summary && !paymentPending && (
           <div className="billing-usage-grid" aria-label="Current plan usage and allowances">
             {assistantUsage && (
               <PlanUsageIndicator
@@ -489,7 +552,7 @@ export function BillingSettings({ user }: { user: User }) {
                 ref={checkoutTriggerRef}
                 className="button primary compact"
                 type="button"
-                disabled={confirmingPayment || confirmingCancellation}
+                disabled={paymentPending || confirmingCancellation}
                 onClick={() => setIsProCheckoutOpen(true)}
               >
                 Choose a Pro plan
@@ -529,10 +592,23 @@ export function BillingSettings({ user }: { user: User }) {
           </p>
         )}
         {paymentConfirmationDelayed && (
-          <p className="settings-helper" role="status">
-            Payment confirmation is taking longer than expected. You can safely refresh this page in
-            a moment—Zoption updates your plan after receiving PayPal’s verified notification.
-          </p>
+          <div className="billing-confirmation-delayed">
+            <p className="settings-helper" role="status">
+              {paymentPollingExhausted
+                ? "Payment confirmation is still pending. Zoption will update your plan after receiving PayPal’s verified notification."
+                : "Payment confirmation is taking longer than expected. Zoption is still checking for PayPal’s verified notification."}
+            </p>
+            {paymentPollingExhausted && (
+              <button
+                className="button secondary compact"
+                type="button"
+                disabled={paymentRefreshBusy}
+                onClick={() => void checkPaymentStatus()}
+              >
+                {paymentRefreshBusy ? "Checking payment status…" : "Check payment status"}
+              </button>
+            )}
+          </div>
         )}
         {cancellationConfirmationDelayed && (
           <p className="settings-helper" role="status">

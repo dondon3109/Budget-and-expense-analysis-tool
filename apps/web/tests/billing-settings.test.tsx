@@ -163,6 +163,91 @@ describe("BillingSettings", () => {
     expect(screen.queryByText("Confirming your payment")).not.toBeInTheDocument();
   });
 
+  it("keeps checking after the fast window and preserves unrelated URL state", async () => {
+    vi.useFakeTimers();
+    const freeSummary = summary(null);
+    renderSettings(freeSummary, "/app/settings?checkout=completed&source=account#plan-and-billing");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(18_000);
+    });
+
+    expect(screen.getByText("Confirming your payment")).toBeInTheDocument();
+    expect(screen.queryByText("You’re using the Free plan")).not.toBeInTheDocument();
+    expect(screen.getByText(/Zoption is still checking/i)).toBeInTheDocument();
+    expect(screen.queryByText("Current plan")).not.toBeInTheDocument();
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings?checkout=completed&source=account#plan-and-billing",
+    );
+
+    apiMocks.getBillingSummary.mockResolvedValue(summary("active"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(screen.getByText("Zoption Pro is active")).toBeInTheDocument();
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings?source=account#plan-and-billing",
+    );
+  });
+
+  it("stops bounded polling and confirms Pro through a manual status check", async () => {
+    vi.useFakeTimers();
+    const freeSummary = summary(null);
+    renderSettings(freeSummary, "/app/settings?checkout=completed#plan-and-billing");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(128_000);
+    });
+
+    expect(screen.getByText("Confirming your payment")).toBeInTheDocument();
+    expect(screen.getByText(/Payment confirmation is still pending/i)).toBeInTheDocument();
+    const refresh = screen.getByRole("button", { name: "Check payment status" });
+    expect(refresh).toBeEnabled();
+
+    const callsAfterPolling = apiMocks.getBillingSummary.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(apiMocks.getBillingSummary).toHaveBeenCalledTimes(callsAfterPolling);
+
+    apiMocks.getBillingSummary.mockResolvedValue(summary("active"));
+    fireEvent.click(refresh);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Zoption Pro is active")).toBeInTheDocument();
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings#plan-and-billing",
+    );
+    expect(screen.queryByRole("button", { name: "Check payment status" })).not.toBeInTheDocument();
+  });
+
+  it("keeps manual payment confirmation retryable after a refresh error", async () => {
+    vi.useFakeTimers();
+    const freeSummary = summary(null);
+    renderSettings(freeSummary, "/app/settings?checkout=completed#plan-and-billing");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(128_000);
+    });
+
+    apiMocks.getBillingSummary.mockRejectedValueOnce(new Error("Billing status is unavailable."));
+    const refresh = screen.getByRole("button", { name: "Check payment status" });
+    fireEvent.click(refresh);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Billing status is unavailable.");
+    expect(screen.getByText("Confirming your payment")).toBeInTheDocument();
+    expect(screen.getByTestId("current-location")).toHaveTextContent("checkout=completed");
+    expect(screen.getByRole("button", { name: "Check payment status" })).toBeEnabled();
+  });
+
   it("shows the Free plan with checkout when there is no subscription", async () => {
     renderSettings(summary(null));
 
