@@ -147,9 +147,43 @@
 }
 
 @media (max-width: 700px) {
-  .pro-checkout-plans,
+  .pro-checkout-plans {
+    grid-template-columns: none;
+    grid-auto-columns: 84%;
+    grid-auto-flow: column;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+  }
+
+  .pro-checkout-plans::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pro-checkout-plan {
+    scroll-snap-align: start;
+    width: 100%;
+    padding: 14px;
+  }
+
+  .pro-checkout-plan ul {
+    margin-top: 12px;
+    gap: 8px;
+  }
+
+  .pro-checkout-plan li {
+    font-size: 10px;
+  }
+
   .pro-checkout-actions {
     grid-template-columns: 1fr;
+  }
+
+  .pro-checkout-actions .button {
+    white-space: nowrap;
   }
 
   .pro-checkout-header h2 {

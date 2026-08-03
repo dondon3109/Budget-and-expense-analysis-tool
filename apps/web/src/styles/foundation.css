@@ -752,14 +752,42 @@ button:disabled {
     font-size: clamp(28px, 9vw, 36px);
   }
   .theme-choice-options {
-    margin-top: 22px;
+    margin-top: 18px;
     grid-template-columns: 1fr;
+    gap: 12px;
   }
   .theme-choice-option {
-    gap: 14px;
+    gap: 11px;
+    padding: 12px 14px;
+  }
+  .theme-choice-option-heading {
+    gap: 10px;
+  }
+  .theme-choice-option-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+  .theme-choice-option-heading strong {
+    font-size: 14px;
+  }
+  .theme-choice-option-heading small {
+    font-size: 10px;
   }
   .theme-choice-preview {
-    height: 72px;
+    height: 46px;
+    padding: 7px;
+    grid-template-rows: 9px minmax(0, 1fr);
+    gap: 6px;
+    border-radius: 9px;
+  }
+  .theme-choice-preview-layout,
+  .theme-choice-preview-content {
+    gap: 5px;
+  }
+  .theme-choice-preview-nav,
+  .theme-choice-preview-content > span {
+    border-radius: 6px;
   }
   .theme-choice-footer {
     margin: 18px -16px 0;

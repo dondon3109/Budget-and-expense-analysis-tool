@@ -11,19 +11,25 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "July 29, 2026",
+  releasedOn: "August 4, 2026",
   changes: [
     {
-      title: "Reliable same-day ordering",
-      description: "Newer-created transactions now appear first when transaction dates match.",
+      title: "Mobile theme picker polish",
+      description: "Theme options are now more compact and easier to scan on small screens.",
     },
     {
-      title: "Sort transactions your way",
-      description: "Choose date, description, or amount ordering from the transaction list.",
+      title: "Compare plans by swiping on mobile",
+      description:
+        "Free and Zoption Pro now sit side by side so you can swipe to compare feature limits.",
     },
     {
-      title: "Release updates in the app",
-      description: "Zoption now shares a concise summary when a new version is available.",
+      title: "A taller assistant on mobile",
+      description:
+        "The AI assistant now fills the screen so the full conversation and your message box stay visible.",
+    },
+    {
+      title: "Version in the footer",
+      description: "Tap the version in the footer to review the latest changes anytime.",
     },
   ],
 };

@@ -911,7 +911,13 @@
   .assistant-page {
     width: calc(100% - 28px);
     min-height: calc(100vh - 64px);
-    padding: 20px 0 48px;
+    padding: 20px 0 32px;
+  }
+
+  .assistant-page:not(.consent-view) {
+    height: calc(100dvh - 64px);
+    min-height: 0;
+    box-sizing: border-box;
   }
 
   .assistant-mobile-actions {
@@ -926,8 +932,9 @@
 
   .assistant-workspace {
     position: relative;
-    height: min(720px, calc(100dvh - 112px));
-    min-height: 600px;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
     grid-template-columns: 1fr;
     border-radius: 15px;
   }

@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 
 import type { ProductRelease } from "../../releases/currentRelease";
 
+import "./releaseNotes.css";
+
 interface ReleaseNotesDialogProps {
   release: ProductRelease;
   onAcknowledge: () => void;
