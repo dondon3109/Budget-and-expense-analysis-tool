@@ -46,5 +46,10 @@ export const currentRelease: ProductRelease = {
       title: "Version in the footer",
       description: "Tap the version in the footer to review the latest changes anytime.",
     },
+    {
+      title: "Assistant memory",
+      description:
+        "The AI assistant now remembers durable preferences and facts across chats, such as your debt payoff strategy or savings targets, with a Memory panel to review and clear them.",
+    },
   ],
 };

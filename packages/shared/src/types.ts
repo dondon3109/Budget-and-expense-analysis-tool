@@ -470,7 +470,31 @@ export interface AssistantResponseMetadata {
   sources: AssistantSourceMetadata[];
 }
 
-export const CURRENT_ASSISTANT_CONSENT_VERSION = 2;
+export const CURRENT_ASSISTANT_CONSENT_VERSION = 3;
+
+export type AssistantDebtStrategy = "avalanche" | "snowball";
+export type AssistantMemoryKind = "preference" | "fact" | "summary";
+export type AssistantMemorySource = "user_stated" | "deterministic" | "model_assisted";
+
+export interface AssistantMemory {
+  id: string;
+  kind: AssistantMemoryKind;
+  key: string;
+  value: string;
+  source: AssistantMemorySource;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssistantMemoryPreferences {
+  debtStrategy: AssistantDebtStrategy | null;
+  responseDetail: AssistantResponseDetail;
+  coachingStyle: AssistantCoachingStyle;
+}
+
+export interface AssistantMemoryPreferencesUpdate {
+  debtStrategy: AssistantDebtStrategy | null;
+}
 
 export interface AssistantToolResultEnvelope<T> {
   data: T;

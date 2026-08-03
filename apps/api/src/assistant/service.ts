@@ -1,5 +1,8 @@
 import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
 import type {
+  AssistantMemory,
+  AssistantMemoryPreferences,
+  AssistantMemoryPreferencesUpdate,
   AssistantMessageInput,
   AssistantMessageListQuery,
   AssistantMessagePage,
@@ -15,8 +18,17 @@ import type { AssistantUsageRepository } from "../db/assistant-usage";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { DeepSeekError, type DeepSeekErrorKind, type DeepSeekFailureReason } from "./deepseek";
+import {
+  buildMemoryBlock,
+  deterministicExtract,
+  MODEL_MEMORY_PASS_CYCLE_CAP,
+  runModelMemoryPass,
+} from "./memory";
 import type { AssistantOrchestrator } from "./orchestrator";
+import type { AssistantProvider } from "./provider";
 import { responseMetadataForPolicy, serializeTurnPolicy } from "./turn-policy";
+
+const THREAD_SUMMARY_MAX_CHARACTERS = 500;
 
 export interface AssistantService {
   getPreferences(env: Bindings, tenantId: string): Promise<AssistantPreferences>;
@@ -49,6 +61,14 @@ export interface AssistantService {
   ): Promise<AssistantTurnResult>;
   deleteThread(env: Bindings, tenantId: string, threadId: string): Promise<void>;
   deleteAllThreads(env: Bindings, tenantId: string): Promise<void>;
+  getMemory(env: Bindings, tenantId: string): Promise<AssistantMemory[]>;
+  getMemoryPreferences(env: Bindings, tenantId: string): Promise<AssistantMemoryPreferences>;
+  updateMemoryPreferences(
+    env: Bindings,
+    tenantId: string,
+    input: AssistantMemoryPreferencesUpdate,
+  ): Promise<AssistantMemoryPreferences>;
+  clearMemory(env: Bindings, tenantId: string): Promise<void>;
 }
 
 export interface AssistantProviderFailureEvent {
@@ -111,6 +131,7 @@ export function createAssistantService(
   orchestrator: AssistantOrchestrator,
   reporter: AssistantDiagnosticReporter = defaultDiagnosticReporter,
   assistantUsage?: Pick<AssistantUsageRepository, "consumeUsage">,
+  provider?: AssistantProvider,
 ): AssistantService {
   async function requireReadyPreferences(
     env: Bindings,
@@ -136,6 +157,85 @@ export function createAssistantService(
       );
     }
     return { ...preferences, assistantName, userPreferredName };
+  }
+
+  async function loadMemoryContext(env: Bindings, tenantId: string, threadId: string) {
+    const [memories, preferences] = await Promise.all([
+      repository.listMemories(env, tenantId),
+      repository.getPreferences(env, tenantId),
+    ]);
+    const facts = memories.filter(
+      (memory) =>
+        (memory.kind === "fact" || memory.kind === "preference") &&
+        memory.key !== "model_memory_pass_count",
+    );
+    const threadSummary =
+      memories.find(
+        (memory) => memory.kind === "summary" && memory.key === `thread:${threadId}`,
+      )?.value ?? null;
+    const debtMemory = memories.find(
+      (memory) => memory.kind === "preference" && memory.key === "debt_strategy",
+    );
+    const debtStrategy =
+      debtMemory && (debtMemory.value === "avalanche" || debtMemory.value === "snowball")
+        ? debtMemory.value
+        : null;
+    const block = buildMemoryBlock({
+      debtStrategy,
+      responseDetail: preferences.responseDetail,
+      coachingStyle: preferences.coachingStyle,
+      facts,
+      threadSummary,
+    });
+    return { block };
+  }
+
+  async function persistExtractedMemories(env: Bindings, tenantId: string, message: string) {
+    const extraction = deterministicExtract(message);
+    for (const memory of extraction.memories) {
+      await repository.upsertMemory(env, tenantId, memory);
+    }
+    if (extraction.needsModelPass && provider) {
+      const countMemory = await repository.getMemory(
+        env,
+        tenantId,
+        "fact",
+        "model_memory_pass_count",
+      );
+      const used = Number.parseInt(countMemory?.value ?? "0", 10);
+      if (!Number.isNaN(used) && used < MODEL_MEMORY_PASS_CYCLE_CAP) {
+        const extracted = await runModelMemoryPass(env, provider, message);
+        for (const memory of extracted) {
+          await repository.upsertMemory(env, tenantId, memory);
+        }
+        await repository.upsertMemory(env, tenantId, {
+          kind: "fact",
+          key: "model_memory_pass_count",
+          value: String(used + 1),
+          source: "deterministic",
+        });
+      }
+    }
+  }
+
+  async function updateThreadSummary(
+    env: Bindings,
+    tenantId: string,
+    threadId: string,
+    assistantContent: string,
+  ) {
+    const summary = assistantContent.replace(/\s+/g, " ").trim();
+    if (!summary) return;
+    const bounded =
+      summary.length > THREAD_SUMMARY_MAX_CHARACTERS
+        ? `${summary.slice(0, THREAD_SUMMARY_MAX_CHARACTERS - 1).trimEnd()}…`
+        : summary;
+    await repository.upsertMemory(env, tenantId, {
+      kind: "summary",
+      key: `thread:${threadId}`,
+      value: bounded,
+      source: "deterministic",
+    });
   }
 
   async function runTurn(
@@ -171,6 +271,7 @@ export function createAssistantService(
       }
 
       await assistantUsage?.consumeUsage(env, tenantId);
+      const { block } = await loadMemoryContext(env, tenantId, start.thread.id);
       const answer = await orchestrator.answer(
         env,
         tenantId,
@@ -183,8 +284,9 @@ export function createAssistantService(
           coachingStyle: preferences.coachingStyle,
         },
         policy,
+        block,
       );
-      return await repository.completeTurn(env, tenantId, start, answer.content, {
+      const completed = await repository.completeTurn(env, tenantId, start, answer.content, {
         model: answer.model,
         promptTokens: answer.promptTokens,
         completionTokens: answer.completionTokens,
@@ -192,6 +294,13 @@ export function createAssistantService(
         responseMetadata: answer.responseMetadata,
         audit: answer.audit,
       });
+      try {
+        await persistExtractedMemories(env, tenantId, input.message);
+        await updateThreadSummary(env, tenantId, start.thread.id, answer.content);
+      } catch {
+        // Memory updates are best-effort and must never fail a completed turn.
+      }
+      return completed;
     } catch (error) {
       if (error instanceof DeepSeekError) reportProviderFailure(error, reporter);
       await repository.failTurn(env, tenantId, start);
@@ -219,5 +328,43 @@ export function createAssistantService(
     sendTurn: runTurn,
     deleteThread: (env, tenantId, threadId) => repository.deleteThread(env, tenantId, threadId),
     deleteAllThreads: (env, tenantId) => repository.deleteAllThreads(env, tenantId),
+
+    async getMemory(env, tenantId) {
+      const memories = await repository.listMemories(env, tenantId);
+      return memories.filter((memory) => memory.key !== "model_memory_pass_count");
+    },
+
+    async getMemoryPreferences(env, tenantId) {
+      const preferences = await repository.getPreferences(env, tenantId);
+      const debtMemory = await repository.getMemory(env, tenantId, "preference", "debt_strategy");
+      const debtStrategy =
+        debtMemory && (debtMemory.value === "avalanche" || debtMemory.value === "snowball")
+          ? debtMemory.value
+          : null;
+      return {
+        debtStrategy,
+        responseDetail: preferences.responseDetail,
+        coachingStyle: preferences.coachingStyle,
+      };
+    },
+
+    async updateMemoryPreferences(env, tenantId, input) {
+      await requireReadyPreferences(env, tenantId);
+      if (input.debtStrategy === null) {
+        await repository.deleteMemory(env, tenantId, "preference", "debt_strategy");
+      } else {
+        await repository.upsertMemory(env, tenantId, {
+          kind: "preference",
+          key: "debt_strategy",
+          value: input.debtStrategy,
+          source: "user_stated",
+        });
+      }
+      return this.getMemoryPreferences(env, tenantId);
+    },
+
+    async clearMemory(env, tenantId) {
+      await repository.clearMemories(env, tenantId);
+    },
   };
 }

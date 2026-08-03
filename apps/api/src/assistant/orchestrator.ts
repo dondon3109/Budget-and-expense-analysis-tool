@@ -73,6 +73,7 @@ export interface AssistantOrchestrator {
     message: string,
     identity: AssistantIdentity,
     policy: AssistantTurnPolicy,
+    memory: string,
   ): Promise<AssistantAnswer>;
 }
 
@@ -109,11 +110,18 @@ function providerMessages(
   message: string,
   identity: AssistantIdentity,
   policy: AssistantTurnPolicy,
+  memory: string,
 ): AssistantProviderMessage[] {
   return [
     {
       role: "system",
-      content: buildAssistantSystemPrompt(policy.currentDate, policy.timeZone, identity, policy),
+      content: buildAssistantSystemPrompt(
+        policy.currentDate,
+        policy.timeZone,
+        identity,
+        policy,
+        memory,
+      ),
     },
     ...boundedHistory(history).map((item) => ({ role: item.role, content: item.content }) as const),
     { role: "user", content: message },
@@ -179,7 +187,7 @@ export function createAssistantOrchestrator(
       });
     },
 
-    async answer(env, tenantId, history, message, identity, policy) {
+    async answer(env, tenantId, history, message, identity, policy, memory) {
       if (policy.deterministicResponse) {
         return {
           content: policy.deterministicResponse,
@@ -190,7 +198,7 @@ export function createAssistantOrchestrator(
         };
       }
 
-      const messages = providerMessages(history, message, identity, policy);
+      const messages = providerMessages(history, message, identity, policy, memory);
       const overallTimeoutMs = configuredNumber(env.ASSISTANT_OVERALL_TIMEOUT_MS, 25_000);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("assistant_timeout"), overallTimeoutMs);
