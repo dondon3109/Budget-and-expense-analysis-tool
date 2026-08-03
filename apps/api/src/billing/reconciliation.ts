@@ -9,6 +9,7 @@ import type {
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import {
+  cancelPayPalSubscription,
   getPayPalSubscription,
   isPayPalCheckoutPending,
   normalizePayPalSubscriptionStatus,
@@ -101,6 +102,21 @@ export async function reconcilePayPalCheckout(
   }
 
   if (isPayPalCheckoutPending(subscription.status)) {
+    // A subscription still awaiting buyer approval has not been charged. If the checkout
+    // window has already expired, treat it as abandoned: cancel the unpaid subscription and
+    // close the checkout so the tenant can start a fresh one. An APPROVED subscription (the
+    // buyer approved and payment may be settling) stays under review until PayPal finalizes it.
+    if (
+      subscription.status === "APPROVAL_PENDING" &&
+      pendingOutcome(checkout) === "review_required"
+    ) {
+      await cancelPayPalSubscription(env, checkout.providerSubscriptionId).catch(() => {});
+      await repository.supersedePendingCheckout(env, tenantId, checkout.reference);
+      return {
+        outcome: "closed",
+        summary: await repository.getSummary(env, tenantId),
+      };
+    }
     await repository.recordCheckoutReconciliation(
       env,
       tenantId,

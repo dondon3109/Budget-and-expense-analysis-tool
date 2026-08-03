@@ -211,6 +211,30 @@ describe("BillingSettings", () => {
     expect(screen.getByText(/do not start another subscription/i)).toBeInTheDocument();
   });
 
+  it("lets a user in the review state start a new checkout once the abandoned checkout is closed", async () => {
+    const pending = summary(null, {
+      pendingCheckout: {
+        provider: "paypal",
+        interval: "month",
+        createdAt: "2026-08-01T00:00:00.000Z",
+        expiresAt: "2026-08-01T00:15:00.000Z",
+      },
+      canCheckout: false,
+    });
+    const closed = summary(null, { pendingCheckout: null, canCheckout: true });
+    renderSettings(pending, "/app/settings#plan-and-billing", [
+      { outcome: "review_required", summary: pending },
+      { outcome: "closed", summary: closed },
+    ]);
+
+    const startButton = await screen.findByRole("button", { name: "Start a new checkout" });
+    fireEvent.click(startButton);
+
+    expect(
+      await screen.findByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
+    ).toBeInTheDocument();
+  });
+
   it("automatically reflects an activated checkout in Plan and billing", async () => {
     vi.useFakeTimers();
     const freeSummary = summary(null);

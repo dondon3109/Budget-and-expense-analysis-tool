@@ -540,6 +540,33 @@ export function BillingSettings({ user }: { user: User }) {
     workspace,
   ]);
 
+  const startNewCheckout = useCallback(async () => {
+    setPaymentRefreshBusy(true);
+    setError(undefined);
+    try {
+      const reconciliation = await reconcileBillingCheckout(workspace);
+      await refetchBilling();
+      if (
+        reconciliation.outcome === "closed" ||
+        reconciliation.outcome === "none" ||
+        isConfirmedPayPalSummary(reconciliation.summary)
+      ) {
+        setPaymentConfirmationDelayed(false);
+        setPaymentPollingExhausted(false);
+        setPaymentReviewRequired(false);
+        setIsProCheckoutOpen(true);
+      } else {
+        setError(
+          "A subscription is still being confirmed. Complete it in PayPal before starting another checkout.",
+        );
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The checkout could not be reset.");
+    } finally {
+      setPaymentRefreshBusy(false);
+    }
+  }, [reconcileBillingCheckout, refetchBilling, workspace]);
+
   const paymentPending = Boolean(checkoutCompleted || summary?.pendingCheckout);
   useEffect(() => {
     if (!paymentPending || !paymentPollingExhausted) return;
@@ -798,6 +825,16 @@ export function BillingSettings({ user }: { user: User }) {
                 onClick={() => void checkPaymentStatus()}
               >
                 {paymentRefreshBusy ? "Checking payment status…" : "Check payment status"}
+              </button>
+            )}
+            {paymentReviewRequired && (
+              <button
+                className="button primary compact"
+                type="button"
+                disabled={paymentRefreshBusy}
+                onClick={() => void startNewCheckout()}
+              >
+                {paymentRefreshBusy ? "Preparing…" : "Start a new checkout"}
               </button>
             )}
           </div>
