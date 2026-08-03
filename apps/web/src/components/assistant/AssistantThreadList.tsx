@@ -36,7 +36,11 @@ export function AssistantThreadList({
   const [confirmAll, setConfirmAll] = useState(false);
 
   return (
-    <aside className="assistant-history" aria-label="Assistant chat history">
+    <aside
+      id="assistant-chat-history"
+      className="assistant-history"
+      aria-label="Assistant chat history"
+    >
       <div className="assistant-history-heading">
         <div className="assistant-history-title-row">
           <div>

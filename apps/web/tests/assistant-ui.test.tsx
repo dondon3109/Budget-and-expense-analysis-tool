@@ -350,19 +350,21 @@ describe("assistant UI", () => {
     expect(send).toHaveBeenCalledOnce();
   });
 
-  it("uses the new assistant message with MONEY emphasized", async () => {
+  it("removes the visual page header while retaining an accessible Assistant heading", async () => {
     renderPage();
 
     expect(
-      await screen.findByRole("heading", { name: "Your MONEY, explained." }),
-    ).toBeInTheDocument();
+      await screen.findByRole("heading", { level: 1, name: "AI Financial Assistant" }),
+    ).toHaveClass("sr-only");
     expect(
-      screen.getByText(
+      screen.queryByRole("heading", { name: "Your MONEY, explained." }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
         "Ask about your records, budgets, goals, and debt. Zoption verifies the numbers.",
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
-    expect(screen.getByText("MONEY")).toHaveClass("assistant-heading-emphasis");
     const usage = await screen.findByRole("progressbar", {
       name: "Free plan AI questions this 14-day cycle",
     });
@@ -534,7 +536,11 @@ describe("assistant UI", () => {
     await screen.findByText(thread.title);
     const history = screen.getByRole("complementary", { name: "Assistant chat history" });
     const newChat = within(history).getByRole("button", { name: "Start a new chat" });
+    const historyToggle = screen.getByRole("button", { name: "History" });
 
+    expect(history).toHaveAttribute("id", "assistant-chat-history");
+    expect(historyToggle).toHaveAttribute("aria-controls", "assistant-chat-history");
+    expect(historyToggle).toHaveAttribute("aria-expanded", "false");
     expect(newChat).toHaveTextContent("New chat");
     expect(
       within(history).getByRole("button", { name: "Edit assistant names" }),
@@ -543,8 +549,9 @@ describe("assistant UI", () => {
     fireEvent.click(screen.getByText(thread.title).closest("button")!);
     const composer = await screen.findByRole("textbox", { name: "Ask about your finances" });
     fireEvent.change(composer, { target: { value: "Compare it with last month" } });
-    fireEvent.click(screen.getByRole("button", { name: "History" }));
+    fireEvent.click(historyToggle);
 
+    expect(historyToggle).toHaveAttribute("aria-expanded", "true");
     expect(container.querySelector(".assistant-workspace")).toHaveClass("history-open");
     fireEvent.click(newChat);
 

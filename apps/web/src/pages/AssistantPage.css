@@ -5,7 +5,7 @@
   width: min(1240px, calc(100% - 48px));
   min-height: 100vh;
   margin: 0 auto;
-  padding: 54px 0 64px;
+  padding: 32px 0 64px;
   display: flex;
   flex-direction: column;
 }
@@ -15,48 +15,14 @@
   justify-content: center;
 }
 
-.assistant-page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.assistant-page-header h1 {
-  margin: 0;
-  color: var(--ink);
-  font-family: Georgia, serif;
-  font-size: clamp(34px, 3vw, 43px);
-  font-weight: 600;
-  line-height: 1.06;
-  letter-spacing: -0.03em;
-}
-
-.assistant-page-header > div:first-child > p:not(.eyebrow) {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.assistant-heading-emphasis {
-  color: var(--action);
-  font-style: italic;
-  font-weight: 700;
-}
-
-.assistant-header-actions {
-  display: flex;
-  gap: 8px;
-}
-
+.assistant-mobile-actions,
 .assistant-history-toggle {
   display: none;
 }
 
 .assistant-workspace {
-  height: min(720px, calc(100dvh - 160px));
-  min-height: 560px;
-  margin-top: 24px;
+  height: min(760px, calc(100dvh - 112px));
+  min-height: 600px;
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
   overflow: hidden;
@@ -944,29 +910,14 @@
 @media (max-width: 760px) {
   .assistant-page {
     width: calc(100% - 28px);
-    padding: 28px 0 48px;
-  }
-
-  .assistant-page {
     min-height: calc(100vh - 64px);
+    padding: 20px 0 48px;
   }
 
-  .assistant-page-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .assistant-page-header h1 {
-    font-size: 31px;
-  }
-
-  .assistant-header-actions {
-    width: 100%;
-  }
-
-  .assistant-header-actions .button {
-    flex: 1;
+  .assistant-mobile-actions {
+    align-self: flex-end;
+    margin-bottom: 8px;
+    display: flex;
   }
 
   .assistant-history-toggle {
@@ -975,8 +926,8 @@
 
   .assistant-workspace {
     position: relative;
-    height: min(700px, calc(100dvh - 190px));
-    min-height: 560px;
+    height: min(720px, calc(100dvh - 112px));
+    min-height: 600px;
     grid-template-columns: 1fr;
     border-radius: 15px;
   }

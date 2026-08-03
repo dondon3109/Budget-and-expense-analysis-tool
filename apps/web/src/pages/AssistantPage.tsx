@@ -298,24 +298,23 @@ export function AssistantPage() {
   return (
     <AppShell>
       <div className="assistant-page">
-        <header className="assistant-page-header">
-          <div>
-            <p className="eyebrow">AI Financial Assistant</p>
-            <h1>
-              Your <span className="assistant-heading-emphasis">MONEY</span>, explained.
-            </h1>
-            <p>Ask about your records, budgets, goals, and debt. Zoption verifies the numbers.</p>
-          </div>
-          <div className="assistant-header-actions">
-            <button
-              className="button secondary compact assistant-history-toggle"
-              type="button"
-              onClick={() => setHistoryOpen((open) => !open)}
-            >
-              {historyOpen ? <X size={16} /> : <Menu size={16} />} History
-            </button>
-          </div>
-        </header>
+        <h1 className="sr-only">AI Financial Assistant</h1>
+        <div className="assistant-mobile-actions">
+          <button
+            className="button secondary compact assistant-history-toggle"
+            type="button"
+            aria-controls="assistant-chat-history"
+            aria-expanded={historyOpen}
+            onClick={() => setHistoryOpen((open) => !open)}
+          >
+            {historyOpen ? (
+              <X size={16} aria-hidden="true" />
+            ) : (
+              <Menu size={16} aria-hidden="true" />
+            )}{" "}
+            History
+          </button>
+        </div>
 
         <div className={`assistant-workspace ${historyOpen ? "history-open" : ""}`}>
           <AssistantThreadList
