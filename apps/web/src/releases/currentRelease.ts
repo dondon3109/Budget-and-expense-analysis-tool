@@ -14,6 +14,21 @@ export const currentRelease: ProductRelease = {
   releasedOn: "August 4, 2026",
   changes: [
     {
+      title: "PayPal for Zoption Pro",
+      description:
+        "Pay for Zoption Pro securely with PayPal. Choose monthly or annual billing during checkout.",
+    },
+    {
+      title: "Reliable payment confirmation",
+      description:
+        "Your billing status now stays accurate while PayPal confirms your payment, survives page refreshes, and lets you check payment status anytime.",
+    },
+    {
+      title: "14-day free assistant cycle",
+      description:
+        "Free-plan assistant questions reset on a rolling 14-day cycle tied to your first provider-backed question.",
+    },
+    {
       title: "Mobile theme picker polish",
       description: "Theme options are now more compact and easier to scan on small screens.",
     },
