@@ -7,7 +7,6 @@
   "env": {
     "preview": {
       "name": "budget-expense-api-preview",
-      "send_email": [{ "name": "EMAIL" }],
       "d1_databases": [
         {
           "binding": "DB",
@@ -34,7 +33,6 @@
     },
     "production": {
       "name": "budget-expense-api-production",
-      "send_email": [{ "name": "EMAIL" }],
       "routes": [{ "pattern": "api.zoption.site", "custom_domain": true }],
       "d1_databases": [
         {

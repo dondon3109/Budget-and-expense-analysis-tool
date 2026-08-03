@@ -10,3 +10,7 @@ PAYPAL_PRO_ANNUAL_PLAN_ID=
 PAYPAL_CLIENT_ID=
 PAYPAL_CLIENT_SECRET=
 PAYPAL_WEBHOOK_ID=
+
+# Resend transactional email (sponsored-seat invitations). Verify the sender domain in
+# Resend and keep the API key in this ignored file or a `wrangler secret put` value.
+RESEND_API_KEY=

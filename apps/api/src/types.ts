@@ -1,4 +1,4 @@
-export interface WorkerEmailSender {
+export interface EmailSender {
   send(message: {
     to: string;
     from: { email: string; name?: string };
@@ -15,7 +15,7 @@ export interface Bindings {
   SUPABASE_JWT_AUDIENCE?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
-  EMAIL?: WorkerEmailSender;
+  RESEND_API_KEY?: string;
   WEB_APP_URL?: string;
   EMAIL_FROM?: string;
   DEEPSEEK_API_KEY?: string;

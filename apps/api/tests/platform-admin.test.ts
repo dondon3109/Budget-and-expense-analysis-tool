@@ -147,17 +147,24 @@ describe("platform-admin sponsored-seat safety", () => {
         leaseToken: "lease-token",
       }),
     });
-    const service = createPlatformAdminService(repository);
     const email = { send: vi.fn().mockResolvedValue(undefined) };
+    const service = createPlatformAdminService(repository, undefined, email);
     const emailEnv = {
       ...env,
-      EMAIL: email,
       WEB_APP_URL: "https://zoption.site",
       EMAIL_FROM: "hello@zoption.site",
     } satisfies Bindings;
 
     await service.resendInvitation(emailEnv, "admin-id", 1);
 
+    expect(email.send).toHaveBeenCalledTimes(1);
+    expect(email.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "recipient@example.com",
+        from: { email: "hello@zoption.site", name: "Zoption" },
+        subject: "You have been invited to sponsored Zoption Pro access",
+      }),
+    );
     expect(repository.finishInvitationDelivery).toHaveBeenCalledWith(
       emailEnv,
       "admin-id",

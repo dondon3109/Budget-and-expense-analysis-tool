@@ -3,7 +3,8 @@ import type { SponsoredProSeat, SponsoredProSeatSummary } from "@zoption/shared"
 import type { PlatformAdminRepository } from "./db/platform-admin";
 import { platformAdminRepository } from "./db/platform-admin";
 import { HttpError } from "./errors";
-import type { AuthUser, Bindings } from "./types";
+import { createResendSender } from "./resend";
+import type { AuthUser, Bindings, EmailSender } from "./types";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -139,6 +140,7 @@ export interface PlatformAdminService {
 export function createPlatformAdminService(
   repository: PlatformAdminRepository = platformAdminRepository,
   identityGateway: VerifiedIdentityGateway = createVerifiedIdentityGateway(),
+  injectedSender?: EmailSender,
 ): PlatformAdminService {
   async function recipientId(env: Bindings, sponsorUserId: string, email: string): Promise<string> {
     const normalized = normalizeEmail(email);
@@ -173,14 +175,19 @@ export function createPlatformAdminService(
       throw new HttpError(409, "invitation_cooldown", "Wait before sending another invitation.");
     }
     try {
-      const sender = env.EMAIL;
-      if (!sender) {
-        throw new HttpError(
-          503,
-          "email_invitation_unavailable",
-          "Email invitations are not configured.",
-        );
-      }
+      const sender =
+        injectedSender ??
+        (() => {
+          const apiKey = env.RESEND_API_KEY?.trim();
+          if (!apiKey) {
+            throw new HttpError(
+              503,
+              "email_invitation_unavailable",
+              "Email invitations are not configured.",
+            );
+          }
+          return createResendSender(apiKey);
+        })();
       const appUrl = configuredAppUrl(env);
       const signupUrl = new URL("/signup", appUrl).href;
       const loginUrl = new URL("/login?redirectTo=%2Fapp", appUrl).href;
