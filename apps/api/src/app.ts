@@ -17,6 +17,10 @@ import { createAccountDeletionService, type AccountDeletionService } from "./acc
 import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from "./auth";
 import { accountRepository, type AccountRepository } from "./db/accounts";
 import { assistantRepository, type AssistantRepository } from "./db/assistant";
+import {
+  assistantUsageRepository,
+  type AssistantUsageRepository,
+} from "./db/assistant-usage";
 import { billingRepository, type BillingRepository } from "./db/billing";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
@@ -92,6 +96,7 @@ export interface AppOptions {
   authVerifier?: AuthVerifier;
   tenantResolver?: TenantResolver;
   assistantRepository?: AssistantRepository;
+  assistantUsage?: AssistantUsageRepository;
   assistantProvider?: AssistantProvider;
   assistantService?: AssistantService;
   accountDeletionService?: AccountDeletionService;
@@ -117,6 +122,7 @@ export function createApp(options: AppOptions = {}) {
   const authVerifier = options.authVerifier ?? supabaseAuthVerifier;
   const resolveTenant = options.tenantResolver ?? tenantResolver;
   const assistantStore = options.assistantRepository ?? assistantRepository;
+  const assistantUsage = options.assistantUsage ?? assistantUsageRepository;
   const assistantProvider = options.assistantProvider ?? deepSeekProvider;
   const assistantService =
     options.assistantService ??
@@ -135,7 +141,7 @@ export function createApp(options: AppOptions = {}) {
         }),
       ),
       undefined,
-      billingStore,
+      assistantUsage,
     );
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =

@@ -91,6 +91,7 @@ export const accountDeletionRepository: AccountDeletionRepository = {
       env.DB.prepare("DELETE FROM assistant_messages WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM assistant_threads WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM assistant_preferences WHERE tenant_id = ?").bind(tenantId),
+      env.DB.prepare("DELETE FROM billing_assistant_cycle_usage WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM billing_monthly_usage WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM billing_checkout_references WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM billing_subscriptions WHERE tenant_id = ?").bind(tenantId),

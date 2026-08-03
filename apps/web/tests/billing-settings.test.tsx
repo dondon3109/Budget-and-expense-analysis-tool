@@ -60,12 +60,16 @@ function summary(
         feature: "assistant_question",
         used: 2,
         limit: paid ? 100 : 4,
+        periodKind: "anchored_14_day",
+        periodStartedAt: "2026-07-18T00:00:00.000Z",
         resetsAt: "2026-08-01T00:00:00.000Z",
       },
       {
         feature: "file_import",
         used: 1,
         limit: paid ? 10 : 1,
+        periodKind: "calendar_month",
+        periodStartedAt: "2026-07-01T00:00:00.000Z",
         resetsAt: "2026-08-01T00:00:00.000Z",
       },
     ],
@@ -478,7 +482,7 @@ describe("BillingSettings", () => {
     renderSettings(summary(null));
 
     expect(await screen.findByText("Free and Pro, side by side")).toBeInTheDocument();
-    expect(screen.getByText("4 questions per month")).toBeInTheDocument();
+    expect(screen.getByText("4 questions per 14-day cycle")).toBeInTheDocument();
     expect(screen.getByText("10 committed imports per month")).toBeInTheDocument();
     expect(
       screen.getByText("1 active custom category, plus included starters"),

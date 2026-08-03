@@ -181,32 +181,33 @@ describe("billing usage error mapping", () => {
   });
 
   it.each([
-    { pro: false, used: 4, limit: 4 },
-    { pro: true, used: 100, limit: 100 },
+    { pro: false, used: 1, limit: 1 },
+    { pro: true, used: 10, limit: 10 },
   ])(
-    "maps the database sentinel to the stable $limit-question response",
+    "maps the database sentinel to the stable $limit-import response",
     async ({ pro, used, limit }) => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-07-30T12:00:00.000Z"));
       const environment = usageEnvironment({ pro, used });
 
       await expect(
-        billingRepository.rethrowUsageError(
+        billingRepository.rethrowMonthlyImportUsageError(
           environment,
           "user:user-1",
-          "assistant_question",
           new Error("D1_ERROR: billing_monthly_limit_reached"),
         ),
       ).rejects.toMatchObject({
         status: 409,
         code: "monthly_limit_reached",
-        message: "You have reached this month’s plan limit.",
+        message: "You have reached this month’s import limit.",
         details: {
-          feature: "assistant_question",
+          feature: "file_import",
           used,
           limit,
+          periodKind: "calendar_month",
+          periodStartedAt: "2026-06-30T16:00:00.000Z",
           resetsAt: "2026-07-31T16:00:00.000Z",
-          billingPath: "/app/settings",
+          billingPath: "/app/settings#plan-and-billing",
         },
       });
     },
@@ -217,10 +218,9 @@ describe("billing usage error mapping", () => {
     const failure = new Error("D1 unavailable");
 
     await expect(
-      billingRepository.rethrowUsageError(
+      billingRepository.rethrowMonthlyImportUsageError(
         environment,
         "user:user-1",
-        "assistant_question",
         failure,
       ),
     ).rejects.toBe(failure);

@@ -11,7 +11,7 @@ import type {
 } from "@zoption/shared";
 
 import type { AssistantRepository } from "../db/assistant";
-import type { BillingRepository } from "../db/billing";
+import type { AssistantUsageRepository } from "../db/assistant-usage";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { DeepSeekError, type DeepSeekErrorKind, type DeepSeekFailureReason } from "./deepseek";
@@ -110,7 +110,7 @@ export function createAssistantService(
   repository: AssistantRepository,
   orchestrator: AssistantOrchestrator,
   reporter: AssistantDiagnosticReporter = defaultDiagnosticReporter,
-  billing?: Pick<BillingRepository, "consumeUsage">,
+  assistantUsage?: Pick<AssistantUsageRepository, "consumeUsage">,
 ): AssistantService {
   async function requireReadyPreferences(
     env: Bindings,
@@ -170,7 +170,7 @@ export function createAssistantService(
         });
       }
 
-      await billing?.consumeUsage(env, tenantId, "assistant_question");
+      await assistantUsage?.consumeUsage(env, tenantId);
       const answer = await orchestrator.answer(
         env,
         tenantId,

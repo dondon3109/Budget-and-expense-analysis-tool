@@ -67,11 +67,13 @@ export class ApiRequestError extends Error {
   }
 }
 
-export interface MonthlyLimitReachedDetails {
+export interface UsageLimitReachedDetails {
   feature: BillingFeature;
   used: number;
   limit: number;
-  resetsAt: string;
+  periodKind?: "calendar_month" | "anchored_14_day";
+  periodStartedAt?: string | null;
+  resetsAt: string | null;
   billingPath?: string;
 }
 
@@ -118,11 +120,19 @@ export function isApiRequestError(error: unknown): error is ApiRequestError {
   return error instanceof ApiRequestError;
 }
 
-export function isMonthlyLimitReachedError(
+export function isUsageLimitReachedError(
   error: unknown,
-): error is ApiRequestError & { details: MonthlyLimitReachedDetails } {
-  if (!isApiRequestError(error) || error.code !== "monthly_limit_reached") return false;
+): error is ApiRequestError & { details: UsageLimitReachedDetails } {
+  if (
+    !isApiRequestError(error) ||
+    (error.code !== "monthly_limit_reached" && error.code !== "assistant_cycle_limit_reached")
+  ) {
+    return false;
+  }
   if (!isRecord(error.details)) return false;
+  const periodKind = error.details.periodKind;
+  const periodStartedAt = error.details.periodStartedAt;
+  const resetsAt = error.details.resetsAt;
   return (
     typeof error.details.feature === "string" &&
     billingFeatures.has(error.details.feature as BillingFeature) &&
@@ -132,8 +142,20 @@ export function isMonthlyLimitReachedError(
     typeof error.details.limit === "number" &&
     Number.isFinite(error.details.limit) &&
     error.details.limit >= 0 &&
-    typeof error.details.resetsAt === "string"
+    (periodKind === undefined ||
+      periodKind === "calendar_month" ||
+      periodKind === "anchored_14_day") &&
+    (periodStartedAt === undefined ||
+      periodStartedAt === null ||
+      typeof periodStartedAt === "string") &&
+    (resetsAt === null || typeof resetsAt === "string")
   );
+}
+
+export function isMonthlyLimitReachedError(
+  error: unknown,
+): error is ApiRequestError & { details: UsageLimitReachedDetails } {
+  return isUsageLimitReachedError(error) && error.code === "monthly_limit_reached";
 }
 
 export function isResourceLimitReachedError(
@@ -168,6 +190,7 @@ export function isBillingEnforcementError(error: unknown): error is ApiRequestEr
   return (
     isApiRequestError(error) &&
     (error.code === "monthly_limit_reached" ||
+      error.code === "assistant_cycle_limit_reached" ||
       error.code === "resource_limit_reached" ||
       error.code === "upgrade_required")
   );

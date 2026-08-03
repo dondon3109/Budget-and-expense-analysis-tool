@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AssistantOrchestrator } from "../src/assistant/orchestrator";
 import { createAssistantService } from "../src/assistant/service";
-import type { BillingRepository } from "../src/db/billing";
+import type { AssistantUsageRepository } from "../src/db/assistant-usage";
 import type {
   AssistantCompletedTurn,
   AssistantRepository,
@@ -124,8 +124,8 @@ function orchestrator(): AssistantOrchestrator {
   };
 }
 
-function billing(consumeUsage: BillingRepository["consumeUsage"]) {
-  return { consumeUsage } satisfies Pick<BillingRepository, "consumeUsage">;
+function usage(consumeUsage: AssistantUsageRepository["consumeUsage"]) {
+  return { consumeUsage } satisfies Pick<AssistantUsageRepository, "consumeUsage">;
 }
 
 describe("assistant billing quota enforcement", () => {
@@ -134,7 +134,7 @@ describe("assistant billing quota enforcement", () => {
     const store = repository(vi.fn(async () => duplicateStart));
     const assistant = orchestrator();
     const consumeUsage = vi.fn(async () => undefined);
-    const service = createAssistantService(store, assistant, undefined, billing(consumeUsage));
+    const service = createAssistantService(store, assistant, undefined, usage(consumeUsage));
 
     await expect(service.sendTurn(ENV, TENANT_ID, THREAD_ID, INPUT)).resolves.toEqual(COMPLETED);
 
@@ -145,16 +145,33 @@ describe("assistant billing quota enforcement", () => {
     expect(store.failTurn).not.toHaveBeenCalled();
   });
 
+  it("does not consume quota for a deterministic policy response", async () => {
+    const store = repository();
+    const assistant = orchestrator();
+    vi.mocked(assistant.plan).mockResolvedValueOnce({
+      ...POLICY,
+      deterministicResponse: "Please choose a specific date range.",
+    });
+    const consumeUsage = vi.fn(async () => undefined);
+    const service = createAssistantService(store, assistant, undefined, usage(consumeUsage));
+
+    await expect(service.sendTurn(ENV, TENANT_ID, THREAD_ID, INPUT)).resolves.toEqual(COMPLETED);
+
+    expect(consumeUsage).not.toHaveBeenCalled();
+    expect(assistant.answer).not.toHaveBeenCalled();
+    expect(store.completeTurn).toHaveBeenCalledOnce();
+  });
+
   it("consumes quota exactly once after duplicate detection and before orchestration", async () => {
     const store = repository();
     const assistant = orchestrator();
     const consumeUsage = vi.fn(async () => undefined);
-    const service = createAssistantService(store, assistant, undefined, billing(consumeUsage));
+    const service = createAssistantService(store, assistant, undefined, usage(consumeUsage));
 
     await expect(service.sendTurn(ENV, TENANT_ID, THREAD_ID, INPUT)).resolves.toEqual(COMPLETED);
 
     expect(consumeUsage).toHaveBeenCalledOnce();
-    expect(consumeUsage).toHaveBeenCalledWith(ENV, TENANT_ID, "assistant_question");
+    expect(consumeUsage).toHaveBeenCalledWith(ENV, TENANT_ID);
     expect(vi.mocked(store.beginTurn).mock.invocationCallOrder[0]).toBeLessThan(
       consumeUsage.mock.invocationCallOrder[0]!,
     );
@@ -182,7 +199,7 @@ describe("assistant billing quota enforcement", () => {
     const consumeUsage = vi.fn(async () => {
       throw denial;
     });
-    const service = createAssistantService(store, assistant, undefined, billing(consumeUsage));
+    const service = createAssistantService(store, assistant, undefined, usage(consumeUsage));
 
     await expect(service.sendTurn(ENV, TENANT_ID, THREAD_ID, INPUT)).rejects.toBe(denial);
 

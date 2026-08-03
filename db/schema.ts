@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   primaryKey,
@@ -605,6 +606,28 @@ export const billingMonthlyUsage = sqliteTable(
       table.month,
       table.feature,
     ),
+  ],
+);
+
+export const billingAssistantCycleUsage = sqliteTable(
+  "billing_assistant_cycle_usage",
+  {
+    tenantId: text("tenant_id")
+      .primaryKey()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    anchorAtEpoch: integer("anchor_at_epoch").notNull(),
+    periodIndex: integer("period_index").notNull().default(0),
+    count: integer("count").notNull().default(0),
+    allowance: integer("allowance").notNull(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    check("billing_assistant_cycle_usage_anchor_nonnegative", sql`${table.anchorAtEpoch} >= 0`),
+    check("billing_assistant_cycle_usage_period_nonnegative", sql`${table.periodIndex} >= 0`),
+    check("billing_assistant_cycle_usage_count_nonnegative", sql`${table.count} >= 0`),
+    check("billing_assistant_cycle_usage_allowance_positive", sql`${table.allowance} > 0`),
   ],
 );
 

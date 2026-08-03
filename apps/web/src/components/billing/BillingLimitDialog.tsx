@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 
-import { isMonthlyLimitReachedError } from "../../lib/api";
+import { isUsageLimitReachedError } from "../../lib/api";
 import { featureLabels, formatManilaDate } from "./billingPresentation";
 import "./BillingLimitDialog.css";
 
@@ -17,7 +17,7 @@ export function BillingLimitDialog({ error, returnFocus, onClose }: BillingLimit
   const dialogRef = useRef<HTMLElement>(null);
   const primaryActionRef = useRef<HTMLAnchorElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
-  const details = isMonthlyLimitReachedError(error) ? error.details : undefined;
+  const details = isUsageLimitReachedError(error) ? error.details : undefined;
 
   useLayoutEffect(() => {
     if (!details) return;
@@ -53,7 +53,9 @@ export function BillingLimitDialog({ error, returnFocus, onClose }: BillingLimit
 
   const titleId = `billing-limit-${details.feature}-title`;
   const descriptionId = `billing-limit-${details.feature}-description`;
-  const reset = formatManilaDate(details.resetsAt, true);
+  const reset = details.resetsAt ? formatManilaDate(details.resetsAt, true) : undefined;
+  const periodLabel =
+    details.periodKind === "anchored_14_day" ? "this 14-day period" : "this month";
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === "Escape") {
@@ -106,7 +108,7 @@ export function BillingLimitDialog({ error, returnFocus, onClose }: BillingLimit
         </div>
         <div className="billing-limit-copy">
           <p className="eyebrow">Plan limit reached</p>
-          <h2 id={titleId}>No {featureLabels[details.feature]} remaining this month</h2>
+          <h2 id={titleId}>No {featureLabels[details.feature]} remaining {periodLabel}</h2>
           <p id={descriptionId}>
             You’ve used {details.used} of {details.limit} {featureLabels[details.feature]}. This
             request was not completed.

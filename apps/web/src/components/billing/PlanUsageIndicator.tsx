@@ -7,7 +7,8 @@ interface PlanUsageIndicatorProps {
   label: string;
   used: number;
   limit: number | null;
-  resetsAt?: string;
+  resetsAt?: string | null;
+  resetPendingLabel?: string;
   compact?: boolean;
   detail?: string;
   showUpgrade?: boolean;
@@ -18,6 +19,7 @@ export function PlanUsageIndicator({
   used,
   limit,
   resetsAt,
+  resetPendingLabel,
   compact = false,
   detail,
   showUpgrade = false,
@@ -62,7 +64,7 @@ export function PlanUsageIndicator({
             ? detail || "No category limit on Zoption Pro"
             : exhausted
               ? `Limit reached${reset ? ` · resets ${reset}` : ""}`
-              : `${remaining} remaining${reset ? ` · resets ${reset}` : ""}`}
+              : `${remaining} remaining${reset ? ` · resets ${reset}` : resetPendingLabel ? ` · ${resetPendingLabel}` : ""}`}
         </small>
         {showUpgrade && limit !== null && (nearLimit || exhausted) && (
           <Link to="/app/settings#plan-and-billing">View Pro limits</Link>

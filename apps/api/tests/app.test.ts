@@ -327,9 +327,8 @@ function createAllowedBillingRepository(): BillingRepository {
       createdAt: "2026-08-01T00:00:00.000Z",
       expiresAt: "2026-08-01T00:15:00.000Z",
     })),
-    createUsageStatement: vi.fn(() => ({}) as D1PreparedStatement),
-    consumeUsage: vi.fn(async () => undefined),
-    rethrowUsageError: vi.fn(async (_env, _tenantId, _feature, error) => {
+    createMonthlyImportUsageStatement: vi.fn(() => ({}) as D1PreparedStatement),
+    rethrowMonthlyImportUsageError: vi.fn(async (_env, _tenantId, error) => {
       throw error;
     }),
     hasNonTerminalSubscription: vi.fn(async () => false),

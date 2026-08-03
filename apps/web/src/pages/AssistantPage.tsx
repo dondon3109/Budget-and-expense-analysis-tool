@@ -6,7 +6,7 @@ import {
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, Sparkles, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAssistantSession } from "../assistant/AssistantSessionProvider";
 import { useAuth } from "../auth/AuthProvider";
@@ -29,7 +29,7 @@ import {
   getAssistantThreads,
   grantAssistantConsent,
   isBillingEnforcementError,
-  isMonthlyLimitReachedError,
+  isUsageLimitReachedError,
   sendAssistantMessage,
   updateAssistantIdentity,
 } from "../lib/api";
@@ -84,6 +84,27 @@ export function AssistantPage() {
     staleTime: Infinity,
     gcTime: Infinity,
   });
+  const assistantUsage = billingQuery.data?.usages.find(
+    (usage) => usage.feature === "assistant_question",
+  );
+  const isAssistantCycle = assistantUsage?.periodKind === "anchored_14_day";
+  const isFreePlan = billingQuery.data?.plan === "free";
+
+  useEffect(() => {
+    if (!isUsageLimitReachedError(sendError) || sendError.details.feature !== "assistant_question") {
+      return;
+    }
+    const resetsAt = sendError.details.resetsAt;
+    if (
+      assistantUsage &&
+      assistantUsage.used < assistantUsage.limit &&
+      resetsAt &&
+      Date.now() >= new Date(resetsAt).getTime()
+    ) {
+      setSendError(undefined);
+      setLimitDialogOpen(false);
+    }
+  }, [assistantUsage, sendError]);
 
   const consentMutation = useMutation({
     mutationFn: () => grantAssistantConsent(workspace),
@@ -146,7 +167,7 @@ export function AssistantPage() {
       const nextError =
         error instanceof Error ? error : new Error("Your message could not be sent.");
       setSendError(nextError);
-      if (isMonthlyLimitReachedError(nextError)) setLimitDialogOpen(true);
+      if (isUsageLimitReachedError(nextError)) setLimitDialogOpen(true);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.billing(workspace) }),
   });
@@ -273,10 +294,6 @@ export function AssistantPage() {
       ? user.user_metadata.display_name
       : undefined;
   const busy = sendMutation.isPending || deleteMutation.isPending || deleteAllMutation.isPending;
-  const assistantUsage = billingQuery.data?.usages.find(
-    (usage) => usage.feature === "assistant_question",
-  );
-  const isFreePlan = billingQuery.data?.plan === "free";
 
   return (
     <AppShell>
@@ -325,11 +342,18 @@ export function AssistantPage() {
                   <PlanUsageIndicator
                     compact
                     label={
-                      isFreePlan ? "Free plan AI questions this month" : "AI questions this month"
+                      isFreePlan
+                        ? `Free plan AI questions ${isAssistantCycle ? "this 14-day cycle" : "this month"}`
+                        : `AI questions ${isAssistantCycle ? "this 14-day cycle" : "this month"}`
                     }
                     used={assistantUsage.used}
                     limit={assistantUsage.limit}
                     resetsAt={assistantUsage.resetsAt}
+                    resetPendingLabel={
+                      isAssistantCycle
+                        ? "cycle starts with your first provider-backed question"
+                        : undefined
+                    }
                     showUpgrade={isFreePlan}
                   />
                 </div>

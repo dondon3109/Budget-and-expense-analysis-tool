@@ -1,6 +1,5 @@
 import type {
   BillingCapability,
-  BillingFeature,
   BillingInterval,
   BillingProvider,
   BillingResourceAllowance,
@@ -11,18 +10,16 @@ import type {
   CategoryRequiredPlan,
 } from "@zoption/shared";
 
+import {
+  EFFECTIVE_PRO_ENTITLEMENT_CONDITION,
+  FREE_LIMITS,
+  PRO_LIMITS,
+} from "../billing/usage-limits";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
+import { assistantUsageRepository } from "./assistant-usage";
 
-const FREE_LIMITS: Record<BillingFeature, number> = {
-  assistant_question: 4,
-  file_import: 1,
-};
-
-const PRO_LIMITS: Record<BillingFeature, number> = {
-  assistant_question: 100,
-  file_import: 10,
-};
+export { EFFECTIVE_PRO_ENTITLEMENT_CONDITION } from "../billing/usage-limits";
 
 export const FREE_CUSTOM_CATEGORY_LIMIT = 1;
 
@@ -48,10 +45,6 @@ export const CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION = `(
     AND current_period_ends_at IS NOT NULL
     AND datetime(current_period_ends_at) > datetime('now')
   )
-)`;
-
-export const EFFECTIVE_PRO_ENTITLEMENT_CONDITION = `EXISTS (
-  SELECT 1 FROM effective_pro_entitlements WHERE tenant_id = ?
 )`;
 
 export function hasEffectiveProEntitlement(
@@ -104,6 +97,18 @@ export function manilaMonth(now = new Date()): string {
   }).formatToParts(now);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-01`;
+}
+
+export function manilaMonthStart(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const year = Number(values.year);
+  const month = Number(values.month);
+  return new Date(Date.UTC(year, month - 1, 0, 16)).toISOString();
 }
 
 export function nextManilaMonth(now = new Date()): string {
@@ -226,16 +231,10 @@ export interface BillingRepository {
     tenantId: string,
     interval: BillingInterval,
   ): Promise<BillingCheckoutReference>;
-  createUsageStatement(
+  createMonthlyImportUsageStatement(env: Bindings, tenantId: string): D1PreparedStatement;
+  rethrowMonthlyImportUsageError(
     env: Bindings,
     tenantId: string,
-    feature: BillingFeature,
-  ): D1PreparedStatement;
-  consumeUsage(env: Bindings, tenantId: string, feature: BillingFeature): Promise<void>;
-  rethrowUsageError(
-    env: Bindings,
-    tenantId: string,
-    feature: BillingFeature,
     error: unknown,
   ): Promise<never>;
   hasNonTerminalSubscription(env: Bindings, tenantId: string): Promise<boolean>;
@@ -361,18 +360,26 @@ async function pendingCheckoutReference(
   return checkout ?? null;
 }
 
-async function usage(
+async function monthlyImportUsage(
   env: Bindings,
   tenantId: string,
-  feature: BillingFeature,
   limit: number,
+  now = new Date(),
 ): Promise<BillingUsage> {
+  const month = manilaMonth(now);
   const row = await env.DB.prepare(
-    "SELECT count FROM billing_monthly_usage WHERE tenant_id = ? AND month = ? AND feature = ?",
+    "SELECT count FROM billing_monthly_usage WHERE tenant_id = ? AND month = ? AND feature = 'file_import'",
   )
-    .bind(tenantId, manilaMonth(), feature)
+    .bind(tenantId, month)
     .first<{ count: number }>();
-  return { feature, used: Number(row?.count ?? 0), limit, resetsAt: nextManilaMonth() };
+  return {
+    feature: "file_import",
+    used: Number(row?.count ?? 0),
+    limit,
+    periodKind: "calendar_month",
+    periodStartedAt: manilaMonthStart(now),
+    resetsAt: nextManilaMonth(now),
+  };
 }
 
 export async function getCustomCategoryAllowance(
@@ -413,34 +420,29 @@ export async function customCategoryLimitError(
   );
 }
 
-async function monthlyLimitError(
-  env: Bindings,
-  tenantId: string,
-  feature: BillingFeature,
-): Promise<HttpError> {
+async function monthlyImportLimitError(env: Bindings, tenantId: string): Promise<HttpError> {
   const isPro = await hasProEntitlement(env, tenantId);
-  const limit = (isPro ? PRO_LIMITS : FREE_LIMITS)[feature];
-  const item = await usage(env, tenantId, feature, limit);
-  return new HttpError(409, "monthly_limit_reached", "You have reached this month’s plan limit.", {
-    feature,
+  const limit = (isPro ? PRO_LIMITS : FREE_LIMITS).file_import;
+  const item = await monthlyImportUsage(env, tenantId, limit);
+  return new HttpError(409, "monthly_limit_reached", "You have reached this month’s import limit.", {
+    feature: item.feature,
     used: item.used,
     limit,
+    periodKind: item.periodKind,
+    periodStartedAt: item.periodStartedAt,
     resetsAt: item.resetsAt,
-    billingPath: "/app/settings",
+    billingPath: "/app/settings#plan-and-billing",
   });
 }
 
-function buildUsageStatement(
+function buildMonthlyImportUsageStatement(
   env: Bindings,
   tenantId: string,
-  feature: BillingFeature,
 ): D1PreparedStatement {
-  const proLimit = PRO_LIMITS[feature];
-  const freeLimit = FREE_LIMITS[feature];
   return env.DB.prepare(
     `INSERT INTO billing_monthly_usage (tenant_id, month, feature, count, allowance)
      VALUES (
-       ?, ?, ?, 1,
+       ?, ?, 'file_import', 1,
        CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN ? ELSE ? END
      )
      ON CONFLICT(tenant_id, month, feature) DO UPDATE SET
@@ -450,13 +452,12 @@ function buildUsageStatement(
   ).bind(
     tenantId,
     manilaMonth(),
-    feature,
     tenantId,
-    proLimit,
-    freeLimit,
+    PRO_LIMITS.file_import,
+    FREE_LIMITS.file_import,
     tenantId,
-    proLimit,
-    freeLimit,
+    PRO_LIMITS.file_import,
+    FREE_LIMITS.file_import,
   );
 }
 
@@ -691,11 +692,10 @@ export const billingRepository: BillingRepository = {
       canManageBilling: Boolean(subscription),
       canManageSponsoredSeats: adminSeatManagement,
       nonTerminalSubscriptionCount: nonTerminalCount,
-      usages: await Promise.all(
-        (Object.keys(limits) as BillingFeature[]).map((feature) =>
-          usage(env, tenantId, feature, limits[feature]),
-        ),
-      ),
+      usages: await Promise.all([
+        assistantUsageRepository.getUsage(env, tenantId, limits.assistant_question),
+        monthlyImportUsage(env, tenantId, limits.file_import),
+      ]),
       allowances: [await getCustomCategoryAllowance(env, tenantId, isPro)],
     };
   },
@@ -816,21 +816,13 @@ export const billingRepository: BillingRepository = {
     };
   },
 
-  createUsageStatement(env, tenantId, feature) {
-    return buildUsageStatement(env, tenantId, feature);
+  createMonthlyImportUsageStatement(env, tenantId) {
+    return buildMonthlyImportUsageStatement(env, tenantId);
   },
 
-  async consumeUsage(env, tenantId, feature) {
-    try {
-      await buildUsageStatement(env, tenantId, feature).run();
-    } catch (error) {
-      await this.rethrowUsageError(env, tenantId, feature, error);
-    }
-  },
-
-  async rethrowUsageError(env, tenantId, feature, error) {
+  async rethrowMonthlyImportUsageError(env, tenantId, error) {
     if (isMonthlyLimitDatabaseError(error)) {
-      throw await monthlyLimitError(env, tenantId, feature);
+      throw await monthlyImportLimitError(env, tenantId);
     }
     throw error;
   },

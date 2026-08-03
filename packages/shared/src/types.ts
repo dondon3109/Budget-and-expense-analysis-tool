@@ -342,11 +342,15 @@ export type BillingCapability =
   | "cashflow_analytics"
   | "transaction_export";
 
+export type BillingUsagePeriodKind = "calendar_month" | "anchored_14_day";
+
 export interface BillingUsage {
   feature: BillingFeature;
   used: number;
   limit: number;
-  resetsAt: string;
+  periodKind: BillingUsagePeriodKind;
+  periodStartedAt: string | null;
+  resetsAt: string | null;
 }
 
 export interface BillingResourceAllowance {

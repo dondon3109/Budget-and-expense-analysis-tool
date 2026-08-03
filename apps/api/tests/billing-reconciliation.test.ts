@@ -50,9 +50,8 @@ function repository(summaryValue = summary()): BillingRepository {
     getSummary: vi.fn(async () => summaryValue),
     requirePro: vi.fn(async () => undefined),
     createCheckoutReference: vi.fn(),
-    createUsageStatement: vi.fn(() => ({}) as D1PreparedStatement),
-    consumeUsage: vi.fn(async () => undefined),
-    rethrowUsageError: vi.fn(async (_env, _tenantId, _feature, error) => {
+    createMonthlyImportUsageStatement: vi.fn(() => ({}) as D1PreparedStatement),
+    rethrowMonthlyImportUsageError: vi.fn(async (_env, _tenantId, error) => {
       throw error;
     }),
     hasNonTerminalSubscription: vi.fn(async () => false),

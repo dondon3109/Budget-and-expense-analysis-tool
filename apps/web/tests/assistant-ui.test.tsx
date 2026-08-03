@@ -135,12 +135,16 @@ describe("assistant UI", () => {
           feature: "assistant_question",
           used: 1,
           limit: 4,
+          periodKind: "anchored_14_day",
+          periodStartedAt: "2026-07-18T00:00:00.000Z",
           resetsAt: "2026-08-01T00:00:00.000Z",
         },
         {
           feature: "file_import",
           used: 0,
           limit: 1,
+          periodKind: "calendar_month",
+          periodStartedAt: "2026-07-01T00:00:00.000Z",
           resetsAt: "2026-08-01T00:00:00.000Z",
         },
       ],
@@ -360,7 +364,7 @@ describe("assistant UI", () => {
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     expect(screen.getByText("MONEY")).toHaveClass("assistant-heading-emphasis");
     const usage = await screen.findByRole("progressbar", {
-      name: "Free plan AI questions this month",
+      name: "Free plan AI questions this 14-day cycle",
     });
     expect(usage).toHaveAttribute("aria-valuenow", "1");
     expect(usage).toHaveAttribute("aria-valuemax", "4");
@@ -378,6 +382,38 @@ describe("assistant UI", () => {
     expect(topline!.children[2]).toHaveTextContent("90-day private history");
   });
 
+  it("explains when an unused assistant cycle will begin", async () => {
+    apiMocks.getBillingSummary.mockResolvedValueOnce({
+      plan: "free",
+      status: null,
+      interval: null,
+      currentPeriodEndsAt: null,
+      scheduledChangeAt: null,
+      canCheckout: true,
+      canManageBilling: false,
+      nonTerminalSubscriptionCount: 0,
+      usages: [
+        {
+          feature: "assistant_question",
+          used: 0,
+          limit: 4,
+          periodKind: "anchored_14_day",
+          periodStartedAt: null,
+          resetsAt: null,
+        },
+      ],
+      allowances: [],
+    });
+    renderPage();
+
+    const usage = await screen.findByRole("progressbar", {
+      name: "Free plan AI questions this 14-day cycle",
+    });
+    expect(usage).toHaveTextContent(
+      "4 remaining · cycle starts with your first provider-backed question",
+    );
+  });
+
   it("keeps the exhausted assistant allowance clear and actionable", async () => {
     apiMocks.getBillingSummary.mockResolvedValueOnce({
       plan: "free",
@@ -393,6 +429,8 @@ describe("assistant UI", () => {
           feature: "assistant_question",
           used: 4,
           limit: 4,
+          periodKind: "anchored_14_day",
+          periodStartedAt: "2026-07-18T00:00:00.000Z",
           resetsAt: "2026-08-01T00:00:00.000Z",
         },
       ],
@@ -401,7 +439,7 @@ describe("assistant UI", () => {
     renderPage();
 
     const usage = await screen.findByRole("progressbar", {
-      name: "Free plan AI questions this month",
+      name: "Free plan AI questions this 14-day cycle",
     });
     expect(usage).toHaveAttribute("data-state", "exhausted");
     expect(usage).toHaveAttribute("aria-valuenow", "4");
@@ -412,17 +450,19 @@ describe("assistant UI", () => {
     );
   });
 
-  it("keeps the draft and shows the monthly reset when the assistant limit is reached", async () => {
+  it("keeps the draft and shows the 14-day reset when the assistant limit is reached", async () => {
     apiMocks.createAssistantThread.mockRejectedValueOnce(
       new ApiRequestError(
-        "You have reached this month’s plan limit.",
+        "You have reached your AI question limit for this 14-day period.",
         409,
-        "monthly_limit_reached",
+        "assistant_cycle_limit_reached",
         {
           feature: "assistant_question",
           used: 4,
           limit: 4,
-          resetsAt: "2026-08-01T00:00:00.000Z",
+          periodKind: "anchored_14_day",
+          periodStartedAt: "2099-07-18T00:00:00.000Z",
+          resetsAt: "2099-08-01T00:00:00.000Z",
         },
       ),
     );
@@ -433,9 +473,10 @@ describe("assistant UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(
-      await screen.findByRole("dialog", { name: "No AI questions remaining this month" }),
+      await screen.findByRole("dialog", { name: "No AI questions remaining this 14-day period" }),
     ).toHaveTextContent("4 of 4 AI questions");
-    expect(screen.getByRole("alert", { name: "Monthly plan limit reached" })).toHaveTextContent(
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("alert", { name: "14-day assistant limit reached" })).toHaveTextContent(
       "4 of 4 AI questions",
     );
     expect(composer).toHaveValue("Where did my money go?");

@@ -11,10 +11,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { BillingLimitDialog } from "../src/components/billing/BillingLimitDialog";
 import { ApiRequestError } from "../src/lib/api";
 
-const error = new ApiRequestError("Limit reached", 409, "monthly_limit_reached", {
+const error = new ApiRequestError("Limit reached", 409, "assistant_cycle_limit_reached", {
   feature: "assistant_question",
   used: 4,
   limit: 4,
+  periodKind: "anchored_14_day",
+  periodStartedAt: "2026-07-18T00:00:00.000Z",
   resetsAt: "2026-08-01T00:00:00.000Z",
 });
 
@@ -49,7 +51,7 @@ describe("BillingLimitDialog", () => {
     await user.click(trigger);
 
     expect(
-      screen.getByRole("dialog", { name: "No AI questions remaining this month" }),
+      screen.getByRole("dialog", { name: "No AI questions remaining this 14-day period" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Review Plan and billing" })).toHaveFocus();
     expect(screen.getByRole("dialog")).toHaveTextContent("Aug 1, 2026");

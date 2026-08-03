@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 import {
   isBillingEnforcementError,
-  isMonthlyLimitReachedError,
+  isUsageLimitReachedError,
   isResourceLimitReachedError,
   isUpgradeRequiredError,
 } from "../../lib/api";
@@ -18,18 +18,23 @@ import "./UpgradePrompt.css";
 export function UpgradePrompt({ error }: { error: unknown }) {
   if (!isBillingEnforcementError(error)) return null;
 
-  const monthlyLimit = isMonthlyLimitReachedError(error) ? error.details : undefined;
+  const usageLimit = isUsageLimitReachedError(error) ? error.details : undefined;
   const resourceLimit = isResourceLimitReachedError(error) ? error.details : undefined;
   const upgradeRequired = isUpgradeRequiredError(error) ? error.details : undefined;
-  const resetLabel = monthlyLimit ? formatManilaDate(monthlyLimit.resetsAt, true) : undefined;
+  const resetLabel = usageLimit?.resetsAt
+    ? formatManilaDate(usageLimit.resetsAt, true)
+    : undefined;
+  const isAssistantCycle = usageLimit?.periodKind === "anchored_14_day";
 
-  const title = monthlyLimit
-    ? "Monthly plan limit reached"
+  const title = usageLimit
+    ? isAssistantCycle
+      ? "14-day assistant limit reached"
+      : "Monthly plan limit reached"
     : resourceLimit
       ? "Custom category limit reached"
       : "Zoption Pro is required";
-  const description = monthlyLimit
-    ? `You’ve used ${monthlyLimit.used} of ${monthlyLimit.limit} ${featureLabels[monthlyLimit.feature]} this month.`
+  const description = usageLimit
+    ? `You’ve used ${usageLimit.used} of ${usageLimit.limit} ${featureLabels[usageLimit.feature]} ${isAssistantCycle ? "in this 14-day period" : "this month"}.`
     : resourceLimit
       ? `You’re using ${resourceLimit.used} of ${resourceLimit.limit} active ${resourceLabels[resourceLimit.resource]}. Archive one to free the slot, or upgrade for unlimited categories.`
       : upgradeRequired
@@ -39,7 +44,7 @@ export function UpgradePrompt({ error }: { error: unknown }) {
   return (
     <aside
       className="upgrade-prompt"
-      data-tone={monthlyLimit || resourceLimit ? "warning" : "upgrade"}
+      data-tone={usageLimit || resourceLimit ? "warning" : "upgrade"}
       role="alert"
       aria-label={title}
     >

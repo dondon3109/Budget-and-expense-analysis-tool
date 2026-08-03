@@ -574,6 +574,7 @@ export function BillingSettings({ user }: { user: User }) {
   const currentPlanKnown = !paymentPending;
   const duplicateSubscriptions = (summary?.nonTerminalSubscriptionCount ?? 0) > 1;
   const assistantUsage = summary?.usages.find((usage) => usage.feature === "assistant_question");
+  const isAssistantCycle = assistantUsage?.periodKind === "anchored_14_day";
   const importUsage = summary?.usages.find((usage) => usage.feature === "file_import");
   const categoryAllowance = summary?.allowances.find(
     (allowance) => allowance.resource === "custom_category",
@@ -694,10 +695,15 @@ export function BillingSettings({ user }: { user: User }) {
           <div className="billing-usage-grid" aria-label="Current plan usage and allowances">
             {assistantUsage && (
               <PlanUsageIndicator
-                label="AI questions this month"
+                label={`AI questions ${isAssistantCycle ? "this 14-day cycle" : "this month"}`}
                 used={assistantUsage.used}
                 limit={assistantUsage.limit}
                 resetsAt={assistantUsage.resetsAt}
+                resetPendingLabel={
+                  isAssistantCycle
+                    ? "cycle starts with your first provider-backed question"
+                    : undefined
+                }
               />
             )}
             {importUsage && (

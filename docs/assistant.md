@@ -74,11 +74,17 @@ Assistant consent is versioned. Consent version 2 explains that the question and
 
 Users can delete one chat or all chats sooner. D1 foreign-key cascades remove messages, assistant runs, and tool-call snapshots with the thread. A daily Worker cron deletes expired threads in bounded batches, and thread listing also performs tenant-scoped lazy cleanup.
 
+## Assistant usage cycles
+
+Free tenants receive 4 provider-backed assistant questions per 14-day cycle, and Pro tenants receive 100. A tenant's first provider-backed question establishes an immutable cycle anchor. Each later period is an exact 14×24-hour interval from that anchor; inactivity can skip elapsed periods but never shifts or restarts the cadence.
+
+Deterministic clarifications, date-resolution prompts, and compliance redirects do not consume assistant usage. Provider-backed usage is consumed immediately before the provider call, so an upstream timeout or provider failure still counts. File imports remain on their separate Manila calendar-month allowance.
+
 ## Security controls
 
 - Supabase credentials and sessions remain in Supabase and the browser's authenticated session flow.
 - `DEEPSEEK_API_KEY` is a Worker secret and never appears in browser configuration, D1, tool payloads, or logs.
-- Monthly billing usage is consumed only immediately before a provider-backed turn; deterministic clarifications and compliance redirects do not consume an AI-question allowance.
+- Assistant-cycle usage is consumed only immediately before a provider-backed turn; deterministic clarifications and compliance redirects do not consume an AI-question allowance.
 - One short lease prevents concurrent sends in the same thread.
 - Client request UUIDs make completed turns idempotent.
 - Tool names, JSON arguments, result size, history size, date ranges, page sizes, provider calls, and total tool calls are bounded.

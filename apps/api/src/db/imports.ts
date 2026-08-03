@@ -262,7 +262,10 @@ async function applyImportOverrides(
 }
 
 export function createImportRepository(
-  billing: Pick<BillingRepository, "createUsageStatement" | "rethrowUsageError">,
+  billing: Pick<
+    BillingRepository,
+    "createMonthlyImportUsageStatement" | "rethrowMonthlyImportUsageError"
+  >,
 ): ImportRepository {
   return {
     async preview(env, tenantId, input) {
@@ -442,7 +445,7 @@ export function createImportRepository(
       );
       const importId = crypto.randomUUID();
       const statements = [
-        billing.createUsageStatement(env, tenantId, "file_import"),
+        billing.createMonthlyImportUsageStatement(env, tenantId),
         env.DB.prepare(
           "INSERT INTO imports (id, tenant_id, original_filename, row_count, accepted_count, rejected_count) VALUES (?, ?, ?, ?, ?, ?)",
         ).bind(
@@ -484,7 +487,7 @@ export function createImportRepository(
       } catch (error) {
         const message = error instanceof Error ? error.message.toLocaleLowerCase("en") : "";
         if (message.includes("billing_monthly_limit_reached")) {
-          await billing.rethrowUsageError(env, tenantId, "file_import", error);
+          await billing.rethrowMonthlyImportUsageError(env, tenantId, error);
         }
         if (message.includes("unique")) {
           throw new HttpError(
