@@ -44,7 +44,7 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
             </p>
           </div>
         </article>
-        <article>
+        <article className="memory-point">
           <Brain size={18} aria-hidden="true" />
           <div>
             <strong>Short-term memory across chats</strong>

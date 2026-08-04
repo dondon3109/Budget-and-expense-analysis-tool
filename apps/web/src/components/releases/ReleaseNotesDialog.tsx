@@ -7,14 +7,16 @@ import type { ProductRelease } from "../../releases/currentRelease";
 import "./releaseNotes.css";
 
 interface ReleaseNotesDialogProps {
-  release: ProductRelease;
+  releases: readonly ProductRelease[];
   onAcknowledge: () => void;
 }
 
-export function ReleaseNotesDialog({ release, onAcknowledge }: ReleaseNotesDialogProps) {
+export function ReleaseNotesDialog({ releases, onAcknowledge }: ReleaseNotesDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const latest = releases[0];
+  const previousReleases = releases.slice(1);
 
   useLayoutEffect(() => {
     const root = document.getElementById("root");
@@ -81,6 +83,8 @@ export function ReleaseNotesDialog({ release, onAcknowledge }: ReleaseNotesDialo
     }
   }
 
+  if (!latest || releases.length === 0) return null;
+
   return createPortal(
     <div className="release-notes-layer">
       <div className="release-notes-backdrop" aria-hidden="true" onClick={onAcknowledge} />
@@ -96,8 +100,8 @@ export function ReleaseNotesDialog({ release, onAcknowledge }: ReleaseNotesDialo
         <header className="release-notes-header">
           <div>
             <p className="eyebrow">What’s new</p>
-            <h2 id="release-notes-title">Zoption {release.version}</h2>
-            <p id="release-notes-description">Released {release.releasedOn}</p>
+            <h2 id="release-notes-title">Zoption {latest.version}</h2>
+            <p id="release-notes-description">Released {latest.releasedOn}</p>
           </div>
           <button
             ref={closeButtonRef}
@@ -110,17 +114,45 @@ export function ReleaseNotesDialog({ release, onAcknowledge }: ReleaseNotesDialo
           </button>
         </header>
 
-        <ul className="release-notes-list">
-          {release.changes.map((change) => (
-            <li key={change.title}>
-              <CheckCircle2 size={18} aria-hidden="true" />
-              <div>
-                <strong>{change.title}</strong>
-                <p>{change.description}</p>
-              </div>
-            </li>
+        <div className="release-notes-list">
+          <section className="release-notes-release" aria-label={`Version ${latest.version}`}>
+            <ul className="release-notes-changes">
+              {latest.changes.map((change) => (
+                <li key={change.title}>
+                  <CheckCircle2 size={18} aria-hidden="true" />
+                  <div>
+                    <strong>{change.title}</strong>
+                    <p>{change.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {previousReleases.map((release) => (
+            <section
+              key={release.version}
+              className="release-notes-release"
+              aria-label={`Previous version ${release.version}`}
+            >
+              <header className="release-notes-release-heading">
+                <h3>v{release.version}</h3>
+                <span>Released {release.releasedOn}</span>
+              </header>
+              <ul className="release-notes-changes">
+                {release.changes.map((change) => (
+                  <li key={change.title}>
+                    <CheckCircle2 size={18} aria-hidden="true" />
+                    <div>
+                      <strong>{change.title}</strong>
+                      <p>{change.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
 
         <footer className="release-notes-actions">
           <button type="button" className="button primary" onClick={onAcknowledge}>

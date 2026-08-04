@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useOptionalCookieConsent } from "../../consent/CookieConsentProvider";
-import { currentRelease } from "../../releases/currentRelease";
+import { currentRelease, releaseHistory } from "../../releases/currentRelease";
 import { ReleaseNotesDialog } from "../releases/ReleaseNotesDialog";
 import "./LegalFooter.css";
 
@@ -38,7 +38,7 @@ export function LegalFooter() {
       </footer>
       {viewingRelease && (
         <ReleaseNotesDialog
-          release={currentRelease}
+          releases={releaseHistory}
           onAcknowledge={() => setViewingRelease(false)}
         />
       )}

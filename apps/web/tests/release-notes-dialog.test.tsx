@@ -7,14 +7,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ReleaseNotesDialog } from "../src/components/releases/ReleaseNotesDialog";
 
-const release = {
-  version: "1.0.0",
-  releasedOn: "July 29, 2026",
-  changes: [
-    { title: "Reliable ordering", description: "Newer records appear first." },
-    { title: "Flexible sorting", description: "Choose the order that works for you." },
-  ],
-};
+const releases = [
+  {
+    version: "1.1.0",
+    releasedOn: "August 1, 2026",
+    changes: [{ title: "Featured update", description: "The newest headline change." }],
+  },
+  {
+    version: "1.0.0",
+    releasedOn: "July 29, 2026",
+    changes: [
+      { title: "Reliable ordering", description: "Newer records appear first." },
+      { title: "Flexible sorting", description: "Choose the order that works for you." },
+    ],
+  },
+];
 
 beforeEach(() => {
   if (!document.getElementById("root")) {
@@ -30,11 +37,13 @@ afterEach(() => {
 });
 
 describe("ReleaseNotesDialog", () => {
-  it("shows the release content and acknowledges it from the primary action", () => {
+  it("shows the latest and previous releases and acknowledges from the primary action", () => {
     const onAcknowledge = vi.fn();
-    render(<ReleaseNotesDialog release={release} onAcknowledge={onAcknowledge} />);
+    render(<ReleaseNotesDialog releases={releases} onAcknowledge={onAcknowledge} />);
 
-    expect(screen.getByRole("dialog", { name: "Zoption 1.0.0" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Zoption 1.1.0" })).toBeInTheDocument();
+    expect(screen.getByText("Featured update")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "v1.0.0" })).toBeInTheDocument();
     expect(screen.getByText("Reliable ordering")).toBeInTheDocument();
     expect(document.getElementById("root")).toHaveAttribute("aria-hidden", "true");
     expect(document.body.style.overflow).toBe("hidden");
@@ -45,7 +54,7 @@ describe("ReleaseNotesDialog", () => {
 
   it("acknowledges on Escape and traps focus", () => {
     const onAcknowledge = vi.fn();
-    render(<ReleaseNotesDialog release={release} onAcknowledge={onAcknowledge} />);
+    render(<ReleaseNotesDialog releases={releases} onAcknowledge={onAcknowledge} />);
 
     const dialog = screen.getByRole("dialog");
     fireEvent.keyDown(dialog, { key: "Escape" });
