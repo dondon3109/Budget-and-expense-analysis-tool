@@ -1,4 +1,4 @@
-import type { AccountInput, AccountRecord, AccountUpdate } from "@zoption/shared";
+import type { AccountInput, AccountRecord, AccountUpdate, Currency } from "@zoption/shared";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -45,7 +45,7 @@ function normalize(
     id: row.id as string,
     name: row.name as string,
     type: row.type as AccountRecord["type"],
-    currency: "PHP",
+    currency: row.currency as Currency,
     archived: row.archived as boolean,
     system: Boolean(row.systemKey),
     balanceMinor: Number(row.balanceMinor ?? 0),
@@ -63,7 +63,11 @@ async function findAccount(
     .from(accounts)
     .leftJoin(
       transactions,
-      and(eq(transactions.accountId, accounts.id), eq(transactions.tenantId, tenantId)),
+      and(
+        eq(transactions.accountId, accounts.id),
+        eq(transactions.tenantId, tenantId),
+        eq(transactions.currency, accounts.currency),
+      ),
     )
     .where(and(eq(accounts.id, accountId), eq(accounts.tenantId, tenantId)))
     .groupBy(accounts.id)
@@ -100,7 +104,11 @@ export const accountRepository: AccountRepository = {
       .from(accounts)
       .leftJoin(
         transactions,
-        and(eq(transactions.accountId, accounts.id), eq(transactions.tenantId, tenantId)),
+        and(
+          eq(transactions.accountId, accounts.id),
+          eq(transactions.tenantId, tenantId),
+          eq(transactions.currency, accounts.currency),
+        ),
       )
       .where(eq(accounts.tenantId, tenantId))
       .groupBy(accounts.id)

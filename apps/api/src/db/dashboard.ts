@@ -46,6 +46,32 @@ export async function loadCashflowTrend(
   return buildCashflowTrend(rows, query.view, query.anchorDate);
 }
 
+async function loadBalancesByCurrency(
+  env: Bindings,
+  tenantId: string,
+): Promise<Record<Currency, number>> {
+  const result = await env.DB.prepare(
+    `SELECT currency AS currency,
+            COALESCE(SUM(CASE
+              WHEN kind != 'transfer' OR transfer_group_id IS NOT NULL THEN amount_minor
+              ELSE 0
+            END), 0) AS total
+     FROM transactions
+     WHERE tenant_id = ?
+     GROUP BY currency`,
+  )
+    .bind(tenantId)
+    .all<{ currency: string; total: number | null }>();
+
+  const balances: Record<Currency, number> = { PHP: 0, USD: 0 };
+  for (const row of result.results) {
+    if (row.currency === "PHP" || row.currency === "USD") {
+      balances[row.currency] += Number(row.total ?? 0);
+    }
+  }
+  return balances;
+}
+
 export async function loadDashboard(
   env: Bindings,
   tenantId: string,
@@ -56,7 +82,7 @@ export async function loadDashboard(
   const trendFrom = sixMonthWindowStart(period.to);
   const queryFrom = period.from < trendFrom ? period.from : trendFrom;
   const budgetMonth = `${period.from.slice(0, 7)}-01`;
-  const [transactionRows, budgetRows, accountRows] = await Promise.all([
+  const [transactionRows, budgetRows, accountRows, overallBalances] = await Promise.all([
     db
       .select({
         id: transactions.id,
@@ -102,6 +128,7 @@ export async function loadDashboard(
       )
       .where(and(eq(budgets.tenantId, tenantId), eq(budgets.month, budgetMonth))),
     accountRepository.list(env, tenantId),
+    loadBalancesByCurrency(env, tenantId),
   ]);
 
   const normalizedTransactions: TransactionRecord[] = transactionRows.map((row) => ({
@@ -110,10 +137,11 @@ export async function loadDashboard(
     accountName: row.accountName ?? "Unassigned",
   }));
 
-  return buildDashboardSummary(
-    normalizedTransactions,
-    budgetRows,
-    period,
-    summarizeAccountBalances(accountRows),
-  );
+  const accountSummary = summarizeAccountBalances(accountRows);
+
+  return buildDashboardSummary(normalizedTransactions, budgetRows, period, {
+    ...accountSummary,
+    overallBalanceMinor: overallBalances.PHP,
+    balancesByCurrency: overallBalances,
+  });
 }
