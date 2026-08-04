@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 import { useAuth } from "../../auth/AuthProvider";
 import { useCookieConsent } from "../../consent/CookieConsentProvider";
-import { currentRelease } from "../../releases/currentRelease";
+import { currentRelease, releaseHistory } from "../../releases/currentRelease";
 import {
   hasAcknowledgedRelease,
   persistReleaseAwarenessRecord,
@@ -56,5 +56,5 @@ export function ReleaseNotesExperience() {
 
   if (!eligible || acknowledgedThisMount) return null;
 
-  return <ReleaseNotesDialog release={currentRelease} onAcknowledge={acknowledgeRelease} />;
+  return <ReleaseNotesDialog releases={releaseHistory} onAcknowledge={acknowledgeRelease} />;
 }

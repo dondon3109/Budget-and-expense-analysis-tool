@@ -62,33 +62,66 @@
 .release-notes-list {
   margin: 0;
   padding: 8px 28px;
+}
+
+.release-notes-release + .release-notes-release {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.release-notes-release-heading {
+  margin-bottom: -2px;
+  padding: 12px 0 4px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.release-notes-release-heading h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+
+.release-notes-release-heading span {
+  color: var(--subtle);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.release-notes-changes {
+  margin: 0;
+  padding: 0;
   list-style: none;
 }
 
-.release-notes-list li {
-  padding: 19px 0;
+.release-notes-changes li {
+  padding: 16px 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 13px;
   align-items: flex-start;
 }
 
-.release-notes-list li + li {
+.release-notes-changes li + li {
   border-top: 1px solid var(--line);
 }
 
-.release-notes-list svg {
+.release-notes-changes svg {
   margin-top: 1px;
   color: var(--brand);
 }
 
-.release-notes-list strong {
+.release-notes-changes strong {
   display: block;
   color: var(--ink);
   font-size: 14px;
 }
 
-.release-notes-list p {
+.release-notes-changes p {
   margin: 5px 0 0;
   color: var(--muted);
   font-size: 12px;

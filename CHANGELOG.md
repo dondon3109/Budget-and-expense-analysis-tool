@@ -2,6 +2,14 @@
 
 All notable product changes are documented here.
 
+## 1.1.3 — 2026-08-04
+
+### Changed
+
+- The AI assistant now spans the whole screen on phones instead of a floating card, so the full conversation and message box use the available space.
+- The assistant’s privacy and memory setup points are rebalanced so the short-term memory card sits centered on its own row.
+- “What’s new” now lists the three most recent releases so you can review prior patch notes from the footer version link.
+
 ## 1.1.2 — 2026-08-04
 
 ### Added
