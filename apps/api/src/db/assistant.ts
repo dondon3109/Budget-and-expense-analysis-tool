@@ -1,9 +1,12 @@
 import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
 import type {
+  AssistantMemory,
   AssistantMessage,
   AssistantMessageInput,
   AssistantMessageListQuery,
   AssistantMessagePage,
+  AssistantMemoryKind,
+  AssistantMemorySource,
   AssistantPreferences,
   AssistantResponseMetadata,
   AssistantThread,
@@ -48,6 +51,16 @@ interface HistoryRow {
   role: "user" | "assistant";
   content: string;
   response_metadata_json: string | null;
+}
+
+interface MemoryRow {
+  id: string;
+  kind: AssistantMemoryKind;
+  key: string;
+  value: string;
+  source: AssistantMemorySource;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AssistantHistoryMessage {
@@ -142,6 +155,25 @@ export interface AssistantRepository {
   deleteThread(env: Bindings, tenantId: string, threadId: string): Promise<void>;
   deleteAllThreads(env: Bindings, tenantId: string): Promise<void>;
   cleanupExpired(env: Bindings, tenantId?: string): Promise<number>;
+  listMemories(env: Bindings, tenantId: string, kind?: AssistantMemoryKind): Promise<AssistantMemory[]>;
+  getMemory(
+    env: Bindings,
+    tenantId: string,
+    kind: AssistantMemoryKind,
+    key: string,
+  ): Promise<AssistantMemory | null>;
+  upsertMemory(
+    env: Bindings,
+    tenantId: string,
+    input: { kind: AssistantMemoryKind; key: string; value: string; source: AssistantMemorySource },
+  ): Promise<AssistantMemory>;
+  deleteMemory(
+    env: Bindings,
+    tenantId: string,
+    kind: AssistantMemoryKind,
+    key: string,
+  ): Promise<void>;
+  clearMemories(env: Bindings, tenantId: string, kind?: AssistantMemoryKind): Promise<void>;
 }
 
 function threadFromRow(row: ThreadRow): AssistantThread {
@@ -173,6 +205,18 @@ function messageFromRow(row: MessageRow): AssistantMessage {
     status: row.status,
     ...(metadata ? { metadata } : {}),
     createdAt: row.created_at,
+  };
+}
+
+function memoryFromRow(row: MemoryRow): AssistantMemory {
+  return {
+    id: row.id,
+    kind: row.kind,
+    key: row.key,
+    value: row.value,
+    source: row.source,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -594,12 +638,94 @@ export const assistantRepository: AssistantRepository = {
   },
 
   async deleteAllThreads(env, tenantId) {
-    await env.DB.prepare(`DELETE FROM assistant_threads WHERE tenant_id = ?`).bind(tenantId).run();
+    await env.DB.batch([
+      env.DB.prepare(`DELETE FROM assistant_threads WHERE tenant_id = ?`).bind(tenantId),
+      env.DB.prepare(
+        `DELETE FROM assistant_memories WHERE tenant_id = ? AND kind IN ('fact', 'summary')`,
+      ).bind(tenantId),
+    ]);
+  },
+
+  async listMemories(env, tenantId, kind) {
+    const rows = kind
+      ? await env.DB.prepare(
+          `SELECT id, kind, key, value, source, created_at, updated_at
+           FROM assistant_memories
+           WHERE tenant_id = ? AND kind = ? AND (expires_at IS NULL OR expires_at > ?)
+           ORDER BY updated_at DESC`,
+        )
+          .bind(tenantId, kind, new Date().toISOString())
+          .all<MemoryRow>()
+      : await env.DB.prepare(
+          `SELECT id, kind, key, value, source, created_at, updated_at
+           FROM assistant_memories
+           WHERE tenant_id = ? AND (expires_at IS NULL OR expires_at > ?)
+           ORDER BY updated_at DESC`,
+        )
+          .bind(tenantId, new Date().toISOString())
+          .all<MemoryRow>();
+    return rows.results.map(memoryFromRow);
+  },
+
+  async getMemory(env, tenantId, kind, key) {
+    const row = await env.DB.prepare(
+      `SELECT id, kind, key, value, source, created_at, updated_at
+       FROM assistant_memories
+       WHERE tenant_id = ? AND kind = ? AND key = ?`,
+    )
+      .bind(tenantId, kind, key)
+      .first<MemoryRow>();
+    return row ? memoryFromRow(row) : null;
+  },
+
+  async upsertMemory(env, tenantId, input) {
+    const now = new Date().toISOString();
+    const expiresAt = addDays(now, DEFAULT_RETENTION_DAYS);
+    await env.DB.prepare(
+      `INSERT INTO assistant_memories
+       (id, tenant_id, kind, key, value, source, created_at, updated_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(tenant_id, kind, key) DO UPDATE SET
+         value = excluded.value, source = excluded.source,
+         updated_at = excluded.updated_at, expires_at = excluded.expires_at`,
+    )
+      .bind(
+        crypto.randomUUID(),
+        tenantId,
+        input.kind,
+        input.key,
+        input.value,
+        input.source,
+        now,
+        now,
+        expiresAt,
+      )
+      .run();
+    const memory = await this.getMemory(env, tenantId, input.kind, input.key);
+    if (!memory) throw new HttpError(500, "assistant_memory_failed", "The memory could not be saved.");
+    return memory;
+  },
+
+  async deleteMemory(env, tenantId, kind, key) {
+    await env.DB.prepare(
+      `DELETE FROM assistant_memories WHERE tenant_id = ? AND kind = ? AND key = ?`,
+    )
+      .bind(tenantId, kind, key)
+      .run();
+  },
+
+  async clearMemories(env, tenantId, kind) {
+    const statement = kind
+      ? env.DB.prepare(
+          `DELETE FROM assistant_memories WHERE tenant_id = ? AND kind = ?`,
+        ).bind(tenantId, kind)
+      : env.DB.prepare(`DELETE FROM assistant_memories WHERE tenant_id = ?`).bind(tenantId);
+    await statement.run();
   },
 
   async cleanupExpired(env, tenantId) {
     const now = new Date().toISOString();
-    const rows = tenantId
+    const threads = tenantId
       ? await env.DB.prepare(
           `SELECT id FROM assistant_threads
            WHERE tenant_id = ? AND retention_expires_at < ? LIMIT 100`,
@@ -611,12 +737,21 @@ export const assistantRepository: AssistantRepository = {
         )
           .bind(now)
           .all<{ id: string }>();
-    if (rows.results.length === 0) return 0;
+    if (threads.results.length === 0) return 0;
     await env.DB.batch(
-      rows.results.map((row) =>
+      threads.results.map((row) =>
         env.DB.prepare(`DELETE FROM assistant_threads WHERE id = ?`).bind(row.id),
       ),
     );
-    return rows.results.length;
+    if (tenantId) {
+      await env.DB.prepare(
+        `DELETE FROM assistant_memories WHERE tenant_id = ? AND expires_at < ?`,
+      )
+        .bind(tenantId, now)
+        .run();
+    } else {
+      await env.DB.prepare(`DELETE FROM assistant_memories WHERE expires_at < ?`).bind(now).run();
+    }
+    return threads.results.length;
   },
 };

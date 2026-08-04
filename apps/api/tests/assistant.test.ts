@@ -154,6 +154,7 @@ describe("assistant orchestration", () => {
       "How much did I spend in July 2026?",
       identity,
       policy,
+      "",
     );
 
     expect(answer.content).toContain("PHP 12,450.00");
@@ -200,6 +201,7 @@ describe("assistant orchestration", () => {
       "How much did I spend in July 2026?",
       identity,
       policy,
+      "",
     );
 
     expect(answer.content).toBe("Your recorded expenses were PHP 12,450.00.");
@@ -230,6 +232,7 @@ describe("assistant orchestration", () => {
       "How much did I spend in July 2026?",
       identity,
       policy,
+      "",
     );
 
     expect(answer.content).toContain("couldn’t safely verify");

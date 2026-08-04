@@ -70,9 +70,19 @@ Historical messages without structured metadata continue to render normally.
 
 ## Consent, retention, and deletion
 
-Assistant consent is versioned. Consent version 2 explains that the question and necessary tenant-scoped financial context may be sent to DeepSeek and that validated tool arguments plus compact sanitized results are retained with the chat for up to 90 days.
+Assistant consent is versioned. Consent version 3 explains that the question and necessary tenant-scoped financial context may be sent to DeepSeek, that validated tool arguments plus compact sanitized results are retained with the chat for up to 90 days, and that the assistant may keep a short-term memory of durable preferences and facts across chats.
 
 Users can delete one chat or all chats sooner. D1 foreign-key cascades remove messages, assistant runs, and tool-call snapshots with the thread. A daily Worker cron deletes expired threads in bounded batches, and thread listing also performs tenant-scoped lazy cleanup.
+
+## Assistant memory
+
+The assistant keeps a tenant-scoped memory so users do not have to repeat durable facts in new chats:
+
+- **Preferences** (for example the avalanche or snowball debt payoff strategy) can be set in the assistant Memory panel and are remembered across threads.
+- **Facts** are extracted after each completed provider-backed turn by a deterministic server-side pass (goals, emergency-fund targets, debt strategy mentions). When a turn clearly contains deeper durable signals, a capped, bounded model-assisted pass enriches the facts; it is limited per tenant and never fails a completed turn.
+- **Thread summaries** preserve older conversation context beyond the bounded history sent to the model.
+
+Memories live in `assistant_memories` (kind `preference`, `fact`, or `summary`), are stored as sanitized untrusted text with the same 90-day lifecycle as chats, and are cleared when the user clears memory or deletes all chats. In the model prompt, memory is marked as data, never instructions: it may personalize context and tone but never satisfies a required tool group and never replaces a tool lookup (saved goals and debts are always read fresh through the approved tools).
 
 ## Assistant usage cycles
 

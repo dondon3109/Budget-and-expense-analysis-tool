@@ -2,6 +2,9 @@ import type {
   AccountInput,
   AccountRecord,
   AccountUpdate,
+  AssistantMemory,
+  AssistantMemoryPreferences,
+  AssistantMemoryPreferencesUpdate,
   AssistantMessageInput,
   AssistantMessagePage,
   AssistantPreferences,
@@ -645,6 +648,30 @@ export function deleteAssistantThread(
 
 export function deleteAllAssistantThreads(workspace: AuthenticatedWorkspace): Promise<void> {
   return requestJson(workspace, "/api/app/assistant/threads", { method: "DELETE" });
+}
+
+export function getAssistantMemory(workspace: AuthenticatedWorkspace): Promise<AssistantMemory[]> {
+  return requestJson(workspace, "/api/app/assistant/memory");
+}
+
+export function getAssistantMemoryPreferences(
+  workspace: AuthenticatedWorkspace,
+): Promise<AssistantMemoryPreferences> {
+  return requestJson(workspace, "/api/app/assistant/memory/preferences");
+}
+
+export function updateAssistantMemoryPreferences(
+  workspace: AuthenticatedWorkspace,
+  input: AssistantMemoryPreferencesUpdate,
+): Promise<AssistantMemoryPreferences> {
+  return requestJson(workspace, "/api/app/assistant/memory/preferences", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function clearAssistantMemory(workspace: AuthenticatedWorkspace): Promise<void> {
+  return requestJson(workspace, "/api/app/assistant/memory", { method: "DELETE" });
 }
 
 export function createCategory(

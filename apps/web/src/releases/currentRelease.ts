@@ -11,22 +11,45 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 3, 2026",
+  releasedOn: "August 4, 2026",
   changes: [
     {
-      title: "PayPal payments are now live",
+      title: "PayPal for Zoption Pro",
       description:
-        "Pro subscriptions now use PayPal, with clearer payment-confirmation status and recovery when a confirmation is delayed.",
+        "Pay for Zoption Pro securely with PayPal. Choose monthly or annual billing during checkout.",
     },
     {
-      title: "A more capable Financial Assistant",
+      title: "Reliable payment confirmation",
       description:
-        "Ask richer questions about your finances with improved planning support, clearer answers, and a more focused chat workspace.",
+        "Your billing status now stays accurate while PayPal confirms your payment, survives page refreshes, and lets you check payment status anytime.",
     },
     {
-      title: "Assistant use now follows your billing cycle",
+      title: "14-day free assistant cycle",
       description:
-        "Your assistant allowance renews on a 14-day cycle, making usage easier to understand and track.",
+        "Free-plan assistant questions reset on a rolling 14-day cycle tied to your first provider-backed question.",
+    },
+    {
+      title: "Mobile theme picker polish",
+      description: "Theme options are now more compact and easier to scan on small screens.",
+    },
+    {
+      title: "Compare plans by swiping on mobile",
+      description:
+        "Free and Zoption Pro now sit side by side so you can swipe to compare feature limits.",
+    },
+    {
+      title: "A taller assistant on mobile",
+      description:
+        "The AI assistant now fills the screen so the full conversation and your message box stay visible.",
+    },
+    {
+      title: "Version in the footer",
+      description: "Tap the version in the footer to review the latest changes anytime.",
+    },
+    {
+      title: "Assistant memory",
+      description:
+        "The AI assistant now remembers durable preferences and facts across chats, such as your debt payoff strategy or savings targets, with a Memory panel to review and clear them.",
     },
   ],
 };

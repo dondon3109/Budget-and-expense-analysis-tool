@@ -151,6 +151,12 @@ export const assistantPreferenceUpdateSchema = z.union([
 
 export type AssistantPreferenceUpdate = z.infer<typeof assistantPreferenceUpdateSchema>;
 
+export const assistantMemoryPreferencesUpdateSchema = z
+  .object({
+    debtStrategy: z.enum(["avalanche", "snowball"]).nullable(),
+  })
+  .strict();
+
 export const assistantThreadListQuerySchema = z
   .object({
     cursor: z.string().datetime().optional(),

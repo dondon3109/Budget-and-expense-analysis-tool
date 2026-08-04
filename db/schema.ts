@@ -375,8 +375,36 @@ export const assistantPreferences = sqliteTable("assistant_preferences", {
     .notNull()
     .default("gentle"),
   retentionDays: integer("retention_days").notNull().default(90),
-  ...timestamps,
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
+
+export const assistantMemories = sqliteTable(
+  "assistant_memories",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["preference", "fact", "summary"] }).notNull(),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    source: text("source", {
+      enum: ["user_stated", "deterministic", "model_assisted"],
+    }).notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+    expiresAt: text("expires_at"),
+  },
+  (table) => [
+    index("assistant_memories_tenant_kind_idx").on(table.tenantId, table.kind),
+    uniqueIndex("assistant_memories_tenant_kind_key_unique").on(
+      table.tenantId,
+      table.kind,
+      table.key,
+    ),
+  ],
+);
 
 export const assistantRuns = sqliteTable(
   "assistant_runs",

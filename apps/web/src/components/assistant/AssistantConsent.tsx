@@ -1,4 +1,4 @@
-import { FileClock, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
+import { Brain, FileClock, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
 
 interface AssistantConsentProps {
   accepting: boolean;
@@ -44,11 +44,22 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
             </p>
           </div>
         </article>
+        <article>
+          <Brain size={18} aria-hidden="true" />
+          <div>
+            <strong>Short-term memory across chats</strong>
+            <p>
+              Zoption may remember durable preferences and facts you share, such as which debt to
+              pay first or a savings target, so you do not have to repeat them in new chats.
+            </p>
+          </div>
+        </article>
       </div>
       <p className="assistant-consent-retention">
-        Chats and sanitized audit snapshots are kept in your private Zoption history for up to 90
-        days and are deleted with the conversation. AI-generated wording can still be wrong, so
-        verify consequential decisions.
+        Chats, sanitized audit snapshots, and assistant memory are kept in your private Zoption
+        history for up to 90 days and are deleted with the conversation. You can clear assistant
+        memory anytime from the Memory panel. AI-generated wording can still be wrong, so verify
+        consequential decisions.
       </p>
       <p className="assistant-consent-scope">
         Educational budgeting information only. Zoption does not provide personalized financial,

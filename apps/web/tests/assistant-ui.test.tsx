@@ -109,7 +109,7 @@ describe("assistant UI", () => {
     });
     apiMocks.getAssistantPreferences.mockReset().mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
-      consentVersion: 2,
+      consentVersion: 3,
       retentionDays: 90,
       assistantName: "Aster",
       userPreferredName: "Sam",
@@ -157,7 +157,7 @@ describe("assistant UI", () => {
     const accept = vi.fn();
     render(<AssistantConsent accepting={false} onAccept={accept} />);
     expect(screen.getByText(/only the financial data needed/i)).toBeInTheDocument();
-    expect(screen.getByText(/sanitized audit snapshots are kept/i)).toBeInTheDocument();
+    expect(screen.getByText(/assistant memory are kept/i)).toBeInTheDocument();
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
     expect(accept).toHaveBeenCalledOnce();
@@ -380,8 +380,11 @@ describe("assistant UI", () => {
     const usageContainer = topline!.querySelector<HTMLElement>(":scope > .assistant-chat-usage");
     expect(usageContainer).not.toBeNull();
     expect(within(usageContainer!).getByRole("progressbar")).toBe(usage);
-    expect(topline!.children[2]).toHaveClass("assistant-chat-retention");
-    expect(topline!.children[2]).toHaveTextContent("90-day private history");
+    expect(topline!.children[2]).toHaveClass("assistant-chat-corner");
+    expect(within(topline!.children[2] as HTMLElement).getByText("90-day private history")).toBeInTheDocument();
+    expect(
+      within(topline!.children[2] as HTMLElement).getByRole("button", { name: "Memory" }),
+    ).toBeInTheDocument();
   });
 
   it("explains when an unused assistant cycle will begin", async () => {
@@ -487,7 +490,7 @@ describe("assistant UI", () => {
   it("requires assistant and user names after consent, then displays the saved assistant name", async () => {
     apiMocks.getAssistantPreferences.mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
-      consentVersion: 2,
+      consentVersion: 3,
       retentionDays: 90,
       assistantName: null,
       userPreferredName: null,
@@ -496,7 +499,7 @@ describe("assistant UI", () => {
     });
     apiMocks.updateAssistantIdentity.mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
-      consentVersion: 2,
+      consentVersion: 3,
       retentionDays: 90,
       assistantName: "Aster",
       userPreferredName: "Sam",

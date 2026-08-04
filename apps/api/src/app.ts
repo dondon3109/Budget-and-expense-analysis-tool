@@ -142,6 +142,7 @@ export function createApp(options: AppOptions = {}) {
       ),
       undefined,
       assistantUsage,
+      assistantProvider,
     );
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =

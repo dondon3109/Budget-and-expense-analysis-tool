@@ -170,7 +170,7 @@ export function createAssistantTurnPolicy(input: {
 export function responseMetadataForPolicy(
   policy: AssistantTurnPolicy,
   sources: AssistantSourceMetadata[] = [],
-  promptVersion = "expert-v1",
+  promptVersion = "expert-v2",
 ): AssistantResponseMetadata {
   return {
     promptVersion,

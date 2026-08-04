@@ -5,7 +5,7 @@ import {
   type AssistantTurnResult,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Menu, Sparkles, X } from "lucide-react";
+import { Brain, Menu, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useAssistantSession } from "../assistant/AssistantSessionProvider";
@@ -14,6 +14,7 @@ import { AssistantComposer } from "../components/assistant/AssistantComposer";
 import { AssistantConsent } from "../components/assistant/AssistantConsent";
 import { AssistantConversation } from "../components/assistant/AssistantConversation";
 import { AssistantIdentityDialog } from "../components/assistant/AssistantIdentityDialog";
+import { AssistantMemoryPanel } from "../components/assistant/AssistantMemoryPanel";
 import { AssistantThreadList } from "../components/assistant/AssistantThreadList";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
 import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
@@ -54,6 +55,7 @@ export function AssistantPage() {
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
 
   const preferences = useQuery({
     queryKey: queryKeys.assistantPreferences(workspace),
@@ -357,7 +359,16 @@ export function AssistantPage() {
                   />
                 </div>
               )}
-              <small className="assistant-chat-retention">90-day private history</small>
+              <div className="assistant-chat-corner">
+                <small className="assistant-chat-retention">90-day private history</small>
+                <button
+                  type="button"
+                  className="assistant-memory-trigger"
+                  onClick={() => setMemoryOpen(true)}
+                >
+                  <Brain size={12} aria-hidden="true" /> Memory
+                </button>
+              </div>
             </div>
             <p className="assistant-education-notice">
               Educational budgeting information only. Zoption does not provide personalized
@@ -412,6 +423,13 @@ export function AssistantPage() {
           error={sendError}
           returnFocus={limitTriggerRef.current}
           onClose={() => setLimitDialogOpen(false)}
+        />
+      )}
+      {memoryOpen && (
+        <AssistantMemoryPanel
+          workspace={workspace}
+          open
+          onClose={() => setMemoryOpen(false)}
         />
       )}
     </AppShell>
