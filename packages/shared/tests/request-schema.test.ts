@@ -30,6 +30,31 @@ describe("API request boundary schemas", () => {
     ).toBe(false);
   });
 
+  it("accepts supported transaction currencies and rejects unknown ones", () => {
+    expect(
+      transactionInputSchema.safeParse({
+        date: "2026-07-18",
+        description: "Groceries",
+        amountMinor: 2_455,
+        currency: "USD",
+        kind: "expense",
+        categoryId: "food",
+        accountId: "account-everyday",
+      }).success,
+    ).toBe(true);
+    expect(
+      transactionInputSchema.safeParse({
+        date: "2026-07-18",
+        description: "Groceries",
+        amountMinor: 2_455,
+        currency: "EUR",
+        kind: "expense",
+        categoryId: "food",
+        accountId: "account-everyday",
+      }).success,
+    ).toBe(false);
+  });
+
   it("parses only explicit category archive booleans", () => {
     expect(categoryListQuerySchema.parse({})).toEqual({ includeArchived: false });
     expect(categoryListQuerySchema.parse({ includeArchived: "true" })).toEqual({

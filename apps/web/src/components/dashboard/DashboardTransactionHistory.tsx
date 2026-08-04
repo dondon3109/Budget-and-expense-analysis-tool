@@ -57,7 +57,9 @@ export function DashboardTransactionHistory({
         </Link>
       </header>
 
-      {isPending && <div className="dashboard-history-status">Loading your transaction history…</div>}
+      {isPending && (
+        <div className="dashboard-history-status">Loading your transaction history…</div>
+      )}
       {error && (
         <div className="dashboard-history-status error" role="alert">
           <strong>Transaction history could not be loaded.</strong>
@@ -125,7 +127,7 @@ export function DashboardTransactionHistory({
                       className={`dashboard-history-amount dashboard-history-amount-${item.kind}`}
                     >
                       {item.kind === "income" ? "+" : item.kind === "expense" ? "−" : ""}
-                      {formatMoney(Math.abs(item.amountMinor))}
+                      {formatMoney(Math.abs(item.amountMinor), item.currency)}
                     </td>
                   </tr>
                 ))}

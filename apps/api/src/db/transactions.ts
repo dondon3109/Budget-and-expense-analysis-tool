@@ -1,6 +1,7 @@
 import {
   normalizeSignedAmount,
   transactionInputSchema,
+  type Currency,
   type TransactionCalendarMonth,
   type TransactionCalendarQuery,
   type TransactionExportQuery,
@@ -69,7 +70,7 @@ function normalizeRow(row: TransactionRow): TransactionListItem {
   return {
     ...row,
     amountMinor: linkedTransfer ? Math.abs(row.amountMinor) : row.amountMinor,
-    currency: "PHP",
+    currency: row.currency as Currency,
     accountName: row.accountName ?? "Unassigned",
     fromAccountId: linkedTransfer ? row.accountId : null,
     fromAccountName: linkedTransfer ? (row.accountName ?? "Unassigned") : null,
@@ -249,7 +250,7 @@ function insertStatement(
     date: string;
     description: string;
     amountMinor: number;
-    currency: "PHP";
+    currency: Currency;
     kind: TransactionInput["kind"];
     notes?: string;
     transferGroupId?: string;

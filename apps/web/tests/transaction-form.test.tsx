@@ -123,6 +123,34 @@ describe("TransactionForm", () => {
     );
   });
 
+  it("lets the user record a transaction in USD", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <TransactionForm
+        categories={[category]}
+        accounts={accounts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Amount (PHP)")).toBeInTheDocument();
+    expect(screen.getByText("Philippine Peso (PHP)")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Currency"), "USD");
+    expect(screen.getByLabelText("Amount (USD)")).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText("e.g. Weekly groceries"), "US store purchase");
+    await user.type(screen.getByLabelText("Amount (USD)"), "100");
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: "USD", amountMinor: 10_000, categoryId: "food" }),
+      ),
+    );
+  });
+
   it("marks expired-Pro categories unavailable and skips them for new transactions", () => {
     const lockedCategory: CategoryRecord = {
       ...category,

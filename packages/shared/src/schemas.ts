@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   accountTypes,
+  currencies,
   debtStatuses,
   debtTypes,
   financialGoalStatuses,
@@ -319,7 +320,7 @@ const transactionBaseSchema = z
       .int()
       .safe()
       .refine((value) => value > 0, "Amount must be greater than zero."),
-    currency: z.literal("PHP"),
+    currency: z.enum(currencies),
     categoryId: resourceIdSchema,
     notes: z.string().trim().max(500).optional(),
   })
@@ -352,7 +353,7 @@ export const transactionUpdateSchema = z
       .safe()
       .refine((value) => value !== 0, "Amount cannot be zero.")
       .optional(),
-    currency: z.literal("PHP").optional(),
+    currency: z.enum(currencies).optional(),
     kind: z.enum(transactionKinds).optional(),
     categoryId: resourceIdSchema.optional(),
     accountId: resourceIdSchema.optional(),

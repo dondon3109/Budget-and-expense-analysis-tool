@@ -1,8 +1,11 @@
 import {
+  currencies,
+  currencyMetadata,
   parseAmountToMinor,
   transactionInputSchema,
   type AccountRecord,
   type CategoryRecord,
+  type Currency,
   type TransactionInput,
   type TransactionKind,
   type TransactionListItem,
@@ -47,6 +50,7 @@ export function TransactionForm({
   const [fromAccountId, setFromAccountId] = useState(item?.fromAccountId ?? item?.accountId ?? "");
   const [toAccountId, setToAccountId] = useState(item?.toAccountId ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
+  const [currency, setCurrency] = useState<Currency>(item?.currency ?? "PHP");
   const [clientError, setClientError] = useState<string>();
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
   const availableCategories = useMemo(
@@ -96,7 +100,7 @@ export function TransactionForm({
       date,
       description,
       amountMinor,
-      currency: "PHP" as const,
+      currency,
       kind,
       categoryId,
       notes,
@@ -205,11 +209,11 @@ export function TransactionForm({
           )}
           <div className="form-row split">
             <label>
-              <span>Amount (PHP)</span>
+              <span>Amount ({currency})</span>
               <div className="money-input">
-                <b>₱</b>
+                <b>{currencyMetadata[currency].symbol}</b>
                 <input
-                  aria-label="Amount (PHP)"
+                  aria-label={`Amount (${currency})`}
                   inputMode="decimal"
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
@@ -219,24 +223,38 @@ export function TransactionForm({
               </div>
             </label>
             <label>
-              <span>Category</span>
+              <span>Currency</span>
               <select
-                value={categoryId}
-                onChange={(event) => setCategoryId(event.target.value)}
+                value={currency}
+                onChange={(event) => setCurrency(event.target.value as Currency)}
                 required
               >
-                {selectableCategories.length === 0 && (
-                  <option value="">Upgrade or create a {kind} category first</option>
-                )}
-                {availableCategories.map((category) => (
-                  <option key={category.id} value={category.id} disabled={category.locked}>
-                    {category.name}
-                    {category.locked ? " — Pro required" : ""}
+                {currencies.map((option) => (
+                  <option key={option} value={option}>
+                    {currencyMetadata[option].label}
                   </option>
                 ))}
               </select>
             </label>
           </div>
+          <label>
+            <span>Category</span>
+            <select
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+              required
+            >
+              {selectableCategories.length === 0 && (
+                <option value="">Upgrade or create a {kind} category first</option>
+              )}
+              {availableCategories.map((category) => (
+                <option key={category.id} value={category.id} disabled={category.locked}>
+                  {category.name}
+                  {category.locked ? " — Pro required" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             <span>
               Notes <small>Optional</small>

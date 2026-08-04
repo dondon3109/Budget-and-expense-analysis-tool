@@ -1,15 +1,29 @@
-const currencyFormatter = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  maximumFractionDigits: 0,
-});
+import { currencyMetadata, type Currency } from "@zoption/shared";
 
-export function formatMoney(amountMinor: number): string {
-  return currencyFormatter.format(amountMinor / 100);
+const currencyFormatterCache = new Map<Currency, Intl.NumberFormat>();
+
+function currencyFormatterFor(currency: Currency): Intl.NumberFormat {
+  let formatter = currencyFormatterCache.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(currencyMetadata[currency].locale, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    });
+    currencyFormatterCache.set(currency, formatter);
+  }
+  return formatter;
 }
 
-export function formatMoneyParts(amountMinor: number): Intl.NumberFormatPart[] {
-  return currencyFormatter.formatToParts(amountMinor / 100);
+export function formatMoney(amountMinor: number, currency: Currency = "PHP"): string {
+  return currencyFormatterFor(currency).format(amountMinor / 100);
+}
+
+export function formatMoneyParts(
+  amountMinor: number,
+  currency: Currency = "PHP",
+): Intl.NumberFormatPart[] {
+  return currencyFormatterFor(currency).formatToParts(amountMinor / 100);
 }
 
 export function formatMonth(month: string): string {
