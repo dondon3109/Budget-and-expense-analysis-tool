@@ -67,6 +67,7 @@ const dashboard: DashboardSummary = {
   accountBalances: {
     currency: "PHP",
     overallBalanceMinor: 40_000,
+    balancesByCurrency: { PHP: 40_000, USD: 0 },
     items: [
       {
         id: "bank",
@@ -110,6 +111,8 @@ const dashboard: DashboardSummary = {
     moneyInMinor: 0,
     moneyOutMinor: 0,
     netMinor: 0,
+    incomeByCurrency: { PHP: 0, USD: 0 },
+    expenseByCurrency: { PHP: 0, USD: 0 },
     budgetLimitMinor: 0,
     remainingBudgetMinor: 0,
     budgetUsedPercent: 0,
@@ -195,7 +198,9 @@ describe("Dashboard loading", () => {
       await vi.advanceTimersByTimeAsync(480);
     });
 
-    expect(screen.queryByRole("status", { name: "Your dashboard is ready" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("status", { name: "Your dashboard is ready" }),
+    ).not.toBeInTheDocument();
     vi.useRealTimers();
   });
 });
@@ -381,7 +386,9 @@ describe("Profile dashboard account management", () => {
     fireEvent.click(screen.getByRole("button", { name: "June 2026" }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("current-path")).toHaveTextContent("/app?month=2026-06&source=profile");
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/app?month=2026-06&source=profile",
+      );
       expect(apiMocks.getDashboard).toHaveBeenCalledWith(
         { key: "user:user-1", userId: "user-1" },
         { from: "2026-06-01", to: "2026-06-30" },

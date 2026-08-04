@@ -4,6 +4,7 @@ import {
   summarizeAccountBalances,
   type CashflowTrend,
   type CashflowTrendView,
+  type Currency,
   type DashboardSummary,
   type TransactionRecord,
 } from "@zoption/shared";
@@ -105,7 +106,7 @@ export async function loadDashboard(
 
   const normalizedTransactions: TransactionRecord[] = transactionRows.map((row) => ({
     ...row,
-    currency: "PHP",
+    currency: row.currency as Currency,
     accountName: row.accountName ?? "Unassigned",
   }));
 

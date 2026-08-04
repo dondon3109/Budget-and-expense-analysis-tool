@@ -173,6 +173,34 @@ margin: 0;
   line-height: 1.45;
 }
 
+.overview-stat-secondary {
+display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 9px;
+  color: var(--muted);
+}
+
+.overview-stat-secondary span {
+display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-stat-secondary em {
+padding: 1px 5px;
+  border-radius: 5px;
+  color: var(--ink);
+  background: var(--surface-hover);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
 .dashboard-grid {
 margin-top: 17px;
   display: grid;
@@ -1066,6 +1094,14 @@ display: block;
 color: color-mix(in srgb, var(--paper) 64%, var(--ink));
   font-size: 11px;
   line-height: 1.45;
+}
+
+.dashboard-balance-usd {
+margin: 12px 0 0;
+  color: color-mix(in srgb, var(--paper) 78%, var(--ink));
+  font-size: 14px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .dashboard-account-breakdown {

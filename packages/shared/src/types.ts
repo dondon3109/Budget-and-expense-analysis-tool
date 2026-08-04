@@ -90,6 +90,7 @@ export interface AccountBalanceSummaryItem {
 export interface AccountBalanceSummary {
   currency: "PHP";
   overallBalanceMinor: number;
+  balancesByCurrency: Record<Currency, number>;
   items: AccountBalanceSummaryItem[];
 }
 
@@ -288,6 +289,8 @@ export interface DashboardSummary {
     moneyInMinor: number;
     moneyOutMinor: number;
     netMinor: number;
+    incomeByCurrency: Record<Currency, number>;
+    expenseByCurrency: Record<Currency, number>;
     budgetLimitMinor: number;
     remainingBudgetMinor: number;
     budgetUsedPercent: number;
