@@ -70,6 +70,34 @@
   border-top: 1px solid var(--line);
 }
 
+.release-notes-toggle {
+  width: 100%;
+  margin-top: 4px;
+  padding: 14px 8px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--sage);
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: color 0.18s ease;
+}
+
+.release-notes-toggle:hover {
+  color: var(--ink);
+}
+
+.release-notes-toggle:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
 .release-notes-release-heading {
   margin-bottom: -2px;
   padding: 12px 0 4px;

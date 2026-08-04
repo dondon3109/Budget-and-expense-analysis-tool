@@ -1,5 +1,5 @@
-import { CheckCircle2, X } from "lucide-react";
-import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { CheckCircle2, ChevronDown, ChevronUp, X } from "lucide-react";
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
 import type { ProductRelease } from "../../releases/currentRelease";
@@ -17,6 +17,7 @@ export function ReleaseNotesDialog({ releases, onAcknowledge }: ReleaseNotesDial
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const latest = releases[0];
   const previousReleases = releases.slice(1);
+  const [showPrevious, setShowPrevious] = useState(false);
 
   useLayoutEffect(() => {
     const root = document.getElementById("root");
@@ -129,29 +130,55 @@ export function ReleaseNotesDialog({ releases, onAcknowledge }: ReleaseNotesDial
             </ul>
           </section>
 
-          {previousReleases.map((release) => (
-            <section
-              key={release.version}
-              className="release-notes-release"
-              aria-label={`Previous version ${release.version}`}
+          {previousReleases.length > 0 && (
+            <button
+              type="button"
+              className="release-notes-toggle"
+              aria-expanded={showPrevious}
+              aria-controls="release-notes-history"
+              onClick={() => setShowPrevious((value) => !value)}
             >
-              <header className="release-notes-release-heading">
-                <h3>v{release.version}</h3>
-                <span>Released {release.releasedOn}</span>
-              </header>
-              <ul className="release-notes-changes">
-                {release.changes.map((change) => (
-                  <li key={change.title}>
-                    <CheckCircle2 size={18} aria-hidden="true" />
-                    <div>
-                      <strong>{change.title}</strong>
-                      <p>{change.description}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+              {showPrevious ? (
+                <>
+                  <ChevronUp size={16} aria-hidden="true" />
+                  Hide previous updates
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={16} aria-hidden="true" />
+                  Show previous updates
+                </>
+              )}
+            </button>
+          )}
+
+          {showPrevious && (
+            <div id="release-notes-history" className="release-notes-history">
+              {previousReleases.map((release) => (
+                <section
+                  key={release.version}
+                  className="release-notes-release"
+                  aria-label={`Previous version ${release.version}`}
+                >
+                  <header className="release-notes-release-heading">
+                    <h3>v{release.version}</h3>
+                    <span>Released {release.releasedOn}</span>
+                  </header>
+                  <ul className="release-notes-changes">
+                    {release.changes.map((change) => (
+                      <li key={change.title}>
+                        <CheckCircle2 size={18} aria-hidden="true" />
+                        <div>
+                          <strong>{change.title}</strong>
+                          <p>{change.description}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
         </div>
 
         <footer className="release-notes-actions">
