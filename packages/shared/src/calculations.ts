@@ -57,15 +57,23 @@ function buildRecurringExpenses(transactions: readonly TransactionRecord[]) {
 export function summarizeAccountBalances(
   accounts: readonly AccountRecord[],
 ): AccountBalanceSummary {
-  const items = accounts.map((account) => ({
-    id: account.id,
-    name: account.name,
-    type: account.type,
-    currency: account.currency,
-    balanceMinor: account.balanceMinor ?? 0,
-    archived: account.archived,
-    system: Boolean(account.system),
-  }));
+  const items = accounts.map((account) => {
+    const balanceMinor = account.balanceMinor ?? 0;
+    return {
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      currency: account.currency,
+      balanceMinor,
+      balancesByCurrency:
+        account.balancesByCurrency ??
+        (account.currency === "USD"
+          ? { PHP: 0, USD: balanceMinor }
+          : { PHP: balanceMinor, USD: 0 }),
+      archived: account.archived,
+      system: Boolean(account.system),
+    };
+  });
 
   const balancesByCurrency: Record<Currency, number> = { PHP: 0, USD: 0 };
   for (const item of items) {

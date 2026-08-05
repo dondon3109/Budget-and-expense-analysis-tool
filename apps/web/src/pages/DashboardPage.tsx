@@ -455,7 +455,12 @@ export function DashboardPage() {
                           </button>
                         </span>
                       )}
-                      <strong>{formatMoney(account.balanceMinor, account.currency)}</strong>
+                      <span className="dashboard-account-balances">
+                        <strong>{formatMoney(account.balancesByCurrency.PHP, "PHP")}</strong>
+                        {account.balancesByCurrency.USD !== 0 && (
+                          <em>{formatMoney(account.balancesByCurrency.USD, "USD")} USD</em>
+                        )}
+                      </span>
                     </div>
                   </li>
                 ))}
@@ -473,7 +478,12 @@ export function DashboardPage() {
                       .map((account) => (
                         <li key={account.id}>
                           <span>{account.name}</span>
-                          <strong>{formatMoney(account.balanceMinor, account.currency)}</strong>
+                          <span className="dashboard-account-balances">
+                            <strong>{formatMoney(account.balancesByCurrency.PHP, "PHP")}</strong>
+                            {account.balancesByCurrency.USD !== 0 && (
+                              <em>{formatMoney(account.balancesByCurrency.USD, "USD")} USD</em>
+                            )}
+                          </span>
                         </li>
                       ))}
                   </ul>

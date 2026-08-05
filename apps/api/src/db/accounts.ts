@@ -31,8 +31,15 @@ const accountSelection = {
   currency: accounts.currency,
   archived: accounts.archived,
   systemKey: accounts.systemKey,
-  balanceMinor: sql<number>`COALESCE(SUM(CASE
-    WHEN ${transactions.kind} != 'transfer' OR ${transactions.transferGroupId} IS NOT NULL
+  balancePhpMinor: sql<number>`COALESCE(SUM(CASE
+    WHEN (${transactions.kind} != 'transfer' OR ${transactions.transferGroupId} IS NOT NULL)
+      AND ${transactions.currency} = 'PHP'
+    THEN ${transactions.amountMinor}
+    ELSE 0
+  END), 0)`,
+  balanceUsdMinor: sql<number>`COALESCE(SUM(CASE
+    WHEN (${transactions.kind} != 'transfer' OR ${transactions.transferGroupId} IS NOT NULL)
+      AND ${transactions.currency} = 'USD'
     THEN ${transactions.amountMinor}
     ELSE 0
   END), 0)`,
@@ -41,14 +48,20 @@ const accountSelection = {
 function normalize(
   row: typeof accountSelection extends never ? never : Record<string, unknown>,
 ): AccountRecord {
+  const balancesByCurrency: Record<Currency, number> = {
+    PHP: Number(row.balancePhpMinor ?? 0),
+    USD: Number(row.balanceUsdMinor ?? 0),
+  };
+  const currency = row.currency as Currency;
   return {
     id: row.id as string,
     name: row.name as string,
     type: row.type as AccountRecord["type"],
-    currency: row.currency as Currency,
+    currency,
     archived: row.archived as boolean,
     system: Boolean(row.systemKey),
-    balanceMinor: Number(row.balanceMinor ?? 0),
+    balanceMinor: balancesByCurrency[currency],
+    balancesByCurrency,
   };
 }
 
@@ -63,11 +76,7 @@ async function findAccount(
     .from(accounts)
     .leftJoin(
       transactions,
-      and(
-        eq(transactions.accountId, accounts.id),
-        eq(transactions.tenantId, tenantId),
-        eq(transactions.currency, accounts.currency),
-      ),
+      and(eq(transactions.accountId, accounts.id), eq(transactions.tenantId, tenantId)),
     )
     .where(and(eq(accounts.id, accountId), eq(accounts.tenantId, tenantId)))
     .groupBy(accounts.id)
@@ -104,11 +113,7 @@ export const accountRepository: AccountRepository = {
       .from(accounts)
       .leftJoin(
         transactions,
-        and(
-          eq(transactions.accountId, accounts.id),
-          eq(transactions.tenantId, tenantId),
-          eq(transactions.currency, accounts.currency),
-        ),
+        and(eq(transactions.accountId, accounts.id), eq(transactions.tenantId, tenantId)),
       )
       .where(eq(accounts.tenantId, tenantId))
       .groupBy(accounts.id)

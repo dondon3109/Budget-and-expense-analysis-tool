@@ -73,6 +73,7 @@ export interface AccountRecord {
   currency: Currency;
   balanceMinor: number | null;
   balanceAsOf?: string | null;
+  balancesByCurrency?: Record<Currency, number>;
   archived: boolean;
   system?: boolean;
 }
@@ -83,6 +84,7 @@ export interface AccountBalanceSummaryItem {
   type: AccountType;
   currency: Currency;
   balanceMinor: number;
+  balancesByCurrency: Record<Currency, number>;
   archived: boolean;
   system: boolean;
 }

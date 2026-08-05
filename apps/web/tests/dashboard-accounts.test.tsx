@@ -75,6 +75,7 @@ const dashboard: DashboardSummary = {
         type: "checking",
         currency: "PHP",
         balanceMinor: 25_000,
+        balancesByCurrency: { PHP: 25_000, USD: 0 },
         archived: false,
         system: true,
       },
@@ -84,6 +85,7 @@ const dashboard: DashboardSummary = {
         type: "cash",
         currency: "PHP",
         balanceMinor: 10_000,
+        balancesByCurrency: { PHP: 10_000, USD: 0 },
         archived: false,
         system: true,
       },
@@ -93,6 +95,7 @@ const dashboard: DashboardSummary = {
         type: "other",
         currency: "PHP",
         balanceMinor: 5_000,
+        balancesByCurrency: { PHP: 5_000, USD: 0 },
         archived: false,
         system: false,
       },
@@ -102,6 +105,7 @@ const dashboard: DashboardSummary = {
         type: "other",
         currency: "PHP",
         balanceMinor: 0,
+        balancesByCurrency: { PHP: 0, USD: 0 },
         archived: true,
         system: false,
       },
@@ -308,6 +312,28 @@ describe("Profile dashboard account management", () => {
     fireEvent.click(within(accountManager).getByText("Removed accounts (1)"));
     expect(removedAccounts).toHaveAttribute("open");
     expect(within(accountManager).getByText("Old wallet")).toBeInTheDocument();
+  });
+
+  it("shows each account's PHP and USD balances in the breakdown", async () => {
+    const usdDashboard: DashboardSummary = {
+      ...dashboard,
+      accountBalances: {
+        ...dashboard.accountBalances!,
+        overallBalanceMinor: 25_000,
+        balancesByCurrency: { PHP: 25_000, USD: 15_000 },
+        items: (dashboard.accountBalances?.items ?? []).map((item) =>
+          item.id === "bank" ? { ...item, balancesByCurrency: { PHP: 25_000, USD: 15_000 } } : item,
+        ),
+      },
+    };
+    apiMocks.getDashboard.mockReset().mockResolvedValue(usdDashboard);
+    renderPage();
+
+    const accountManager = await screen.findByRole("region", { name: "Account management" });
+    const bankRow = within(accountManager).getByText("Bank").closest("li");
+    expect(bankRow).not.toBeNull();
+    expect(within(bankRow!).getByText("₱250")).toBeInTheDocument();
+    expect(within(bankRow!).getByText("$150 USD")).toBeInTheDocument();
   });
 
   it("adds a custom account from the Profile dashboard", async () => {

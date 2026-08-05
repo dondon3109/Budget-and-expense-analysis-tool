@@ -1301,10 +1301,27 @@ padding: 3px 6px;
   text-transform: uppercase;
 }
 
-.dashboard-account-value > strong,.dashboard-removed-accounts li > strong {
+.dashboard-account-balances {
+flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.dashboard-account-balances > strong {
 flex: 0 0 auto;
   color: var(--ink);
   font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dashboard-account-balances em {
+color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
