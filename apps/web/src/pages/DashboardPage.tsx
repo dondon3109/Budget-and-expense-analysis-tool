@@ -48,7 +48,7 @@ import {
   updateAccount,
 } from "../lib/api";
 import { currentMonth, daysInMonth, isMonth, localIsoDate, monthStart } from "../lib/calendar";
-import { formatFullMonth } from "../lib/formatters";
+import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import "./DashboardPage.css";
@@ -305,10 +305,6 @@ export function DashboardPage() {
       if (right.name === "Cash") return 1;
       return left.name.localeCompare(right.name);
     });
-  const formatCurrency = (amountMinor: number) =>
-    new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(
-      amountMinor / 100,
-    );
   const empty =
     transactionHistoryQuery.data !== undefined &&
     isDashboardEmpty(data, cashflowTrendQuery.data, transactionHistoryQuery.data.total);
@@ -355,8 +351,11 @@ export function DashboardPage() {
                   <h2 id="dashboard-balance-title">Overall balance</h2>
                 </div>
               </div>
-              <strong>{formatCurrency(accountBalances.overallBalanceMinor)}</strong>
+              <strong>{formatMoney(accountBalances.balancesByCurrency.PHP, "PHP")}</strong>
               <span>Calculated from your recorded transactions</span>
+              <p className="dashboard-balance-usd">
+                {formatMoney(accountBalances.balancesByCurrency.USD, "USD")} in US dollars
+              </p>
             </div>
             <section className="dashboard-account-breakdown" aria-label="Account management">
               <div className="dashboard-account-breakdown-heading">
@@ -456,7 +455,12 @@ export function DashboardPage() {
                           </button>
                         </span>
                       )}
-                      <strong>{formatCurrency(account.balanceMinor)}</strong>
+                      <span className="dashboard-account-balances">
+                        <strong>{formatMoney(account.balancesByCurrency.PHP, "PHP")}</strong>
+                        {account.balancesByCurrency.USD !== 0 && (
+                          <em>{formatMoney(account.balancesByCurrency.USD, "USD")} USD</em>
+                        )}
+                      </span>
                     </div>
                   </li>
                 ))}
@@ -474,7 +478,12 @@ export function DashboardPage() {
                       .map((account) => (
                         <li key={account.id}>
                           <span>{account.name}</span>
-                          <strong>{formatCurrency(account.balanceMinor)}</strong>
+                          <span className="dashboard-account-balances">
+                            <strong>{formatMoney(account.balancesByCurrency.PHP, "PHP")}</strong>
+                            {account.balancesByCurrency.USD !== 0 && (
+                              <em>{formatMoney(account.balancesByCurrency.USD, "USD")} USD</em>
+                            )}
+                          </span>
                         </li>
                       ))}
                   </ul>
@@ -632,14 +641,20 @@ export function DashboardPage() {
               items={[
                 {
                   label: "Income",
-                  amountMinor: metrics.moneyInMinor,
+                  amounts: [
+                    { amountMinor: metrics.incomeByCurrency.PHP, currency: "PHP" },
+                    { amountMinor: metrics.incomeByCurrency.USD, currency: "USD" },
+                  ],
                   detail: `Income received in ${selectedMonthLabel}`,
                   icon: ArrowDownRight,
                   tone: "income",
                 },
                 {
                   label: "Expenses",
-                  amountMinor: metrics.moneyOutMinor,
+                  amounts: [
+                    { amountMinor: metrics.expenseByCurrency.PHP, currency: "PHP" },
+                    { amountMinor: metrics.expenseByCurrency.USD, currency: "USD" },
+                  ],
                   detail:
                     metrics.moneyInMinor === 0
                       ? `No income recorded in ${selectedMonthLabel}`
@@ -649,7 +664,7 @@ export function DashboardPage() {
                 },
                 {
                   label: "Remaining budget",
-                  amountMinor: metrics.remainingBudgetMinor,
+                  amounts: [{ amountMinor: metrics.remainingBudgetMinor, currency: "PHP" }],
                   detail: `${metrics.budgetUsedPercent}% of plan used`,
                   icon: PiggyBank,
                   tone: "plum",

@@ -1,4 +1,4 @@
-import type { AccountInput, AccountRecord, AccountUpdate } from "@zoption/shared";
+import type { AccountInput, AccountRecord, AccountUpdate, Currency } from "@zoption/shared";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -31,8 +31,15 @@ const accountSelection = {
   currency: accounts.currency,
   archived: accounts.archived,
   systemKey: accounts.systemKey,
-  balanceMinor: sql<number>`COALESCE(SUM(CASE
-    WHEN ${transactions.kind} != 'transfer' OR ${transactions.transferGroupId} IS NOT NULL
+  balancePhpMinor: sql<number>`COALESCE(SUM(CASE
+    WHEN (${transactions.kind} != 'transfer' OR ${transactions.transferGroupId} IS NOT NULL)
+      AND ${transactions.currency} = 'PHP'
+    THEN ${transactions.amountMinor}
+    ELSE 0
+  END), 0)`,
+  balanceUsdMinor: sql<number>`COALESCE(SUM(CASE
+    WHEN (${transactions.kind} != 'transfer' OR ${transactions.transferGroupId} IS NOT NULL)
+      AND ${transactions.currency} = 'USD'
     THEN ${transactions.amountMinor}
     ELSE 0
   END), 0)`,
@@ -41,14 +48,20 @@ const accountSelection = {
 function normalize(
   row: typeof accountSelection extends never ? never : Record<string, unknown>,
 ): AccountRecord {
+  const balancesByCurrency: Record<Currency, number> = {
+    PHP: Number(row.balancePhpMinor ?? 0),
+    USD: Number(row.balanceUsdMinor ?? 0),
+  };
+  const currency = row.currency as Currency;
   return {
     id: row.id as string,
     name: row.name as string,
     type: row.type as AccountRecord["type"],
-    currency: "PHP",
+    currency,
     archived: row.archived as boolean,
     system: Boolean(row.systemKey),
-    balanceMinor: Number(row.balanceMinor ?? 0),
+    balanceMinor: balancesByCurrency[currency],
+    balancesByCurrency,
   };
 }
 

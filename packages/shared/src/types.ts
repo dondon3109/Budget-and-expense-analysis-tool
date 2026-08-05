@@ -1,12 +1,21 @@
 export const transactionKinds = ["income", "expense", "transfer"] as const;
 export type TransactionKind = (typeof transactionKinds)[number];
 
+export const currencies = ["PHP", "USD"] as const;
+export type Currency = (typeof currencies)[number];
+
+export const currencyMetadata: Record<Currency, { label: string; symbol: string; locale: string }> =
+  {
+    PHP: { label: "Philippine Peso (PHP)", symbol: "₱", locale: "en-PH" },
+    USD: { label: "US Dollar (USD)", symbol: "$", locale: "en-US" },
+  };
+
 export interface TransactionRecord {
   id: string;
   date: string;
   description: string;
   amountMinor: number;
-  currency: "PHP";
+  currency: Currency;
   kind: TransactionKind;
   categoryId: string;
   categoryName: string;
@@ -35,7 +44,7 @@ export interface TransactionPage {
 
 export interface TransactionCalendarMonth {
   month: string;
-  currency: "PHP";
+  currency: Currency;
   items: TransactionListItem[];
   hasAnyTransactions: boolean;
 }
@@ -61,9 +70,10 @@ export interface AccountRecord {
   id: string;
   name: string;
   type: AccountType;
-  currency: "PHP";
+  currency: Currency;
   balanceMinor: number | null;
   balanceAsOf?: string | null;
+  balancesByCurrency?: Record<Currency, number>;
   archived: boolean;
   system?: boolean;
 }
@@ -72,8 +82,9 @@ export interface AccountBalanceSummaryItem {
   id: string;
   name: string;
   type: AccountType;
-  currency: "PHP";
+  currency: Currency;
   balanceMinor: number;
+  balancesByCurrency: Record<Currency, number>;
   archived: boolean;
   system: boolean;
 }
@@ -81,6 +92,7 @@ export interface AccountBalanceSummaryItem {
 export interface AccountBalanceSummary {
   currency: "PHP";
   overallBalanceMinor: number;
+  balancesByCurrency: Record<Currency, number>;
   items: AccountBalanceSummaryItem[];
 }
 
@@ -279,6 +291,8 @@ export interface DashboardSummary {
     moneyInMinor: number;
     moneyOutMinor: number;
     netMinor: number;
+    incomeByCurrency: Record<Currency, number>;
+    expenseByCurrency: Record<Currency, number>;
     budgetLimitMinor: number;
     remainingBudgetMinor: number;
     budgetUsedPercent: number;

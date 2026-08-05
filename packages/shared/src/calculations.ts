@@ -3,6 +3,7 @@ import type {
   AccountRecord,
   BudgetRecord,
   CashflowTrend,
+  Currency,
   DashboardSummary,
   TransactionRecord,
 } from "./types";
@@ -56,19 +57,33 @@ function buildRecurringExpenses(transactions: readonly TransactionRecord[]) {
 export function summarizeAccountBalances(
   accounts: readonly AccountRecord[],
 ): AccountBalanceSummary {
-  const items = accounts.map((account) => ({
-    id: account.id,
-    name: account.name,
-    type: account.type,
-    currency: account.currency,
-    balanceMinor: account.balanceMinor ?? 0,
-    archived: account.archived,
-    system: Boolean(account.system),
-  }));
+  const items = accounts.map((account) => {
+    const balanceMinor = account.balanceMinor ?? 0;
+    return {
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      currency: account.currency,
+      balanceMinor,
+      balancesByCurrency:
+        account.balancesByCurrency ??
+        (account.currency === "USD"
+          ? { PHP: 0, USD: balanceMinor }
+          : { PHP: balanceMinor, USD: 0 }),
+      archived: account.archived,
+      system: Boolean(account.system),
+    };
+  });
+
+  const balancesByCurrency: Record<Currency, number> = { PHP: 0, USD: 0 };
+  for (const item of items) {
+    balancesByCurrency[item.currency] += item.balanceMinor;
+  }
 
   return {
     currency: "PHP",
-    overallBalanceMinor: items.reduce((sum, account) => sum + account.balanceMinor, 0),
+    overallBalanceMinor: balancesByCurrency.PHP,
+    balancesByCurrency,
     items,
   };
 }
@@ -156,6 +171,7 @@ export function buildDashboardSummary(
   accountBalances: AccountBalanceSummary = {
     currency: "PHP",
     overallBalanceMinor: 0,
+    balancesByCurrency: { PHP: 0, USD: 0 },
     items: [],
   },
 ): DashboardSummary {
@@ -168,6 +184,16 @@ export function buildDashboardSummary(
   const moneyOutMinor = inPeriod
     .filter((transaction) => transaction.kind === "expense")
     .reduce((sum, transaction) => sum + Math.abs(transaction.amountMinor), 0);
+
+  const incomeByCurrency: Record<Currency, number> = { PHP: 0, USD: 0 };
+  const expenseByCurrency: Record<Currency, number> = { PHP: 0, USD: 0 };
+  for (const transaction of inPeriod) {
+    if (transaction.kind === "income") {
+      incomeByCurrency[transaction.currency] += Math.abs(transaction.amountMinor);
+    } else if (transaction.kind === "expense") {
+      expenseByCurrency[transaction.currency] += Math.abs(transaction.amountMinor);
+    }
+  }
 
   const spending = new Map<string, { name: string; color: string; amountMinor: number }>();
   for (const transaction of inPeriod) {
@@ -202,6 +228,8 @@ export function buildDashboardSummary(
       moneyInMinor,
       moneyOutMinor,
       netMinor: moneyInMinor - moneyOutMinor,
+      incomeByCurrency,
+      expenseByCurrency,
       budgetLimitMinor,
       remainingBudgetMinor: budgetLimitMinor - moneyOutMinor,
       budgetUsedPercent:

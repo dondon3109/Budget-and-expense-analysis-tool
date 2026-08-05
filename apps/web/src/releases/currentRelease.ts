@@ -11,17 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 4, 2026",
+  releasedOn: "August 5, 2026",
   changes: [
     {
-      title: "A full-screen assistant on mobile",
+      title: "US dollar transactions",
       description:
-        "The AI assistant now spans the whole screen on phones instead of a floating card, so the full conversation and your message box use every bit of space.",
+        "Record transactions in Philippine pesos or US dollars. Choose the currency when you add a transaction, and every amount keeps its own symbol.",
     },
     {
-      title: "Balanced assistant setup points",
+      title: "Multi-currency dashboard",
       description:
-        "The assistant’s privacy and memory points are rebalanced so the short-term memory card sits centered on its own row.",
+        "The profile dashboard now shows overall balance, income, and expenses in both Philippine pesos and US dollars, so each currency stays separate.",
+    },
+    {
+      title: "Account balances by currency",
+      description:
+        "Account balances on the dashboard show their Philippine peso and US dollar amounts side by side.",
+    },
+    {
+      title: "Release history toggle",
+      description:
+        "What’s new starts with the latest update and lets you show or hide previous version notes.",
     },
   ],
 };
@@ -33,6 +43,22 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "1.1.3",
+    releasedOn: "August 4, 2026",
+    changes: [
+      {
+        title: "A full-screen assistant on mobile",
+        description:
+          "The AI assistant now spans the whole screen on phones instead of a floating card, so the full conversation and your message box use every bit of space.",
+      },
+      {
+        title: "Balanced assistant setup points",
+        description:
+          "The assistant’s privacy and memory points are rebalanced so the short-term memory card sits centered on its own row.",
+      },
+    ],
+  },
   {
     version: "1.1.2",
     releasedOn: "August 4, 2026",

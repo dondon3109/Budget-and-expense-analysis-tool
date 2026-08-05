@@ -101,6 +101,8 @@ const dashboardSummary: DashboardSummary = {
     moneyInMinor: 100_000,
     moneyOutMinor: 69_600,
     netMinor: 30_400,
+    incomeByCurrency: { PHP: 100_000, USD: 0 },
+    expenseByCurrency: { PHP: 69_600, USD: 0 },
     budgetLimitMinor: 100_000,
     remainingBudgetMinor: 30_400,
     budgetUsedPercent: 69.6,

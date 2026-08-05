@@ -141,7 +141,7 @@ export function TransactionTable({
               </td>
               <td data-label="Amount" className={`amount-column amount-${item.kind}`}>
                 {item.kind === "income" ? "+" : item.kind === "expense" ? "−" : ""}
-                {formatMoney(Math.abs(item.amountMinor))}
+                {formatMoney(Math.abs(item.amountMinor), item.currency)}
               </td>
               <td className="row-actions">
                 {confirmId === item.id ? (

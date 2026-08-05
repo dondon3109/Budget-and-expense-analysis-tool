@@ -50,6 +50,33 @@ describe("account balance calculations", () => {
     ];
     expect(summarizeAccountBalances(accounts)).toMatchObject({ overallBalanceMinor: 320_000 });
   });
+
+  it("tracks overall balances separately per currency", () => {
+    const accounts: AccountRecord[] = [
+      {
+        id: "cash",
+        name: "Cash",
+        type: "cash",
+        currency: "PHP",
+        balanceMinor: 100_000,
+        archived: false,
+        system: true,
+      },
+      {
+        id: "usd-wallet",
+        name: "USD wallet",
+        type: "other",
+        currency: "USD",
+        balanceMinor: 50_000,
+        archived: false,
+        system: false,
+      },
+    ];
+    expect(summarizeAccountBalances(accounts)).toMatchObject({
+      overallBalanceMinor: 100_000,
+      balancesByCurrency: { PHP: 100_000, USD: 50_000 },
+    });
+  });
 });
 
 describe("cashflow trend calculations", () => {
@@ -133,6 +160,35 @@ describe("dashboard calculations", () => {
     expect(result.insights.savingsRatePercent).toBe(30);
     expect(result.metrics.remainingBudgetMinor).toBe(-10_000);
     expect(result.budgetProgress[0]?.usedPercent).toBe(116.7);
+  });
+
+  it("reports income and expenses per currency alongside aggregate totals", () => {
+    const transactions: TransactionRecord[] = [
+      { ...baseTransaction, id: "php-income", kind: "income", amountMinor: 100_000 },
+      {
+        ...baseTransaction,
+        id: "usd-income",
+        currency: "USD",
+        kind: "income",
+        amountMinor: 20_000,
+      },
+      { ...baseTransaction, id: "php-expense", kind: "expense", amountMinor: -40_000 },
+      {
+        ...baseTransaction,
+        id: "usd-expense",
+        currency: "USD",
+        kind: "expense",
+        amountMinor: -5_000,
+      },
+    ];
+    const result = buildDashboardSummary(transactions, [], {
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+    expect(result.metrics.moneyInMinor).toBe(120_000);
+    expect(result.metrics.moneyOutMinor).toBe(45_000);
+    expect(result.metrics.incomeByCurrency).toEqual({ PHP: 100_000, USD: 20_000 });
+    expect(result.metrics.expenseByCurrency).toEqual({ PHP: 40_000, USD: 5_000 });
   });
 
   it("returns stable empty-state totals", () => {

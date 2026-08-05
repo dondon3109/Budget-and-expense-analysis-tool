@@ -162,7 +162,7 @@ export function CalendarDayPanel({
                 </span>
                 <strong className={`calendar-transaction-amount amount-${item.kind}`}>
                   {item.kind === "income" ? "+" : item.kind === "expense" ? "−" : ""}
-                  {formatMoney(Math.abs(item.amountMinor))}
+                  {formatMoney(Math.abs(item.amountMinor), item.currency)}
                 </strong>
               </article>
             ))}

@@ -67,6 +67,8 @@ const dashboardFixture: DashboardSummary = {
     moneyInMinor: 80_000_00,
     moneyOutMinor: 24_550,
     netMinor: 79_754_50,
+    incomeByCurrency: { PHP: 80_000_00, USD: 0 },
+    expenseByCurrency: { PHP: 24_550, USD: 0 },
     budgetLimitMinor: 850_000,
     remainingBudgetMinor: 825_450,
     budgetUsedPercent: 2.9,

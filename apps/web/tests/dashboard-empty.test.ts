@@ -10,6 +10,8 @@ const emptyDashboard: DashboardSummary = {
     moneyInMinor: 0,
     moneyOutMinor: 0,
     netMinor: 0,
+    incomeByCurrency: { PHP: 0, USD: 0 },
+    expenseByCurrency: { PHP: 0, USD: 0 },
     budgetLimitMinor: 0,
     remainingBudgetMinor: 0,
     budgetUsedPercent: 0,

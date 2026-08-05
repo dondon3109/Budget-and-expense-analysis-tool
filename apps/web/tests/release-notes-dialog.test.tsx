@@ -37,16 +37,36 @@ afterEach(() => {
 });
 
 describe("ReleaseNotesDialog", () => {
-  it("shows the latest and previous releases and acknowledges from the primary action", () => {
+  it("shows the latest release by default and toggles previous updates", () => {
     const onAcknowledge = vi.fn();
     render(<ReleaseNotesDialog releases={releases} onAcknowledge={onAcknowledge} />);
 
     expect(screen.getByRole("dialog", { name: "Zoption 1.1.0" })).toBeInTheDocument();
     expect(screen.getByText("Featured update")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "v1.0.0" })).toBeInTheDocument();
-    expect(screen.getByText("Reliable ordering")).toBeInTheDocument();
     expect(document.getElementById("root")).toHaveAttribute("aria-hidden", "true");
     expect(document.body.style.overflow).toBe("hidden");
+
+    // Previous updates are hidden by default.
+    expect(screen.queryByRole("heading", { name: "v1.0.0" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Reliable ordering")).not.toBeInTheDocument();
+
+    // Show previous updates.
+    fireEvent.click(screen.getByRole("button", { name: "Show previous updates" }));
+    expect(screen.getByRole("button", { name: "Hide previous updates" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByRole("heading", { name: "v1.0.0" })).toBeInTheDocument();
+    expect(screen.getByText("Reliable ordering")).toBeInTheDocument();
+
+    // Hide previous updates again.
+    fireEvent.click(screen.getByRole("button", { name: "Hide previous updates" }));
+    expect(screen.getByRole("button", { name: "Show previous updates" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.queryByRole("heading", { name: "v1.0.0" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Reliable ordering")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Got it" }));
     expect(onAcknowledge).toHaveBeenCalledOnce();
