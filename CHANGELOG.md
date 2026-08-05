@@ -2,6 +2,18 @@
 
 All notable product changes are documented here.
 
+## 1.1.4 — 2026-08-05
+
+### Added
+
+- Transactions can now be recorded in US dollars as well as Philippine pesos, with a currency selector on the transaction form.
+- The profile dashboard now shows overall balance, income, and expenses separately in Philippine pesos and US dollars.
+- Account balances on the dashboard show their PHP and USD amounts side by side.
+
+### Changed
+
+- What’s new starts with the latest update and lets you show or hide previous version notes.
+
 ## 1.1.3 — 2026-08-04
 
 ### Changed
