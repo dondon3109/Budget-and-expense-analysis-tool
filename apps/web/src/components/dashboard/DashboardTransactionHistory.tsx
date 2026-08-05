@@ -25,7 +25,10 @@ function formatTransactionDate(date: string): string {
 
 function transactionContext(item: TransactionPage["items"][number]): string {
   if (item.kind === "transfer" && item.fromAccountName && item.toAccountName) {
-    return `${item.fromAccountName} → ${item.toAccountName}`;
+    const fee = item.transferFeeMinor
+      ? ` · ${formatMoney(item.transferFeeMinor, item.currency)} fee`
+      : "";
+    return `${item.fromAccountName} → ${item.toAccountName}${fee}`;
   }
 
   return item.accountName;

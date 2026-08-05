@@ -27,4 +27,22 @@ describe("transaction CSV export", () => {
     expect(csv).toContain('"line one\nline two"');
     expect(csv.endsWith("\r\n")).toBe(true);
   });
+  it("includes an empty transfer fee for ordinary rows and a fee for transfers", () => {
+    expect(buildTransactionCsv([transaction])).toContain(",Transfer fee,");
+
+    const transferCsv = buildTransactionCsv([
+      {
+        ...transaction,
+        kind: "transfer",
+        amountMinor: -10_000,
+        transferFeeMinor: 1_000,
+        fromAccountId: "account-a",
+        fromAccountName: "Bank",
+        toAccountId: "account-b",
+        toAccountName: "Savings",
+      },
+    ]);
+    expect(transferCsv).toContain("transfer");
+    expect(transferCsv).toContain("10.00");
+  });
 });

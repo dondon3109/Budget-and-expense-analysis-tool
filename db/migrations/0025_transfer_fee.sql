@@ -1,0 +1,1 @@
+ALTER TABLE `transactions` ADD COLUMN `transfer_fee_minor` integer;

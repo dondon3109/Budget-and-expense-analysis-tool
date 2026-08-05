@@ -65,4 +65,44 @@ describe("API request boundary schemas", () => {
       categoryListQuerySchema.safeParse({ includeArchived: "false", tenantId: "x" }).success,
     ).toBe(false);
   });
+
+  it("accepts transfers without a description and with a transfer fee, and bounds the fee", () => {
+    expect(
+      transactionInputSchema.safeParse({
+        date: "2026-07-18",
+        amountMinor: 10_000,
+        currency: "PHP",
+        kind: "transfer",
+        categoryId: "transfer",
+        fromAccountId: "account-a",
+        toAccountId: "account-b",
+        transferFeeMinor: 1_000,
+      }).success,
+    ).toBe(true);
+    expect(
+      transactionInputSchema.safeParse({
+        date: "2026-07-18",
+        description: "",
+        amountMinor: 10_000,
+        currency: "PHP",
+        kind: "transfer",
+        categoryId: "transfer",
+        fromAccountId: "account-a",
+        toAccountId: "account-b",
+      }).success,
+    ).toBe(true);
+    expect(
+      transactionInputSchema.safeParse({
+        date: "2026-07-18",
+        description: "",
+        amountMinor: 10_000,
+        currency: "PHP",
+        kind: "transfer",
+        categoryId: "transfer",
+        fromAccountId: "account-a",
+        toAccountId: "account-b",
+        transferFeeMinor: 10_000,
+      }).success,
+    ).toBe(false);
+  });
 });

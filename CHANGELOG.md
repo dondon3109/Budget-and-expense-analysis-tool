@@ -6,6 +6,8 @@ All notable product changes are documented here.
 
 ### Added
 
+- Transfers can now include a fee. The fee is deducted from the amount you move, so the receiving account gets a little less while your sending account pays the full amount.
+- Transfer descriptions are now optional, so quick money moves need fewer details.
 - Transactions can now be recorded in US dollars as well as Philippine pesos, with a currency selector on the transaction form.
 - The profile dashboard now shows overall balance, income, and expenses separately in Philippine pesos and US dollars.
 - Account balances on the dashboard show their PHP and USD amounts side by side.

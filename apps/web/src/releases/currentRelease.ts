@@ -14,6 +14,16 @@ export const currentRelease: ProductRelease = {
   releasedOn: "August 5, 2026",
   changes: [
     {
+      title: "Transfer fees",
+      description:
+        "Record a fee when you move money between accounts. The fee is deducted from the amount, so the receiving account gets a little less while your sending account pays the full amount.",
+    },
+    {
+      title: "Optional transfer descriptions",
+      description:
+        "Descriptions are now optional for quick transfers, so you can move money between accounts without typing extra details.",
+    },
+    {
       title: "US dollar transactions",
       description:
         "Record transactions in Philippine pesos or US dollars. Choose the currency when you add a transaction, and every amount keeps its own symbol.",

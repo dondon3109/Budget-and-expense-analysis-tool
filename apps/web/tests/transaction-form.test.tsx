@@ -204,4 +204,45 @@ describe("TransactionForm", () => {
       ),
     );
   });
+  it("makes description optional and submits a transfer fee for transfers", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    const transferCategory: CategoryRecord = {
+      ...category,
+      id: "transfer",
+      name: "Transfer",
+      kind: "transfer",
+    };
+    render(
+      <TransactionForm
+        categories={[transferCategory]}
+        accounts={accounts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText("Transaction type"), "transfer");
+    const descriptionInput = screen.getByLabelText(/Description/);
+    expect(descriptionInput).not.toBeRequired();
+    await user.selectOptions(screen.getByLabelText("To account"), "account-savings");
+    await user.selectOptions(screen.getByLabelText("From account"), "account-everyday");
+    await user.type(screen.getByLabelText("Amount (PHP)"), "100");
+    await user.type(screen.getByLabelText("Transfer fee"), "10");
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "transfer",
+          description: "",
+          amountMinor: 10_000,
+          transferFeeMinor: 1_000,
+          fromAccountId: "account-everyday",
+          toAccountId: "account-savings",
+        }),
+      ),
+    );
+  });
 });

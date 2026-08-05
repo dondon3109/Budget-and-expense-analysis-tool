@@ -31,6 +31,7 @@ export interface TransactionListItem extends TransactionRecord {
   fromAccountName?: string | null;
   toAccountId?: string | null;
   toAccountName?: string | null;
+  transferFeeMinor?: number | null;
   legacyTransfer?: boolean;
 }
 

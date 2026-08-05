@@ -50,6 +50,9 @@ export function TransactionForm({
   const [fromAccountId, setFromAccountId] = useState(item?.fromAccountId ?? item?.accountId ?? "");
   const [toAccountId, setToAccountId] = useState(item?.toAccountId ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
+  const [transferFee, setTransferFee] = useState(
+    item?.transferFeeMinor ? (item.transferFeeMinor / 100).toFixed(2) : "",
+  );
   const [currency, setCurrency] = useState<Currency>(item?.currency ?? "PHP");
   const [clientError, setClientError] = useState<string>();
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
@@ -96,6 +99,15 @@ export function TransactionForm({
       setClientError(error instanceof Error ? error.message : "Enter a valid amount.");
       return;
     }
+    let transferFeeMinor: number | undefined;
+    if (kind === "transfer" && transferFee.trim() !== "") {
+      try {
+        transferFeeMinor = parseAmountToMinor(transferFee);
+      } catch (error) {
+        setClientError(error instanceof Error ? error.message : "Enter a valid transfer fee.");
+        return;
+      }
+    }
     const base = {
       date,
       description,
@@ -106,7 +118,9 @@ export function TransactionForm({
       notes,
     };
     const parsed = transactionInputSchema.safeParse(
-      kind === "transfer" ? { ...base, fromAccountId, toAccountId } : { ...base, accountId },
+      kind === "transfer"
+        ? { ...base, fromAccountId, toAccountId, transferFeeMinor }
+        : { ...base, accountId },
     );
     if (!parsed.success) {
       setClientError(parsed.error.issues[0]?.message ?? "Check the transaction details.");
@@ -189,14 +203,16 @@ export function TransactionForm({
             </label>
           </div>
           <label>
-            <span>Description</span>
+            <span>Description {kind === "transfer" && <small>Optional</small>}</span>
             <input
               autoFocus
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="e.g. Weekly groceries"
+              placeholder={
+                kind === "transfer" ? "e.g. Transfer to savings" : "e.g. Weekly groceries"
+              }
               maxLength={240}
-              required
+              required={kind !== "transfer"}
             />
           </label>
           {kind === "transfer" ? (
@@ -206,6 +222,24 @@ export function TransactionForm({
             </div>
           ) : (
             selector("Account", accountId, setAccountId)
+          )}
+          {kind === "transfer" && (
+            <label>
+              <span>
+                Transfer fee <small>Optional</small>
+              </span>
+              <div className="money-input">
+                <b>{currencyMetadata[currency].symbol}</b>
+                <input
+                  aria-label="Transfer fee"
+                  inputMode="decimal"
+                  value={transferFee}
+                  onChange={(event) => setTransferFee(event.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <small>Deducted from the amount, so the receiving account gets a little less.</small>
+            </label>
           )}
           <div className="form-row split">
             <label>

@@ -26,6 +26,7 @@ export function buildTransactionCsv(rows: readonly TransactionListItem[]): strin
       "Account",
       "From account",
       "To account",
+      "Transfer fee",
       "Notes",
     ],
     ...rows.map((row) => [
@@ -42,6 +43,7 @@ export function buildTransactionCsv(rows: readonly TransactionListItem[]): strin
       ),
       safeText(row.fromAccountName ?? ""),
       safeText(row.toAccountName ?? ""),
+      row.transferFeeMinor ? formatMinor(row.transferFeeMinor) : "",
       safeText(row.notes ?? ""),
     ]),
   ];

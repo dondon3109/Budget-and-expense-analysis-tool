@@ -332,12 +332,18 @@ export const transactionInputSchema = z.discriminatedUnion("kind", [
   transactionBaseSchema
     .extend({
       kind: z.literal("transfer"),
+      description: z.string().trim().max(240).optional(),
+      transferFeeMinor: z.number().int().safe().min(0).optional(),
       fromAccountId: resourceIdSchema,
       toAccountId: resourceIdSchema,
     })
     .refine((value) => value.fromAccountId !== value.toAccountId, {
       path: ["toAccountId"],
       message: "Choose different accounts for a transfer.",
+    })
+    .refine((value) => (value.transferFeeMinor ?? 0) < value.amountMinor, {
+      path: ["transferFeeMinor"],
+      message: "The transfer fee must be less than the amount.",
     }),
 ]);
 
@@ -346,7 +352,7 @@ export type TransactionInput = z.infer<typeof transactionInputSchema>;
 export const transactionUpdateSchema = z
   .object({
     date: isoDateSchema.optional(),
-    description: z.string().trim().min(1).max(240).optional(),
+    description: z.string().trim().max(240).optional(),
     amountMinor: z
       .number()
       .int()
@@ -359,6 +365,7 @@ export const transactionUpdateSchema = z
     accountId: resourceIdSchema.optional(),
     fromAccountId: resourceIdSchema.optional(),
     toAccountId: resourceIdSchema.optional(),
+    transferFeeMinor: z.number().int().safe().min(0).optional(),
     notes: z.string().trim().max(500).optional(),
   })
   .strict()

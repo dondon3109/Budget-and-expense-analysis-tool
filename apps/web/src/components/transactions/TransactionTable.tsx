@@ -120,6 +120,9 @@ export function TransactionTable({
                     {item.kind === "transfer" && item.fromAccountName && item.toAccountName
                       ? `${item.fromAccountName} → ${item.toAccountName}`
                       : item.accountName}
+                    {item.transferFeeMinor
+                      ? ` · ${formatMoney(item.transferFeeMinor, item.currency)} fee`
+                      : ""}
                     {item.notes ? ` · ${item.notes}` : ""}
                   </span>
                 </div>

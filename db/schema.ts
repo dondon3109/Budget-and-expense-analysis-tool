@@ -170,6 +170,7 @@ export const transactions = sqliteTable(
     importId: text("import_id"),
     importRowNumber: integer("import_row_number"),
     notes: text("notes"),
+    transferFeeMinor: integer("transfer_fee_minor"),
     ...timestamps,
   },
   (table) => [

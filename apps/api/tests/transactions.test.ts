@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { transactionRepository } from "../src/db/transactions";
+import { buildTransferLegs, transactionRepository } from "../src/db/transactions";
 import type { Bindings } from "../src/types";
 
 interface CapturedStatement {
@@ -71,5 +71,59 @@ describe("transactionRepository search", () => {
     expect(statements[0]?.query).toContain("COALESCE(destination.name, '') LIKE ? ESCAPE");
     expect(statements[0]?.query).toContain("t.tenant_id = ?");
     expect(statements[0]?.bindings).toContain("%50\\%\\_off\\\\deal%");
+  });
+});
+describe("buildTransferLegs transfer fees", () => {
+  it("deducts the fee from the receiving leg and records it on the sender leg", () => {
+    const [fromLeg, toLeg] = buildTransferLegs({
+      date: "2026-07-20",
+      description: "",
+      amountMinor: 10_000,
+      currency: "PHP",
+      kind: "transfer",
+      categoryId: "transfer",
+      fromAccountId: "account-a",
+      toAccountId: "account-b",
+      transferFeeMinor: 1_000,
+    });
+
+    expect(fromLeg).toEqual({
+      accountId: "account-a",
+      amountMinor: -10_000,
+      transferFeeMinor: 1_000,
+      description: "Transfer",
+    });
+    expect(toLeg).toEqual({
+      accountId: "account-b",
+      amountMinor: 9_000,
+      transferFeeMinor: null,
+      description: "Transfer",
+    });
+  });
+
+  it("defaults a missing fee to zero and keeps both legs symmetric", () => {
+    const [fromLeg, toLeg] = buildTransferLegs({
+      date: "2026-07-20",
+      description: "Savings top-up",
+      amountMinor: 5_000,
+      currency: "PHP",
+      kind: "transfer",
+      categoryId: "transfer",
+      fromAccountId: "account-a",
+      toAccountId: "account-b",
+    });
+
+    expect(fromLeg).toEqual({
+      accountId: "account-a",
+      amountMinor: -5_000,
+      transferFeeMinor: null,
+      description: "Savings top-up",
+    });
+    expect(toLeg).toEqual({
+      accountId: "account-b",
+      amountMinor: 5_000,
+      transferFeeMinor: null,
+      description: "Savings top-up",
+    });
   });
 });

@@ -54,6 +54,7 @@ type TransactionRow = {
   accountId: string | null;
   accountName: string | null;
   notes: string | null;
+  transferFeeMinor: number | null;
   transferGroupId: string | null;
   toAccountId: string | null;
   toAccountName: string | null;
@@ -78,6 +79,39 @@ function normalizeRow(row: TransactionRow): TransactionListItem {
     toAccountName: linkedTransfer ? (row.toAccountName ?? "Unassigned") : null,
     legacyTransfer: row.kind === "transfer" && !linkedTransfer,
   };
+}
+
+export interface TransferLeg {
+  accountId: string;
+  amountMinor: number;
+  transferFeeMinor: number | null;
+  description: string;
+}
+
+/**
+ * Resolves the two rows of a fee-charged transfer into what actually happens:
+ * the sender's account loses the full amount, and the receiving account gains
+ * the amount minus the fee. A blank description is stored as "Transfer".
+ */
+export function buildTransferLegs(
+  input: Extract<TransactionInput, { kind: "transfer" }>,
+): [TransferLeg, TransferLeg] {
+  const fee = input.transferFeeMinor ?? 0;
+  const description = input.description?.trim() || "Transfer";
+  return [
+    {
+      accountId: input.fromAccountId,
+      amountMinor: -input.amountMinor,
+      transferFeeMinor: fee > 0 ? fee : null,
+      description,
+    },
+    {
+      accountId: input.toAccountId,
+      amountMinor: input.amountMinor - fee,
+      transferFeeMinor: null,
+      description,
+    },
+  ];
 }
 
 function logicalRowsSql(
@@ -140,6 +174,7 @@ function logicalRowsSql(
         t.date AS date,
         t.description AS description,
         t.amount_minor AS amountMinor,
+        t.transfer_fee_minor AS transferFeeMinor,
         t.currency AS currency,
         t.kind AS kind,
         c.id AS categoryId,
@@ -254,12 +289,13 @@ function insertStatement(
     kind: TransactionInput["kind"];
     notes?: string;
     transferGroupId?: string;
+    transferFeeMinor?: number | null;
   },
 ) {
   return env.DB.prepare(
     `INSERT INTO transactions (
-      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, transfer_group_id, source_kind
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')`,
+      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, transfer_group_id, transfer_fee_minor, source_kind
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')`,
   ).bind(
     values.id,
     values.tenantId,
@@ -272,6 +308,7 @@ function insertStatement(
     values.kind,
     values.notes || null,
     values.transferGroupId ?? null,
+    values.transferFeeMinor ?? null,
   );
 }
 
@@ -321,32 +358,35 @@ export const transactionRepository: TransactionRepository = {
       const groupId = crypto.randomUUID();
       const fromId = crypto.randomUUID();
       const toId = crypto.randomUUID();
+      const [fromLeg, toLeg] = buildTransferLegs(input);
       await env.DB.batch([
         insertStatement(env, {
           id: fromId,
           tenantId,
-          accountId: input.fromAccountId,
+          accountId: fromLeg.accountId,
           categoryId: input.categoryId,
           date: input.date,
-          description: input.description,
-          amountMinor: -input.amountMinor,
+          description: fromLeg.description,
+          amountMinor: fromLeg.amountMinor,
           currency: input.currency,
           kind: input.kind,
           notes: input.notes,
           transferGroupId: groupId,
+          transferFeeMinor: fromLeg.transferFeeMinor,
         }),
         insertStatement(env, {
           id: toId,
           tenantId,
-          accountId: input.toAccountId,
+          accountId: toLeg.accountId,
           categoryId: input.categoryId,
           date: input.date,
-          description: input.description,
-          amountMinor: input.amountMinor,
+          description: toLeg.description,
+          amountMinor: toLeg.amountMinor,
           currency: input.currency,
           kind: input.kind,
           notes: input.notes,
           transferGroupId: groupId,
+          transferFeeMinor: toLeg.transferFeeMinor,
         }),
       ]);
       const created = await findTransaction(env, tenantId, fromId);
@@ -386,30 +426,33 @@ export const transactionRepository: TransactionRepository = {
       }
       const transfer = parsed.data;
       await validateReferences(env, tenantId, transfer, existing.categoryId);
+      const [fromLeg, toLeg] = buildTransferLegs(transfer);
       await env.DB.batch([
         env.DB.prepare(
-          `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'transfer', notes = ?, updated_at = datetime('now') WHERE tenant_id = ? AND transfer_group_id = ? AND amount_minor < 0`,
+          `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'transfer', notes = ?, transfer_fee_minor = ?, updated_at = datetime('now') WHERE tenant_id = ? AND transfer_group_id = ? AND amount_minor < 0`,
         ).bind(
-          transfer.fromAccountId,
+          fromLeg.accountId,
           transfer.categoryId,
           transfer.date,
-          transfer.description,
-          -transfer.amountMinor,
+          fromLeg.description,
+          fromLeg.amountMinor,
           transfer.currency,
           transfer.notes || null,
+          fromLeg.transferFeeMinor,
           tenantId,
           existing.transferGroupId,
         ),
         env.DB.prepare(
-          `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'transfer', notes = ?, updated_at = datetime('now') WHERE tenant_id = ? AND transfer_group_id = ? AND amount_minor > 0`,
+          `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'transfer', notes = ?, transfer_fee_minor = ?, updated_at = datetime('now') WHERE tenant_id = ? AND transfer_group_id = ? AND amount_minor > 0`,
         ).bind(
-          transfer.toAccountId,
+          toLeg.accountId,
           transfer.categoryId,
           transfer.date,
-          transfer.description,
-          transfer.amountMinor,
+          toLeg.description,
+          toLeg.amountMinor,
           transfer.currency,
           transfer.notes || null,
+          toLeg.transferFeeMinor,
           tenantId,
           existing.transferGroupId,
         ),
