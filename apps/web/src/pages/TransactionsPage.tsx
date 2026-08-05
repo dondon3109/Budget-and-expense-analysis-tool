@@ -325,6 +325,16 @@ export function TransactionsPage() {
               </span>
             </div>
             <div className="transaction-list-actions">
+              <button
+                className="refresh-button"
+                type="button"
+                onClick={() => void transactionsQuery.refetch()}
+                disabled={transactionsQuery.isFetching}
+              >
+                <RefreshCw size={15} className={transactionsQuery.isFetching ? "spinning" : ""} />{" "}
+                Refresh
+              </button>
+              <span className="transaction-list-divider" aria-hidden="true" />
               <label className="transaction-sort-control">
                 <span>Sort by</span>
                 <select
@@ -338,15 +348,6 @@ export function TransactionsPage() {
                   ))}
                 </select>
               </label>
-              <button
-                className="refresh-button"
-                type="button"
-                onClick={() => void transactionsQuery.refetch()}
-                disabled={transactionsQuery.isFetching}
-              >
-                <RefreshCw size={15} className={transactionsQuery.isFetching ? "spinning" : ""} />{" "}
-                Refresh
-              </button>
             </div>
           </div>
 

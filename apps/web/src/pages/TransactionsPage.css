@@ -119,10 +119,16 @@ height: 38px;
   font-weight: 750;
 }
 
-.transaction-list-actions {
+.transactions-panel-heading .transaction-list-actions {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.transaction-list-divider {
+  width: 1px;
+  height: 18px;
+  background: color-mix(in srgb, var(--line-strong) 76%, transparent);
 }
 
 .transaction-sort-control {
@@ -272,10 +278,16 @@ min-width: 100%;
     gap: 14px;
   }
 
-  .transaction-list-actions {
+  .transactions-panel-heading .transaction-list-actions {
     align-items: flex-end;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .transaction-list-divider {
+    width: auto;
+    height: 1px;
+    align-self: stretch;
   }
 
   .transaction-sort-control {
