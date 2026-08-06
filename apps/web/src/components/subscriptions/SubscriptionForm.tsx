@@ -1,6 +1,7 @@
 import {
   parseAmountToMinor,
   subscriptionInputSchema,
+  type AccountRecord,
   type CategoryRecord,
   type SubscriptionBillingCycle,
   type SubscriptionInput,
@@ -11,6 +12,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 interface SubscriptionFormProps {
   categories: CategoryRecord[];
+  accounts: AccountRecord[];
   busy: boolean;
   serverError?: string;
   initial?: SubscriptionRecord;
@@ -32,6 +34,7 @@ function minorToInput(minor: number): string {
 
 export function SubscriptionForm({
   categories,
+  accounts,
   busy,
   serverError,
   initial,
@@ -45,6 +48,7 @@ export function SubscriptionForm({
   );
   const [nextBillingDate, setNextBillingDate] = useState(initial?.nextBillingDate ?? today());
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
+  const [accountId, setAccountId] = useState(initial?.accountId ?? "");
   const [clientError, setClientError] = useState<string>();
   const editing = Boolean(initial);
   const availableCategories = useMemo(
@@ -55,12 +59,22 @@ export function SubscriptionForm({
     () => availableCategories.filter((category) => !category.locked),
     [availableCategories],
   );
+  const activeAccounts = useMemo(
+    () => accounts.filter((account) => !account.archived),
+    [accounts],
+  );
 
   useEffect(() => {
     if (!selectableCategories.some((category) => category.id === categoryId)) {
       setCategoryId(selectableCategories[0]?.id ?? "");
     }
   }, [categoryId, selectableCategories]);
+
+  useEffect(() => {
+    if (!activeAccounts.some((account) => account.id === accountId)) {
+      setAccountId(activeAccounts[0]?.id ?? "");
+    }
+  }, [accountId, activeAccounts]);
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
@@ -88,6 +102,7 @@ export function SubscriptionForm({
       billingCycle,
       nextBillingDate,
       categoryId,
+      accountId,
     });
     if (!parsed.success) {
       setClientError(parsed.error.issues[0]?.message ?? "Check the subscription details.");
@@ -181,24 +196,46 @@ export function SubscriptionForm({
               />
             </label>
             <label>
-              <span>Category</span>
+              <span>Account</span>
               <select
-                value={categoryId}
-                onChange={(event) => setCategoryId(event.target.value)}
+                value={accountId}
+                onChange={(event) => setAccountId(event.target.value)}
                 required
               >
-                {selectableCategories.length === 0 && (
-                  <option value="">Upgrade or create an expense category first</option>
+                {activeAccounts.length === 0 ? (
+                  <option value="">Create an account on the dashboard first</option>
+                ) : (
+                  <>
+                    <option value="">Choose an account</option>
+                    {activeAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </>
                 )}
-                {availableCategories.map((category) => (
-                  <option key={category.id} value={category.id} disabled={category.locked}>
-                    {category.name}
-                    {category.locked ? " — Pro required" : ""}
-                  </option>
-                ))}
               </select>
             </label>
           </div>
+
+          <label>
+            <span>Category</span>
+            <select
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+              required
+            >
+              {selectableCategories.length === 0 && (
+                <option value="">Upgrade or create an expense category first</option>
+              )}
+              {availableCategories.map((category) => (
+                <option key={category.id} value={category.id} disabled={category.locked}>
+                  {category.name}
+                  {category.locked ? " — Pro required" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
 
           {(clientError || serverError) && (
             <p className="form-error" role="alert">
@@ -210,7 +247,7 @@ export function SubscriptionForm({
             <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button className="button primary" type="submit" disabled={busy || !categoryId}>
+            <button className="button primary" type="submit" disabled={busy || !categoryId || !accountId}>
               {busy
                 ? editing
                   ? "Saving…"

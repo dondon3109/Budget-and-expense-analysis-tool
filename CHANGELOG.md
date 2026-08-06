@@ -2,6 +2,14 @@
 
 All notable product changes are documented here.
 
+## 1.1.7 — 2026-08-06
+
+### Added
+
+- You can now choose the account a subscription is paid from. Adding a subscription automatically records its next charge as an expense in the transaction dashboard, reducing that account's balance right away.
+- Existing active subscriptions are automatically assigned to your Bank account with their charge created, so subscriptions added before this update now show up in your balance too.
+- Editing a subscription keeps its linked charge in sync, canceling it removes the charge, and deleting the subscription removes the charge with it.
+
 ## 1.1.6 — 2026-08-06
 
 ### Added

@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import type { CategoryRecord } from "@zoption/shared";
+import type { AccountRecord, CategoryRecord } from "@zoption/shared";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +10,27 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SubscriptionForm } from "../src/components/subscriptions/SubscriptionForm";
 
 afterEach(cleanup);
+
+const accounts: AccountRecord[] = [
+  {
+    id: "account-bank",
+    name: "Bank",
+    type: "checking",
+    currency: "PHP",
+    balanceMinor: null,
+    balanceAsOf: null,
+    archived: false,
+  },
+  {
+    id: "account-archived",
+    name: "Old wallet",
+    type: "cash",
+    currency: "PHP",
+    balanceMinor: null,
+    balanceAsOf: null,
+    archived: true,
+  },
+];
 
 const categories: CategoryRecord[] = [
   {
@@ -48,12 +69,13 @@ const categories: CategoryRecord[] = [
 ];
 
 describe("SubscriptionForm", () => {
-  it("shows the five requested fields and submits integer minor units", async () => {
+  it("shows the six requested fields and submits integer minor units", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
     render(
       <SubscriptionForm
         categories={categories}
+        accounts={accounts}
         busy={false}
         onSubmit={onSubmit}
         onClose={vi.fn()}
@@ -64,9 +86,12 @@ describe("SubscriptionForm", () => {
     expect(screen.getByLabelText("Amount")).toBeInTheDocument();
     expect(screen.getByLabelText("Billing cycle")).toBeInTheDocument();
     expect(screen.getByLabelText("Next billing date")).toBeInTheDocument();
+    expect(screen.getByLabelText("Account")).toBeInTheDocument();
     expect(screen.getByLabelText("Category")).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Salary" })).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Archived expense" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Old wallet" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Bank" })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Name"), "Annual cloud storage");
     await user.type(screen.getByLabelText("Amount"), "1200.50");
@@ -82,6 +107,7 @@ describe("SubscriptionForm", () => {
         billingCycle: "yearly",
         nextBillingDate: "2026-08-15",
         categoryId: "entertainment",
+        accountId: "account-bank",
       }),
     );
   });
@@ -92,6 +118,7 @@ describe("SubscriptionForm", () => {
     render(
       <SubscriptionForm
         categories={categories}
+        accounts={accounts}
         busy={false}
         onSubmit={onSubmit}
         onClose={vi.fn()}
@@ -117,6 +144,7 @@ describe("SubscriptionForm", () => {
     render(
       <SubscriptionForm
         categories={[lockedCategory, categories[0]!]}
+        accounts={accounts}
         busy={false}
         onSubmit={vi.fn(async () => undefined)}
         onClose={vi.fn()}
@@ -133,6 +161,7 @@ describe("SubscriptionForm", () => {
     render(
       <SubscriptionForm
         categories={categories}
+        accounts={accounts}
         busy={false}
         initial={{
           id: "subscription-1",
@@ -145,6 +174,8 @@ describe("SubscriptionForm", () => {
           categoryId: "entertainment",
           categoryName: "Entertainment",
           categoryColor: "#7363a6",
+          accountId: "account-bank",
+          accountName: "Bank",
         }}
         onSubmit={onSubmit}
         onClose={vi.fn()}
@@ -155,6 +186,7 @@ describe("SubscriptionForm", () => {
     expect(screen.getByLabelText("Name")).toHaveValue("Music streaming");
     expect(screen.getByLabelText("Amount")).toHaveValue("199");
     expect(screen.getByLabelText("Next billing date")).toHaveValue("2026-07-25");
+    expect(screen.getByLabelText("Account")).toHaveValue("account-bank");
     expect(screen.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
 
     await user.clear(screen.getByLabelText("Name"));
@@ -170,6 +202,7 @@ describe("SubscriptionForm", () => {
         billingCycle: "monthly",
         nextBillingDate: "2026-07-25",
         categoryId: "entertainment",
+        accountId: "account-bank",
       }),
     );
   });

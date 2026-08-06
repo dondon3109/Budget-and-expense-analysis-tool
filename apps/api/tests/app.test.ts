@@ -179,6 +179,8 @@ const subscriptionItem: SubscriptionRecord = {
   categoryId: "food",
   categoryName: "Food & dining",
   categoryColor: "#dc8b3f",
+  accountId: "account-bank",
+  accountName: "Bank",
 };
 
 const subscriptionSummary: SubscriptionMonthSummary = {
@@ -971,6 +973,7 @@ describe("API foundation", () => {
         billingCycle: "monthly",
         nextBillingDate: "2026-07-25",
         categoryId: "food",
+        accountId: "account-bank",
       }),
     });
     expect(createResponse.status).toBe(201);
@@ -980,6 +983,7 @@ describe("API foundation", () => {
       billingCycle: "monthly",
       nextBillingDate: "2026-07-25",
       categoryId: "food",
+      accountId: "account-bank",
     });
 
     const statusResponse = await app.request("/api/app/subscriptions/subscription-1/status", {
@@ -1001,6 +1005,7 @@ describe("API foundation", () => {
         billingCycle: "monthly",
         nextBillingDate: "2026-07-25",
         categoryId: "food",
+        accountId: "account-bank",
       }),
     });
     expect(updateResponse.status).toBe(200);
@@ -1010,6 +1015,7 @@ describe("API foundation", () => {
       billingCycle: "monthly",
       nextBillingDate: "2026-07-25",
       categoryId: "food",
+      accountId: "account-bank",
     });
 
     const deleteResponse = await app.request("/api/app/subscriptions/subscription-1", {

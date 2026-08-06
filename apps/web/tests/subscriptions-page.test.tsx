@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createSubscription,
   deleteSubscription,
+  getAccounts,
   getCategories,
   getSubscriptions,
   setSubscriptionStatus,
@@ -30,6 +31,7 @@ vi.mock("../src/auth/AuthProvider", () => ({
 vi.mock("../src/lib/api", () => ({
   createSubscription: vi.fn(),
   deleteSubscription: vi.fn(),
+  getAccounts: vi.fn(),
   getCategories: vi.fn(),
   getSubscriptions: vi.fn(),
   setSubscriptionStatus: vi.fn(),
@@ -59,6 +61,8 @@ const record: SubscriptionRecord = {
   categoryId: category.id,
   categoryName: category.name,
   categoryColor: category.color,
+  accountId: "account-bank",
+  accountName: "Bank",
 };
 
 function renderPage() {
@@ -80,6 +84,17 @@ describe("SubscriptionsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getCategories).mockResolvedValue([category]);
+    vi.mocked(getAccounts).mockResolvedValue([
+      {
+        id: "account-bank",
+        name: "Bank",
+        type: "checking",
+        currency: "PHP",
+        balanceMinor: null,
+        balanceAsOf: null,
+        archived: false,
+      },
+    ]);
     vi.mocked(createSubscription).mockResolvedValue(record);
     vi.mocked(setSubscriptionStatus).mockResolvedValue({ ...record, status: "canceled" });
     vi.mocked(updateSubscription).mockResolvedValue({ ...record, name: "Music streaming Plus" });
@@ -157,6 +172,7 @@ describe("SubscriptionsPage", () => {
       billingCycle: "monthly",
       nextBillingDate: "2026-07-25",
       categoryId: "entertainment",
+      accountId: "account-bank",
     };
     const user = userEvent.setup();
     renderPage();

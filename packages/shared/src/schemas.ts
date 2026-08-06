@@ -582,6 +582,7 @@ export const subscriptionInputSchema = z
     billingCycle: z.enum(subscriptionBillingCycles),
     nextBillingDate: isoDateSchema,
     categoryId: resourceIdSchema,
+    accountId: resourceIdSchema,
   })
   .strict();
 

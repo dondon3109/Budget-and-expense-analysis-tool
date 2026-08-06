@@ -57,6 +57,8 @@ describe("CalendarMonthGrid", () => {
       categoryId: "category-1",
       categoryName: "Entertainment",
       categoryColor: "#123456",
+      accountId: "account-bank",
+      accountName: "Bank",
       billingDate: "2026-07-20",
       monthlyCostMinor: 549_00,
     };

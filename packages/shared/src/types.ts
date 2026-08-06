@@ -132,6 +132,8 @@ export interface SubscriptionRecord {
   categoryId: string;
   categoryName: string;
   categoryColor: string;
+  accountId: string | null;
+  accountName: string | null;
 }
 
 export interface SubscriptionMonthItem extends SubscriptionRecord {
