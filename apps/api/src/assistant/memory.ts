@@ -34,6 +34,9 @@ const SECRET_PATTERNS: RegExp[] = [
   /(?:client[_-]?secret|service[_-]?role)/i,
 ];
 
+// Strip ASCII control characters from user-provided memory values. This regex is
+// intentional: it matches control code points (0x00–0x1F and 0x7F) for removal.
+// eslint-disable-next-line no-control-regex
 const CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
 const WHITESPACE_PATTERN = /\s+/g;
 
@@ -81,7 +84,7 @@ function extractSavingsGoal(message: string): ExtractedMemory | null {
 const MODEL_PASS_SIGNAL =
   /\b(?:my rule(?: of thumb)? is|i (?:prefer|always|usually|never|try to)|i pay(?: off)? .* first|remember that|from now on|from today)\b/i;
 
-export function deterministicExtract(message: string, _now = new Date()): ExtractionResult {
+export function deterministicExtract(message: string): ExtractionResult {
   const memories: ExtractedMemory[] = [];
   const debt = extractDebtStrategy(message);
   if (debt) memories.push(debt);

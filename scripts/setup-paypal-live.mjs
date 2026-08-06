@@ -347,7 +347,6 @@ export async function setupPayPalLive({ env = process.env, fetchImpl = fetch, ap
 }
 
 function cliOptions(argv) {
-  const supported = new Set(["--apply", "--json", "--webhook"]);
   const webhookUrls = [];
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--webhook") {
