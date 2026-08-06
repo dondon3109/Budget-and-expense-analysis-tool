@@ -11,12 +11,12 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 5, 2026",
+  releasedOn: "August 6, 2026",
   changes: [
     {
       title: "Transfer fee overview",
       description:
-        "The profile dashboard now shows the total you've paid in transfer fees, and starting a new assistant conversation shares your fee totals, how often you transfer each week, and tips to pay fewer fees.",
+        "The profile dashboard now shows the total you've paid in transfer fees and the fee-charged transfers behind it, and a new assistant conversation shares how much transfer fees have cost you and simple ways to pay fewer of them.",
     },
     {
       title: "Transfer fees",
@@ -28,26 +28,6 @@ export const currentRelease: ProductRelease = {
       description:
         "Descriptions are now optional for quick transfers, so you can move money between accounts without typing extra details.",
     },
-    {
-      title: "US dollar transactions",
-      description:
-        "Record transactions in Philippine pesos or US dollars. Choose the currency when you add a transaction, and every amount keeps its own symbol.",
-    },
-    {
-      title: "Multi-currency dashboard",
-      description:
-        "The profile dashboard now shows overall balance, income, and expenses in both Philippine pesos and US dollars, so each currency stays separate.",
-    },
-    {
-      title: "Account balances by currency",
-      description:
-        "Account balances on the dashboard show their Philippine peso and US dollar amounts side by side.",
-    },
-    {
-      title: "Release history toggle",
-      description:
-        "What’s new starts with the latest update and lets you show or hide previous version notes.",
-    },
   ],
 };
 
@@ -58,6 +38,32 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "1.1.4",
+    releasedOn: "August 5, 2026",
+    changes: [
+      {
+        title: "US dollar transactions",
+        description:
+          "Record transactions in Philippine pesos or US dollars. Choose the currency when you add a transaction, and every amount keeps its own symbol.",
+      },
+      {
+        title: "Multi-currency dashboard",
+        description:
+          "The profile dashboard now shows overall balance, income, and expenses in both Philippine pesos and US dollars, so each currency stays separate.",
+      },
+      {
+        title: "Account balances by currency",
+        description:
+          "Account balances on the dashboard show their Philippine peso and US dollar amounts side by side.",
+      },
+      {
+        title: "Release history toggle",
+        description:
+          "What’s new starts with the latest update and lets you show or hide previous version notes.",
+      },
+    ],
+  },
   {
     version: "1.1.3",
     releasedOn: "August 4, 2026",

@@ -72,11 +72,6 @@
   line-height: 1.6;
 }
 
-.transfer-fee-card p.transfer-fee-card-insight {
-  color: var(--expense);
-  font-weight: 600;
-}
-
 @media (max-width: 760px) {
   .transfer-fee-card {
     padding: 20px 17px;
