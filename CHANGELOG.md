@@ -2,6 +2,14 @@
 
 All notable product changes are documented here.
 
+## 1.1.6 — 2026-08-06
+
+### Added
+
+- Monthly subscriptions now support editing: open the pencil on a subscription to update its name, amount, billing cycle, next billing date, or category.
+- You can now delete a recurring subscription you no longer pay for, with a confirmation before it's removed.
+- The transfer form now shows the exact amount the receiving account will get after a transfer fee is deducted.
+
 ## 1.1.5 — 2026-08-06
 
 ### Added

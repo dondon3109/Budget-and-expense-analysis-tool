@@ -14,19 +14,14 @@ export const currentRelease: ProductRelease = {
   releasedOn: "August 6, 2026",
   changes: [
     {
-      title: "Transfer fee overview",
+      title: "Edit and delete subscriptions",
       description:
-        "The profile dashboard now shows the total you've paid in transfer fees and the fee-charged transfers behind it, and a new assistant conversation shares how much transfer fees have cost you and simple ways to pay fewer of them.",
+        "The monthly subscriptions dashboard now lets you edit a subscription's details — name, amount, billing cycle, billing date, or category — or delete one you no longer pay for, right from the list.",
     },
     {
-      title: "Transfer fees",
+      title: "Transfer net preview",
       description:
-        "Record a fee when you move money between accounts. The fee is deducted from the amount, so the receiving account gets a little less while your sending account pays the full amount.",
-    },
-    {
-      title: "Optional transfer descriptions",
-      description:
-        "Descriptions are now optional for quick transfers, so you can move money between accounts without typing extra details.",
+        "When a transfer includes a fee, the form now shows exactly how much the receiving account will get after the fee is deducted.",
     },
   ],
 };
@@ -38,6 +33,27 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "1.1.5",
+    releasedOn: "August 6, 2026",
+    changes: [
+      {
+        title: "Transfer fee overview",
+        description:
+          "The profile dashboard now shows the total you've paid in transfer fees and the fee-charged transfers behind it, and a new assistant conversation shares how much transfer fees have cost you and simple ways to pay fewer of them.",
+      },
+      {
+        title: "Transfer fees",
+        description:
+          "Record a fee when you move money between accounts. The fee is deducted from the amount, so the receiving account gets a little less while your sending account pays the full amount.",
+      },
+      {
+        title: "Optional transfer descriptions",
+        description:
+          "Descriptions are now optional for quick transfers, so you can move money between accounts without typing extra details.",
+      },
+    ],
+  },
   {
     version: "1.1.4",
     releasedOn: "August 5, 2026",
