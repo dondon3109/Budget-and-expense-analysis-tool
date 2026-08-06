@@ -321,8 +321,6 @@ describe("Profile dashboard account management", () => {
     const feeCard = await screen.findByRole("region", { name: "Transfer fees overall" });
     expect(feeCard.textContent).toContain("₱15");
     expect(feeCard.textContent).toContain("Across 2 fee-charged transfers");
-    expect(feeCard.textContent).toContain("≈ 2 transfers per week over the last 8 weeks");
-    expect(feeCard.textContent).toContain("Fewer transfers per week means fewer fees");
   });
 
   it("renders a zero state when no transfer fees are recorded", async () => {

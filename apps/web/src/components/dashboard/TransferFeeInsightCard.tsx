@@ -45,24 +45,13 @@ export function TransferFeeInsightCard({ insight }: TransferFeeInsightCardProps)
         </div>
       )}
       {insight.hasFees ? (
-        <>
-          <p>
-            Across {insight.totalFeeChargedTransfers} fee-charged {transferNoun}
-            {insight.totalTransfers > insight.totalFeeChargedTransfers
-              ? ` of ${insight.totalTransfers} recorded transfers`
-              : ""}
-            .
-          </p>
-          {insight.recentAverageTransfersPerWeek > 0 && (
-            <p className="transfer-fee-card-insight">
-              ≈ {insight.recentAverageTransfersPerWeek} transfers per week over the last 8 weeks
-              {insight.recentAverageFeeChargedTransfersPerWeek > 0
-                ? `, ${insight.recentAverageFeeChargedTransfersPerWeek} with a fee`
-                : ""}
-              . Fewer transfers per week means fewer fees.
-            </p>
-          )}
-        </>
+        <p>
+          Across {insight.totalFeeChargedTransfers} fee-charged {transferNoun}
+          {insight.totalTransfers > insight.totalFeeChargedTransfers
+            ? ` of ${insight.totalTransfers} recorded transfers`
+            : ""}
+          .
+        </p>
       ) : (
         <p>No transfer fees recorded yet.</p>
       )}
