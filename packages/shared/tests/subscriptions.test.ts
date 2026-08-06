@@ -32,7 +32,7 @@ describe("subscription calculations", () => {
 });
 
 describe("subscription validation", () => {
-  it("accepts the five create fields without a status", () => {
+  it("accepts the six create fields without a status", () => {
     expect(
       subscriptionInputSchema.parse({
         name: "Music streaming",
@@ -40,6 +40,7 @@ describe("subscription validation", () => {
         billingCycle: "monthly",
         nextBillingDate: "2026-07-25",
         categoryId: "entertainment",
+        accountId: "account-bank",
       }),
     ).toEqual({
       name: "Music streaming",
@@ -47,10 +48,11 @@ describe("subscription validation", () => {
       billingCycle: "monthly",
       nextBillingDate: "2026-07-25",
       categoryId: "entertainment",
+      accountId: "account-bank",
     });
   });
 
-  it("rejects invalid amounts, dates, cycles, and statuses", () => {
+  it("rejects invalid amounts, dates, cycles, missing accounts, and statuses", () => {
     expect(
       subscriptionInputSchema.safeParse({
         name: "Invalid",
@@ -58,6 +60,16 @@ describe("subscription validation", () => {
         billingCycle: "weekly",
         nextBillingDate: "2026-02-30",
         categoryId: "expense",
+        accountId: "account-bank",
+      }).success,
+    ).toBe(false);
+    expect(
+      subscriptionInputSchema.safeParse({
+        name: "No account",
+        amountMinor: 199_00,
+        billingCycle: "monthly",
+        nextBillingDate: "2026-07-25",
+        categoryId: "entertainment",
       }).success,
     ).toBe(false);
     expect(subscriptionStatusUpdateSchema.safeParse({ status: "paused" }).success).toBe(false);
@@ -70,6 +82,7 @@ describe("subscription validation", () => {
       billingCycle: "monthly",
       nextBillingDate: "2026-08-05",
       categoryId: "entertainment",
+      accountId: "account-bank",
     };
     expect(subscriptionUpdateSchema.parse(input)).toEqual(input);
   });

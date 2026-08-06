@@ -12,6 +12,7 @@ import { SubscriptionTable } from "../components/subscriptions/SubscriptionTable
 import {
   createSubscription,
   deleteSubscription,
+  getAccounts,
   getCategories,
   getSubscriptions,
   setSubscriptionStatus,
@@ -39,6 +40,10 @@ export function SubscriptionsPage() {
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories(workspace),
     queryFn: () => getCategories(workspace),
+  });
+  const accountsQuery = useQuery({
+    queryKey: queryKeys.accounts(workspace),
+    queryFn: () => getAccounts(workspace),
   });
 
   const refreshSubscriptions = () =>
@@ -76,6 +81,7 @@ export function SubscriptionsPage() {
 
   const data = subscriptionsQuery.data;
   const categories = categoriesQuery.data ?? [];
+  const accounts = accountsQuery.data ?? [];
 
   function openForm() {
     createMutation.reset();
@@ -194,13 +200,15 @@ export function SubscriptionsPage() {
           updateMutation.isError ||
           deleteMutation.isError ||
           statusMutation.isError ||
-          categoriesQuery.isError) && (
+          categoriesQuery.isError ||
+          accountsQuery.isError) && (
           <p className="page-error" role="alert">
             {createMutation.error?.message ??
               updateMutation.error?.message ??
               deleteMutation.error?.message ??
               statusMutation.error?.message ??
-              categoriesQuery.error?.message}
+              categoriesQuery.error?.message ??
+              accountsQuery.error?.message}
           </p>
         )}
       </div>
@@ -208,6 +216,7 @@ export function SubscriptionsPage() {
       {formOpen && (
         <SubscriptionForm
           categories={categories}
+          accounts={accounts}
           initial={formInitial}
           busy={formBusy}
           serverError={formError}

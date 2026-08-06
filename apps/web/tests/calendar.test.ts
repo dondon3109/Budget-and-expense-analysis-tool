@@ -37,6 +37,8 @@ function subscription(
     categoryId: "category-1",
     categoryName: "Services",
     categoryColor: "#123456",
+    accountId: "account-bank",
+    accountName: "Bank",
     billingDate,
     monthlyCostMinor: 999_00,
   };

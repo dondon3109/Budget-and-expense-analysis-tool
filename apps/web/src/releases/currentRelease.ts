@@ -14,6 +14,11 @@ export const currentRelease: ProductRelease = {
   releasedOn: "August 6, 2026",
   changes: [
     {
+      title: "Subscriptions charge an account",
+      description:
+        "Choose the account a subscription is paid from. Adding a subscription now records its next charge as an expense in the transaction dashboard, so your account balance reflects it right away. Existing subscriptions are assigned to your Bank account automatically, and canceling a subscription removes its charge.",
+    },
+    {
       title: "Edit and delete subscriptions",
       description:
         "The monthly subscriptions dashboard now lets you edit a subscription's details — name, amount, billing cycle, billing date, or category — or delete one you no longer pay for, right from the list.",

@@ -1,5 +1,6 @@
 import {
   monthlySubscriptionCost,
+  normalizeSignedAmount,
   subscriptionBillingDateForMonth,
   type SubscriptionInput,
   type SubscriptionMonthSummary,
@@ -7,10 +8,10 @@ import {
   type SubscriptionStatusUpdate,
   type SubscriptionUpdate,
 } from "@zoption/shared";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { categories, subscriptions } from "../../../../db/schema";
+import { accounts, categories, subscriptions } from "../../../../db/schema";
 import { categoryRequiresProError, hasProEntitlement, isCategoryPlanAvailable } from "./billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
@@ -53,6 +54,19 @@ async function validateCategory(env: Bindings, tenantId: string, categoryId: str
   }
 }
 
+async function validateAccount(env: Bindings, tenantId: string, accountId: string) {
+  const db = drizzle(env.DB);
+  const [account] = await db
+    .select({ id: accounts.id, archived: accounts.archived })
+    .from(accounts)
+    .where(and(eq(accounts.id, accountId), eq(accounts.tenantId, tenantId)))
+    .limit(1);
+
+  if (!account || account.archived) {
+    throw new HttpError(400, "invalid_account", "Choose an active account.");
+  }
+}
+
 async function findSubscription(
   env: Bindings,
   tenantId: string,
@@ -71,16 +85,134 @@ async function findSubscription(
       categoryId: categories.id,
       categoryName: categories.name,
       categoryColor: categories.color,
+      accountId: accounts.id,
+      accountName: accounts.name,
     })
     .from(subscriptions)
     .innerJoin(
       categories,
       and(eq(subscriptions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
     )
+    .leftJoin(
+      accounts,
+      and(eq(subscriptions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
+    )
     .where(and(eq(subscriptions.id, id), eq(subscriptions.tenantId, tenantId)))
     .limit(1);
 
-  return row ? { ...row, currency: "PHP" } : null;
+  return row
+    ? {
+        ...row,
+        currency: "PHP",
+        accountId: row.accountId ?? null,
+        accountName: row.accountName ?? null,
+      }
+    : null;
+}
+
+export interface LinkedSubscriptionCharge {
+  id: string;
+  tenantId: string;
+  accountId: string;
+  categoryId: string;
+  date: string;
+  description: string;
+  amountMinor: number;
+  currency: "PHP";
+  kind: "expense";
+  sourceKind: "manual";
+  subscriptionId: string;
+}
+
+/**
+ * Maps a subscription to the expense the account pays for it. The charge lands
+ * on the subscription's next billing date, keeps the full amount (yearly
+ * subscriptions charge the whole year), and is stored with a negative
+ * amount so it reduces the account balance like any other expense.
+ */
+export function buildLinkedSubscriptionCharge(args: {
+  tenantId: string;
+  subscriptionId: string;
+  accountId: string;
+  categoryId: string;
+  name: string;
+  amountMinor: number;
+  nextBillingDate: string;
+}): LinkedSubscriptionCharge {
+  return {
+    id: crypto.randomUUID(),
+    tenantId: args.tenantId,
+    accountId: args.accountId,
+    categoryId: args.categoryId,
+    date: args.nextBillingDate,
+    description: args.name,
+    amountMinor: normalizeSignedAmount(args.amountMinor, "expense"),
+    currency: "PHP",
+    kind: "expense",
+    sourceKind: "manual",
+    subscriptionId: args.subscriptionId,
+  };
+}
+
+function insertLinkedChargeStatement(env: Bindings, charge: LinkedSubscriptionCharge) {
+  return env.DB.prepare(
+    `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, source_kind, subscription_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'expense', 'manual', ?)`,
+  ).bind(
+    charge.id,
+    charge.tenantId,
+    charge.accountId,
+    charge.categoryId,
+    charge.date,
+    charge.description,
+    charge.amountMinor,
+    charge.currency,
+    charge.subscriptionId,
+  );
+}
+
+function updateLinkedChargeStatement(
+  env: Bindings,
+  tenantId: string,
+  subscriptionId: string,
+  input: {
+    accountId: string;
+    categoryId: string;
+    name: string;
+    amountMinor: number;
+    nextBillingDate: string;
+  },
+) {
+  return env.DB.prepare(
+    `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = 'PHP', kind = 'expense', updated_at = datetime('now') WHERE tenant_id = ? AND subscription_id = ?`,
+  ).bind(
+    input.accountId,
+    input.categoryId,
+    input.nextBillingDate,
+    input.name,
+    normalizeSignedAmount(input.amountMinor, "expense"),
+    tenantId,
+    subscriptionId,
+  );
+}
+
+function deleteLinkedChargesStatement(env: Bindings, tenantId: string, subscriptionId: string) {
+  return env.DB.prepare("DELETE FROM transactions WHERE tenant_id = ? AND subscription_id = ?").bind(
+    tenantId,
+    subscriptionId,
+  );
+}
+
+async function findLinkedChargeId(
+  env: Bindings,
+  tenantId: string,
+  subscriptionId: string,
+): Promise<string | null> {
+  const row = await env.DB.prepare(
+    "SELECT id FROM transactions WHERE tenant_id = ? AND subscription_id = ? LIMIT 1",
+  )
+    .bind(tenantId, subscriptionId)
+    .first<{ id: string }>();
+  return row?.id ?? null;
 }
 
 export const subscriptionRepository: SubscriptionRepository = {
@@ -98,11 +230,17 @@ export const subscriptionRepository: SubscriptionRepository = {
         categoryId: categories.id,
         categoryName: categories.name,
         categoryColor: categories.color,
+        accountId: accounts.id,
+        accountName: accounts.name,
       })
       .from(subscriptions)
       .innerJoin(
         categories,
         and(eq(subscriptions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+      )
+      .leftJoin(
+        accounts,
+        and(eq(subscriptions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
       )
       .where(eq(subscriptions.tenantId, tenantId))
       .orderBy(asc(subscriptions.name), asc(subscriptions.id));
@@ -139,19 +277,34 @@ export const subscriptionRepository: SubscriptionRepository = {
 
   async create(env, tenantId, input) {
     await validateCategory(env, tenantId, input.categoryId);
+    await validateAccount(env, tenantId, input.accountId);
     const id = crypto.randomUUID();
-    const db = drizzle(env.DB);
-    await db.insert(subscriptions).values({
-      id,
-      tenantId,
-      categoryId: input.categoryId,
-      name: input.name,
-      amountMinor: input.amountMinor,
-      currency: "PHP",
-      billingCycle: input.billingCycle,
-      nextBillingDate: input.nextBillingDate,
-      status: "active",
-    });
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, currency, billing_cycle, next_billing_date, status) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, 'active')`,
+      ).bind(
+        id,
+        tenantId,
+        input.accountId,
+        input.categoryId,
+        input.name,
+        input.amountMinor,
+        input.billingCycle,
+        input.nextBillingDate,
+      ),
+      insertLinkedChargeStatement(
+        env,
+        buildLinkedSubscriptionCharge({
+          tenantId,
+          subscriptionId: id,
+          accountId: input.accountId,
+          categoryId: input.categoryId,
+          name: input.name,
+          amountMinor: input.amountMinor,
+          nextBillingDate: input.nextBillingDate,
+        }),
+      ),
+    ]);
 
     const created = await findSubscription(env, tenantId, id);
     if (!created) throw new Error("Created subscription could not be read back.");
@@ -164,11 +317,33 @@ export const subscriptionRepository: SubscriptionRepository = {
       throw new HttpError(404, "subscription_not_found", "Subscription not found.");
     }
 
-    const db = drizzle(env.DB);
-    await db
-      .update(subscriptions)
-      .set({ status: input.status, updatedAt: sql`(datetime('now'))` })
-      .where(and(eq(subscriptions.id, id), eq(subscriptions.tenantId, tenantId)));
+    const statements = [
+      env.DB.prepare(
+        "UPDATE subscriptions SET status = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?",
+      ).bind(input.status, id, tenantId),
+    ];
+    if (input.status === "canceled") {
+      statements.push(deleteLinkedChargesStatement(env, tenantId, id));
+    } else if (existing.accountId) {
+      const linkedChargeId = await findLinkedChargeId(env, tenantId, id);
+      if (!linkedChargeId) {
+        statements.push(
+          insertLinkedChargeStatement(
+            env,
+            buildLinkedSubscriptionCharge({
+              tenantId,
+              subscriptionId: id,
+              accountId: existing.accountId,
+              categoryId: existing.categoryId,
+              name: existing.name,
+              amountMinor: existing.amountMinor,
+              nextBillingDate: existing.nextBillingDate,
+            }),
+          ),
+        );
+      }
+    }
+    await env.DB.batch(statements);
 
     const updated = await findSubscription(env, tenantId, id);
     if (!updated) throw new Error("Updated subscription could not be read back.");
@@ -181,19 +356,42 @@ export const subscriptionRepository: SubscriptionRepository = {
       throw new HttpError(404, "subscription_not_found", "Subscription not found.");
     }
     await validateCategory(env, tenantId, input.categoryId);
+    await validateAccount(env, tenantId, input.accountId);
 
-    const db = drizzle(env.DB);
-    await db
-      .update(subscriptions)
-      .set({
-        name: input.name,
-        amountMinor: input.amountMinor,
-        billingCycle: input.billingCycle,
-        nextBillingDate: input.nextBillingDate,
-        categoryId: input.categoryId,
-        updatedAt: sql`(datetime('now'))`,
-      })
-      .where(and(eq(subscriptions.id, id), eq(subscriptions.tenantId, tenantId)));
+    const statements = [
+      env.DB.prepare(
+        `UPDATE subscriptions SET name = ?, amount_minor = ?, billing_cycle = ?, next_billing_date = ?, account_id = ?, category_id = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
+      ).bind(
+        input.name,
+        input.amountMinor,
+        input.billingCycle,
+        input.nextBillingDate,
+        input.accountId,
+        input.categoryId,
+        id,
+        tenantId,
+      ),
+    ];
+    const linkedChargeId = await findLinkedChargeId(env, tenantId, id);
+    if (linkedChargeId) {
+      statements.push(updateLinkedChargeStatement(env, tenantId, id, input));
+    } else if (existing.status === "active") {
+      statements.push(
+        insertLinkedChargeStatement(
+          env,
+          buildLinkedSubscriptionCharge({
+            tenantId,
+            subscriptionId: id,
+            accountId: input.accountId,
+            categoryId: input.categoryId,
+            name: input.name,
+            amountMinor: input.amountMinor,
+            nextBillingDate: input.nextBillingDate,
+          }),
+        ),
+      );
+    }
+    await env.DB.batch(statements);
 
     const updated = await findSubscription(env, tenantId, id);
     if (!updated) throw new Error("Updated subscription could not be read back.");
@@ -201,11 +399,12 @@ export const subscriptionRepository: SubscriptionRepository = {
   },
 
   async remove(env, tenantId, id) {
-    const db = drizzle(env.DB);
-    const result = await db
-      .delete(subscriptions)
-      .where(and(eq(subscriptions.id, id), eq(subscriptions.tenantId, tenantId)));
-    if ((result.meta.changes ?? 0) !== 1) {
+    const results = await env.DB.batch([
+      deleteLinkedChargesStatement(env, tenantId, id),
+      env.DB.prepare("DELETE FROM subscriptions WHERE id = ? AND tenant_id = ?").bind(id, tenantId),
+    ]);
+    const result = results[1];
+    if (!result || (result.meta.changes ?? 0) !== 1) {
       throw new HttpError(404, "subscription_not_found", "Subscription not found.");
     }
   },

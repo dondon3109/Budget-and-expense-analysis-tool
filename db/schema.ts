@@ -171,6 +171,7 @@ export const transactions = sqliteTable(
     importRowNumber: integer("import_row_number"),
     notes: text("notes"),
     transferFeeMinor: integer("transfer_fee_minor"),
+    subscriptionId: text("subscription_id"),
     ...timestamps,
   },
   (table) => [
@@ -179,6 +180,7 @@ export const transactions = sqliteTable(
     index("transactions_tenant_account_idx").on(table.tenantId, table.accountId),
     index("transactions_tenant_transfer_group_idx").on(table.tenantId, table.transferGroupId),
     index("transactions_tenant_import_idx").on(table.tenantId, table.importId),
+    index("transactions_tenant_subscription_idx").on(table.tenantId, table.subscriptionId),
     uniqueIndex("transactions_tenant_fingerprint_unique").on(
       table.tenantId,
       table.importFingerprint,
@@ -193,6 +195,7 @@ export const subscriptions = sqliteTable(
     tenantId: text("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
+    accountId: text("account_id"),
     categoryId: text("category_id")
       .notNull()
       .references(() => categories.id),
@@ -208,6 +211,7 @@ export const subscriptions = sqliteTable(
   },
   (table) => [
     index("subscriptions_tenant_idx").on(table.tenantId),
+    index("subscriptions_tenant_account_idx").on(table.tenantId, table.accountId),
     index("subscriptions_tenant_status_idx").on(table.tenantId, table.status),
     index("subscriptions_tenant_category_idx").on(table.tenantId, table.categoryId),
   ],
