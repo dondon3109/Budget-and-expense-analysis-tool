@@ -11,9 +11,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createSubscription,
+  deleteSubscription,
   getCategories,
   getSubscriptions,
   setSubscriptionStatus,
+  updateSubscription,
 } from "../src/lib/api";
 import { SubscriptionsPage } from "../src/pages/SubscriptionsPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
@@ -27,9 +29,11 @@ vi.mock("../src/auth/AuthProvider", () => ({
 
 vi.mock("../src/lib/api", () => ({
   createSubscription: vi.fn(),
+  deleteSubscription: vi.fn(),
   getCategories: vi.fn(),
   getSubscriptions: vi.fn(),
   setSubscriptionStatus: vi.fn(),
+  updateSubscription: vi.fn(),
 }));
 
 const category: CategoryRecord = {
@@ -78,6 +82,8 @@ describe("SubscriptionsPage", () => {
     vi.mocked(getCategories).mockResolvedValue([category]);
     vi.mocked(createSubscription).mockResolvedValue(record);
     vi.mocked(setSubscriptionStatus).mockResolvedValue({ ...record, status: "canceled" });
+    vi.mocked(updateSubscription).mockResolvedValue({ ...record, name: "Music streaming Plus" });
+    vi.mocked(deleteSubscription).mockResolvedValue(undefined);
   });
 
   it("renders the summary and exact five-column subscription table", async () => {
@@ -105,6 +111,7 @@ describe("SubscriptionsPage", () => {
       "Amount",
       "Billing date",
       "Status",
+      "Actions",
     ]);
 
     await user.click(screen.getByRole("button", { name: "Cancel Music streaming" }));
@@ -134,5 +141,85 @@ describe("SubscriptionsPage", () => {
     expect(screen.getByText("Start with your recurring charges")).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Add a subscription" })[1]!);
     expect(screen.getByRole("dialog", { name: "Add subscription" })).toBeInTheDocument();
+  });
+
+  it("opens the edit form prefilled and saves the updated subscription", async () => {
+    const summary: SubscriptionMonthSummary = {
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [{ ...record, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
+    };
+    vi.mocked(getSubscriptions).mockResolvedValue(summary);
+    const updateInput = {
+      name: "Music streaming Plus",
+      amountMinor: 249_00,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-07-25",
+      categoryId: "entertainment",
+    };
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Edit Music streaming" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit subscription" });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("Music streaming");
+    expect(screen.getByLabelText("Amount")).toHaveValue("199");
+
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "Music streaming Plus");
+    await user.clear(screen.getByLabelText("Amount"));
+    await user.type(screen.getByLabelText("Amount"), "249");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() =>
+      expect(updateSubscription).toHaveBeenCalledWith(
+        { key: "user:test-user", userId: "test-user" },
+        { id: "subscription-1", input: updateInput },
+      ),
+    );
+  });
+
+  it("deletes a subscription after confirming", async () => {
+    const summary: SubscriptionMonthSummary = {
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [{ ...record, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
+    };
+    vi.mocked(getSubscriptions).mockResolvedValue(summary);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Delete Music streaming" }));
+
+    await waitFor(() =>
+      expect(deleteSubscription).toHaveBeenCalledWith(
+        { key: "user:test-user", userId: "test-user" },
+        "subscription-1",
+      ),
+    );
+    expect(confirmSpy).toHaveBeenCalledWith("Delete “Music streaming”? This cannot be undone.");
+    confirmSpy.mockRestore();
+  });
+
+  it("skips deletion when the user declines the confirmation", async () => {
+    const summary: SubscriptionMonthSummary = {
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [{ ...record, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
+    };
+    vi.mocked(getSubscriptions).mockResolvedValue(summary);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Delete Music streaming" }));
+
+    expect(deleteSubscription).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 });

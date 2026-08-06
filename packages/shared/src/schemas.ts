@@ -587,6 +587,10 @@ export const subscriptionInputSchema = z
 
 export type SubscriptionInput = z.infer<typeof subscriptionInputSchema>;
 
+export const subscriptionUpdateSchema = subscriptionInputSchema;
+
+export type SubscriptionUpdate = z.infer<typeof subscriptionUpdateSchema>;
+
 export const subscriptionStatusUpdateSchema = z
   .object({
     status: z.enum(subscriptionStatuses),

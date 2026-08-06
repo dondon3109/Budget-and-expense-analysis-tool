@@ -2,6 +2,7 @@ import {
   subscriptionInputSchema,
   subscriptionQuerySchema,
   subscriptionStatusUpdateSchema,
+  subscriptionUpdateSchema,
 } from "@zoption/shared";
 import { Hono } from "hono";
 
@@ -43,6 +44,35 @@ export function createSubscriptionRoutes(repository: SubscriptionRepository) {
       await repository.create(context.env, context.get("tenant").tenantId, parsed.data),
       201,
     );
+  });
+
+  routes.patch("/:id", async (context) => {
+    const parsed = subscriptionUpdateSchema.safeParse(await readJson(context));
+    if (!parsed.success) {
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Check the subscription fields.",
+        parsed.error.flatten(),
+      );
+    }
+    return context.json(
+      await repository.update(
+        context.env,
+        context.get("tenant").tenantId,
+        parsePathParameter(context.req.param("id")),
+        parsed.data,
+      ),
+    );
+  });
+
+  routes.delete("/:id", async (context) => {
+    await repository.remove(
+      context.env,
+      context.get("tenant").tenantId,
+      parsePathParameter(context.req.param("id")),
+    );
+    return context.body(null, 204);
   });
 
   routes.patch("/:id/status", async (context) => {

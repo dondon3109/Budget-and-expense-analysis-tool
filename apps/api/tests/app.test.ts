@@ -235,7 +235,9 @@ function createSubscriptionStore(): SubscriptionRepository {
   return {
     list: vi.fn(async () => subscriptionSummary),
     create: vi.fn(async () => subscriptionItem),
+    update: vi.fn(async () => subscriptionItem),
     setStatus: vi.fn(async () => ({ ...subscriptionItem, status: "canceled" as const })),
+    remove: vi.fn(async () => undefined),
   };
 }
 
@@ -989,6 +991,33 @@ describe("API foundation", () => {
     expect(subscriptions.setStatus).toHaveBeenCalledWith(undefined, TENANT_ID, "subscription-1", {
       status: "canceled",
     });
+
+    const updateResponse = await app.request("/api/app/subscriptions/subscription-1", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        name: "Music streaming Plus",
+        amountMinor: 249_00,
+        billingCycle: "monthly",
+        nextBillingDate: "2026-07-25",
+        categoryId: "food",
+      }),
+    });
+    expect(updateResponse.status).toBe(200);
+    expect(subscriptions.update).toHaveBeenCalledWith(undefined, TENANT_ID, "subscription-1", {
+      name: "Music streaming Plus",
+      amountMinor: 249_00,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-07-25",
+      categoryId: "food",
+    });
+
+    const deleteResponse = await app.request("/api/app/subscriptions/subscription-1", {
+      method: "DELETE",
+      headers: AUTHORIZATION,
+    });
+    expect(deleteResponse.status).toBe(204);
+    expect(subscriptions.remove).toHaveBeenCalledWith(undefined, TENANT_ID, "subscription-1");
   });
 
   it("rejects invalid subscription months and fields before repository access", async () => {

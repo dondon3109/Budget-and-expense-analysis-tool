@@ -126,4 +126,51 @@ describe("SubscriptionForm", () => {
     expect(screen.getByRole("option", { name: "Pro entertainment — Pro required" })).toBeDisabled();
     expect(screen.getByLabelText("Category")).toHaveValue("entertainment");
   });
+
+  it("prefills fields and submits changes when editing an existing subscription", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <SubscriptionForm
+        categories={categories}
+        busy={false}
+        initial={{
+          id: "subscription-1",
+          name: "Music streaming",
+          amountMinor: 199_00,
+          currency: "PHP",
+          billingCycle: "monthly",
+          nextBillingDate: "2026-07-25",
+          status: "active",
+          categoryId: "entertainment",
+          categoryName: "Entertainment",
+          categoryColor: "#7363a6",
+        }}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("dialog", { name: "Edit subscription" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("Music streaming");
+    expect(screen.getByLabelText("Amount")).toHaveValue("199");
+    expect(screen.getByLabelText("Next billing date")).toHaveValue("2026-07-25");
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "Music streaming Plus");
+    await user.clear(screen.getByLabelText("Amount"));
+    await user.type(screen.getByLabelText("Amount"), "249");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: "Music streaming Plus",
+        amountMinor: 249_00,
+        billingCycle: "monthly",
+        nextBillingDate: "2026-07-25",
+        categoryId: "entertainment",
+      }),
+    );
+  });
 });

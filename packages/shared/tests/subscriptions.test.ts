@@ -5,6 +5,7 @@ import {
   subscriptionBillingDateForMonth,
   subscriptionInputSchema,
   subscriptionStatusUpdateSchema,
+  subscriptionUpdateSchema,
 } from "../src";
 
 describe("subscription calculations", () => {
@@ -60,5 +61,16 @@ describe("subscription validation", () => {
       }).success,
     ).toBe(false);
     expect(subscriptionStatusUpdateSchema.safeParse({ status: "paused" }).success).toBe(false);
+  });
+
+  it("accepts a full edit update matching the create fields", () => {
+    const input = {
+      name: "Music streaming Plus",
+      amountMinor: 249_00,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-08-05",
+      categoryId: "entertainment",
+    };
+    expect(subscriptionUpdateSchema.parse(input)).toEqual(input);
   });
 });

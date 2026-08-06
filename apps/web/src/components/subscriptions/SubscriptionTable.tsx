@@ -1,11 +1,15 @@
 import type { SubscriptionMonthItem, SubscriptionStatus } from "@zoption/shared";
+import { Pencil, Trash2 } from "lucide-react";
 
 import { formatMoney } from "../../lib/formatters";
 
 interface SubscriptionTableProps {
   items: SubscriptionMonthItem[];
   updatingId?: string;
+  deletingId?: string;
   onStatusChange: (id: string, status: SubscriptionStatus) => void;
+  onEdit: (item: SubscriptionMonthItem) => void;
+  onDelete: (item: SubscriptionMonthItem) => void;
 }
 
 function formatBillingDate(value: string): string {
@@ -17,7 +21,14 @@ function formatBillingDate(value: string): string {
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
-export function SubscriptionTable({ items, updatingId, onStatusChange }: SubscriptionTableProps) {
+export function SubscriptionTable({
+  items,
+  updatingId,
+  deletingId,
+  onStatusChange,
+  onEdit,
+  onDelete,
+}: SubscriptionTableProps) {
   return (
     <div className="subscription-table-wrap">
       <table className="subscription-table">
@@ -28,6 +39,7 @@ export function SubscriptionTable({ items, updatingId, onStatusChange }: Subscri
             <th>Amount</th>
             <th>Billing date</th>
             <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -76,6 +88,28 @@ export function SubscriptionTable({ items, updatingId, onStatusChange }: Subscri
                       aria-label={`${actionLabel} ${item.name}`}
                     >
                       {updatingId === item.id ? "Updating…" : actionLabel}
+                    </button>
+                  </div>
+                </td>
+                <td data-label="Actions">
+                  <div className="subscription-actions">
+                    <button
+                      className="icon-button compact"
+                      type="button"
+                      onClick={() => onEdit(item)}
+                      disabled={deletingId === item.id}
+                      aria-label={`Edit ${item.name}`}
+                    >
+                      <Pencil size={14} aria-hidden="true" />
+                    </button>
+                    <button
+                      className="icon-button compact danger"
+                      type="button"
+                      onClick={() => onDelete(item)}
+                      disabled={deletingId === item.id}
+                      aria-label={`Delete ${item.name}`}
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
                     </button>
                   </div>
                 </td>

@@ -4,6 +4,7 @@ import {
   type CategoryRecord,
   type SubscriptionBillingCycle,
   type SubscriptionInput,
+  type SubscriptionRecord,
 } from "@zoption/shared";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
@@ -12,6 +13,7 @@ interface SubscriptionFormProps {
   categories: CategoryRecord[];
   busy: boolean;
   serverError?: string;
+  initial?: SubscriptionRecord;
   onSubmit: (input: SubscriptionInput) => Promise<void>;
   onClose: () => void;
 }
@@ -24,19 +26,27 @@ function today(): string {
   return `${year}-${month}-${day}`;
 }
 
+function minorToInput(minor: number): string {
+  return minor % 100 === 0 ? String(minor / 100) : (minor / 100).toFixed(2);
+}
+
 export function SubscriptionForm({
   categories,
   busy,
   serverError,
+  initial,
   onSubmit,
   onClose,
 }: SubscriptionFormProps) {
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [billingCycle, setBillingCycle] = useState<SubscriptionBillingCycle>("monthly");
-  const [nextBillingDate, setNextBillingDate] = useState(today);
-  const [categoryId, setCategoryId] = useState("");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [amount, setAmount] = useState(initial ? minorToInput(initial.amountMinor) : "");
+  const [billingCycle, setBillingCycle] = useState<SubscriptionBillingCycle>(
+    initial?.billingCycle ?? "monthly",
+  );
+  const [nextBillingDate, setNextBillingDate] = useState(initial?.nextBillingDate ?? today());
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [clientError, setClientError] = useState<string>();
+  const editing = Boolean(initial);
   const availableCategories = useMemo(
     () => categories.filter((category) => !category.archived && category.kind === "expense"),
     [categories],
@@ -103,7 +113,9 @@ export function SubscriptionForm({
         <header className="modal-header">
           <div>
             <p className="eyebrow">Recurring charge</p>
-            <h2 id="subscription-form-title">Add subscription</h2>
+            <h2 id="subscription-form-title">
+              {editing ? "Edit subscription" : "Add subscription"}
+            </h2>
           </div>
           <button
             className="icon-button"
@@ -199,7 +211,13 @@ export function SubscriptionForm({
               Cancel
             </button>
             <button className="button primary" type="submit" disabled={busy || !categoryId}>
-              {busy ? "Adding…" : "Add subscription"}
+              {busy
+                ? editing
+                  ? "Saving…"
+                  : "Adding…"
+                : editing
+                  ? "Save changes"
+                  : "Add subscription"}
             </button>
           </div>
         </form>

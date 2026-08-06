@@ -5,6 +5,7 @@ import {
   type SubscriptionMonthSummary,
   type SubscriptionRecord,
   type SubscriptionStatusUpdate,
+  type SubscriptionUpdate,
 } from "@zoption/shared";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -17,12 +18,19 @@ import type { Bindings } from "../types";
 export interface SubscriptionRepository {
   list(env: Bindings, tenantId: string, month: string): Promise<SubscriptionMonthSummary>;
   create(env: Bindings, tenantId: string, input: SubscriptionInput): Promise<SubscriptionRecord>;
+  update(
+    env: Bindings,
+    tenantId: string,
+    id: string,
+    input: SubscriptionUpdate,
+  ): Promise<SubscriptionRecord>;
   setStatus(
     env: Bindings,
     tenantId: string,
     id: string,
     input: SubscriptionStatusUpdate,
   ): Promise<SubscriptionRecord>;
+  remove(env: Bindings, tenantId: string, id: string): Promise<void>;
 }
 
 async function validateCategory(env: Bindings, tenantId: string, categoryId: string) {
@@ -165,5 +173,40 @@ export const subscriptionRepository: SubscriptionRepository = {
     const updated = await findSubscription(env, tenantId, id);
     if (!updated) throw new Error("Updated subscription could not be read back.");
     return updated;
+  },
+
+  async update(env, tenantId, id, input) {
+    const existing = await findSubscription(env, tenantId, id);
+    if (!existing) {
+      throw new HttpError(404, "subscription_not_found", "Subscription not found.");
+    }
+    await validateCategory(env, tenantId, input.categoryId);
+
+    const db = drizzle(env.DB);
+    await db
+      .update(subscriptions)
+      .set({
+        name: input.name,
+        amountMinor: input.amountMinor,
+        billingCycle: input.billingCycle,
+        nextBillingDate: input.nextBillingDate,
+        categoryId: input.categoryId,
+        updatedAt: sql`(datetime('now'))`,
+      })
+      .where(and(eq(subscriptions.id, id), eq(subscriptions.tenantId, tenantId)));
+
+    const updated = await findSubscription(env, tenantId, id);
+    if (!updated) throw new Error("Updated subscription could not be read back.");
+    return updated;
+  },
+
+  async remove(env, tenantId, id) {
+    const db = drizzle(env.DB);
+    const result = await db
+      .delete(subscriptions)
+      .where(and(eq(subscriptions.id, id), eq(subscriptions.tenantId, tenantId)));
+    if ((result.meta.changes ?? 0) !== 1) {
+      throw new HttpError(404, "subscription_not_found", "Subscription not found.");
+    }
   },
 };

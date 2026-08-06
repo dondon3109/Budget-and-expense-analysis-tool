@@ -814,6 +814,22 @@ export function createSubscription(
   });
 }
 
+export function updateSubscription(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; input: SubscriptionInput },
+): Promise<SubscriptionRecord> {
+  return requestJson(workspace, `/api/app/subscriptions/${encodeURIComponent(args.id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(args.input),
+  });
+}
+
+export function deleteSubscription(workspace: AuthenticatedWorkspace, id: string): Promise<void> {
+  return requestJson(workspace, `/api/app/subscriptions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 export function setSubscriptionStatus(
   workspace: AuthenticatedWorkspace,
   args: { id: string; input: SubscriptionStatusUpdate },
