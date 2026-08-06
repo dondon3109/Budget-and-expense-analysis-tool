@@ -67,6 +67,16 @@ export interface CalendarEventMonth {
 export const accountTypes = ["cash", "checking", "savings", "credit", "other"] as const;
 export type AccountType = (typeof accountTypes)[number];
 
+export const interestFrequencies = ["daily", "monthly", "yearly"] as const;
+export type InterestFrequency = (typeof interestFrequencies)[number];
+
+export interface InterestSettings {
+  enabled: boolean;
+  annualRateBasisPoints: number | null;
+  frequency: InterestFrequency | null;
+  payDay: number | null;
+}
+
 export interface AccountRecord {
   id: string;
   name: string;
@@ -77,6 +87,7 @@ export interface AccountRecord {
   balancesByCurrency?: Record<Currency, number>;
   archived: boolean;
   system?: boolean;
+  interest?: InterestSettings;
 }
 
 export interface AccountBalanceSummaryItem {
@@ -88,6 +99,7 @@ export interface AccountBalanceSummaryItem {
   balancesByCurrency: Record<Currency, number>;
   archived: boolean;
   system: boolean;
+  interest?: InterestSettings;
 }
 
 export interface AccountBalanceSummary {

@@ -1,5 +1,6 @@
 import type {
   AccountInput,
+  AccountInterestUpdate,
   AccountRecord,
   AccountUpdate,
   AssistantMemory,
@@ -547,6 +548,16 @@ export function updateAccount(
 
 export function deleteAccount(workspace: AuthenticatedWorkspace, id: string): Promise<void> {
   return requestJson(workspace, `/api/app/accounts/${id}`, { method: "DELETE" });
+}
+
+export function updateAccountInterest(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; input: AccountInterestUpdate },
+): Promise<AccountRecord> {
+  return requestJson(workspace, `/api/app/accounts/${args.id}/interest`, {
+    method: "PATCH",
+    body: JSON.stringify(args.input),
+  });
 }
 
 export type AccountDeletionResult = { status: "deleted" | "cleanup_pending" };

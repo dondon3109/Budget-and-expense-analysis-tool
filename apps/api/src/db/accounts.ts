@@ -1,4 +1,10 @@
-import type { AccountInput, AccountRecord, AccountUpdate, Currency } from "@zoption/shared";
+import type {
+  AccountInput,
+  AccountInterestUpdate,
+  AccountRecord,
+  AccountUpdate,
+  Currency,
+} from "@zoption/shared";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -22,6 +28,12 @@ export interface AccountRepository {
     accountId: string,
     input: { balanceMinor: number | null; balanceAsOf: string | null },
   ): Promise<AccountRecord>;
+  updateInterest?(
+    env: Bindings,
+    tenantId: string,
+    accountId: string,
+    input: AccountInterestUpdate,
+  ): Promise<AccountRecord>;
 }
 
 const accountSelection = {
@@ -31,6 +43,10 @@ const accountSelection = {
   currency: accounts.currency,
   archived: accounts.archived,
   systemKey: accounts.systemKey,
+  interestEnabled: accounts.interestEnabled,
+  annualRateBasisPoints: accounts.annualRateBasisPoints,
+  interestFrequency: accounts.interestFrequency,
+  interestPayDay: accounts.interestPayDay,
   balancePhpMinor: sql<number>`COALESCE(SUM(CASE
     WHEN (${transactions.kind} != 'transfer' OR ${transactions.transferGroupId} IS NOT NULL)
       AND ${transactions.currency} = 'PHP'
@@ -53,6 +69,7 @@ function normalize(
     USD: Number(row.balanceUsdMinor ?? 0),
   };
   const currency = row.currency as Currency;
+  const interestEnabled = Boolean(row.interestEnabled);
   return {
     id: row.id as string,
     name: row.name as string,
@@ -62,6 +79,15 @@ function normalize(
     system: Boolean(row.systemKey),
     balanceMinor: balancesByCurrency[currency],
     balancesByCurrency,
+    interest: interestEnabled
+      ? {
+          enabled: true,
+          annualRateBasisPoints: (row.annualRateBasisPoints as number | null) ?? null,
+          frequency: (row.interestFrequency as AccountRecord["interest"] &
+            NonNullable<AccountRecord["interest"]>["frequency"]) ?? null,
+          payDay: (row.interestPayDay as number | null) ?? null,
+        }
+      : { enabled: false, annualRateBasisPoints: null, frequency: null, payDay: null },
   };
 }
 
@@ -162,5 +188,33 @@ export const accountRepository: AccountRepository = {
       .update(accounts)
       .set({ archived: true, updatedAt: sql`(datetime('now'))` })
       .where(and(eq(accounts.id, accountId), eq(accounts.tenantId, tenantId)));
+  },
+
+  async updateInterest(env, tenantId, accountId, input) {
+    const existing = await findAccount(env, tenantId, accountId);
+    if (!existing) throw new HttpError(404, "account_not_found", "The account was not found.");
+    if (existing.type !== "savings") {
+      throw new HttpError(400, "interest_not_for_account_type", "Only savings accounts earn interest.");
+    }
+    const set: Record<string, unknown> = {
+      interestEnabled: input.enabled,
+      updatedAt: sql`(datetime('now'))`,
+    };
+    if (input.enabled) {
+      set.annualRateBasisPoints = input.annualRateBasisPoints;
+      set.interestFrequency = input.frequency;
+      set.interestPayDay = input.frequency === "daily" ? null : input.payDay;
+    } else {
+      set.annualRateBasisPoints = null;
+      set.interestFrequency = null;
+      set.interestPayDay = null;
+    }
+    await drizzle(env.DB)
+      .update(accounts)
+      .set(set)
+      .where(and(eq(accounts.id, accountId), eq(accounts.tenantId, tenantId)));
+    const updated = await findAccount(env, tenantId, accountId);
+    if (!updated) throw new Error("Updated account could not be read back.");
+    return updated;
   },
 };

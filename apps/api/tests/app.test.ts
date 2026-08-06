@@ -1,5 +1,6 @@
 import {
   type AccountBalanceUpdate,
+  type AccountInterestUpdate,
   type AccountRecord,
   type BudgetMonthPlan,
   type CalendarEventMonth,
@@ -221,6 +222,22 @@ function createAccountStore(): AccountRepository {
       ): Promise<AccountRecord> => ({
         ...accountItem,
         ...input,
+      }),
+    ),
+    updateInterest: vi.fn(
+      async (
+        _env: Bindings,
+        _tenantId: string,
+        _accountId: string,
+        input: AccountInterestUpdate,
+      ): Promise<AccountRecord> => ({
+        ...accountItem,
+        interest: {
+          enabled: input.enabled,
+          annualRateBasisPoints: input.annualRateBasisPoints,
+          frequency: input.frequency,
+          payDay: input.payDay,
+        },
       }),
     ),
   };
@@ -694,6 +711,75 @@ describe("API foundation", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ items: [accountItem] });
     expect(accounts.list).toHaveBeenCalledWith(undefined, TENANT_ID);
+  });
+
+  it("updates interest settings on a savings account", async () => {
+    const accounts = createAccountStore();
+    const app = createTestApp({ accounts });
+    const input = {
+      enabled: true,
+      annualRateBasisPoints: 500,
+      frequency: "monthly",
+      payDay: 15,
+    };
+    const response = await app.request("/api/app/accounts/account-1/interest", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(input),
+    });
+    expect(response.status).toBe(200);
+    expect(accounts.updateInterest).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      "account-1",
+      input,
+    );
+  });
+
+  it("rejects invalid interest settings", async () => {
+    const accounts = createAccountStore();
+    const app = createTestApp({ accounts });
+    // Daily interest must not carry a pay day.
+    const response = await app.request("/api/app/accounts/account-1/interest", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        enabled: true,
+        annualRateBasisPoints: 500,
+        frequency: "daily",
+        payDay: 15,
+      }),
+    });
+    expect(response.status).toBe(400);
+    expect(accounts.updateInterest).not.toHaveBeenCalled();
+  });
+
+  it("requires Pro to update interest settings", async () => {
+    const accounts = createAccountStore();
+    const requirePro = vi.fn();
+    requirePro.mockRejectedValue(
+      new HttpError(403, "upgrade_required", "This feature requires Zoption Pro.", {
+        requested: "account_management",
+        requiredPlan: "zoption_pro",
+      }),
+    );
+    const billing: BillingRepository = {
+      ...createAllowedBillingRepository(),
+      requirePro,
+    };
+    const app = createTestApp({ accounts, billing });
+    const response = await app.request("/api/app/accounts/account-1/interest", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        enabled: true,
+        annualRateBasisPoints: 500,
+        frequency: "monthly",
+        payDay: 15,
+      }),
+    });
+    expect(response.status).toBe(403);
+    expect(accounts.updateInterest).not.toHaveBeenCalled();
   });
 
   it("validates and creates a tenant transaction", async () => {

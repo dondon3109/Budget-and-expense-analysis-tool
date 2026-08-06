@@ -359,13 +359,13 @@ describe("Profile dashboard account management", () => {
     expect(names).toEqual(["Cash", "Bank", "Maya Wallet"]);
     expect(within(accountManager).getByText("Primary")).toBeInTheDocument();
     expect(
-      within(accountManager).queryByRole("button", { name: "Rename Cash" }),
+      within(accountManager).queryByRole("button", { name: "Edit Cash" }),
     ).not.toBeInTheDocument();
     expect(
       within(accountManager).queryByRole("button", { name: "Remove Bank" }),
     ).not.toBeInTheDocument();
     expect(
-      within(accountManager).getByRole("button", { name: "Rename Maya Wallet" }),
+      within(accountManager).getByRole("button", { name: "Edit Maya Wallet" }),
     ).toBeInTheDocument();
     const removedAccounts = within(accountManager)
       .getByText("Removed accounts (1)")

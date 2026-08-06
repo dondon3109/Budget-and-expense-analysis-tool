@@ -104,6 +104,10 @@ export const accounts = sqliteTable(
     currency: text("currency").notNull().default("PHP"),
     systemKey: text("system_key"),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+    interestEnabled: integer("interest_enabled", { mode: "boolean" }).notNull().default(false),
+    annualRateBasisPoints: integer("annual_rate_basis_points"),
+    interestFrequency: text("interest_frequency", { enum: ["daily", "monthly", "yearly"] }),
+    interestPayDay: integer("interest_pay_day"),
     ...timestamps,
   },
   (table) => [

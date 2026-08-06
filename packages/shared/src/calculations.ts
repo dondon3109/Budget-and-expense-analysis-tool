@@ -73,6 +73,7 @@ export function summarizeAccountBalances(
           : { PHP: balanceMinor, USD: 0 }),
       archived: account.archived,
       system: Boolean(account.system),
+      interest: account.interest,
     };
   });
 

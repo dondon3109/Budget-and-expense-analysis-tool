@@ -1,11 +1,14 @@
 import type {
   AccountBalanceSummaryItem,
   AccountInput,
+  AccountInterestUpdate,
   CashflowTrend,
   CashflowTrendView,
   DashboardSummary,
+  InterestFrequency,
   TransactionListQuery,
 } from "@zoption/shared";
+import { interestFrequencies } from "@zoption/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownRight,
@@ -48,6 +51,7 @@ import {
   getTransferFeeInsight,
   isBillingEnforcementError,
   updateAccount,
+  updateAccountInterest,
 } from "../lib/api";
 import { currentMonth, daysInMonth, isMonth, localIsoDate, monthStart } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
@@ -104,6 +108,10 @@ export function DashboardPage() {
   const [accountType, setAccountType] = useState<AccountInput["type"]>("checking");
   const [editingAccount, setEditingAccount] = useState<AccountBalanceSummaryItem>();
   const [editName, setEditName] = useState("");
+  const [interestEnabled, setInterestEnabled] = useState(false);
+  const [interestRate, setInterestRate] = useState("");
+  const [interestFrequency, setInterestFrequency] = useState<InterestFrequency>("monthly");
+  const [interestPayDay, setInterestPayDay] = useState(15);
   const [removingAccount, setRemovingAccount] = useState<AccountBalanceSummaryItem>();
   const [cashflowView, setCashflowView] = useState<CashflowTrendView>("weekly");
   const [historyPage, setHistoryPage] = useState(1);
@@ -255,6 +263,14 @@ export function DashboardPage() {
     mutationFn: (accountId: string) => deleteAccount(workspace, accountId),
     onSuccess: async () => {
       setRemovingAccount(undefined);
+      await refreshAccountData();
+    },
+  });
+  const updateInterestMutation = useMutation({
+    mutationFn: (args: { id: string; input: AccountInterestUpdate }) =>
+      updateAccountInterest(workspace, args),
+    onSuccess: async () => {
+      setEditingAccount(undefined);
       await refreshAccountData();
     },
   });
@@ -447,8 +463,19 @@ export function DashboardPage() {
                             onClick={() => {
                               setEditingAccount(account);
                               setEditName(account.name);
+                              const interest = account.type === "savings" ? account.interest : undefined;
+                              setInterestEnabled(interest?.enabled ?? false);
+                              setInterestRate(
+                                interest?.annualRateBasisPoints != null
+                                  ? String(interest.annualRateBasisPoints / 100)
+                                  : "",
+                              );
+                              setInterestFrequency(
+                                interest?.frequency ?? "monthly",
+                              );
+                              setInterestPayDay(interest?.payDay ?? 15);
                             }}
-                            aria-label={`Rename ${account.name}`}
+                            aria-label={`Edit ${account.name}`}
                           >
                             <Pencil size={14} aria-hidden="true" />
                           </button>
@@ -511,19 +538,19 @@ export function DashboardPage() {
               className="form-modal"
               role="dialog"
               aria-modal="true"
-              aria-labelledby="rename-account-title"
+              aria-labelledby="edit-account-title"
             >
               <header className="modal-header">
                 <div>
                   <p className="eyebrow">Custom account</p>
-                  <h2 id="rename-account-title">Rename account</h2>
+                  <h2 id="edit-account-title">Edit account</h2>
                 </div>
                 <button
                   className="icon-button"
                   type="button"
                   onClick={() => setEditingAccount(undefined)}
-                  disabled={renameAccountMutation.isPending}
-                  aria-label="Close rename account"
+                  disabled={renameAccountMutation.isPending || updateInterestMutation.isPending}
+                  aria-label="Close edit account"
                 >
                   <X size={19} />
                 </button>
@@ -533,18 +560,114 @@ export function DashboardPage() {
                 onSubmit={(event) => {
                   event.preventDefault();
                   renameAccountMutation.mutate({ id: editingAccount.id, name: editName });
+                  if (editingAccount.type === "savings") {
+                    updateInterestMutation.mutate({
+                      id: editingAccount.id,
+                      input: {
+                        enabled: interestEnabled,
+                        annualRateBasisPoints:
+                          interestEnabled && Number(interestRate) > 0
+                            ? Math.round(Number(interestRate) * 100)
+                            : 0,
+                        frequency: interestEnabled ? interestFrequency : "monthly",
+                        payDay:
+                          interestEnabled && interestFrequency !== "daily"
+                            ? interestPayDay
+                            : null,
+                      },
+                    });
+                  }
                 }}
               >
-                <label>
-                  <span>Account name</span>
-                  <input
-                    value={editName}
-                    onChange={(event) => setEditName(event.target.value)}
-                    maxLength={80}
-                    required
-                    autoFocus
-                  />
-                </label>
+                <fieldset>
+                  <legend>Details</legend>
+                  <label>
+                    <span>Account name</span>
+                    <input
+                      value={editName}
+                      onChange={(event) => setEditName(event.target.value)}
+                      maxLength={80}
+                      required
+                      autoFocus
+                    />
+                  </label>
+                </fieldset>
+                {editingAccount.type === "savings" && (
+                  <fieldset>
+                    <legend>Interest</legend>
+                    <label className="checkbox-inline">
+                      <input
+                        type="checkbox"
+                        checked={interestEnabled}
+                        onChange={(event) => setInterestEnabled(event.target.checked)}
+                      />
+                      <span>Earn automatic interest</span>
+                    </label>
+                    {interestEnabled && (
+                      <div className="account-interest-settings">
+                        <label>
+                          <span>Annual interest rate (%)</span>
+                          <input
+                            value={interestRate}
+                            onChange={(event) => setInterestRate(event.target.value)}
+                            type="number"
+                            min={0}
+                            max={100}
+                            step="0.01"
+                            inputMode="decimal"
+                            placeholder="e.g. 5.00"
+                            required
+                          />
+                        </label>
+                        <label>
+                          <span>Interest received</span>
+                          <select
+                            value={interestFrequency}
+                            onChange={(event) =>
+                              setInterestFrequency(
+                                event.target.value as InterestFrequency,
+                              )
+                            }
+                          >
+                            {interestFrequencies.map((frequency) => (
+                              <option key={frequency} value={frequency}>
+                                {frequency === "daily"
+                                  ? "Daily"
+                                  : frequency === "monthly"
+                                    ? "Monthly"
+                                    : "Yearly"}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {interestFrequency !== "daily" && (
+                          <label>
+                            <span>Pay day</span>
+                            <select
+                              value={interestPayDay}
+                              onChange={(event) =>
+                                setInterestPayDay(Number(event.target.value))
+                              }
+                            >
+                              {Array.from({ length: 31 }, (_, index) => index + 1).map(
+                                (day) => (
+                                  <option key={day} value={day}>
+                                    {day}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </label>
+                        )}
+                        <p className="form-hint">
+                          Interest is computed from the account's balance and credited
+                          automatically {interestFrequency === "daily" ? "each day" : `on the ${interestPayDay}${interestPayDay === 1 ? "st" : interestPayDay === 2 ? "nd" : interestPayDay === 3 ? "rd" : "th"}`
+                            }.
+                        </p>
+                      </div>
+                    )}
+                  </fieldset>
+                )}
                 <div className="modal-actions">
                   <button
                     className="button secondary"
@@ -556,11 +679,18 @@ export function DashboardPage() {
                   <button
                     className="button primary"
                     type="submit"
-                    disabled={renameAccountMutation.isPending}
+                    disabled={renameAccountMutation.isPending || updateInterestMutation.isPending}
                   >
-                    {renameAccountMutation.isPending ? "Saving…" : "Save name"}
+                    {renameAccountMutation.isPending || updateInterestMutation.isPending
+                      ? "Saving…"
+                      : "Save"}
                   </button>
                 </div>
+                {updateInterestMutation.error && (
+                  <p className="form-error" role="alert">
+                    {updateInterestMutation.error.message}
+                  </p>
+                )}
               </form>
             </section>
           </div>

@@ -88,6 +88,14 @@ const DEFAULT_CATEGORIES = [
     systemKey: "uncategorized:transfer",
     origin: "system",
   },
+  {
+    key: "interest",
+    name: "Interest",
+    kind: "income",
+    color: "#22c55e",
+    systemKey: "interest:income",
+    origin: "system",
+  },
 ] as const;
 
 export interface TenantBootstrapRepository {

@@ -77,7 +77,7 @@ describe("tenant bootstrap", () => {
     });
 
     expect(batches).toHaveLength(1);
-    expect(batches[0]).toHaveLength(15);
+    expect(batches[0]).toHaveLength(16);
 
     function findStatement(fragment: string): CapturedStatement {
       const match = captured.find((statement) => statement.sql.includes(fragment));

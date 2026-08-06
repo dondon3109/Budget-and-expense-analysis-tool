@@ -6,6 +6,7 @@ import {
   debtStatuses,
   debtTypes,
   financialGoalStatuses,
+  interestFrequencies,
   subscriptionBillingCycles,
   subscriptionStatuses,
   transactionKinds,
@@ -89,6 +90,37 @@ export type AccountInput = z.infer<typeof accountInputSchema>;
 export const accountUpdateSchema = z.object({ name: z.string().trim().min(1).max(80) }).strict();
 
 export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
+
+export const interestUpdateSchema = z
+  .object({
+    enabled: z.boolean(),
+    annualRateBasisPoints: z.number().int().min(0).max(10_000),
+    frequency: z.enum(interestFrequencies),
+    payDay: z.number().int().min(1).max(31).nullable(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (!value.enabled) return;
+    if (value.annualRateBasisPoints === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["annualRateBasisPoints"],
+        message: "Enter a rate above 0%.",
+      });
+    }
+    if (value.frequency === "daily" && value.payDay !== null) {
+      context.addIssue({ code: "custom", path: ["payDay"], message: "Daily interest has no pay day." });
+    }
+    if ((value.frequency === "monthly" || value.frequency === "yearly") && value.payDay === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["payDay"],
+        message: "Choose a pay day for this frequency.",
+      });
+    }
+  });
+
+export type AccountInterestUpdate = z.infer<typeof interestUpdateSchema>;
 
 // Backwards-compatible type export for integrations compiled against the previous API.
 export type AccountBalanceUpdate = { balanceMinor: number | null; balanceAsOf: string | null };

@@ -3,12 +3,14 @@ import { createApp } from "./app";
 import { reconcileDuePayPalCheckouts } from "./billing/scheduled-reconciliation";
 import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
+import { creditDueInterest } from "./interest/scheduled-credit";
 import type { Bindings } from "./types";
 
 const app = createApp();
 const accountDeletionService = createAccountDeletionService();
 const BILLING_RECONCILIATION_CRON = "*/5 * * * *";
 const DAILY_MAINTENANCE_CRON = "17 3 * * *";
+const DAILY_INTEREST_CRON = "17 4 * * *";
 
 export default {
   fetch: app.fetch,
@@ -17,6 +19,13 @@ export default {
       const result = await reconcileDuePayPalCheckouts(billingRepository, env, 25);
       if (result.checked > 0) {
         console.log(JSON.stringify({ message: "Pending PayPal checkouts reconciled", ...result }));
+      }
+      return;
+    }
+    if (controller.cron === DAILY_INTEREST_CRON) {
+      const result = await creditDueInterest(env);
+      if (result.credited > 0) {
+        console.log(JSON.stringify({ message: "Interest credited", ...result }));
       }
       return;
     }

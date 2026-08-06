@@ -26,5 +26,5 @@
     "PAYPAL_PRO_MONTHLY_PLAN_ID": "REPLACE_WITH_PAYPAL_SANDBOX_MONTHLY_PLAN_ID",
     "PAYPAL_PRO_ANNUAL_PLAN_ID": "REPLACE_WITH_PAYPAL_SANDBOX_ANNUAL_PLAN_ID",
   },
-  "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
+  "triggers": { "crons": ["*/5 * * * *", "17 3 * * *", "17 4 * * *"] },
 }
