@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import "./TransactionForm.css";
 import { localIsoDate } from "../../lib/calendar";
+import { formatMoney } from "../../lib/formatters";
 
 interface TransactionFormProps {
   item?: TransactionListItem;
@@ -64,6 +65,20 @@ export function TransactionForm({
     () => availableCategories.filter((category) => !category.locked),
     [availableCategories],
   );
+
+  const transferNet = useMemo(() => {
+    if (kind !== "transfer") return null;
+    let amountMinor: number;
+    let feeMinor = 0;
+    try {
+      amountMinor = parseAmountToMinor(amount);
+      if (transferFee.trim() !== "") feeMinor = parseAmountToMinor(transferFee);
+    } catch {
+      return null;
+    }
+    if (feeMinor >= amountMinor) return null;
+    return { netMinor: amountMinor - feeMinor, feeMinor };
+  }, [amount, kind, transferFee]);
 
   useEffect(() => {
     const selectedCategory = availableCategories.find((category) => category.id === categoryId);
@@ -239,6 +254,21 @@ export function TransactionForm({
                 />
               </div>
               <small>Deducted from the amount, so the receiving account gets a little less.</small>
+              <div className="transfer-net" role="status" aria-live="polite">
+                <span>Receiving account gets</span>
+                {transferNet ? (
+                  <>
+                    <strong>{formatMoney(transferNet.netMinor, currency)}</strong>
+                    {transferNet.feeMinor > 0 && (
+                      <span className="transfer-net-fee">
+                        after {formatMoney(transferNet.feeMinor, currency)} fee
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <strong className="transfer-net-empty">—</strong>
+                )}
+              </div>
             </label>
           )}
           <div className="form-row split">

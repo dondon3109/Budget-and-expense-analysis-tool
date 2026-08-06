@@ -230,6 +230,12 @@ describe("TransactionForm", () => {
     await user.selectOptions(screen.getByLabelText("From account"), "account-everyday");
     await user.type(screen.getByLabelText("Amount (PHP)"), "100");
     await user.type(screen.getByLabelText("Transfer fee"), "10");
+
+    const net = screen.getByRole("status");
+    expect(net).toHaveTextContent(/Receiving account gets/);
+    expect(net).toHaveTextContent(/after/);
+    expect(net).toHaveTextContent(/10/);
+
     await user.click(screen.getByRole("button", { name: "Add transaction" }));
 
     await waitFor(() =>

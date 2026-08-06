@@ -28,6 +28,45 @@
   text-transform: none;
 }
 
+.transfer-net {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 4px;
+  padding: 11px 13px;
+  margin-bottom: 2px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, var(--income-soft), var(--surface-soft) 70%);
+}
+
+.transfer-net > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.transfer-net > strong {
+  color: var(--income);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-net > strong.transfer-net-empty {
+  color: var(--subtle);
+  font-size: 15px;
+}
+
+.transfer-net .transfer-net-fee {
+  grid-column: 1 / -1;
+  color: var(--subtle);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .transaction-form input,
 .transaction-form select,
 .transaction-form textarea,
