@@ -14,19 +14,9 @@ export const currentRelease: ProductRelease = {
   releasedOn: "August 6, 2026",
   changes: [
     {
-      title: "Subscriptions charge an account",
+      title: "Automatic bank interest",
       description:
-        "Choose the account a subscription is paid from. Adding a subscription now records its next charge as an expense in the transaction dashboard, so your account balance reflects it right away. Existing subscriptions are assigned to your Bank account automatically, and canceling a subscription removes its charge.",
-    },
-    {
-      title: "Edit and delete subscriptions",
-      description:
-        "The monthly subscriptions dashboard now lets you edit a subscription's details — name, amount, billing cycle, billing date, or category — or delete one you no longer pay for, right from the list.",
-    },
-    {
-      title: "Transfer net preview",
-      description:
-        "When a transfer includes a fee, the form now shows exactly how much the receiving account will get after the fee is deducted.",
+        "Savings accounts can now earn interest automatically. Turn it on for a savings account, enter the annual rate, and pick how often it pays out — daily, monthly, or once a year. Zoption adds the earned interest to your account balance for you on the set pay day, computing it from your balance so an Interest income entry appears in your transactions automatically.",
     },
   ],
 };
@@ -38,6 +28,27 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "1.1.7",
+    releasedOn: "August 6, 2026",
+    changes: [
+      {
+        title: "Subscriptions charge an account",
+        description:
+          "Choose the account a subscription is paid from. Adding a subscription now records its next charge as an expense in the transaction dashboard, so your account balance reflects it right away. Existing subscriptions are assigned to your Bank account automatically, and canceling a subscription removes its charge.",
+      },
+      {
+        title: "Edit and delete subscriptions",
+        description:
+          "The monthly subscriptions dashboard now lets you edit a subscription's details — name, amount, billing cycle, billing date, or category — or delete one you no longer pay for, right from the list.",
+      },
+      {
+        title: "Transfer net preview",
+        description:
+          "When a transfer includes a fee, the form now shows exactly how much the receiving account will get after the fee is deducted.",
+      },
+    ],
+  },
   {
     version: "1.1.5",
     releasedOn: "August 6, 2026",

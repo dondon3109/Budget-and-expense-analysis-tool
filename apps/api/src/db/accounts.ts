@@ -165,13 +165,17 @@ export const accountRepository: AccountRepository = {
   async update(env, tenantId, accountId, input) {
     const existing = await findAccount(env, tenantId, accountId);
     if (!existing) throw new HttpError(404, "account_not_found", "The account was not found.");
-    if (existing.system) {
+    if (existing.system && input.name !== existing.name) {
       throw new HttpError(409, "system_account_protected", "Permanent accounts cannot be renamed.");
     }
     await ensureUniqueName(env, tenantId, input.name, accountId);
     await drizzle(env.DB)
       .update(accounts)
-      .set({ name: input.name, updatedAt: sql`(datetime('now'))` })
+      .set({
+        name: input.name,
+        ...(input.type !== undefined && { type: input.type }),
+        updatedAt: sql`(datetime('now'))`,
+      })
       .where(and(eq(accounts.id, accountId), eq(accounts.tenantId, tenantId)));
     const updated = await findAccount(env, tenantId, accountId);
     if (!updated) throw new Error("Updated account could not be read back.");

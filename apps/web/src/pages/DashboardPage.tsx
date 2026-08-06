@@ -108,6 +108,7 @@ export function DashboardPage() {
   const [accountType, setAccountType] = useState<AccountInput["type"]>("checking");
   const [editingAccount, setEditingAccount] = useState<AccountBalanceSummaryItem>();
   const [editName, setEditName] = useState("");
+  const [editType, setEditType] = useState<AccountInput["type"]>("checking");
   const [interestEnabled, setInterestEnabled] = useState(false);
   const [interestRate, setInterestRate] = useState("");
   const [interestFrequency, setInterestFrequency] = useState<InterestFrequency>("monthly");
@@ -167,6 +168,7 @@ export function DashboardPage() {
     placeholderData: keepPreviousData,
   });
   const billingSummary = useBillingSummary(workspace);
+  const isPro = billingSummary.data?.plan === "zoption_pro";
   const hasPostAuthCheckoutIntent = searchParams.get("proCheckout") === "open";
   const isAppReady = data !== undefined;
   const isAppSettled = isAppReady || isError;
@@ -252,8 +254,8 @@ export function DashboardPage() {
     },
   });
   const renameAccountMutation = useMutation({
-    mutationFn: (args: { id: string; name: string }) =>
-      updateAccount(workspace, { id: args.id, input: { name: args.name } }),
+    mutationFn: (args: { id: string; name: string; type: AccountInput["type"] }) =>
+      updateAccount(workspace, { id: args.id, input: { name: args.name, type: args.type } }),
     onSuccess: async () => {
       setEditingAccount(undefined);
       await refreshAccountData();
@@ -443,7 +445,11 @@ export function DashboardPage() {
                 </form>
               )}
               <ul>
-                {activeAccounts.map((account) => (
+                {activeAccounts.map((account) => {
+                  const isDefaultBank = account.name === "Bank";
+                  const canEdit = !account.system || isDefaultBank;
+                  const canRemove = !account.system;
+                  return (
                   <li key={account.id} data-primary={account.name === "Cash" || undefined}>
                     <div className="dashboard-account-details">
                       <span className="dashboard-account-name">
@@ -456,14 +462,16 @@ export function DashboardPage() {
                       </span>
                     </div>
                     <div className="dashboard-account-value">
-                      {!account.system && (
+                      {canEdit && (
                         <span className="dashboard-account-actions">
                           <button
                             type="button"
                             onClick={() => {
                               setEditingAccount(account);
                               setEditName(account.name);
-                              const interest = account.type === "savings" ? account.interest : undefined;
+                              setEditType(account.type);
+                              const interest =
+                                account.type === "savings" ? account.interest : undefined;
                               setInterestEnabled(interest?.enabled ?? false);
                               setInterestRate(
                                 interest?.annualRateBasisPoints != null
@@ -479,6 +487,7 @@ export function DashboardPage() {
                           >
                             <Pencil size={14} aria-hidden="true" />
                           </button>
+                          {canRemove && (
                           <button
                             type="button"
                             onClick={() => setRemovingAccount(account)}
@@ -486,6 +495,7 @@ export function DashboardPage() {
                           >
                             <Trash2 size={14} aria-hidden="true" />
                           </button>
+                          )}
                         </span>
                       )}
                       <span className="dashboard-account-balances">
@@ -496,7 +506,8 @@ export function DashboardPage() {
                       </span>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
               {accountBalances.items.some((account) => account.archived) && (
                 <details className="dashboard-removed-accounts">
@@ -559,8 +570,12 @@ export function DashboardPage() {
                 className="transaction-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  renameAccountMutation.mutate({ id: editingAccount.id, name: editName });
-                  if (editingAccount.type === "savings") {
+                  renameAccountMutation.mutate({
+                    id: editingAccount.id,
+                    name: editName,
+                    type: editType,
+                  });
+                  if (editType === "savings" && isPro) {
                     updateInterestMutation.mutate({
                       id: editingAccount.id,
                       input: {
@@ -591,8 +606,23 @@ export function DashboardPage() {
                       autoFocus
                     />
                   </label>
+                  <label>
+                    <span>Account type</span>
+                    <select
+                      value={editType}
+                      onChange={(event) =>
+                        setEditType(event.target.value as AccountInput["type"])
+                      }
+                    >
+                      {accountTypes.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </fieldset>
-                {editingAccount.type === "savings" && (
+                {editType === "savings" && (
                   <fieldset>
                     <legend>Interest</legend>
                     <label className="checkbox-inline">
@@ -600,10 +630,11 @@ export function DashboardPage() {
                         type="checkbox"
                         checked={interestEnabled}
                         onChange={(event) => setInterestEnabled(event.target.checked)}
+                        disabled={!isPro}
                       />
                       <span>Earn automatic interest</span>
                     </label>
-                    {interestEnabled && (
+                    {isPro ? (interestEnabled && (
                       <div className="account-interest-settings">
                         <label>
                           <span>Annual interest rate (%)</span>
@@ -665,6 +696,12 @@ export function DashboardPage() {
                             }.
                         </p>
                       </div>
+                    )) : (
+                      <p className="form-hint account-interest-pro-callout">
+                        Automatic interest is a Pro feature.{" "}
+                        <Link to="/app/settings#plan-and-billing">Upgrade to Zoption Pro</Link> to
+                        earn interest on this savings account.
+                      </p>
                     )}
                   </fieldset>
                 )}

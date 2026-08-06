@@ -87,7 +87,12 @@ export const accountInputSchema = z
 
 export type AccountInput = z.infer<typeof accountInputSchema>;
 
-export const accountUpdateSchema = z.object({ name: z.string().trim().min(1).max(80) }).strict();
+export const accountUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    type: z.enum(accountTypes).optional(),
+  })
+  .strict();
 
 export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
 

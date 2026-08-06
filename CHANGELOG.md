@@ -2,6 +2,12 @@
 
 All notable product changes are documented here.
 
+## 1.2.0 — 2026-08-06
+
+### Added
+
+- Savings accounts can now earn interest automatically. Turn it on for a savings account, enter the annual rate, and choose how often it pays out — daily, monthly, or once a year. Zoption adds the earned interest to the account's balance on the set pay day, computing it from the balance so the Interest income entry appears in your transactions automatically.
+
 ## 1.1.7 — 2026-08-06
 
 ### Added

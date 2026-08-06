@@ -17,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
   getBillingSummary: vi.fn(),
   createAccount: vi.fn(),
   updateAccount: vi.fn(),
+  updateAccountInterest: vi.fn(),
   deleteAccount: vi.fn(),
 }));
 const dashboardExperienceState = vi.hoisted(() => ({
@@ -303,6 +304,7 @@ describe("Profile dashboard account management", () => {
     apiMocks.getTransferFeeInsight.mockReset().mockResolvedValue(transferFeeInsight);
     apiMocks.createAccount.mockReset().mockResolvedValue({});
     apiMocks.updateAccount.mockReset().mockResolvedValue({});
+    apiMocks.updateAccountInterest.mockReset().mockResolvedValue({});
     apiMocks.deleteAccount.mockReset().mockResolvedValue(undefined);
   });
 
@@ -358,12 +360,14 @@ describe("Profile dashboard account management", () => {
 
     expect(names).toEqual(["Cash", "Bank", "Maya Wallet"]);
     expect(within(accountManager).getByText("Primary")).toBeInTheDocument();
-    expect(
-      within(accountManager).queryByRole("button", { name: "Edit Cash" }),
+    expect(within(accountManager).queryByRole("button", { name: "Edit Cash" }),
     ).not.toBeInTheDocument();
     expect(
       within(accountManager).queryByRole("button", { name: "Remove Bank" }),
     ).not.toBeInTheDocument();
+    expect(
+      within(accountManager).getByRole("button", { name: "Edit Bank" }),
+    ).toBeInTheDocument();
     expect(
       within(accountManager).getByRole("button", { name: "Edit Maya Wallet" }),
     ).toBeInTheDocument();
@@ -418,6 +422,94 @@ describe("Profile dashboard account management", () => {
         { name: "SeaBank", type: "savings" },
       ),
     );
+  });
+
+  it("lets you change an account's type from its edit dialog", async () => {
+    renderPage();
+    const accountManager = await screen.findByRole("region", { name: "Account management" });
+
+    fireEvent.click(within(accountManager).getByRole("button", { name: "Edit Maya Wallet" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit account" });
+    fireEvent.change(within(dialog).getByLabelText("Account type"), {
+      target: { value: "savings" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(apiMocks.updateAccount).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        { id: "custom", input: { name: "Maya Wallet", type: "savings" } },
+      ),
+    );
+  });
+
+  it("lets a Pro user configure interest on the default Bank account", async () => {
+    apiMocks.getBillingSummary.mockResolvedValueOnce({ ...billingSummary, plan: "zoption_pro" });
+    renderPage();
+    const accountManager = await screen.findByRole("region", { name: "Account management" });
+
+    fireEvent.click(within(accountManager).getByRole("button", { name: "Edit Bank" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit account" });
+    fireEvent.change(within(dialog).getByLabelText("Account type"), {
+      target: { value: "savings" },
+    });
+    const earnInterest = within(dialog).getByRole("checkbox", { name: "Earn automatic interest" });
+    await waitFor(() => expect(earnInterest).toBeEnabled());
+    fireEvent.click(earnInterest);
+    fireEvent.change(within(dialog).getByLabelText("Annual interest rate (%)"), {
+      target: { value: "5" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(apiMocks.updateAccount).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        { id: "bank", input: { name: "Bank", type: "savings" } },
+      ),
+    );
+    await waitFor(() =>
+      expect(apiMocks.updateAccountInterest).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        {
+          id: "bank",
+          input: {
+            enabled: true,
+            annualRateBasisPoints: 500,
+            frequency: "monthly",
+            payDay: 15,
+          },
+        },
+      ),
+    );
+    expect(apiMocks.updateAccountInterest).toHaveBeenCalled();
+  });
+
+  it("keeps interest settings hidden behind a Pro callout for free users", async () => {
+    renderPage();
+    const accountManager = await screen.findByRole("region", { name: "Account management" });
+
+    fireEvent.click(within(accountManager).getByRole("button", { name: "Edit Bank" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit account" });
+    fireEvent.change(within(dialog).getByLabelText("Account type"), {
+      target: { value: "savings" },
+    });
+
+    expect(
+      within(dialog).getByRole("checkbox", { name: "Earn automatic interest" }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByText(/Automatic interest is a Pro feature/),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Annual interest rate (%)")).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(apiMocks.updateAccount).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        { id: "bank", input: { name: "Bank", type: "savings" } },
+      ),
+    );
+    expect(apiMocks.updateAccountInterest).not.toHaveBeenCalled();
   });
 
   it("keeps historical records visible when the current month has no activity", async () => {

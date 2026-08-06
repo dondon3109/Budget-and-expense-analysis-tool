@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { creditDueInterest } from "../src/interest/scheduled-credit";
+import * as billing from "../src/db/billing";
 
 interface CapturedStatement {
   query: string;
@@ -75,6 +76,12 @@ const accountRows = [
 ];
 
 describe("creditDueInterest", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    // Pro is the paid path for the existing credit tests.
+    vi.spyOn(billing, "hasProEntitlement").mockResolvedValue(true);
+  });
+
   it("credits daily interest equal to the floored daily amount", async () => {
     const { statements, batchCalls, db } = createDatabase({
       rows: accountRows,
@@ -160,6 +167,18 @@ describe("creditDueInterest", () => {
     const result = await creditDueInterest({ DB: db }, "2026-08-06");
     expect(result.credited).toBe(0);
     expect(result.skipped).toBe(1);
+    expect(batchCalls).toHaveLength(0);
+  });
+
+  it("skips interest for a tenant without a Pro entitlement (Pro-only feature)", async () => {
+    vi.spyOn(billing, "hasProEntitlement").mockResolvedValue(false);
+    const { batchCalls, db } = createDatabase({
+      rows: accountRows,
+      categoryId: "cat-interest",
+      balance: 1_000_000,
+    });
+    const result = await creditDueInterest({ DB: db }, "2026-08-06");
+    expect(result).toEqual({ checked: 1, credited: 0, skipped: 1 });
     expect(batchCalls).toHaveLength(0);
   });
 });

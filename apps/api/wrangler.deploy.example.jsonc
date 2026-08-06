@@ -3,7 +3,7 @@
   "name": "budget-expense-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
-  "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
+  "triggers": { "crons": ["*/5 * * * *", "17 3 * * *", "17 4 * * *"] },
   "env": {
     "preview": {
       "name": "budget-expense-api-preview",

@@ -1,3 +1,4 @@
+import { hasProEntitlement } from "../db/billing";
 import type { Bindings } from "../types";
 import { isInterestCreditDay, manilaDate, interestAmountMinor } from "./credit";
 
@@ -70,6 +71,12 @@ export async function creditDueInterest(
 
   for (const account of rows.results ?? []) {
     result.checked += 1;
+
+    // Interest is a Pro feature: skip free tenants so downgraded users stop accruing.
+    if (!(await hasProEntitlement(env, account.tenantId))) {
+      result.skipped += 1;
+      continue;
+    }
 
     const frequency = account.interestFrequency;
     const payDay = account.interestPayDay;

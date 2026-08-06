@@ -2,6 +2,7 @@ import {
   type AccountBalanceUpdate,
   type AccountInterestUpdate,
   type AccountRecord,
+  type AccountUpdate,
   type BudgetMonthPlan,
   type CalendarEventMonth,
   type CalendarEventRecord,
@@ -213,6 +214,17 @@ function createCategoryStore(): CategoryRepository {
 function createAccountStore(): AccountRepository {
   return {
     list: vi.fn(async () => [accountItem]),
+    update: vi.fn(
+      async (
+        _env: Bindings,
+        _tenantId: string,
+        _accountId: string,
+        input: AccountUpdate,
+      ): Promise<AccountRecord> => ({
+        ...accountItem,
+        ...input,
+      }),
+    ),
     setBalance: vi.fn(
       async (
         _env: Bindings,
@@ -711,6 +723,23 @@ describe("API foundation", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ items: [accountItem] });
     expect(accounts.list).toHaveBeenCalledWith(undefined, TENANT_ID);
+  });
+
+  it("updates an account's name and type together", async () => {
+    const accounts = createAccountStore();
+    const app = createTestApp({ accounts });
+    const response = await app.request("/api/app/accounts/account-1", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ name: "Maya Wallet", type: "savings" }),
+    });
+    expect(response.status).toBe(200);
+    expect(accounts.update).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      "account-1",
+      { name: "Maya Wallet", type: "savings" },
+    );
   });
 
   it("updates interest settings on a savings account", async () => {
