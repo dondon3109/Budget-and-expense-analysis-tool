@@ -1520,3 +1520,100 @@ width: 100%;
     transition: none !important;
   }
 }
+
+/* Edit-account modal: automatic-bank-interest configuration.
+   The interest <fieldset> and its controls are scoped here (not in the global
+   TransactionForm styles) because they belong to the account edit surface. */
+.form-modal .account-interest-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.form-modal .account-interest-fieldset legend {
+  margin-bottom: 9px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.form-modal .checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-modal .checkbox-inline > span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.form-modal .checkbox-inline input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--action);
+}
+
+.form-modal .account-interest-settings {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.form-modal .account-interest-settings label {
+  display: grid;
+  gap: 6px;
+}
+
+.form-modal .account-interest-settings label > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.form-modal .account-interest-settings input,
+.form-modal .account-interest-settings select {
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 12px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.form-modal .account-interest-settings input:focus,
+.form-modal .account-interest-settings select:focus {
+  border-color: #76a994;
+  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+}
+
+.form-modal .form-hint {
+  margin: 2px 0 0;
+  color: var(--subtle);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.form-modal .form-hint.account-interest-pro-callout {
+  margin-top: 9px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  line-height: 1.5;
+}
+
+.form-modal .form-hint.account-interest-pro-callout a {
+  color: var(--action);
+  font-weight: 700;
+  text-decoration: underline;
+}

@@ -623,7 +623,7 @@ export function DashboardPage() {
                   </label>
                 </fieldset>
                 {editType === "savings" && (
-                  <fieldset>
+                  <fieldset className="account-interest-fieldset">
                     <legend>Interest</legend>
                     <label className="checkbox-inline">
                       <input
