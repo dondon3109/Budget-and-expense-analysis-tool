@@ -1,11 +1,15 @@
 import {
   buildCashflowTrend,
   buildDashboardSummary,
+  buildTransferFeeInsight,
   summarizeAccountBalances,
   type CashflowTrend,
   type CashflowTrendView,
   type Currency,
   type DashboardSummary,
+  type TransferFeeActivityRow,
+  type TransferFeeInsight,
+  type TransferFeeTotalsByCurrency,
   type TransactionRecord,
 } from "@zoption/shared";
 import { and, eq, gte, lte } from "drizzle-orm";
@@ -143,5 +147,70 @@ export async function loadDashboard(
     ...accountSummary,
     overallBalanceMinor: overallBalances.PHP,
     balancesByCurrency: overallBalances,
+  });
+}
+
+const RECENT_FEE_WEEK_WINDOW_DAYS = 56;
+
+function recentTransferFeeWindowStart(referenceDate: string): string {
+  const date = new Date(`${referenceDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - RECENT_FEE_WEEK_WINDOW_DAYS);
+  return date.toISOString().slice(0, 10);
+}
+
+export async function loadTransferFeeInsight(
+  env: Bindings,
+  tenantId: string,
+  referenceDate: string,
+): Promise<TransferFeeInsight> {
+  const windowStart = recentTransferFeeWindowStart(referenceDate);
+  const [totalsResult, recentResult] = await Promise.all([
+    env.DB.prepare(
+      `SELECT currency AS currency,
+              COUNT(*) AS transfers,
+              SUM(CASE WHEN transfer_fee_minor IS NOT NULL THEN 1 ELSE 0 END) AS feeChargedTransfers,
+              SUM(transfer_fee_minor) AS totalFeesMinor
+       FROM transactions
+       WHERE tenant_id = ? AND kind = 'transfer' AND amount_minor < 0
+       GROUP BY currency`,
+    )
+      .bind(tenantId)
+      .all<{
+        currency: string;
+        transfers: number | null;
+        feeChargedTransfers: number | null;
+        totalFeesMinor: number | null;
+      }>(),
+    env.DB.prepare(
+      `SELECT t.date AS date,
+              t.currency AS currency,
+              t.transfer_fee_minor AS transferFeeMinor
+       FROM transactions t
+       WHERE t.tenant_id = ? AND t.kind = 'transfer' AND t.amount_minor < 0
+         AND t.date >= ?
+       ORDER BY t.date, t.id`,
+    )
+      .bind(tenantId, windowStart)
+      .all<TransferFeeActivityRow>(),
+  ]);
+
+  const totals: TransferFeeTotalsByCurrency[] = [];
+  for (const row of totalsResult.results) {
+    if (row.currency !== "PHP" && row.currency !== "USD") continue;
+    totals.push({
+      currency: row.currency,
+      transfers: Number(row.transfers ?? 0),
+      feeChargedTransfers: Number(row.feeChargedTransfers ?? 0),
+      feesMinor: Number(row.totalFeesMinor ?? 0),
+    });
+  }
+
+  return buildTransferFeeInsight({
+    totals,
+    recent: recentResult.results.map((row) => ({
+      date: row.date,
+      currency: row.currency === "USD" ? "USD" : "PHP",
+      transferFeeMinor: row.transferFeeMinor,
+    })),
   });
 }

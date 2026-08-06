@@ -614,6 +614,31 @@ describe("API foundation", () => {
     expect(loader).not.toHaveBeenCalled();
   });
 
+  it("loads the transfer fee insight for the resolved tenant with a reference date", async () => {
+    const insight = {
+      hasFees: true,
+      totalTransfers: 3,
+      totalFeeChargedTransfers: 2,
+      feesByCurrency: { PHP: 250, USD: 0 },
+      weekly: [],
+      recentWeekCount: 0,
+      recentAverageTransfersPerWeek: 0,
+      recentAverageFeeChargedTransfersPerWeek: 0,
+    };
+    const loader = vi.fn().mockResolvedValue(insight);
+    const app = createTestApp({ transferFeeLoader: loader });
+    const response = await app.request("/api/app/dashboard/transfer-fees", {
+      headers: AUTHORIZATION,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(loader.mock.calls[0]?.[1]).toBe(TENANT_ID);
+    expect(loader.mock.calls[0]?.[2]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    await expect(response.json()).resolves.toEqual(insight);
+  });
+
   it("parses pagination and filters before listing tenant transactions", async () => {
     const transactions = createTransactionStore();
     const app = createTestApp({ transactions });

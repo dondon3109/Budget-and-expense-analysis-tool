@@ -1,6 +1,12 @@
-import type { AssistantMessage, AssistantSourceMetadata } from "@zoption/shared";
+import type {
+  AssistantMessage,
+  AssistantSourceMetadata,
+  TransferFeeInsight,
+} from "@zoption/shared";
 import { Bot, Database, Sparkles, UserRound } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, type ReactNode } from "react";
+
+import { formatMoney, formatMoneyParts } from "../../lib/formatters";
 
 const QUICK_PROMPTS = [
   "How much did I spend this month?",
@@ -15,6 +21,7 @@ interface AssistantConversationProps {
   pendingMessage?: string;
   loading: boolean;
   onPrompt: (prompt: string) => void;
+  feeInsight?: TransferFeeInsight;
 }
 
 function messageTime(value: string): string {
@@ -154,12 +161,77 @@ function AssistantMessageEvidence({ message }: { message: AssistantMessage }) {
   );
 }
 
+function phpAmountParts(amountMinor: number) {
+  return formatMoneyParts(amountMinor, "PHP").map((part, index) =>
+    part.type === "currency" ? (
+      <span className="assistant-fee-currency" key={`${part.type}-${index}`}>
+        {part.value}
+      </span>
+    ) : (
+      <Fragment key={`${part.type}-${index}`}>{part.value}</Fragment>
+    ),
+  );
+}
+
+function FeeInsightWelcome({
+  assistantName,
+  insight,
+}: {
+  assistantName: string;
+  insight: TransferFeeInsight;
+}) {
+  const hasUsdFees = insight.feesByCurrency.USD > 0;
+  const transferNoun = insight.totalFeeChargedTransfers === 1 ? "transfer" : "transfers";
+  const weeklyLine =
+    insight.totalTransfers > 0 && insight.recentAverageTransfersPerWeek > 0
+      ? ` In the last 8 weeks you averaged ${insight.recentAverageTransfersPerWeek} transfers per week${insight.recentAverageFeeChargedTransfersPerWeek > 0 ? `, ${insight.recentAverageFeeChargedTransfersPerWeek} with a fee` : ""}.`
+      : "";
+  const adviceLine = insight.hasFees
+    ? " Because every fee-charged transfer costs money, batching your moves into fewer, larger transfers — like once or twice a week — can reduce the fees you pay."
+    : "";
+
+  return (
+    <article
+      className="assistant-message assistant assistant-fee-welcome"
+      aria-label="Transfer fee insight"
+    >
+      <span className="assistant-message-avatar" aria-hidden="true">
+        <Bot size={16} />
+      </span>
+      <div>
+        <div className="assistant-message-meta">
+          <strong>{assistantName}</strong>
+        </div>
+        <p>
+          Transfer fees are easy to miss amid your income and expenses. Based on your records
+          you&apos;ve paid <strong>{phpAmountParts(insight.feesByCurrency.PHP)}</strong>
+          {hasUsdFees && (
+            <>
+              {" "}
+              (<strong>{formatMoney(insight.feesByCurrency.USD, "USD")}</strong> USD)
+            </>
+          )}{" "}
+          in transfer fees across <strong>{insight.totalFeeChargedTransfers}</strong> fee-charged{" "}
+          {transferNoun}.{weeklyLine}
+          {adviceLine}
+        </p>
+        <p className="assistant-fee-disclaimer">
+          This is general, educational budgeting guidance calculated from the transfer fees
+          you&apos;ve recorded. Zoption doesn&apos;t provide personalized financial, investment,
+          tax, or legal advice.
+        </p>
+      </div>
+    </article>
+  );
+}
+
 export function AssistantConversation({
   assistantName,
   messages,
   pendingMessage,
   loading,
   onPrompt,
+  feeInsight,
 }: AssistantConversationProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -171,7 +243,10 @@ export function AssistantConversation({
 
   if (messages.length === 0 && !pendingMessage) {
     return (
-      <div className="assistant-empty">
+      <div className="assistant-empty assistant-empty-with-insight">
+        {feeInsight?.hasFees && (
+          <FeeInsightWelcome assistantName={assistantName} insight={feeInsight} />
+        )}
         <span aria-hidden="true">
           <Sparkles size={25} />
         </span>

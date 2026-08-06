@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildCashflowTrend,
   buildDashboardSummary,
+  buildTransferFeeInsight,
   summarizeAccountBalances,
+  type TransferFeeInsightInput,
 } from "../src/calculations";
 import type { AccountRecord, BudgetRecord, TransactionRecord } from "../src/types";
 
@@ -249,6 +251,93 @@ describe("dashboard calculations", () => {
         averageMinor: 81_000,
         occurrenceCount: 3,
         latestMonth: "2026-07",
+      },
+    ]);
+  });
+});
+
+describe("transfer fee insight calculations", () => {
+  it("returns a zeroed insight when there are no transfers", () => {
+    const insight = buildTransferFeeInsight({ totals: [], recent: [] });
+    expect(insight).toMatchObject({
+      hasFees: false,
+      totalTransfers: 0,
+      totalFeeChargedTransfers: 0,
+      feesByCurrency: { PHP: 0, USD: 0 },
+      weekly: [],
+      recentWeekCount: 0,
+      recentAverageTransfersPerWeek: 0,
+      recentAverageFeeChargedTransfersPerWeek: 0,
+    });
+  });
+
+  it("combines all-time totals and recent weekly activity by week", () => {
+    const input: TransferFeeInsightInput = {
+      totals: [
+        { currency: "PHP", transfers: 5, feeChargedTransfers: 3, feesMinor: 150 },
+        { currency: "USD", transfers: 2, feeChargedTransfers: 1, feesMinor: 40 },
+      ],
+      recent: [
+        // The 2026-07-06 week (Monday 2026-07-06).
+        { date: "2026-07-07", currency: "PHP", transferFeeMinor: 50 },
+        { date: "2026-07-08", currency: "PHP", transferFeeMinor: null },
+        { date: "2026-07-09", currency: "USD", transferFeeMinor: 40 },
+        // The following week (Monday 2026-07-13).
+        { date: "2026-07-14", currency: "PHP", transferFeeMinor: 100 },
+      ],
+    };
+    const insight = buildTransferFeeInsight(input);
+    expect(insight).toMatchObject({
+      hasFees: true,
+      totalTransfers: 7,
+      totalFeeChargedTransfers: 4,
+      feesByCurrency: { PHP: 150, USD: 40 },
+      recentWeekCount: 2,
+      recentAverageTransfersPerWeek: 2,
+      recentAverageFeeChargedTransfersPerWeek: 1.5,
+    });
+    expect(insight.weekly).toEqual([
+      {
+        weekStart: "2026-07-06",
+        weekEnd: "2026-07-12",
+        transfers: 3,
+        feeChargedTransfers: 2,
+        feesByCurrency: { PHP: 50, USD: 40 },
+      },
+      {
+        weekStart: "2026-07-13",
+        weekEnd: "2026-07-19",
+        transfers: 1,
+        feeChargedTransfers: 1,
+        feesByCurrency: { PHP: 100, USD: 0 },
+      },
+    ]);
+  });
+
+  it("groups a Sunday into the Monday-starting week and ignores zero fees", () => {
+    const input: TransferFeeInsightInput = {
+      totals: [{ currency: "PHP", transfers: 1, feeChargedTransfers: 0, feesMinor: 0 }],
+      recent: [
+        // 2026-07-12 is a Sunday; its week starts Monday 2026-07-06.
+        { date: "2026-07-12", currency: "PHP", transferFeeMinor: null },
+        { date: "2026-07-13", currency: "PHP", transferFeeMinor: 0 },
+      ],
+    };
+    const insight = buildTransferFeeInsight(input);
+    expect(insight.weekly).toEqual([
+      {
+        weekStart: "2026-07-06",
+        weekEnd: "2026-07-12",
+        transfers: 1,
+        feeChargedTransfers: 0,
+        feesByCurrency: { PHP: 0, USD: 0 },
+      },
+      {
+        weekStart: "2026-07-13",
+        weekEnd: "2026-07-19",
+        transfers: 1,
+        feeChargedTransfers: 0,
+        feesByCurrency: { PHP: 0, USD: 0 },
       },
     ]);
   });

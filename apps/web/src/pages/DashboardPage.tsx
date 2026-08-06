@@ -36,6 +36,7 @@ import { OverviewStatBar } from "../components/dashboard/OverviewStatBar";
 import { useInitialDashboardExperience } from "../components/dashboard/InitialDashboardExperienceProvider";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
+import { TransferFeeInsightCard } from "../components/dashboard/TransferFeeInsightCard";
 import { MonthSelector } from "../components/month/MonthSelector";
 import { AppShell } from "../components/layout/AppShell";
 import {
@@ -44,6 +45,7 @@ import {
   getCashflowTrend,
   getDashboard,
   getTransactions,
+  getTransferFeeInsight,
   isBillingEnforcementError,
   updateAccount,
 } from "../lib/api";
@@ -140,6 +142,10 @@ export function DashboardPage() {
   const cashflowTrendQuery = useQuery({
     queryKey: queryKeys.cashflowTrend(workspace, { view: cashflowView, anchorDate }),
     queryFn: () => getCashflowTrend(workspace, { view: cashflowView, anchorDate }),
+  });
+  const transferFeeInsightQuery = useQuery({
+    queryKey: queryKeys.transferFeeInsight(workspace),
+    queryFn: () => getTransferFeeInsight(workspace),
   });
   const historyQuery: TransactionListQuery = {
     page: historyPage,
@@ -671,6 +677,7 @@ export function DashboardPage() {
                 },
               ]}
             />
+            <TransferFeeInsightCard insight={transferFeeInsightQuery.data} />
             <div className="dashboard-grid">
               <SpendingByCategory
                 data={

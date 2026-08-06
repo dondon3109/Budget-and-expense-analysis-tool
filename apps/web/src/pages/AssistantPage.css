@@ -441,6 +441,24 @@
   line-height: 1.6;
 }
 
+.assistant-empty-with-insight .assistant-fee-welcome {
+  width: min(100%, 560px);
+  max-width: none;
+  margin: 0 auto 24px;
+  text-align: left;
+}
+
+.assistant-fee-currency {
+  color: var(--action);
+  font-weight: 700;
+}
+
+.assistant-fee-welcome .assistant-fee-disclaimer {
+  color: var(--subtle);
+  font-size: 10px;
+  font-style: italic;
+}
+
 .assistant-quick-prompts {
   margin-top: 22px;
   display: grid;

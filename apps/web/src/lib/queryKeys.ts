@@ -16,6 +16,8 @@ export const queryKeys = {
     workspace: AuthenticatedWorkspace,
     query: { view: "weekly" | "monthly" | "sixMonth"; anchorDate: string },
   ) => [...queryKeys.dashboard(workspace), "cashflow-trend", query] as const,
+  transferFeeInsight: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.dashboard(workspace), "transfer-fees"] as const,
   transactions: (workspace: AuthenticatedWorkspace, query: TransactionListQuery) =>
     [...queryKeys.workspace(workspace), "transactions", query] as const,
   allTransactions: (workspace: AuthenticatedWorkspace) =>

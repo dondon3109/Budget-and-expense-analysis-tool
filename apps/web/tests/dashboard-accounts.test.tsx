@@ -13,6 +13,7 @@ const apiMocks = vi.hoisted(() => ({
   getDashboard: vi.fn(),
   getCashflowTrend: vi.fn(),
   getTransactions: vi.fn(),
+  getTransferFeeInsight: vi.fn(),
   getBillingSummary: vi.fn(),
   createAccount: vi.fn(),
   updateAccount: vi.fn(),
@@ -127,6 +128,25 @@ const dashboard: DashboardSummary = {
   insights: { savingsMinor: 0, savingsRatePercent: null, recurringExpenses: [] },
 };
 
+const transferFeeInsight = {
+  hasFees: true,
+  totalTransfers: 4,
+  totalFeeChargedTransfers: 2,
+  feesByCurrency: { PHP: 1_500, USD: 0 },
+  weekly: [
+    {
+      weekStart: "2026-07-20",
+      weekEnd: "2026-07-26",
+      transfers: 2,
+      feeChargedTransfers: 2,
+      feesByCurrency: { PHP: 1_500, USD: 0 },
+    },
+  ],
+  recentWeekCount: 1,
+  recentAverageTransfersPerWeek: 2,
+  recentAverageFeeChargedTransfersPerWeek: 2,
+};
+
 function CurrentPath() {
   const location = useLocation();
   return <output data-testid="current-path">{`${location.pathname}${location.search}`}</output>;
@@ -164,6 +184,7 @@ describe("Dashboard loading", () => {
       total: 0,
       totalPages: 1,
     });
+    apiMocks.getTransferFeeInsight.mockReset().mockResolvedValue(transferFeeInsight);
   });
 
   afterEach(() => {
@@ -226,6 +247,7 @@ describe("Dashboard checkout intent", () => {
       total: 0,
       totalPages: 1,
     });
+    apiMocks.getTransferFeeInsight.mockReset().mockResolvedValue(transferFeeInsight);
   });
 
   afterEach(cleanup);
@@ -278,12 +300,55 @@ describe("Profile dashboard account management", () => {
       total: 0,
       totalPages: 1,
     });
+    apiMocks.getTransferFeeInsight.mockReset().mockResolvedValue(transferFeeInsight);
     apiMocks.createAccount.mockReset().mockResolvedValue({});
     apiMocks.updateAccount.mockReset().mockResolvedValue({});
     apiMocks.deleteAccount.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(cleanup);
+
+  it("shows overall transfer fees on the Profile dashboard", async () => {
+    apiMocks.getTransactions.mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 8,
+      total: 4,
+      totalPages: 1,
+    });
+    renderPage();
+
+    const feeCard = await screen.findByRole("region", { name: "Transfer fees overall" });
+    expect(feeCard.textContent).toContain("₱15");
+    expect(feeCard.textContent).toContain("Across 2 fee-charged transfers");
+    expect(feeCard.textContent).toContain("≈ 2 transfers per week over the last 8 weeks");
+    expect(feeCard.textContent).toContain("Fewer transfers per week means fewer fees");
+  });
+
+  it("renders a zero state when no transfer fees are recorded", async () => {
+    apiMocks.getTransactions.mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 8,
+      total: 4,
+      totalPages: 1,
+    });
+    apiMocks.getTransferFeeInsight.mockResolvedValue({
+      hasFees: false,
+      totalTransfers: 0,
+      totalFeeChargedTransfers: 0,
+      feesByCurrency: { PHP: 0, USD: 0 },
+      weekly: [],
+      recentWeekCount: 0,
+      recentAverageTransfersPerWeek: 0,
+      recentAverageFeeChargedTransfersPerWeek: 0,
+    });
+    renderPage();
+
+    const feeCard = await screen.findByRole("region", { name: "Transfer fees overall" });
+    expect(within(feeCard).getByText(/No transfer fees recorded yet/)).toBeInTheDocument();
+    expect(feeCard.textContent).toContain("₱0");
+  });
 
   it("renders one Cash-first account list with history in its disclosure", async () => {
     renderPage();

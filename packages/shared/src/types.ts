@@ -332,6 +332,38 @@ export interface DashboardSummary {
   };
 }
 
+export interface TransferFeeWeek {
+  /** Monday of the week, as an ISO date. */
+  weekStart: string;
+  /** Sunday of the week, as an ISO date. */
+  weekEnd: string;
+  /** Number of transfers (each transfer counts once) in that week. */
+  transfers: number;
+  /** Number of transfers that carried a fee in that week. */
+  feeChargedTransfers: number;
+  /** Total transfer fees paid in that week, per currency. */
+  feesByCurrency: Record<Currency, number>;
+}
+
+export interface TransferFeeInsight {
+  /** True when at least one fee-charged transfer has been recorded. */
+  hasFees: boolean;
+  /** All-time number of transfers (each transfer counts once). */
+  totalTransfers: number;
+  /** All-time number of transfers that carried a fee. */
+  totalFeeChargedTransfers: number;
+  /** All-time transfer fees paid, per currency. */
+  feesByCurrency: Record<Currency, number>;
+  /** Per-week breakdown for the trailing 8 weeks, oldest first. */
+  weekly: TransferFeeWeek[];
+  /** Number of weeks within the window that had at least one transfer. */
+  recentWeekCount: number;
+  /** Average transfers per week across the weeks that had activity. */
+  recentAverageTransfersPerWeek: number;
+  /** Average fee-charged transfers per week across the weeks that had activity. */
+  recentAverageFeeChargedTransfersPerWeek: number;
+}
+
 export const billingIntervals = ["month", "year"] as const;
 export type BillingInterval = (typeof billingIntervals)[number];
 

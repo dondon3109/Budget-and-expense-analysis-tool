@@ -51,6 +51,7 @@ import type {
   TransactionListQuery,
   TransactionPage,
   TransactionUpdate,
+  TransferFeeInsight,
 } from "@zoption/shared";
 
 import { getSupabaseClient } from "./supabase";
@@ -424,6 +425,12 @@ export function getCashflowTrend(
     workspace,
     `/api/app/dashboard/cashflow-trend?${new URLSearchParams(query).toString()}`,
   );
+}
+
+export function getTransferFeeInsight(
+  workspace: AuthenticatedWorkspace,
+): Promise<TransferFeeInsight> {
+  return requestJson(workspace, "/api/app/dashboard/transfer-fees");
 }
 
 export function getTransactions(

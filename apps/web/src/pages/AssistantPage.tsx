@@ -28,6 +28,7 @@ import {
   getAssistantMessages,
   getAssistantPreferences,
   getAssistantThreads,
+  getTransferFeeInsight,
   grantAssistantConsent,
   isBillingEnforcementError,
   isUsageLimitReachedError,
@@ -85,6 +86,16 @@ export function AssistantPage() {
     ),
     staleTime: Infinity,
     gcTime: Infinity,
+  });
+  const feeInsightQuery = useQuery({
+    queryKey: queryKeys.transferFeeInsight(workspace),
+    queryFn: () => getTransferFeeInsight(workspace),
+    enabled: Boolean(
+      !activeThreadId &&
+      preferences.data?.consentedAt &&
+      preferences.data.assistantName &&
+      preferences.data.userPreferredName,
+    ),
   });
   const assistantUsage = billingQuery.data?.usages.find(
     (usage) => usage.feature === "assistant_question",
@@ -388,6 +399,7 @@ export function AssistantPage() {
                 pendingMessage={pendingMessage}
                 loading={sendMutation.isPending || (Boolean(activeThreadId) && messages.isLoading)}
                 onPrompt={setDraft}
+                feeInsight={feeInsightQuery.data}
               />
             )}
             <UpgradePrompt error={sendError} />

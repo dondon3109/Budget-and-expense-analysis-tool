@@ -14,6 +14,11 @@ export const currentRelease: ProductRelease = {
   releasedOn: "August 5, 2026",
   changes: [
     {
+      title: "Transfer fee overview",
+      description:
+        "The profile dashboard now shows the total you've paid in transfer fees, and starting a new assistant conversation shares your fee totals, how often you transfer each week, and tips to pay fewer fees.",
+    },
+    {
       title: "Transfer fees",
       description:
         "Record a fee when you move money between accounts. The fee is deducted from the amount, so the receiving account gets a little less while your sending account pays the full amount.",

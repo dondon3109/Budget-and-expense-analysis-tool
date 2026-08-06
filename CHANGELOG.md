@@ -6,6 +6,8 @@ All notable product changes are documented here.
 
 ### Added
 
+- The profile dashboard now shows your all-time transfer fees total, with a weekly transfer pace hint: fewer transfers per week means fewer fees.
+- Starting a new AI assistant conversation now proactively shares how much you've spent on transfer fees, how often you transfer per week, and educational tips to reduce fees, with a disclaimer note.
 - Transfers can now include a fee. The fee is deducted from the amount you move, so the receiving account gets a little less while your sending account pays the full amount.
 - Transfer descriptions are now optional, so quick money moves need fewer details.
 - Transactions can now be recorded in US dollars as well as Philippine pesos, with a currency selector on the transaction form.

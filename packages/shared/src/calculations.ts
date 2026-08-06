@@ -6,6 +6,7 @@ import type {
   Currency,
   DashboardSummary,
   TransactionRecord,
+  TransferFeeInsight,
 } from "./types";
 
 function clampRoundPercent(value: number): number {
@@ -267,5 +268,91 @@ export function buildDashboardSummary(
           : clampRoundPercent(((moneyInMinor - moneyOutMinor) / moneyInMinor) * 100),
       recurringExpenses: buildRecurringExpenses(transactions),
     },
+  };
+}
+
+export interface TransferFeeTotalsByCurrency {
+  currency: Currency;
+  transfers: number;
+  feeChargedTransfers: number;
+  feesMinor: number;
+}
+
+export interface TransferFeeActivityRow {
+  /** ISO date of a transfer sender leg. */
+  date: string;
+  currency: Currency;
+  /** The fee attached to the sender leg, or null for a fee-free transfer. */
+  transferFeeMinor: number | null;
+}
+
+export interface TransferFeeInsightInput {
+  /** All-time totals grouped by currency. */
+  totals: TransferFeeTotalsByCurrency[];
+  /** Sender legs of transfers within the recent window, oldest first. */
+  recent: TransferFeeActivityRow[];
+}
+
+function isoDayOfWeekMondayZero(isoDate: string): number {
+  return (dateFromIso(isoDate).getUTCDay() + 6) % 7;
+}
+
+function startOfWeekMonday(isoDate: string): string {
+  return shiftUtcDays(isoDate, -isoDayOfWeekMondayZero(isoDate));
+}
+
+function emptyFeeCurrencyTotals(): Record<Currency, number> {
+  return { PHP: 0, USD: 0 };
+}
+
+function roundToOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+export function buildTransferFeeInsight(input: TransferFeeInsightInput): TransferFeeInsight {
+  const feesByCurrency = emptyFeeCurrencyTotals();
+  let totalTransfers = 0;
+  let totalFeeChargedTransfers = 0;
+  for (const row of input.totals) {
+    totalTransfers += row.transfers;
+    totalFeeChargedTransfers += row.feeChargedTransfers;
+    const currency = row.currency;
+    feesByCurrency[currency] += row.feesMinor;
+  }
+
+  const weeklyByStart = new Map<string, TransferFeeInsight["weekly"][number]>();
+  for (const row of input.recent) {
+    const weekStart = startOfWeekMonday(row.date);
+    const current = weeklyByStart.get(weekStart) ?? {
+      weekStart,
+      weekEnd: shiftUtcDays(weekStart, 6),
+      transfers: 0,
+      feeChargedTransfers: 0,
+      feesByCurrency: emptyFeeCurrencyTotals(),
+    };
+    current.transfers += 1;
+    if (row.transferFeeMinor != null && row.transferFeeMinor > 0) {
+      current.feeChargedTransfers += 1;
+      current.feesByCurrency[row.currency] += row.transferFeeMinor;
+    }
+    weeklyByStart.set(weekStart, current);
+  }
+
+  const weekly = [...weeklyByStart.values()].sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+  const recentWeekCount = weekly.filter((week) => week.transfers > 0).length;
+  const recentTransferCount = weekly.reduce((sum, week) => sum + week.transfers, 0);
+  const recentFeeChargedCount = weekly.reduce((sum, week) => sum + week.feeChargedTransfers, 0);
+
+  return {
+    hasFees: totalFeeChargedTransfers > 0,
+    totalTransfers,
+    totalFeeChargedTransfers,
+    feesByCurrency,
+    weekly,
+    recentWeekCount,
+    recentAverageTransfersPerWeek:
+      recentWeekCount === 0 ? 0 : roundToOneDecimal(recentTransferCount / recentWeekCount),
+    recentAverageFeeChargedTransfersPerWeek:
+      recentWeekCount === 0 ? 0 : roundToOneDecimal(recentFeeChargedCount / recentWeekCount),
   };
 }

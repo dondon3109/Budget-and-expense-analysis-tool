@@ -1,0 +1,85 @@
+.transfer-fee-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px 25px;
+  margin-top: 18px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--expense-soft), var(--paper) 30%);
+  box-shadow:
+    inset 0 3px 0 var(--expense),
+    0 12px 30px var(--shadow);
+}
+
+.transfer-fee-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.transfer-fee-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--expense);
+  background: var(--expense-soft);
+}
+
+.transfer-fee-card > strong {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(24px, 2vw, 30px);
+  font-weight: 760;
+  letter-spacing: -0.035em;
+}
+
+.transfer-fee-card-currency {
+  font-size: 0.78em;
+  margin-right: 2px;
+}
+
+.transfer-fee-card-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.transfer-fee-card-secondary span {
+  color: var(--muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-fee-card-secondary em {
+  margin-left: 4px;
+  color: var(--muted);
+  font-style: normal;
+  font-size: 12px;
+}
+
+.transfer-fee-card p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.transfer-fee-card p.transfer-fee-card-insight {
+  color: var(--expense);
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .transfer-fee-card {
+    padding: 20px 17px;
+    border-radius: 16px;
+  }
+}

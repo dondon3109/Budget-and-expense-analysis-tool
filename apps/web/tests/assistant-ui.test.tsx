@@ -16,6 +16,7 @@ const apiMocks = vi.hoisted(() => ({
   getAssistantPreferences: vi.fn(),
   getAssistantThreads: vi.fn(),
   getBillingSummary: vi.fn(),
+  getTransferFeeInsight: vi.fn(),
   sendAssistantMessage: vi.fn(),
   updateAssistantIdentity: vi.fn(),
 }));
@@ -150,6 +151,16 @@ describe("assistant UI", () => {
       ],
       allowances: [{ resource: "custom_category", used: 0, limit: 1 }],
     });
+    apiMocks.getTransferFeeInsight.mockReset().mockResolvedValue({
+      hasFees: true,
+      totalTransfers: 4,
+      totalFeeChargedTransfers: 2,
+      feesByCurrency: { PHP: 1_500, USD: 0 },
+      weekly: [],
+      recentWeekCount: 1,
+      recentAverageTransfersPerWeek: 2,
+      recentAverageFeeChargedTransfersPerWeek: 2,
+    });
     apiMocks.sendAssistantMessage.mockReset();
   });
 
@@ -181,6 +192,76 @@ describe("assistant UI", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Your MONEY, explained." }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a proactive transfer fee insight with a disclaimer in a new conversation", async () => {
+    renderPage();
+
+    const welcome = await screen.findByRole("article", { name: "Transfer fee insight" });
+    expect(within(welcome).getByText("Aster")).toBeInTheDocument();
+    expect(welcome.textContent).toContain("₱15");
+    expect(welcome.textContent).toContain("2 fee-charged transfers");
+    expect(welcome.textContent).toContain("averaged 2 transfers per week");
+    expect(welcome.textContent).toContain("fewer, larger transfers");
+    expect(welcome.textContent).toMatch(
+      /doesn.t provide personalized financial, investment, tax, or legal advice/i,
+    );
+    expect(
+      screen.getByRole("heading", { name: "What would you like to understand?" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the transfer fee insight when a thread is active or no fees exist", async () => {
+    apiMocks.getTransferFeeInsight.mockResolvedValue({
+      hasFees: false,
+      totalTransfers: 0,
+      totalFeeChargedTransfers: 0,
+      feesByCurrency: { PHP: 0, USD: 0 },
+      weekly: [],
+      recentWeekCount: 0,
+      recentAverageTransfersPerWeek: 0,
+      recentAverageFeeChargedTransfersPerWeek: 0,
+    });
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: "What would you like to understand?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("article", { name: "Transfer fee insight" }),
+    ).not.toBeInTheDocument();
+
+    apiMocks.getTransferFeeInsight.mockResolvedValue({
+      hasFees: true,
+      totalTransfers: 4,
+      totalFeeChargedTransfers: 2,
+      feesByCurrency: { PHP: 1_500, USD: 0 },
+      weekly: [],
+      recentWeekCount: 1,
+      recentAverageTransfersPerWeek: 2,
+      recentAverageFeeChargedTransfersPerWeek: 2,
+    });
+    apiMocks.getAssistantMessages.mockResolvedValue({
+      items: [
+        {
+          id: "message-1",
+          threadId: thread.id,
+          role: "assistant",
+          content: "You spent PHP 1,250 this month.",
+          status: "completed",
+          createdAt: "2026-07-27T10:00:00.000Z",
+        },
+      ],
+      nextCursor: null,
+    });
+
+    await screen.findByText(thread.title);
+    fireEvent.click(screen.getAllByRole("button", { name: /budget review/i })[0]!);
+
+    expect(await screen.findByText("You spent PHP 1,250 this month.")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("article", { name: "Transfer fee insight" }),
     ).not.toBeInTheDocument();
   });
 

@@ -4,6 +4,7 @@ import {
   type CashflowTrend,
   type CashflowTrendQuery,
   type DashboardSummary,
+  type TransferFeeInsight,
 } from "@zoption/shared";
 import { Hono, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -24,7 +25,7 @@ import {
 import { billingRepository, type BillingRepository } from "./db/billing";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
-import { loadCashflowTrend, loadDashboard } from "./db/dashboard";
+import { loadCashflowTrend, loadDashboard, loadTransferFeeInsight } from "./db/dashboard";
 import { debtRepository, type DebtRepository } from "./db/debts";
 import { calendarEventRepository, type CalendarEventRepository } from "./db/events";
 import { financialGoalRepository, type FinancialGoalRepository } from "./db/goals";
@@ -78,9 +79,16 @@ type CashflowTrendLoader = (
   query: CashflowTrendQuery,
 ) => Promise<CashflowTrend>;
 
+type TransferFeeLoader = (
+  env: Bindings,
+  tenantId: string,
+  referenceDate: string,
+) => Promise<TransferFeeInsight>;
+
 export interface AppOptions {
   dashboardLoader?: DashboardLoader;
   cashflowTrendLoader?: CashflowTrendLoader;
+  transferFeeLoader?: TransferFeeLoader;
   readinessCheck?: (env: Bindings) => Promise<void>;
   transactions?: TransactionRepository;
   categories?: CategoryRepository;
@@ -108,6 +116,7 @@ export function createApp(options: AppOptions = {}) {
   const app = new Hono<AppEnvironment>();
   const dashboardLoader = options.dashboardLoader ?? loadDashboard;
   const cashflowTrendLoader = options.cashflowTrendLoader ?? loadCashflowTrend;
+  const transferFeeLoader = options.transferFeeLoader ?? loadTransferFeeInsight;
   const transactionStore = options.transactions ?? transactionRepository;
   const categoryStore = options.categories ?? categoryRepository;
   const accountStore = options.accounts ?? accountRepository;
@@ -347,6 +356,13 @@ export function createApp(options: AppOptions = {}) {
     }
     return context.json(
       await cashflowTrendLoader(context.env, context.get("tenant").tenantId, parsed.data),
+    );
+  });
+
+  app.get("/api/app/dashboard/transfer-fees", async (context) => {
+    const referenceDate = new Date().toISOString().slice(0, 10);
+    return context.json(
+      await transferFeeLoader(context.env, context.get("tenant").tenantId, referenceDate),
     );
   });
 
