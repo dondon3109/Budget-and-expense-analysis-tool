@@ -68,7 +68,53 @@ function structuredDataGraph(...nodes: StructuredDataNode[]): StructuredDataGrap
 }
 
 function homepageStructuredData(): StructuredDataGraph {
-  return structuredDataGraph(websiteNode(), {
+  const faq = {
+    "@type": "FAQPage",
+    "@id": `${SITE_ORIGIN}/#faq`,
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "Does Zoption connect to my bank?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "No. Zoption does not connect to banks or ask for banking credentials. You import a CSV, Excel, or bank export file — or add rows yourself — and review every entry before anything is saved.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What file formats can I import?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "CSV, XLSX, and XLS. Pick a workbook, choose a worksheet, and see it visualized after you review each row.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Is my workspace private?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Your workspace starts empty and contains only the records you choose to add. For details on how account, financial, and imported-transaction information is handled, see the Privacy Policy.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How are money amounts stored?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Amounts are represented safely in integer centavos and totaled in plain language, so the calculations stay transparent and easy to follow.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Do I need financial expertise to use Zoption?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "No. Zoption keeps the language jargon-free and every calculation transparent, so you can track expenses and set budgets without a finance background.",
+        },
+      },
+    ],
+  };
+  const application = {
     "@type": "WebApplication",
     "@id": WEB_APPLICATION_ID,
     name: SITE_NAME,
@@ -84,7 +130,8 @@ function homepageStructuredData(): StructuredDataGraph {
       "See totals, trends, categories, and budget progress together.",
       "Start from a clean workspace and add only the records you choose.",
     ],
-  });
+  };
+  return structuredDataGraph(websiteNode(), application, faq);
 }
 
 function legalPageStructuredData(

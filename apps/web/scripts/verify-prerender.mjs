@@ -29,7 +29,6 @@ const FORBIDDEN_SCHEMA_TYPES = new Set([
   "AggregateRating",
   "Review",
   "BreadcrumbList",
-  "FAQPage",
   "LocalBusiness",
   "SearchAction",
   "SoftwareApplication",

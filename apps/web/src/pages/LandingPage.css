@@ -760,6 +760,47 @@
   justify-content: center;
   gap: 10px;
 }
+.faq {
+  padding: 100px 24px 110px;
+  background: var(--paper);
+}
+.faq h2 {
+  max-width: 700px;
+  margin: 12px auto 34px;
+  text-align: center;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  font-size: 40px;
+  letter-spacing: -0.025em;
+}
+.faq-lead {
+  max-width: 640px;
+  margin: -20px auto 30px;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.faq-list {
+  margin: 0 auto;
+  max-width: 760px;
+  display: grid;
+  gap: 14px;
+}
+.faq-item {
+  padding: 18px 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.faq-item dt {
+  color: var(--ink);
+  font-weight: 600;
+}
+.faq-item dd {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
 @media (max-width: 1050px) {
   .hero {
     grid-template-columns: 1fr;

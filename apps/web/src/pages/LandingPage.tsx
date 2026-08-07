@@ -313,6 +313,53 @@ export function LandingPage() {
             </Link>
           </div>
         </section>
+        <section className="faq" id="faq" aria-labelledby="faq-title">
+          <p className="eyebrow">Common questions</p>
+          <h2 id="faq-title">Budget and expense tracking, plainly answered.</h2>
+          <p className="faq-lead">
+            How Zoption handles transaction imports, privacy, and money math — as a budget tracker
+            and expense tracker that does not connect to a bank.
+          </p>
+          <dl className="faq-list">
+            <div className="faq-item">
+              <dt>Does Zoption connect to my bank?</dt>
+              <dd>
+                No. Zoption does not connect to banks or ask for banking credentials. You
+                import a CSV, Excel, or bank export file — or add rows yourself — and review
+                every entry before anything is saved.
+              </dd>
+            </div>
+            <div className="faq-item">
+              <dt>What file formats can I import?</dt>
+              <dd>
+                CSV, XLSX, and XLS. Pick a workbook, choose a worksheet, and see it visualized
+                after you review each row.
+              </dd>
+            </div>
+            <div className="faq-item">
+              <dt>Is my workspace private?</dt>
+              <dd>
+                Your workspace starts empty and contains only the records you choose to add.
+                For details on how account, financial, and imported-transaction information is
+                handled, see the Privacy Policy.
+              </dd>
+            </div>
+            <div className="faq-item">
+              <dt>How are money amounts stored?</dt>
+              <dd>
+                Amounts are represented safely in integer centavos and totaled in plain
+                language, so the calculations stay transparent and easy to follow.
+              </dd>
+            </div>
+            <div className="faq-item">
+              <dt>Do I need financial expertise to use Zoption?</dt>
+              <dd>
+                No. Zoption keeps the language jargon-free and every calculation transparent,
+                so you can track expenses and set budgets without a finance background.
+              </dd>
+            </div>
+          </dl>
+        </section>
       </main>
       <LegalFooter />
     </div>
