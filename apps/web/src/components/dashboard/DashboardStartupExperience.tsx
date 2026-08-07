@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
+import { useRootLock } from "../../hooks/useRootLock";
 
 import "./DashboardStartupExperience.css";
 
@@ -113,30 +114,7 @@ export function DashboardStartupExperience({
   }, [onComplete, phase, reduceMotion]);
 
   const isVisible = phase !== "hidden";
-
-  useLayoutEffect(() => {
-    if (!isVisible) return undefined;
-
-    const root = document.getElementById("root");
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
-    const previousInert = root?.inert ?? false;
-
-    if (root) {
-      root.inert = true;
-      root.setAttribute("aria-hidden", "true");
-    }
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      if (root) {
-        root.inert = previousInert;
-        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
-        else root.setAttribute("aria-hidden", previousAriaHidden);
-      }
-      document.body.style.overflow = previousBodyOverflow;
-    };
-  }, [isVisible]);
+  useRootLock(isVisible);
 
   if (!isVisible) return null;
 
