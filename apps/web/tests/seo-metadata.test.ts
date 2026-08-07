@@ -106,7 +106,6 @@ describe("public SEO metadata", () => {
       "AggregateRating",
       "Review",
       "BreadcrumbList",
-      "FAQPage",
       "LocalBusiness",
       "SearchAction",
       "SoftwareApplication",

@@ -495,8 +495,11 @@ describe("Profile dashboard account management", () => {
     });
 
     expect(
-      within(dialog).getByRole("checkbox", { name: "Earn automatic interest" }),
-    ).toBeDisabled();
+      within(dialog).getByText(/Earn automatic interest on this account/),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("checkbox", { name: "Earn automatic interest" }),
+    ).not.toBeInTheDocument();
     expect(
       within(dialog).getByText(/Automatic interest is a Pro feature/),
     ).toBeInTheDocument();

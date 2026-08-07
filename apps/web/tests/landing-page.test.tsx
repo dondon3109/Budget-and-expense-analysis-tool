@@ -37,45 +37,45 @@ describe("landing page", () => {
       screen.getByRole("button", { name: /choose theme\. current theme: (light|dark|coffee)/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Learn more" })).toBeInTheDocument();
-    expect(screen.getByRole("list", { name: "Why Zoption" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Zoption at a glance" })).toBeInTheDocument();
   });
 
-  it("highlights file imports without the extra hero label", () => {
+  it("highlights the six modules including subscriptions, savings, and the assistant", () => {
     renderLanding();
 
-    expect(screen.queryByText("A calmer way to understand your money")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", {
-        level: 1,
-        name: "See where your money goes. Decide what comes next.",
-      }),
-    ).toBeInTheDocument();
-
-    const importSection = screen.getByRole("region", {
-      name: "Import from the files you already use.",
+    const modules = screen.getByRole("region", {
+      name: /everything that shapes your month/i,
     });
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(
+      "See where your money goes",
+    );
     expect(
-      within(importSection).getByRole("heading", { name: "Start with Excel" }),
+      within(modules).getByRole("heading", { name: "Import from the files you already keep." }),
     ).toBeInTheDocument();
     expect(
-      within(importSection).getByText(
-        /Already tracking finances in Excel\? Import your workbook, choose a worksheet/i,
-      ),
+      within(modules).getByRole("heading", { name: "Set budgets that follow you." }),
     ).toBeInTheDocument();
     expect(
-      within(importSection).getByRole("heading", { name: "Bring your bank export" }),
+      within(modules).getByRole("heading", { name: "Name the bills that quietly repeat." }),
     ).toBeInTheDocument();
     expect(
-      within(importSection).getByText(
-        /Export your bank transactions, import the file, and see your spending habits/i,
-      ),
+      within(modules).getByRole("heading", { name: "Move money without surprises." }),
     ).toBeInTheDocument();
+    expect(
+      within(modules).getByRole("heading", { name: "Put your savings to work while you sleep." }),
+    ).toBeInTheDocument();
+    expect(
+      within(modules).getByRole("heading", { name: "Ask your numbers, not a chatbot." }),
+    ).toBeInTheDocument();
+    expect(within(modules).getAllByText(/subscription/i).length).toBeGreaterThan(0);
   });
 
   it("presents supported export formats without duplicate announcements", () => {
     renderLanding();
 
-    const formatsSection = screen.getByRole("region", { name: "Supported Export Formats" });
+    const formatsSection = screen.getByRole("region", {
+      name: /bring a bank or spreadsheet export/i,
+    });
     const institutions = within(formatsSection).getByRole("list", {
       name: "Supported institutions",
     });
@@ -90,22 +90,16 @@ describe("landing page", () => {
       ),
     ).toBeInTheDocument();
 
-    const visualTrack = formatsSection.querySelector(".supported-formats-track");
+    const visualTrack = formatsSection.querySelector(".formats-track");
     expect(visualTrack).toHaveAttribute("aria-hidden", "true");
     expect(visualTrack?.querySelectorAll('[data-marquee-copy="duplicate"]')).toHaveLength(1);
-
-    expect(
-      within(formatsSection).queryByRole("button", {
-        name: /supported export formats animation/i,
-      }),
-    ).not.toBeInTheDocument();
   });
 
   it("labels the dashboard artwork as illustrative and explains the empty start", () => {
     renderLanding();
 
     const preview = screen.getByRole("img", {
-      name: "Illustrative preview of the Zoption monthly dashboard",
+      name: "Illustrative preview of the Zoption monthly overview",
     });
 
     expect(preview).toBeInTheDocument();
