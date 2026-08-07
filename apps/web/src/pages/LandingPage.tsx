@@ -1,16 +1,11 @@
 import {
-  ArrowLeftRight,
   ArrowRight,
   Check,
   Landmark,
   PiggyBank,
-  Receipt,
-  Repeat,
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  Upload,
-  Wallet,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import "./LandingPage.css";

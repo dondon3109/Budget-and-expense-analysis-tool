@@ -88,7 +88,7 @@ describe("fx rates", () => {
       json: async () => ({ result: "success", rates: { PHP: 59.4 } }),
     } as Response);
 
-    const stored = await storeFxRate({ DB } as unknown as Bindings, now);
+    const stored = await storeFxRate({ DB }, now);
     expect(stored?.usdToPhp).toBe(59.4);
     expect(stored?.date).toBe("2026-08-07");
     expect(inserted).toHaveLength(1);
@@ -105,7 +105,7 @@ describe("fx rates", () => {
       json: async () => ({ result: "success", rates: { PHP: 59.4 } }),
     } as Response);
 
-    const stored = await storeFxRate({ DB } as unknown as Bindings, now);
+    const stored = await storeFxRate({ DB }, now);
     expect(stored?.usdToPhp).toBe(58.1);
     expect(stub).not.toHaveBeenCalled();
     stub.mockRestore();
@@ -115,12 +115,12 @@ describe("fx rates", () => {
     const { DB } = asBindings([
       { date: "2026-08-06", usdToPhp: 58.9, source: "open.er-api.com", fetchedAt: "x" },
     ]);
-    expect(await loadUsdToPhp({ DB } as unknown as Bindings, "2026-08-06")).toBe(58.9);
+    expect(await loadUsdToPhp({ DB }, "2026-08-06")).toBe(58.9);
   });
 
   it("falls back to the fallback rate when nothing has ever been stored", async () => {
     const { DB } = asBindings([]);
-    expect(await loadUsdToPhp({ DB } as unknown as Bindings, "2026-08-07")).toBe(
+    expect(await loadUsdToPhp({ DB }, "2026-08-07")).toBe(
       FALLBACK_USD_TO_PHP,
     );
   });
@@ -128,6 +128,6 @@ describe("fx rates", () => {
   it("refreshDailyFxRate returns null on provider failure without throwing", async () => {
     const { DB } = asBindings([]);
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("boom"));
-    await expect(refreshDailyFxRate({ DB } as unknown as Bindings)).resolves.toBeNull();
+    await expect(refreshDailyFxRate({ DB })).resolves.toBeNull();
   });
 });

@@ -29,7 +29,7 @@ export async function fetchUsdToPhp(now = new Date()): Promise<FxRateResult> {
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`FX fetch failed with ${response.status}`);
-    const payload = (await response.json()) as { result?: string; rates?: Record<string, number> };
+    const payload: { result?: string; rates?: Record<string, number> } = await response.json();
     if (payload.result !== "success" || typeof payload.rates?.PHP !== "number") {
       throw new Error("FX provider returned an unexpected payload");
     }
@@ -86,7 +86,6 @@ export async function refreshDailyFxRate(env: Bindings): Promise<FxRateResult | 
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface StoredFxRow {
   date: string;
   usdToPhp: number;
