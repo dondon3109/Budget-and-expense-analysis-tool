@@ -13,6 +13,25 @@
   padding: 60px 0 72px;
 }
 
+/* Eyebrow chips: pill treatment for the dashboard + account-settings headers,
+   matching the landing page visual language. */
+.dashboard-page .eyebrow {
+  width: fit-content;
+  margin: 0 0 14px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--action-strong);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
 .dashboard-header {
   display: flex;
   align-items: flex-start;
@@ -27,9 +46,9 @@
 .dashboard-header h1 {
   margin: 0;
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(36px, 3.2vw, 44px);
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: -0.028em;
   line-height: 1.04;
 }
@@ -346,11 +365,20 @@
 .mobile-header .brand-mark {
   width: 32px;
   height: 32px;
+  display: grid;
+  place-items: center;
   color: var(--action-strong);
   border: 1px solid color-mix(in srgb, var(--action) 35%, var(--line));
   border-radius: 10px;
   background: color-mix(in srgb, var(--action) 8%, transparent);
   box-shadow: none;
+}
+
+.sidebar .brand-mark .brand-monogram,
+.mobile-header .brand-mark .brand-monogram {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
 }
 
 .sidebar .brand-wordmark,

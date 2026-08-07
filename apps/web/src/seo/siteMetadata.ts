@@ -9,13 +9,19 @@ declare const __SEARCH_INDEXING_ENABLED__: boolean;
 const searchIndexingEnabled =
   typeof __SEARCH_INDEXING_ENABLED__ === "undefined" || __SEARCH_INDEXING_ENABLED__;
 
-export type PublicRoutePath = "/" | "/terms-of-service" | "/privacy-policy" | "/cookie-policy";
+export type PublicRoutePath =
+  | "/"
+  | "/terms-of-service"
+  | "/privacy-policy"
+  | "/cookie-policy"
+  | "/faq";
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/",
   "/terms-of-service",
   "/privacy-policy",
   "/cookie-policy",
+  "/faq",
 ];
 
 type StructuredDataNode = Record<string, unknown>;
@@ -68,52 +74,6 @@ function structuredDataGraph(...nodes: StructuredDataNode[]): StructuredDataGrap
 }
 
 function homepageStructuredData(): StructuredDataGraph {
-  const faq = {
-    "@type": "FAQPage",
-    "@id": `${SITE_ORIGIN}/#faq`,
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "Does Zoption connect to my bank?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "No. Zoption does not connect to banks or ask for banking credentials. You import a CSV, Excel, or bank export file — or add rows yourself — and review every entry before anything is saved.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "What file formats can I import?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "CSV, XLSX, and XLS. Pick a workbook, choose a worksheet, and see it visualized after you review each row.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Is my workspace private?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Your workspace starts empty and contains only the records you choose to add. For details on how account, financial, and imported-transaction information is handled, see the Privacy Policy.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "How are money amounts stored?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Amounts are represented safely in integer centavos and totaled in plain language, so the calculations stay transparent and easy to follow.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Do I need financial expertise to use Zoption?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "No. Zoption keeps the language jargon-free and every calculation transparent, so you can track expenses and set budgets without a finance background.",
-        },
-      },
-    ],
-  };
   const application = {
     "@type": "WebApplication",
     "@id": WEB_APPLICATION_ID,
@@ -131,7 +91,101 @@ function homepageStructuredData(): StructuredDataGraph {
       "Start from a clean workspace and add only the records you choose.",
     ],
   };
-  return structuredDataGraph(websiteNode(), application, faq);
+  return structuredDataGraph(websiteNode(), application);
+}
+
+type FaqItem = {
+  question: string;
+  answer: string;
+};
+
+const FAQ_ITEMS: FaqItem[] = [
+  {
+    question: "Does Zoption connect to my bank?",
+    answer:
+      "No. Zoption does not connect to banks or ask for banking credentials. You import a CSV, Excel, or bank export file — or add rows yourself — and review every entry before anything is saved.",
+  },
+  {
+    question: "What file formats can I import?",
+    answer:
+      "CSV, XLSX, and XLS. Pick a workbook, choose a worksheet, and see it visualized after you review each row.",
+  },
+  {
+    question: "Is my workspace private?",
+    answer:
+      "Your workspace starts empty and contains only the records you choose to add. For details on how account, financial, and imported-transaction information is handled, see the Privacy Policy.",
+  },
+  {
+    question: "How are money amounts stored?",
+    answer:
+      "Amounts are represented safely in integer centavos and totaled in plain language, so the calculations stay transparent and easy to follow.",
+  },
+  {
+    question: "Do I need financial expertise to use Zoption?",
+    answer:
+      "No. Zoption keeps the language jargon-free and every calculation transparent, so you can track expenses and set budgets without a finance background.",
+  },
+  {
+    question: "How does the AI Financial Assistant work, and what does it read?",
+    answer:
+      "The assistant is optional and requires separate, versioned consent. It answers questions about your workspace and reads only what you ask about, never edits a number, and explains the reasoning behind each answer. It is read-only: it does not create, edit, or delete your data.",
+  },
+  {
+    question: "Can I track subscriptions and recurring charges?",
+    answer:
+      "Yes. Log a subscription and Zoption records its next charge as an expense, so your balance already reflects what's coming. Edit, cancel, or delete a subscription and the recorded charge stays in sync, including annual plans.",
+  },
+  {
+    question: "How does automatic savings interest work?",
+    answer:
+      "Automatic interest is a Pro feature. On a savings account you can set the annual rate and pay day you want, and Zoption accrues interest daily, monthly, or yearly and adds the earned amount to your balance automatically.",
+  },
+  {
+    question: "How do transfers between accounts work?",
+    answer:
+      "Transfer between your own accounts and Zoption shows the exact amount that arrives after any fee is deducted, then adds the transfer to the ledger. Transfers work across your accounts in both dollars and pesos.",
+  },
+  {
+    question: "How can I export or delete my data?",
+    answer:
+      "Exports are available through the current filtered transaction CSV feature. You may request deletion of your account and associated data through the account deletion control in your account settings; an ongoing paid subscription must be canceled or otherwise resolved first.",
+  },
+  {
+    question: "How does Zoption billing work?",
+    answer:
+      "Zoption offers monthly and annual paid subscription options through PayPal. Prices are charged in Philippine pesos, and subscriptions renew automatically for the selected interval unless you cancel renewal. You can request cancellation through Plan and billing in Zoption.",
+  },
+];
+
+export const FAQ_ITEMS_PUBLIC: readonly FaqItem[] = FAQ_ITEMS;
+
+function faqStructuredData(): StructuredDataGraph {
+  return structuredDataGraph(
+    websiteNode(),
+    {
+      "@type": "WebPage",
+      "@id": `${SITE_ORIGIN}/faq#webpage`,
+      name: "FAQ — Zoption",
+      description:
+        "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, subscription tracking, savings interest, the AI assistant, privacy, and billing.",
+      url: `${SITE_ORIGIN}/faq`,
+      inLanguage: "en",
+      dateModified: LEGAL_PAGE_LAST_MODIFIED,
+      isPartOf: { "@id": WEBSITE_ID },
+    },
+    {
+      "@type": "FAQPage",
+      "@id": `${SITE_ORIGIN}/#faq`,
+      mainEntity: FAQ_ITEMS.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    },
+  );
 }
 
 function legalPageStructuredData(
@@ -220,6 +274,19 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       lastModified: LEGAL_PAGE_LAST_MODIFIED,
       changeFrequency: "yearly",
       priority: 0.4,
+    },
+  },
+  "/faq": {
+    title: "FAQ — Zoption",
+    description:
+      "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, subscription tracking, savings interest, the AI assistant, privacy, and billing.",
+    canonical: `${SITE_ORIGIN}/faq`,
+    robots: "index,follow",
+    structuredData: faqStructuredData(),
+    sitemap: {
+      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.6,
     },
   },
 };

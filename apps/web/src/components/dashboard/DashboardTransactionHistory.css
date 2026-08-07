@@ -21,7 +21,8 @@
 .dashboard-history-heading h2 {
   margin: 0;
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
+  font-weight: 400;
   font-size: 19px;
 }
 
@@ -73,7 +74,8 @@
 
 .dashboard-history-status strong {
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
+  font-weight: 400;
   font-size: 17px;
 }
 

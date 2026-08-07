@@ -10,6 +10,7 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
   color: #19352f;
   background: #f4f1e9;
   font-synthesis: none;

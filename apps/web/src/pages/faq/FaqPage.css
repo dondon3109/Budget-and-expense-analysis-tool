@@ -1,0 +1,32 @@
+.faq-page-list {
+  display: grid;
+  gap: 16px;
+}
+
+.faq-page-item {
+  padding: 20px 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.faq-page-item h2 {
+  margin: 0 0 8px;
+}
+
+.faq-page-item p {
+  margin: 0;
+}
+
+.faq-page-cta {
+  padding: 26px 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--page-glow);
+  text-align: center;
+}
+
+.faq-page-cta p {
+  max-width: 56ch;
+  margin: 0 auto 20px;
+}

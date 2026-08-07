@@ -893,14 +893,57 @@
   border-radius: 13px;
   background: var(--lp-surface);
 }
-.faq-item dt {
+.faq-item::details-content {
+  block-size: fit-content;
+}
+.faq-item summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  list-style: none;
   font-weight: 600;
   color: var(--lp-fg);
 }
+.faq-item summary::after {
+  content: "+";
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--lp-action-soft, var(--lp-border));
+  color: var(--lp-fg);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+.faq-item[open] summary::after {
+  content: "–";
+  transform: rotate(0deg);
+}
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
 .faq-item dd {
-  margin: 6px 0 0;
+  margin: 10px 0 0;
   line-height: 1.65;
   color: var(--lp-muted);
+}
+.faq-see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 28px auto 0;
+  color: var(--action);
+  font-weight: 600;
+  text-decoration: none;
+}
+.faq-see-all:hover {
+  text-decoration: underline;
 }
 
 /* Responsive */

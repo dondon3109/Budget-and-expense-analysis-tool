@@ -2,6 +2,7 @@ import { type ReactElement } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import { CookiePolicyPage } from "./pages/legal/CookiePolicyPage";
+import { FaqPage } from "./pages/faq/FaqPage";
 import { PrivacyPolicyPage } from "./pages/legal/PrivacyPolicyPage";
 import { TermsOfServicePage } from "./pages/legal/TermsOfServicePage";
 import { LandingPage } from "./pages/LandingPage";
@@ -13,6 +14,7 @@ const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
   "/terms-of-service": <TermsOfServicePage />,
   "/privacy-policy": <PrivacyPolicyPage />,
   "/cookie-policy": <CookiePolicyPage />,
+  "/faq": <FaqPage />,
 };
 
 export function publicRouteElements(rootElement = PUBLIC_ROUTE_ELEMENTS["/"]) {

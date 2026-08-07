@@ -499,44 +499,47 @@ export function LandingPage() {
             </p>
           </div>
           <dl className="faq-list">
-            <div className="faq-item">
-              <dt>Does Zoption connect to my bank?</dt>
+            <details className="faq-item">
+              <summary>Does Zoption connect to my bank?</summary>
               <dd>
                 No. Zoption never connects to banks or asks for banking credentials. You import a CSV,
                 Excel, or bank export file — or add rows yourself — and review every entry before
                 anything is saved.
               </dd>
-            </div>
-            <div className="faq-item">
-              <dt>What file formats can I import?</dt>
+            </details>
+            <details className="faq-item">
+              <summary>What file formats can I import?</summary>
               <dd>
                 CSV, XLSX, and XLS. Pick a workbook, choose a worksheet, map the columns, and see it
                 visualized after you review each row.
               </dd>
-            </div>
-            <div className="faq-item">
-              <dt>Is my workspace private?</dt>
+            </details>
+            <details className="faq-item">
+              <summary>Is my workspace private?</summary>
               <dd>
                 Your workspace starts empty and contains only the records you choose to add. For
-                details on how account, financial, and imported-transaction information is handled, see
-                the Privacy Policy.
+                details about how account, financial, and imported-transaction information is handled,
+                see the Privacy Policy.
               </dd>
-            </div>
-            <div className="faq-item">
-              <dt>How are money amounts stored?</dt>
+            </details>
+            <details className="faq-item">
+              <summary>How are money amounts stored?</summary>
               <dd>
                 Amounts are represented safely in integer centavos and totaled in plain language, so
                 the calculations stay transparent and easy to follow.
               </dd>
-            </div>
-            <div className="faq-item">
-              <dt>Do I need financial expertise to use Zoption?</dt>
+            </details>
+            <details className="faq-item">
+              <summary>Do I need financial expertise to use Zoption?</summary>
               <dd>
                 No. Zoption keeps the language jargon-free and every calculation transparent, so you
                 can track expenses and set budgets without a finance background.
               </dd>
-            </div>
+            </details>
           </dl>
+          <Link className="faq-see-all" to="/faq">
+            See all common questions <ArrowRight size={16} aria-hidden="true" />
+          </Link>
         </section>
       </main>
       <LegalFooter />

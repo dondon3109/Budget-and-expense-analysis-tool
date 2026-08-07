@@ -132,6 +132,19 @@ describe("public SEO metadata", () => {
     }
   });
 
+  it("declares FAQ structured data only on the dedicated /faq page", () => {
+    for (const path of PUBLIC_ROUTE_PATHS) {
+      const graph = structuredDataFor(path);
+      const faqCount = nodesByType(graph["@graph"], "FAQPage").length;
+      expect(faqCount).toBe(path === "/faq" ? 1 : 0);
+    }
+
+    const faq = nodesByType(structuredDataFor("/faq")["@graph"], "FAQPage")[0];
+    const questions = faq?.mainEntity as SchemaNode[] | undefined;
+    expect(Array.isArray(questions) && questions.length).toBeGreaterThan(5);
+    expect(questions?.every((item) => item["@type"] === "Question")).toBe(true);
+  });
+
   it("keeps tracking-only public URLs indexable with clean canonicals", () => {
     const metadata = getRouteSeoMetadata(
       "/privacy-policy/",

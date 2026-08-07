@@ -16,8 +16,9 @@ margin-top: 32px;
 max-width: 620px;
   margin: 0;
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(30px, 4vw, 46px);
+  font-weight: 400;
   line-height: 1.08;
   letter-spacing: -0.03em;
 }
@@ -226,7 +227,8 @@ display: flex;
 .panel-heading h2 {
 margin: 0;
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
+  font-weight: 400;
   font-size: 19px;
 }
 
@@ -244,7 +246,8 @@ min-height: 215px;
 
 .panel-empty strong {
 color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
+  font-weight: 400;
   font-size: 18px;
 }
 
@@ -289,7 +292,8 @@ color: var(--subtle);
 max-width: 76px;
   margin-top: 4px;
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
+  font-weight: 400;
   font-size: 14px;
   line-height: 1.15;
 }
@@ -514,7 +518,8 @@ color: var(--danger);
 
 .savings-insight strong {
 color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
+  font-weight: 400;
   font-size: 23px;
 }
 
@@ -679,9 +684,9 @@ padding: 23px 25px;
 }
 
 .dashboard-page .overview-stat > strong {
-font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(24px, 2vw, 30px);
-  font-weight: 760;
+font-family: var(--font-display);
+  font-size: clamp(26px, 2.3vw, 32px);
+  font-weight: 400;
   letter-spacing: -0.035em;
 }
 
@@ -696,7 +701,9 @@ padding: 25px;
 }
 
 .dashboard-page .panel-heading h2 {
-font-size: 20px;
+font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
   letter-spacing: -0.015em;
 }
 
@@ -1074,8 +1081,9 @@ color: color-mix(in srgb, var(--paper) 68%, var(--ink));
 
 .dashboard-balance-heading h2 {
 margin-top: 2px;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 20px;
+  font-weight: 400;
   line-height: 1.1;
 }
 
@@ -1140,19 +1148,20 @@ min-height: 30px;
 }
 
 .dashboard-account-add:hover {
-color: var(--paper);
-  background: var(--action);
+color: var(--solid-text);
+  background: var(--solid-bg);
+  box-shadow: 0 2px 8px var(--shadow);
 }
 
 .dashboard-account-form {
 margin-top: 14px;
-  padding: 14px;
+  padding: 16px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr) auto;
   gap: 10px;
   align-items: end;
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: 12px;
   background: var(--surface);
 }
 
@@ -1172,12 +1181,12 @@ color: var(--muted);
 
 .dashboard-account-form input,.dashboard-account-form select {
 width: 100%;
-  height: 38px;
+  height: 40px;
   min-width: 0;
-  padding: 0 10px;
+  padding: 0 11px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--paper);
   font: inherit;
   font-size: 12px;
@@ -1608,8 +1617,8 @@ width: 100%;
 
 .form-modal .account-interest-settings input:focus,
 .form-modal .account-interest-settings select:focus {
-  border-color: #76a994;
-  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+  border-color: var(--action);
+  box-shadow: 0 0 0 3px var(--brand-glow);
 }
 
 .form-modal .form-hint {
