@@ -62,7 +62,7 @@ export function LandingPage() {
               <ShieldCheck size={15} aria-hidden="true" /> Private by design &middot; starts empty
             </p>
             <h1>
-              See where your money goes, then decide <em>what comes next.</em>
+              See where your money goes. Decide <em>what comes next.</em>
             </h1>
             <p className="hero-lead">
               Import everyday transactions, set practical budgets, and turn scattered spending into a
@@ -71,7 +71,7 @@ export function LandingPage() {
             </p>
             <div className="hero-actions">
               <Link className="button primary" to="/signup">
-                Create your workspace <ArrowRight size={18} aria-hidden="true" />
+                Create account <ArrowRight size={18} aria-hidden="true" />
               </Link>
               <a className="button secondary" href="#modules">
                 Explore the modules
@@ -95,7 +95,7 @@ export function LandingPage() {
           <div
             className="hero-visual"
             role="img"
-            aria-label="Illustrative preview of the Zoption monthly overview"
+            aria-label="Illustrative preview of the Zoption monthly dashboard"
           >
             <div className="preview-top">
               <div>
@@ -146,10 +146,12 @@ export function LandingPage() {
           </div>
 
           <div className="facets">
-            <article className="facet">
+            <article className="facet import-support">
               <div className="facet-text">
                 <p className="facet-kicker">Filing</p>
-                <h3>Import from the files you already keep.</h3>
+                <h3>Import from the files you already use.</h3>
+                <h4>Start with Excel</h4>
+                <h4>Bring your bank export</h4>
                 <p>
                   Whether it&rsquo;s a bank export or a spreadsheet, choosing a CSV, XLSX, or XLS
                   workbook opens a preview where you map columns, catch errors, and flag duplicates —

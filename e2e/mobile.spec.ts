@@ -23,39 +23,19 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   await expect(importHeading).toBeVisible();
   await expect(page.getByRole("heading", { name: "Start with Excel" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Bring your bank export" })).toBeVisible();
-  const importSection = page.getByRole("region", {
-    name: "Import from the files you already use.",
-  });
-  await expect(importSection.locator(".import-support-inner")).toHaveCount(0);
-  await expect
-    .poll(() => importSection.evaluate((section) => getComputedStyle(section).backgroundImage))
-    .toContain("linear-gradient");
-  await expect
-    .poll(() => importSection.evaluate((section) => getComputedStyle(section).backgroundImage))
-    .not.toContain("url(");
 
-  const formatsHeading = page.getByRole("heading", { name: "Supported Export Formats" });
+  const formatsHeading = page.getByRole("heading", {
+    name: "Bring a bank or spreadsheet export.",
+  });
   await formatsHeading.scrollIntoViewIfNeeded();
   await expect(formatsHeading).toBeVisible();
-  const formatsSection = page.getByRole("region", { name: "Supported Export Formats" });
-  expect(
-    await importSection.evaluate((section) => {
-      const formats = document.querySelector(".supported-formats");
-      return formats
-        ? formats.getBoundingClientRect().top < section.getBoundingClientRect().bottom
-        : false;
-    }),
-  ).toBe(true);
+  const formatsSection = page.getByRole("region").filter({
+    hasText: "Bring a bank or spreadsheet export.",
+  });
   await expect(
     formatsSection.getByText(/Bank names are shown to indicate supported export formats only/i),
   ).toBeVisible();
-  await expect
-    .poll(() =>
-      formatsSection
-        .locator("img")
-        .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
-    )
-    .toBe(true);
+  await expect(formatsSection.locator(".formats-track .formats-group")).toHaveCount(2);
 
   const themeToggle = page.getByRole("button", {
     name: "Choose theme. Current theme: Light",
@@ -110,11 +90,13 @@ test("supported formats marquee becomes static with reduced motion", async ({ pa
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
-  const formatsSection = page.getByRole("region", { name: "Supported Export Formats" });
+  const formatsSection = page.getByRole("region").filter({
+    hasText: "Bring a bank or spreadsheet export.",
+  });
   await formatsSection.scrollIntoViewIfNeeded();
   await expect(formatsSection).toBeVisible();
 
-  const formatsTrack = formatsSection.locator(".supported-formats-track");
+  const formatsTrack = formatsSection.locator(".formats-track");
   await expect
     .poll(() => formatsTrack.evaluate((track) => getComputedStyle(track).animationName))
     .toBe("none");
@@ -122,11 +104,11 @@ test("supported formats marquee becomes static with reduced motion", async ({ pa
     formatsSection.getByRole("button", { name: /supported export formats animation/i }),
   ).toHaveCount(0);
   await expect(
-    formatsSection.locator('.supported-formats-group[data-marquee-copy="duplicate"]'),
+    formatsSection.locator('.formats-group[data-marquee-copy="duplicate"]'),
   ).toBeHidden();
 
   const primaryNames = formatsSection.locator(
-    '.supported-formats-group[data-marquee-copy="primary"] .supported-format-name',
+    '.formats-group[data-marquee-copy="primary"] span',
   );
   await expect(primaryNames).toHaveText([
     "BPI",

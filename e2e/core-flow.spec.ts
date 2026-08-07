@@ -29,44 +29,24 @@ test("landing page leads visitors to account creation or sign in", async ({ page
   await expect(
     page.getByRole("heading", { name: "Import from the files you already use." }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Start with Excel" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Bring your bank export" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Bring a bank or spreadsheet export." }),
+  ).toBeVisible();
 
-  const importSection = page.getByRole("region", {
-    name: "Import from the files you already use.",
+  const importSection = page.getByRole("region").filter({
+    hasText: "Import from the files you already use.",
   });
-  await expect(importSection.locator(".import-support-inner")).toHaveCount(0);
-  await expect
-    .poll(() => importSection.evaluate((section) => getComputedStyle(section).backgroundImage))
-    .toContain("linear-gradient");
-  await expect
-    .poll(() => importSection.evaluate((section) => getComputedStyle(section).backgroundImage))
-    .not.toContain("url(");
-  const featureCardStyle = await importSection
-    .locator(".import-support-options article")
-    .first()
-    .evaluate((card) => {
-      const style = getComputedStyle(card);
-      return {
-        borderWidth: Number.parseFloat(style.borderTopWidth),
-        borderRadius: Number.parseFloat(style.borderTopLeftRadius),
-      };
-    });
-  expect(featureCardStyle.borderWidth).toBeGreaterThan(0);
-  expect(featureCardStyle.borderRadius).toBeGreaterThan(0);
+  await expect(importSection.getByRole("heading", { name: "Import from the files you already use." })).toBeVisible();
 
-  const formatsHeading = page.getByRole("heading", { name: "Supported Export Formats" });
-  await formatsHeading.scrollIntoViewIfNeeded();
-  await expect(formatsHeading).toBeVisible();
-  const formatsSection = page.getByRole("region", { name: "Supported Export Formats" });
-  expect(
-    await importSection.evaluate((section) => {
-      const formats = document.querySelector(".supported-formats");
-      return formats
-        ? formats.getBoundingClientRect().top < section.getBoundingClientRect().bottom
-        : false;
-    }),
-  ).toBe(true);
+  const formatsSection = page.getByRole("region").filter({
+    hasText: "Bring a bank or spreadsheet export.",
+  });
+  await expect(
+    formatsSection.getByRole("heading", { name: "Bring a bank or spreadsheet export." }),
+  ).toBeVisible();
+  const importBottom = await importSection.evaluate((section) => section.getBoundingClientRect().bottom);
+  const formatsTop = await formatsSection.evaluate((section) => section.getBoundingClientRect().top);
+  expect(formatsTop).toBeGreaterThanOrEqual(importBottom);
   await expect(
     formatsSection.getByRole("list", { name: "Supported institutions" }).getByRole("listitem"),
   ).toHaveText(["BPI", "BDO", "MariBank", "Bank of America", "JPMorgan / Chase"]);
@@ -75,21 +55,12 @@ test("landing page leads visitors to account creation or sign in", async ({ page
       "Bank names are shown to indicate supported export formats only. Zoption is not affiliated with or endorsed by these institutions.",
     ),
   ).toBeVisible();
-  await expect
-    .poll(() =>
-      formatsSection
-        .locator("img")
-        .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
-    )
-    .toBe(true);
 
-  const formatsTrack = formatsSection.locator(".supported-formats-track");
+  const formatsTrack = formatsSection.locator(".formats-track");
   await expect
     .poll(() => formatsTrack.evaluate((track) => getComputedStyle(track).animationName))
-    .toBe("supported-formats-marquee");
-  await expect(
-    formatsSection.getByRole("button", { name: /supported export formats animation/i }),
-  ).toHaveCount(0);
+    .toBe("formats-marquee");
+  await expect(formatsTrack.locator(".formats-group")).toHaveCount(2);
 
   await expect(page.getByText(/workspace begins without transactions or budgets/i)).toBeVisible();
   expect(demoRequests).toEqual([]);

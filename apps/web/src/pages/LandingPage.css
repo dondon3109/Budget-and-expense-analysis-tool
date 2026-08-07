@@ -1022,8 +1022,14 @@
     width: 40px;
     padding: 0;
   }
+  .landing-account-actions .landing-sign-in {
+    padding: 8px 8px;
+  }
   .landing-account-actions .button {
-    display: none;
+    display: inline-flex;
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 14px;
   }
 }
 

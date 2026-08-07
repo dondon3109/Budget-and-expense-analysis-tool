@@ -50,7 +50,7 @@ describe("landing page", () => {
       "See where your money goes",
     );
     expect(
-      within(modules).getByRole("heading", { name: "Import from the files you already keep." }),
+      within(modules).getByRole("heading", { name: "Import from the files you already use." }),
     ).toBeInTheDocument();
     expect(
       within(modules).getByRole("heading", { name: "Set budgets that follow you." }),
@@ -99,7 +99,7 @@ describe("landing page", () => {
     renderLanding();
 
     const preview = screen.getByRole("img", {
-      name: "Illustrative preview of the Zoption monthly overview",
+      name: "Illustrative preview of the Zoption monthly dashboard",
     });
 
     expect(preview).toBeInTheDocument();
