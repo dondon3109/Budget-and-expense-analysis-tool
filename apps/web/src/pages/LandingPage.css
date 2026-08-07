@@ -866,7 +866,7 @@
   background: var(--lp-accent);
   border-color: var(--lp-accent);
 }
-.cta-note {
+.landing-page .cta-note {
   margin: 16px auto 0;
   max-width: 440px;
   text-align: center;

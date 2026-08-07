@@ -173,8 +173,37 @@ describe("TransactionForm", () => {
     expect(screen.getByLabelText("Category")).toHaveValue("food");
   });
 
-  it("keeps a locked historical category selected for non-category edits", async () => {
+  it("defaults a new income entry to the Salary category when present", async () => {
+    const salaryCategory: CategoryRecord = {
+      ...category,
+      id: "salary",
+      name: "Salary",
+      kind: "income",
+    };
+    const otherIncome: CategoryRecord = {
+      ...category,
+      id: "other-income",
+      name: "Other income",
+      kind: "income",
+    };
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <TransactionForm
+        categories={[otherIncome, salaryCategory]}
+        accounts={accounts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
     const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText("Transaction type"), "income");
+
+    expect(screen.getByLabelText("Category")).toHaveValue("salary");
+  });
+
+  it("keeps a locked historical category selected for non-category edits", async () => {    const user = userEvent.setup();
     const lockedCategory: CategoryRecord = {
       ...category,
       id: "pro-food",

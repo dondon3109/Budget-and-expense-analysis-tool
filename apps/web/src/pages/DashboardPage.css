@@ -346,6 +346,11 @@ margin: 5px 0 0;
   font-size: 10px;
 }
 
+.trend-currency-note {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .trend-panel-actions {
 display: grid;
   justify-items: end;

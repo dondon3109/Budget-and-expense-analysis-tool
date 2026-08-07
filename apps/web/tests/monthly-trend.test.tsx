@@ -60,7 +60,7 @@ describe("MonthlyTrend", () => {
     render(<MonthlyTrend data={data} selectedView="sixMonth" onViewChange={vi.fn()} />);
 
     expect(screen.getByText("Six-month money in and expenses")).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Income" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Income (₱)" })).toBeInTheDocument();
     expect(screen.getByRole("rowheader", { name: "June 2026" })).toBeInTheDocument();
   });
 

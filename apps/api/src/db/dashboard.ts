@@ -16,6 +16,7 @@ import { and, eq, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { accounts, budgets, categories, transactions } from "../../../../db/schema";
+import { loadUsdToPhp } from "../fx/rates";
 import { accountRepository } from "./accounts";
 import type { Bindings } from "../types";
 
@@ -36,6 +37,7 @@ export async function loadCashflowTrend(
     .select({
       date: transactions.date,
       amountMinor: transactions.amountMinor,
+      currency: transactions.currency,
       kind: transactions.kind,
     })
     .from(transactions)
@@ -47,7 +49,20 @@ export async function loadCashflowTrend(
       ),
     );
 
-  return buildCashflowTrend(rows, query.view, query.anchorDate);
+  // Convert USD to a common PHP base using the stored daily rate so the
+  // weekly, monthly, and six-month cashflow view is a single consistent
+  // picture rather than silently mixing currencies. Transfers are excluded by
+  // buildCashflowTrend. A missing row falls back to the latest stored rate.
+  const usdToPhp = await loadUsdToPhp(env);
+  const normalized = rows.map((row) => ({
+    ...row,
+    amountMinor:
+      row.currency === "USD"
+        ? Math.round((row.amountMinor / 100) * usdToPhp) * 100
+        : row.amountMinor,
+  }));
+
+  return buildCashflowTrend(normalized, query.view, query.anchorDate);
 }
 
 async function loadBalancesByCurrency(

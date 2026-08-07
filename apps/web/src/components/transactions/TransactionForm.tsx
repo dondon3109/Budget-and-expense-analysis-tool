@@ -66,6 +66,16 @@ export function TransactionForm({
     [availableCategories],
   );
 
+  /** Default pick for a fresh entry: income prefers the starter "Salary"
+   *  category (which is the natural home for earned money), then falls back
+   *  to the first selectable category of the chosen kind. */
+  const preferredDefaultCategory = useMemo(() => {
+    const incomeSalary = kind === "income"
+      ? selectableCategories.find((category) => category.name === "Salary")
+      : undefined;
+    return incomeSalary ?? selectableCategories[0];
+  }, [kind, selectableCategories]);
+
   const transferNet = useMemo(() => {
     if (kind !== "transfer") return null;
     let amountMinor: number;
@@ -85,9 +95,9 @@ export function TransactionForm({
     const preservesLockedHistoricalCategory =
       selectedCategory?.locked && item?.categoryId === selectedCategory.id;
     if (!selectedCategory || (selectedCategory.locked && !preservesLockedHistoricalCategory)) {
-      setCategoryId(selectableCategories[0]?.id ?? "");
+      setCategoryId(preferredDefaultCategory?.id ?? "");
     }
-  }, [availableCategories, categoryId, item?.categoryId, selectableCategories]);
+  }, [availableCategories, categoryId, item?.categoryId, preferredDefaultCategory]);
   useEffect(() => {
     if (!activeAccounts.some((account) => account.id === accountId))
       setAccountId(activeAccounts[0]?.id ?? "");

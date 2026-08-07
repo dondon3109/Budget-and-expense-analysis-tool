@@ -3,6 +3,7 @@ import { createApp } from "./app";
 import { reconcileDuePayPalCheckouts } from "./billing/scheduled-reconciliation";
 import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
+import { refreshDailyFxRate } from "./fx/rates";
 import { creditDueInterest } from "./interest/scheduled-credit";
 import type { Bindings } from "./types";
 
@@ -30,6 +31,13 @@ export default {
       return;
     }
     if (controller.cron !== DAILY_MAINTENANCE_CRON) return;
+
+    const fx = await refreshDailyFxRate(env);
+    if (fx) {
+      console.log(
+        JSON.stringify({ message: "Daily exchange rate refreshed", date: fx.date, rate: fx.usdToPhp }),
+      );
+    }
 
     for (;;) {
       const deleted = await assistantRepository.cleanupExpired(env);

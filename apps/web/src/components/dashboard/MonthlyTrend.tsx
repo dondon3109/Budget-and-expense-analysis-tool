@@ -114,7 +114,12 @@ export function MonthlyTrend({
         <div>
           <p className="eyebrow">{selectedLabel} view</p>
           <h2 id="trend-title">Money in and out</h2>
-          {data && <p className="trend-period">{formatPeriod(data.range.from, data.range.to)}</p>}
+          {data && (
+            <p className="trend-period">
+              {formatPeriod(data.range.from, data.range.to)}
+              <span className="trend-currency-note"> · USD converted to ₱</span>
+            </p>
+          )}
         </div>
         <div className="trend-panel-actions">
           <div className="trend-view-options" role="radiogroup" aria-label="Cashflow time range">
@@ -235,7 +240,9 @@ export function MonthlyTrend({
                   labelFormatter={(label) =>
                     formatTrendTooltipDate(String(label), data.granularity)
                   }
-                  formatter={(value) => formatMoney(Number(value))}
+                  formatter={(value, name) =>
+                    `${name}: ${formatMoney(Number(value))}`
+                  }
                   contentStyle={{
                     background: "var(--chart-tooltip-bg)",
                     border: "1px solid var(--chart-tooltip-border)",
@@ -274,8 +281,8 @@ export function MonthlyTrend({
             <thead>
               <tr>
                 <th scope="col">Period</th>
-                <th scope="col">Income</th>
-                <th scope="col">Expenses</th>
+                <th scope="col">Income (₱)</th>
+                <th scope="col">Expenses (₱)</th>
               </tr>
             </thead>
             <tbody>
