@@ -625,15 +625,20 @@ export function DashboardPage() {
                 {editType === "savings" && (
                   <fieldset className="account-interest-fieldset">
                     <legend>Interest</legend>
-                    <label className="checkbox-inline">
-                      <input
-                        type="checkbox"
-                        checked={interestEnabled}
-                        onChange={(event) => setInterestEnabled(event.target.checked)}
-                        disabled={!isPro}
-                      />
-                      <span>Earn automatic interest</span>
-                    </label>
+                    {isPro ? (
+                      <label className="checkbox-inline">
+                        <input
+                          type="checkbox"
+                          checked={interestEnabled}
+                          onChange={(event) => setInterestEnabled(event.target.checked)}
+                        />
+                        <span>Earn automatic interest</span>
+                      </label>
+                    ) : (
+                      <p className="account-interest-free-option">
+                        Earn automatic interest on this account
+                      </p>
+                    )}
                     {isPro ? (interestEnabled && (
                       <div className="account-interest-settings">
                         <label>

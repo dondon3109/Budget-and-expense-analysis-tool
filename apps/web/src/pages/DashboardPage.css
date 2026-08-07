@@ -1539,6 +1539,21 @@ width: 100%;
   text-transform: uppercase;
 }
 
+/* Free tier: no checkbox rendered (the Pro checkbox would gate on it). Show a
+   plain callout label instead, so non-Pro users never see an unclickable
+   square. The Pro upgrade callout that leads this block is styled below. */
+.form-modal .account-interest-free-option {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  background: var(--surface-soft);
+}
+
 .form-modal .checkbox-inline {
   display: inline-flex;
   align-items: center;
