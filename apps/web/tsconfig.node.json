@@ -5,5 +5,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "tests/vite-config.test.ts"]
+  "include": ["deployment-config.ts", "vite.config.ts", "tests/vite-config.test.ts"]
 }

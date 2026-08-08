@@ -27,6 +27,7 @@ const WEBHOOK_EVENT_TYPES = [
   "BILLING.SUBSCRIPTION.CANCELLED",
   "BILLING.SUBSCRIPTION.EXPIRED",
   "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
+  "PAYMENT.SALE.COMPLETED",
 ];
 
 class LiveSetupError extends Error {
@@ -130,9 +131,14 @@ async function listPages(fetchImpl, accessTokenValue, path, collectionName, oper
   while (true) {
     const separator = path.includes("?") ? "&" : "?";
     const payload = record(
-      await requestJson(fetchImpl, operation, `${path}${separator}page_size=20&page=${page}&total_required=true`, {
-        headers: bearerHeaders(accessTokenValue),
-      }),
+      await requestJson(
+        fetchImpl,
+        operation,
+        `${path}${separator}page_size=20&page=${page}&total_required=true`,
+        {
+          headers: bearerHeaders(accessTokenValue),
+        },
+      ),
       operation,
     );
     const collection = payload[collectionName];
@@ -147,9 +153,14 @@ async function listPages(fetchImpl, accessTokenValue, path, collectionName, oper
 
 async function productDetails(fetchImpl, accessTokenValue, productId) {
   return record(
-    await requestJson(fetchImpl, "reading an existing product", `/v1/catalogs/products/${encodeURIComponent(productId)}`, {
-      headers: bearerHeaders(accessTokenValue),
-    }),
+    await requestJson(
+      fetchImpl,
+      "reading an existing product",
+      `/v1/catalogs/products/${encodeURIComponent(productId)}`,
+      {
+        headers: bearerHeaders(accessTokenValue),
+      },
+    ),
     "reading an existing product",
   );
 }
@@ -164,12 +175,24 @@ function isExpectedProduct(product) {
 }
 
 async function reconcileProduct(fetchImpl, accessTokenValue, apply) {
-  const products = await listPages(fetchImpl, accessTokenValue, "/v1/catalogs/products", "products", "listing products");
-  const candidates = products.filter((item) => record(item, "listing products").name === PRODUCT.name);
+  const products = await listPages(
+    fetchImpl,
+    accessTokenValue,
+    "/v1/catalogs/products",
+    "products",
+    "listing products",
+  );
+  const candidates = products.filter(
+    (item) => record(item, "listing products").name === PRODUCT.name,
+  );
   if (candidates.length > 0) {
     const details = await Promise.all(
       candidates.map(async (candidate) =>
-        productDetails(fetchImpl, accessTokenValue, string(record(candidate, "listing products"), "id", "listing products")),
+        productDetails(
+          fetchImpl,
+          accessTokenValue,
+          string(record(candidate, "listing products"), "id", "listing products"),
+        ),
       ),
     );
     if (details.length !== 1 || !isExpectedProduct(details[0])) {
@@ -181,7 +204,12 @@ async function reconcileProduct(fetchImpl, accessTokenValue, apply) {
   const payload = record(
     await requestJson(fetchImpl, "creating the product", "/v1/catalogs/products", {
       method: "POST",
-      headers: { ...bearerHeaders(accessTokenValue), "Content-Type": "application/json", Prefer: "return=representation", "PayPal-Request-Id": `zoption-live-product-${randomUUID()}` },
+      headers: {
+        ...bearerHeaders(accessTokenValue),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+        "PayPal-Request-Id": `zoption-live-product-${randomUUID()}`,
+      },
       body: JSON.stringify(PRODUCT),
     }),
     "creating the product",
@@ -209,9 +237,14 @@ function planBody(productId, plan) {
 
 async function planDetails(fetchImpl, accessTokenValue, planId) {
   return record(
-    await requestJson(fetchImpl, "reading an existing plan", `/v1/billing/plans/${encodeURIComponent(planId)}`, {
-      headers: bearerHeaders(accessTokenValue),
-    }),
+    await requestJson(
+      fetchImpl,
+      "reading an existing plan",
+      `/v1/billing/plans/${encodeURIComponent(planId)}`,
+      {
+        headers: bearerHeaders(accessTokenValue),
+      },
+    ),
     "reading an existing plan",
   );
 }
@@ -245,20 +278,36 @@ function isExpectedPlan(plan, productId, expected) {
 }
 
 async function reconcilePlan(fetchImpl, accessTokenValue, productId, expected, apply) {
-  const plans = await listPages(fetchImpl, accessTokenValue, "/v1/billing/plans", "plans", "listing plans");
+  const plans = await listPages(
+    fetchImpl,
+    accessTokenValue,
+    "/v1/billing/plans",
+    "plans",
+    "listing plans",
+  );
   const candidates = plans.filter((item) => record(item, "listing plans").name === expected.name);
   if (candidates.length > 0) {
     if (candidates.length !== 1) throw new LiveSetupError("reconciling an existing plan");
     const candidate = record(candidates[0], "listing plans");
-    const details = await planDetails(fetchImpl, accessTokenValue, string(candidate, "id", "listing plans"));
-    if (!isExpectedPlan(details, productId, expected)) throw new LiveSetupError("reconciling an existing plan");
+    const details = await planDetails(
+      fetchImpl,
+      accessTokenValue,
+      string(candidate, "id", "listing plans"),
+    );
+    if (!isExpectedPlan(details, productId, expected))
+      throw new LiveSetupError("reconciling an existing plan");
     return { id: string(details, "id", "reconciling an existing plan"), action: "reuse" };
   }
   if (!apply) return { id: null, action: "create" };
   const payload = record(
     await requestJson(fetchImpl, "creating a plan", "/v1/billing/plans", {
       method: "POST",
-      headers: { ...bearerHeaders(accessTokenValue), "Content-Type": "application/json", Prefer: "return=representation", "PayPal-Request-Id": `zoption-live-plan-${randomUUID()}` },
+      headers: {
+        ...bearerHeaders(accessTokenValue),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+        "PayPal-Request-Id": `zoption-live-plan-${randomUUID()}`,
+      },
       body: JSON.stringify(planBody(productId, expected)),
     }),
     "creating a plan",
@@ -268,11 +317,15 @@ async function reconcilePlan(fetchImpl, accessTokenValue, productId, expected, a
 
 function webhookEventTypes(webhook) {
   if (!Array.isArray(webhook.event_types)) throw new LiveSetupError("reconciling a webhook");
-  return webhook.event_types.map((event) => string(record(event, "reconciling a webhook"), "name", "reconciling a webhook")).sort();
+  return webhook.event_types
+    .map((event) => string(record(event, "reconciling a webhook"), "name", "reconciling a webhook"))
+    .sort();
 }
 
 function hasExpectedWebhookEvents(webhook) {
-  return JSON.stringify(webhookEventTypes(webhook)) === JSON.stringify([...WEBHOOK_EVENT_TYPES].sort());
+  return (
+    JSON.stringify(webhookEventTypes(webhook)) === JSON.stringify([...WEBHOOK_EVENT_TYPES].sort())
+  );
 }
 
 async function listWebhooks(fetchImpl, accessTokenValue) {
@@ -280,12 +333,19 @@ async function listWebhooks(fetchImpl, accessTokenValue) {
   let nextUrl = "/v1/notifications/webhooks";
   let pages = 0;
   while (nextUrl) {
-    const payload = record(await requestJson(fetchImpl, "listing webhooks", nextUrl, { headers: bearerHeaders(accessTokenValue) }), "listing webhooks");
+    const payload = record(
+      await requestJson(fetchImpl, "listing webhooks", nextUrl, {
+        headers: bearerHeaders(accessTokenValue),
+      }),
+      "listing webhooks",
+    );
     if (!Array.isArray(payload.webhooks)) throw new LiveSetupError("listing webhooks");
     webhooks.push(...payload.webhooks);
     pages += 1;
     if (pages >= 1_000) throw new LiveSetupError("listing webhooks");
-    const next = Array.isArray(payload.links) ? payload.links.find((link) => record(link, "listing webhooks").rel === "next") : undefined;
+    const next = Array.isArray(payload.links)
+      ? payload.links.find((link) => record(link, "listing webhooks").rel === "next")
+      : undefined;
     nextUrl = next ? string(record(next, "listing webhooks"), "href", "listing webhooks") : null;
   }
   return webhooks;
@@ -304,15 +364,27 @@ async function reconcileWebhook(fetchImpl, accessTokenValue, webhookUrl, apply) 
   const payload = record(
     await requestJson(fetchImpl, "creating a webhook", "/v1/notifications/webhooks", {
       method: "POST",
-      headers: { ...bearerHeaders(accessTokenValue), "Content-Type": "application/json", "PayPal-Request-Id": `zoption-live-webhook-${randomUUID()}` },
-      body: JSON.stringify({ url: webhookUrl, event_types: WEBHOOK_EVENT_TYPES.map((name) => ({ name })) }),
+      headers: {
+        ...bearerHeaders(accessTokenValue),
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": `zoption-live-webhook-${randomUUID()}`,
+      },
+      body: JSON.stringify({
+        url: webhookUrl,
+        event_types: WEBHOOK_EVENT_TYPES.map((name) => ({ name })),
+      }),
     }),
     "creating a webhook",
   );
   return { id: string(payload, "id", "creating a webhook"), action: "create" };
 }
 
-export async function setupPayPalLive({ env = process.env, fetchImpl = fetch, apply = false, webhookUrls = [] } = {}) {
+export async function setupPayPalLive({
+  env = process.env,
+  fetchImpl = fetch,
+  apply = false,
+  webhookUrls = [],
+} = {}) {
   const clientId = requiredValue(env, "PAYPAL_CLIENT_ID");
   const clientSecret = requiredValue(env, "PAYPAL_CLIENT_SECRET");
   const accessTokenValue = await accessToken(fetchImpl, clientId, clientSecret);
@@ -320,7 +392,13 @@ export async function setupPayPalLive({ env = process.env, fetchImpl = fetch, ap
   const planResults = {};
   if (product.id) {
     for (const plan of PLANS) {
-      planResults[plan.key] = await reconcilePlan(fetchImpl, accessTokenValue, product.id, plan, apply);
+      planResults[plan.key] = await reconcilePlan(
+        fetchImpl,
+        accessTokenValue,
+        product.id,
+        plan,
+        apply,
+      );
     }
   } else {
     for (const plan of PLANS) planResults[plan.key] = { id: null, action: "create" };
@@ -335,13 +413,18 @@ export async function setupPayPalLive({ env = process.env, fetchImpl = fetch, ap
     monthlyPlanId: planResults.monthlyPlanId.id,
     annualPlanId: planResults.annualPlanId.id,
     webhooks: Object.fromEntries(
-      Object.entries(webhookResults).map(([url, result]) => [url, { id: result.id, action: result.action }]),
+      Object.entries(webhookResults).map(([url, result]) => [
+        url,
+        { id: result.id, action: result.action },
+      ]),
     ),
     actions: {
       product: product.action,
       monthlyPlan: planResults.monthlyPlanId.action,
       annualPlan: planResults.annualPlanId.action,
-      ...Object.fromEntries(Object.entries(webhookResults).map(([url, result]) => [`webhook:${url}`, result.action])),
+      ...Object.fromEntries(
+        Object.entries(webhookResults).map(([url, result]) => [`webhook:${url}`, result.action]),
+      ),
     },
   };
 }
@@ -366,7 +449,10 @@ function cliOptions(argv) {
 async function run() {
   try {
     const options = cliOptions(process.argv.slice(2));
-    const result = await setupPayPalLive({ apply: options.apply, webhookUrls: options.webhookUrls });
+    const result = await setupPayPalLive({
+      apply: options.apply,
+      webhookUrls: options.webhookUrls,
+    });
     const output = JSON.stringify(result, null, options.json ? 2 : 0);
     console.log(output);
   } catch (error) {

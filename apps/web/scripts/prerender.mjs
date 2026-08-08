@@ -122,6 +122,24 @@ function previewHeaders(headers) {
   return headers.replace("/*\n", "/*\n  X-Robots-Tag: noindex, nofollow\n");
 }
 
+async function readDeploymentManifest(deployEnvironment) {
+  const path = resolve(distDirectory, ".zoption-deployment.json");
+  const payload = JSON.parse(await readFile(path, "utf8"));
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    payload.deployEnvironment !== deployEnvironment ||
+    typeof payload.apiOrigin !== "string" ||
+    typeof payload.supabaseOrigin !== "string" ||
+    typeof payload.contentSecurityPolicy !== "string"
+  ) {
+    throw new Error(
+      "The client build deployment manifest is missing or does not match this build.",
+    );
+  }
+  return payload;
+}
+
 function outputFileForPath(pathname) {
   if (pathname === "/") return resolve(distDirectory, "index.html");
   return resolve(distDirectory, `${pathname.slice(1)}.html`);
@@ -130,6 +148,7 @@ function outputFileForPath(pathname) {
 async function main() {
   const deployEnvironment = resolveDeployEnvironment();
   const indexingEnabled = deployEnvironment === "production";
+  const deploymentManifest = await readDeploymentManifest(deployEnvironment);
   const {
     renderNotFoundPage,
     renderPublicRoute,
@@ -200,11 +219,17 @@ async function main() {
     routes,
     siteOrigin: SITE_ORIGIN,
     structuredDataScriptId: STRUCTURED_DATA_SCRIPT_ID,
+    expectedContentSecurityPolicy: deploymentManifest.contentSecurityPolicy,
+    expectedApiOrigin: deploymentManifest.apiOrigin,
+    expectedSupabaseOrigin: deploymentManifest.supabaseOrigin,
   });
 }
 
 try {
   await main();
 } finally {
-  await rm(resolve(webRoot, "dist-ssr"), { recursive: true, force: true });
+  await Promise.all([
+    rm(resolve(webRoot, "dist-ssr"), { recursive: true, force: true }),
+    rm(resolve(distDirectory, ".zoption-deployment.json"), { force: true }),
+  ]);
 }

@@ -66,7 +66,7 @@ Requirements: Node.js 24+ and pnpm 11.
    This creates the public `avatars` bucket. Avatar files can be read by anyone with their URL, while Storage policies restrict uploads and deletes to each authenticated user's own folder.
 
 3. Create `apps/web/.env.local` with the browser values from `.env.example`.
-4. Set the matching `SUPABASE_URL` in `apps/api/wrangler.jsonc` or an ignored local Wrangler configuration.
+4. Set the matching `SUPABASE_URL` in `apps/api/wrangler.jsonc` or an ignored local Wrangler configuration, and set the same project's browser-safe `SUPABASE_PUBLISHABLE_KEY` in ignored `apps/api/.dev.vars`. `/health` validates both before reporting ready.
 5. To use the assistant locally, add `DEEPSEEK_API_KEY=...` to ignored `apps/api/.dev.vars`. Never place it in a `VITE_*` variable.
 6. Run:
 

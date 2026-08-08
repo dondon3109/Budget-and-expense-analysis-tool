@@ -14,6 +14,8 @@
   "vars": {
     "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://zoption.site,https://www.zoption.site",
     "SUPABASE_URL": "http://127.0.0.1:54321",
+    // Non-secret format-only key for local readiness and E2E startup.
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_local-test-key",
     "SUPABASE_JWT_AUDIENCE": "authenticated",
     "WEB_APP_URL": "http://localhost:5173",
     "EMAIL_FROM": "hello@zoption.site",

@@ -32,6 +32,10 @@ interface CsvRecord {
 }
 
 const HEADER_SCAN_LIMIT = 25;
+export const MAX_CSV_RECORDS = 10_000;
+export const MAX_CSV_FIELDS_PER_RECORD = 256;
+export const MAX_CSV_TOTAL_FIELDS = 100_000;
+export const MAX_CSV_FIELD_CHARACTERS = 100_000;
 
 const headerAliases = {
   date: new Set(["date", "transaction date", "posting date", "posted date", "post date"]),
@@ -74,13 +78,37 @@ function tokenizeCsv(source: string): CsvRecord[] {
   let field = "";
   let quoted = false;
   let rowNumber = 1;
+  let totalFields = 0;
+
+  function appendToField(character: string) {
+    if (field.length >= MAX_CSV_FIELD_CHARACTERS) {
+      throw new CsvParseError(
+        `CSV values must be ${MAX_CSV_FIELD_CHARACTERS.toLocaleString("en-US")} characters or shorter.`,
+      );
+    }
+    field += character;
+  }
 
   function finishField() {
+    if (record.length >= MAX_CSV_FIELDS_PER_RECORD) {
+      throw new CsvParseError(
+        `CSV rows must contain at most ${MAX_CSV_FIELDS_PER_RECORD.toLocaleString("en-US")} columns.`,
+      );
+    }
+    if (totalFields >= MAX_CSV_TOTAL_FIELDS) {
+      throw new CsvParseError("The CSV contains too many values to process safely.");
+    }
     record.push(field);
+    totalFields += 1;
     field = "";
   }
 
   function finishRecord() {
+    if (records.length >= MAX_CSV_RECORDS) {
+      throw new CsvParseError(
+        `CSV files must contain at most ${MAX_CSV_RECORDS.toLocaleString("en-US")} rows.`,
+      );
+    }
     finishField();
     records.push({ rowNumber, values: record });
     rowNumber += 1;
@@ -92,13 +120,13 @@ function tokenizeCsv(source: string): CsvRecord[] {
     if (quoted) {
       if (character === '"') {
         if (text[index + 1] === '"') {
-          field += '"';
+          appendToField('"');
           index += 1;
         } else {
           quoted = false;
         }
       } else {
-        field += character;
+        appendToField(character);
       }
       continue;
     }
@@ -113,7 +141,7 @@ function tokenizeCsv(source: string): CsvRecord[] {
       if (text[index + 1] === "\n") index += 1;
       finishRecord();
     } else {
-      field += character;
+      appendToField(character);
     }
   }
 

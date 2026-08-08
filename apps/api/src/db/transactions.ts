@@ -114,16 +114,55 @@ export function buildTransferLegs(
   ];
 }
 
-function logicalRowsSql(
+const LOGICAL_ROWS_SELECT = `SELECT
+  t.id AS id,
+  t.date AS date,
+  t.description AS description,
+  t.amount_minor AS amountMinor,
+  t.transfer_fee_minor AS transferFeeMinor,
+  t.currency AS currency,
+  t.kind AS kind,
+  c.id AS categoryId,
+  c.name AS categoryName,
+  c.color AS categoryColor,
+  t.account_id AS accountId,
+  a.name AS accountName,
+  t.notes AS notes,
+  t.transfer_group_id AS transferGroupId,
+  peer.account_id AS toAccountId,
+  destination.name AS toAccountName`;
+
+const LOGICAL_ROWS_FROM = `FROM transactions t
+  INNER JOIN categories c ON c.id = t.category_id AND c.tenant_id = t.tenant_id
+  LEFT JOIN accounts a ON a.id = t.account_id AND a.tenant_id = t.tenant_id
+  LEFT JOIN transactions peer
+    ON peer.tenant_id = t.tenant_id
+    AND peer.transfer_group_id = t.transfer_group_id
+    AND peer.id != t.id
+    AND peer.amount_minor > 0
+  LEFT JOIN accounts destination ON destination.id = peer.account_id AND destination.tenant_id = t.tenant_id`;
+
+type LogicalRowsSqlParts = {
+  where: string;
+  bindings: unknown[];
+  orderBy: string;
+};
+
+function logicalRowsSqlParts(
   query: TransactionExportQuery,
   tenantId: string,
-): { sql: string; bindings: unknown[] } {
+  transactionId?: string,
+): LogicalRowsSqlParts {
   const where = [
     "t.tenant_id = ?",
     "(t.kind != 'transfer' OR t.transfer_group_id IS NULL OR t.amount_minor < 0)",
   ];
   const bindings: unknown[] = [tenantId];
 
+  if (transactionId) {
+    where.push("t.id = ?");
+    bindings.push(transactionId);
+  }
   if (query.accountId) {
     where.push("(t.account_id = ? OR peer.account_id = ?)");
     bindings.push(query.accountId, query.accountId);
@@ -167,37 +206,21 @@ function logicalRowsSql(
     query.sortBy === "date"
       ? `${orderColumn} ${direction}, t.created_at DESC, t.id DESC`
       : `${orderColumn} ${direction}, t.date DESC, t.created_at DESC, t.id DESC`;
+
+  return { where: where.join(" AND "), bindings, orderBy };
+}
+
+function logicalRowsSql(
+  query: TransactionExportQuery,
+  tenantId: string,
+): { sql: string; bindings: unknown[] } {
+  const parts = logicalRowsSqlParts(query, tenantId);
   return {
-    sql: `
-      SELECT
-        t.id AS id,
-        t.date AS date,
-        t.description AS description,
-        t.amount_minor AS amountMinor,
-        t.transfer_fee_minor AS transferFeeMinor,
-        t.currency AS currency,
-        t.kind AS kind,
-        c.id AS categoryId,
-        c.name AS categoryName,
-        c.color AS categoryColor,
-        t.account_id AS accountId,
-        a.name AS accountName,
-        t.notes AS notes,
-        t.transfer_group_id AS transferGroupId,
-        peer.account_id AS toAccountId,
-        destination.name AS toAccountName
-      FROM transactions t
-      INNER JOIN categories c ON c.id = t.category_id AND c.tenant_id = t.tenant_id
-      LEFT JOIN accounts a ON a.id = t.account_id AND a.tenant_id = t.tenant_id
-      LEFT JOIN transactions peer
-        ON peer.tenant_id = t.tenant_id
-        AND peer.transfer_group_id = t.transfer_group_id
-        AND peer.id != t.id
-        AND peer.amount_minor > 0
-      LEFT JOIN accounts destination ON destination.id = peer.account_id AND destination.tenant_id = t.tenant_id
-      WHERE ${where.join(" AND ")}
-      ORDER BY ${orderBy}`,
-    bindings,
+    sql: `${LOGICAL_ROWS_SELECT}
+      ${LOGICAL_ROWS_FROM}
+      WHERE ${parts.where}
+      ORDER BY ${parts.orderBy}`,
+    bindings: parts.bindings,
   };
 }
 
@@ -268,11 +291,16 @@ async function findTransaction(
   tenantId: string,
   id: string,
 ): Promise<TransactionListItem | null> {
-  const rows = await readLogicalRows(env, tenantId, {
-    sortBy: "date",
-    sortDirection: "desc",
-  });
-  return rows.find((row) => row.id === id) ?? null;
+  const parts = logicalRowsSqlParts({ sortBy: "date", sortDirection: "desc" }, tenantId, id);
+  const row = await env.DB.prepare(
+    `${LOGICAL_ROWS_SELECT}
+     ${LOGICAL_ROWS_FROM}
+     WHERE ${parts.where}
+     LIMIT 1`,
+  )
+    .bind(...parts.bindings)
+    .first<TransactionRow>();
+  return row ? normalizeRow(row) : null;
 }
 
 function insertStatement(
@@ -314,11 +342,27 @@ function insertStatement(
 
 export const transactionRepository: TransactionRepository = {
   async list(env, tenantId, query) {
-    const rows = await readLogicalRows(env, tenantId, query);
-    const total = rows.length;
+    const parts = logicalRowsSqlParts(query, tenantId);
     const offset = (query.page - 1) * query.pageSize;
+    const countQuery = `SELECT COUNT(*) AS total
+      ${LOGICAL_ROWS_FROM}
+      WHERE ${parts.where}`;
+    const pageQuery = `${LOGICAL_ROWS_SELECT}
+      ${LOGICAL_ROWS_FROM}
+      WHERE ${parts.where}
+      ORDER BY ${parts.orderBy}
+      LIMIT ? OFFSET ?`;
+    const [countRow, pageResult] = await Promise.all([
+      env.DB.prepare(countQuery)
+        .bind(...parts.bindings)
+        .first<{ total: number | string }>(),
+      env.DB.prepare(pageQuery)
+        .bind(...parts.bindings, query.pageSize, offset)
+        .all<TransactionRow>(),
+    ]);
+    const total = Number(countRow?.total ?? 0);
     return {
-      items: rows.slice(offset, offset + query.pageSize),
+      items: pageResult.results.map(normalizeRow),
       page: query.page,
       pageSize: query.pageSize,
       total,
@@ -414,10 +458,26 @@ export const transactionRepository: TransactionRepository = {
 
   async update(env, tenantId, id, input) {
     const existing = await env.DB.prepare(
-      "SELECT transfer_group_id AS transferGroupId, category_id AS categoryId FROM transactions WHERE id = ? AND tenant_id = ?",
+      `SELECT t.transfer_group_id AS transferGroupId, t.category_id AS categoryId,
+              (
+                SELECT sender.id
+                FROM transactions sender
+                WHERE sender.tenant_id = t.tenant_id
+                  AND sender.transfer_group_id = t.transfer_group_id
+                  AND sender.amount_minor < 0
+                ORDER BY sender.id
+                LIMIT 1
+              ) AS canonicalTransferId
+       FROM transactions t
+       WHERE t.id = ? AND t.tenant_id = ?
+       LIMIT 1`,
     )
       .bind(id, tenantId)
-      .first<{ transferGroupId: string | null; categoryId: string }>();
+      .first<{
+        transferGroupId: string | null;
+        categoryId: string;
+        canonicalTransferId: string | null;
+      }>();
     if (!existing) throw new HttpError(404, "transaction_not_found", "Transaction not found.");
     if (existing.transferGroupId) {
       const parsed = transactionInputSchema.safeParse(input);
@@ -457,7 +517,7 @@ export const transactionRepository: TransactionRepository = {
           existing.transferGroupId,
         ),
       ]);
-      const updated = await findTransaction(env, tenantId, id);
+      const updated = await findTransaction(env, tenantId, existing.canonicalTransferId ?? id);
       if (!updated) throw new Error("Updated transfer could not be read back.");
       return updated;
     }

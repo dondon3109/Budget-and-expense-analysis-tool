@@ -6,9 +6,11 @@ const reconcileDuePayPalCheckouts = vi.hoisted(() => vi.fn());
 const cleanupExpired = vi.hoisted(() => vi.fn());
 const reconcileAccountDeletions = vi.hoisted(() => vi.fn());
 const creditDueInterest = vi.hoisted(() => vi.fn());
+const validateRequiredApiBindings = vi.hoisted(() => vi.fn());
 const billingRepository = vi.hoisted(() => ({}));
 
 vi.mock("../src/app", () => ({ createApp: () => ({ fetch: vi.fn() }) }));
+vi.mock("../src/readiness", () => ({ validateRequiredApiBindings }));
 vi.mock("../src/billing/scheduled-reconciliation", () => ({ reconcileDuePayPalCheckouts }));
 vi.mock("../src/db/assistant", () => ({ assistantRepository: { cleanupExpired } }));
 vi.mock("../src/db/billing", () => ({ billingRepository }));
@@ -43,6 +45,7 @@ describe("scheduled worker handler", () => {
   it("runs only PayPal checkout recovery on the five-minute cadence", async () => {
     await worker.scheduled(controller("*/5 * * * *"), environment);
 
+    expect(validateRequiredApiBindings).toHaveBeenCalledWith(environment);
     expect(reconcileDuePayPalCheckouts).toHaveBeenCalledWith(billingRepository, environment, 25);
     expect(cleanupExpired).not.toHaveBeenCalled();
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();
@@ -69,9 +72,24 @@ describe("scheduled worker handler", () => {
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();
   });
 
-  it("ignores unrecognized cron deliveries", async () => {
+  it("fails closed before scheduled work when required bindings are unavailable", async () => {
+    validateRequiredApiBindings.mockImplementationOnce(() => {
+      throw new Error("API deployment bindings are not ready.");
+    });
+
+    await expect(worker.scheduled(controller("*/5 * * * *"), environment)).rejects.toThrow(
+      "API deployment bindings are not ready.",
+    );
+    expect(reconcileDuePayPalCheckouts).not.toHaveBeenCalled();
+    expect(cleanupExpired).not.toHaveBeenCalled();
+    expect(reconcileAccountDeletions).not.toHaveBeenCalled();
+    expect(creditDueInterest).not.toHaveBeenCalled();
+  });
+
+  it("validates bindings before ignoring unrecognized cron deliveries", async () => {
     await worker.scheduled(controller("1 2 3 4 5"), environment);
 
+    expect(validateRequiredApiBindings).toHaveBeenCalledWith(environment);
     expect(reconcileDuePayPalCheckouts).not.toHaveBeenCalled();
     expect(cleanupExpired).not.toHaveBeenCalled();
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();

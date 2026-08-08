@@ -13,8 +13,6 @@ import type { AssistantProvider, AssistantProviderMessage } from "./provider";
 export const MAX_MEMORY_CHARACTERS = 6_000;
 export const MAX_FACT_LENGTH = 240;
 export const MAX_MEMORY_FACTS_INJECTED = 12;
-/** Per-tenant cap on model-assisted memory passes within an assistant usage cycle. */
-export const MODEL_MEMORY_PASS_CYCLE_CAP = 8;
 
 export interface ExtractedMemory {
   kind: AssistantMemoryKind;
@@ -140,7 +138,10 @@ function parseModelMemories(content: string): ExtractedMemory[] {
       if (typeof record.key !== "string" || typeof record.value !== "string") continue;
       const value = sanitizeMemoryValue(record.value);
       if (!value || isSensitiveMemory(value)) continue;
-      const key = record.key.replace(/[^a-z0-9_.]/gi, "_").toLowerCase().slice(0, 64);
+      const key = record.key
+        .replace(/[^a-z0-9_.]/gi, "_")
+        .toLowerCase()
+        .slice(0, 64);
       if (!key) continue;
       results.push({ kind: "fact", key, value, source: "model_assisted" });
     }

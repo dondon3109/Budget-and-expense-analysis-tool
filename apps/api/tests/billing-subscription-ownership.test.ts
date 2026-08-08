@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { billingRepository, type BillingSubscriptionSnapshot } from "../src/db/billing";
+import {
+  billingRepository,
+  type BillingSubscriptionEvent,
+  type BillingSubscriptionSnapshot,
+} from "../src/db/billing";
 import type { Bindings } from "../src/types";
 
 interface RepositoryDatabaseOptions {
@@ -27,6 +31,7 @@ function repositoryEnvironment(options: RepositoryDatabaseOptions = {}) {
       return {
         bind: vi.fn((...args: unknown[]) => ({
           first: vi.fn(async () => {
+            if (sql.includes("FROM billing_webhook_events")) return null;
             if (sql.includes("FROM billing_subscriptions")) {
               return options.existingSubscription ?? null;
             }
@@ -78,6 +83,27 @@ function repositoryEnvironment(options: RepositoryDatabaseOptions = {}) {
     } as Bindings,
     preparedSql,
     batch,
+  };
+}
+
+function event(overrides: Partial<BillingSubscriptionEvent> = {}): BillingSubscriptionEvent {
+  return {
+    provider: "paypal",
+    providerEventId: "WH-payment-failed",
+    type: "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
+    occurredAt: "2026-08-01T00:00:00.000Z",
+    providerSubscriptionId: "I-existing",
+    providerCustomerId: "payer-original",
+    providerProductId: null,
+    providerPlanId: "P-monthly",
+    providerStatus: "ACTIVE",
+    status: "past_due",
+    interval: null,
+    currentPeriodEndsAt: "2099-09-01T00:00:00.000Z",
+    scheduledChangeAt: null,
+    cancelAtPeriodEnd: false,
+    checkoutReference: null,
+    ...overrides,
   };
 }
 
@@ -158,6 +184,50 @@ describe("PayPal subscription ownership", () => {
         }),
       ),
     ).rejects.toMatchObject({ code: "invalid_webhook_ownership", status: 409 });
+    expect(batch).not.toHaveBeenCalled();
+  });
+});
+
+describe("PayPal subscription event ordering", () => {
+  it("applies a later completed-sale recovery over an earlier failed payment", async () => {
+    const { env, batch } = repositoryEnvironment({
+      existingSubscription: {
+        tenantId: "tenant-a",
+        providerCustomerId: "payer-original",
+        lastProviderOccurredAt: "2026-08-01T00:00:00.000Z",
+        lastProviderEventId: "WH-payment-failed",
+      },
+      customerForTenant: { providerCustomerId: "payer-original" },
+    });
+
+    await expect(
+      billingRepository.applySubscriptionEvent(
+        env,
+        event({
+          providerEventId: "WH-sale-completed",
+          type: "PAYMENT.SALE.COMPLETED",
+          occurredAt: "2026-08-02T00:00:00.000Z",
+          providerStatus: "ACTIVE",
+          status: "active",
+        }),
+      ),
+    ).resolves.toBe("applied");
+    expect(batch).toHaveBeenCalledOnce();
+  });
+
+  it("does not let an older failed-payment event overwrite a completed-sale recovery", async () => {
+    const { env, batch } = repositoryEnvironment({
+      existingSubscription: {
+        tenantId: "tenant-a",
+        providerCustomerId: "payer-original",
+        lastProviderOccurredAt: "2026-08-02T00:00:00.000Z",
+        lastProviderEventId: "WH-sale-completed",
+      },
+    });
+
+    await expect(billingRepository.applySubscriptionEvent(env, event())).resolves.toBe(
+      "duplicate_or_stale",
+    );
     expect(batch).not.toHaveBeenCalled();
   });
 });

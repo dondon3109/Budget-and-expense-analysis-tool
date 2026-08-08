@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getRouteSeoMetadata,
+  isEligiblePublicUrl,
   PUBLIC_ROUTE_METADATA,
   PUBLIC_ROUTE_PATHS,
   serializeJsonLd,
@@ -153,6 +154,15 @@ describe("public SEO metadata", () => {
 
     expect(metadata.robots).toBe("index,follow");
     expect(metadata.canonical).toBe(`${SITE_ORIGIN}/privacy-policy`);
+  });
+
+  it("shares public URL eligibility with analytics and other public-only integrations", () => {
+    expect(isEligiblePublicUrl("/faq/", "?utm_source=newsletter", "")).toBe(true);
+    expect(isEligiblePublicUrl("/login")).toBe(false);
+    expect(isEligiblePublicUrl("/app/transactions", "?utm_source=newsletter")).toBe(false);
+    expect(isEligiblePublicUrl("/", "?code=secret")).toBe(false);
+    expect(isEligiblePublicUrl("/privacy-policy", "", "#access_token=secret")).toBe(false);
+    expect(isEligiblePublicUrl("/missing")).toBe(false);
   });
 
   it("keeps authentication, private, unknown, and sensitive URL state out of search", () => {

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { CsvParseError, inspectCsv, parseCsv } from "../src/csv";
+import {
+  CsvParseError,
+  inspectCsv,
+  MAX_CSV_FIELD_CHARACTERS,
+  MAX_CSV_FIELDS_PER_RECORD,
+  MAX_CSV_RECORDS,
+  MAX_CSV_TOTAL_FIELDS,
+  parseCsv,
+} from "../src/csv";
 
 describe("CSV parsing", () => {
   it("parses quoted commas, quotes, and line endings", () => {
@@ -61,5 +69,33 @@ describe("CSV parsing", () => {
       "The selected CSV header row could not be found.",
     );
     expect(() => parseCsv('Date,Description\n2026-07-01,"Open')).toThrow(CsvParseError);
+  });
+
+  it("bounds rows, columns, values, and individual fields during tokenization", () => {
+    const tooManyRows = Array.from({ length: MAX_CSV_RECORDS + 1 }, () => "value").join("\n");
+    const tooManyColumns = Array.from(
+      { length: MAX_CSV_FIELDS_PER_RECORD + 1 },
+      (_, index) => `column-${index}`,
+    ).join(",");
+    const fieldsPerRow = 100;
+    const rowsForTooManyValues = Math.floor(MAX_CSV_TOTAL_FIELDS / fieldsPerRow) + 1;
+    const tooManyValues = Array.from({ length: rowsForTooManyValues }, () =>
+      Array.from({ length: fieldsPerRow }, () => "value").join(","),
+    ).join("\n");
+    const tooLongField = `"${"x".repeat(MAX_CSV_FIELD_CHARACTERS + 1)}"`;
+
+    expect(() => inspectCsv(tooManyRows)).toThrow("at most 10,000 rows");
+    expect(() => inspectCsv(tooManyColumns)).toThrow("at most 256 columns");
+    expect(() => inspectCsv(tooManyValues)).toThrow("too many values");
+    expect(() => inspectCsv(tooLongField)).toThrow("100,000 characters or shorter");
+  });
+
+  it("keeps files above the product's 500-row import limit available for later validation", () => {
+    const source = [
+      "Date,Description,Amount",
+      ...Array.from({ length: 501 }, (_, index) => `2026-07-01,Transaction ${index + 1},-1`),
+    ].join("\n");
+
+    expect(parseCsv(source).rows).toHaveLength(501);
   });
 });

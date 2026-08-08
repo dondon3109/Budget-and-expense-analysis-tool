@@ -11,17 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 6, 2026",
+  releasedOn: "August 8, 2026",
   changes: [
     {
-      title: "Automatic bank interest",
+      title: "More reliable Pro billing",
       description:
-        "Savings accounts can now earn interest automatically. Turn it on for a savings account, enter the annual rate, and pick how often it pays out — daily, monthly, or once a year. Zoption adds the earned interest to your account balance for you on the set pay day, computing it from your balance so an Interest income entry appears in your transactions automatically. Available on Zoption Pro.",
+        "Zoption now verifies PayPal subscription updates more carefully and handles delayed or failed payments more reliably, so your Pro status stays in sync with PayPal.",
     },
     {
-      title: "Interest on your Bank account",
+      title: "Safer spreadsheet imports",
       description:
-        "Switch your built-in Bank account to Savings, then turn on automatic interest. The easy-access bank balance you already track can now earn interest the same way a dedicated savings account does.",
+        "Excel and CSV imports now receive stricter file checks and clearer limits before processing, helping malformed or unusually large files fail safely instead of interrupting your workspace.",
+    },
+    {
+      title: "Smarter assistant memory",
+      description:
+        "The financial assistant can refine saved memories with a controlled model-assisted pass while keeping usage bounded within each 14-day cycle.",
+    },
+    {
+      title: "Privacy-respecting analytics",
+      description:
+        "Google Analytics now loads only after you allow Analytics cookies on eligible public pages, and opting out removes its cookies from your browser.",
     },
   ],
 };
@@ -33,6 +43,22 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "1.2.0",
+    releasedOn: "August 6, 2026",
+    changes: [
+      {
+        title: "Automatic bank interest",
+        description:
+          "Savings accounts can now earn interest automatically. Turn it on for a savings account, enter the annual rate, and pick how often it pays out — daily, monthly, or once a year. Zoption adds the earned interest to your account balance for you on the set pay day, computing it from your balance so an Interest income entry appears in your transactions automatically. Available on Zoption Pro.",
+      },
+      {
+        title: "Interest on your Bank account",
+        description:
+          "Switch your built-in Bank account to Savings, then turn on automatic interest. The easy-access bank balance you already track can now earn interest the same way a dedicated savings account does.",
+      },
+    ],
+  },
   {
     version: "1.1.7",
     releasedOn: "August 6, 2026",

@@ -19,9 +19,10 @@ import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from ".
 import { accountRepository, type AccountRepository } from "./db/accounts";
 import { assistantRepository, type AssistantRepository } from "./db/assistant";
 import {
-  assistantUsageRepository,
-  type AssistantUsageRepository,
-} from "./db/assistant-usage";
+  assistantModelMemoryUsageRepository,
+  type AssistantModelMemoryUsageRepository,
+} from "./db/assistant-model-memory-usage";
+import { assistantUsageRepository, type AssistantUsageRepository } from "./db/assistant-usage";
 import { billingRepository, type BillingRepository } from "./db/billing";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
@@ -36,6 +37,7 @@ import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
 import { HttpError } from "./errors";
 import { d1RateLimiter, type RateLimiter } from "./rate-limit";
+import { checkApiReadiness } from "./readiness";
 import { createPlatformAdminService, type PlatformAdminService } from "./platform-admin";
 import { createAccountDeletionRoutes } from "./routes/account-deletion";
 import { createAccountRoutes } from "./routes/accounts";
@@ -59,6 +61,12 @@ const JSON_METHODS = new Set(["POST", "PATCH", "PUT"]);
 const DEFAULT_JSON_BODY_LIMIT = 64 * 1024;
 const IMPORT_PREVIEW_BODY_LIMIT = 3 * 1024 * 1024;
 const PAYPAL_WEBHOOK_BODY_LIMIT = 128 * 1024;
+const PAYPAL_WEBHOOK_RATE_LIMIT = {
+  scope: "paypal-webhook",
+  limit: 60,
+  windowSeconds: 60,
+} as const;
+const MISSING_PAYPAL_WEBHOOK_CLIENT = "missing-cf-connecting-ip";
 
 function isJsonContentType(contentType: string | undefined): boolean {
   if (!contentType) return false;
@@ -105,6 +113,7 @@ export interface AppOptions {
   tenantResolver?: TenantResolver;
   assistantRepository?: AssistantRepository;
   assistantUsage?: AssistantUsageRepository;
+  assistantModelMemoryUsage?: AssistantModelMemoryUsageRepository;
   assistantProvider?: AssistantProvider;
   assistantService?: AssistantService;
   accountDeletionService?: AccountDeletionService;
@@ -132,6 +141,8 @@ export function createApp(options: AppOptions = {}) {
   const resolveTenant = options.tenantResolver ?? tenantResolver;
   const assistantStore = options.assistantRepository ?? assistantRepository;
   const assistantUsage = options.assistantUsage ?? assistantUsageRepository;
+  const assistantModelMemoryUsage =
+    options.assistantModelMemoryUsage ?? assistantModelMemoryUsageRepository;
   const assistantProvider = options.assistantProvider ?? deepSeekProvider;
   const assistantService =
     options.assistantService ??
@@ -152,6 +163,7 @@ export function createApp(options: AppOptions = {}) {
       undefined,
       assistantUsage,
       assistantProvider,
+      assistantModelMemoryUsage,
     );
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =
@@ -159,11 +171,7 @@ export function createApp(options: AppOptions = {}) {
   const accountDeletionService =
     options.accountDeletionService ??
     createAccountDeletionService(undefined, undefined, billingStore, platformAdminStore);
-  const readinessCheck =
-    options.readinessCheck ??
-    (async (env: Bindings) => {
-      await env.DB.prepare("SELECT 1").first();
-    });
+  const readinessCheck = options.readinessCheck ?? checkApiReadiness;
 
   app.use("/api/*", async (context, next) => {
     context.header("X-Content-Type-Options", "nosniff");
@@ -273,7 +281,9 @@ export function createApp(options: AppOptions = {}) {
                         ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
                         : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
                     ]
-                  : [];
+                  : context.req.method === "GET"
+                    ? [{ scope: "tenant-read", limit: 120, windowSeconds: 60 }]
+                    : [];
 
     if (policies.length === 0) {
       await next();
@@ -306,8 +316,18 @@ export function createApp(options: AppOptions = {}) {
   });
 
   app.get("/health", async (context) => {
-    await readinessCheck(context.env);
-    return context.json({ status: "ok", service: "budget-expense-api" });
+    try {
+      await readinessCheck(context.env);
+      return context.json({ status: "ok", service: "budget-expense-api" });
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          message: "API readiness check failed",
+          name: error instanceof Error ? error.name : "UnknownError",
+        }),
+      );
+      return context.json({ status: "unavailable", service: "budget-expense-api" }, 503);
+    }
   });
 
   app.get("/api/app/me", (context) => {
@@ -366,6 +386,35 @@ export function createApp(options: AppOptions = {}) {
     );
   });
 
+  app.use("/api/billing/paypal/webhook", async (context, next) => {
+    if (context.req.method !== "POST") {
+      await next();
+      return;
+    }
+
+    const clientIdentifier =
+      context.req.header("CF-Connecting-IP")?.trim() || MISSING_PAYPAL_WEBHOOK_CLIENT;
+    const decision = await rateLimiter.consume(
+      context.env,
+      clientIdentifier,
+      PAYPAL_WEBHOOK_RATE_LIMIT,
+    );
+    context.header("RateLimit-Limit", String(decision.limit));
+    context.header("RateLimit-Remaining", String(decision.remaining));
+    context.header("RateLimit-Reset", String(decision.retryAfterSeconds));
+    if (!decision.allowed) {
+      context.header("Retry-After", String(decision.retryAfterSeconds));
+      return context.json(
+        {
+          error: "rate_limit_exceeded",
+          message: `Too many requests. Try again in ${decision.retryAfterSeconds} seconds.`,
+        },
+        429,
+      );
+    }
+
+    await next();
+  });
   app.use(
     "/api/billing/paypal/webhook",
     bodyLimit({

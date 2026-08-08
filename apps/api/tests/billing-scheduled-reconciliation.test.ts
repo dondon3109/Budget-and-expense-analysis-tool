@@ -1,6 +1,7 @@
 import type { BillingSummary } from "@zoption/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { clearPayPalAccessTokenCacheForTesting } from "../src/billing/paypal";
 import { reconcileDuePayPalCheckouts } from "../src/billing/scheduled-reconciliation";
 import type {
   BillingCheckoutReference,
@@ -62,7 +63,9 @@ function summary(active = false): BillingSummary {
 }
 
 function tokenResponse() {
-  return new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 });
+  return new Response(JSON.stringify({ access_token: "access-token", expires_in: 3_600 }), {
+    status: 200,
+  });
 }
 
 function subscriptionResponse(
@@ -123,6 +126,7 @@ function byTenantTenantId(due: BillingDueCheckout[], reference: string | null): 
 }
 
 afterEach(() => {
+  clearPayPalAccessTokenCacheForTesting();
   vi.unstubAllGlobals();
 });
 
@@ -138,9 +142,7 @@ describe("scheduled PayPal reconciliation", () => {
         .fn()
         .mockResolvedValueOnce(tokenResponse())
         .mockResolvedValueOnce(subscriptionResponse(active, "ACTIVE"))
-        .mockResolvedValueOnce(tokenResponse())
         .mockResolvedValueOnce(subscriptionResponse(pending, "APPROVED"))
-        .mockResolvedValueOnce(tokenResponse())
         .mockResolvedValueOnce(subscriptionResponse(canceled, "CANCELLED")),
     );
 

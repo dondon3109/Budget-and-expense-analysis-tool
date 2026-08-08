@@ -1,5 +1,9 @@
 # Copy to apps/api/.dev.vars for local Worker development.
 # Never commit a real provider key or expose it through VITE_* variables.
+# Public Worker-side Supabase key used by readiness and account reauthentication. It must match
+# SUPABASE_URL in the active Wrangler config and be an sb_publishable_ or legacy anon key.
+SUPABASE_PUBLISHABLE_KEY=
+
 DEEPSEEK_API_KEY=
 
 # PayPal is the active subscription provider. Keep the client secret and webhook ID

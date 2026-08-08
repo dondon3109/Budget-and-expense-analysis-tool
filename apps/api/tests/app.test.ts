@@ -734,12 +734,10 @@ describe("API foundation", () => {
       body: JSON.stringify({ name: "Maya Wallet", type: "savings" }),
     });
     expect(response.status).toBe(200);
-    expect(accounts.update).toHaveBeenCalledWith(
-      undefined,
-      TENANT_ID,
-      "account-1",
-      { name: "Maya Wallet", type: "savings" },
-    );
+    expect(accounts.update).toHaveBeenCalledWith(undefined, TENANT_ID, "account-1", {
+      name: "Maya Wallet",
+      type: "savings",
+    });
   });
 
   it("updates interest settings on a savings account", async () => {
@@ -757,12 +755,7 @@ describe("API foundation", () => {
       body: JSON.stringify(input),
     });
     expect(response.status).toBe(200);
-    expect(accounts.updateInterest).toHaveBeenCalledWith(
-      undefined,
-      TENANT_ID,
-      "account-1",
-      input,
-    );
+    expect(accounts.updateInterest).toHaveBeenCalledWith(undefined, TENANT_ID, "account-1", input);
   });
 
   it("rejects invalid interest settings", async () => {
@@ -881,6 +874,30 @@ describe("API foundation", () => {
     expect(transactions.create).not.toHaveBeenCalled();
   });
 
+  it("rate-limits authenticated tenant reads by default", async () => {
+    const loader = vi.fn().mockResolvedValue(dashboardFixture);
+    const rateLimiter: RateLimiter = {
+      consume: vi.fn(async () => ({
+        allowed: false,
+        limit: 120,
+        remaining: 0,
+        retryAfterSeconds: 24,
+      })),
+    };
+    const app = createTestApp({ dashboardLoader: loader, rateLimiter });
+    const response = await app.request("/api/app/dashboard?from=2026-07-01&to=2026-07-31", {
+      headers: AUTHORIZATION,
+    });
+
+    expect(response.status).toBe(429);
+    expect(rateLimiter.consume).toHaveBeenCalledWith(undefined, TENANT_ID, {
+      scope: "tenant-read",
+      limit: 120,
+      windowSeconds: 60,
+    });
+    expect(loader).not.toHaveBeenCalled();
+  });
+
   it("uses the import-specific tenant rate limit", async () => {
     const imports = createImportStore();
     const rateLimiter = createAllowedRateLimiter();
@@ -913,6 +930,7 @@ describe("API foundation", () => {
     });
 
     expect(response.status).toBe(429);
+    expect(rateLimiter.consume).toHaveBeenCalledTimes(1);
     expect(rateLimiter.consume).toHaveBeenCalledWith(undefined, TENANT_ID, {
       scope: "tenant-export-read",
       limit: 20,

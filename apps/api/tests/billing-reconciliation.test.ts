@@ -2,6 +2,7 @@ import type { BillingSummary } from "@zoption/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../src/app";
+import { clearPayPalAccessTokenCacheForTesting } from "../src/billing/paypal";
 import type { BillingRepository } from "../src/db/billing";
 import type { Bindings } from "../src/types";
 
@@ -115,7 +116,9 @@ function app(billing: BillingRepository) {
 }
 
 function tokenResponse() {
-  return new Response(JSON.stringify({ access_token: "access-token" }), { status: 200 });
+  return new Response(JSON.stringify({ access_token: "access-token", expires_in: 3_600 }), {
+    status: 200,
+  });
 }
 
 function subscriptionResponse(status: string) {
@@ -134,6 +137,7 @@ function subscriptionResponse(status: string) {
 }
 
 afterEach(() => {
+  clearPayPalAccessTokenCacheForTesting();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });

@@ -10,11 +10,7 @@ const searchIndexingEnabled =
   typeof __SEARCH_INDEXING_ENABLED__ === "undefined" || __SEARCH_INDEXING_ENABLED__;
 
 export type PublicRoutePath =
-  | "/"
-  | "/terms-of-service"
-  | "/privacy-policy"
-  | "/cookie-policy"
-  | "/faq";
+  "/" | "/terms-of-service" | "/privacy-policy" | "/cookie-policy" | "/faq";
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/",
@@ -368,9 +364,15 @@ export function getPublicRouteMetadata(pathname: string): SeoMetadata | undefine
   return metadata ? applyIndexingEnvironment(metadata) : undefined;
 }
 
+export function isEligiblePublicUrl(pathname: string, search = "", hash = ""): boolean {
+  return Boolean(
+    getPublicRouteMetadata(pathname) && isTrackingOnlySearch(search) && !hasSensitiveFragment(hash),
+  );
+}
+
 export function getRouteSeoMetadata(pathname: string, search = "", hash = ""): SeoMetadata {
   const publicMetadata = getPublicRouteMetadata(pathname);
-  if (publicMetadata && isTrackingOnlySearch(search) && !hasSensitiveFragment(hash)) {
+  if (publicMetadata && isEligiblePublicUrl(pathname, search, hash)) {
     return publicMetadata;
   }
 

@@ -5,6 +5,7 @@ import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
 import { refreshDailyFxRate } from "./fx/rates";
 import { creditDueInterest } from "./interest/scheduled-credit";
+import { validateRequiredApiBindings } from "./readiness";
 import type { Bindings } from "./types";
 
 const app = createApp();
@@ -16,6 +17,7 @@ const DAILY_INTEREST_CRON = "17 4 * * *";
 export default {
   fetch: app.fetch,
   async scheduled(controller, env) {
+    validateRequiredApiBindings(env);
     if (controller.cron === BILLING_RECONCILIATION_CRON) {
       const result = await reconcileDuePayPalCheckouts(billingRepository, env, 25);
       if (result.checked > 0) {
@@ -35,7 +37,11 @@ export default {
     const fx = await refreshDailyFxRate(env);
     if (fx) {
       console.log(
-        JSON.stringify({ message: "Daily exchange rate refreshed", date: fx.date, rate: fx.usdToPhp }),
+        JSON.stringify({
+          message: "Daily exchange rate refreshed",
+          date: fx.date,
+          rate: fx.usdToPhp,
+        }),
       );
     }
 

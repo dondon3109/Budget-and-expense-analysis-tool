@@ -14,12 +14,14 @@ import {
   type DeepSeekFailureReason,
 } from "../src/assistant/deepseek";
 import type { AssistantOrchestrator } from "../src/assistant/orchestrator";
+import type { AssistantProvider } from "../src/assistant/provider";
 import { createAssistantService, type AssistantDiagnosticReporter } from "../src/assistant/service";
 import type {
   AssistantCompletedTurn,
   AssistantRepository,
   AssistantTurnStart,
 } from "../src/db/assistant";
+import type { AssistantModelMemoryUsageRepository } from "../src/db/assistant-model-memory-usage";
 import type { HttpError } from "../src/errors";
 import type { Bindings } from "../src/types";
 
@@ -109,7 +111,9 @@ function createRepository(): AssistantRepository {
     cleanupExpired: vi.fn(async () => 0),
     listMemories: vi.fn(async () => []),
     getMemory: vi.fn(async () => null),
-    upsertMemory: vi.fn(async (_env: Bindings, _tenantId: string, memory: AssistantMemory) => memory),
+    upsertMemory: vi.fn(
+      async (_env: Bindings, _tenantId: string, memory: AssistantMemory) => memory,
+    ),
     deleteMemory: vi.fn(async () => undefined),
     clearMemories: vi.fn(async () => undefined),
   };
@@ -178,6 +182,19 @@ const cases: Array<{
     message: "The assistant could not provide a response to that question.",
   },
 ];
+
+function successfulOrchestrator(): AssistantOrchestrator {
+  return {
+    plan: vi.fn(async () => policy),
+    answer: vi.fn(async () => ({
+      content: assistantMessage.content,
+      model: "deepseek-v4-flash",
+      finishReason: "stop",
+      responseMetadata,
+      audit,
+    })),
+  };
+}
 
 describe("assistant service provider failures", () => {
   it.each(cases)(
@@ -294,5 +311,127 @@ describe("assistant service provider failures", () => {
     expect(repository.completeTurn).toHaveBeenCalled();
     expect(repository.failTurn).not.toHaveBeenCalled();
     expect(reporter).not.toHaveBeenCalled();
+  });
+});
+
+describe("assistant service model-memory pass usage", () => {
+  const memoryInput: AssistantMessageInput = {
+    ...input,
+    message: "My rule is to always pay the smallest debt first",
+  };
+
+  function provider(): AssistantProvider {
+    return {
+      complete: vi.fn(async () => ({
+        model: "deepseek-v4-flash",
+        finishReason: "stop",
+        message: {
+          role: "assistant" as const,
+          content:
+            '{"memories":[{"key":"smallest_debt_first","value":"The user pays the smallest debt first"}]}',
+        },
+      })),
+    };
+  }
+
+  function modelUsage(
+    tryConsumePass: AssistantModelMemoryUsageRepository["tryConsumePass"],
+  ): Pick<AssistantModelMemoryUsageRepository, "tryConsumePass"> {
+    return { tryConsumePass };
+  }
+
+  it("reserves usage before running and persisting a model-assisted memory pass", async () => {
+    const repository = createRepository();
+    const assistantProvider = provider();
+    const tryConsumePass = vi.fn(async () => true);
+    const service = createAssistantService(
+      repository,
+      successfulOrchestrator(),
+      undefined,
+      undefined,
+      assistantProvider,
+      modelUsage(tryConsumePass),
+    );
+    const memoryEnv = { ...env, ASSISTANT_MEMORY_MODEL_PASS: "on" as const };
+
+    await expect(service.sendTurn(memoryEnv, tenantId, threadId, memoryInput)).resolves.toEqual(
+      completed,
+    );
+
+    expect(tryConsumePass).toHaveBeenCalledOnce();
+    expect(tryConsumePass).toHaveBeenCalledWith(memoryEnv, tenantId);
+    expect(assistantProvider.complete).toHaveBeenCalledOnce();
+    expect(tryConsumePass.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(assistantProvider.complete).mock.invocationCallOrder[0]!,
+    );
+    expect(repository.upsertMemory).toHaveBeenCalledWith(
+      memoryEnv,
+      tenantId,
+      expect.objectContaining({
+        kind: "fact",
+        key: "smallest_debt_first",
+        source: "model_assisted",
+      }),
+    );
+    expect(repository.getMemory).not.toHaveBeenCalled();
+    expect(
+      vi
+        .mocked(repository.upsertMemory)
+        .mock.calls.some(([, , memory]) => memory.key === "model_memory_pass_count"),
+    ).toBe(false);
+  });
+
+  it("does not reserve model-pass usage while model-assisted memory is disabled", async () => {
+    const repository = createRepository();
+    const assistantProvider = provider();
+    const tryConsumePass = vi.fn(async () => true);
+    const service = createAssistantService(
+      repository,
+      successfulOrchestrator(),
+      undefined,
+      undefined,
+      assistantProvider,
+      modelUsage(tryConsumePass),
+    );
+    const memoryEnv = { ...env, ASSISTANT_MEMORY_MODEL_PASS: "off" as const };
+
+    await expect(service.sendTurn(memoryEnv, tenantId, threadId, memoryInput)).resolves.toEqual(
+      completed,
+    );
+
+    expect(tryConsumePass).not.toHaveBeenCalled();
+    expect(assistantProvider.complete).not.toHaveBeenCalled();
+    expect(
+      vi
+        .mocked(repository.upsertMemory)
+        .mock.calls.some(([, , memory]) => memory.source === "model_assisted"),
+    ).toBe(false);
+  });
+
+  it("skips the model pass when the atomic usage reservation is denied", async () => {
+    const repository = createRepository();
+    const assistantProvider = provider();
+    const tryConsumePass = vi.fn(async () => false);
+    const service = createAssistantService(
+      repository,
+      successfulOrchestrator(),
+      undefined,
+      undefined,
+      assistantProvider,
+      modelUsage(tryConsumePass),
+    );
+    const memoryEnv = { ...env, ASSISTANT_MEMORY_MODEL_PASS: "on" as const };
+
+    await expect(service.sendTurn(memoryEnv, tenantId, threadId, memoryInput)).resolves.toEqual(
+      completed,
+    );
+
+    expect(tryConsumePass).toHaveBeenCalledOnce();
+    expect(assistantProvider.complete).not.toHaveBeenCalled();
+    expect(
+      vi
+        .mocked(repository.upsertMemory)
+        .mock.calls.some(([, , memory]) => memory.source === "model_assisted"),
+    ).toBe(false);
   });
 });

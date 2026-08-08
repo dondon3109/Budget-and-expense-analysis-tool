@@ -4,18 +4,16 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
 
 ## One-time Supabase setup
 
-1. Create separate Supabase projects for preview and production when practical. If one project is shared initially, keep its redirect allow-list restricted to the known Zoption hosts.
-2. In **Authentication > URL configuration**, set the production site URL to `https://zoption.site` and add redirect URLs for:
-   - `http://localhost:5173/auth/callback`
-   - `https://PREVIEW_WEB_HOST/auth/callback`
-   - `https://zoption.site/auth/callback`
-   - `https://www.zoption.site/auth/callback`
+1. Create separate Supabase projects for Preview and Production. Deployment validation fails closed when environments reuse a normalized Supabase origin or publishable key, preventing Preview authentication traffic from reaching Production and vice versa.
+2. In each project's **Authentication > URL configuration**, keep environments isolated:
+   - Preview: set the site URL to `https://PREVIEW_WEB_HOST` and allow only `http://localhost:5173/auth/callback` (when this project is used locally) plus `https://PREVIEW_WEB_HOST/auth/callback`.
+   - Production: set the site URL to `https://zoption.site` and allow only `https://zoption.site/auth/callback` plus `https://www.zoption.site/auth/callback` while the alias is served.
 3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users. The Site URL is only a fallback; password recovery should return through `/auth/callback?next=%2Fupdate-password`. In the recovery email template, link the reset action to `{{ .ConfirmationURL }}` so Supabase preserves the `redirectTo` supplied by the app. Do not link recovery mail directly to `{{ .SiteURL }}`. Compare the reset request's actual `redirectTo` with the dashboard allow-list and add the query-bearing production callback explicitly if Supabase does not accept the base callback entry. New Free-plan projects using Supabase's default SMTP cannot customize Auth templates, so configure custom SMTP when template editing or delivery to non-team addresses is required.
 4. In **Authentication > Password security**, set the minimum password length to 12, require lowercase, uppercase, number, and symbol coverage, enable leaked-password protection when available, and require a recent session or reauthentication for password changes. The tracked local Supabase configuration mirrors this policy; the hosted project must enforce it because browser validation can be bypassed by direct Auth API clients. Use an HTTPS project URL in preview and production; the Worker permits cleartext Supabase URLs only for explicit loopback development hosts.
 5. Require email confirmation before first sign-in. Keep signup responses neutral for both new and existing addresses so the public form does not disclose whether an account exists.
 6. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
-7. Record the project URL and publishable key from **Project Settings > API**. Never use a secret or service-role key in browser configuration.
-8. Configure `SUPABASE_PUBLISHABLE_KEY` as a non-secret Worker variable. Store `SUPABASE_SERVICE_ROLE_KEY` only as a Worker secret; the account-deletion workflow uses it to clear the user-owned avatar folder and hard-delete the Auth identity after D1 data is purged:
+7. Record the project URL and `sb_publishable_…` key from **Project Settings > API**. A legacy JWT `anon` key remains supported during Supabase's migration window, but a secret, `sb_secret_…`, or legacy `service_role` key is never valid browser configuration.
+8. Configure `SUPABASE_PUBLISHABLE_KEY` as a non-secret Worker variable. It must match the project represented by `SUPABASE_URL`. Store `SUPABASE_SERVICE_ROLE_KEY` only as a Worker secret; the account-deletion workflow uses it to clear the user-owned avatar folder and hard-delete the Auth identity after D1 data is purged:
 
    ```bash
    pnpm --filter @zoption/api exec wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config wrangler.deploy.jsonc --env preview
@@ -41,23 +39,32 @@ After changing redirect or template settings, request a fresh recovery email; pr
 1. Authenticate locally with `pnpm --filter @zoption/api exec wrangler login`.
 2. Create `budget-expense-preview` and `budget-expense-production` with `wrangler d1 create`; retain the returned database IDs.
 3. Copy `apps/api/wrangler.deploy.example.jsonc` to ignored `apps/api/wrangler.deploy.jsonc`.
-4. Replace the D1 IDs, allowed origins, and `SUPABASE_URL` values for each environment. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise.
-5. Create separate preview and production Pages projects. Attach `zoption.site` and `www.zoption.site` to the production Pages project in the Cloudflare dashboard. Pages custom domains are dashboard-managed; this repository does not use an `apps/web/wrangler.jsonc` file.
-6. Keep the production Worker custom domain route for `api.zoption.site` in `apps/api/wrangler.deploy.jsonc`; the tracked example documents the same route.
-7. Store the DeepSeek key as a Worker secret in each environment; never add it to Wrangler `vars`, D1, browser configuration, or the repository:
+4. Replace each environment's D1 ID, allowed origins, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise. The publishable key is public configuration, but secret and service-role key types remain forbidden in Wrangler `vars`.
+5. Validate the real config before any migration or deploy. The validator reports only environment and binding names; it never prints configured values:
+
+   ```bash
+   node scripts/validate-deployment-config.mjs
+   ```
+
+   It checks Preview and Production D1 bindings, exact HTTPS web/Supabase origins, production routing, publishable-key type, distinct Supabase origins and keys across environments, PayPal namespace and distinct monthly/annual plan variables, placeholders, and forbidden secret values in `vars`. Production PayPal must use `production`; Preview and Staging may intentionally use either `sandbox` or `production`. It also validates Staging when an `env.staging` block exists.
+
+6. Create separate preview and production Pages projects. Attach `zoption.site` and `www.zoption.site` to the production Pages project in the Cloudflare dashboard. Pages custom domains are dashboard-managed; this repository does not use an `apps/web/wrangler.jsonc` file.
+7. Keep the production Worker custom domain route for `api.zoption.site` in `apps/api/wrangler.deploy.jsonc`; the tracked example documents the same route.
+8. Store the DeepSeek key as a Worker secret in each environment; never add it to Wrangler `vars`, D1, browser configuration, or the repository:
 
    ```bash
    pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY --config wrangler.deploy.jsonc --env preview
    pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY --config wrangler.deploy.jsonc --env production
    ```
 
-8. Keep `DEEPSEEK_MODEL=deepseek-v4-flash`, `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
-9. Before enabling sponsored-seat invitations, onboard the sender domain in Resend and store the `RESEND_API_KEY` as a Worker secret (`wrangler secret put RESEND_API_KEY`) in each deployment environment. Set `WEB_APP_URL` to the exact HTTPS Pages origin and `EMAIL_FROM` to the verified sender address; neither value belongs in browser `VITE_*` configuration. This works on the Cloudflare Free plan because delivery goes through the Resend REST API (no `send_email` binding). Send a controlled invitation to an address you manage before enabling the production platform-admin grant.
-10. Configure PayPal subscriptions before enabling paid checkout:
-    - Create separate Sandbox and live PayPal API apps. Do not share credentials, webhook IDs, products, or plans between environments.
-    - Create one product and two recurring PHP plans in each environment: ₱149 monthly and ₱1,299 annually, with no trial. Confirm the PayPal account can approve those PHP subscription plans before release.
-    - Set the non-secret Worker variables for each environment: `PAYPAL_ENVIRONMENT` (`sandbox` for preview, `production` for production), `PAYPAL_PRO_MONTHLY_PLAN_ID`, `PAYPAL_PRO_ANNUAL_PLAN_ID`, and the exact HTTPS `WEB_APP_URL`. Do not put any of these in `VITE_*` configuration.
-    - Store `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `PAYPAL_WEBHOOK_ID` as Worker secrets in each environment. The browser has no PayPal SDK, client ID, iframe, or API connection.
+9. Keep `DEEPSEEK_MODEL=deepseek-v4-flash`, `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
+10. Before enabling sponsored-seat invitations, onboard the sender domain in Resend and store the `RESEND_API_KEY` as a Worker secret (`wrangler secret put RESEND_API_KEY`) in each deployment environment. Set `WEB_APP_URL` to the exact HTTPS Pages origin and `EMAIL_FROM` to the verified sender address; neither value belongs in browser `VITE_*` configuration. This works on the Cloudflare Free plan because delivery goes through the Resend REST API (no `send_email` binding). Send a controlled invitation to an address you manage before enabling the production platform-admin grant.
+11. Configure PayPal subscriptions before enabling paid checkout:
+    - Choose the PayPal namespace independently for each non-production environment: `sandbox` or `production`. Preview currently intentionally uses PayPal Live, so its `PAYPAL_ENVIRONMENT` is `production`; do not change it to Sandbox merely because the Worker environment is named Preview. Production must always use `production`.
+    - Create a separate PayPal API app and separate product, plans, and webhook for every deployment environment in its selected namespace. Do not share credentials, webhook IDs, products, or plans between Preview and Production, even when both use PayPal Live.
+    - Create two recurring PHP plans per environment: ₱149 monthly and ₱1,299 annually, with no trial. Confirm the PayPal account can approve those PHP subscription plans before release.
+    - Set `PAYPAL_ENVIRONMENT`, `PAYPAL_PRO_MONTHLY_PLAN_ID`, and `PAYPAL_PRO_ANNUAL_PLAN_ID` as non-secret Worker variables. Monthly and annual plan IDs must be non-placeholder and distinct. Set the exact HTTPS `WEB_APP_URL` as well. Do not put any of these in `VITE_*` configuration.
+    - Store `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `PAYPAL_WEBHOOK_ID` as Worker secrets in the same Sandbox or Live namespace selected by `PAYPAL_ENVIRONMENT`. The browser has no PayPal SDK, client ID, iframe, or API connection.
 
     ```bash
     pnpm --filter @zoption/api exec wrangler secret put PAYPAL_CLIENT_ID --config wrangler.deploy.jsonc --env preview
@@ -68,13 +75,15 @@ After changing redirect or template settings, request a fresh recovery email; pr
     pnpm --filter @zoption/api exec wrangler secret put PAYPAL_WEBHOOK_ID --config wrangler.deploy.jsonc --env production
     ```
 
-    Register one webhook per environment at `https://PREVIEW_API_HOST/api/billing/paypal/webhook` and `https://api.zoption.site/api/billing/paypal/webhook`. Subscribe only to `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.EXPIRED`, and `BILLING.SUBSCRIPTION.PAYMENT.FAILED`. Record the matching webhook ID as the environment secret. Never copy OAuth tokens, webhook headers, payer data, or secret values into source code, tracked configuration, or logs.
+    Register one webhook per environment at `https://PREVIEW_API_HOST/api/billing/paypal/webhook` and `https://api.zoption.site/api/billing/paypal/webhook`. Subscribe only to `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, and `PAYMENT.SALE.COMPLETED`. Record the matching webhook ID as the environment secret. Never copy OAuth tokens, webhook headers, payer data, or secret values into source code, tracked configuration, or logs.
 
-### PayPal Sandbox Preview setup
+### Optional PayPal Sandbox provisioning utility
 
-The repository setup utility is intentionally locked to PayPal Sandbox and the approved Preview Worker webhook endpoint. It never calls the live PayPal API, patches/deletes existing resources, or changes Cloudflare by itself. It reconciles the `Zoption Pro` product, the ₱149 monthly and ₱1,299 annual PHP plans, and the six-event Preview webhook. A conflicting same-name resource, duplicate webhook, or mismatched webhook event set stops the operation for review.
+The repository setup utility is intentionally locked to PayPal Sandbox and the approved Preview Worker webhook endpoint. It never calls the live PayPal API, patches/deletes existing resources, or changes Cloudflare by itself. It reconciles the `Zoption Pro` product, the ₱149 monthly and ₱1,299 annual PHP plans, and the seven-event Preview webhook. A conflicting same-name resource, duplicate webhook, or mismatched webhook event set stops the operation for review.
 
-Use the ignored `apps/api/.dev.vars` file for the Sandbox client ID and secret. Run the default non-mutating preflight first:
+This utility is only for a deliberate Sandbox Preview configuration. The current Preview deployment intentionally uses PayPal Live, so do not run this utility or copy its Sandbox plans/secrets into that environment unless Preview is explicitly switched to `PAYPAL_ENVIRONMENT=sandbox`. Live Preview resources must be managed in the PayPal Live namespace and its three Worker secrets must come from the matching Preview-specific Live app and webhook.
+
+For a deliberate Sandbox Preview, use the ignored `apps/api/.dev.vars` file for the Sandbox client ID and secret. Run the default non-mutating preflight first:
 
 ```bash
 PAYPAL_WEBHOOK_URL=https://budget-expense-api-preview.dondon3109.workers.dev/api/billing/paypal/webhook \
@@ -98,7 +107,7 @@ PAYPAL_WEBHOOK_URL=https://budget-expense-api-preview.dondon3109.workers.dev/api
       --config wrangler.deploy.jsonc --env preview
 ```
 
-Copy only the returned non-secret plan IDs into the Preview `vars` block in the ignored `apps/api/wrangler.deploy.jsonc`, set `WEB_APP_URL=https://clarity-budget-preview.pages.dev`, and keep the production block unchanged. Confirm the Preview Worker has all three secret names before deployment:
+If Preview was deliberately switched to Sandbox, copy only the returned non-secret Sandbox plan IDs into its `vars` block in the ignored `apps/api/wrangler.deploy.jsonc`, set `PAYPAL_ENVIRONMENT=sandbox`, set the exact Preview `WEB_APP_URL`, and keep the Production block unchanged. Confirm the Preview Worker has all three secret names before deployment:
 
 ```bash
 pnpm --filter @zoption/api exec wrangler secret list \
@@ -136,10 +145,12 @@ For the target environment:
 
 1. Run a Wrangler deploy dry run using the real config and explicit `--env`.
 2. Run `wrangler secret list` and confirm `DEEPSEEK_API_KEY` exists by name. This confirms presence, not the encrypted value, and never prints the key.
-3. List remote D1 migrations. Stop if migration inspection is denied; do not infer assistant schema readiness from `/health`, which intentionally checks only D1 availability.
+3. List remote D1 migrations. Stop if migration inspection is denied; do not infer assistant schema or provider readiness from `/health`, which checks only the centralized core API bindings (`DB`, `ALLOWED_ORIGINS`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`) plus a non-mutating D1 query.
 4. Create the documented D1 recovery point before applying a pending migration.
 5. Perform a full Worker deploy, not another secret-only deployment.
 6. Verify the resulting deployment version, the `03:17 UTC` retention cron, public smoke checks, and an authenticated plain/tool-backed assistant response.
+
+`/health` returns `503` with only `status` and `service` when a core binding or D1 is unavailable. Its log records only a fixed message and error class; binding values, credentials, provider errors, and database error text are never included.
 
 Provider failures emit only a sanitized structured event with `event`, `provider`, `kind`, `reason`, and optional numeric `providerStatus`. Never add prompts, answers, tool arguments/results, account or transaction data, tenant/user/thread/message IDs, JWTs, credentials, headers, exception messages/stacks, or provider response bodies to these logs.
 
@@ -154,7 +165,9 @@ Safe diagnostic actions:
 
 ## Frontend configuration
 
-Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production-only API fallback to `https://api.zoption.site`. Preview and staging builds must receive `VITE_API_URL` explicitly from the build process; the build rejects the production fallback for those environments. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`. Set `VITE_GA_MEASUREMENT_ID` to the approved Google Analytics 4 Measurement ID (`G-…`) in each Pages environment. The browser bundle does not load Google Analytics 4 until a visitor enables Analytics in Cookie Settings; do not set the value until the Cookie Policy and provider review are approved. The tracked Pages `_headers` policy restricts scripts, workers, forms, frames, images, and connections to the application, Supabase, Google Analytics, and known API hosts, and enables HSTS on deployed HTTPS responses. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`. Update and verify CSP whenever a new external asset, API, or authentication host is introduced.
+Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production-only API fallback to `https://api.zoption.site`. Preview and staging builds must receive `VITE_API_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` explicitly from the build process; local or production fallbacks are rejected. All deployment API and Supabase values must be exact HTTPS origins without credentials, paths, queries, or fragments. Production must use `https://api.zoption.site`; Preview and Staging must not. The build accepts only a Supabase `sb_publishable_…` or legacy JWT `anon` key and rejects secret/service-role types without echoing the value. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`.
+
+The client build derives the Pages CSP from the validated API and Supabase origins, writes those exact origins into `connect-src`, writes the exact Supabase origin into `img-src`, and rejects every wildcard source. When `VITE_GA_MEASUREMENT_ID` is configured, only the exact Google Tag Manager script host plus the `www.google-analytics.com` and `region1.google-analytics.com` collection hosts are added; the browser still does not load Analytics until a visitor enables Analytics in Cookie Settings. Prerender verifies that the final `_headers` contains exactly the generated policy before deployment. Production client and SSR source maps are explicitly disabled, and a successful build must leave no `.map` files in `apps/web/dist`. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`.
 
 Set `ZOPTION_DEPLOY_ENV` explicitly in every Pages build: `production` for the production project and `preview` or `staging` for non-production projects. Preview/staging builds keep the public content and production canonicals for realistic review, but force HTML and HTTP `noindex,nofollow`, do not publish `sitemap.xml`, and do not advertise a sitemap in `robots.txt`. Production intentionally allows crawlers to fetch private routes rather than disallowing them in `robots.txt`, so crawlers can observe their HTML and `X-Robots-Tag` noindex directives. Vite embeds public environment variables in the generated assets, so changing `VITE_API_URL` or another `VITE_*` value requires a fresh build before deploying; re-uploading an existing `dist` directory does not update it.
 
@@ -173,9 +186,10 @@ Public canonical URLs do not use trailing slashes. The three legal trailing-slas
 
 ## Preview release
 
-Create a D1 Time Travel recovery point before applying migrations that remove retired data, then apply migrations and deploy the Worker:
+Create a D1 Time Travel recovery point before applying migrations that remove retired data, then apply migrations and deploy the Worker. The tracked Preview environment overrides the root cron list to omit daily interest crediting: Preview keeps billing reconciliation and daily maintenance, while Production retains all three schedules. This also keeps the current Cloudflare account within its account-wide Cron Trigger quota.
 
 ```bash
+node scripts/validate-deployment-config.mjs
 cd apps/api
 pnpm exec wrangler d1 migrations apply DB --remote --config wrangler.deploy.jsonc --env preview
 pnpm exec wrangler deploy --config wrangler.deploy.jsonc --env preview
@@ -198,8 +212,15 @@ pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIE
 Run the non-mutating smoke gate:
 
 ```bash
-EXPECT_SEARCH_INDEXING=0 WEB_URL=https://PREVIEW_WEB_HOST API_URL=https://PREVIEW_API_HOST pnpm smoke:production
+EXPECT_SEARCH_INDEXING=0 \
+WEB_URL=https://PREVIEW_WEB_HOST \
+API_URL=https://PREVIEW_API_HOST \
+EXPECTED_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
+FORBIDDEN_SUPABASE_ORIGINS=https://PRODUCTION_PROJECT_REF.supabase.co \
+pnpm smoke:production
 ```
+
+`EXPECTED_SUPABASE_URL` is required. Set `FORBIDDEN_SUPABASE_ORIGINS` to the other deployment's distinct Supabase origin and add any custom-domain origins that must be absent. The smoke gate rejects every CSP wildcard source and, for managed `*.supabase.co` projects, rejects every managed Supabase origin other than the expected one. It also confirms the frontend bundle embeds the expected API and Supabase origins and none of the explicitly forbidden origins.
 
 Then perform an authenticated browser check with two ordinary preview users:
 
@@ -223,6 +244,7 @@ Before publishing the legal routes, business and legal reviewers must resolve ev
 After the preview migration and authenticated checks pass, create a production D1 recovery point, apply migrations, and deploy the Worker. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site`, `www.zoption.site`, and the transitional Pages origin.
 
 ```bash
+node scripts/validate-deployment-config.mjs
 cd apps/api
 pnpm exec wrangler d1 migrations apply DB --remote --config wrangler.deploy.jsonc --env production
 pnpm exec wrangler deploy --config wrangler.deploy.jsonc --env production
@@ -238,7 +260,11 @@ VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
 ZOPTION_DEPLOY_ENV=production \
 pnpm --filter @zoption/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PRODUCTION_PAGES_PROJECT --branch=main
-WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production
+WEB_URL=https://zoption.site \
+API_URL=https://api.zoption.site \
+EXPECTED_SUPABASE_URL=https://PRODUCTION_PROJECT_REF.supabase.co \
+FORBIDDEN_SUPABASE_ORIGINS=https://PREVIEW_PROJECT_REF.supabase.co \
+pnpm smoke:production
 ```
 
 Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. The deployed output pre-renders `/`, `/terms-of-service`, `/privacy-policy`, and `/cookie-policy`; it also publishes `/sitemap.xml`, `/robots.txt`, `/llms.txt`, and a branded `404.html`. The committed `_redirects` file routes only authentication and private application paths to the `spa.html` shell, sends legacy application paths through permanent redirects, and leaves unknown public paths as HTTP 404 responses. Confirm the consent banner makes no Analytics or Marketing requests before opt-in, Google Analytics 4 loads only after Analytics opt-in, and withdrawal removes the in-page Google Analytics integration. The retired `/demo` route should return HTTP 404.
@@ -249,7 +275,7 @@ Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's re
 - **Worker:** roll back to the previous Worker version, but do not roll code back past an incompatible D1 migration.
 - **D1:** migrations are forward-only. Create a Time Travel restore point before destructive schema changes and rehearse recovery in preview.
 - **Supabase Auth:** do not rotate or remove signing keys as an application rollback mechanism. Follow Supabase key-rotation guidance and keep old keys valid through their transition window.
-- After rollback, rerun `pnpm smoke:production` and verify unauthenticated `/api/app/*` requests still return `401`.
+- After rollback, rerun the documented environment-specific smoke command with `EXPECTED_SUPABASE_URL` (and any distinct `FORBIDDEN_SUPABASE_ORIGINS`) and verify unauthenticated `/api/app/*` requests still return `401`.
 
 ## Custom-domain verification
 
@@ -258,7 +284,7 @@ Before treating the domain migration as complete:
 1. In the Pages project, confirm `zoption.site` serves the frontend and no Worker route or Worker Custom Domain claims the apex host. If `https://zoption.site/health` returns the API health response, the apex is still routed to the Worker.
 2. Deploy the production Worker with `apps/api/wrangler.deploy.jsonc` so its Custom Domain is `api.zoption.site`, then confirm `https://api.zoption.site/health` returns `200`.
 3. Add `www.zoption.site` to Pages and configure the canonical redirect, or remove the alias from `ALLOWED_ORIGINS` and Supabase if it will not be served.
-4. Run `WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production` after DNS and custom-domain changes have propagated.
+4. Run the Production smoke command above, including `EXPECTED_SUPABASE_URL`, after DNS and custom-domain changes have propagated.
 
 ## Search visibility verification
 
@@ -284,4 +310,4 @@ Preview endpoints are deployment-specific. Supply them through `PREVIEW_WEB_HOST
 
 ## Legacy origin cleanup
 
-The legacy production Pages origin is no longer accepted by the API. Production `ALLOWED_ORIGINS` contains only `https://zoption.site` and `https://www.zoption.site`. Keep only the matching custom-domain callback URLs in Supabase, and rerun `WEB_URL=https://zoption.site API_URL=https://api.zoption.site pnpm smoke:production` after deployment or routing changes.
+The legacy production Pages origin is no longer accepted by the API. Production `ALLOWED_ORIGINS` contains only `https://zoption.site` and `https://www.zoption.site`. Keep only the matching custom-domain callback URLs in Supabase, and rerun the documented Production smoke command with the expected Supabase origin after deployment or routing changes.

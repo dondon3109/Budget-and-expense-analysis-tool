@@ -34,11 +34,12 @@ async function handleRequest(request: WorkbookRequest) {
   try {
     const parser = await import("../lib/workbookParser");
     if (request.type === "inspect") {
+      const sheetNames = parser.inspectWorkbook(request.buffer);
       workbookBuffer = request.buffer;
       workerScope.postMessage({
         id: request.id,
         ok: true,
-        result: parser.inspectWorkbook(workbookBuffer),
+        result: sheetNames,
       });
       return;
     }

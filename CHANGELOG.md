@@ -2,6 +2,25 @@
 
 All notable product changes are documented here.
 
+## 1.2.1 — 2026-08-08
+
+### Added
+
+- Model-assisted memory enrichment for the financial assistant, with a dedicated usage table and a limit of eight passes per rolling 14-day cycle.
+- API readiness checks for required bindings and D1 connectivity on the health endpoint and scheduled tasks.
+- Deployment validation and smoke checks that verify environment isolation, exact API and Supabase origins, and a wildcard-free Content Security Policy.
+
+### Changed
+
+- PayPal subscription handling now verifies canonical provider state before applying webhook updates, defers pending checkouts, and treats failed payments as past due.
+- Excel and CSV imports now apply stricter archive, worksheet, row, column, cell, compression, and file-size limits before processing.
+- Google Analytics now loads only after Analytics consent on eligible public pages and removes its cookies when consent is withdrawn.
+
+### Fixed
+
+- PayPal webhook validation now rejects malformed or oversized requests, and access-token refresh is deduplicated with a retry after rejected credentials.
+- Transaction and billing reconciliation paths now preserve subscription ownership and financial-record consistency under concurrent or repeated requests.
+
 ## 1.2.0 — 2026-08-06
 
 ### Added

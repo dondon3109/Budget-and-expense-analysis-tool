@@ -1,7 +1,13 @@
 import { assertPublicStructuredDataGraph } from "../apps/web/scripts/verify-prerender.mjs";
+import {
+  assertDeploymentContentSecurityPolicy,
+  assertFrontendAssetOrigins,
+} from "./deployment-smoke-helpers.mjs";
 
 const webUrl = requiredUrl("WEB_URL");
 const apiUrl = requiredUrl("API_URL");
+const expectedSupabaseUrl = requiredUrl("EXPECTED_SUPABASE_URL");
+const forbiddenSupabaseOrigins = optionalOrigins("FORBIDDEN_SUPABASE_ORIGINS");
 const origin = new URL(webUrl).origin;
 const seoOrigin = "https://zoption.site";
 const searchIndexingEnabled = process.env.EXPECT_SEARCH_INDEXING !== "0";
@@ -12,17 +18,25 @@ function requiredUrl(name) {
   return value.replace(/\/$/, "");
 }
 
+function optionalOrigins(name) {
+  return (process.env[name] ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 async function expectResponse(label, url, init, validate) {
   const response = await fetch(url, init);
   await validate(response);
   console.log(`✓ ${label}`);
 }
 
-async function expectFrontendApiUrl(html) {
+async function expectFrontendDeploymentOrigins(html) {
   const pending = [...html.matchAll(/<script[^>]+src=["']([^"']+\.js)["']/g)].map(
     (match) => new URL(match[1], webUrl).href,
   );
   const visited = new Set();
+  const sources = [];
 
   while (pending.length > 0) {
     const assetUrl = pending.pop();
@@ -31,7 +45,7 @@ async function expectFrontendApiUrl(html) {
     const response = await fetch(assetUrl);
     if (!response.ok) throw new Error(`Frontend asset failed with HTTP ${response.status}.`);
     const source = await response.text();
-    if (source.includes(apiUrl)) return;
+    sources.push(source);
     for (const match of source.matchAll(/["']([^"']+\.js)["']/g)) {
       const assetPath = match[1];
       if (!/^(?:\.\/|\/?assets\/)/.test(assetPath)) continue;
@@ -40,7 +54,11 @@ async function expectFrontendApiUrl(html) {
     }
   }
 
-  throw new Error("The deployed frontend does not contain the configured API URL.");
+  assertFrontendAssetOrigins(sources, {
+    apiUrl,
+    expectedSupabaseUrl,
+    forbiddenSupabaseOrigins,
+  });
 }
 
 function assertIncludes(value, expected, label) {
@@ -85,6 +103,11 @@ const publicPages = [
 for (const [label, path, heading] of publicPages) {
   await expectResponse(label, `${webUrl}${path}`, undefined, async (response) => {
     if (!response.ok) throw new Error(`${label} failed with HTTP ${response.status}.`);
+    assertDeploymentContentSecurityPolicy(response.headers.get("content-security-policy"), {
+      apiUrl,
+      expectedSupabaseUrl,
+      forbiddenSupabaseOrigins,
+    });
     const html = await response.text();
     const canonical = `${seoOrigin}${path === "/" ? "" : path}`;
     if (!searchIndexingEnabled) {
@@ -100,7 +123,7 @@ for (const [label, path, heading] of publicPages) {
       throw new Error(`${label} loaded Google Analytics before consent.`);
     }
 
-    if (path === "/") await expectFrontendApiUrl(html);
+    if (path === "/") await expectFrontendDeploymentOrigins(html);
   });
 }
 

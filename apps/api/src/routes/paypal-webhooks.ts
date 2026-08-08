@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import {
   getPayPalSubscription,
   isPayPalCheckoutPending,
+  isValidPayPalWebhookHeaders,
   normalizePayPalSubscriptionStatus,
   verifyPayPalWebhook,
 } from "../billing/paypal";
@@ -17,6 +18,7 @@ const SUBSCRIPTION_EVENT_TYPES = new Set([
   "BILLING.SUBSCRIPTION.CANCELLED",
   "BILLING.SUBSCRIPTION.EXPIRED",
   "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
+  "PAYMENT.SALE.COMPLETED",
 ]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -38,6 +40,17 @@ export function createPayPalWebhookRoutes(repository: BillingRepository) {
   const routes = new Hono<AppEnvironment>();
 
   routes.post("/", async (context) => {
+    const webhookHeaders = {
+      authAlgo: context.req.header("paypal-auth-algo"),
+      certUrl: context.req.header("paypal-cert-url"),
+      transmissionId: context.req.header("paypal-transmission-id"),
+      transmissionSignature: context.req.header("paypal-transmission-sig"),
+      transmissionTime: context.req.header("paypal-transmission-time"),
+    };
+    if (!isValidPayPalWebhookHeaders(context.env, webhookHeaders)) {
+      throw new HttpError(400, "invalid_webhook", "Invalid webhook request.");
+    }
+
     const rawBody = await context.req.text();
     let payload: unknown;
     try {
@@ -46,13 +59,7 @@ export function createPayPalWebhookRoutes(repository: BillingRepository) {
       throw new HttpError(400, "invalid_webhook", "Invalid webhook request.");
     }
 
-    const verified = await verifyPayPalWebhook(context.env, payload, {
-      authAlgo: context.req.header("paypal-auth-algo"),
-      certUrl: context.req.header("paypal-cert-url"),
-      transmissionId: context.req.header("paypal-transmission-id"),
-      transmissionSignature: context.req.header("paypal-transmission-sig"),
-      transmissionTime: context.req.header("paypal-transmission-time"),
-    });
+    const verified = await verifyPayPalWebhook(context.env, payload, webhookHeaders);
     if (!verified) throw new HttpError(400, "invalid_webhook", "Invalid webhook request.");
 
     const event = asRecord(payload);
@@ -60,7 +67,10 @@ export function createPayPalWebhookRoutes(repository: BillingRepository) {
     const eventType = stringAt(event, "event_type");
     const occurredAt = canonicalTimestamp(stringAt(event, "create_time"));
     const resource = asRecord(event?.resource);
-    const subscriptionId = stringAt(resource, "id");
+    const subscriptionId =
+      eventType === "PAYMENT.SALE.COMPLETED"
+        ? stringAt(resource, "billing_agreement_id")
+        : stringAt(resource, "id");
     if (!event || !eventId || !eventType || !occurredAt) {
       throw new HttpError(400, "invalid_webhook", "Invalid webhook request.");
     }
@@ -85,10 +95,11 @@ export function createPayPalWebhookRoutes(repository: BillingRepository) {
       );
     }
 
+    const canonicalStatus = normalizePayPalSubscriptionStatus(subscription.status);
     const status =
-      eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED"
+      eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED" && canonicalStatus === "active"
         ? "past_due"
-        : normalizePayPalSubscriptionStatus(subscription.status);
+        : canonicalStatus;
     if (!status || !subscription.statusUpdatedAt) {
       throw new HttpError(
         503,

@@ -14,16 +14,12 @@ import type {
 } from "@zoption/shared";
 
 import type { AssistantRepository } from "../db/assistant";
+import type { AssistantModelMemoryUsageRepository } from "../db/assistant-model-memory-usage";
 import type { AssistantUsageRepository } from "../db/assistant-usage";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { DeepSeekError, type DeepSeekErrorKind, type DeepSeekFailureReason } from "./deepseek";
-import {
-  buildMemoryBlock,
-  deterministicExtract,
-  MODEL_MEMORY_PASS_CYCLE_CAP,
-  runModelMemoryPass,
-} from "./memory";
+import { buildMemoryBlock, deterministicExtract, runModelMemoryPass } from "./memory";
 import type { AssistantOrchestrator } from "./orchestrator";
 import type { AssistantProvider } from "./provider";
 import { responseMetadataForPolicy, serializeTurnPolicy } from "./turn-policy";
@@ -132,6 +128,7 @@ export function createAssistantService(
   reporter: AssistantDiagnosticReporter = defaultDiagnosticReporter,
   assistantUsage?: Pick<AssistantUsageRepository, "consumeUsage">,
   provider?: AssistantProvider,
+  modelMemoryUsage?: Pick<AssistantModelMemoryUsageRepository, "tryConsumePass">,
 ): AssistantService {
   async function requireReadyPreferences(
     env: Bindings,
@@ -165,14 +162,11 @@ export function createAssistantService(
       repository.getPreferences(env, tenantId),
     ]);
     const facts = memories.filter(
-      (memory) =>
-        (memory.kind === "fact" || memory.kind === "preference") &&
-        memory.key !== "model_memory_pass_count",
+      (memory) => memory.kind === "fact" || memory.kind === "preference",
     );
     const threadSummary =
-      memories.find(
-        (memory) => memory.kind === "summary" && memory.key === `thread:${threadId}`,
-      )?.value ?? null;
+      memories.find((memory) => memory.kind === "summary" && memory.key === `thread:${threadId}`)
+        ?.value ?? null;
     const debtMemory = memories.find(
       (memory) => memory.kind === "preference" && memory.key === "debt_strategy",
     );
@@ -195,25 +189,17 @@ export function createAssistantService(
     for (const memory of extraction.memories) {
       await repository.upsertMemory(env, tenantId, memory);
     }
-    if (extraction.needsModelPass && provider) {
-      const countMemory = await repository.getMemory(
-        env,
-        tenantId,
-        "fact",
-        "model_memory_pass_count",
-      );
-      const used = Number.parseInt(countMemory?.value ?? "0", 10);
-      if (!Number.isNaN(used) && used < MODEL_MEMORY_PASS_CYCLE_CAP) {
-        const extracted = await runModelMemoryPass(env, provider, message);
-        for (const memory of extracted) {
-          await repository.upsertMemory(env, tenantId, memory);
-        }
-        await repository.upsertMemory(env, tenantId, {
-          kind: "fact",
-          key: "model_memory_pass_count",
-          value: String(used + 1),
-          source: "deterministic",
-        });
+    if (
+      extraction.needsModelPass &&
+      env.ASSISTANT_MEMORY_MODEL_PASS !== "off" &&
+      provider &&
+      modelMemoryUsage
+    ) {
+      const consumed = await modelMemoryUsage.tryConsumePass(env, tenantId);
+      if (!consumed) return;
+      const extracted = await runModelMemoryPass(env, provider, message);
+      for (const memory of extracted) {
+        await repository.upsertMemory(env, tenantId, memory);
       }
     }
   }
@@ -329,10 +315,7 @@ export function createAssistantService(
     deleteThread: (env, tenantId, threadId) => repository.deleteThread(env, tenantId, threadId),
     deleteAllThreads: (env, tenantId) => repository.deleteAllThreads(env, tenantId),
 
-    async getMemory(env, tenantId) {
-      const memories = await repository.listMemories(env, tenantId);
-      return memories.filter((memory) => memory.key !== "model_memory_pass_count");
-    },
+    getMemory: (env, tenantId) => repository.listMemories(env, tenantId),
 
     async getMemoryPreferences(env, tenantId) {
       const preferences = await repository.getPreferences(env, tenantId);

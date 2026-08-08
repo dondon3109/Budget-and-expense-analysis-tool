@@ -385,8 +385,12 @@ export const assistantPreferences = sqliteTable("assistant_preferences", {
     .notNull()
     .default("gentle"),
   retentionDays: integer("retention_days").notNull().default(90),
-  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
-  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
 });
 
 export const assistantMemories = sqliteTable(
@@ -402,8 +406,12 @@ export const assistantMemories = sqliteTable(
     source: text("source", {
       enum: ["user_stated", "deterministic", "model_assisted"],
     }).notNull(),
-    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
-    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
     expiresAt: text("expires_at"),
   },
   (table) => [
@@ -412,6 +420,29 @@ export const assistantMemories = sqliteTable(
       table.tenantId,
       table.kind,
       table.key,
+    ),
+  ],
+);
+
+export const assistantModelMemoryPassUsage = sqliteTable(
+  "assistant_model_memory_pass_usage",
+  {
+    tenantId: text("tenant_id")
+      .primaryKey()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    anchorAtEpoch: integer("anchor_at_epoch").notNull(),
+    periodIndex: integer("period_index").notNull().default(0),
+    count: integer("count").notNull().default(0),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    check("assistant_model_memory_pass_usage_anchor_nonnegative", sql`${table.anchorAtEpoch} >= 0`),
+    check("assistant_model_memory_pass_usage_period_nonnegative", sql`${table.periodIndex} >= 0`),
+    check(
+      "assistant_model_memory_pass_usage_count_range",
+      sql`${table.count} >= 0 AND ${table.count} <= 8`,
     ),
   ],
 );

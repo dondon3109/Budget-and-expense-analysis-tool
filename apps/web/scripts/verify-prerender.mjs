@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 function assert(condition, message) {
@@ -12,6 +12,16 @@ function count(value, expression) {
 function outputFileForPath(distDirectory, pathname) {
   if (pathname === "/") return resolve(distDirectory, "index.html");
   return resolve(distDirectory, `${pathname.slice(1)}.html`);
+}
+
+async function sourceMapFiles(directory) {
+  const maps = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) maps.push(...(await sourceMapFiles(path)));
+    else if (entry.name.endsWith(".map")) maps.push(path);
+  }
+  return maps;
 }
 
 function canonicalForPath(origin, pathname) {
@@ -147,7 +157,10 @@ export function assertPublicStructuredDataGraph(
 
   if (path === "/") {
     const applications = nodes.filter((node) => node["@type"] === "WebApplication");
-    structuredDataAssert(applications.length === 1, "Homepage must contain one WebApplication node.");
+    structuredDataAssert(
+      applications.length === 1,
+      "Homepage must contain one WebApplication node.",
+    );
     const application = applications[0];
     structuredDataAssert(
       application["@id"] === `${siteOrigin}/#webapplication` && application.url === canonical,
@@ -259,7 +272,15 @@ export async function verifyPrerenderArtifacts({
   routes,
   siteOrigin,
   structuredDataScriptId,
+  expectedContentSecurityPolicy,
+  expectedApiOrigin,
+  expectedSupabaseOrigin,
 }) {
+  assert(
+    (await sourceMapFiles(distDirectory)).length === 0,
+    "production output must not contain source map files.",
+  );
+
   for (const route of routes) {
     const html = await readFile(outputFileForPath(distDirectory, route.path), "utf8");
     verifyDocument(html, route, { indexingEnabled, structuredDataScriptId });
@@ -288,6 +309,22 @@ export async function verifyPrerenderArtifacts({
   }
 
   const headers = await readFile(resolve(distDirectory, "_headers"), "utf8");
+  const cspValues = [...headers.matchAll(/^\s*Content-Security-Policy:\s*(.+)$/gim)].map((match) =>
+    match[1]?.trim(),
+  );
+  assert(
+    cspValues.length === 1 && cspValues[0] === expectedContentSecurityPolicy,
+    "_headers must contain exactly the CSP generated from this build environment.",
+  );
+  assert(
+    expectedContentSecurityPolicy.includes(expectedApiOrigin) &&
+      expectedContentSecurityPolicy.includes(expectedSupabaseOrigin),
+    "CSP must include the exact API and Supabase origins for this build.",
+  );
+  assert(
+    !expectedContentSecurityPolicy.split(/[;\s]+/).some((source) => source.includes("*")),
+    "CSP must use exact origins and must not contain wildcard sources.",
+  );
   const hasGlobalNoindex = headers.startsWith("/*\n  X-Robots-Tag: noindex, nofollow\n");
   assert(
     hasGlobalNoindex === !indexingEnabled,
