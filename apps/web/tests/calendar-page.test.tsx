@@ -143,17 +143,22 @@ describe("CalendarPage month views", () => {
     vi.useRealTimers();
   });
 
-  it("renders the following month below a separator inside the clipped calendar surface", async () => {
+  it("renders the following month collapsed by default and can be expanded via its separator toggle", async () => {
     const { container } = renderPage();
 
     expect(await screen.findByRole("grid", { name: "Calendar for 2026-07" })).toBeVisible();
-    expect(screen.getByRole("separator")).toHaveTextContent("August 2026");
+    const toggle = screen.getByRole("separator");
+    expect(toggle).toHaveTextContent("August 2026");
+    expect(screen.queryByRole("heading", { name: "August 2026" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("grid", { name: "Calendar for 2026-08" })).not.toBeInTheDocument();
+
+    fireEvent.click(within(toggle).getByRole("button"));
     expect(screen.getByRole("heading", { name: "August 2026" })).toBeVisible();
     expect(screen.getByRole("grid", { name: "Calendar for 2026-08" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Add Event" })).toBeVisible();
 
     const surface = container.querySelector(".calendar-surface");
-    expect(surface).toContainElement(screen.getByRole("separator"));
+    expect(surface).toContainElement(toggle);
     expect(apiMocks.getTransactionCalendar).toHaveBeenCalledWith(
       { key: "user:user-1", userId: "user-1" },
       "2026-08-01",
@@ -164,6 +169,7 @@ describe("CalendarPage month views", () => {
     renderPage();
 
     const toggle = await screen.findByRole("separator");
+    fireEvent.click(within(toggle).getByRole("button"));
     expect(screen.getByRole("heading", { name: "August 2026" })).toBeVisible();
 
     fireEvent.click(within(toggle).getByRole("button"));
@@ -177,6 +183,7 @@ describe("CalendarPage month views", () => {
 
   it("selects a next-month date without navigating away from the current month", async () => {
     renderPage();
+    fireEvent.click(within(await screen.findByRole("separator")).getByRole("button"));
     const augustFifth = await screen.findByRole("button", { name: /August 5, 2026/i });
 
     fireEvent.click(augustFifth);
@@ -193,6 +200,7 @@ describe("CalendarPage month views", () => {
 
   it("opens the event form for the selected next-month date", async () => {
     renderPage();
+    fireEvent.click(within(await screen.findByRole("separator")).getByRole("button"));
     fireEvent.click(await screen.findByRole("button", { name: /August 5, 2026/i }));
     fireEvent.click(screen.getByRole("button", { name: "Add event" }));
 

@@ -110,7 +110,7 @@ export function CalendarPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEventRecord>();
-  const [nextMonthOpen, setNextMonthOpen] = useState(true);
+  const [nextMonthOpen, setNextMonthOpen] = useState(false);
 
   useEffect(() => {
     setSelectedDate((current) =>
