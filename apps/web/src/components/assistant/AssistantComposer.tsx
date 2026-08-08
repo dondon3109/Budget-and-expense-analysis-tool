@@ -1,4 +1,4 @@
-import { Send, ShieldCheck } from "lucide-react";
+import { Bot, Send, ShieldCheck } from "lucide-react";
 import type { FormEvent, KeyboardEvent } from "react";
 
 interface AssistantComposerProps {
@@ -30,6 +30,9 @@ export function AssistantComposer({
 
   return (
     <form className="assistant-composer" onSubmit={submit}>
+      <span className="assistant-composer-ai" aria-hidden="true">
+        <Bot size={18} />
+      </span>
       <label className="sr-only" htmlFor="assistant-message">
         Ask about your finances
       </label>

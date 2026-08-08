@@ -3,16 +3,44 @@ import type {
   AssistantSourceMetadata,
   TransferFeeInsight,
 } from "@zoption/shared";
-import { Bot, Database, Sparkles, UserRound } from "lucide-react";
+import {
+  Bot,
+  Database,
+  PiggyBank,
+  Scale,
+  Sparkles,
+  TrendingUp,
+  UserRound,
+} from "lucide-react";
 import { Fragment, useEffect, useRef, type ReactNode } from "react";
 
 import { formatMoney, formatMoneyParts } from "../../lib/formatters";
 
-const QUICK_PROMPTS = [
-  "How much did I spend this month?",
-  "Why did I overspend last month?",
-  "Which debt should I pay first?",
-  "How much should I save monthly for my goal?",
+const QUICK_PROMPTS: { prompt: string; title: string; desc: string; icon: typeof Scale }[] = [
+  {
+    prompt: "How much did I spend this month?",
+    title: "Where did my money go?",
+    desc: "This month's spending by category",
+    icon: TrendingUp,
+  },
+  {
+    prompt: "Why did I overspend last month?",
+    title: "What pushed me over budget?",
+    desc: "Budget vs. actual, month over month",
+    icon: Scale,
+  },
+  {
+    prompt: "Which debt should I pay first?",
+    title: "Which debt should I pay first?",
+    desc: "Avalanche vs. snowball guidance",
+    icon: PiggyBank,
+  },
+  {
+    prompt: "How much should I save monthly for my goal?",
+    title: "How much should I save each month?",
+    desc: "Pace toward your savings goal",
+    icon: Sparkles,
+  },
 ];
 
 interface AssistantConversationProps {
@@ -248,7 +276,7 @@ export function AssistantConversation({
           <FeeInsightWelcome assistantName={assistantName} insight={feeInsight} />
         )}
         <span aria-hidden="true">
-          <Sparkles size={25} />
+          <Sparkles size={32} />
         </span>
         <p className="eyebrow">Evidence-led answers from your records</p>
         <h2>What would you like to understand?</h2>
@@ -256,9 +284,15 @@ export function AssistantConversation({
           Ask about balances, cash flow, budgets, recurring charges, goals, or debt payoff planning.
         </p>
         <div className="assistant-quick-prompts">
-          {QUICK_PROMPTS.map((prompt) => (
+          {QUICK_PROMPTS.map(({ prompt, title, desc, icon: Icon }) => (
             <button type="button" key={prompt} onClick={() => onPrompt(prompt)}>
-              {prompt}
+              <span className="assistant-quick-prompt-icon" aria-hidden="true">
+                <Icon size={17} />
+              </span>
+              <span className="assistant-quick-prompt-copy">
+                <span className="assistant-quick-prompt-title">{title}</span>
+                <span className="assistant-quick-prompt-desc">{desc}</span>
+              </span>
             </button>
           ))}
         </div>
