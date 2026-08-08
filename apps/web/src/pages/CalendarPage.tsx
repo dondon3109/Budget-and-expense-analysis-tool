@@ -6,7 +6,7 @@ import type {
   TransactionListItem,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, FileUp, Plus } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, FileUp, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -15,6 +15,7 @@ import { CalendarEventForm } from "../components/calendar/CalendarEventForm";
 import { CalendarMonthGrid, type CalendarDayData } from "../components/calendar/CalendarMonthGrid";
 import { CalendarUpcomingEvents } from "../components/calendar/CalendarUpcomingEvents";
 import { AppShell } from "../components/layout/AppShell";
+import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { TransactionForm } from "../components/transactions/TransactionForm";
 import { useAuth } from "../auth/AuthProvider";
 import {
@@ -109,6 +110,7 @@ export function CalendarPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEventRecord>();
+  const [nextMonthOpen, setNextMonthOpen] = useState(true);
 
   useEffect(() => {
     setSelectedDate((current) =>
@@ -269,11 +271,16 @@ export function CalendarPage() {
     <AppShell>
       <div className="dashboard-page calendar-page">
         <header className="dashboard-header calendar-header">
-          <div>
-            <p className="eyebrow">Daily activity</p>
-            <h1>Calendar</h1>
-            <p>Keep events, recurring costs, and daily transactions in one clear view.</p>
+          <div className="calendar-header-top">
+            <div className="calendar-header-title">
+              <p className="eyebrow">Daily activity</p>
+              <h1>Calendar</h1>
+            </div>
+            <ThemeToggle variant="pill" />
           </div>
+          <p className="calendar-header-subtitle">
+            Keep events, recurring costs, and daily transactions in one clear view.
+          </p>
           <div className="calendar-month-controls" aria-label="Calendar month controls">
             <button
               className="calendar-month-nav"
@@ -292,6 +299,7 @@ export function CalendarPage() {
             >
               <ChevronRight size={19} />
             </button>
+            <span className="calendar-month-divider" aria-hidden="true" />
             <button className="button secondary compact" type="button" onClick={showToday}>
               Today
             </button>
@@ -387,8 +395,21 @@ export function CalendarPage() {
               )}
 
             <div className="calendar-next-month-separator" role="separator">
-              <span>Next month</span>
+              <button
+                className="calendar-next-month-toggle"
+                type="button"
+                aria-expanded={nextMonthOpen}
+                onClick={() => setNextMonthOpen((open) => !open)}
+              >
+                <span>{formatFullMonth(nextMonth)}</span>
+                <ChevronDown
+                  size={14}
+                  aria-hidden="true"
+                  className={nextMonthOpen ? "open" : ""}
+                />
+              </button>
             </div>
+            {nextMonthOpen && (
             <section className="calendar-next-month" aria-labelledby="calendar-next-month-title">
               <div className="calendar-next-month-heading">
                 <div>
@@ -429,6 +450,7 @@ export function CalendarPage() {
                 </>
               )}
             </section>
+            )}
           </section>
 
           <div className="calendar-side-column">

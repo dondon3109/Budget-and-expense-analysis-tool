@@ -29,6 +29,10 @@ vi.mock("../src/components/layout/AppShell", () => ({
   AppShell: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
 
+vi.mock("../src/components/theme/ThemeToggle", () => ({
+  ThemeToggle: () => <button type="button">Theme</button>,
+}));
+
 vi.mock("../src/components/calendar/CalendarDayPanel", () => ({
   CalendarDayPanel: ({ date }: { date: string }) => <aside>Selected date: {date}</aside>,
 }));
@@ -143,7 +147,7 @@ describe("CalendarPage month views", () => {
     const { container } = renderPage();
 
     expect(await screen.findByRole("grid", { name: "Calendar for 2026-07" })).toBeVisible();
-    expect(screen.getByRole("separator")).toHaveTextContent("Next month");
+    expect(screen.getByRole("separator")).toHaveTextContent("August 2026");
     expect(screen.getByRole("heading", { name: "August 2026" })).toBeVisible();
     expect(screen.getByRole("grid", { name: "Calendar for 2026-08" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Add Event" })).toBeVisible();
@@ -154,6 +158,21 @@ describe("CalendarPage month views", () => {
       { key: "user:user-1", userId: "user-1" },
       "2026-08-01",
     );
+  });
+
+  it("hides and shows the next month via its separator toggle", async () => {
+    renderPage();
+
+    const toggle = await screen.findByRole("separator");
+    expect(screen.getByRole("heading", { name: "August 2026" })).toBeVisible();
+
+    fireEvent.click(within(toggle).getByRole("button"));
+    expect(screen.queryByRole("heading", { name: "August 2026" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("grid", { name: "Calendar for 2026-08" })).not.toBeInTheDocument();
+
+    fireEvent.click(within(toggle).getByRole("button"));
+    expect(screen.getByRole("heading", { name: "August 2026" })).toBeVisible();
+    expect(screen.getByRole("grid", { name: "Calendar for 2026-08" })).toBeVisible();
   });
 
   it("selects a next-month date without navigating away from the current month", async () => {

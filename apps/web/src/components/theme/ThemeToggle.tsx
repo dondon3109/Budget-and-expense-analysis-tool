@@ -10,7 +10,7 @@ const THEME_OPTIONS = [
 ] satisfies Array<{ value: Theme; label: string; icon: typeof Sun }>;
 
 interface ThemeToggleProps {
-  variant?: "menu" | "segmented";
+  variant?: "menu" | "segmented" | "pill";
 }
 
 export function ThemeToggle({ variant = "menu" }: ThemeToggleProps) {
@@ -95,9 +95,13 @@ export function ThemeToggle({ variant = "menu" }: ThemeToggleProps) {
     optionRefs.current[nextOption.value]?.focus();
   }
 
-  if (variant === "segmented") {
+  if (variant === "segmented" || variant === "pill") {
     return (
-      <div className="theme-sw" role="group" aria-label="Theme">
+      <div
+        className={variant === "pill" ? "theme-pill" : "theme-sw"}
+        role="group"
+        aria-label="Theme"
+      >
         {THEME_OPTIONS.map((option) => {
           const Icon = option.icon;
           const selected = option.value === theme;
@@ -111,7 +115,14 @@ export function ThemeToggle({ variant = "menu" }: ThemeToggleProps) {
               aria-pressed={selected}
               onClick={() => setTheme(option.value)}
             >
-              <Icon size={15} aria-hidden="true" />
+              {variant === "pill" ? (
+                <>
+                  <Icon size={13} aria-hidden="true" />
+                  <span>{option.label}</span>
+                </>
+              ) : (
+                <Icon size={15} aria-hidden="true" />
+              )}
             </button>
           );
         })}
