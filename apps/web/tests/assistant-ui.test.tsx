@@ -29,6 +29,10 @@ vi.mock("../src/components/layout/AppShell", () => ({
   AppShell: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
 
+vi.mock("../src/components/theme/ThemeToggle", () => ({
+  ThemeToggle: () => <button type="button">Theme</button>,
+}));
+
 vi.mock("../src/lib/api", async (importOriginal) => ({
   ...(await importOriginal()),
   ...apiMocks,
@@ -447,7 +451,7 @@ describe("assistant UI", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     const usage = await screen.findByRole("progressbar", {
-      name: "Free plan AI questions this 14-day cycle",
+      name: "Plan usage",
     });
     expect(usage).toHaveAttribute("aria-valuenow", "1");
     expect(usage).toHaveAttribute("aria-valuemax", "4");
@@ -456,7 +460,8 @@ describe("assistant UI", () => {
     expect(topline).not.toBeNull();
     expect(Array.from(topline!.children)).toHaveLength(3);
     expect(topline!.children[0]).toHaveClass("assistant-chat-status");
-    expect(topline!.children[0]).toHaveTextContent("Read-only financial answers");
+    expect(topline!.children[0]).toHaveTextContent("Read only");
+    expect(within(topline!.children[0] as HTMLElement).getByText("Aster")).toBeInTheDocument();
     expect(topline!.children[1]).toHaveClass("assistant-chat-usage");
     const usageContainer = topline!.querySelector<HTMLElement>(":scope > .assistant-chat-usage");
     expect(usageContainer).not.toBeNull();
@@ -493,11 +498,9 @@ describe("assistant UI", () => {
     renderPage();
 
     const usage = await screen.findByRole("progressbar", {
-      name: "Free plan AI questions this 14-day cycle",
+      name: "Plan usage",
     });
-    expect(usage).toHaveTextContent(
-      "4 remaining · cycle starts with your first provider-backed question",
-    );
+    expect(usage).toHaveTextContent("4 remaining");
   });
 
   it("keeps the exhausted assistant allowance clear and actionable", async () => {
@@ -525,11 +528,11 @@ describe("assistant UI", () => {
     renderPage();
 
     const usage = await screen.findByRole("progressbar", {
-      name: "Free plan AI questions this 14-day cycle",
+      name: "Plan usage",
     });
     expect(usage).toHaveAttribute("data-state", "exhausted");
     expect(usage).toHaveAttribute("aria-valuenow", "4");
-    expect(usage).toHaveTextContent("Limit reached · resets Aug 1, 2026");
+    expect(usage).toHaveTextContent("Limit reached");
     expect(screen.getByRole("link", { name: "View Pro limits" })).toHaveAttribute(
       "href",
       "/app/settings#plan-and-billing",

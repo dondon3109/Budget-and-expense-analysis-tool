@@ -21,6 +21,16 @@ function relativeDate(value: string): string {
   return new Intl.DateTimeFormat("en-PH", { month: "short", day: "numeric" }).format(date);
 }
 
+function threadGroup(value: string): string {
+  const date = new Date(value);
+  const now = new Date();
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000);
+  if (diffDays <= 0) return "Today";
+  if (diffDays <= 7) return "Previous 7 days";
+  return "Older";
+}
+
 export function AssistantThreadList({
   assistantName,
   threads,
@@ -34,6 +44,12 @@ export function AssistantThreadList({
 }: AssistantThreadListProps) {
   const [confirmThread, setConfirmThread] = useState<string>();
   const [confirmAll, setConfirmAll] = useState(false);
+
+  const groups = new Map<string, AssistantThread[]>();
+  for (const thread of threads) {
+    const group = threadGroup(thread.lastMessageAt);
+    groups.set(group, [...(groups.get(group) ?? []), thread]);
+  }
 
   return (
     <aside
@@ -67,42 +83,47 @@ export function AssistantThreadList({
         {threads.length === 0 && (
           <p className="assistant-history-empty">Your recent questions will appear here.</p>
         )}
-        {threads.map((thread) => (
-          <div
-            className={`assistant-thread-row ${thread.id === activeThreadId ? "current" : ""}`}
-            key={thread.id}
-          >
-            <button type="button" onClick={() => onSelect(thread.id)}>
-              <MessageSquareText size={15} aria-hidden="true" />
-              <span>
-                <strong>{thread.title}</strong>
-                <small>{relativeDate(thread.lastMessageAt)}</small>
-              </span>
-            </button>
-            <button
-              className="assistant-thread-delete"
-              type="button"
-              aria-label={`Delete ${thread.title}`}
-              onClick={() => setConfirmThread(thread.id)}
-              disabled={busy}
-            >
-              <Trash2 size={14} />
-            </button>
-            {confirmThread === thread.id && (
-              <div className="assistant-delete-confirm" role="alertdialog" aria-label="Delete chat">
-                <span>Delete this chat?</span>
+        {Array.from(groups.entries()).map(([group, groupThreads]) => (
+          <section className="assistant-thread-group" key={group} aria-label={group}>
+            <h3 className="assistant-thread-group-label">{group}</h3>
+            {groupThreads.map((thread) => (
+              <div
+                className={`assistant-thread-row ${thread.id === activeThreadId ? "current" : ""}`}
+                key={thread.id}
+              >
+                <button type="button" onClick={() => onSelect(thread.id)}>
+                  <MessageSquareText size={15} aria-hidden="true" />
+                  <span>
+                    <strong>{thread.title}</strong>
+                    <small>{relativeDate(thread.lastMessageAt)}</small>
+                  </span>
+                </button>
                 <button
+                  className="assistant-thread-delete"
                   type="button"
-                  onClick={() => void onDelete(thread.id).then(() => setConfirmThread(undefined))}
+                  aria-label={`Delete ${thread.title}`}
+                  onClick={() => setConfirmThread(thread.id)}
+                  disabled={busy}
                 >
-                  Delete
+                  <Trash2 size={14} />
                 </button>
-                <button type="button" onClick={() => setConfirmThread(undefined)}>
-                  Keep
-                </button>
+                {confirmThread === thread.id && (
+                  <div className="assistant-delete-confirm" role="alertdialog" aria-label="Delete chat">
+                    <span>Delete this chat?</span>
+                    <button
+                      type="button"
+                      onClick={() => void onDelete(thread.id).then(() => setConfirmThread(undefined))}
+                    >
+                      Delete
+                    </button>
+                    <button type="button" onClick={() => setConfirmThread(undefined)}>
+                      Keep
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            ))}
+          </section>
         ))}
       </div>
 

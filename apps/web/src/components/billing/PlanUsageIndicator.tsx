@@ -10,6 +10,7 @@ interface PlanUsageIndicatorProps {
   resetsAt?: string | null;
   resetPendingLabel?: string;
   compact?: boolean;
+  meter?: boolean;
   detail?: string;
   showUpgrade?: boolean;
 }
@@ -21,6 +22,7 @@ export function PlanUsageIndicator({
   resetsAt,
   resetPendingLabel,
   compact = false,
+  meter = false,
   detail,
   showUpgrade = false,
 }: PlanUsageIndicatorProps) {
@@ -34,6 +36,46 @@ export function PlanUsageIndicator({
     remaining <= Math.max(1, Math.ceil(limit * 0.2));
   const state = limit === null ? "unlimited" : exhausted ? "exhausted" : nearLimit ? "warning" : "normal";
   const reset = resetsAt ? formatManilaDate(resetsAt) : undefined;
+  const percent = limit === null ? null : Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
+
+  if (meter) {
+    return (
+      <div
+        className={`plan-usage-indicator meter${compact ? " compact" : ""}`}
+        data-state={state}
+        {...(limit === null
+          ? {}
+          : {
+              role: "progressbar",
+              "aria-label": label,
+              "aria-valuemin": 0,
+              "aria-valuemax": limit,
+              "aria-valuenow": Math.min(used, limit),
+            })}
+        title={label}
+      >
+        <span className="plan-usage-summary">
+          <span className="plan-usage-label">{label}</span>
+          <span className="plan-usage-track" aria-hidden="true">
+            <i style={{ width: `${percent ?? 0}%` }} />
+          </span>
+          <span className="plan-usage-value">{limit === null ? "∞" : `${percent}%`}</span>
+        </span>
+        {limit !== null && (
+          <span className="plan-usage-meta">
+            <small>
+              {exhausted
+                ? `Limit reached${reset ? ` · resets ${reset}` : ""}`
+                : `${remaining} remaining${reset ? ` · resets ${reset}` : resetPendingLabel ? ` · ${resetPendingLabel}` : ""}`}
+            </small>
+            {showUpgrade && (nearLimit || exhausted) && (
+              <Link to="/app/settings#plan-and-billing">View Pro limits</Link>
+            )}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

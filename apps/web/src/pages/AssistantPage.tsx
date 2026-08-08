@@ -5,7 +5,7 @@ import {
   type AssistantTurnResult,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Brain, Menu, Sparkles, X } from "lucide-react";
+import { Brain, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useAssistantSession } from "../assistant/AssistantSessionProvider";
@@ -20,6 +20,7 @@ import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
 import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { AppShell } from "../components/layout/AppShell";
+import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
   createAssistantThread,
@@ -100,7 +101,6 @@ export function AssistantPage() {
   const assistantUsage = billingQuery.data?.usages.find(
     (usage) => usage.feature === "assistant_question",
   );
-  const isAssistantCycle = assistantUsage?.periodKind === "anchored_14_day";
   const isFreePlan = billingQuery.data?.plan === "free";
 
   useEffect(() => {
@@ -347,31 +347,24 @@ export function AssistantPage() {
           <section className="assistant-chat" aria-label="Financial assistant conversation">
             <div className="assistant-chat-topline">
               <span className="assistant-chat-status">
-                <Sparkles size={15} aria-hidden="true" /> Read-only financial answers
+                <span className="assistant-status-dot" aria-hidden="true" />
+                <strong>{assistantName}</strong>
+                <span className="assistant-status-readonly">Read only</span>
               </span>
               {assistantUsage && (
                 <div className="assistant-chat-usage">
                   <PlanUsageIndicator
-                    compact
-                    label={
-                      isFreePlan
-                        ? `Free plan AI questions ${isAssistantCycle ? "this 14-day cycle" : "this month"}`
-                        : `AI questions ${isAssistantCycle ? "this 14-day cycle" : "this month"}`
-                    }
+                    meter
+                    label="Plan usage"
                     used={assistantUsage.used}
                     limit={assistantUsage.limit}
-                    resetsAt={assistantUsage.resetsAt}
-                    resetPendingLabel={
-                      isAssistantCycle
-                        ? "cycle starts with your first provider-backed question"
-                        : undefined
-                    }
                     showUpgrade={isFreePlan}
                   />
                 </div>
               )}
               <div className="assistant-chat-corner">
                 <small className="assistant-chat-retention">90-day private history</small>
+                <ThemeToggle variant="segmented" />
                 <button
                   type="button"
                   className="assistant-memory-trigger"

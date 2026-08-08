@@ -272,12 +272,6 @@ export function AssistantConversation({
   if (messages.length === 0 && !pendingMessage) {
     return (
       <div className="assistant-empty assistant-empty-with-insight">
-        {feeInsight?.hasFees && (
-          <FeeInsightWelcome assistantName={assistantName} insight={feeInsight} />
-        )}
-        <span aria-hidden="true">
-          <Sparkles size={32} />
-        </span>
         <p className="eyebrow">Evidence-led answers from your records</p>
         <h2>What would you like to understand?</h2>
         <p>
@@ -296,6 +290,9 @@ export function AssistantConversation({
             </button>
           ))}
         </div>
+        {feeInsight?.hasFees && (
+          <FeeInsightWelcome assistantName={assistantName} insight={feeInsight} />
+        )}
       </div>
     );
   }

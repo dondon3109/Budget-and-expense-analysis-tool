@@ -9,7 +9,11 @@ const THEME_OPTIONS = [
   { value: "coffee", label: "Coffee", icon: Coffee },
 ] satisfies Array<{ value: Theme; label: string; icon: typeof Sun }>;
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  variant?: "menu" | "segmented";
+}
+
+export function ThemeToggle({ variant = "menu" }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -89,6 +93,30 @@ export function ThemeToggle() {
     const nextOption = THEME_OPTIONS[nextIndex];
     if (!nextOption) return;
     optionRefs.current[nextOption.value]?.focus();
+  }
+
+  if (variant === "segmented") {
+    return (
+      <div className="theme-sw" role="group" aria-label="Theme">
+        {THEME_OPTIONS.map((option) => {
+          const Icon = option.icon;
+          const selected = option.value === theme;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              className={selected ? "is-on" : ""}
+              title={option.label}
+              aria-label={`${option.label} theme`}
+              aria-pressed={selected}
+              onClick={() => setTheme(option.value)}
+            >
+              <Icon size={15} aria-hidden="true" />
+            </button>
+          );
+        })}
+      </div>
+    );
   }
 
   return (

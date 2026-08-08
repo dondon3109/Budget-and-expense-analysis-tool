@@ -47,6 +47,9 @@ export function AppShell({ children }: AppShellProps) {
       : "";
   const avatarPath = avatarPathFromMetadata(user?.user_metadata);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(
+    () => window.localStorage.getItem("zoption:nav-collapsed") === "1",
+  );
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
 
@@ -62,7 +65,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${navCollapsed ? "nav-collapsed" : ""}`}>
       <header className="mobile-header">
         <Link className="brand compact" to="/" aria-label="Zoption home">
           <span className="brand-mark" aria-hidden="true">
@@ -86,12 +89,30 @@ export function AppShell({ children }: AppShellProps) {
       </header>
 
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
-        <Link className="brand" to="/" aria-label="Zoption home">
-          <span className="brand-mark" aria-hidden="true">
-            <span className="brand-monogram">Z</span>
-          </span>
-          <span className="brand-wordmark">Zoption</span>
-        </Link>
+        <div className="sidebar-toggle-row">
+          <Link className="brand" to="/" aria-label="Zoption home">
+            <span className="brand-mark" aria-hidden="true">
+              <span className="brand-monogram">Z</span>
+            </span>
+            <span className="brand-wordmark">Zoption</span>
+          </Link>
+          <button
+            className="icon-button nav-collapse-toggle"
+            type="button"
+            onClick={() =>
+              setNavCollapsed((collapsed) => {
+                const next = !collapsed;
+                window.localStorage.setItem("zoption:nav-collapsed", next ? "1" : "0");
+                return next;
+              })
+            }
+            aria-pressed={navCollapsed}
+            aria-controls="primary-navigation"
+            aria-label={navCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <Menu size={20} />
+          </button>
+        </div>
         <div className="sidebar-profile">
           <div className="sidebar-account-identity">
             <UserAvatar
@@ -140,7 +161,7 @@ export function AppShell({ children }: AppShellProps) {
             }
             onClick={() => setMenuOpen(false)}
           >
-            <Settings size={15} aria-hidden="true" /> Account settings
+            <Settings size={15} aria-hidden="true" /> <span>Account settings</span>
           </NavLink>
           <button
             className="sidebar-account-action"
@@ -148,7 +169,8 @@ export function AppShell({ children }: AppShellProps) {
             onClick={() => void handleSignOut()}
             disabled={signingOut}
           >
-            <LogOut size={15} aria-hidden="true" /> {signingOut ? "Signing out…" : "Sign out"}
+            <LogOut size={15} aria-hidden="true" />{" "}
+            <span>{signingOut ? "Signing out…" : "Sign out"}</span>
           </button>
           {signOutError && <small role="alert">{signOutError}</small>}
         </div>
