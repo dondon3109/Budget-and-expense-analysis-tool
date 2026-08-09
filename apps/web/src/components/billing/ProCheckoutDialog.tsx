@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 
+import { useRootLock } from "../../hooks/useRootLock";
 import { openBillingCheckout } from "../../lib/billingCheckout";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { paymentDisclosure, planFeatures, proCheckoutOptions } from "./billingPlans";
@@ -36,33 +37,20 @@ export function ProCheckoutDialog({
       ? "Review your existing subscription before starting another checkout."
       : "Checkout is temporarily unavailable for this account.";
 
+  useRootLock(open);
+
   useLayoutEffect(() => {
     if (!open) return;
 
-    const root = document.getElementById("root");
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
-    const previousInert = root?.inert ?? false;
     const activeElement = document.activeElement;
 
     if (returnFocus?.isConnected) openerRef.current = returnFocus;
     else if (activeElement instanceof HTMLElement && activeElement !== document.body) {
       openerRef.current = activeElement;
     }
-    if (root) {
-      root.inert = true;
-      root.setAttribute("aria-hidden", "true");
-    }
-    document.body.style.overflow = "hidden";
     primaryActionRef.current?.focus();
 
     return () => {
-      if (root) {
-        root.inert = previousInert;
-        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
-        else root.setAttribute("aria-hidden", previousAriaHidden);
-      }
-      document.body.style.overflow = previousBodyOverflow;
       if (openerRef.current?.isConnected) openerRef.current.focus();
     };
   }, [open, returnFocus]);

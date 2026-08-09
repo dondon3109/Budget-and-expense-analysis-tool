@@ -3,6 +3,8 @@ import { Bot, Pencil, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { useRootLock } from "../../hooks/useRootLock";
+
 interface AssistantIdentityDialogProps {
   required: boolean;
   assistantName?: string | null;
@@ -39,11 +41,9 @@ export function AssistantIdentityDialog({
   const titleId = "assistant-identity-title";
   const descriptionId = "assistant-identity-description";
 
+  useRootLock(true);
+
   useLayoutEffect(() => {
-    const root = document.getElementById("root");
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
-    const previousInert = root?.inert ?? false;
     const activeElement = document.activeElement;
 
     if (
@@ -53,20 +53,9 @@ export function AssistantIdentityDialog({
     ) {
       openerRef.current = activeElement;
     }
-    if (root) {
-      root.inert = true;
-      root.setAttribute("aria-hidden", "true");
-    }
-    document.body.style.overflow = "hidden";
     assistantNameInputRef.current?.focus();
 
     return () => {
-      if (root) {
-        root.inert = previousInert;
-        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
-        else root.setAttribute("aria-hidden", previousAriaHidden);
-      }
-      document.body.style.overflow = previousBodyOverflow;
       if (!required && openerRef.current?.isConnected) openerRef.current.focus();
     };
   }, [required]);
@@ -114,7 +103,9 @@ export function AssistantIdentityDialog({
     }
     const userName = assistantIdentityNameSchema.safeParse(nextUserPreferredName);
     if (!userName.success) {
-      setClientError(userName.error.issues[0]?.message ?? "Enter the name your assistant should use.");
+      setClientError(
+        userName.error.issues[0]?.message ?? "Enter the name your assistant should use.",
+      );
       return;
     }
     onSubmit({ assistantName: parsed.data, userPreferredName: userName.data });
@@ -144,7 +135,9 @@ export function AssistantIdentityDialog({
             </span>
             <div>
               <p className="eyebrow">Your financial assistant</p>
-              <h2 id={titleId}>{required ? "Make this assistant yours" : "Edit assistant names"}</h2>
+              <h2 id={titleId}>
+                {required ? "Make this assistant yours" : "Edit assistant names"}
+              </h2>
             </div>
           </div>
           {!required && (
@@ -162,7 +155,8 @@ export function AssistantIdentityDialog({
 
         <form className="transaction-form assistant-identity-form" onSubmit={handleSubmit}>
           <p id={descriptionId} className="assistant-identity-intro">
-            Choose the names used in your private assistant conversations. You can update them anytime.
+            Choose the names used in your private assistant conversations. You can update them
+            anytime.
           </p>
           <label>
             <span>Your assistant&apos;s name</span>

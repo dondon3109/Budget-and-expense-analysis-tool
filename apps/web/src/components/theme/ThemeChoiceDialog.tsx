@@ -2,6 +2,7 @@ import { Check, Coffee, Moon, Sun } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { useRootLock } from "../../hooks/useRootLock";
 import { useTheme, type Theme } from "../../theme/ThemeProvider";
 
 const THEME_OPTIONS = [
@@ -43,13 +44,11 @@ export function ThemeChoiceDialog() {
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const isOpen = !hasThemePreference;
 
+  useRootLock(isOpen);
+
   useLayoutEffect(() => {
     if (!isOpen) return;
 
-    const root = document.getElementById("root");
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
-    const previousInert = root?.inert ?? false;
     const activeElement = document.activeElement;
 
     if (
@@ -61,21 +60,9 @@ export function ThemeChoiceDialog() {
       previousFocusRef.current = activeElement;
     }
 
-    if (root) {
-      root.inert = true;
-      root.setAttribute("aria-hidden", "true");
-    }
-    document.body.style.overflow = "hidden";
     optionRefs.current[initialThemeRef.current]?.focus();
 
     return () => {
-      if (root) {
-        root.inert = previousInert;
-        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
-        else root.setAttribute("aria-hidden", previousAriaHidden);
-      }
-      document.body.style.overflow = previousBodyOverflow;
-
       const previousFocus = previousFocusRef.current;
       if (previousFocus?.isConnected) previousFocus.focus();
     };

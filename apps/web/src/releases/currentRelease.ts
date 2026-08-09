@@ -11,27 +11,17 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 8, 2026",
+  releasedOn: "August 9, 2026",
   changes: [
     {
-      title: "More reliable Pro billing",
+      title: "Goals and subscriptions at a glance",
       description:
-        "Zoption now verifies PayPal subscription updates more carefully and handles delayed or failed payments more reliably, so your Pro status stays in sync with PayPal.",
+        "The profile dashboard now shows your active savings goals alongside the combined monthly cost of every active subscription, giving you a clearer view of what you are building toward and paying for.",
     },
     {
-      title: "Safer spreadsheet imports",
+      title: "Sign-in stays responsive",
       description:
-        "Excel and CSV imports now receive stricter file checks and clearer limits before processing, helping malformed or unusually large files fail safely instead of interrupting your workspace.",
-    },
-    {
-      title: "Smarter assistant memory",
-      description:
-        "The financial assistant can refine saved memories with a controlled model-assisted pass while keeping usage bounded within each 14-day cycle.",
-    },
-    {
-      title: "Privacy-respecting analytics",
-      description:
-        "Google Analytics now loads only after you allow Analytics cookies on eligible public pages, and opting out removes its cookies from your browser.",
+        "Setup, update, billing, and account dialogs now coordinate how they pause the page, preventing the dashboard from remaining unclickable or unscrollable after overlapping dialogs close.",
     },
   ],
 };
@@ -43,6 +33,43 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "1.2.2",
+    releasedOn: "August 9, 2026",
+    changes: [
+      {
+        title: "Refreshed dashboards and workflows",
+        description:
+          "The calendar, profile dashboard, import flow, and financial assistant now share a cleaner visual system with clearer hierarchy, refined controls, and self-hosted fonts.",
+      },
+    ],
+  },
+  {
+    version: "1.2.1",
+    releasedOn: "August 8, 2026",
+    changes: [
+      {
+        title: "More reliable Pro billing",
+        description:
+          "Zoption now verifies PayPal subscription updates more carefully and handles delayed or failed payments more reliably, so your Pro status stays in sync with PayPal.",
+      },
+      {
+        title: "Safer spreadsheet imports",
+        description:
+          "Excel and CSV imports now receive stricter file checks and clearer limits before processing, helping malformed or unusually large files fail safely instead of interrupting your workspace.",
+      },
+      {
+        title: "Smarter assistant memory",
+        description:
+          "The financial assistant can refine saved memories with a controlled model-assisted pass while keeping usage bounded within each 14-day cycle.",
+      },
+      {
+        title: "Privacy-respecting analytics",
+        description:
+          "Google Analytics now loads only after you allow Analytics cookies on eligible public pages, and opting out removes its cookies from your browser.",
+      },
+    ],
+  },
   {
     version: "1.2.0",
     releasedOn: "August 6, 2026",

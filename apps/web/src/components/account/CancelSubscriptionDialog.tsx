@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { useRootLock } from "../../hooks/useRootLock";
 import "./CancelSubscriptionDialog.css";
 
 export function CancelSubscriptionDialog({
@@ -24,13 +25,11 @@ export function CancelSubscriptionDialog({
   const titleId = "cancel-subscription-title";
   const descriptionId = "cancel-subscription-description";
 
+  useRootLock(open);
+
   useLayoutEffect(() => {
     if (!open) return;
 
-    const root = document.getElementById("root");
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
-    const previousInert = root?.inert ?? false;
     const activeElement = document.activeElement;
 
     if (returnFocus?.isConnected) {
@@ -38,20 +37,9 @@ export function CancelSubscriptionDialog({
     } else if (activeElement instanceof HTMLElement && activeElement !== document.body) {
       openerRef.current = activeElement;
     }
-    if (root) {
-      root.inert = true;
-      root.setAttribute("aria-hidden", "true");
-    }
-    document.body.style.overflow = "hidden";
     keepSubscriptionRef.current?.focus();
 
     return () => {
-      if (root) {
-        root.inert = previousInert;
-        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
-        else root.setAttribute("aria-hidden", previousAriaHidden);
-      }
-      document.body.style.overflow = previousBodyOverflow;
       if (openerRef.current?.isConnected) openerRef.current.focus();
     };
   }, [open, returnFocus]);

@@ -37,7 +37,9 @@ vi.mock("../src/components/layout/AppShell", () => ({
 }));
 
 vi.mock("../src/components/dashboard/BudgetProgress", () => ({ BudgetProgress: () => null }));
-vi.mock("../src/components/dashboard/InsightsPanel", () => ({ InsightsPanel: () => null }));
+vi.mock("../src/components/dashboard/GoalsSubscriptionPanel", () => ({
+  GoalsSubscriptionPanel: () => null,
+}));
 vi.mock("../src/components/dashboard/MonthlyTrend", () => ({ MonthlyTrend: () => null }));
 vi.mock("../src/components/dashboard/SpendingByCategory", () => ({
   SpendingByCategory: () => null,

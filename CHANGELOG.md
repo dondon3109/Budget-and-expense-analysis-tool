@@ -2,6 +2,17 @@
 
 All notable product changes are documented here.
 
+## 1.2.3 — 2026-08-09
+
+### Added
+
+- Replaced the dashboard's savings and recurring-cost panel with active savings goals and the combined monthly cost of every active subscription.
+
+### Fixed
+
+- The dashboard subscription total now adds together all active plans instead of showing a single or stale summary amount.
+- Overlapping sign-in, setup, release-notes, billing, account, assistant, and transaction dialogs now share one interaction lock, preventing the app from remaining unclickable or unscrollable after the dialogs close.
+
 ## 1.2.2 — 2026-08-09
 
 ### Changed

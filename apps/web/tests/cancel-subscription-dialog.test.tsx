@@ -47,6 +47,10 @@ describe("CancelSubscriptionDialog", () => {
     if (!root) throw new Error("Test root is missing.");
     render(<Harness />, { container: root });
 
+    expect(root.inert ?? false).toBe(false);
+    expect(root).not.toHaveAttribute("aria-hidden");
+    expect(document.body.style.overflow).toBe("");
+
     const trigger = screen.getByRole("button", { name: "Open cancellation" });
     await user.click(trigger);
 

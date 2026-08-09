@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 
 import { useCookieConsent } from "../../consent/CookieConsentProvider";
+import { useRootLock } from "../../hooks/useRootLock";
 
 export function CookiePreferencesDialog() {
   const { preferences, preferencesOpen, acceptAll, rejectAll, savePreferences, closePreferences } =
@@ -12,31 +13,15 @@ export function CookiePreferencesDialog() {
   const [marketing, setMarketing] = useState(preferences.marketing);
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useRootLock(preferencesOpen);
+
   useLayoutEffect(() => {
     if (!preferencesOpen) return;
 
     setAnalytics(preferences.analytics);
     setMarketing(preferences.marketing);
-
-    const root = document.getElementById("root");
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
-    const previousInert = root?.inert ?? false;
-    if (root) {
-      root.inert = true;
-      root.setAttribute("aria-hidden", "true");
-    }
-    document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
-
-    return () => {
-      if (root) {
-        root.inert = previousInert;
-        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
-        else root.setAttribute("aria-hidden", previousAriaHidden);
-      }
-      document.body.style.overflow = previousBodyOverflow;
-    };
   }, [preferences, preferencesOpen]);
 
   if (!preferencesOpen) return null;
@@ -72,7 +57,11 @@ export function CookiePreferencesDialog() {
 
   return createPortal(
     <div className="cookie-preferences-layer">
-      <div className="cookie-preferences-backdrop" aria-hidden="true" onClick={() => closePreferences()} />
+      <div
+        className="cookie-preferences-backdrop"
+        aria-hidden="true"
+        onClick={() => closePreferences()}
+      />
       <section
         ref={dialogRef}
         className="cookie-preferences-dialog"
@@ -164,7 +153,8 @@ export function CookiePreferencesDialog() {
           Learn what each category covers in the{" "}
           <Link to="/cookie-policy" onClick={() => closePreferences()}>
             Cookie Policy
-          </Link>.
+          </Link>
+          .
         </p>
 
         <footer className="cookie-preferences-actions">

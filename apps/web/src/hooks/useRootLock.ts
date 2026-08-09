@@ -43,8 +43,8 @@ function releaseRootLock() {
 
 /**
  * Locks the application root (inert + aria-hidden) and body scroll while any
- * overlay or modal holds it open. Multiple overlays can be open at once the
- * same time; the lock is refcounted so only the first opener records the prior
+ * overlay or modal holds it open. Multiple overlays can be open at the same
+ * time; the lock is refcounted so only the first opener records the prior
  * state and only the last closer restores it. This prevents two overlays from
  * clobbering each other's saved state and leaving the page inert/scroll-locked
  * after one of them closes.

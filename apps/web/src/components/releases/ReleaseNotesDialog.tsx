@@ -2,6 +2,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { useRootLock } from "../../hooks/useRootLock";
 import type { ProductRelease } from "../../releases/currentRelease";
 
 import "./releaseNotes.css";
@@ -19,11 +20,11 @@ export function ReleaseNotesDialog({ releases, onAcknowledge }: ReleaseNotesDial
   const previousReleases = releases.slice(1);
   const [showPrevious, setShowPrevious] = useState(false);
 
+  useRootLock(Boolean(latest));
+
   useLayoutEffect(() => {
-    const root = document.getElementById("root");
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
-    const previousInert = root?.inert ?? false;
+    if (!latest) return;
+
     const activeElement = document.activeElement;
 
     if (
@@ -34,26 +35,14 @@ export function ReleaseNotesDialog({ releases, onAcknowledge }: ReleaseNotesDial
       previousFocusRef.current = activeElement;
     }
 
-    if (root) {
-      root.inert = true;
-      root.setAttribute("aria-hidden", "true");
-    }
-    document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 
     return () => {
-      if (root) {
-        root.inert = previousInert;
-        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
-        else root.setAttribute("aria-hidden", previousAriaHidden);
-      }
-      document.body.style.overflow = previousBodyOverflow;
-
       if (previousFocusRef.current?.isConnected) {
         previousFocusRef.current.focus({ preventScroll: true });
       }
     };
-  }, []);
+  }, [latest]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === "Escape") {

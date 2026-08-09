@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Brain, Trash2, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { useRootLock } from "../../hooks/useRootLock";
 import {
   clearAssistantMemory,
   getAssistantMemory,
@@ -36,26 +37,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
     enabled: open,
   });
 
-  useLayoutEffect(() => {
-    if (!open) return;
-    const root = document.getElementById("root");
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
-    const previousInert = root?.inert ?? false;
-    if (root) {
-      root.inert = true;
-      root.setAttribute("aria-hidden", "true");
-    }
-    document.body.style.overflow = "hidden";
-    return () => {
-      if (root) {
-        root.inert = previousInert;
-        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
-        else root.setAttribute("aria-hidden", previousAriaHidden);
-      }
-      document.body.style.overflow = previousBodyOverflow;
-    };
-  }, [open]);
+  useRootLock(open);
 
   if (!open) return null;
 
@@ -157,13 +139,17 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
           </div>
           {preferences.data && (
             <small className="assistant-memory-note">
-              Response style: {preferences.data.responseDetail === "concise" ? "concise" : "standard"}{" "}
-              detail · {preferences.data.coachingStyle === "gentle" ? "gentle" : "direct"} coaching
+              Response style:{" "}
+              {preferences.data.responseDetail === "concise" ? "concise" : "standard"} detail ·{" "}
+              {preferences.data.coachingStyle === "gentle" ? "gentle" : "direct"} coaching
             </small>
           )}
         </section>
 
-        <section className="assistant-memory-section" aria-labelledby="assistant-memory-facts-title">
+        <section
+          className="assistant-memory-section"
+          aria-labelledby="assistant-memory-facts-title"
+        >
           <strong id="assistant-memory-facts-title">Remembered facts</strong>
           {facts.length === 0 ? (
             <p className="assistant-memory-empty">

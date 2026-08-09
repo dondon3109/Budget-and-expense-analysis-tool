@@ -7,19 +7,29 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ThemeChoiceDialog } from "../src/components/theme/ThemeChoiceDialog";
+import { useRootLock } from "../src/hooks/useRootLock";
 import { THEME_STORAGE_KEY, ThemeProvider } from "../src/theme/ThemeProvider";
 
-function renderThemeChoiceDialog() {
+function ExternalLock({ locked }: { locked: boolean }) {
+  useRootLock(locked);
+  return null;
+}
+
+function ThemeChoiceHarness({ externalLock = false }: { externalLock?: boolean }) {
+  return (
+    <ThemeProvider>
+      <ExternalLock locked={externalLock} />
+      <ThemeChoiceDialog />
+      <button type="button">Underlying action</button>
+    </ThemeProvider>
+  );
+}
+
+function renderThemeChoiceDialog(externalLock = false) {
   const root = document.getElementById("root");
   if (!root) throw new Error("Test root is missing.");
 
-  return render(
-    <ThemeProvider>
-      <ThemeChoiceDialog />
-      <button type="button">Underlying action</button>
-    </ThemeProvider>,
-    { container: root },
-  );
+  return render(<ThemeChoiceHarness externalLock={externalLock} />, { container: root });
 }
 
 beforeEach(() => {
@@ -85,6 +95,26 @@ describe("ThemeChoiceDialog", () => {
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("coffee");
     expect(document.getElementById("root")?.inert).toBe(false);
     expect(document.getElementById("root")).not.toHaveAttribute("aria-hidden");
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("does not strand the root lock when a startup overlay releases first", async () => {
+    const user = userEvent.setup();
+    const root = document.getElementById("root");
+    if (!root) throw new Error("Test root is missing.");
+    const view = renderThemeChoiceDialog(true);
+
+    view.rerender(<ThemeChoiceHarness externalLock={false} />);
+
+    expect(root.inert).toBe(true);
+    expect(root).toHaveAttribute("aria-hidden", "true");
+    expect(document.body.style.overflow).toBe("hidden");
+
+    await user.click(screen.getByRole("button", { name: "Confirm Light theme" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(root.inert).toBe(false);
+    expect(root).not.toHaveAttribute("aria-hidden");
     expect(document.body.style.overflow).toBe("");
   });
 

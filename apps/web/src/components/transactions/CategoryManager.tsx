@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent }
 import { createPortal } from "react-dom";
 
 import { useBillingSummary } from "../../hooks/useBillingSummary";
+import { useRootLock } from "../../hooks/useRootLock";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { createCategory, isBillingEnforcementError, updateCategory } from "../../lib/api";
@@ -42,30 +43,17 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
   const [editingName, setEditingName] = useState("");
   const [error, setError] = useState<Error>();
 
+  useRootLock(true);
+
   useLayoutEffect(() => {
-    const root = document.getElementById("root");
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousAriaHidden = root?.getAttribute("aria-hidden") ?? null;
-    const previousInert = root?.inert ?? false;
     const activeElement = document.activeElement;
 
     if (activeElement instanceof HTMLElement && activeElement !== document.body) {
       openerRef.current = activeElement;
     }
-    if (root) {
-      root.inert = true;
-      root.setAttribute("aria-hidden", "true");
-    }
-    document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 
     return () => {
-      if (root) {
-        root.inert = previousInert;
-        if (previousAriaHidden === null) root.removeAttribute("aria-hidden");
-        else root.setAttribute("aria-hidden", previousAriaHidden);
-      }
-      document.body.style.overflow = previousBodyOverflow;
       if (openerRef.current?.isConnected) openerRef.current.focus();
     };
   }, []);

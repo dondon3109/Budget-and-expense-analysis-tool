@@ -35,7 +35,7 @@ import {
   type DashboardStartupPhase,
 } from "../components/dashboard/DashboardStartupExperience";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
-import { InsightsPanel } from "../components/dashboard/InsightsPanel";
+import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
 import { OverviewStatBar, type OverviewStatItem } from "../components/dashboard/OverviewStatBar";
 import { useInitialDashboardExperience } from "../components/dashboard/InitialDashboardExperienceProvider";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
@@ -986,7 +986,7 @@ export function DashboardPage() {
                       setIsProCheckoutOpen(true);
                     }}
                   />
-                  <InsightsPanel data={data.insights} monthLabel={selectedMonthLabel} />
+                  <GoalsSubscriptionPanel workspace={workspace} />
                   <BudgetProgress
                     data={data.budgetProgress}
                     month={summaryMonth}
@@ -998,7 +998,6 @@ export function DashboardPage() {
                   <p>
                     Income includes income transactions. Expenses include expense transactions only;
                     transfers move money between accounts and do not change your overall balance.
-                    Income left after expenses is income minus expenses for {selectedMonthLabel}.
                     Remaining budget is that month’s category plan minus its recorded expenses and
                     does not carry over.
                   </p>
