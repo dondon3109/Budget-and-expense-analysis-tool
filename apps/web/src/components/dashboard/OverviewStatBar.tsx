@@ -9,12 +9,19 @@ export interface OverviewStatAmount {
   currency: Currency;
 }
 
+export interface OverviewStatTrend {
+  percentage: number;
+  comparison: string;
+  state: "positive" | "negative" | "neutral";
+}
+
 export interface OverviewStatItem {
   label: string;
   amounts: OverviewStatAmount[];
   detail: string;
   icon: LucideIcon;
   tone: "income" | "expense" | "ink" | "plum";
+  trend?: OverviewStatTrend;
 }
 
 interface OverviewStatBarProps {
@@ -22,6 +29,12 @@ interface OverviewStatBarProps {
 }
 
 const CURRENCY_PREFERENCE: Currency[] = ["PHP", "USD"];
+const percentageFormatter = new Intl.NumberFormat("en-PH", { maximumFractionDigits: 1 });
+
+function formatPercentageChange(percentage: number): string {
+  const sign = percentage > 0 ? "+" : "";
+  return `${sign}${percentageFormatter.format(percentage)}%`;
+}
 
 export function OverviewStatBar({ items }: OverviewStatBarProps) {
   return (
@@ -63,6 +76,12 @@ export function OverviewStatBar({ items }: OverviewStatBarProps) {
                     <em>{amount.currency}</em>
                   </span>
                 ))}
+              </div>
+            )}
+            {item.trend && (
+              <div className="overview-stat-trend" data-state={item.trend.state}>
+                <span>{formatPercentageChange(item.trend.percentage)}</span>
+                <small>{item.trend.comparison}</small>
               </div>
             )}
             <p>{item.detail}</p>

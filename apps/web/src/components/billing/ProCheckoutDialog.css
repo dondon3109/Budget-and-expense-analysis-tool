@@ -13,7 +13,7 @@
   max-width: 520px;
   margin: 0;
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 28px;
   line-height: 1.08;
 }
@@ -54,7 +54,7 @@
 
 .pro-checkout-plan-heading strong {
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 20px;
 }
 

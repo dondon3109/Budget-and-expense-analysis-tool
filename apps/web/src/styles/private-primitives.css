@@ -1,203 +1,237 @@
-/* Private Primitives styles extracted from the private application surface. */
+/* Stable primitives shared across authenticated pages. */
 
 .date-button {
-min-height: 42px;
+  min-height: var(--control-height);
   margin-top: 4px;
+  padding: 0 14px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0 14px;
   color: var(--muted);
   border: 1px solid var(--line-strong);
-  border-radius: 11px;
-  background: var(--paper);
+  border-radius: 10px;
+  background: var(--surface);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 650;
+  box-shadow: none;
+}
+
+.date-button:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--action) 32%, var(--line-strong));
 }
 
 .onboarding-actions {
-margin-top: 26px;
+  margin-top: 26px;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .text-button {
-padding: 0;
-  color: var(--sage);
+  min-height: 32px;
+  padding: 0;
+  color: var(--action);
   border: 0;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 750;
-  transition: color 0.16s ease;
+  transition: color 150ms ease;
 }
 
 .text-button:hover {
-color: var(--sage-hover);
-}
-
-.dashboard-page .text-button {
-color: var(--action);
+  color: var(--action-strong);
 }
 
 .transactions-panel {
-overflow: hidden;
+  overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 17px;
+  border-radius: var(--radius-lg);
   background: var(--paper);
-  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
+  box-shadow: var(--shadow-card);
 }
 
 .transactions-panel-heading {
-min-height: 67px;
-  padding: 0 20px;
+  min-height: 72px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 18px;
   border-bottom: 1px solid var(--line);
 }
 
 .transactions-panel-heading > div {
-display: grid;
-  gap: 3px;
+  display: grid;
+  gap: 4px;
 }
 
 .transactions-panel-heading strong {
-color: var(--ink);
-  font-size: 13px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
 
 .transactions-panel-heading span {
-color: var(--subtle);
-  font-size: 10px;
+  color: var(--subtle);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .refresh-button {
-display: inline-flex;
+  min-height: 36px;
+  padding: 0 4px;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   color: var(--muted);
   border: 0;
   background: transparent;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
 }
 
+.refresh-button:hover {
+  color: var(--ink);
+}
+
 .transaction-description {
-min-width: 170px;
+  min-width: 170px;
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
 .transaction-description strong {
-color: var(--ink);
-  font-size: 11px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .transaction-description span {
-max-width: 270px;
+  max-width: 270px;
   overflow: hidden;
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 11px;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .category-chip {
-display: inline-flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   white-space: nowrap;
 }
 
 .category-chip i {
-width: 8px;
+  width: 8px;
   height: 8px;
+  flex: 0 0 auto;
   border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--paper);
 }
 
 .kind-badge {
-padding: 5px 8px;
+  min-height: 26px;
+  padding: 0 8px;
   display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 750;
   white-space: nowrap;
 }
 
 .kind-badge.income {
-color: var(--success);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 18%, transparent);
   background: var(--success-soft);
 }
 
 .kind-badge.expense {
-color: var(--expense-text);
-  background: var(--amber-soft);
+  color: var(--expense-text);
+  border-color: color-mix(in srgb, var(--expense) 18%, transparent);
+  background: var(--expense-soft);
 }
 
 .kind-badge.transfer {
-color: var(--plum);
+  color: var(--plum);
+  border-color: color-mix(in srgb, var(--plum) 18%, transparent);
   background: var(--plum-soft);
 }
 
 .amount-column {
-text-align: right !important;
+  text-align: right !important;
   white-space: nowrap;
-  font-weight: 800;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .amount-income {
-color: var(--success);
+  color: var(--success);
 }
 
 .amount-expense {
-color: var(--expense-text);
+  color: var(--expense-text);
 }
 
-.table-status,.empty-transactions {
-min-height: 300px;
+.table-status,
+.empty-transactions {
+  min-height: 300px;
   padding: 40px;
   display: grid;
   place-content: center;
-  gap: 8px;
+  gap: 9px;
   color: var(--muted);
   text-align: center;
 }
 
-.table-status strong,.empty-transactions strong {
-color: var(--ink);
-  font-family: Georgia, serif;
-  font-size: 19px;
+.table-status strong,
+.empty-transactions strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 500;
 }
 
-.table-status span,.empty-transactions p {
-margin: 0;
-  font-size: 11px;
+.table-status span,
+.empty-transactions p {
+  max-width: 44ch;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .table-status button {
-width: fit-content;
+  width: fit-content;
+  min-height: 36px;
   margin: 8px auto 0;
-  color: var(--sage);
+  color: var(--action);
   border: 0;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .empty-transactions .button {
-width: fit-content;
+  width: fit-content;
   margin: 10px auto 0;
 }
 
 .page-error {
-color: var(--danger);
-  font-size: 11px;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .modal-backdrop {
-position: fixed;
+  position: fixed;
   inset: 0;
   z-index: 80;
   padding: 24px;
@@ -205,124 +239,115 @@ position: fixed;
   place-items: center;
   overflow-y: auto;
   background: var(--overlay);
-  backdrop-filter: blur(6px) saturate(1.05);
 }
 
 .form-modal {
-width: min(620px, 100%);
+  width: min(620px, 100%);
   max-height: calc(100vh - 48px);
   overflow-y: auto;
-  padding: 25px;
-  border: 1px solid var(--glass-border);
-  border-radius: 22px;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
   background: var(--paper);
-  box-shadow: 0 30px 90px rgba(10, 28, 22, 0.3);
+  box-shadow: var(--shadow-dialog);
 }
 
 .modal-header {
-display: flex;
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
 }
 
 .modal-header h2 {
-margin: 0;
+  margin: 0;
   color: var(--ink);
-  font-family: Georgia, serif;
-  font-size: 26px;
+  font-family: var(--font-display);
+  font-size: 29px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
 }
 
 .modal-actions {
-padding-top: 4px;
+  padding-top: 6px;
   display: flex;
   justify-content: flex-end;
   gap: 9px;
 }
 
 .inline-status {
-min-height: 280px;
+  min-height: 280px;
 }
 
 .button.compact {
-min-height: 36px;
-  padding: 0 12px;
-  font-size: 11px;
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 12px;
 }
 
 .icon-button.compact {
-width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   color: var(--muted);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .icon-button.compact:hover {
-color: var(--ink);
+  color: var(--ink);
   border-color: var(--line-strong);
   background: var(--surface-hover);
 }
 
-.icon-button.danger,.text-button.danger {
-color: var(--danger);
+.icon-button.danger,
+.text-button.danger {
+  color: var(--danger);
 }
 
 @media (max-width: 760px) {
-.transaction-header .header-actions {
-width: 100%;
+  .transaction-header .header-actions {
+    width: 100%;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-}
+    gap: 9px;
+  }
 
-.transaction-header .header-actions .button {
-width: 100%;
+  .transaction-header .header-actions .button {
+    width: 100%;
     min-width: 0;
-}
+  }
 
-.transaction-header .header-actions .button:last-child {
-grid-column: 1 / -1;
-}
+  .transaction-header .header-actions .button:last-child {
+    grid-column: 1 / -1;
+  }
 
-.transaction-description strong {
-font-size: 13px;
-}
+  .transaction-description strong {
+    font-size: 13px;
+  }
 
-.modal-backdrop {
-padding: 0;
+  .modal-backdrop {
+    padding: 0;
     place-items: end center;
-}
+  }
 
-.form-modal {
-width: 100%;
+  .form-modal {
+    width: 100%;
     max-height: 94vh;
-    padding: 21px 16px 24px;
-    border-radius: 22px 22px 0 0;
-}
+    padding: 22px 16px 26px;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
 
-.date-button {
-width: 100%;
+  .date-button {
+    width: 100%;
     justify-content: center;
-}
+  }
 
-.onboarding-actions {
-align-items: stretch;
+  .onboarding-actions {
+    align-items: stretch;
     flex-direction: column;
-}
+  }
 
-.onboarding-actions .button {
-width: 100%;
-}
-}
-
-.date-button {
-border-radius: 10px;
-  background: transparent;
-  box-shadow: none;
-}
-:root[data-theme="dark"] .transactions-panel {
-  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.18);
-}
-
-:root[data-theme="dark"] .form-modal {
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.48);
+  .onboarding-actions .button {
+    width: 100%;
+  }
 }

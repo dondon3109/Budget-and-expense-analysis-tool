@@ -213,8 +213,16 @@ describe("ImportPage", () => {
     });
   });
 
-  it("shows the committed import allowance before file preparation", async () => {
-    renderPage();
+  it("shows the committed import allowance at the bottom after a preview", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    const csv = ["Date,Description,Amount,Category", "2026-07-20,Market,-50.00,Food & dining"].join(
+      "\n",
+    );
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+    await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
 
     const usage = await screen.findByRole("progressbar", {
       name: "Free plan committed file imports this month",

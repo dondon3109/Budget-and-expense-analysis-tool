@@ -29,10 +29,6 @@ vi.mock("../src/components/layout/AppShell", () => ({
   AppShell: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
 
-vi.mock("../src/components/theme/ThemeToggle", () => ({
-  ThemeToggle: () => <button type="button">Theme</button>,
-}));
-
 vi.mock("../src/components/calendar/CalendarDayPanel", () => ({
   CalendarDayPanel: ({ date }: { date: string }) => <aside>Selected date: {date}</aside>,
 }));

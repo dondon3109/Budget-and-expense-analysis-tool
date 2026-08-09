@@ -206,16 +206,6 @@ export function MonthlyTrend({
           <div className="trend-chart" aria-hidden="true">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data.points} margin={{ top: 12, right: 6, left: -10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-income)" stopOpacity={0.16} />
-                    <stop offset="100%" stopColor="var(--chart-income)" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-expense)" stopOpacity={0.13} />
-                    <stop offset="100%" stopColor="var(--chart-expense)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -237,19 +227,32 @@ export function MonthlyTrend({
                   tick={{ fill: "var(--chart-axis)", fontSize: 11 }}
                 />
                 <Tooltip
+                  cursor={{
+                    stroke: "var(--chart-crosshair)",
+                    strokeWidth: 1,
+                    strokeDasharray: "3 4",
+                  }}
                   labelFormatter={(label) =>
                     formatTrendTooltipDate(String(label), data.granularity)
                   }
-                  formatter={(value, name) =>
-                    `${name}: ${formatMoney(Number(value))}`
-                  }
+                  formatter={(value, name) => `${name}: ${formatMoney(Number(value))}`}
                   contentStyle={{
+                    padding: "10px 12px",
                     background: "var(--chart-tooltip-bg)",
                     border: "1px solid var(--chart-tooltip-border)",
-                    borderRadius: 10,
+                    borderRadius: "var(--radius-md)",
+                    boxShadow: "var(--shadow-raised)",
                     color: "var(--ink)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 11,
                   }}
-                  labelStyle={{ color: "var(--ink)" }}
+                  labelStyle={{
+                    marginBottom: 6,
+                    color: "var(--ink)",
+                    fontFamily: "var(--font-ui)",
+                    fontWeight: 700,
+                  }}
+                  itemStyle={{ color: "var(--ink)", padding: "2px 0" }}
                 />
                 <Area
                   type="linear"
@@ -257,7 +260,15 @@ export function MonthlyTrend({
                   name="Income"
                   stroke="var(--chart-income)"
                   strokeWidth={2}
-                  fill="url(#incomeFill)"
+                  fill="var(--chart-income)"
+                  fillOpacity={0.08}
+                  dot={false}
+                  activeDot={{
+                    r: 4,
+                    fill: "var(--chart-income)",
+                    stroke: "var(--chart-tooltip-bg)",
+                    strokeWidth: 2,
+                  }}
                   isAnimationActive={!reduceMotion}
                   animationDuration={520}
                   animationEasing="ease-out"
@@ -268,7 +279,15 @@ export function MonthlyTrend({
                   name="Expenses"
                   stroke="var(--chart-expense)"
                   strokeWidth={2}
-                  fill="url(#expenseFill)"
+                  fill="var(--chart-expense)"
+                  fillOpacity={0.07}
+                  dot={false}
+                  activeDot={{
+                    r: 4,
+                    fill: "var(--chart-expense)",
+                    stroke: "var(--chart-tooltip-bg)",
+                    strokeWidth: 2,
+                  }}
                   isAnimationActive={!reduceMotion}
                   animationDuration={520}
                   animationEasing="ease-out"

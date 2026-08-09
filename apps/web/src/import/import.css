@@ -7,9 +7,46 @@
   max-width: 1180px;
 }
 
+/* Page head per the OD mockup: eyebrow is a clean uppercase label with a
+   leading arrow-in-frame icon, and the subtitle reads as a fuller intro. */
+.import-page .transaction-header {
+  margin-bottom: 26px;
+}
+
+.import-page .transaction-header .eyebrow {
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sage-strong, var(--sage));
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.import-page .transaction-header .eyebrow svg {
+  flex: 0 0 auto;
+}
+
+.import-page .transaction-header p:not(.eyebrow) {
+  max-width: 60ch;
+  font-size: 15px;
+}
+
+.import-page .transaction-header h1 {
+  font-size: 34px;
+  letter-spacing: -0.01em;
+}
+
 .import-plan-usage {
-  width: min(520px, 100%);
-  margin-top: 22px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
 }
 
 .import-plan-usage + .import-safety-note {
@@ -77,17 +114,25 @@
 }
 
 .import-step-heading > span {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
   color: var(--sage);
   border: 1px solid color-mix(in srgb, var(--sage) 32%, transparent);
-  border-radius: 10px;
+  border-radius: 11px;
   background: color-mix(in srgb, var(--sage) 10%, transparent);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Step 1 starts pre-completed (the file is chosen first), matching the
+   mockup's filled "done" badge. */
+.import-card:first-of-type .import-step-heading > span {
+  color: #fff;
+  border-color: var(--sage);
+  background: var(--sage);
 }
 
 .import-step-heading div {
@@ -98,14 +143,15 @@
 .import-step-heading strong {
   color: var(--ink);
   font-family: Georgia, "Iowan Old Style", serif;
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 400;
   letter-spacing: -0.005em;
+  line-height: 1.25;
 }
 
 .import-step-heading small {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 14px;
 }
 
 .file-drop {
@@ -174,10 +220,10 @@
 }
 
 .worksheet-picker {
-  margin-top: 14px;
-  padding: 16px;
+  margin-top: 18px;
+  padding: 18px;
   display: grid;
-  gap: 10px;
+  gap: 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface-soft);
@@ -185,146 +231,232 @@
 
 .worksheet-picker label {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .worksheet-picker label > span {
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 750;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .worksheet-picker select {
   height: 42px;
-  padding: 0 10px;
+  padding: 0 13px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 11px;
-  background: var(--surface);
-  font-size: 10px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  font-size: 14px;
 }
 
 .worksheet-loading,
 .worksheet-summary {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 9px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13.5px;
 }
 
 .worksheet-loading {
   margin-top: 12px;
 }
 
+.workbook-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  color: var(--sage);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sage) 12%, transparent);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
 .workbook-warning {
-  margin-top: 12px;
-  padding: 11px 13px;
-  display: grid;
-  gap: 4px;
-  color: var(--warning);
-  border: 1px solid color-mix(in srgb, var(--warning) 36%, var(--line));
-  border-radius: 12px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--line));
+  border-radius: 13px;
   background: var(--warning-soft);
-  font-size: 10px;
+  font-size: 13.5px;
+}
+
+.workbook-warning::before {
+  flex: 0 0 auto;
+  content: "⚠";
+  color: var(--warning);
+}
+
+.workbook-warning span {
+  display: block;
 }
 
 .mapping-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
 }
 
-.mapping-grid > label {
+.mapping-grid label {
   display: grid;
-  gap: 6px;
-  padding: 12px 13px;
+  gap: 9px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 13px;
   background: var(--surface-soft);
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.mapping-grid label:hover {
+  border-color: var(--line-strong);
 }
 
 .mapping-grid label > span {
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 750;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .mapping-grid select,
 .mapping-grid input {
   min-width: 0;
   height: 42px;
-  padding: 0 10px;
+  padding: 0 13px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 11px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  font-size: 14px;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.mapping-grid select:hover,
+.mapping-grid input:hover {
+  border-color: var(--subtle);
+}
+
+.mapping-grid select:focus,
+.mapping-grid input:focus {
+  outline: none;
+  border-color: var(--sage);
   background: var(--surface);
-  font-size: 10px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sage) 18%, transparent);
 }
 
-.import-source-controls {
-  margin-bottom: 12px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.import-source-controls label {
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  padding: 14px;
+.source-controls-card {
+  margin-bottom: 20px;
+  padding: 18px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface-soft);
 }
 
-.import-source-controls label > span,
-.bulk-category-controls label > span {
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 750;
+.import-source-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
 }
 
-.import-source-controls select,
-.bulk-category-controls select {
+.import-source-controls label {
+  display: grid;
+  align-content: start;
+  grid-template-rows: auto auto 1fr;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.import-source-controls label > span {
+  height: 18px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.import-source-controls label > select {
+  grid-row: 2;
+  width: 100%;
   min-width: 0;
   height: 42px;
-  padding: 0 10px;
+  padding: 0 13px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 11px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  font-size: 14px;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.import-source-controls select:hover {
+  border-color: var(--subtle);
+}
+
+.import-source-controls select:focus {
+  outline: none;
+  border-color: var(--sage);
   background: var(--surface);
-  font-size: 10px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sage) 18%, transparent);
 }
 
 .import-source-controls small {
-  color: var(--subtle);
-  font-size: 8px;
+  color: var(--muted);
+  font-size: 12px;
   line-height: 1.35;
 }
 
 .import-preset-guidance {
-  margin: 0 0 14px;
-  padding: 10px 12px;
+  margin: 0 0 20px;
+  padding: 16px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   color: var(--muted);
   border-top: 1px dashed var(--line-strong);
   border-radius: 0;
   background: transparent;
-  font-size: 9px;
+  font-size: 13.5px;
   line-height: 1.45;
 }
 
+.import-preset-guidance::before {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  content: "Preset";
+  color: var(--sage);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sage) 12%, transparent);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
 .php-import-warning {
-  margin-top: 15px;
-  padding: 13px 14px;
+  margin-top: 16px;
+  padding: 14px 16px;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  color: var(--warning);
-  border: 1px solid color-mix(in srgb, var(--warning) 36%, var(--line));
+  gap: 12px;
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--plum) 40%, var(--line));
   border-radius: 13px;
-  background: var(--warning-soft);
+  background: var(--plum-soft);
 }
 
 .php-import-warning > svg {
@@ -343,24 +475,24 @@
 }
 
 .php-import-warning strong {
-  color: var(--warning);
-  font-size: 11px;
+  color: var(--plum);
+  font-size: 13.5px;
 }
 
 .php-import-warning span,
 .php-import-warning small {
-  font-size: 9px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .php-import-warning label {
-  margin-top: 3px;
+  margin-top: 6px;
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  color: var(--warning);
-  font-size: 9px;
-  font-weight: 700;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 500;
   line-height: 1.4;
   cursor: pointer;
 }
@@ -370,7 +502,7 @@
 }
 
 .import-counts {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
@@ -379,7 +511,7 @@
 .import-counts div {
   position: relative;
   overflow: hidden;
-  padding: 15px 17px 15px 20px;
+  padding: 16px 18px;
   display: grid;
   gap: 3px;
   border: 1px solid var(--line);
@@ -412,16 +544,15 @@
 .import-counts strong {
   color: var(--ink);
   font-family: Georgia, "Iowan Old Style", serif;
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 400;
   line-height: 1;
 }
 
 .import-counts span {
   color: var(--muted);
-  font-size: 8px;
-  font-weight: 800;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .import-counts div:nth-child(1) span {
@@ -463,12 +594,13 @@
 }
 
 .bulk-category-heading strong {
-  font-size: 11px;
+  font-size: 13.5px;
+  font-weight: 600;
 }
 
 .bulk-category-heading span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12.5px;
 }
 
 .bulk-category-controls {
@@ -495,29 +627,32 @@
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: var(--paper);
+  background: var(--surface);
 }
 
 .import-table {
   width: 100%;
   min-width: 760px;
   border-collapse: collapse;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .import-table th,
 .import-table td {
-  padding: 11px 13px;
+  padding: 13px 16px;
   text-align: left;
   border-bottom: 1px solid var(--line);
+  vertical-align: middle;
 }
 
 .import-table th {
   color: var(--muted);
   background: var(--surface-soft);
-  font-size: 8px;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .import-table tbody tr {
@@ -532,6 +667,13 @@
   border-bottom: 0;
 }
 
+.import-table tbody td:nth-child(5) {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .import-table td:nth-child(4) {
   min-width: 210px;
 }
@@ -542,17 +684,19 @@
 }
 
 .import-table td:nth-child(4) strong {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .import-table td:nth-child(4) small {
-  margin-top: 3px;
-  color: var(--subtle);
-  font-size: 8px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-family: var(--font-mono, ui-monospace, monospace);
 }
 
 .import-select-column {
-  width: 54px;
+  width: 44px;
+  padding-right: 0 !important;
   text-align: center !important;
 }
 
@@ -562,14 +706,15 @@
 }
 
 .import-status {
-  padding: 4px 9px;
+  padding: 4px 11px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   border-radius: 999px;
-  font-size: 7px;
-  font-weight: 850;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .import-status.ready {
@@ -594,16 +739,19 @@
 }
 
 .import-pagination {
-  margin-top: 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-soft);
+  flex-wrap: wrap;
 }
 
 .import-pagination span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .import-pagination .button {
@@ -627,23 +775,25 @@
 }
 
 .import-commit-row {
-  margin-top: 17px;
+  margin-top: 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 15px;
+  gap: 18px;
+  flex-wrap: wrap;
 }
 
 .import-commit-row > span {
-  color: var(--subtle);
-  font-size: 9px;
+  color: var(--muted);
+  font-size: 12.5px;
   line-height: 1.55;
 }
 
 .import-commit-usage {
   display: block;
   color: var(--ink);
-  font-size: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
 }
 
 .import-commit-row .button {
@@ -658,27 +808,35 @@
   flex-direction: column;
   text-align: center;
   color: var(--sage);
+  padding: 64px 40px;
+  gap: 8px;
 }
 
 .import-success > svg {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 12px;
+  width: 64px;
+  height: 64px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-sizing: border-box;
   color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 26%, var(--line));
+  border-radius: 20px;
+  background: var(--success-soft);
 }
 
 .import-success h2 {
-  margin: 3px 0 8px;
+  margin: 0 0 6px;
   color: var(--ink);
   font-family: Georgia, serif;
-  font-size: 30px;
+  font-size: 34px;
+  letter-spacing: -0.01em;
 }
 
 .import-success > p:not(.eyebrow) {
   max-width: 520px;
   margin: 0 0 22px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.6;
 }
 
@@ -740,8 +898,8 @@
 
 .mapping-field-error {
   color: var(--danger);
-  font-size: 9px;
-  font-weight: 750;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 :root[data-theme="dark"] .import-card,

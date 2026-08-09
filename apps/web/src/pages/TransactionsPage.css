@@ -1,58 +1,63 @@
 /* Transactions styles extracted from the private application surface. */
 
 .transactions-page {
-max-width: 1270px;
+  max-width: 1270px;
 }
 
 .transaction-filters {
-margin: 28px 0 16px;
-  padding: 13px;
+  margin: 28px 0 18px;
+  padding: 12px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
   border: 1px solid var(--line);
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   background: var(--paper);
+  box-shadow: var(--shadow-card);
 }
 
 .search-form {
-min-width: 0;
+  min-width: 0;
   max-width: 100%;
   flex: 1 1 280px;
-  height: 42px;
+  height: var(--control-height);
   padding: 0 13px;
   display: flex;
   align-items: center;
   gap: 9px;
   color: var(--subtle);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .search-form:focus-within {
-border-color: #76a994;
-  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+  border-color: color-mix(in srgb, var(--action) 58%, var(--line-strong));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 13%, transparent);
 }
 
 .search-form input {
-min-width: 80px;
+  min-width: 80px;
   flex: 1;
+  color: var(--ink);
   border: 0;
   outline: 0;
-  color: var(--ink);
   background: transparent;
+  font-family: var(--font-ui);
   font-size: 12px;
 }
 
 .search-form input::placeholder {
-color: var(--subtle);
+  color: var(--subtle);
 }
 
 .filter-select-wrap {
-min-width: 0;
-  height: 42px;
+  min-width: 0;
+  height: var(--control-height);
   padding: 0 11px;
   display: flex;
   flex: 1 1 130px;
@@ -60,63 +65,72 @@ min-width: 0;
   gap: 7px;
   color: var(--muted);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
 }
 
 .filter-select-wrap select {
-min-width: 0;
+  min-width: 0;
   width: 100%;
+  color: var(--muted);
   border: 0;
   outline: 0;
-  color: var(--muted);
   background: transparent;
-  font-size: 11px;
+  font-family: var(--font-ui);
+  font-size: 12px;
   font-weight: 650;
 }
 
 .filter-date-wrap {
-min-width: 0;
-  min-height: 42px;
+  min-width: 0;
+  min-height: var(--control-height);
   padding: 0 10px;
   display: inline-flex;
   flex: 1 1 145px;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
 }
 
 .filter-date-wrap span {
-color: var(--subtle);
-  font-size: 8px;
-  font-weight: 800;
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .filter-date-wrap input {
-min-width: 0;
+  min-width: 0;
   width: 100%;
   color: var(--ink);
   border: 0;
   outline: 0;
   background: transparent;
-  font-size: 9px;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .clear-filter {
-height: 38px;
-  padding: 0 8px;
+  height: var(--control-height);
+  padding: 0 9px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   color: var(--muted);
   border: 0;
   background: transparent;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
+}
+
+.clear-filter:hover {
+  color: var(--ink);
 }
 
 .transactions-panel-heading .transaction-list-actions {
@@ -136,48 +150,55 @@ height: 38px;
   align-items: center;
   gap: 7px;
   color: var(--subtle);
+  font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .transaction-sort-control select {
-  min-height: 32px;
+  min-height: var(--control-height);
   max-width: 180px;
-  padding: 0 27px 0 9px;
+  padding: 0 30px 0 10px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
-  font: inherit;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .transaction-table-wrap {
-overflow-x: auto;
+  overflow-x: auto;
 }
 
 .transaction-table {
-width: 100%;
+  width: 100%;
   border-collapse: collapse;
 }
 
-.transaction-table th,.transaction-table td {
-padding: 14px 16px;
+.transaction-table th,
+.transaction-table td {
+  padding: 15px 16px;
   text-align: left;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .transaction-table th {
-color: var(--subtle);
+  color: var(--subtle);
   background: var(--surface-soft);
-  font-size: 9px;
-  font-weight: 800;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .transaction-table th button {
-padding: 0;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -188,86 +209,105 @@ padding: 0;
   text-transform: inherit;
 }
 
+.transaction-table td:first-child {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .transaction-table tbody tr:last-child td {
-border-bottom: 0;
+  border-bottom: 0;
 }
 
 .transaction-table tbody tr:hover {
-background: var(--surface-soft);
+  background: var(--surface-soft);
 }
 
 .row-actions {
-width: 88px;
+  width: 88px;
 }
 
-.row-actions > div,.confirm-delete {
-display: flex;
+.row-actions > div,
+.confirm-delete {
+  display: flex;
   justify-content: flex-end;
   gap: 4px;
 }
 
 .row-actions button {
-min-width: 30px;
-  height: 30px;
+  min-width: 32px;
+  height: 32px;
   display: inline-grid;
   place-items: center;
   color: var(--muted);
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 750;
 }
 
 .row-actions button:hover {
-border-color: var(--line-strong);
+  color: var(--ink);
+  border-color: var(--line-strong);
   background: var(--surface);
 }
 
 .confirm-delete button:first-child {
-color: var(--danger);
-  border-color: var(--line-strong);
-  padding: 0 7px;
+  padding: 0 8px;
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 24%, var(--line));
+  background: var(--danger-soft);
 }
 
 .table-pagination {
-min-height: 58px;
+  min-height: 60px;
   padding: 0 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   color: var(--muted);
   border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
   font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
 .table-pagination > div {
-display: flex;
+  display: flex;
   gap: 5px;
 }
 
 .table-pagination button {
-width: 33px;
-  height: 33px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
+  color: var(--muted);
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
 }
 
+.table-pagination button:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
+
 .table-pagination button:disabled {
-opacity: 0.35;
+  opacity: 0.35;
 }
 
 @media (max-width: 1050px) {
-.transaction-filters {
-flex-wrap: wrap;
-}
+  .transaction-filters {
+    flex-wrap: wrap;
+  }
 
-.search-form {
-min-width: 100%;
-}
+  .search-form {
+    min-width: 100%;
+  }
 }
 
 @media (max-width: 760px) {
@@ -293,101 +333,103 @@ min-width: 100%;
   .transaction-sort-control {
     align-items: flex-start;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
   }
 
   .transaction-sort-control select {
     max-width: 150px;
   }
 
-.filter-select-wrap {
-flex: 1;
-}
+  .filter-select-wrap {
+    flex: 1;
+  }
 
-.filter-select-wrap select {
-width: 100%;
-}
+  .filter-select-wrap select {
+    width: 100%;
+  }
 
-.filter-date-wrap {
-flex: 1;
-}
+  .filter-date-wrap {
+    flex: 1;
+  }
 
-.filter-date-wrap input {
-width: 100%;
-}
+  .filter-date-wrap input {
+    width: 100%;
+  }
 
-.transaction-table thead {
-display: none;
-}
+  .transaction-table thead {
+    display: none;
+  }
 
-.transaction-table-wrap {
-overflow-x: visible;
-}
+  .transaction-table-wrap {
+    overflow-x: visible;
+  }
 
-.transaction-table,
-.transaction-table tbody,
-.transaction-table tr,
-.transaction-table td {
-display: block;
-}
+  .transaction-table,
+  .transaction-table tbody,
+  .transaction-table tr,
+  .transaction-table td {
+    display: block;
+  }
 
-.transaction-table tr {
-position: relative;
-    padding: 14px 54px 14px 14px;
+  .transaction-table tr {
+    position: relative;
+    padding: 15px 54px 15px 14px;
     border-bottom: 1px solid var(--line);
-}
+  }
 
-.transaction-table td {
-padding: 5px 0;
+  .transaction-table td {
+    padding: 5px 0;
     border: 0;
     text-align: left !important;
-}
+  }
 
-.transaction-table td::before {
-content: attr(data-label);
+  .transaction-table td::before {
+    content: attr(data-label);
     width: 82px;
     display: inline-block;
     color: var(--subtle);
-    font-size: 8px;
-    font-weight: 800;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-}
+  }
 
-.transaction-table td:nth-child(2)::before,
-.transaction-table .row-actions::before {
-display: none;
-}
+  .transaction-table td:nth-child(2)::before,
+  .transaction-table .row-actions::before {
+    display: none;
+  }
 
-.transaction-table td:nth-child(2) {
-padding-bottom: 9px;
-}
+  .transaction-table td:nth-child(2) {
+    padding-bottom: 9px;
+  }
 
-.row-actions {
-position: absolute;
+  .row-actions {
+    position: absolute;
     top: 12px;
     right: 10px;
     width: auto;
-}
+  }
 
-.confirm-delete {
-padding: 6px;
+  .confirm-delete {
+    padding: 6px;
     flex-direction: column;
     border: 1px solid var(--line);
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
     background: var(--surface);
-}
+    box-shadow: var(--shadow-raised);
+  }
 }
 
 @media (max-width: 470px) {
-.transaction-filters > .filter-select-wrap,
-.transaction-filters > .filter-date-wrap {
-min-width: 0;
+  .transaction-filters > .filter-select-wrap,
+  .transaction-filters > .filter-date-wrap {
+    min-width: 0;
     flex: 1 1 100%;
-}
+  }
 
-.filter-select-wrap select,
-.filter-date-wrap input {
-min-width: 0;
-}
+  .filter-select-wrap select,
+  .filter-date-wrap input {
+    min-width: 0;
+  }
 }

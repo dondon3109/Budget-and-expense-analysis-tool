@@ -1,7 +1,7 @@
 import type { DashboardSummary } from "@zoption/shared";
 import { describe, expect, it } from "vitest";
 
-import { isDashboardEmpty } from "../src/pages/DashboardPage";
+import { calculatePercentageChange, isDashboardEmpty } from "../src/pages/DashboardPage";
 
 const emptyDashboard: DashboardSummary = {
   period: { from: "2026-07-01", to: "2026-07-31" },
@@ -21,6 +21,16 @@ const emptyDashboard: DashboardSummary = {
   budgetProgress: [],
   insights: { savingsMinor: 0, savingsRatePercent: null, recurringExpenses: [] },
 };
+
+describe("dashboard percentage changes", () => {
+  it("calculates signed month-over-month changes", () => {
+    expect(calculatePercentageChange(125, 100)).toBe(25);
+    expect(calculatePercentageChange(75, 100)).toBe(-25);
+    expect(calculatePercentageChange(0, 0)).toBe(0);
+    expect(calculatePercentageChange(100, 0)).toBe(100);
+    expect(calculatePercentageChange(-100, 0)).toBe(-100);
+  });
+});
 
 describe("dashboard empty state", () => {
   it("recognizes a newly bootstrapped workspace after all-time history loads empty", () => {

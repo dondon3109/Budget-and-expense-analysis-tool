@@ -15,7 +15,6 @@ import { CalendarEventForm } from "../components/calendar/CalendarEventForm";
 import { CalendarMonthGrid, type CalendarDayData } from "../components/calendar/CalendarMonthGrid";
 import { CalendarUpcomingEvents } from "../components/calendar/CalendarUpcomingEvents";
 import { AppShell } from "../components/layout/AppShell";
-import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { TransactionForm } from "../components/transactions/TransactionForm";
 import { useAuth } from "../auth/AuthProvider";
 import {
@@ -276,7 +275,6 @@ export function CalendarPage() {
               <p className="eyebrow">Daily activity</p>
               <h1>Calendar</h1>
             </div>
-            <ThemeToggle variant="pill" />
           </div>
           <p className="calendar-header-subtitle">
             Keep events, recurring costs, and daily transactions in one clear view.

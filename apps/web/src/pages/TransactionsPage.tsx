@@ -7,6 +7,7 @@ import type {
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Download, FolderCog, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
@@ -80,13 +81,14 @@ export function TransactionsPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState<TransactionListQuery>(() => ({
     ...initialQuery,
     ...readTransactionSortPreference(),
   }));
   const [searchDraft, setSearchDraft] = useState("");
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(() => searchParams.get("add") === "1");
   const [editing, setEditing] = useState<TransactionListItem>();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -119,6 +121,21 @@ export function TransactionsPage() {
     window.addEventListener("storage", syncTransactionSort);
     return () => window.removeEventListener("storage", syncTransactionSort);
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("add") !== "1") return;
+
+    setEditing(undefined);
+    setFormOpen(true);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("add");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);

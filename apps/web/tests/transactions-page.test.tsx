@@ -31,7 +31,7 @@ vi.mock("../src/components/transactions/TransactionTable", () => ({
 }));
 
 vi.mock("../src/components/transactions/TransactionForm", () => ({
-  TransactionForm: () => null,
+  TransactionForm: () => <div role="dialog" aria-label="Transaction form" />,
 }));
 
 vi.mock("../src/components/transactions/CategoryManager", () => ({
@@ -46,13 +46,13 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
 import { ApiRequestError } from "../src/lib/api";
 import { TransactionsPage } from "../src/pages/TransactionsPage";
 
-function renderPage() {
+function renderPage(initialEntry = "/app/transactions") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <TransactionsPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -79,6 +79,12 @@ describe("TransactionsPage search", () => {
   afterEach(() => {
     vi.useRealTimers();
     cleanup();
+  });
+
+  it("opens the transaction form from the dashboard header link", () => {
+    renderPage("/app/transactions?add=1");
+
+    expect(screen.getByRole("dialog", { name: "Transaction form" })).toBeInTheDocument();
   });
 
   it("applies a settled search after 300 ms and clears it with the filters", async () => {

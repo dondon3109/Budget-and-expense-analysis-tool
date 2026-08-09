@@ -628,46 +628,17 @@ export function ImportPage() {
       <div className="dashboard-page import-page">
         <header className="dashboard-header transaction-header">
           <div>
-            <p className="eyebrow">Preview before saving</p>
+            <p className="eyebrow">
+              <Download size={14} />
+              Import · 3 steps
+            </p>
             <h1>Import transactions</h1>
-            <p>Choose a CSV or Excel worksheet, review every issue, then save ready rows.</p>
+            <p>Bring your bank or credit-card statement in as a CSV or Excel file. We'll help you match the columns, review the rows, then save them to your budget.</p>
           </div>
           <button className="button secondary" type="button" onClick={downloadTemplate}>
             <Download size={17} /> Download template
           </button>
         </header>
-
-        {importUsage && (
-          <div className="import-plan-usage">
-            <PlanUsageIndicator
-              label={
-                isFreePlan
-                  ? "Free plan committed file imports this month"
-                  : "Committed file imports this month"
-              }
-              used={importUsage.used}
-              limit={importUsage.limit}
-              resetsAt={importUsage.resetsAt}
-              detail={
-                isFreePlan
-                  ? "Free includes 1 saved file import each month. Previewing files does not use it."
-                  : "One import is used only when ready rows are saved."
-              }
-              showUpgrade={isFreePlan}
-            />
-          </div>
-        )}
-
-        <div className="import-safety-note">
-          <ShieldCheck size={19} />
-          <div>
-            <strong>Review before saving</strong>
-            <span>
-              CSV files are limited to 1 MB, Excel files to 5 MB, and imports to 500 data rows.
-              Previewing does not change your workspace.
-            </span>
-          </div>
-        </div>
 
         {result ? (
           <section className="import-success">
@@ -686,6 +657,7 @@ export function ImportPage() {
             </button>
           </section>
         ) : (
+          <>
           <div className="import-layout">
             <section className="import-card">
               <div className="import-step-heading">
@@ -799,8 +771,9 @@ export function ImportPage() {
                 </div>
               </div>
 
-              <div className="import-source-controls">
-                <label>
+              <div className="source-controls-card">
+                <div className="import-source-controls">
+                  <label>
                   <span>Bank format</span>
                   <select
                     aria-label="Bank format"
@@ -850,9 +823,10 @@ export function ImportPage() {
                     <option value="debit-credit">Separate Debit and Credit columns</option>
                   </select>
                 </label>
-              </div>
+                </div>
 
-              <p className="import-preset-guidance">{resolvedPreset.guidance}</p>
+                <p className="import-preset-guidance">{resolvedPreset.guidance}</p>
+              </div>
 
               <div className="mapping-grid">
                 {(
@@ -1214,10 +1188,40 @@ export function ImportPage() {
                   )}
                 </>
               )}
+              <div className="import-safety-note">
+                <ShieldCheck size={19} />
+                <div>
+                  <strong>Review before saving</strong>
+                  <span>
+                    CSV files are limited to 1 MB, Excel files to 5 MB, and imports to 500 data
+                    rows. Previewing does not change your workspace.
+                  </span>
+                </div>
+              </div>
+              {importUsage && (
+                <div className="import-plan-usage">
+                  <PlanUsageIndicator
+                    label={
+                      isFreePlan
+                        ? "Free plan committed file imports this month"
+                        : "Committed file imports this month"
+                    }
+                    used={importUsage.used}
+                    limit={importUsage.limit}
+                    resetsAt={importUsage.resetsAt}
+                    detail={
+                      isFreePlan
+                        ? "Free includes 1 saved file import each month. Previewing files does not use it."
+                        : "One import is used only when ready rows are saved."
+                    }
+                    showUpgrade={isFreePlan}
+                  />
+                </div>
+              )}
             </section>
           </div>
-        )}
-      </div>
+        </>
+      )}
       {limitDialogOpen && (
         <BillingLimitDialog
           error={commitMutation.error}
@@ -1225,6 +1229,7 @@ export function ImportPage() {
           onClose={() => setLimitDialogOpen(false)}
         />
       )}
+      </div>
     </AppShell>
   );
 }

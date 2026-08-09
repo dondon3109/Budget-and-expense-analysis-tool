@@ -26,12 +26,12 @@
   --lp-dark-ink: #f2f4f7;
   --lp-shadow: 0 1px 2px oklch(0.44 0.04 165 / 0.06), 0 18px 44px oklch(0.44 0.04 165 / 0.1);
   --lp-shadow-lg: 0 2px 6px oklch(0.44 0.04 165 / 0.06), 0 34px 84px oklch(0.44 0.04 165 / 0.16);
-  --lp-font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --lp-font-display: var(--font-display);
   min-height: 100vh;
   overflow-x: hidden;
   color: var(--lp-fg);
   background: var(--lp-bg);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
 }
 :root[data-theme="dark"] .landing-page {
@@ -122,17 +122,15 @@
   height: 72px;
   padding: 0 max(24px, calc((100% - 1160px) / 2));
   border-bottom: 1px solid var(--lp-border);
-  background: color-mix(in srgb, var(--lp-bg) 82%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--lp-bg);
 }
 .landing-nav .brand {
   display: inline-flex;
   align-items: center;
   gap: 11px;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-ui);
   font-size: 19px;
-  font-weight: 700;
+  font-weight: 750;
   color: var(--lp-fg);
 }
 .landing-nav .brand-mark {
@@ -144,8 +142,8 @@
   color: var(--lp-surface);
   background: var(--lp-accent-strong);
   font-family: var(--lp-font-display);
-  font-style: italic;
-  font-weight: 400;
+  font-style: normal;
+  font-weight: 600;
 }
 .landing-nav .brand-wordmark {
   color: var(--lp-fg);

@@ -75,11 +75,13 @@ export function SpendingByCategory({
                   <Pie
                     data={data}
                     dataKey="amountMinor"
-                    innerRadius={62}
-                    outerRadius={88}
-                    paddingAngle={3}
+                    innerRadius={64}
+                    outerRadius={90}
+                    paddingAngle={2}
+                    cornerRadius={5}
                     stroke="var(--chart-slice-separator)"
                     strokeWidth={2}
+                    activeShape={{ outerRadius: 94 }}
                     isAnimationActive={!reduceMotion}
                     animationDuration={460}
                     animationEasing="ease-out"
@@ -91,12 +93,22 @@ export function SpendingByCategory({
                   <Tooltip
                     formatter={(value) => formatMoney(Number(value))}
                     contentStyle={{
+                      padding: "10px 12px",
                       background: "var(--chart-tooltip-bg)",
                       border: "1px solid var(--chart-tooltip-border)",
-                      borderRadius: 10,
+                      borderRadius: "var(--radius-md)",
+                      boxShadow: "var(--shadow-raised)",
                       color: "var(--ink)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11,
                     }}
-                    itemStyle={{ color: "var(--ink)" }}
+                    labelStyle={{
+                      marginBottom: 5,
+                      color: "var(--ink)",
+                      fontFamily: "var(--font-ui)",
+                      fontWeight: 700,
+                    }}
+                    itemStyle={{ color: "var(--ink)", padding: 0 }}
                   />
                 </PieChart>
               </ResponsiveContainer>

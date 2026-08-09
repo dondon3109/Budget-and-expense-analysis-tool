@@ -21,6 +21,7 @@ describe("OverviewStatBar", () => {
             detail: "Income received this month",
             icon: ArrowDownRight,
             tone: "income",
+            trend: { percentage: 12.5, comparison: "vs Jun", state: "positive" },
           },
           {
             label: "Money out",
@@ -28,6 +29,7 @@ describe("OverviewStatBar", () => {
             detail: "25% of monthly income",
             icon: ArrowUpRight,
             tone: "expense",
+            trend: { percentage: -7.5, comparison: "vs Jun", state: "positive" },
           },
           {
             label: "Net position",
@@ -35,6 +37,7 @@ describe("OverviewStatBar", () => {
             detail: "After all recorded spending",
             icon: WalletCards,
             tone: "ink",
+            trend: { percentage: 0, comparison: "vs Jun", state: "neutral" },
           },
         ]}
       />,
@@ -43,6 +46,7 @@ describe("OverviewStatBar", () => {
     const summary = screen.getByRole("region", { name: "Monthly summary" });
     const values = summary.querySelectorAll("strong");
     const currencySymbols = summary.querySelectorAll(".overview-stat-currency");
+    const trends = summary.querySelectorAll(".overview-stat-trend");
 
     expect(summary).toHaveClass("overview-stat-bar");
     expect(summary.querySelector(".tone-income .overview-stat-icon")).toBeInTheDocument();
@@ -55,6 +59,13 @@ describe("OverviewStatBar", () => {
     expect(currencySymbols[0]).toHaveTextContent("₱");
     expect(currencySymbols[1]).toHaveTextContent("₱");
     expect(currencySymbols[2]).toHaveTextContent("₱");
+    expect(trends).toHaveLength(3);
+    expect(trends[0]).toHaveTextContent("+12.5%vs Jun");
+    expect(trends[0]).toHaveAttribute("data-state", "positive");
+    expect(trends[1]).toHaveTextContent("-7.5%vs Jun");
+    expect(trends[1]).toHaveAttribute("data-state", "positive");
+    expect(trends[2]).toHaveTextContent("0%vs Jun");
+    expect(trends[2]).toHaveAttribute("data-state", "neutral");
   });
 
   it("shows a secondary US-dollar line after the primary peso value", () => {

@@ -578,41 +578,6 @@ main:has(.assistant-page) > .legal-footer,
   text-align: right;
 }
 
-/* Segmented theme switcher for the assistant topbar, matching the mockup. */
-.theme-sw {
-  display: inline-flex;
-  padding: 3px;
-  gap: 2px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--surface-soft);
-}
-
-.theme-sw button {
-  width: 30px;
-  height: 28px;
-  border: 0;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-  background: transparent;
-  cursor: pointer;
-  transition:
-    background 150ms ease,
-    color 150ms ease;
-}
-
-.theme-sw button:hover {
-  color: var(--ink);
-}
-
-.theme-sw button.is-on {
-  color: var(--action-strong);
-  background: var(--surface);
-  box-shadow: 0 1px 2px var(--shadow);
-}
-
 .assistant-memory-trigger {
   display: inline-flex;
   align-items: center;

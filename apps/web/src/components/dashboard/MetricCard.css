@@ -1,100 +1,145 @@
-/* Metric styles extracted from the private application surface. */
+/* KPI card styles owned by MetricCard. */
 
 .metric-grid {
-display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .metric-card {
-min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 17px;
-  background: var(--paper);
-  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
+  position: relative;
+  min-width: 0;
+  padding: 21px 21px 20px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--amber) 14%, var(--line));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--paper) 96%, var(--amber-soft));
+  box-shadow: var(--shadow-card);
+}
+
+.metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--line-strong);
+}
+
+.metric-card.tone-sage::before {
+  background: var(--chart-income);
+}
+
+.metric-card.tone-amber::before {
+  background: var(--amber);
+}
+
+.metric-card.tone-ink::before {
+  background: var(--ink);
+}
+
+.metric-card.tone-plum::before {
+  background: var(--plum);
 }
 
 .metric-heading {
-display: flex;
+  display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 14px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 780;
+  letter-spacing: 0.075em;
+  line-height: 1.35;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+}
+
+.metric-heading > span:first-child {
+  min-width: 0;
 }
 
 .metric-icon {
-width: 31px;
-  height: 31px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
 }
 
 .tone-sage .metric-icon {
-color: var(--chart-income);
+  color: var(--chart-income);
+  border-color: color-mix(in srgb, var(--chart-income) 18%, transparent);
   background: var(--success-soft);
 }
 
 .tone-amber .metric-icon {
-color: var(--amber);
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 20%, transparent);
   background: var(--amber-soft);
 }
 
 .tone-ink .metric-icon {
-color: var(--ink);
+  color: var(--ink);
+  border-color: var(--line);
   background: var(--surface-hover);
 }
 
 .tone-plum .metric-icon {
-color: var(--plum);
+  color: var(--plum);
+  border-color: color-mix(in srgb, var(--plum) 18%, transparent);
   background: var(--plum-soft);
 }
 
 .metric-card > strong {
-display: block;
-  margin: 16px 0 7px;
+  display: block;
+  margin: 20px 0 8px;
+  overflow-wrap: anywhere;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(23px, 2.1vw, 30px);
-  white-space: nowrap;
+  font-size: clamp(25px, 2.2vw, 32px);
+  font-weight: 500;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.035em;
+  line-height: 1;
 }
 
 .metric-card > p {
-margin: 0;
+  margin: 0;
   color: var(--subtle);
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
 }
 
 @media (max-width: 1050px) {
-.metric-grid {
-grid-template-columns: 1fr 1fr;
-}
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
-.metric-grid {
-grid-template-columns: 1fr 1fr;
-    gap: 10px;
-}
+  .metric-grid {
+    gap: 11px;
+  }
 
-.metric-card {
-padding: 16px;
-}
+  .metric-card {
+    padding: 18px;
+  }
 
-.metric-card > strong {
-font-size: 22px;
-}
+  .metric-card > strong {
+    font-size: 24px;
+  }
 }
 
 @media (max-width: 470px) {
-.metric-grid {
-grid-template-columns: 1fr;
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
 }
-}
+
 :root[data-theme="dark"] .metric-card {
-  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-card);
 }

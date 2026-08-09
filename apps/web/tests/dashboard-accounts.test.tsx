@@ -39,7 +39,6 @@ vi.mock("../src/components/layout/AppShell", () => ({
 vi.mock("../src/components/dashboard/BudgetProgress", () => ({ BudgetProgress: () => null }));
 vi.mock("../src/components/dashboard/InsightsPanel", () => ({ InsightsPanel: () => null }));
 vi.mock("../src/components/dashboard/MonthlyTrend", () => ({ MonthlyTrend: () => null }));
-vi.mock("../src/components/dashboard/OverviewStatBar", () => ({ OverviewStatBar: () => null }));
 vi.mock("../src/components/dashboard/SpendingByCategory", () => ({
   SpendingByCategory: () => null,
 }));
@@ -310,6 +309,15 @@ describe("Profile dashboard account management", () => {
 
   afterEach(cleanup);
 
+  it("offers a header action that opens the transaction form", async () => {
+    renderPage();
+
+    expect(await screen.findByRole("link", { name: "Add transaction" })).toHaveAttribute(
+      "href",
+      "/app/transactions?add=1",
+    );
+  });
+
   it("shows overall transfer fees on the Profile dashboard", async () => {
     apiMocks.getTransactions.mockResolvedValue({
       items: [],
@@ -320,9 +328,34 @@ describe("Profile dashboard account management", () => {
     });
     renderPage();
 
-    const feeCard = await screen.findByRole("region", { name: "Transfer fees overall" });
-    expect(feeCard.textContent).toContain("₱15");
-    expect(feeCard.textContent).toContain("Across 2 fee-charged transfers");
+    const summary = await screen.findByRole("region", { name: "Monthly summary" });
+    const stats = within(summary).getAllByRole("article");
+    const feeStat = stats[2];
+
+    expect(
+      stats.map((stat) => stat.querySelector(".overview-stat-heading > span")?.textContent),
+    ).toEqual(["Income", "Expenses", "Transfer fees (all time)", "Remaining budget"]);
+    expect(feeStat).toHaveTextContent("₱15");
+    expect(feeStat).toHaveTextContent("Across 2 fee-charged transfers");
+  });
+
+  it("keeps four summary sections while transfer fees are loading", async () => {
+    apiMocks.getTransactions.mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 8,
+      total: 4,
+      totalPages: 1,
+    });
+    apiMocks.getTransferFeeInsight.mockReturnValue(new Promise(() => undefined));
+    renderPage();
+
+    const summary = await screen.findByRole("region", { name: "Monthly summary" });
+    const stats = within(summary).getAllByRole("article");
+
+    expect(stats).toHaveLength(4);
+    expect(stats[2]).toHaveTextContent("Transfer fees (all time)");
+    expect(stats[2]).toHaveTextContent("Loading transfer fees…");
   });
 
   it("renders a zero state when no transfer fees are recorded", async () => {
@@ -345,9 +378,11 @@ describe("Profile dashboard account management", () => {
     });
     renderPage();
 
-    const feeCard = await screen.findByRole("region", { name: "Transfer fees overall" });
-    expect(within(feeCard).getByText(/No transfer fees recorded yet/)).toBeInTheDocument();
-    expect(feeCard.textContent).toContain("₱0");
+    const summary = await screen.findByRole("region", { name: "Monthly summary" });
+    const feeStat = within(summary).getAllByRole("article")[2];
+
+    expect(feeStat).toHaveTextContent("No transfer fees recorded yet");
+    expect(feeStat).toHaveTextContent("₱0");
   });
 
   it("renders one Cash-first account list with history in its disclosure", async () => {
@@ -360,14 +395,13 @@ describe("Profile dashboard account management", () => {
 
     expect(names).toEqual(["Cash", "Bank", "Maya Wallet"]);
     expect(within(accountManager).getByText("Primary")).toBeInTheDocument();
-    expect(within(accountManager).queryByRole("button", { name: "Edit Cash" }),
+    expect(
+      within(accountManager).queryByRole("button", { name: "Edit Cash" }),
     ).not.toBeInTheDocument();
     expect(
       within(accountManager).queryByRole("button", { name: "Remove Bank" }),
     ).not.toBeInTheDocument();
-    expect(
-      within(accountManager).getByRole("button", { name: "Edit Bank" }),
-    ).toBeInTheDocument();
+    expect(within(accountManager).getByRole("button", { name: "Edit Bank" })).toBeInTheDocument();
     expect(
       within(accountManager).getByRole("button", { name: "Edit Maya Wallet" }),
     ).toBeInTheDocument();
@@ -494,15 +528,11 @@ describe("Profile dashboard account management", () => {
       target: { value: "savings" },
     });
 
-    expect(
-      within(dialog).getByText(/Earn automatic interest on this account/),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/Earn automatic interest on this account/)).toBeInTheDocument();
     expect(
       within(dialog).queryByRole("checkbox", { name: "Earn automatic interest" }),
     ).not.toBeInTheDocument();
-    expect(
-      within(dialog).getByText(/Automatic interest is a Pro feature/),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/Automatic interest is a Pro feature/)).toBeInTheDocument();
     expect(within(dialog).queryByLabelText("Annual interest rate (%)")).not.toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));

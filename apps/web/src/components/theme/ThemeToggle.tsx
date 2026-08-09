@@ -2,6 +2,7 @@ import { Check, Coffee, Moon, Sun } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { useTheme, type Theme } from "../../theme/ThemeProvider";
+import "./ThemeToggle.css";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: Sun },
@@ -24,8 +25,7 @@ export function ThemeToggle({ variant = "menu" }: ThemeToggleProps) {
     dark: null,
     coffee: null,
   });
-  const currentOption =
-    THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[0]!;
+  const currentOption = THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[0]!;
   const CurrentIcon = currentOption.icon;
 
   useEffect(() => {
@@ -80,8 +80,7 @@ export function ThemeToggle({ variant = "menu" }: ThemeToggleProps) {
     if (event.key === "ArrowDown" || event.key === "ArrowRight") {
       nextIndex = (Math.max(currentIndex, 0) + 1) % THEME_OPTIONS.length;
     } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-      nextIndex =
-        (currentIndex <= 0 ? THEME_OPTIONS.length : currentIndex) - 1;
+      nextIndex = (currentIndex <= 0 ? THEME_OPTIONS.length : currentIndex) - 1;
     } else if (event.key === "Home") {
       nextIndex = 0;
     } else if (event.key === "End") {

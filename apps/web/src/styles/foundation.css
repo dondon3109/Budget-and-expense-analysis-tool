@@ -1,16 +1,50 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/manrope-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/newsreader-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-500-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-600-latin.woff2") format("woff2");
+}
+
 :root {
   color-scheme: light;
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-ui:
+    "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: var(--font-ui);
   color: #19352f;
   background: #f4f1e9;
   font-synthesis: none;
@@ -78,13 +112,24 @@
   --contrast-bg: #17342e;
   --contrast-text: #fffdf8;
   --contrast-muted: #b9d8cc;
-  --chart-income: #0e8a7e;
+  --chart-income: #00897b;
   --chart-expense: #d96b35;
   --chart-grid: #e7e2d8;
   --chart-axis: #73716b;
   --chart-tooltip-bg: #fffdf8;
   --chart-tooltip-border: #d9d5cb;
   --chart-slice-separator: #fffdf8;
+  --chart-crosshair: rgba(23, 52, 46, 0.3);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --control-height: 44px;
+  --content-max: 1270px;
+  --sidebar-width: 232px;
+  --shadow-card: 0 1px 2px rgba(35, 51, 44, 0.035), 0 12px 34px rgba(35, 51, 44, 0.055);
+  --shadow-raised: 0 18px 48px rgba(35, 51, 44, 0.12);
+  --shadow-dialog: 0 28px 80px rgba(18, 34, 30, 0.24);
 }
 
 :root[data-theme="dark"] {
@@ -161,6 +206,10 @@
   --chart-tooltip-bg: #1d2128;
   --chart-tooltip-border: #626d7d;
   --chart-slice-separator: #171a20;
+  --chart-crosshair: rgba(242, 244, 247, 0.28);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.18), 0 14px 38px rgba(0, 0, 0, 0.2);
+  --shadow-raised: 0 20px 52px rgba(0, 0, 0, 0.34);
+  --shadow-dialog: 0 30px 90px rgba(0, 0, 0, 0.48);
 }
 
 :root[data-theme="coffee"] {
@@ -237,10 +286,10 @@
   --chart-tooltip-bg: #fff9ef;
   --chart-tooltip-border: #a98967;
   --chart-slice-separator: #fff9ef;
-}
-
-:root[data-theme="dark"] .button.primary {
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  --chart-crosshair: rgba(58, 42, 35, 0.3);
+  --shadow-card: 0 1px 2px rgba(74, 49, 32, 0.05), 0 14px 36px rgba(74, 49, 32, 0.09);
+  --shadow-raised: 0 20px 52px rgba(74, 49, 32, 0.16);
+  --shadow-dialog: 0 30px 84px rgba(51, 35, 26, 0.3);
 }
 
 :root[data-theme="dark"] .auth-card,
@@ -319,7 +368,7 @@ textarea:focus-visible {
 .theme-choice-header h1 {
   margin: 0;
   color: var(--ink);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: clamp(30px, 5vw, 42px);
   letter-spacing: -0.025em;
   line-height: 1.08;
@@ -491,9 +540,9 @@ textarea:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ink);
 }
 .brand-mark {
@@ -524,40 +573,41 @@ textarea:focus-visible {
 }
 
 .button {
-  min-height: 44px;
+  min-height: var(--control-height);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 9px;
   padding: 0 18px;
-  border-radius: 999px;
-  font-size: 14px;
+  color: var(--ink);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
   font-weight: 750;
   transition:
-    transform 0.18s ease,
-    background 0.18s ease;
-}
-.button:hover {
-  transform: translateY(-2px);
-}
-.button:active {
-  transform: translateY(0);
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
 }
 .button.primary {
   color: var(--solid-text);
+  border-color: var(--solid-bg);
   background: var(--solid-bg);
-  box-shadow: 0 12px 30px rgba(23, 52, 46, 0.18);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--solid-bg) 18%, transparent);
 }
 .button.primary:hover {
+  border-color: var(--solid-hover);
   background: var(--solid-hover);
 }
 .button.secondary {
-  border: 1px solid var(--line-strong);
-  background: var(--surface-glass);
+  border-color: var(--line-strong);
+  background: var(--surface);
 }
 .button.secondary:hover {
-  border-color: var(--line-strong);
-  background: var(--paper);
+  border-color: color-mix(in srgb, var(--action) 30%, var(--line-strong));
+  background: var(--surface-hover);
 }
 .text-link {
   display: inline-flex;
@@ -574,13 +624,20 @@ textarea:focus-visible {
   color: var(--muted);
 }
 .icon-button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
+  color: var(--muted);
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface);
+  cursor: pointer;
+}
+.icon-button:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
 }
 .theme-menu {
   position: relative;
@@ -604,7 +661,7 @@ textarea:focus-visible {
 }
 .theme-menu-option {
   width: 100%;
-  min-height: 38px;
+  min-height: 42px;
   padding: 0 10px;
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr) 16px;
@@ -635,7 +692,7 @@ textarea:focus-visible {
   opacity: 1;
 }
 .theme-toggle {
-  min-height: 38px;
+  min-height: 42px;
   padding: 0 12px;
   display: inline-flex;
   align-items: center;
@@ -644,7 +701,7 @@ textarea:focus-visible {
   color: var(--muted);
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: var(--surface-glass);
+  background: var(--surface);
   cursor: pointer;
   font-size: 11px;
   font-weight: 750;
@@ -659,7 +716,7 @@ textarea:focus-visible {
   background: var(--surface-hover);
 }
 .sidebar-profile .theme-toggle {
-  min-height: 30px;
+  min-height: 36px;
   padding: 0 9px;
   border-color: color-mix(in srgb, var(--line-strong) 78%, transparent);
   background: var(--surface);
@@ -692,7 +749,7 @@ textarea:focus-visible {
 }
 .full-page-status.error-state strong {
   color: var(--ink);
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 24px;
 }
 .full-page-status.error-state .button {
@@ -851,8 +908,8 @@ button:disabled {
 
 /* Shared brand primitive used by public and private navigation. */
 .brand-monogram {
-display: block;
-  font-family: Georgia, "Times New Roman", serif;
+  display: block;
+  font-family: var(--font-display);
   font-size: 19px;
   font-weight: 700;
   line-height: 1;

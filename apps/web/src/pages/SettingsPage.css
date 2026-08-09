@@ -2,36 +2,43 @@
 
 .settings-page {
   max-width: 980px;
+  font-family: var(--font-ui);
 }
 
 .settings-notice {
   margin-top: 28px;
-  padding: 15px 17px;
+  padding: 16px 18px;
   display: grid;
-  gap: 4px;
+  gap: 5px;
   color: var(--success);
-  border: 1px solid var(--line);
-  border-radius: 13px;
+  border: 1px solid color-mix(in srgb, var(--success) 24%, var(--line));
+  border-radius: var(--radius-md);
   background: var(--success-soft);
-  font-size: 11px;
+  box-shadow: var(--shadow-card);
+  font-size: 12px;
   line-height: 1.55;
 }
 
 .settings-notice strong {
   color: var(--ink);
-  font-size: 12px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .settings-sections {
   margin-top: 28px;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: var(--paper);
+  box-shadow: var(--shadow-card);
 }
 
 .settings-section {
-  padding: clamp(24px, 4vw, 38px);
+  padding: clamp(26px, 4vw, 40px);
+  scroll-margin-top: 84px;
 }
 
 .settings-section + .settings-section {
@@ -42,55 +49,61 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 28px;
+  gap: 30px;
 }
 
 .settings-section-heading h2 {
   margin: 0;
   color: var(--ink);
-  font-family: Georgia, serif;
-  font-size: 24px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
 }
 
 .settings-section-heading p {
   max-width: 570px;
-  margin: 7px 0 0;
+  margin: 8px 0 0;
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .settings-section-heading > span {
   flex: 0 0 auto;
   padding-top: 5px;
   color: var(--subtle);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  text-align: right;
   text-transform: uppercase;
 }
 
 .avatar-settings {
-  margin-top: 26px;
+  margin-top: 28px;
   padding: 22px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 18px;
-  border-radius: 14px;
+  gap: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   background: var(--surface-soft);
 }
 
 .avatar-settings-content {
   min-width: 0;
   display: grid;
-  gap: 10px;
+  gap: 11px;
 }
 
 .avatar-settings-content label {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
 .avatar-settings-content label > span {
@@ -102,23 +115,27 @@
 .avatar-settings-content input[type="file"] {
   width: 100%;
   min-width: 0;
-  min-height: 46px;
-  padding: 7px;
+  min-height: var(--control-height);
+  padding: 6px;
   color: var(--muted);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   outline: 0;
   background: var(--surface);
-  font-size: 13px;
+  font-size: 12px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
 }
 
 .avatar-settings-content input[type="file"]::file-selector-button {
   min-height: 32px;
   margin-right: 10px;
-  padding: 0 10px;
+  padding: 0 11px;
   color: var(--solid-text);
-  border: 0;
-  border-radius: 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: var(--solid-bg);
   cursor: pointer;
   font: inherit;
@@ -126,20 +143,20 @@
 }
 
 .avatar-settings-content input[type="file"]:focus-visible {
-  border-color: #76a994;
-  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
 .avatar-settings-content input[type="file"]:disabled {
   cursor: not-allowed;
-  opacity: 0.65;
+  opacity: 0.6;
 }
 
 .avatar-settings-content small {
   color: var(--subtle);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .avatar-settings-actions {
@@ -149,7 +166,8 @@
 }
 
 .settings-form {
-  margin-top: 26px;
+  max-width: 760px;
+  margin-top: 28px;
   display: grid;
   gap: 18px;
 }
@@ -157,15 +175,16 @@
 .settings-form label,
 .settings-form .password-field {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
 .settings-form label > span,
 .current-account-value > span {
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -174,36 +193,42 @@
 .settings-helper {
   margin: 0;
   color: var(--subtle);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .settings-form input {
   width: 100%;
-  min-height: 46px;
+  min-height: var(--control-height);
   padding: 11px 13px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   outline: 0;
   background: var(--surface);
+  font-family: var(--font-ui);
   font-size: 14px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
 }
 
 .settings-form input:focus {
-  border-color: #76a994;
-  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
 .settings-form input:disabled {
   cursor: not-allowed;
-  opacity: 0.65;
+  opacity: 0.6;
 }
 
 .settings-form input[aria-invalid="true"] {
   border-color: var(--danger);
   background: var(--danger-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent);
 }
 
 .settings-form .password-field-control input {
@@ -217,39 +242,45 @@
 }
 
 .current-account-value {
-  margin-top: 24px;
+  max-width: 760px;
+  margin-top: 26px;
   padding: 17px 18px;
   display: grid;
-  gap: 7px;
-  border-radius: 11px;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   background: var(--surface-soft);
 }
 
 .current-account-value strong {
   overflow-wrap: anywhere;
   color: var(--ink);
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .form-success {
   margin: 0;
-  padding: 11px 13px;
+  padding: 12px 13px;
   color: var(--success);
-  border: 1px solid var(--line);
-  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--success) 24%, var(--line));
+  border-radius: var(--radius-md);
   background: var(--success-soft);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .settings-form-actions {
   display: flex;
   justify-content: flex-end;
+  padding-top: 2px;
 }
 
 .settings-page .button.compact {
-  min-height: 44px;
-  padding: 0 14px;
+  min-height: var(--control-height);
+  padding: 0 15px;
   font-size: 12px;
 }
 
@@ -260,7 +291,8 @@
 }
 
 .settings-page .password-guidance {
-  padding: 15px;
+  padding: 16px;
+  border-radius: var(--radius-md);
 }
 
 .settings-page .password-strength-header,
@@ -269,16 +301,16 @@
 }
 
 .settings-page .password-requirements {
-  font-size: 12px;
+  font-size: 11px;
   gap: 8px 14px;
 }
 
 .settings-page .password-requirements li > span {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .settings-danger-zone {
-  background: color-mix(in srgb, var(--danger-soft) 38%, var(--paper));
+  background: color-mix(in srgb, var(--danger-soft) 46%, var(--paper));
 }
 
 .settings-danger-zone .settings-section-heading > span {
@@ -286,28 +318,32 @@
 }
 
 .settings-danger-zone-content {
-  margin-top: 26px;
-  padding: 20px;
+  margin-top: 28px;
+  padding: 21px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
-  border-radius: 14px;
-  background: var(--surface);
+  gap: 22px;
+  border: 1px solid color-mix(in srgb, var(--danger) 34%, var(--line));
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-card);
 }
 
 .settings-danger-zone-content strong {
   color: var(--ink);
-  font-size: 15px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .settings-danger-zone-content p {
-  max-width: 55ch;
-  margin: 6px 0 0;
+  max-width: 58ch;
+  margin: 7px 0 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.65;
 }
 
 .settings-danger-zone .button.danger {
@@ -315,6 +351,7 @@
   color: #fff;
   border-color: var(--danger);
   background: var(--danger);
+  box-shadow: none;
 }
 
 .settings-danger-zone .button.danger:hover:not(:disabled) {
@@ -324,11 +361,12 @@
 @media (max-width: 760px) {
   .settings-section-heading {
     flex-direction: column;
-    gap: 8px;
+    gap: 9px;
   }
 
   .settings-section-heading > span {
     padding-top: 0;
+    text-align: left;
   }
 
   .avatar-settings {
@@ -362,7 +400,8 @@
     width: 100%;
   }
 }
+
 :root[data-theme="dark"] .settings-form input:focus {
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 28%, transparent);
 }
