@@ -1,4 +1,6 @@
-/* Import styles extracted from the private application surface. */
+/* Import styles extracted from the private application surface.
+   Redesign direction: warm-paper + sage-teal, layered soft shadows,
+   Georgia serif display figures, refined chips and count tiles. */
 
 .import-page {
   min-width: 0;
@@ -21,9 +23,13 @@
   align-items: center;
   gap: 12px;
   color: var(--success);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--success) 24%, var(--line));
+  border-radius: 13px;
   background: var(--success-soft);
+}
+
+.import-safety-note > svg {
+  flex: 0 0 auto;
 }
 
 .import-safety-note div {
@@ -43,7 +49,7 @@
 .import-layout {
   min-width: 0;
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .import-card,
@@ -53,7 +59,10 @@
   border: 1px solid var(--line);
   border-radius: 19px;
   background: var(--paper);
-  box-shadow: 0 12px 30px rgba(38, 55, 49, 0.04);
+  box-shadow:
+    0 1px 0 rgba(38, 55, 49, 0.03),
+    0 1px 2px rgba(38, 55, 49, 0.04),
+    0 14px 34px -20px rgba(38, 55, 49, 0.16);
 }
 
 .disabled-card {
@@ -64,20 +73,21 @@
   margin-bottom: 19px;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
 }
 
 .import-step-heading > span {
-  width: 29px;
-  height: 29px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  color: var(--solid-text);
-  border-radius: 50%;
-  background: var(--solid-bg);
-  font-size: 11px;
-  font-weight: 800;
+  color: var(--sage);
+  border: 1px solid color-mix(in srgb, var(--sage) 32%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--sage) 10%, transparent);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .import-step-heading div {
@@ -87,7 +97,10 @@
 
 .import-step-heading strong {
   color: var(--ink);
-  font-size: 14px;
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
 }
 
 .import-step-heading small {
@@ -96,21 +109,22 @@
 }
 
 .file-drop {
-  min-height: 150px;
-  padding: 24px;
+  min-height: 158px;
+  padding: 26px 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   color: var(--muted);
   border: 1.5px dashed var(--line-strong);
-  border-radius: 15px;
+  border-radius: 16px;
   background: var(--surface-soft);
   cursor: pointer;
   transition:
     border-color 0.18s ease,
-    background 0.18s ease;
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 
 .file-drop:hover,
@@ -119,11 +133,12 @@
 .file-drop.drag-active {
   color: var(--success);
   border-color: var(--sage);
-  background: var(--success-soft);
+  background: color-mix(in srgb, var(--paper) 62%, var(--success-soft));
 }
 
 .file-drop.drag-active {
   border-style: solid;
+  transform: translateY(-1px);
   box-shadow: 0 0 0 4px rgba(111, 157, 140, 0.16);
 }
 
@@ -133,9 +148,17 @@
   background: var(--danger-soft);
 }
 
+.file-drop > svg {
+  width: 30px;
+  height: 30px;
+  margin-bottom: 2px;
+  color: var(--sage);
+}
+
 .file-drop strong {
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .file-drop span {
@@ -152,8 +175,12 @@
 
 .worksheet-picker {
   margin-top: 14px;
+  padding: 16px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-soft);
 }
 
 .worksheet-picker label {
@@ -172,7 +199,7 @@
   padding: 0 10px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: 11px;
   background: var(--surface);
   font-size: 10px;
 }
@@ -196,8 +223,8 @@
   display: grid;
   gap: 4px;
   color: var(--warning);
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--warning) 36%, var(--line));
+  border-radius: 12px;
   background: var(--warning-soft);
   font-size: 10px;
 }
@@ -205,12 +232,16 @@
 .mapping-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
-.mapping-grid label {
+.mapping-grid > label {
   display: grid;
   gap: 6px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-soft);
 }
 
 .mapping-grid label > span {
@@ -226,7 +257,7 @@
   padding: 0 10px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: 11px;
   background: var(--surface);
   font-size: 10px;
 }
@@ -242,6 +273,10 @@
   display: grid;
   align-content: start;
   gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-soft);
 }
 
 .import-source-controls label > span,
@@ -258,7 +293,7 @@
   padding: 0 10px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: 11px;
   background: var(--surface);
   font-size: 10px;
 }
@@ -271,10 +306,11 @@
 
 .import-preset-guidance {
   margin: 0 0 14px;
-  padding: 9px 11px;
+  padding: 10px 12px;
   color: var(--muted);
-  border-radius: 9px;
-  background: var(--surface-soft);
+  border-top: 1px dashed var(--line-strong);
+  border-radius: 0;
+  background: transparent;
   font-size: 9px;
   line-height: 1.45;
 }
@@ -286,8 +322,8 @@
   align-items: flex-start;
   gap: 10px;
   color: var(--warning);
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 36%, var(--line));
+  border-radius: 13px;
   background: var(--warning-soft);
 }
 
@@ -337,20 +373,48 @@
   margin-bottom: 15px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
+  gap: 14px;
 }
 
 .import-counts div {
-  padding: 12px;
+  position: relative;
+  overflow: hidden;
+  padding: 15px 17px 15px 20px;
   display: grid;
-  gap: 2px;
-  border-radius: 11px;
+  gap: 3px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   background: var(--surface-soft);
+}
+
+.import-counts div::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  content: "";
+  background: var(--count-accent, var(--success));
+}
+
+.import-counts div:nth-child(1) {
+  --count-accent: var(--success);
+}
+
+.import-counts div:nth-child(2) {
+  --count-accent: var(--danger);
+}
+
+.import-counts div:nth-child(3) {
+  --count-accent: var(--warning);
 }
 
 .import-counts strong {
   color: var(--ink);
-  font-size: 19px;
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
 }
 
 .import-counts span {
@@ -360,14 +424,26 @@
   text-transform: uppercase;
 }
 
+.import-counts div:nth-child(1) span {
+  color: var(--success);
+}
+
+.import-counts div:nth-child(2) span {
+  color: var(--danger);
+}
+
+.import-counts div:nth-child(3) span {
+  color: var(--warning);
+}
+
 .bulk-category-toolbar {
   margin-bottom: 15px;
-  padding: 14px;
+  padding: 14px 16px;
   display: grid;
   gap: 12px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--success-soft);
+  border-radius: 14px;
+  background: var(--surface-soft);
 }
 
 .bulk-category-heading {
@@ -375,6 +451,10 @@
   align-items: center;
   gap: 9px;
   color: var(--success);
+}
+
+.bulk-category-heading svg {
+  color: var(--sage);
 }
 
 .bulk-category-heading div {
@@ -414,7 +494,8 @@
   max-width: 100%;
   overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
+  background: var(--paper);
 }
 
 .import-table {
@@ -426,17 +507,25 @@
 
 .import-table th,
 .import-table td {
-  padding: 11px 12px;
+  padding: 11px 13px;
   text-align: left;
   border-bottom: 1px solid var(--line);
 }
 
 .import-table th {
-  color: var(--subtle);
+  color: var(--muted);
   background: var(--surface-soft);
   font-size: 8px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.import-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.import-table tbody tr:hover {
+  background: var(--surface-soft);
 }
 
 .import-table tr:last-child td {
@@ -450,6 +539,10 @@
 .import-table td:nth-child(4) strong,
 .import-table td:nth-child(4) small {
   display: block;
+}
+
+.import-table td:nth-child(4) strong {
+  font-weight: 600;
 }
 
 .import-table td:nth-child(4) small {
@@ -469,7 +562,10 @@
 }
 
 .import-status {
-  padding: 4px 7px;
+  padding: 4px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border-radius: 999px;
   font-size: 7px;
   font-weight: 850;
@@ -564,6 +660,13 @@
   color: var(--sage);
 }
 
+.import-success > svg {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  color: var(--success);
+}
+
 .import-success h2 {
   margin: 3px 0 8px;
   color: var(--ink);
@@ -625,7 +728,7 @@
   }
 
   .import-counts {
-    gap: 5px;
+    gap: 6px;
   }
 }
 
@@ -643,5 +746,7 @@
 
 :root[data-theme="dark"] .import-card,
 :root[data-theme="dark"] .import-success {
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.24);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.2),
+    0 14px 34px -18px rgba(0, 0, 0, 0.5);
 }
