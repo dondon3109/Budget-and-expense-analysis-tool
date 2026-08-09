@@ -1,7 +1,10 @@
-import type {
-  CalendarEventRecord,
-  SubscriptionMonthItem,
-  TransactionListItem,
+import {
+  currencies,
+  currencyMetadata,
+  type CalendarEventRecord,
+  type Currency,
+  type SubscriptionMonthItem,
+  type TransactionListItem,
 } from "@zoption/shared";
 import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarDays, Repeat2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
@@ -12,8 +15,8 @@ export interface CalendarDayData {
   items: TransactionListItem[];
   subscriptions: SubscriptionMonthItem[];
   events: CalendarEventRecord[];
-  incomeMinor: number;
-  expenseMinor: number;
+  incomeByCurrency: Record<Currency, number>;
+  expenseByCurrency: Record<Currency, number>;
   incomeCount: number;
   expenseCount: number;
   transferCount: number;
@@ -28,12 +31,21 @@ interface CalendarMonthGridProps {
 }
 
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const compactMoney = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
+const compactMoneyByCurrency = new Map(
+  currencies.map((currency) => [
+    currency,
+    new Intl.NumberFormat(currencyMetadata[currency].locale, {
+      style: "currency",
+      currency,
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }),
+  ]),
+);
+
+function compactMoney(amountMinor: number, currency: Currency): string {
+  return compactMoneyByCurrency.get(currency)!.format(amountMinor / 100);
+}
 
 function dayLabel(
   date: string,
@@ -46,12 +58,18 @@ function dayLabel(
   if (selected) parts.push("selected");
   if (data?.incomeCount) {
     parts.push(
-      `${data.incomeCount} money in transaction${data.incomeCount === 1 ? "" : "s"} totaling ${compactMoney.format(data.incomeMinor / 100)}`,
+      `${data.incomeCount} money in transaction${data.incomeCount === 1 ? "" : "s"} totaling ${currencies
+        .filter((currency) => data.incomeByCurrency[currency] > 0)
+        .map((currency) => compactMoney(data.incomeByCurrency[currency], currency))
+        .join(" and ")}`,
     );
   }
   if (data?.expenseCount) {
     parts.push(
-      `${data.expenseCount} money out transaction${data.expenseCount === 1 ? "" : "s"} totaling ${compactMoney.format(data.expenseMinor / 100)}`,
+      `${data.expenseCount} money out transaction${data.expenseCount === 1 ? "" : "s"} totaling ${currencies
+        .filter((currency) => data.expenseByCurrency[currency] > 0)
+        .map((currency) => compactMoney(data.expenseByCurrency[currency], currency))
+        .join(" and ")}`,
     );
   }
   if (data?.transferCount) {
@@ -132,18 +150,32 @@ export function CalendarMonthGrid({
                 {isToday && <small>Today</small>}
               </span>
               <span className="calendar-day-indicators">
-                {data?.incomeCount ? (
-                  <span className="calendar-indicator income">
-                    <ArrowDownRight size={12} aria-hidden="true" />+
-                    {compactMoney.format(data.incomeMinor / 100)}
-                  </span>
-                ) : null}
-                {data?.expenseCount ? (
-                  <span className="calendar-indicator expense">
-                    <ArrowUpRight size={12} aria-hidden="true" />−
-                    {compactMoney.format(data.expenseMinor / 100)}
-                  </span>
-                ) : null}
+                {data?.incomeCount
+                  ? currencies
+                      .filter((currency) => data.incomeByCurrency[currency] > 0)
+                      .map((currency) => (
+                        <span
+                          className="calendar-indicator income"
+                          key={`income-${currency}`}
+                        >
+                          <ArrowDownRight size={12} aria-hidden="true" />+
+                          {compactMoney(data.incomeByCurrency[currency], currency)}
+                        </span>
+                      ))
+                  : null}
+                {data?.expenseCount
+                  ? currencies
+                      .filter((currency) => data.expenseByCurrency[currency] > 0)
+                      .map((currency) => (
+                        <span
+                          className="calendar-indicator expense"
+                          key={`expense-${currency}`}
+                        >
+                          <ArrowUpRight size={12} aria-hidden="true" />−
+                          {compactMoney(data.expenseByCurrency[currency], currency)}
+                        </span>
+                      ))
+                  : null}
                 {data?.transferCount ? (
                   <span className="calendar-indicator transfer">
                     <Repeat2 size={11} aria-hidden="true" /> {data.transferCount}

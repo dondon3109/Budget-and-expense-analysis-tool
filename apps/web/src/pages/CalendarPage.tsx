@@ -1,6 +1,7 @@
 import type {
   CalendarEventInput,
   CalendarEventRecord,
+  Currency,
   SubscriptionMonthItem,
   TransactionInput,
   TransactionListItem,
@@ -48,8 +49,8 @@ function emptyCalendarDay(): CalendarDayData {
     items: [],
     subscriptions: [],
     events: [],
-    incomeMinor: 0,
-    expenseMinor: 0,
+    incomeByCurrency: { PHP: 0, USD: 0 },
+    expenseByCurrency: { PHP: 0, USD: 0 },
     incomeCount: 0,
     expenseCount: 0,
     transferCount: 0,
@@ -66,10 +67,10 @@ function buildCalendarDays(
     const day = lookup.get(item.date) ?? emptyCalendarDay();
     day.items.push(item);
     if (item.kind === "income") {
-      day.incomeMinor += Math.abs(item.amountMinor);
+      day.incomeByCurrency[item.currency] += Math.abs(item.amountMinor);
       day.incomeCount += 1;
     } else if (item.kind === "expense") {
-      day.expenseMinor += Math.abs(item.amountMinor);
+      day.expenseByCurrency[item.currency] += Math.abs(item.amountMinor);
       day.expenseCount += 1;
     } else {
       day.transferCount += 1;
