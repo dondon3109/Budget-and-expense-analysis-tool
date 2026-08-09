@@ -2,6 +2,13 @@
 
 All notable product changes are documented here.
 
+## 1.2.2 — 2026-08-09
+
+### Changed
+
+- Redesigned the calendar, dashboard, import, and assistant flows with the open design reference, including self-hosted fonts and a refreshed visual system.
+- Removed the theme toggle from the calendar header.
+
 ## 1.2.1 — 2026-08-08
 
 ### Added
