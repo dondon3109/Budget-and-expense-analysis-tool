@@ -228,11 +228,11 @@
   gap: 56px;
   align-items: center;
 }
-.hero-eyebrow {
+.landing-page .hero-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 22px;
+  margin-bottom: 32px;
   padding: 7px 12px;
   border: 1px solid var(--lp-border);
   border-radius: 999px;

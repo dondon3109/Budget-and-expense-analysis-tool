@@ -57,8 +57,8 @@ android {
         applicationId "site.zoption.android"
         minSdkVersion 21
         targetSdkVersion 36
-        versionCode 10204
-        versionName "1.2.4"
+        versionCode 20000
+        versionName "2.0.0"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name

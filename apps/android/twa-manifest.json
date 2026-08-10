@@ -20,8 +20,8 @@
     "path": "EXTERNAL_KEYSTORE_PATH_REQUIRED",
     "alias": "zoption-release"
   },
-  "appVersionName": "1.2.4",
-  "appVersionCode": 10204,
+  "appVersionName": "2.0.0",
+  "appVersionCode": 20000,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://zoption.site/manifest.webmanifest",
@@ -48,5 +48,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.2.4"
+  "appVersion": "2.0.0"
 }

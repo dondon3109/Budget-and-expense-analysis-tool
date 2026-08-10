@@ -2,6 +2,24 @@
 
 All notable product changes are documented here.
 
+## 2.0.0 — 2026-08-10
+
+### Added
+
+- Added a release-signed Android Trusted Web Activity distributed as a versioned APK directly from `zoption.site`, using the permanent `site.zoption.android` package and release certificate rather than Google Play.
+- Added an official Android installation page and landing-page promotion with the APK version, file size, SHA-256 checksum, platform requirements, safe sideloading guidance, and explicit user-initiated download.
+- Added the installable web foundation required by the Android wrapper, including the manifest, verified Digital Asset Links association, conservative service-worker caching, offline connection guidance, and safe update registration.
+
+### Changed
+
+- Reworked the calendar, billing settings, Pro checkout, plan chooser, and Financial Assistant layouts to fit narrow Android and mobile browser viewports without clipped cards or overlapping controls.
+- Moved the free-plan continuation action below the plan comparison so users can review the plans before continuing.
+
+### Fixed
+
+- Assistant chat history now closes from an explicit close control, a tap outside the drawer, or Escape, with focus returned to the History button.
+- The Assistant toolbar no longer reserves a second mobile row for the usage meter, leaving more vertical room for messages while retaining usage details on larger screens.
+
 ## 1.2.4 — 2026-08-10
 
 ### Added
