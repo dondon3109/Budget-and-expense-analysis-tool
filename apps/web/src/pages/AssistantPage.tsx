@@ -105,7 +105,10 @@ export function AssistantPage() {
   const isFreePlan = billingQuery.data?.plan === "free";
 
   useEffect(() => {
-    if (!isUsageLimitReachedError(sendError) || sendError.details.feature !== "assistant_question") {
+    if (
+      !isUsageLimitReachedError(sendError) ||
+      sendError.details.feature !== "assistant_question"
+    ) {
       return;
     }
     const resetsAt = sendError.details.resetsAt;
@@ -313,22 +316,6 @@ export function AssistantPage() {
     <AppShell>
       <div className="assistant-page">
         <h1 className="sr-only">AI Financial Assistant</h1>
-        <div className="assistant-mobile-actions">
-          <button
-            className="button secondary compact assistant-history-toggle"
-            type="button"
-            aria-controls="assistant-chat-history"
-            aria-expanded={historyOpen}
-            onClick={() => setHistoryOpen((open) => !open)}
-          >
-            {historyOpen ? (
-              <X size={16} aria-hidden="true" />
-            ) : (
-              <Menu size={16} aria-hidden="true" />
-            )}{" "}
-            History
-          </button>
-        </div>
 
         <div className={`assistant-workspace ${historyOpen ? "history-open" : ""}`}>
           <AssistantThreadList
@@ -347,6 +334,21 @@ export function AssistantPage() {
           />
           <section className="assistant-chat" aria-label="Financial assistant conversation">
             <div className="assistant-chat-topline">
+              <button
+                className="button secondary compact assistant-history-toggle"
+                type="button"
+                aria-label="History"
+                aria-controls="assistant-chat-history"
+                aria-expanded={historyOpen}
+                onClick={() => setHistoryOpen((open) => !open)}
+              >
+                {historyOpen ? (
+                  <X size={18} aria-hidden="true" />
+                ) : (
+                  <Menu size={18} aria-hidden="true" />
+                )}
+                <span className="assistant-history-label">History</span>
+              </button>
               <span className="assistant-chat-status">
                 <span className="assistant-status-dot" aria-hidden="true" />
                 <strong>{assistantName}</strong>
@@ -432,11 +434,7 @@ export function AssistantPage() {
         />
       )}
       {memoryOpen && (
-        <AssistantMemoryPanel
-          workspace={workspace}
-          open
-          onClose={() => setMemoryOpen(false)}
-        />
+        <AssistantMemoryPanel workspace={workspace} open onClose={() => setMemoryOpen(false)} />
       )}
     </AppShell>
   );
