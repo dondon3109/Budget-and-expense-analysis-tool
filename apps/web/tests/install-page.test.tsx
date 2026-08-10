@@ -69,6 +69,7 @@ describe("Android APK download page", () => {
     expect(screen.getByText(ANDROID_RELEASE.releaseDateLabel)).toBeInTheDocument();
     expect(screen.getByText(ANDROID_RELEASE.sha256)).toBeInTheDocument();
     expect(screen.getByText(/not through Google Play/i)).toBeInTheDocument();
+    expect(screen.getByText(/Do not disable Play Protect/i)).toBeInTheDocument();
     expect(screen.getByText(/online-first by design/i)).toBeInTheDocument();
     expect(screen.getAllByText(/same Zoption account/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Read the privacy policy" })).toHaveAttribute(

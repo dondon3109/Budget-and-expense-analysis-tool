@@ -160,6 +160,8 @@ export function InstallPage() {
               <Smartphone size={15} aria-hidden="true" /> Android release from zoption.site
             </p>
             <h1 id="install-heading">Download Zoption for Android.</h1>
+          </div>
+          <div className="install-hero-summary">
             <p className="install-hero-lead">
               Get the release-signed Zoption APK directly from the official website. It opens the
               same private, online-first workspace in a focused full-screen Android app.
@@ -178,17 +180,6 @@ export function InstallPage() {
           </div>
 
           <div className="install-hero-action">
-            <div className="apk-phone-preview" aria-hidden="true">
-              <span className="apk-phone-speaker" />
-              <BrandMark />
-              <strong>Zoption</strong>
-              <small>Your private budgeting workspace</small>
-              <div>
-                <i />
-                <i />
-                <i />
-              </div>
-            </div>
             <DownloadPanel />
           </div>
         </section>
@@ -198,9 +189,11 @@ export function InstallPage() {
           id="instructions"
           aria-labelledby="instructions-title"
         >
-          <header>
-            <p className="eyebrow">Install safely</p>
-            <h2 id="instructions-title">Four steps from download to app icon.</h2>
+          <header className="install-section-heading">
+            <div>
+              <p className="eyebrow">Install safely</p>
+              <h2 id="instructions-title">Four steps from download to app icon.</h2>
+            </div>
             <p>
               Android calls direct website installation “sideloading.” The warning is expected
               because this APK is not delivered through Google Play.
@@ -214,7 +207,7 @@ export function InstallPage() {
                 <h3>Download from this page</h3>
                 <p>
                   Tap “Download Android APK.” Only trust a file whose address begins with
-                  `https://zoption.site/downloads/`.
+                  <code>https://zoption.site/downloads/</code>.
                 </p>
               </div>
             </li>
@@ -231,7 +224,8 @@ export function InstallPage() {
                 <h3>Allow this source if Android asks</h3>
                 <p>
                   Give temporary “Install unknown apps” permission only to the browser or file app
-                  you used, then approve Zoption.
+                  you used, then approve Zoption. Do not disable Play Protect or another device
+                  security control.
                 </p>
               </div>
             </li>
@@ -276,34 +270,34 @@ export function InstallPage() {
             </p>
           </div>
           <div className="apk-troubleshooting-list">
-            <article>
-              <h3>Installation is blocked</h3>
+            <details>
+              <summary>Installation is blocked</summary>
               <p>
                 Open the warning&rsquo;s Settings action and allow only the app that opened the APK.
                 Do not enable unrelated sources.
               </p>
-            </article>
-            <article>
-              <h3>An update will not install</h3>
+            </details>
+            <details>
+              <summary>An update will not install</summary>
               <p>
                 Download the newer APK from zoption.site. Do not uninstall if Android reports a
                 signature mismatch; stop and contact Zoption support instead.
               </p>
-            </article>
-            <article>
-              <h3>The app opens with browser controls</h3>
+            </details>
+            <details>
+              <summary>The app opens with browser controls</summary>
               <p>
                 Confirm you are online and update Chrome. Domain verification can require a short
                 retry after first installation.
               </p>
-            </article>
-            <article>
-              <h3>You are not using Android</h3>
+            </details>
+            <details>
+              <summary>You are not using Android</summary>
               <p>
                 iPhone, iPad, Windows, macOS, and Linux cannot install this APK. Use the Zoption
                 website, or transfer the file to an Android device.
               </p>
-            </article>
+            </details>
           </div>
         </section>
 
