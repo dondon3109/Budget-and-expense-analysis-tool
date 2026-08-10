@@ -6,7 +6,7 @@ import { cleanup, render } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { useRootLock } from "../src/hooks/useRootLock";
+import { useBodyScrollLock, useRootLock } from "../src/hooks/useRootLock";
 
 function LockHolder({ locked }: { locked: boolean }) {
   useRootLock(locked);
@@ -20,6 +20,12 @@ function LockPair({ first, second }: { first: boolean; second: boolean }) {
       <LockHolder locked={second} />
     </>
   );
+}
+
+function OverlappingLocks({ startup, dialog }: { startup: boolean; dialog: boolean }) {
+  useBodyScrollLock(startup);
+  useRootLock(dialog);
+  return null;
 }
 
 beforeEach(() => {
@@ -68,6 +74,27 @@ describe("useRootLock", () => {
     expect(document.body.style.overflow).toBe("hidden");
 
     view.rerender(<LockPair first={false} second={false} />);
+
+    expect(root.inert).toBe(false);
+    expect(root).not.toHaveAttribute("aria-hidden");
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("restores scrolling when a startup lock releases before an overlapping dialog", () => {
+    const root = document.getElementById("root");
+    if (!root) throw new Error("Test root is missing.");
+
+    const view = render(<OverlappingLocks startup dialog />, { container: root });
+
+    expect(root.inert).toBe(true);
+    expect(document.body.style.overflow).toBe("hidden");
+
+    view.rerender(<OverlappingLocks startup={false} dialog />);
+
+    expect(root.inert).toBe(true);
+    expect(document.body.style.overflow).toBe("hidden");
+
+    view.rerender(<OverlappingLocks startup={false} dialog={false} />);
 
     expect(root.inert).toBe(false);
     expect(root).not.toHaveAttribute("aria-hidden");
