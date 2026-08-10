@@ -10,6 +10,11 @@ Zoption is a privacy-conscious budgeting web application that turns imported or 
 
 The public site is a marketing and authentication surface with a static illustrative dashboard preview. Real financial data is available only after authentication and is never seeded into a new workspace.
 
+## Releases
+
+- [Product changelog](CHANGELOG.md)
+- [Zoption 2.0.0 production release record](docs/releases/2.0.0.md)
+
 ## Current state
 
 The implementation includes:
