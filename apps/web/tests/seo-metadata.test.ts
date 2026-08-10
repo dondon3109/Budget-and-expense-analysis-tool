@@ -109,12 +109,10 @@ describe("public SEO metadata", () => {
       "BreadcrumbList",
       "LocalBusiness",
       "SearchAction",
-      "SoftwareApplication",
     ];
     const unsupportedProperties = [
       "sameAs",
       "screenshot",
-      "softwareVersion",
       "price",
       "priceCurrency",
       "aggregateRating",
@@ -130,6 +128,9 @@ describe("public SEO metadata", () => {
       for (const property of unsupportedProperties) {
         expect(serialized).not.toContain(`"${property}":`);
       }
+      expect(nodesByType(structuredDataFor(path)["@graph"], "SoftwareApplication")).toHaveLength(
+        path === "/install" ? 1 : 0,
+      );
     }
   });
 
@@ -158,11 +159,29 @@ describe("public SEO metadata", () => {
 
   it("shares public URL eligibility with analytics and other public-only integrations", () => {
     expect(isEligiblePublicUrl("/faq/", "?utm_source=newsletter", "")).toBe(true);
+    expect(isEligiblePublicUrl("/install")).toBe(true);
     expect(isEligiblePublicUrl("/login")).toBe(false);
     expect(isEligiblePublicUrl("/app/transactions", "?utm_source=newsletter")).toBe(false);
     expect(isEligiblePublicUrl("/", "?code=secret")).toBe(false);
     expect(isEligiblePublicUrl("/privacy-policy", "", "#access_token=secret")).toBe(false);
     expect(isEligiblePublicUrl("/missing")).toBe(false);
+  });
+
+  it("publishes accurate metadata for the official website-hosted Android APK", () => {
+    const metadata = PUBLIC_ROUTE_METADATA["/install"];
+    expect(metadata.title).toBe("Download Zoption Android APK — Official Release");
+    expect(metadata.canonical).toBe(`${SITE_ORIGIN}/install`);
+    expect(metadata.description).toMatch(/release-signed|APK|zoption\.site/i);
+    const application = nodesByType(structuredDataFor("/install")["@graph"], "SoftwareApplication");
+    expect(application).toEqual([
+      expect.objectContaining({
+        operatingSystem: "Android 5.0 or newer (API 21+)",
+        softwareVersion: "1.2.4",
+        downloadUrl: `${SITE_ORIGIN}/downloads/zoption-android-1.2.4.apk`,
+        fileSize: "2104552 bytes",
+      }),
+    ]);
+    expect(JSON.stringify(metadata)).not.toMatch(/Play Store|App Store/i);
   });
 
   it("keeps authentication, private, unknown, and sensitive URL state out of search", () => {

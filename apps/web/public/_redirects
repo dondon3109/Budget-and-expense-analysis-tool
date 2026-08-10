@@ -12,6 +12,7 @@
 /privacy-policy/ /privacy-policy 301
 /cookie-policy/ /cookie-policy 301
 /faq/ /faq 301
+/install/ /install 301
 
 /login /spa 200
 /signup /spa 200

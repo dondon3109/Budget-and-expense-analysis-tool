@@ -41,7 +41,6 @@ const FORBIDDEN_SCHEMA_TYPES = new Set([
   "BreadcrumbList",
   "LocalBusiness",
   "SearchAction",
-  "SoftwareApplication",
 ]);
 const FORBIDDEN_SCHEMA_PROPERTIES = new Set([
   "sameAs",
@@ -73,16 +72,19 @@ function collectNestedIds(value, ids) {
   for (const nestedValue of Object.values(value)) collectNestedIds(nestedValue, ids);
 }
 
-function rejectUnsupportedSchemaClaims(value) {
+function rejectUnsupportedSchemaClaims(value, { allowAndroidSoftwareApplication = false } = {}) {
   if (Array.isArray(value)) {
-    for (const item of value) rejectUnsupportedSchemaClaims(item);
+    for (const item of value) {
+      rejectUnsupportedSchemaClaims(item, { allowAndroidSoftwareApplication });
+    }
     return;
   }
   if (!isRecord(value)) return;
 
   for (const [key, nestedValue] of Object.entries(value)) {
     structuredDataAssert(
-      !FORBIDDEN_SCHEMA_PROPERTIES.has(key),
+      !FORBIDDEN_SCHEMA_PROPERTIES.has(key) ||
+        (allowAndroidSoftwareApplication && key === "softwareVersion"),
       `must not include unsupported ${key} markup.`,
     );
     if (key === "@type") {
@@ -92,9 +94,13 @@ function rejectUnsupportedSchemaClaims(value) {
           typeof type !== "string" || !FORBIDDEN_SCHEMA_TYPES.has(type),
           `must not include unsupported ${type} markup.`,
         );
+        structuredDataAssert(
+          allowAndroidSoftwareApplication || type !== "SoftwareApplication",
+          "must not include unsupported SoftwareApplication markup.",
+        );
       }
     }
-    rejectUnsupportedSchemaClaims(nestedValue);
+    rejectUnsupportedSchemaClaims(nestedValue, { allowAndroidSoftwareApplication });
   }
 }
 
@@ -140,7 +146,9 @@ export function assertPublicStructuredDataGraph(
     structuredDataAssert(nodeIds.includes(reference), `${path} has an unresolved ${reference} ID.`);
   }
 
-  rejectUnsupportedSchemaClaims(structuredData);
+  rejectUnsupportedSchemaClaims(structuredData, {
+    allowAndroidSoftwareApplication: path === "/install",
+  });
 
   const siteOrigin = new URL(canonical).origin;
   const websiteId = `${siteOrigin}/#website`;
@@ -194,6 +202,36 @@ export function assertPublicStructuredDataGraph(
       : typeof page.dateModified === "string" && /^\d{4}-\d{2}-\d{2}$/.test(page.dateModified),
     `${path} WebPage dateModified must match its maintained content date.`,
   );
+
+  const softwareApplications = nodes.filter((node) => node["@type"] === "SoftwareApplication");
+  if (path === "/install") {
+    structuredDataAssert(
+      softwareApplications.length === 1,
+      "/install must contain one SoftwareApplication node.",
+    );
+    const application = softwareApplications[0];
+    structuredDataAssert(
+      page.mainEntity?.["@id"] === application["@id"],
+      "/install WebPage must identify the Android application as its main entity.",
+    );
+    structuredDataAssert(
+      typeof application.operatingSystem === "string" &&
+        application.operatingSystem.startsWith("Android") &&
+        typeof application.softwareVersion === "string" &&
+        /^\d+\.\d+\.\d+$/.test(application.softwareVersion) &&
+        typeof application.downloadUrl === "string" &&
+        application.downloadUrl.startsWith(`${siteOrigin}/downloads/zoption-android-`) &&
+        application.downloadUrl.endsWith(".apk") &&
+        typeof application.fileSize === "string" &&
+        /^\d+ bytes$/.test(application.fileSize),
+      "/install SoftwareApplication must match the maintained Android release.",
+    );
+  } else {
+    structuredDataAssert(
+      softwareApplications.length === 0,
+      `${path} must not include SoftwareApplication markup.`,
+    );
+  }
 }
 
 function verifyDocument(html, route, options) {

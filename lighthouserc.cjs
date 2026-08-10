@@ -11,6 +11,7 @@ module.exports = {
         "http://localhost:8788/terms-of-service",
         "http://localhost:8788/privacy-policy",
         "http://localhost:8788/cookie-policy",
+        "http://localhost:8788/install",
       ],
       numberOfRuns: 3,
       chromePath: chromium.executablePath(),

@@ -1,4 +1,12 @@
-import { ArrowRight, Check, PiggyBank, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  MonitorUp,
+  PiggyBank,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import "./LandingPage.css";
 
@@ -23,6 +31,7 @@ export function LandingPage() {
           <a href="#modules">Features</a>
           <a href="#approach">How it works</a>
           <a href="#banks">Supported imports</a>
+          <a href="#install">Android APK</a>
           <a href="#faq">FAQ</a>
         </nav>
         <div className="landing-account-actions">
@@ -393,6 +402,60 @@ export function LandingPage() {
                 </div>
               </div>
             </article>
+          </div>
+        </section>
+
+        <section className="install-promo" id="install" aria-labelledby="install-promo-title">
+          <div className="install-promo-copy">
+            <p className="eyebrow">Official Android release</p>
+            <h2 id="install-promo-title">Take Zoption to Android.</h2>
+            <p>
+              Download the release-signed APK directly from zoption.site for a focused full-screen
+              app connected to the same private workspace.
+            </p>
+            <ul>
+              <li>
+                <Check size={16} aria-hidden="true" /> Same account and every current feature
+              </li>
+              <li>
+                <Check size={16} aria-hidden="true" /> Signed and hosted only by zoption.site
+              </li>
+              <li>
+                <Check size={16} aria-hidden="true" /> No Google Play listing required
+              </li>
+            </ul>
+            <div className="install-promo-actions">
+              <Link className="button primary" to="/install">
+                Download Android APK <ArrowRight size={17} aria-hidden="true" />
+              </Link>
+              <span>For Android 5.0 and newer</span>
+            </div>
+            <p className="install-promo-note">
+              The APK is not distributed through Google Play. Zoption remains online-first, so
+              authenticated financial operations require an internet connection.
+            </p>
+          </div>
+
+          <div className="install-promo-visual" aria-hidden="true">
+            <div className="install-promo-orbit">
+              <BrandMark className="install-promo-mark" />
+              <span>Zoption</span>
+              <small>Your same private workspace</small>
+            </div>
+            <div className="install-promo-window">
+              <div>
+                <span />
+                <span />
+                <span />
+                <small>Official Android APK</small>
+              </div>
+              <p>
+                <MonitorUp size={18} /> Monthly overview
+              </p>
+              <i />
+              <i />
+              <i />
+            </div>
           </div>
         </section>
 

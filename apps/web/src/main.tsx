@@ -14,6 +14,8 @@ import { ReleaseNotesExperience } from "./components/releases/ReleaseNotesExperi
 import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
 import { CookieConsentProvider } from "./consent/CookieConsentProvider";
 import { ImportDraftProvider } from "./import/ImportDraftProvider";
+import { InstallationProvider } from "./pwa/installation";
+import { registerZoptionServiceWorker } from "./pwa/registerServiceWorker";
 import "./styles/foundation.css";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
@@ -51,22 +53,24 @@ function BrowserApplication() {
   return (
     <StrictMode>
       <ThemeProvider>
-        <CookieConsentProvider>
-          <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <InitialDashboardExperienceProvider>
-                <AssistantSessionProvider>
-                  <ImportDraftProvider>
-                    <BrowserRouter>
-                      <App />
-                      <ClientExperiences />
-                    </BrowserRouter>
-                  </ImportDraftProvider>
-                </AssistantSessionProvider>
-              </InitialDashboardExperienceProvider>
-            </AuthProvider>
-          </QueryClientProvider>
-        </CookieConsentProvider>
+        <InstallationProvider>
+          <CookieConsentProvider>
+            <QueryClientProvider client={queryClient}>
+              <AuthProvider>
+                <InitialDashboardExperienceProvider>
+                  <AssistantSessionProvider>
+                    <ImportDraftProvider>
+                      <BrowserRouter>
+                        <App />
+                        <ClientExperiences />
+                      </BrowserRouter>
+                    </ImportDraftProvider>
+                  </AssistantSessionProvider>
+                </InitialDashboardExperienceProvider>
+              </AuthProvider>
+            </QueryClientProvider>
+          </CookieConsentProvider>
+        </InstallationProvider>
       </ThemeProvider>
     </StrictMode>
   );
@@ -81,3 +85,5 @@ if (root.hasChildNodes()) {
 } else {
   createRoot(root).render(application);
 }
+
+registerZoptionServiceWorker();

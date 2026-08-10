@@ -10,7 +10,7 @@
   --lp-surface: #fff;
   --lp-surface-soft: #faf8f2;
   --lp-fg: #19352f;
-  --lp-muted: #6c716c;
+  --lp-muted: #646964;
   --lp-border: #e4dfd3;
   --lp-accent: #0f6b5b;
   --lp-accent-strong: #06473d;
@@ -165,15 +165,19 @@
   gap: 10px;
 }
 .landing-sign-in {
+  min-height: 44px;
   padding: 9px 10px;
+  display: inline-flex;
+  align-items: center;
   color: var(--lp-muted);
   font-weight: 600;
+  white-space: nowrap;
 }
 .landing-sign-in:hover {
   color: var(--lp-fg);
 }
 .landing-nav .button.primary {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 16px;
   border-radius: 12px;
   color: var(--lp-surface);
@@ -181,14 +185,19 @@
   background: var(--lp-accent-strong);
   box-shadow: 0 10px 24px color-mix(in srgb, var(--lp-accent) 28%, transparent);
   font-weight: 600;
+  white-space: nowrap;
 }
 .landing-nav .button.primary:hover {
   background: var(--lp-accent);
   border-color: var(--lp-accent);
 }
 .landing-nav .theme-toggle {
+  min-height: 44px;
   border-color: transparent;
   background: transparent;
+}
+.landing-nav .theme-menu-option {
+  min-height: 44px;
 }
 
 /* Account deletion notice */
@@ -752,6 +761,213 @@
   color: var(--lp-muted);
 }
 
+/* Chrome installation */
+.install-promo {
+  width: min(1160px, calc(100% - 48px));
+  margin: 18px auto 110px;
+  padding: clamp(48px, 7vw, 82px);
+  display: grid;
+  grid-template-columns: minmax(0, 0.94fr) minmax(380px, 0.76fr);
+  align-items: center;
+  gap: clamp(52px, 8vw, 96px);
+  overflow: hidden;
+  border-radius: 22px;
+  background: var(--lp-accent-soft);
+}
+
+.install-promo-copy h2 {
+  max-width: 540px;
+  font-size: clamp(38px, 5vw, 54px);
+  line-height: 1.03;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.install-promo-copy > p:not(.eyebrow, .install-promo-note) {
+  max-width: 620px;
+  margin-top: 20px;
+  color: var(--lp-muted);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.install-promo-copy ul {
+  margin: 26px 0 0;
+  padding: 22px 0 0;
+  display: grid;
+  gap: 11px;
+  border-top: 1px solid color-mix(in srgb, var(--lp-accent-strong) 18%, transparent);
+  list-style: none;
+}
+
+.install-promo-copy li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--lp-fg);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.install-promo-copy li svg {
+  color: var(--lp-accent-strong);
+}
+
+.install-promo-actions {
+  margin-top: 30px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.install-promo-actions .button.primary {
+  min-height: 48px;
+  padding: 0 19px;
+  gap: 9px;
+  color: var(--lp-surface);
+  border: 1px solid var(--lp-accent-strong);
+  border-radius: 12px;
+  background: var(--lp-accent-strong);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--lp-accent) 25%, transparent);
+}
+
+.install-promo-actions .button.primary:hover {
+  border-color: var(--lp-accent);
+  background: var(--lp-accent);
+}
+
+.install-promo-actions > span {
+  max-width: 210px;
+  color: var(--lp-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.landing-page .install-promo-note {
+  margin-top: 16px;
+  color: var(--lp-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.install-promo-visual {
+  position: relative;
+  min-height: 350px;
+}
+
+.install-promo-orbit {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 220px;
+  height: 220px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--lp-dark-ink);
+  background: var(--lp-balance);
+  box-shadow: var(--lp-shadow-lg);
+  text-align: center;
+}
+
+.install-promo-mark {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 20px;
+}
+
+.install-promo-mark img {
+  width: 100%;
+  height: 100%;
+}
+
+.install-promo-orbit > span {
+  margin-top: 13px;
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.install-promo-orbit > small {
+  margin-top: 3px;
+  color: color-mix(in srgb, var(--lp-dark-ink) 68%, transparent);
+  font-size: 10px;
+}
+
+.install-promo-window {
+  position: absolute;
+  right: 92px;
+  bottom: 0;
+  width: min(330px, calc(100% - 20px));
+  height: 210px;
+  padding: 0 22px 22px;
+  border-radius: 16px;
+  background: var(--lp-surface);
+  box-shadow: var(--lp-shadow-lg);
+  transform: rotate(-2.5deg);
+}
+
+.install-promo-window > div {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.install-promo-window > div > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-border);
+}
+
+.install-promo-window > div > small {
+  margin-left: auto;
+  color: var(--lp-muted);
+  font-size: 9px;
+}
+
+.install-promo-window p {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--lp-fg);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.install-promo-window p svg {
+  color: var(--lp-accent-strong);
+}
+
+.install-promo-window > i {
+  height: 11px;
+  margin-top: 13px;
+  display: block;
+  border-radius: 4px;
+  background: var(--lp-border);
+}
+
+.install-promo-window > i:nth-of-type(1) {
+  width: 88%;
+  background: var(--lp-accent);
+}
+
+.install-promo-window > i:nth-of-type(2) {
+  width: 66%;
+}
+
+.install-promo-window > i:nth-of-type(3) {
+  width: 78%;
+}
+
 /* Supported formats band */
 .formats-band {
   padding: 92px 24px 72px;
@@ -964,11 +1180,28 @@
   .rhythm {
     grid-template-columns: 1fr;
   }
+  .install-promo {
+    grid-template-columns: 1fr;
+  }
+  .install-promo-visual {
+    width: min(560px, 100%);
+    justify-self: center;
+  }
 }
 @media (max-width: 560px) {
   .landing-nav {
     height: 64px;
     padding: 0 16px;
+  }
+  .landing-account-actions {
+    gap: 6px;
+  }
+  .landing-sign-in {
+    padding-inline: 6px;
+  }
+  .landing-nav .button.primary {
+    min-height: 44px;
+    padding-inline: 12px;
   }
   .hero {
     padding: 48px 0 56px;
@@ -992,6 +1225,33 @@
     padding-right: 0;
     width: min(1160px, calc(100% - 32px));
   }
+  .install-promo {
+    width: calc(100% - 32px);
+    margin-bottom: 82px;
+    padding: 44px 24px;
+    border-radius: 16px;
+  }
+  .install-promo-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .install-promo-actions .button.primary {
+    width: 100%;
+  }
+  .install-promo-actions > span {
+    max-width: none;
+  }
+  .install-promo-visual {
+    min-height: 320px;
+  }
+  .install-promo-orbit {
+    width: 190px;
+    height: 190px;
+  }
+  .install-promo-window {
+    right: 24px;
+    width: calc(100% - 24px);
+  }
   .preview-metrics {
     grid-template-columns: 1fr;
   }
@@ -1009,6 +1269,11 @@
     font-size: 26px;
   }
 }
+@media (max-width: 380px) {
+  .landing-sign-in {
+    display: none;
+  }
+}
 @media (max-width: 470px) {
   .landing-account-actions .theme-toggle span {
     display: none;
@@ -1022,7 +1287,7 @@
   }
   .landing-account-actions .button {
     display: inline-flex;
-    min-height: 38px;
+    min-height: 44px;
     padding: 0 12px;
     font-size: 14px;
   }
@@ -1039,5 +1304,8 @@
   }
   .formats-group[data-marquee-copy="duplicate"] {
     display: none;
+  }
+  .install-promo-window {
+    transform: none;
   }
 }

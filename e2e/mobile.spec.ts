@@ -37,6 +37,10 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   ).toBeVisible();
   await expect(formatsSection.locator(".formats-track .formats-group")).toHaveCount(2);
 
+  const installSection = page.getByRole("region", { name: "Take Zoption to Android." });
+  await installSection.scrollIntoViewIfNeeded();
+  await expect(installSection.getByRole("link", { name: "Download Android APK" })).toBeVisible();
+
   const themeToggle = page.getByRole("button", {
     name: "Choose theme. Current theme: Light",
   });
@@ -76,9 +80,9 @@ test("first-visit bottom sheet previews and confirms Coffee without overflow", a
   await expect(confirm).toBeVisible();
   await confirm.click();
   await expect(dialog).toBeHidden();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("zoption-theme"))).toBe(
-    "coffee",
-  );
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("zoption-theme")))
+    .toBe("coffee");
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -107,9 +111,7 @@ test("supported formats marquee becomes static with reduced motion", async ({ pa
     formatsSection.locator('.formats-group[data-marquee-copy="duplicate"]'),
   ).toBeHidden();
 
-  const primaryNames = formatsSection.locator(
-    '.formats-group[data-marquee-copy="primary"] span',
-  );
+  const primaryNames = formatsSection.locator('.formats-group[data-marquee-copy="primary"] span');
   await expect(primaryNames).toHaveText([
     "BPI",
     "BDO",

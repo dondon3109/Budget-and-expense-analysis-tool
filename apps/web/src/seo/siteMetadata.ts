@@ -1,3 +1,5 @@
+import { ANDROID_RELEASE } from "../releases/androidRelease";
+
 export const SITE_ORIGIN = "https://zoption.site";
 export const SITE_NAME = "Zoption";
 export const SOCIAL_IMAGE_PATH = "/og/zoption-social.png";
@@ -10,7 +12,7 @@ const searchIndexingEnabled =
   typeof __SEARCH_INDEXING_ENABLED__ === "undefined" || __SEARCH_INDEXING_ENABLED__;
 
 export type PublicRoutePath =
-  "/" | "/terms-of-service" | "/privacy-policy" | "/cookie-policy" | "/faq";
+  "/" | "/terms-of-service" | "/privacy-policy" | "/cookie-policy" | "/faq" | "/install";
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/",
@@ -18,6 +20,7 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/privacy-policy",
   "/cookie-policy",
   "/faq",
+  "/install",
 ];
 
 type StructuredDataNode = Record<string, unknown>;
@@ -202,6 +205,40 @@ function legalPageStructuredData(
   });
 }
 
+function installPageStructuredData(): StructuredDataGraph {
+  const url = `${SITE_ORIGIN}/install`;
+  const applicationId = `${url}#android-application`;
+  return structuredDataGraph(
+    websiteNode(),
+    {
+      "@type": "WebPage",
+      "@id": `${url}#webpage`,
+      name: "Download Zoption for Android",
+      description:
+        "Download the official release-signed Zoption Android APK directly from zoption.site.",
+      url,
+      dateModified: ANDROID_RELEASE.releaseDate,
+      inLanguage: "en",
+      isPartOf: { "@id": WEBSITE_ID },
+      mainEntity: { "@id": applicationId },
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": applicationId,
+      name: "Zoption for Android",
+      applicationCategory: "FinanceApplication",
+      operatingSystem: ANDROID_RELEASE.minimumAndroid,
+      softwareVersion: ANDROID_RELEASE.versionName,
+      datePublished: ANDROID_RELEASE.releaseDate,
+      downloadUrl: `${SITE_ORIGIN}${ANDROID_RELEASE.downloadPath}`,
+      fileSize: `${ANDROID_RELEASE.sizeBytes} bytes`,
+      description:
+        "A release-signed Android Trusted Web Activity for the private Zoption budgeting workspace.",
+      url,
+    },
+  );
+}
+
 const LEGAL_PAGE_LAST_MODIFIED = "2026-08-10";
 
 export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata> = {
@@ -283,6 +320,19 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       lastModified: LEGAL_PAGE_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.6,
+    },
+  },
+  "/install": {
+    title: "Download Zoption Android APK — Official Release",
+    description:
+      "Download the official release-signed Zoption Android APK directly from zoption.site, with version, file size, checksum, and safe installation steps.",
+    canonical: `${SITE_ORIGIN}/install`,
+    robots: "index,follow",
+    structuredData: installPageStructuredData(),
+    sitemap: {
+      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.7,
     },
   },
 };

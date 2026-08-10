@@ -1,0 +1,10 @@
+{
+  "name": "@zoption/android",
+  "version": "1.2.4",
+  "private": true,
+  "scripts": {
+    "release": "./scripts/build-release.sh",
+    "stage:web": "node ./scripts/stage-web-release.mjs",
+    "verify:version": "node ./scripts/verify-version.mjs"
+  }
+}
