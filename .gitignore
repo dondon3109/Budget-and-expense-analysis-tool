@@ -19,3 +19,18 @@ tmp/
 *.tsbuildinfo
 *.swp
 ~$*
+
+# Android build output and release-signing secrets
+*.jks
+*.keystore
+*.p12
+**/keystore.properties
+**/signing.properties
+apps/android/.gradle/
+apps/android/.idea/
+apps/android/**/build/
+apps/android/local.properties
+apps/android/*.apk
+apps/android/*.aab
+apps/android/*.idsig
+apps/web/public/downloads/

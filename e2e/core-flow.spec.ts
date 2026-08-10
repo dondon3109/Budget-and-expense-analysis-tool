@@ -36,7 +36,9 @@ test("landing page leads visitors to account creation or sign in", async ({ page
   const importSection = page.getByRole("region").filter({
     hasText: "Import from the files you already use.",
   });
-  await expect(importSection.getByRole("heading", { name: "Import from the files you already use." })).toBeVisible();
+  await expect(
+    importSection.getByRole("heading", { name: "Import from the files you already use." }),
+  ).toBeVisible();
 
   const formatsSection = page.getByRole("region").filter({
     hasText: "Bring a bank or spreadsheet export.",
@@ -44,8 +46,12 @@ test("landing page leads visitors to account creation or sign in", async ({ page
   await expect(
     formatsSection.getByRole("heading", { name: "Bring a bank or spreadsheet export." }),
   ).toBeVisible();
-  const importBottom = await importSection.evaluate((section) => section.getBoundingClientRect().bottom);
-  const formatsTop = await formatsSection.evaluate((section) => section.getBoundingClientRect().top);
+  const importBottom = await importSection.evaluate(
+    (section) => section.getBoundingClientRect().bottom,
+  );
+  const formatsTop = await formatsSection.evaluate(
+    (section) => section.getBoundingClientRect().top,
+  );
   expect(formatsTop).toBeGreaterThanOrEqual(importBottom);
   await expect(
     formatsSection.getByRole("list", { name: "Supported institutions" }).getByRole("listitem"),
@@ -78,6 +84,34 @@ test("retired demo route renders the not-found page", async ({ page }) => {
   await expect(page).toHaveURL(/\/demo$/);
   await expect(page.getByRole("heading", { name: "That page is not here." })).toBeVisible();
   await expect(page.getByRole("link", { name: "Go to Zoption home" })).toHaveAttribute("href", "/");
+});
+
+test("Android download page renders as a public deep link with exact release guidance", async ({
+  page,
+}) => {
+  await page.goto("/install");
+
+  await expect(page).toHaveURL(/\/install$/);
+  await expect(page.getByRole("heading", { name: "Download Zoption for Android." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Four steps from download to app icon." }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
+    "href",
+    "/downloads/zoption-android-1.2.4.apk",
+  );
+  await expect(page.getByText(/does not receive bank credentials/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Online-first by design" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Read the privacy policy" })).toHaveAttribute(
+    "href",
+    "/privacy-policy",
+  );
+
+  await page.getByRole("link", { name: "Read the privacy policy" }).click();
+  await expect(page).toHaveURL(/\/privacy-policy$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/install$/);
+  await expect(page.getByRole("heading", { name: "Download Zoption for Android." })).toBeVisible();
 });
 
 test("private pages redirect signed-out users to login", async ({ page }) => {

@@ -31,3 +31,30 @@
 
 /spa
   X-Robots-Tag: noindex, nofollow
+
+/service-worker.js
+  Cache-Control: no-cache
+
+/pwa/cache-policy.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=3600
+
+/.well-known/assetlinks.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=3600
+
+/downloads/zoption-android-2.0.0.apk
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment; filename="zoption-android-2.0.0.apk"
+  Cache-Control: public, max-age=31536000, immutable
+
+/downloads/zoption-android-2.0.0.apk.sha256
+  Content-Type: text/plain; charset=utf-8
+  Content-Disposition: attachment; filename="zoption-android-2.0.0.apk.sha256"
+  Cache-Control: public, max-age=31536000, immutable
+
+/downloads/latest.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: no-cache

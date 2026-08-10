@@ -14,24 +14,24 @@ export const currentRelease: ProductRelease = {
   releasedOn: "August 10, 2026",
   changes: [
     {
-      title: "A smoother welcome to your workspace",
+      title: "Zoption for Android",
       description:
-        "Zoption now uses one polished loading experience after sign-in while your private workspace prepares in the background. It no longer restarts or hands off to an older loading screen before showing your dashboard.",
+        "Download the release-signed Zoption 2.0.0 APK directly from zoption.site. The Android app opens the same private workspace with your existing account and is distributed independently of Google Play.",
     },
     {
-      title: "Privacy-conscious product insights",
+      title: "A trustworthy installation guide",
       description:
-        "Consent-aware product and AI observability now helps improve reliability while keeping assistant prompts, responses, and financial content out of analytics events.",
+        "The new installation page lists the APK version, file size, checksum, Android requirements, and safe sideloading steps, with a direct download that never starts without your action.",
     },
     {
-      title: "More reliable calendar activity",
+      title: "Installable, without weakening privacy",
       description:
-        "Calendar interactions no longer leave the page frozen, and calendar amounts now handle US dollar transactions correctly.",
+        "Zoption now includes its installable web foundation and connection guidance while keeping authentication, financial records, assistant conversations, imports, and billing responses out of offline caches.",
     },
     {
-      title: "A sharper Zoption identity",
+      title: "More room on mobile",
       description:
-        "A new brand mark now gives Zoption a clearer, more consistent identity across the landing page, sign-in, app navigation, browser tabs, and saved shortcuts.",
+        "Calendar, billing, plan selection, and the Financial Assistant now fit smaller screens more reliably. Assistant history closes by tapping outside or using its close control, and the mobile chat keeps more space for your conversation.",
     },
   ],
 };
@@ -43,6 +43,32 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "1.2.4",
+    releasedOn: "August 10, 2026",
+    changes: [
+      {
+        title: "A smoother welcome to your workspace",
+        description:
+          "Zoption now uses one polished loading experience after sign-in while your private workspace prepares in the background. It no longer restarts or hands off to an older loading screen before showing your dashboard.",
+      },
+      {
+        title: "Privacy-conscious product insights",
+        description:
+          "Consent-aware product and AI observability now helps improve reliability while keeping assistant prompts, responses, and financial content out of analytics events.",
+      },
+      {
+        title: "More reliable calendar activity",
+        description:
+          "Calendar interactions no longer leave the page frozen, and calendar amounts now handle US dollar transactions correctly.",
+      },
+      {
+        title: "A sharper Zoption identity",
+        description:
+          "A new brand mark now gives Zoption a clearer, more consistent identity across the landing page, sign-in, app navigation, browser tabs, and saved shortcuts.",
+      },
+    ],
+  },
   {
     version: "1.2.3",
     releasedOn: "August 9, 2026",

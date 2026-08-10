@@ -3,6 +3,7 @@ import { StaticRouter } from "react-router-dom";
 
 import { PublicRoutes } from "./PublicRoutes";
 import { CookieConsentProvider } from "./consent/CookieConsentProvider";
+import { InstallationProvider } from "./pwa/installation";
 import { getPublicRouteMetadata } from "./seo/siteMetadata";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
@@ -18,11 +19,13 @@ export {
 function renderRoute(pathname: string) {
   return renderToString(
     <ThemeProvider>
-      <CookieConsentProvider>
-        <StaticRouter location={pathname}>
-          <PublicRoutes />
-        </StaticRouter>
-      </CookieConsentProvider>
+      <InstallationProvider>
+        <CookieConsentProvider>
+          <StaticRouter location={pathname}>
+            <PublicRoutes />
+          </StaticRouter>
+        </CookieConsentProvider>
+      </InstallationProvider>
     </ThemeProvider>,
   );
 }

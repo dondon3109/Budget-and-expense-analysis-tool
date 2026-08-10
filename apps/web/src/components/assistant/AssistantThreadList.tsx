@@ -1,12 +1,14 @@
 import type { AssistantThread } from "@zoption/shared";
-import { MessageSquareText, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { MessageSquareText, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useState, type Ref } from "react";
 
 interface AssistantThreadListProps {
   assistantName: string;
   threads: AssistantThread[];
   activeThreadId: string | null;
   busy: boolean;
+  closeButtonRef: Ref<HTMLButtonElement>;
+  onClose: () => void;
   onSelect: (threadId: string) => void;
   onNew: () => void;
   onEditIdentity: () => void;
@@ -36,6 +38,8 @@ export function AssistantThreadList({
   threads,
   activeThreadId,
   busy,
+  closeButtonRef,
+  onClose,
   onSelect,
   onNew,
   onEditIdentity,
@@ -72,9 +76,23 @@ export function AssistantThreadList({
             >
               <Pencil size={13} aria-hidden="true" /> Edit
             </button>
+            <button
+              ref={closeButtonRef}
+              className="assistant-history-close"
+              type="button"
+              onClick={onClose}
+              aria-label="Close chat history"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
           </div>
         </div>
-        <button className="assistant-new-chat" type="button" onClick={onNew} aria-label="Start a new chat">
+        <button
+          className="assistant-new-chat"
+          type="button"
+          onClick={onNew}
+          aria-label="Start a new chat"
+        >
           <Plus size={16} aria-hidden="true" /> New chat
         </button>
       </div>
@@ -108,11 +126,17 @@ export function AssistantThreadList({
                   <Trash2 size={14} />
                 </button>
                 {confirmThread === thread.id && (
-                  <div className="assistant-delete-confirm" role="alertdialog" aria-label="Delete chat">
+                  <div
+                    className="assistant-delete-confirm"
+                    role="alertdialog"
+                    aria-label="Delete chat"
+                  >
                     <span>Delete this chat?</span>
                     <button
                       type="button"
-                      onClick={() => void onDelete(thread.id).then(() => setConfirmThread(undefined))}
+                      onClick={() =>
+                        void onDelete(thread.id).then(() => setConfirmThread(undefined))
+                      }
                     >
                       Delete
                     </button>

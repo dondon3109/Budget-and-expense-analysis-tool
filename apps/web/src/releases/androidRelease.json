@@ -1,0 +1,16 @@
+{
+  "packageId": "site.zoption.android",
+  "versionName": "2.0.0",
+  "versionCode": 20000,
+  "filename": "zoption-android-2.0.0.apk",
+  "downloadPath": "/downloads/zoption-android-2.0.0.apk",
+  "checksumPath": "/downloads/zoption-android-2.0.0.apk.sha256",
+  "sha256": "79a04d20bb3e1381685ef31d3ac3deb94a26ebc0d5bc83185e00778fb77c47f8",
+  "sizeBytes": 2104552,
+  "sizeLabel": "2,104,552 bytes (2.01 MiB)",
+  "releaseDate": "2026-08-10",
+  "releaseDateLabel": "August 10, 2026",
+  "minimumAndroid": "Android 5.0 or newer (API 21+)",
+  "targetApi": 36,
+  "certificateSha256": "6C:71:2E:0E:7D:72:31:43:71:79:86:1B:64:B5:50:05:19:33:D5:A5:74:35:79:13:40:BE:78:38:D7:2D:D9:53"
+}

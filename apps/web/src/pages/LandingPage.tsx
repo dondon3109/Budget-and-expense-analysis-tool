@@ -5,6 +5,7 @@ import "./LandingPage.css";
 import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
+import { ANDROID_RELEASE } from "../releases/androidRelease";
 
 const previewBars = [42, 55, 38, 66, 50, 61];
 
@@ -23,6 +24,7 @@ export function LandingPage() {
           <a href="#modules">Features</a>
           <a href="#approach">How it works</a>
           <a href="#banks">Supported imports</a>
+          <a href="#install">Android APK</a>
           <a href="#faq">FAQ</a>
         </nav>
         <div className="landing-account-actions">
@@ -393,6 +395,62 @@ export function LandingPage() {
                 </div>
               </div>
             </article>
+          </div>
+        </section>
+
+        <section className="install-promo" id="install" aria-labelledby="install-promo-title">
+          <div className="install-promo-copy">
+            <p className="eyebrow">Official Android release</p>
+            <h2 id="install-promo-title">Take Zoption to Android.</h2>
+            <p>
+              Download the release-signed APK directly from zoption.site for a focused full-screen
+              app connected to the same private workspace.
+            </p>
+            <ul className="install-promo-points">
+              <li>
+                <Check size={16} aria-hidden="true" /> Same account and every current feature
+              </li>
+              <li>
+                <Check size={16} aria-hidden="true" /> Signed and hosted only by zoption.site
+              </li>
+              <li>
+                <Check size={16} aria-hidden="true" /> No Google Play listing required
+              </li>
+            </ul>
+          </div>
+
+          <div className="install-promo-release">
+            <div className="install-promo-release-heading">
+              <BrandMark className="install-promo-mark" />
+              <div>
+                <p>Ready to download</p>
+                <h3>Zoption {ANDROID_RELEASE.versionName}</h3>
+              </div>
+              <span>APK</span>
+            </div>
+            <dl>
+              <div>
+                <dt>File size</dt>
+                <dd>{ANDROID_RELEASE.sizeLabel}</dd>
+              </div>
+              <div>
+                <dt>Requires</dt>
+                <dd>{ANDROID_RELEASE.minimumAndroid}</dd>
+              </div>
+              <div>
+                <dt>Source</dt>
+                <dd>zoption.site only</dd>
+              </div>
+            </dl>
+            <div className="install-promo-actions">
+              <Link className="button primary" to="/install">
+                Download Android APK <ArrowRight size={17} aria-hidden="true" />
+              </Link>
+            </div>
+            <p className="install-promo-note">
+              The APK is not distributed through Google Play. Zoption remains online-first, so
+              authenticated financial operations require an internet connection.
+            </p>
           </div>
         </section>
 

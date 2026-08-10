@@ -456,20 +456,22 @@ describe("assistant UI", () => {
 
     const topline = usage.closest(".assistant-chat-topline");
     expect(topline).not.toBeNull();
-    expect(Array.from(topline!.children)).toHaveLength(3);
-    expect(topline!.children[0]).toHaveClass("assistant-chat-status");
-    expect(topline!.children[0]).toHaveTextContent("Read only");
-    expect(within(topline!.children[0] as HTMLElement).getByText("Aster")).toBeInTheDocument();
-    expect(topline!.children[1]).toHaveClass("assistant-chat-usage");
+    expect(Array.from(topline!.children)).toHaveLength(4);
+    expect(topline!.children[0]).toHaveClass("assistant-history-toggle");
+    expect(topline!.children[0]).toHaveAttribute("aria-controls", "assistant-chat-history");
+    expect(topline!.children[1]).toHaveClass("assistant-chat-status");
+    expect(topline!.children[1]).toHaveTextContent("Read only");
+    expect(within(topline!.children[1] as HTMLElement).getByText("Aster")).toBeInTheDocument();
+    expect(topline!.children[2]).toHaveClass("assistant-chat-usage");
     const usageContainer = topline!.querySelector<HTMLElement>(":scope > .assistant-chat-usage");
     expect(usageContainer).not.toBeNull();
     expect(within(usageContainer!).getByRole("progressbar")).toBe(usage);
-    expect(topline!.children[2]).toHaveClass("assistant-chat-corner");
+    expect(topline!.children[3]).toHaveClass("assistant-chat-corner");
     expect(
-      within(topline!.children[2] as HTMLElement).getByText("90-day private history"),
+      within(topline!.children[3] as HTMLElement).getByText("90-day private history"),
     ).toBeInTheDocument();
     expect(
-      within(topline!.children[2] as HTMLElement).getByRole("button", { name: "Memory" }),
+      within(topline!.children[3] as HTMLElement).getByRole("button", { name: "Memory" }),
     ).toBeInTheDocument();
   });
 
@@ -644,6 +646,32 @@ describe("assistant UI", () => {
 
     expect(composer).toHaveValue("");
     expect(container.querySelector(".assistant-workspace")).not.toHaveClass("history-open");
+  });
+
+  it("closes mobile chat history from the close control, backdrop, or Escape", async () => {
+    const { container } = renderPage();
+
+    const historyToggle = await screen.findByRole("button", { name: "History" });
+    const history = screen.getByRole("complementary", { name: "Assistant chat history" });
+    const closeButton = within(history).getByRole("button", { name: "Close chat history" });
+
+    fireEvent.click(historyToggle);
+    expect(container.querySelector(".assistant-workspace")).toHaveClass("history-open");
+    expect(closeButton).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss chat history" }));
+    expect(container.querySelector(".assistant-workspace")).not.toHaveClass("history-open");
+    expect(historyToggle).toHaveFocus();
+
+    fireEvent.click(historyToggle);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(container.querySelector(".assistant-workspace")).not.toHaveClass("history-open");
+    expect(historyToggle).toHaveFocus();
+
+    fireEvent.click(historyToggle);
+    fireEvent.click(closeButton);
+    expect(container.querySelector(".assistant-workspace")).not.toHaveClass("history-open");
+    expect(historyToggle).toHaveFocus();
   });
 
   it("restores the active chat and draft after switching dashboard tabs", async () => {

@@ -26,7 +26,7 @@ export function ProCheckoutDialog({
   onClose,
 }: ProCheckoutDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
-  const primaryActionRef = useRef<HTMLButtonElement>(null);
+  const initialActionRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const [busy, setBusy] = useState<BillingInterval>();
   const [error, setError] = useState<string>();
@@ -48,7 +48,7 @@ export function ProCheckoutDialog({
     else if (activeElement instanceof HTMLElement && activeElement !== document.body) {
       openerRef.current = activeElement;
     }
-    primaryActionRef.current?.focus();
+    initialActionRef.current?.focus();
 
     return () => {
       if (openerRef.current?.isConnected) openerRef.current.focus();
@@ -157,6 +157,15 @@ export function ProCheckoutDialog({
                 </li>
               ))}
             </ul>
+            <button
+              ref={initialActionRef}
+              className="button secondary pro-checkout-free-action"
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={onClose}
+            >
+              Continue using free plan
+            </button>
           </section>
           <section
             className="pro-checkout-plan pro-checkout-plan-pro"
@@ -182,7 +191,6 @@ export function ProCheckoutDialog({
                 {proCheckoutOptions.map((option, index) => (
                   <button
                     key={option.interval}
-                    ref={index === 0 ? primaryActionRef : undefined}
                     className={`button ${index === 0 ? "primary" : "secondary"}`}
                     type="button"
                     disabled={Boolean(busy)}

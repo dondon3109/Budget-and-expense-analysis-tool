@@ -1,0 +1,39 @@
+.connectivity-status {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 110;
+  width: min(440px, calc(100% - 36px));
+  min-height: 52px;
+  padding: 13px 15px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 34%, var(--line));
+  border-radius: 14px;
+  background: var(--warning-soft);
+  box-shadow: 0 18px 48px var(--shadow);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.connectivity-status svg {
+  margin-top: 1px;
+  flex: none;
+}
+
+.connectivity-status strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .connectivity-status {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: calc(100% - 24px);
+  }
+}

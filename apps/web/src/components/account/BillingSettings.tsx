@@ -625,7 +625,7 @@ export function BillingSettings({ user }: { user: User }) {
               </div>
             </div>
             <p id="billing-plan-scroll-hint" className="billing-plan-scroll-hint">
-              On narrow screens, scroll horizontally to compare both plans.
+              On narrow screens, each feature keeps Free and Pro together.
             </p>
             <div
               className="billing-plan-table-wrap"
@@ -669,10 +669,18 @@ export function BillingSettings({ user }: { user: User }) {
                   {planFeatures.map((item) => (
                     <tr key={item.feature}>
                       <th scope="row">{item.feature}</th>
-                      <td data-plan="free" data-current={(currentPlanKnown && !isPro) || undefined}>
+                      <td
+                        data-plan="free"
+                        data-plan-label="Free"
+                        data-current={(currentPlanKnown && !isPro) || undefined}
+                      >
                         {item.free}
                       </td>
-                      <td data-plan="pro" data-current={(currentPlanKnown && isPro) || undefined}>
+                      <td
+                        data-plan="pro"
+                        data-plan-label="Zoption Pro"
+                        data-current={(currentPlanKnown && isPro) || undefined}
+                      >
                         {item.pro}
                       </td>
                     </tr>

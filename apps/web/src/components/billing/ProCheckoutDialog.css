@@ -9,6 +9,10 @@
   gap: 18px;
 }
 
+.pro-checkout-header > div {
+  min-width: 0;
+}
+
 .pro-checkout-header h2 {
   max-width: 520px;
   margin: 0;
@@ -64,6 +68,12 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.pro-checkout-free-action {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 18px;
 }
 
 .pro-checkout-plan ul {
@@ -147,26 +157,31 @@
 }
 
 @media (max-width: 700px) {
-  .pro-checkout-plans {
-    grid-template-columns: none;
-    grid-auto-columns: 84%;
-    grid-auto-flow: column;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding-left: 4px;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 6px;
+  .pro-checkout-backdrop {
+    padding: max(8px, env(safe-area-inset-top)) 6px max(8px, env(safe-area-inset-bottom));
+    place-items: start center;
   }
 
-  .pro-checkout-plans::-webkit-scrollbar {
-    display: none;
+  .pro-checkout-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border-radius: var(--radius-xl);
+    overscroll-behavior: contain;
+  }
+
+  .pro-checkout-plans {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: visible;
+    padding: 0;
   }
 
   .pro-checkout-plan {
-    scroll-snap-align: start;
     width: 100%;
-    padding: 14px;
+    padding: 16px;
+  }
+
+  .pro-checkout-free-action {
+    min-height: 44px;
   }
 
   .pro-checkout-plan ul {
@@ -183,10 +198,28 @@
   }
 
   .pro-checkout-actions .button {
+    min-height: 44px;
     white-space: nowrap;
   }
 
+  .pro-checkout-header .icon-button {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+  }
+
   .pro-checkout-header h2 {
-    font-size: 25px;
+    font-size: clamp(24px, 8vw, 28px);
+    overflow-wrap: anywhere;
+  }
+
+  .pro-checkout-plan-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .pro-checkout-plan li,
+  .pro-checkout-plan li b {
+    font-size: 11px;
   }
 }

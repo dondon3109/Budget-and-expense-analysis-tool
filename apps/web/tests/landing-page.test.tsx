@@ -110,4 +110,21 @@ describe("landing page", () => {
       screen.getByText(/workspace begins without transactions or budgets/i),
     ).toBeInTheDocument();
   });
+
+  it("promotes only the official Android APK without promising offline behavior", () => {
+    renderLanding();
+
+    const installation = screen.getByRole("region", { name: "Take Zoption to Android." });
+    expect(within(installation).getAllByText(/same private workspace/i).length).toBeGreaterThan(0);
+    expect(within(installation).getByText(/online-first/i)).toBeInTheDocument();
+    expect(
+      within(installation).getByText(/not distributed through Google Play/i),
+    ).toBeInTheDocument();
+    expect(
+      within(installation).getByRole("link", { name: "Download Android APK" }),
+    ).toHaveAttribute("href", "/install");
+    expect(screen.getByRole("navigation", { name: "Learn more" })).toContainElement(
+      screen.getByRole("link", { name: "Android APK" }),
+    );
+  });
 });

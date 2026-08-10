@@ -10,7 +10,7 @@
   --lp-surface: #fff;
   --lp-surface-soft: #faf8f2;
   --lp-fg: #19352f;
-  --lp-muted: #6c716c;
+  --lp-muted: #646964;
   --lp-border: #e4dfd3;
   --lp-accent: #0f6b5b;
   --lp-accent-strong: #06473d;
@@ -165,15 +165,19 @@
   gap: 10px;
 }
 .landing-sign-in {
+  min-height: 44px;
   padding: 9px 10px;
+  display: inline-flex;
+  align-items: center;
   color: var(--lp-muted);
   font-weight: 600;
+  white-space: nowrap;
 }
 .landing-sign-in:hover {
   color: var(--lp-fg);
 }
 .landing-nav .button.primary {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 16px;
   border-radius: 12px;
   color: var(--lp-surface);
@@ -181,14 +185,19 @@
   background: var(--lp-accent-strong);
   box-shadow: 0 10px 24px color-mix(in srgb, var(--lp-accent) 28%, transparent);
   font-weight: 600;
+  white-space: nowrap;
 }
 .landing-nav .button.primary:hover {
   background: var(--lp-accent);
   border-color: var(--lp-accent);
 }
 .landing-nav .theme-toggle {
+  min-height: 44px;
   border-color: transparent;
   background: transparent;
+}
+.landing-nav .theme-menu-option {
+  min-height: 44px;
 }
 
 /* Account deletion notice */
@@ -219,11 +228,11 @@
   gap: 56px;
   align-items: center;
 }
-.hero-eyebrow {
+.landing-page .hero-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 22px;
+  margin-bottom: 32px;
   padding: 7px 12px;
   border: 1px solid var(--lp-border);
   border-radius: 999px;
@@ -752,6 +761,180 @@
   color: var(--lp-muted);
 }
 
+/* Android installation */
+.install-promo {
+  width: min(1160px, calc(100% - 48px));
+  margin: 28px auto 118px;
+  padding: clamp(72px, 8vw, 104px) 0;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: start;
+  gap: 24px;
+  border-top: 1px solid var(--lp-border);
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.install-promo-copy {
+  grid-column: 1 / span 7;
+  padding-right: clamp(32px, 6vw, 76px);
+}
+
+.install-promo-copy h2 {
+  max-width: 620px;
+  font-size: clamp(42px, 5.5vw, 64px);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.install-promo-copy > p:not(.eyebrow, .install-promo-note) {
+  max-width: 620px;
+  margin-top: 20px;
+  color: var(--lp-muted);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.install-promo-copy ul {
+  margin: 36px 0 0;
+  padding: 0;
+  display: grid;
+  list-style: none;
+}
+
+.install-promo-copy li {
+  min-height: 48px;
+  padding: 12px 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: var(--lp-fg);
+  font-size: 13.5px;
+  font-weight: 650;
+  border-top: 1px solid var(--lp-border);
+}
+
+.install-promo-copy li:last-child {
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.install-promo-copy li svg {
+  color: var(--lp-accent-strong);
+}
+
+.install-promo-release {
+  grid-column: 8 / -1;
+  min-width: 0;
+  padding-left: clamp(28px, 5vw, 64px);
+  border-left: 1px solid var(--lp-border);
+}
+
+.install-promo-release-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.install-promo-mark {
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 15px;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--lp-fg) 14%, transparent);
+}
+
+.install-promo-mark img {
+  width: 100%;
+  height: 100%;
+}
+
+.install-promo-release-heading p {
+  color: var(--lp-accent-strong);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.install-promo-release-heading h3 {
+  margin-top: 4px;
+  font-family: var(--font-ui);
+  font-size: 21px;
+  font-weight: 720;
+  line-height: 1.15;
+}
+
+.install-promo-release-heading > span {
+  padding: 6px 8px;
+  color: var(--lp-muted);
+  border: 1px solid var(--lp-border);
+  border-radius: 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.install-promo-release dl {
+  margin: 30px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--lp-border);
+}
+
+.install-promo-release dl > div {
+  min-height: 48px;
+  padding: 12px 0;
+  display: grid;
+  grid-template-columns: minmax(90px, 0.72fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.install-promo-release dt {
+  color: var(--lp-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.install-promo-release dd {
+  margin: 0;
+  color: var(--lp-fg);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.install-promo-actions {
+  margin-top: 28px;
+}
+
+.install-promo-actions .button.primary {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 19px;
+  justify-content: center;
+  gap: 9px;
+  color: var(--lp-surface);
+  border: 1px solid var(--lp-accent-strong);
+  border-radius: 12px;
+  background: var(--lp-accent-strong);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--lp-accent) 25%, transparent);
+}
+
+.install-promo-actions .button.primary:hover {
+  border-color: var(--lp-accent);
+  background: var(--lp-accent);
+}
+
+.landing-page .install-promo-note {
+  margin-top: 16px;
+  color: var(--lp-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 /* Supported formats band */
 .formats-band {
   padding: 92px 24px 72px;
@@ -964,11 +1147,33 @@
   .rhythm {
     grid-template-columns: 1fr;
   }
+  .install-promo {
+    display: block;
+  }
+  .install-promo-copy {
+    padding-right: 0;
+  }
+  .install-promo-release {
+    margin-top: 54px;
+    padding: 48px 0 0;
+    border-top: 1px solid var(--lp-border);
+    border-left: 0;
+  }
 }
 @media (max-width: 560px) {
   .landing-nav {
     height: 64px;
     padding: 0 16px;
+  }
+  .landing-account-actions {
+    gap: 6px;
+  }
+  .landing-sign-in {
+    padding-inline: 6px;
+  }
+  .landing-nav .button.primary {
+    min-height: 44px;
+    padding-inline: 12px;
   }
   .hero {
     padding: 48px 0 56px;
@@ -992,6 +1197,11 @@
     padding-right: 0;
     width: min(1160px, calc(100% - 32px));
   }
+  .install-promo {
+    width: calc(100% - 32px);
+    margin-bottom: 82px;
+    padding: 72px 0;
+  }
   .preview-metrics {
     grid-template-columns: 1fr;
   }
@@ -1009,6 +1219,14 @@
     font-size: 26px;
   }
 }
+@media (max-width: 380px) {
+  .landing-nav .brand {
+    gap: 0;
+  }
+  .landing-nav .brand-wordmark {
+    display: none;
+  }
+}
 @media (max-width: 470px) {
   .landing-account-actions .theme-toggle span {
     display: none;
@@ -1022,7 +1240,7 @@
   }
   .landing-account-actions .button {
     display: inline-flex;
-    min-height: 38px;
+    min-height: 44px;
     padding: 0 12px;
     font-size: 14px;
   }

@@ -37,8 +37,9 @@ main:has(.assistant-page) > .legal-footer,
   display: none;
 }
 
-.assistant-mobile-actions,
-.assistant-history-toggle {
+.assistant-history-toggle,
+.assistant-history-close,
+.assistant-history-backdrop {
   display: none;
 }
 
@@ -104,6 +105,8 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-history-actions {
   display: flex;
+  align-items: center;
+  gap: 4px;
   flex: 0 0 auto;
 }
 
@@ -431,8 +434,12 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-chat-status strong {
+  min-width: 0;
+  overflow: hidden;
   color: var(--ink);
   font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assistant-status-readonly {
@@ -1433,6 +1440,17 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 @media (max-width: 760px) {
+  .app-shell:has(.assistant-page) .app-main {
+    height: calc(100dvh - 64px);
+    min-height: calc(100dvh - 64px);
+    overflow: hidden;
+  }
+
+  .app-shell:has(.assistant-page) .app-main-content {
+    height: 100%;
+    min-height: 0;
+  }
+
   .assistant-page {
     width: 100%;
     min-height: calc(100vh - 64px);
@@ -1440,7 +1458,7 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-page:not(.consent-view) {
-    height: calc(100dvh - 64px);
+    height: 100%;
     min-height: 0;
     box-sizing: border-box;
   }
@@ -1449,20 +1467,48 @@ main:has(.assistant-page) > .legal-footer,
     padding: 0 14px;
   }
 
-  .assistant-mobile-actions {
-    align-self: stretch;
-    padding: 10px 14px 0;
-    display: flex;
+  .assistant-history-toggle {
+    grid-area: history;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: start;
   }
 
-  .assistant-history-toggle {
-    display: inline-flex;
+  .assistant-history-label {
+    display: none;
+  }
+
+  .assistant-history-close {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+  }
+
+  .assistant-history-close:hover,
+  .assistant-history-close:focus-visible {
+    color: var(--ink);
+    background: var(--surface);
+  }
+
+  .assistant-history-edit {
+    min-height: 44px;
   }
 
   .assistant-workspace {
     position: relative;
     flex: 1 1 auto;
-    height: auto;
+    height: 100%;
     min-height: 0;
     grid-template-columns: 1fr;
     border: 0;
@@ -1482,31 +1528,127 @@ main:has(.assistant-page) > .legal-footer,
     transition: transform 180ms ease;
   }
 
+  .assistant-history-backdrop {
+    position: absolute;
+    z-index: 9;
+    inset: 0;
+    display: block;
+    padding: 0;
+    border: 0;
+    background: color-mix(in srgb, var(--ink) 18%, transparent);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 180ms ease,
+      visibility 180ms ease;
+  }
+
+  .assistant-workspace.history-open .assistant-history-backdrop {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
   .assistant-workspace.history-open .assistant-history {
     transform: translateX(0);
   }
 
   .assistant-chat {
+    height: 100%;
     min-height: 0;
   }
 
   .assistant-chat-topline {
-    padding: 10px 14px 14px;
-    align-items: flex-start;
+    min-height: 0;
+    padding: 8px 10px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "history status retention";
+    align-items: center;
     column-gap: 10px;
   }
 
+  .assistant-chat-corner {
+    gap: 8px;
+  }
+
+  .assistant-chat-corner .theme-sw {
+    display: none;
+  }
+
+  .assistant-chat-retention {
+    display: none;
+  }
+
+  .assistant-memory-trigger {
+    min-height: 44px;
+    padding-inline: 11px;
+  }
+
+  .assistant-chat-usage {
+    display: none;
+  }
+
+  .assistant-education-notice {
+    padding: 5px 12px;
+    font-size: 9px;
+    line-height: 1.35;
+  }
+
   .assistant-empty {
-    padding: 30px 18px;
+    padding: 14px 10px 10px;
+    justify-content: flex-start;
+  }
+
+  .assistant-empty > .eyebrow {
+    font-size: 9px;
+  }
+
+  .assistant-empty h2 {
+    max-width: 22ch;
+    font-size: clamp(23px, 6.8vw, 27px);
+    line-height: 1.05;
+  }
+
+  .assistant-empty > p:not(.eyebrow) {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.4;
   }
 
   .assistant-quick-prompts {
-    grid-template-columns: 1fr;
-    margin-top: 24px;
+    max-width: none;
+    margin-top: 14px;
+    padding: 0 1px 4px;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(248px, 86%);
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .assistant-quick-prompts::-webkit-scrollbar {
+    display: none;
+  }
+
+  .assistant-quick-prompts button {
+    min-height: 60px;
+    padding: 10px 12px;
+    gap: 10px;
+    scroll-snap-align: start;
+  }
+
+  .assistant-quick-prompts .assistant-quick-prompt-icon {
+    width: 32px;
+    height: 32px;
   }
 
   .assistant-messages {
-    padding: 20px 14px;
+    padding: 14px 10px;
+    gap: 18px;
   }
 
   .assistant-message {
@@ -1514,7 +1656,33 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-composer {
-    margin: 0 10px 10px;
+    margin: 0 8px 6px;
+    padding: 8px 52px 28px 12px;
+    border-radius: 16px;
+  }
+
+  .assistant-composer-ai {
+    display: none;
+  }
+
+  .assistant-composer textarea {
+    min-height: 38px;
+    line-height: 1.45;
+  }
+
+  .assistant-send {
+    right: 8px;
+    bottom: 26px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .assistant-composer-note {
+    right: 56px;
+    bottom: 7px;
+    left: 12px;
+    gap: 8px;
+    font-size: 9px;
   }
 
   .assistant-consent {
@@ -1524,17 +1692,6 @@ main:has(.assistant-page) > .legal-footer,
 
   .assistant-consent-points {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 620px) {
-  .assistant-chat-usage {
-    width: min(100%, 360px);
-  }
-
-  .assistant-chat-usage .plan-usage-indicator {
-    width: 100%;
-    min-width: 0;
   }
 }
 

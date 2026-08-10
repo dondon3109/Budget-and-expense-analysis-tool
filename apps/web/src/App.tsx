@@ -9,6 +9,7 @@ import { syncVerifiedIdentity } from "./lib/api";
 import { userWorkspace } from "./lib/workspace";
 import { LandingPage } from "./pages/LandingPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { ConnectivityStatus } from "./pwa/ConnectivityStatus";
 import { publicRouteElements } from "./PublicRoutes";
 import { SeoHead } from "./seo/SeoHead";
 const DashboardPage = lazy(async () => {
@@ -115,6 +116,7 @@ export function App() {
   return (
     <>
       <SeoHead />
+      <ConnectivityStatus />
       <VerifiedIdentitySync />
       <Suspense
         fallback={

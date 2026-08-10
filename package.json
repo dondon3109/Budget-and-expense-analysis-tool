@@ -1,6 +1,6 @@
 {
   "name": "zoption",
-  "version": "1.2.4",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.9.0",
@@ -22,6 +22,8 @@
     "smoke:production": "node scripts/smoke-production.mjs",
     "paypal:sandbox:setup": "node --env-file=apps/api/.dev.vars scripts/setup-paypal-sandbox.mjs",
     "capture:screenshots": "node scripts/capture-portfolio.mjs",
+    "android:release": "./apps/android/scripts/build-release.sh",
+    "android:stage:web": "node apps/android/scripts/stage-web-release.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "pnpm --filter @zoption/api exec wrangler d1 migrations apply budget-expense-local --local"
   },
