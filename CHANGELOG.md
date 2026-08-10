@@ -19,6 +19,7 @@ All notable product changes are documented here.
 
 - Assistant chat history now closes from an explicit close control, a tap outside the drawer, or Escape, with focus returned to the History button.
 - The Assistant toolbar no longer reserves a second mobile row for the usage meter, leaving more vertical room for messages while retaining usage details on larger screens.
+- Fixed a first-launch scroll-lock race between the workspace loader and release notes that could leave the Profile dashboard unable to scroll in the Android app or a mobile browser.
 
 ## 1.2.4 — 2026-08-10
 

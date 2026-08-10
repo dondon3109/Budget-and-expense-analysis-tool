@@ -33,6 +33,11 @@ export const currentRelease: ProductRelease = {
       description:
         "Calendar, billing, plan selection, and the Financial Assistant now fit smaller screens more reliably. Assistant history closes by tapping outside or using its close control, and the mobile chat keeps more space for your conversation.",
     },
+    {
+      title: "Profile scrolling restored",
+      description:
+        "The first-launch workspace loader and release notes now coordinate page scrolling, so the Profile dashboard remains scrollable after startup in the Android app and mobile browsers.",
+    },
   ],
 };
 

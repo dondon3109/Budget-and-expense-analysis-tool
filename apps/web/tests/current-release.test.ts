@@ -10,6 +10,7 @@ describe("current release notes", () => {
       "A trustworthy installation guide",
       "Installable, without weakening privacy",
       "More room on mobile",
+      "Profile scrolling restored",
     ]);
 
     const notes = currentRelease.changes
@@ -19,5 +20,6 @@ describe("current release notes", () => {
     expect(notes).toMatch(/checksum/i);
     expect(notes).toMatch(/offline caches/i);
     expect(notes).toMatch(/Assistant history/i);
+    expect(notes).toMatch(/Profile dashboard remains scrollable/i);
   });
 });
