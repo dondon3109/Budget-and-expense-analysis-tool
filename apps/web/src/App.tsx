@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { PublicOnly, RequireAuth } from "./auth/RouteGuards";
 import { useAuth } from "./auth/AuthProvider";
 import { FullPageLoadingStatus } from "./components/layout/FullPageLoadingStatus";
+import { PrivateAppStartupGate } from "./components/layout/PrivateAppStartupGate";
 import { syncVerifiedIdentity } from "./lib/api";
 import { userWorkspace } from "./lib/workspace";
 import { LandingPage } from "./pages/LandingPage";
@@ -158,86 +159,18 @@ export function App() {
               </Private>
             }
           />
-          <Route
-            path="/app"
-            element={
-              <Private>
-                <DashboardPage />
-              </Private>
-            }
-          />
-          <Route
-            path="/app/assistant"
-            element={
-              <Private>
-                <AssistantPage />
-              </Private>
-            }
-          />
-          <Route
-            path="/app/accounts"
-            element={
-              <Private>
-                <Navigate to="/app" replace />
-              </Private>
-            }
-          />
-          <Route
-            path="/app/calendar"
-            element={
-              <Private>
-                <CalendarPage />
-              </Private>
-            }
-          />
-          <Route
-            path="/app/transactions"
-            element={
-              <Private>
-                <TransactionsPage />
-              </Private>
-            }
-          />
-          <Route
-            path="/app/import"
-            element={
-              <Private>
-                <ImportPage />
-              </Private>
-            }
-          />
-          <Route
-            path="/app/budgets"
-            element={
-              <Private>
-                <BudgetsPage />
-              </Private>
-            }
-          />
-          <Route
-            path="/app/subscriptions"
-            element={
-              <Private>
-                <SubscriptionsPage />
-              </Private>
-            }
-          />
-          <Route
-            path="/app/plan"
-            element={
-              <Private>
-                <FinancialPlanPage />
-              </Private>
-            }
-          />
-          <Route
-            path="/app/settings"
-            element={
-              <Private>
-                <SettingsPage />
-              </Private>
-            }
-          />
+          <Route path="/app" element={<PrivateAppStartupGate />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="assistant" element={<AssistantPage />} />
+            <Route path="accounts" element={<Navigate to="/app" replace />} />
+            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="transactions" element={<TransactionsPage />} />
+            <Route path="import" element={<ImportPage />} />
+            <Route path="budgets" element={<BudgetsPage />} />
+            <Route path="subscriptions" element={<SubscriptionsPage />} />
+            <Route path="plan" element={<FinancialPlanPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>

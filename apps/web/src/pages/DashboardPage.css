@@ -1516,7 +1516,7 @@
   }
 }
 
-/* Initial dashboard entrance: actual application DOM only. */
+/* Dashboard summary refetch skeleton after the initial startup has completed. */
 .dashboard-refetch-skeleton {
   min-height: min(58vh, 36rem);
   border-radius: 18px;
@@ -1530,84 +1530,6 @@
   .dashboard-refetch-skeleton {
     animation: dashboard-refetch-skeleton-shimmer 1.4s ease-in-out infinite;
   }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .app-shell {
-    animation: dashboard-shell-in 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .sidebar,
-  .dashboard-entrance[data-entrance-state="revealing"] .mobile-header {
-    animation: dashboard-entrance-up 420ms cubic-bezier(0.16, 1, 0.3, 1) 55ms both;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .dashboard-header {
-    animation: dashboard-entrance-up 430ms cubic-bezier(0.16, 1, 0.3, 1) 115ms both;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .dashboard-balance {
-    animation: dashboard-entrance-card 460ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .workspace-onboarding,
-  .dashboard-entrance[data-entrance-state="revealing"] .overview-stat-bar {
-    animation: dashboard-entrance-up 430ms cubic-bezier(0.16, 1, 0.3, 1) 245ms both;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .dashboard-grid > .panel {
-    animation: dashboard-panel-reveal 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .dashboard-grid > .panel:nth-child(1) {
-    animation-delay: 310ms;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .dashboard-grid > .panel:nth-child(2) {
-    animation-delay: 365ms;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .dashboard-grid > .panel:nth-child(3) {
-    animation-delay: 420ms;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .dashboard-grid > .panel:nth-child(4) {
-    animation-delay: 475ms;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .calculation-note {
-    animation: dashboard-entrance-up 400ms cubic-bezier(0.16, 1, 0.3, 1) 530ms both;
-  }
-
-  .dashboard-entrance[data-entrance-state="revealing"] .dashboard-history {
-    animation: dashboard-entrance-up 440ms cubic-bezier(0.16, 1, 0.3, 1) 590ms both;
-  }
-}
-
-@keyframes dashboard-shell-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes dashboard-entrance-up {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-}
-
-@keyframes dashboard-entrance-card {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.97);
-  }
-}
-
-@keyframes dashboard-panel-reveal {
-  from {
-    clip-path: inset(0 0 100% 0 round 16px);
-    opacity: 0;
-    transform: translateY(14px);
-  }
 }
 
 @keyframes dashboard-refetch-skeleton-shimmer {
@@ -1617,16 +1539,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-entrance .app-shell,
-  .dashboard-entrance .sidebar,
-  .dashboard-entrance .mobile-header,
-  .dashboard-entrance .dashboard-header,
-  .dashboard-entrance .dashboard-balance,
-  .dashboard-entrance .workspace-onboarding,
-  .dashboard-entrance .overview-stat-bar,
-  .dashboard-entrance .dashboard-grid > .panel,
-  .dashboard-entrance .calculation-note,
-  .dashboard-entrance .dashboard-history,
   .dashboard-refetch-skeleton {
     animation: none !important;
     transition: none !important;

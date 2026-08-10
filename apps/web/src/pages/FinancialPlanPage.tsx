@@ -23,6 +23,7 @@ import { useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
+import { InlineLoader } from "../components/layout/InlineLoader";
 import { DebtForm } from "../components/planning/DebtForm";
 import { FinancialGoalForm } from "../components/planning/FinancialGoalForm";
 import {
@@ -197,7 +198,7 @@ export function FinancialPlanPage() {
           </div>
         </section>
 
-        {loading && <div className="full-page-status inline-status">Loading your plan…</div>}
+        {loading && <InlineLoader label="Loading your plan" />}
         {loadError && (
           <div className="table-status error" role="alert">
             <strong>Your plan could not be loaded.</strong>

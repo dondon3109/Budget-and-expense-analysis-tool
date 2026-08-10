@@ -37,7 +37,9 @@ describe("auth route guards", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Restoring your workspace")).toHaveTextContent("Restoring your workspace");
+    expect(screen.getByText("Restoring your workspace")).toHaveTextContent(
+      "Restoring your workspace",
+    );
     expect(screen.queryByText("Private dashboard")).not.toBeInTheDocument();
   });
 
@@ -113,6 +115,20 @@ describe("auth route guards", () => {
     );
 
     expect(screen.getByText(/redirectTo=%2Fapp%2Fsettings/)).toBeInTheDocument();
+  });
+
+  it("renders private content immediately once authentication has resolved", () => {
+    authState.user = { id: "user-1" };
+    render(
+      <MemoryRouter initialEntries={["/app"]}>
+        <RequireAuth>
+          <div>Private dashboard</div>
+        </RequireAuth>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Private dashboard")).toBeInTheDocument();
+    expect(screen.queryByText("Restoring your workspace")).not.toBeInTheDocument();
   });
 
   it("redirects signed-in users away from public-only auth pages", () => {

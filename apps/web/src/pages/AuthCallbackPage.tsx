@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { InlineLoader } from "../components/layout/InlineLoader";
 import { AuthLayout } from "../components/auth/AuthLayout";
 
 function safeNext(value: string | null): string {
@@ -60,5 +61,9 @@ export function AuthCallbackPage() {
     );
   }
 
-  return <div className="full-page-status">Completing your secure account link…</div>;
+  return (
+    <div className="full-page-status">
+      <InlineLoader label="Completing your secure account link" />
+    </div>
+  );
 }

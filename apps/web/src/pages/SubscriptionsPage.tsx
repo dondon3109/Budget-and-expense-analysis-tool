@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { MetricCard } from "../components/dashboard/MetricCard";
 import { AppShell } from "../components/layout/AppShell";
+import { InlineLoader } from "../components/layout/InlineLoader";
 import { MonthSelector } from "../components/month/MonthSelector";
 import { SubscriptionForm } from "../components/subscriptions/SubscriptionForm";
 import { SubscriptionTable } from "../components/subscriptions/SubscriptionTable";
@@ -120,9 +121,7 @@ export function SubscriptionsPage() {
           </div>
         </header>
 
-        {subscriptionsQuery.isPending && (
-          <div className="full-page-status inline-status">Loading subscriptions…</div>
-        )}
+        {subscriptionsQuery.isPending && <InlineLoader label="Loading your subscriptions" />}
         {subscriptionsQuery.isError && (
           <div className="table-status error" role="alert">
             <strong>Subscriptions could not be loaded.</strong>

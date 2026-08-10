@@ -6,6 +6,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
+import { InlineLoader } from "../components/layout/InlineLoader";
 import { MonthSelector } from "../components/month/MonthSelector";
 import { getBudgets, saveBudgets } from "../lib/api";
 import { currentMonth, isMonth } from "../lib/calendar";
@@ -91,9 +92,7 @@ export function BudgetsPage() {
           />
         </header>
 
-        {budgetQuery.isPending && (
-          <div className="full-page-status inline-status">Loading monthly plan…</div>
-        )}
+        {budgetQuery.isPending && <InlineLoader label="Loading your monthly plan" />}
         {budgetQuery.isError && (
           <div className="table-status error" role="alert">
             <strong>The monthly budget could not be loaded.</strong>

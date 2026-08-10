@@ -24,6 +24,7 @@ const dashboardExperienceState = vi.hoisted(() => ({
   hasCompletedInitialDashboardExperience: true,
   completeInitialDashboardExperience: vi.fn(),
 }));
+const reportStartupReadiness = vi.hoisted(() => vi.fn());
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { id: "user-1", email: "user@example.com" } }),
@@ -34,6 +35,9 @@ vi.mock("../src/components/dashboard/InitialDashboardExperienceProvider", () => 
 
 vi.mock("../src/components/layout/AppShell", () => ({
   AppShell: ({ children }: { children: ReactNode }) => <main>{children}</main>,
+}));
+vi.mock("../src/components/layout/PrivateAppStartupGate", () => ({
+  usePrivateAppStartupReadiness: () => reportStartupReadiness,
 }));
 
 vi.mock("../src/components/dashboard/BudgetProgress", () => ({ BudgetProgress: () => null }));
@@ -172,6 +176,7 @@ describe("Dashboard loading", () => {
   beforeEach(() => {
     dashboardExperienceState.hasCompletedInitialDashboardExperience = true;
     dashboardExperienceState.completeInitialDashboardExperience.mockReset();
+    reportStartupReadiness.mockReset();
     apiMocks.getBillingSummary.mockReset().mockResolvedValue(billingSummary);
     apiMocks.getCashflowTrend.mockReset().mockResolvedValue({
       view: "weekly",
@@ -195,8 +200,7 @@ describe("Dashboard loading", () => {
     vi.useRealTimers();
   });
 
-  it("keeps the branded startup experience visible until the summary and minimum duration complete", async () => {
-    vi.useFakeTimers();
+  it("reports primary dashboard readiness to the private startup gate", async () => {
     dashboardExperienceState.hasCompletedInitialDashboardExperience = false;
     let resolveDashboard: ((value: DashboardSummary) => void) | undefined;
     apiMocks.getDashboard.mockReset().mockImplementation(
@@ -207,28 +211,15 @@ describe("Dashboard loading", () => {
     );
     renderPage();
 
-    expect(screen.getByText("Opening Zoption")).toBeInTheDocument();
+    await waitFor(() => expect(reportStartupReadiness).toHaveBeenCalledWith(false));
 
     await act(async () => {
       resolveDashboard?.(dashboard);
       await Promise.resolve();
-      await vi.advanceTimersByTimeAsync(3_000);
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(100);
     });
 
-    expect(screen.getByText("Your dashboard is ready")).toBeInTheDocument();
+    await waitFor(() => expect(reportStartupReadiness).toHaveBeenCalledWith(true));
     expect(screen.getByRole("region", { name: "Account management" })).toBeInTheDocument();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(480);
-    });
-
-    expect(
-      screen.queryByRole("status", { name: "Your dashboard is ready" }),
-    ).not.toBeInTheDocument();
-    vi.useRealTimers();
   });
 });
 

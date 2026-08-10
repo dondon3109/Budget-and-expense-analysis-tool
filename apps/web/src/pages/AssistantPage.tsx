@@ -20,6 +20,7 @@ import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
 import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { AppShell } from "../components/layout/AppShell";
+import { InlineLoader } from "../components/layout/InlineLoader";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
@@ -262,7 +263,7 @@ export function AssistantPage() {
   if (preferences.isLoading) {
     return (
       <AppShell>
-        <div className="full-page-status">Preparing the assistant…</div>
+        <InlineLoader label="Preparing the assistant" />
       </AppShell>
     );
   }
