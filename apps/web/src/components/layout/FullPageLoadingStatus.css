@@ -1,73 +1,136 @@
+/* ============================================================
+   ZOPTION FULL-PAGE LOADING STATUS
+   ------------------------------------------------------------
+   Award-winning splash shown after sign-in while the workspace
+   restores. Everything visual is CSS-driven; only the live
+   percent counter and completion event live in the React hook.
+   Ported from the Open Design "Zoption Loading Screen" study.
+
+   Sections:
+     1. Composition / editorial layout
+     2. Brand mark (organic blobs + self-drawing Z + orbit dots)
+     3. Copy (eyebrow, title, description)
+     4. Progress (hairline + mono counter + shimmer)
+     5. Reduced motion
+   ============================================================ */
+
+/* ---------- 1. COMPOSITION ---------- */
 .full-page-status.full-page-loading-status {
   isolation: isolate;
+  /* The loading screen is a full-viewport stage. */
+  position: fixed;
+  inset: 0;
+  z-index: 60;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 22px;
-  padding: 32px 24px;
+  gap: calc(var(--s-6, 32px) * 0.9);
+  padding: clamp(24px, 6vw, 72px);
   text-align: center;
+  background: var(--page, var(--bg, #f4f1e9));
+  color: var(--ink);
 }
 
 .full-page-loading-status-mark {
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: clamp(150px, 30vmin, 208px);
+  aspect-ratio: 1 / 1;
+  filter: drop-shadow(0 14px 40px var(--brand-glow));
+}
+
+/* ---------- 2. BRAND MARK ---------- */
+/* Organic nested blobs */
+.full-page-loading-status-blob,
+.full-page-loading-status-blob-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: 44% 56% 58% 42% / 46% 44% 56% 54%;
+}
+
+.full-page-loading-status-blob {
+  background:
+    radial-gradient(120% 120% at 30% 22%, var(--brand) 0%, transparent 58%),
+    radial-gradient(120% 120% at 72% 78%, var(--brand-glow) 0%, transparent 60%);
+  opacity: 0.9;
+  filter: blur(1px);
+}
+
+.full-page-loading-status-blob-inner {
+  inset: 16%;
+  background: var(--brand-soft);
+  border-radius: 58% 42% 46% 54% / 44% 58% 42% 56%;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* Self-drawing monogram Z */
+.full-page-loading-status-monogram {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  color: var(--brand);
 }
 
-.full-page-loading-status-mark::before,
-.full-page-loading-status-mark::after,
-.full-page-loading-status-mark span {
+.full-page-loading-status-monogram svg {
+  width: 46%;
+  height: 46%;
+  overflow: visible;
+}
+
+.full-page-loading-status-z {
+  fill: none;
+  stroke: var(--brand-strong);
+  stroke-width: 13;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+/* Orbiting dots — income / amber / brand on rotating rings */
+.full-page-loading-status-orbit {
   position: absolute;
-  display: block;
-  border: 2px solid currentColor;
-  content: "";
+  inset: 0;
 }
 
-.full-page-loading-status-mark::before {
-  width: 62px;
-  height: 62px;
-  border-radius: 38% 62% 55% 45%;
-  opacity: 0.22;
-}
-
-.full-page-loading-status-mark::after {
-  width: 48px;
-  height: 48px;
-  border-radius: 55% 45% 40% 60%;
-  opacity: 0.45;
-}
-
-.full-page-loading-status-mark span:first-child {
-  width: 12px;
-  height: 12px;
-  border: 0;
+.full-page-loading-status-ring {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 8px 18px var(--brand-glow);
 }
 
-.full-page-loading-status-mark span:nth-child(2) {
-  width: 8px;
-  height: 8px;
-  border: 0;
+.full-page-loading-status-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
   border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.full-page-loading-status-dot.dot-income {
+  width: 11px;
+  height: 11px;
   background: var(--income);
-  transform: translate(25px, -16px);
+  box-shadow: 0 0 0 4px var(--brand-glow), 0 0 18px var(--income);
 }
 
-.full-page-loading-status-mark span:nth-child(3) {
-  width: 6px;
-  height: 6px;
-  border: 0;
-  border-radius: 50%;
+.full-page-loading-status-dot.dot-amber {
+  width: 7px;
+  height: 7px;
   background: var(--amber);
-  transform: translate(-23px, 20px);
+  box-shadow: 0 0 0 3px var(--brand-glow), 0 0 14px var(--amber);
 }
 
+.full-page-loading-status-dot.dot-brand {
+  width: 9px;
+  height: 9px;
+  background: var(--brand);
+  box-shadow: 0 0 0 4px var(--brand-glow), 0 0 16px var(--brand);
+}
+
+/* ---------- 3. COPY ---------- */
 .full-page-loading-status-copy {
   display: grid;
   gap: 6px;
@@ -76,13 +139,19 @@
 
 .full-page-loading-status-copy strong {
   color: var(--ink);
-  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 500;
   letter-spacing: -0.02em;
+  line-height: 1.05;
 }
 
 .full-page-loading-status-copy p {
   margin: 0;
   color: var(--muted);
+  font-size: 13px;
+  font-weight: 530;
+  letter-spacing: 0.04em;
   line-height: 1.55;
 }
 
@@ -94,72 +163,200 @@
   text-transform: uppercase;
 }
 
+/* ---------- 4. PROGRESS ---------- */
+.full-page-loading-status-progress {
+  width: min(300px, 70vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.full-page-loading-status-track {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  background: var(--hairline, color-mix(in srgb, var(--ink) 16%, transparent));
+  overflow: hidden;
+}
+
+.full-page-loading-status-fill {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand), var(--income));
+  transform-origin: left;
+  transition: width 120ms linear;
+}
+
+.full-page-loading-status-fill::after {
+  /* Shimmer */
+  content: "";
+  position: absolute;
+  inset: -6px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
+  transform: translateX(-100%);
+}
+
+.full-page-loading-status-counter {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-mono);
+}
+
+.full-page-loading-status-pct {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--brand-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.full-page-loading-status-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- ANIMATION (motion ok) ---------- */
 @media (prefers-reduced-motion: no-preference) {
-  .full-page-loading-status-mark::before {
-    animation: full-page-loading-drift 2.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  /* Entrance */
+  .full-page-loading-status {
+    animation: zoption-loading-enter 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
-  .full-page-loading-status-mark::after {
-    animation: full-page-loading-drift 2.8s cubic-bezier(0.16, 1, 0.3, 1) 180ms infinite reverse;
+  /* Organic blob morph */
+  .full-page-loading-status-blob {
+    animation: zoption-blob-a 9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
 
-  .full-page-loading-status-mark span:first-child {
-    animation: full-page-loading-pulse 1.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  .full-page-loading-status-blob-inner {
+    animation: zoption-blob-b 7.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
 
-  .full-page-loading-status-mark span:nth-child(2) {
-    animation: full-page-loading-orbit-one 2.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  /* Draw the Z, settle to brand, breathe its weight */
+  .full-page-loading-status-z {
+    animation:
+      zoption-z-draw 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards,
+      zoption-z-settle 2.2s cubic-bezier(0.16, 1, 0.3, 1) 1.6s forwards,
+      zoption-z-glow 3.4s ease-out 2.1s infinite;
   }
 
-  .full-page-loading-status-mark span:nth-child(3) {
-    animation: full-page-loading-orbit-two 2.8s cubic-bezier(0.16, 1, 0.3, 1) 160ms infinite;
+  /* Orbit dots */
+  .full-page-loading-status-ring:nth-child(1) {
+    animation: zoption-orbit 9s linear infinite;
+  }
+
+  .full-page-loading-status-ring:nth-child(2) {
+    animation: zoption-orbit 11s linear infinite reverse;
+  }
+
+  .full-page-loading-status-ring:nth-child(3) {
+    animation: zoption-orbit 13s linear infinite;
+  }
+
+  /* Shimmer runs across the hairline fill */
+  .full-page-loading-status-fill::after {
+    animation: zoption-shimmer 1.6s cubic-bezier(0.45, 0, 0.55, 1) 0.5s infinite;
   }
 }
 
-.full-page-loading-status[data-reduced-motion] .full-page-loading-status-mark::before,
-.full-page-loading-status[data-reduced-motion] .full-page-loading-status-mark::after,
-.full-page-loading-status[data-reduced-motion] .full-page-loading-status-mark span {
+@keyframes zoption-loading-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zoption-blob-a {
+  0%,
+  100% {
+    border-radius: 44% 56% 58% 42% / 46% 44% 56% 54%;
+    transform: rotate(0deg);
+  }
+  33% {
+    border-radius: 58% 42% 47% 53% / 55% 48% 52% 45%;
+    transform: rotate(4deg);
+  }
+  66% {
+    border-radius: 48% 52% 60% 40% / 42% 58% 44% 56%;
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes zoption-blob-b {
+  0%,
+  100% {
+    border-radius: 58% 42% 46% 54% / 44% 58% 42% 56%;
+    transform: rotate(0deg);
+  }
+  50% {
+    border-radius: 42% 58% 54% 46% / 56% 44% 58% 44%;
+    transform: rotate(-6deg);
+  }
+}
+
+@keyframes zoption-z-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes zoption-z-settle {
+  to {
+    stroke: var(--brand);
+  }
+}
+
+@keyframes zoption-z-glow {
+  0%,
+  100% {
+    stroke-width: 13;
+  }
+  50% {
+    stroke-width: 16;
+  }
+}
+
+@keyframes zoption-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes zoption-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* ---------- 5. REDUCED MOTION ---------- */
+.full-page-loading-status[data-reduced-motion] {
   animation: none;
 }
 
-@keyframes full-page-loading-drift {
-  0%,
-  100% {
-    transform: rotate(0deg) scale(0.94);
-  }
-  50% {
-    transform: rotate(180deg) scale(1);
-  }
+.full-page-loading-status[data-reduced-motion] .full-page-loading-status-z {
+  stroke-dashoffset: 0;
+  stroke: var(--brand);
 }
 
-@keyframes full-page-loading-pulse {
-  0%,
-  100% {
-    transform: scale(0.85);
-    opacity: 0.72;
-  }
-  50% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes full-page-loading-orbit-one {
-  0%,
-  100% {
-    transform: translate(25px, -16px) scale(0.78);
-  }
-  50% {
-    transform: translate(-20px, 22px) scale(1);
-  }
-}
-
-@keyframes full-page-loading-orbit-two {
-  0%,
-  100% {
-    transform: translate(-23px, 20px) scale(1);
-  }
-  50% {
-    transform: translate(22px, -18px) scale(0.78);
-  }
+.full-page-loading-status[data-reduced-motion] .full-page-loading-status-blob,
+.full-page-loading-status[data-reduced-motion] .full-page-loading-status-blob-inner,
+.full-page-loading-status[data-reduced-motion] .full-page-loading-status-ring,
+.full-page-loading-status[data-reduced-motion] .full-page-loading-status-fill::after {
+  animation: none;
 }
