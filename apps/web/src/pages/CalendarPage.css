@@ -355,6 +355,10 @@
   gap: 3px;
 }
 
+.calendar-mobile-signals {
+  display: none;
+}
+
 .calendar-indicator {
   min-width: 0;
   display: flex;
@@ -961,26 +965,87 @@
   .calendar-day-cell,
   .calendar-day-placeholder,
   .calendar-day {
-    min-height: 78px;
+    min-height: 76px;
+  }
+
+  .calendar-day-cell,
+  .calendar-day-placeholder {
+    padding: 3px 2px;
   }
 
   .calendar-day {
-    padding: 7px 4px;
-    gap: 6px;
+    padding: 7px 2px;
+    align-items: center;
+    gap: 8px;
   }
 
   .calendar-day-number {
+    width: 100%;
+    justify-content: center;
     font-size: 12px;
   }
 
   .calendar-day-number small,
-  .calendar-indicator svg {
+  .calendar-day-indicators {
     display: none;
   }
 
-  .calendar-indicator {
-    font-size: 9px;
-    letter-spacing: -0.02em;
+  .calendar-mobile-signals {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .calendar-mobile-signal {
+    min-width: 19px;
+    min-height: 17px;
+    padding: 1px 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    border-radius: 5px;
+    background: var(--surface-soft);
+    font-size: 8px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .calendar-mobile-signal svg {
+    flex: 0 0 auto;
+  }
+
+  .calendar-mobile-signal.income {
+    color: var(--chart-income);
+    background: color-mix(in srgb, var(--chart-income) 10%, var(--paper));
+  }
+
+  .calendar-mobile-signal.expense {
+    color: var(--chart-expense);
+    background: color-mix(in srgb, var(--chart-expense) 10%, var(--paper));
+  }
+
+  .calendar-mobile-signal.transfer {
+    color: var(--plum);
+    background: color-mix(in srgb, var(--plum) 10%, var(--paper));
+  }
+
+  .calendar-mobile-signal.event {
+    color: var(--sage);
+    background: color-mix(in srgb, var(--sage) 10%, var(--paper));
+  }
+
+  .calendar-mobile-signal.subscription.paid {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 10%, var(--paper));
+  }
+
+  .calendar-mobile-signal.subscription.due {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 10%, var(--paper));
   }
 
   .calendar-transaction {

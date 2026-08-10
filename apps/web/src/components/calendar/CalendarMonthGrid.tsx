@@ -154,10 +154,7 @@ export function CalendarMonthGrid({
                   ? currencies
                       .filter((currency) => data.incomeByCurrency[currency] > 0)
                       .map((currency) => (
-                        <span
-                          className="calendar-indicator income"
-                          key={`income-${currency}`}
-                        >
+                        <span className="calendar-indicator income" key={`income-${currency}`}>
                           <ArrowDownRight size={12} aria-hidden="true" />+
                           {compactMoney(data.incomeByCurrency[currency], currency)}
                         </span>
@@ -167,10 +164,7 @@ export function CalendarMonthGrid({
                   ? currencies
                       .filter((currency) => data.expenseByCurrency[currency] > 0)
                       .map((currency) => (
-                        <span
-                          className="calendar-indicator expense"
-                          key={`expense-${currency}`}
-                        >
+                        <span className="calendar-indicator expense" key={`expense-${currency}`}>
                           <ArrowUpRight size={12} aria-hidden="true" />−
                           {compactMoney(data.expenseByCurrency[currency], currency)}
                         </span>
@@ -205,6 +199,42 @@ export function CalendarMonthGrid({
                   </span>
                 ))}
               </span>
+              {data &&
+                (data.incomeCount > 0 ||
+                  data.expenseCount > 0 ||
+                  data.transferCount > 0 ||
+                  data.events.length > 0 ||
+                  data.subscriptions.length > 0) && (
+                  <span className="calendar-mobile-signals" aria-hidden="true">
+                    {data.incomeCount > 0 && (
+                      <span className="calendar-mobile-signal income">
+                        <ArrowDownRight size={9} aria-hidden="true" /> {data.incomeCount}
+                      </span>
+                    )}
+                    {data.expenseCount > 0 && (
+                      <span className="calendar-mobile-signal expense">
+                        <ArrowUpRight size={9} aria-hidden="true" /> {data.expenseCount}
+                      </span>
+                    )}
+                    {data.transferCount > 0 && (
+                      <span className="calendar-mobile-signal transfer">
+                        <Repeat2 size={9} aria-hidden="true" /> {data.transferCount}
+                      </span>
+                    )}
+                    {data.events.length > 0 && (
+                      <span className="calendar-mobile-signal event">
+                        <CalendarDays size={9} aria-hidden="true" /> {data.events.length}
+                      </span>
+                    )}
+                    {data.subscriptions.length > 0 && (
+                      <span
+                        className={`calendar-mobile-signal subscription ${date <= today ? "paid" : "due"}`}
+                      >
+                        <CalendarClock size={9} aria-hidden="true" /> {data.subscriptions.length}
+                      </span>
+                    )}
+                  </span>
+                )}
             </button>
           </div>
         );

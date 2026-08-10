@@ -431,8 +431,12 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-chat-status strong {
+  min-width: 0;
+  overflow: hidden;
   color: var(--ink);
   font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assistant-status-readonly {
@@ -1492,8 +1496,31 @@ main:has(.assistant-page) > .legal-footer,
 
   .assistant-chat-topline {
     padding: 10px 14px 14px;
-    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "status retention"
+      "usage usage";
+    align-items: center;
     column-gap: 10px;
+    row-gap: 10px;
+  }
+
+  .assistant-chat-corner {
+    gap: 8px;
+  }
+
+  .assistant-chat-corner .theme-sw {
+    display: none;
+  }
+
+  .assistant-chat-retention {
+    max-width: 74px;
+    line-height: 1.25;
+  }
+
+  .assistant-memory-trigger {
+    min-height: 44px;
+    padding-inline: 11px;
   }
 
   .assistant-empty {
