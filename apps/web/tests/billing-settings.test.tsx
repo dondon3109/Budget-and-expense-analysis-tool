@@ -440,7 +440,8 @@ describe("BillingSettings", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Choose how you want to use Zoption Pro",
     });
-    expect(screen.getByRole("button", { name: "Subscribe Monthly · ₱149/month" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Continue using free plan" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Subscribe Monthly · ₱149/month" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Subscribe Annual · ₱1,299/year" })).toBeVisible();
 
     fireEvent.keyDown(dialog, { key: "Escape" });

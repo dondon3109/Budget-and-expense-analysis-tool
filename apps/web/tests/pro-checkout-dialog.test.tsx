@@ -44,12 +44,7 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
 function renderDialog(value = summary(), onClose = vi.fn()) {
   render(
     <MemoryRouter>
-      <ProCheckoutDialog
-        open
-        summary={value}
-        workspace={workspace}
-        onClose={onClose}
-      />
+      <ProCheckoutDialog open summary={value} workspace={workspace} onClose={onClose} />
     </MemoryRouter>,
   );
   return onClose;
@@ -75,6 +70,19 @@ describe("ProCheckoutDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Subscribe Annual · ₱1,299/year" }));
     expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "year");
+  });
+
+  it("starts at the free-plan action and lets the user continue without checkout", () => {
+    const onClose = renderDialog();
+    const continueButton = screen.getByRole("button", {
+      name: "Continue using free plan",
+    });
+
+    expect(continueButton).toHaveFocus();
+    fireEvent.click(continueButton);
+
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(openBillingCheckout).not.toHaveBeenCalled();
   });
 
   it("explains when payment confirmation is already pending", () => {
