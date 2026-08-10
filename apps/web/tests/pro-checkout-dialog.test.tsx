@@ -77,7 +77,9 @@ describe("ProCheckoutDialog", () => {
     const continueButton = screen.getByRole("button", {
       name: "Continue using free plan",
     });
+    const freePlan = screen.getByRole("region", { name: "Free plan" });
 
+    expect(freePlan.querySelector("ul")?.nextElementSibling).toBe(continueButton);
     expect(continueButton).toHaveFocus();
     fireEvent.click(continueButton);
 

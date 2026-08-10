@@ -146,15 +146,6 @@ export function ProCheckoutDialog({
               <strong>Free</strong>
               <span>Current plan</span>
             </div>
-            <button
-              ref={initialActionRef}
-              className="button secondary pro-checkout-free-action"
-              type="button"
-              disabled={Boolean(busy)}
-              onClick={onClose}
-            >
-              Continue using free plan
-            </button>
             <ul>
               {planFeatures.map((feature) => (
                 <li key={feature.feature}>
@@ -166,6 +157,15 @@ export function ProCheckoutDialog({
                 </li>
               ))}
             </ul>
+            <button
+              ref={initialActionRef}
+              className="button secondary pro-checkout-free-action"
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={onClose}
+            >
+              Continue using free plan
+            </button>
           </section>
           <section
             className="pro-checkout-plan pro-checkout-plan-pro"
