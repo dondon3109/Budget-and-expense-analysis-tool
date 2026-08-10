@@ -63,6 +63,7 @@ export default defineConfig(({ command, mode, isSsrBuild }) => {
     effectiveSupabasePublishableKey: env.VITE_SUPABASE_PUBLISHABLE_KEY,
     explicitSupabasePublishableKey: process.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     analyticsMeasurementId: env.VITE_GA_MEASUREMENT_ID,
+    cloudflareAnalyticsToken: env.VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN,
   });
 
   return {

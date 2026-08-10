@@ -1,4 +1,4 @@
-import { Brain, FileClock, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
+import { Activity, Brain, FileClock, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
 
 interface AssistantConsentProps {
   accepting: boolean;
@@ -15,9 +15,9 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
       <p className="eyebrow">Before your next question</p>
       <h1 id="assistant-consent-title">Your data, your boundaries. Private by default.</h1>
       <p className="assistant-consent-intro">
-        Zoption sends your question and only the financial data needed to the AI provider to prepare
-        an answer. Zoption resolves dates and calculates every personalized amount on its own
-        servers.
+        Zoption sends your question and only the financial data needed to DeepSeek to prepare an
+        answer. Zoption resolves dates and calculates every personalized amount on its own servers.
+        PostHog receives operational metadata only, never the question, answer, or financial data.
       </p>
       <div className="assistant-consent-points">
         <article>
@@ -44,6 +44,17 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
             </p>
           </div>
         </article>
+        <article>
+          <Activity size={18} aria-hidden="true" />
+          <div>
+            <strong>Metadata-only AI monitoring</strong>
+            <p>
+              PostHog receives model, latency, token-count, call-structure, finish, and error
+              categories. Questions, answers, financial records, tool inputs and results,
+              credentials, and internal user or tenant IDs are excluded.
+            </p>
+          </div>
+        </article>
         <article className="memory-point">
           <Brain size={18} aria-hidden="true" />
           <div>
@@ -57,9 +68,12 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
       </div>
       <p className="assistant-consent-retention">
         Chats, sanitized audit snapshots, and assistant memory are kept in your private Zoption
-        history for up to 90 days and are deleted with the conversation. You can clear assistant
-        memory anytime from the Memory panel. AI-generated wording can still be wrong, so verify
-        consequential decisions.
+        history for up to 90 days and are deleted with the conversation. Metadata-only PostHog
+        events are retained separately under the current 12-month event-retention plan. PostHog
+        controls provider-side deletion timing, so these events do not disappear when a chat is
+        deleted and may remain through that retention period. You can clear assistant memory anytime
+        from the Memory panel. AI-generated wording can still be wrong, so verify consequential
+        decisions.
       </p>
       <p className="assistant-consent-scope">
         Educational budgeting information only. Zoption does not provide personalized financial,

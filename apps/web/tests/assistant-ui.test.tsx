@@ -114,7 +114,7 @@ describe("assistant UI", () => {
     });
     apiMocks.getAssistantPreferences.mockReset().mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: 5,
       retentionDays: 90,
       assistantName: "Aster",
       userPreferredName: "Sam",
@@ -172,6 +172,8 @@ describe("assistant UI", () => {
     const accept = vi.fn();
     render(<AssistantConsent accepting={false} onAccept={accept} />);
     expect(screen.getByText(/only the financial data needed/i)).toBeInTheDocument();
+    expect(screen.getByText(/PostHog receives operational metadata only/i)).toBeInTheDocument();
+    expect(screen.getByText(/PostHog receives model, latency, token-count/i)).toBeInTheDocument();
     expect(screen.getByText(/assistant memory are kept/i)).toBeInTheDocument();
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
@@ -232,9 +234,7 @@ describe("assistant UI", () => {
     expect(
       await screen.findByRole("heading", { name: "What would you like to understand?" }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("article", { name: "Transfer fee insight" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("article", { name: "Transfer fee insight" })).not.toBeInTheDocument();
 
     apiMocks.getTransferFeeInsight.mockResolvedValue({
       hasFees: true,
@@ -264,9 +264,7 @@ describe("assistant UI", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /budget review/i })[0]!);
 
     expect(await screen.findByText("You spent PHP 1,250 this month.")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("article", { name: "Transfer fee insight" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("article", { name: "Transfer fee insight" })).not.toBeInTheDocument();
   });
 
   it("renders model output as text instead of HTML", () => {
@@ -467,7 +465,9 @@ describe("assistant UI", () => {
     expect(usageContainer).not.toBeNull();
     expect(within(usageContainer!).getByRole("progressbar")).toBe(usage);
     expect(topline!.children[2]).toHaveClass("assistant-chat-corner");
-    expect(within(topline!.children[2] as HTMLElement).getByText("90-day private history")).toBeInTheDocument();
+    expect(
+      within(topline!.children[2] as HTMLElement).getByText("90-day private history"),
+    ).toBeInTheDocument();
     expect(
       within(topline!.children[2] as HTMLElement).getByRole("button", { name: "Memory" }),
     ).toBeInTheDocument();
@@ -574,7 +574,7 @@ describe("assistant UI", () => {
   it("requires assistant and user names after consent, then displays the saved assistant name", async () => {
     apiMocks.getAssistantPreferences.mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: 5,
       retentionDays: 90,
       assistantName: null,
       userPreferredName: null,
@@ -583,7 +583,7 @@ describe("assistant UI", () => {
     });
     apiMocks.updateAssistantIdentity.mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: 5,
       retentionDays: 90,
       assistantName: "Aster",
       userPreferredName: "Sam",

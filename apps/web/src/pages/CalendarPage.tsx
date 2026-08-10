@@ -1,7 +1,6 @@
 import type {
   CalendarEventInput,
   CalendarEventRecord,
-  Currency,
   SubscriptionMonthItem,
   TransactionInput,
   TransactionListItem,

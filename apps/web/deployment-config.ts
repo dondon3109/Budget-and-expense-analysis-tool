@@ -13,6 +13,7 @@ export interface DeploymentConfigInput {
   effectiveSupabasePublishableKey?: string;
   explicitSupabasePublishableKey?: string;
   analyticsMeasurementId?: string;
+  cloudflareAnalyticsToken?: string;
 }
 
 export interface ResolvedDeploymentConfig {
@@ -20,6 +21,7 @@ export interface ResolvedDeploymentConfig {
   apiOrigin: string;
   supabaseOrigin: string;
   analyticsEnabled: boolean;
+  cloudflareAnalyticsEnabled: boolean;
 }
 
 export function resolveDeployEnvironment(env: Record<string, string>): DeployEnvironment {
@@ -136,11 +138,18 @@ export function validateDeploymentConfigForBuild(
     );
   }
 
+  const cloudflareAnalyticsToken = input.cloudflareAnalyticsToken?.trim();
+  if (cloudflareAnalyticsToken && !/^[a-f0-9]{32}$/i.test(cloudflareAnalyticsToken)) {
+    throw new Error("VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN must be a 32-character site token.");
+  }
+
   return {
     deployEnvironment: input.deployEnvironment,
     apiOrigin,
     supabaseOrigin,
     analyticsEnabled: Boolean(input.analyticsMeasurementId?.trim()),
+    cloudflareAnalyticsEnabled:
+      input.deployEnvironment === "production" && Boolean(cloudflareAnalyticsToken),
   };
 }
 
@@ -153,6 +162,11 @@ export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): s
     scriptSources.push("https://www.googletagmanager.com");
     imageSources.push("https://www.google-analytics.com");
     connectSources.push("https://www.google-analytics.com", "https://region1.google-analytics.com");
+  }
+
+  if (config.cloudflareAnalyticsEnabled) {
+    scriptSources.push("https://static.cloudflareinsights.com");
+    connectSources.push("https://cloudflareinsights.com");
   }
 
   return [

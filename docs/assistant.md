@@ -12,7 +12,8 @@ Zoption's AI Financial Assistant is a read-only budgeting and financial-wellness
 6. While required tool groups remain unsatisfied, the Worker requires tool use. It validates every argument against strict schemas and the server-resolved date range before running tenant-scoped reads or calculations.
 7. The Worker validates the final answer against successful tool output. Unsupported money, percentages, dates, counts, internal identifiers, unsafe formats, named-filter substitutions, and disallowed regulated recommendations are rejected. One corrective retry is allowed; otherwise Zoption returns a deterministic safe fallback.
 8. D1 stores the user message, final answer, structured response metadata, and a sanitized run/tool audit snapshot. Raw provider payloads, hidden reasoning, credentials, notes, secrets, tenant IDs, and user IDs are not stored in the audit trail.
-9. Threads, messages, runs, and tool snapshots share the thread's 90-day retention lifecycle and are deleted together.
+9. When metadata-only PostHog AI Observability is enabled, each real DeepSeek call emits a deferred `$ai_generation` event containing only random trace/span IDs, provider/model, latency, token counts, call sequence, finish/error categories, tool-choice mode, and deployment environment. Questions, answers, history, financial records, tool definitions/names/arguments/results, credentials, and Zoption identifiers are excluded.
+10. Threads, messages, runs, and tool snapshots share the thread's 90-day retention lifecycle and are deleted together. PostHog metadata is retained separately under the current 12-month event-retention plan. PostHog controls provider-side retention enforcement and deletion timing, so those events do not disappear when a chat is deleted and may remain through that provider retention period.
 
 The browser cannot submit a tenant ID, model, system prompt, tool definition, assistant message, or tool result.
 
@@ -70,9 +71,9 @@ Historical messages without structured metadata continue to render normally.
 
 ## Consent, retention, and deletion
 
-Assistant consent is versioned. Consent version 3 explains that the question and necessary tenant-scoped financial context may be sent to DeepSeek, that validated tool arguments plus compact sanitized results are retained with the chat for up to 90 days, and that the assistant may keep a short-term memory of durable preferences and facts across chats.
+Assistant consent is versioned. Consent version 5 explains that the question and necessary tenant-scoped financial context may be sent to DeepSeek; that validated tool arguments plus compact sanitized results are retained with the chat for up to 90 days; that the assistant may keep a short-term memory of durable preferences and facts across chats; that PostHog receives metadata-only AI operational events without question, answer, financial, tool-payload, credential, or internal-identifier content; and that those PostHog events are subject to the current 12-month project retention plan. Existing users must accept version 5 before another assistant turn.
 
-Users can delete one chat or all chats sooner. D1 foreign-key cascades remove messages, assistant runs, and tool-call snapshots with the thread. A daily Worker cron deletes expired threads in bounded batches, and thread listing also performs tenant-scoped lazy cleanup.
+Users can delete one chat or all chats sooner. D1 foreign-key cascades remove messages, assistant runs, and tool-call snapshots with the thread. A daily Worker cron deletes expired threads in bounded batches, and thread listing also performs tenant-scoped lazy cleanup. PostHog metadata has a separate lifecycle under the current 12-month project event-retention plan. PostHog controls provider-side retention enforcement and deletion timing, and deleting a D1 chat does not delete its anonymous PostHog events.
 
 ## Assistant memory
 
@@ -93,7 +94,9 @@ Deterministic clarifications, date-resolution prompts, and compliance redirects 
 ## Security controls
 
 - Supabase credentials and sessions remain in Supabase and the browser's authenticated session flow.
-- `DEEPSEEK_API_KEY` is a Worker secret and never appears in browser configuration, D1, tool payloads, or logs.
+- `DEEPSEEK_API_KEY` and `POSTHOG_PROJECT_TOKEN` are Worker secrets and never appear in browser configuration, D1, tool payloads, or logs.
+- PostHog uses random telemetry-only IDs as `distinct_id`, sets `$process_person_profile` to `false`, disables GeoIP enrichment, replaces the capture source address with the non-routable `0.0.0.0` placeholder, sends no identify/group events, and has no stable user, tenant, thread, message, request, or D1 run identifier.
+- PostHog capture is one bounded batch scheduled with Cloudflare `waitUntil()`, uses a short timeout, and is best-effort; capture failure cannot change an assistant result, error mapping, D1 cleanup, or readiness.
 - Assistant-cycle usage is consumed only immediately before a provider-backed turn; deterministic clarifications and compliance redirects do not consume an AI-question allowance.
 - One short lease prevents concurrent sends in the same thread.
 - Client request UUIDs make completed turns idempotent.
@@ -111,10 +114,13 @@ Non-secret Worker variables:
 - `ASSISTANT_TIME_ZONE=Asia/Manila`
 - `ASSISTANT_PROVIDER_TIMEOUT_MS=12000`
 - `ASSISTANT_OVERALL_TIMEOUT_MS=25000`
+- `POSTHOG_AI_OBSERVABILITY_ENABLED=false` until the target environment is verified
+- `POSTHOG_HOST=https://us.i.posthog.com`
+- `POSTHOG_AI_ENVIRONMENT=preview` or `production`
 
-Keep `DEEPSEEK_MODEL` on `deepseek-v4-flash`. The legacy `deepseek-chat` alias was retired by DeepSeek in July 2026.
+Keep `DEEPSEEK_MODEL` on `deepseek-v4-flash`. The legacy `deepseek-chat` alias was retired by DeepSeek in July 2026. PostHog is server-side only: do not add `VITE_POSTHOG_*`, a browser SDK, or web CSP origins.
 
-Set the secret separately for preview and production:
+Set the provider secrets separately for preview and production:
 
 ```bash
 pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY \
@@ -124,12 +130,20 @@ pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY \
 pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY \
   --config wrangler.deploy.jsonc \
   --env production
+
+pnpm --filter @zoption/api exec wrangler secret put POSTHOG_PROJECT_TOKEN \
+  --config wrangler.deploy.jsonc \
+  --env preview
+
+pnpm --filter @zoption/api exec wrangler secret put POSTHOG_PROJECT_TOKEN \
+  --config wrangler.deploy.jsonc \
+  --env production
 ```
 
-For local development, put `DEEPSEEK_API_KEY=...` in ignored `apps/api/.dev.vars`. Never use a `VITE_*` variable for this key.
+For local development, put provider secrets in ignored `apps/api/.dev.vars`. Never use a `VITE_*` variable for either key. Keep local PostHog capture disabled unless explicitly testing it. Enable Preview first, inspect the raw event JSON for the metadata allow-list, confirm no person profile is created, verify and disclose the project's actual event-retention plan, require the matching consent version, and only then enable Production. The current rollout uses PostHog's 12-month event-retention plan and assistant consent version 5.
 
 ## Failure behavior
 
-Provider timeouts, outages, invalid responses, and blocked responses are mapped to stable user-safe API errors. DeepSeek response bodies and authorization headers are not returned or logged. `/health` checks D1 only and does not depend on DeepSeek availability.
+Provider timeouts, outages, invalid responses, and blocked responses are mapped to stable user-safe API errors. DeepSeek response bodies and authorization headers are not returned or logged. PostHog receives only stable error kind/reason categories and an HTTP status when known; capture errors and response bodies are ignored. `/health` checks D1 only and does not depend on DeepSeek or PostHog availability.
 
 The assistant provides educational budgeting and financial-wellness information, not personalized financial, investment, tax, legal, retirement-allocation, or insurance advice.

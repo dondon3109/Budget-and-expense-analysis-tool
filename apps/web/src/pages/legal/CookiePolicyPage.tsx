@@ -32,10 +32,11 @@ export function CookiePolicyPage() {
         </p>
         <h3>Analytics — off by default</h3>
         <p>
-          Zoption uses Google Analytics 4 for optional usage and performance measurement. Its SDK,
-          script, request, beacon, or similar activity remains blocked until you explicitly enable
-          Analytics. Zoption does not send your financial workspace data, account credentials, or
-          assistant conversations to Google Analytics 4.
+          Zoption uses Google Analytics 4 and Cloudflare Web Analytics for optional usage and
+          performance measurement. Their SDK, script, request, beacon, or similar activity remains
+          blocked until you explicitly enable Analytics. Cloudflare Web Analytics does not set
+          analytics cookies. Zoption does not send your financial workspace data, account
+          credentials, or assistant conversations to either analytics provider.
         </p>
         <h3>Marketing — off by default</h3>
         <p>
@@ -82,19 +83,24 @@ export function CookiePolicyPage() {
       <section>
         <h2>5. Providers and future changes</h2>
         <p>
-          Google Analytics 4 is Zoption&apos;s Analytics provider. Before enabling any additional
-          Analytics or Marketing provider, Zoption must connect it to the consent gate, update this
-          policy and its vendor inventory, disclose purposes and retention, and make any minimal
-          Content Security Policy changes deliberately. Optional technology must not load before the
-          corresponding consent.
+          Google Analytics 4 and Cloudflare Web Analytics are Zoption&apos;s Analytics providers.
+          Cloudflare Web Analytics receives aggregate page-use and performance measurements without
+          setting analytics cookies. Before enabling any additional Analytics or Marketing provider,
+          Zoption must connect it to the consent gate, update this policy and its vendor inventory,
+          disclose purposes and retention, and make any minimal Content Security Policy changes
+          deliberately. Optional technology must not load before the corresponding consent.
         </p>
       </section>
 
       <section>
         <h2>6. Relationship to other processing</h2>
         <p>
-          Cookie Settings do not control the DeepSeek assistant. The assistant has a separate
-          consent flow because it involves feature-specific server processing. Read the{" "}
+          Cookie Settings do not control the DeepSeek assistant or its metadata-only PostHog AI
+          observability. The assistant has a separate, versioned consent flow because it involves
+          feature-specific server processing. PostHog receives operational model, latency, token,
+          call-structure, finish, and error metadata without questions, answers, financial records,
+          tool payloads, credentials, or internal IDs. This server-side processing does not load a
+          PostHog browser SDK or set a PostHog browser cookie. Read the{" "}
           <Link to="/privacy-policy">Privacy Policy</Link> for account, financial, provider,
           assistant, and rights information.
         </p>

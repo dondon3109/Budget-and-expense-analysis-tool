@@ -3,6 +3,7 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
+import { CloudflareAnalytics } from "./analytics/CloudflareAnalytics";
 import { GoogleAnalytics } from "./analytics/GoogleAnalytics";
 import { App } from "./App";
 import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
@@ -40,6 +41,7 @@ function ClientExperiences() {
       <ThemeChoiceDialog />
       <CookieConsentExperience />
       <ReleaseNotesExperience />
+      <CloudflareAnalytics />
       <GoogleAnalytics />
     </>
   );

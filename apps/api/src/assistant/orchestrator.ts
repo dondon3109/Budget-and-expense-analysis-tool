@@ -16,6 +16,7 @@ import {
   validateToolArguments,
 } from "./answer-validation";
 import type { FinancialReader } from "./financial-reader";
+import type { AssistantAiTelemetry } from "./posthog-ai";
 import { ASSISTANT_PROMPT_VERSION, buildAssistantSystemPrompt } from "./prompt";
 import {
   createAssistantTurnPolicy,
@@ -74,6 +75,7 @@ export interface AssistantOrchestrator {
     identity: AssistantIdentity,
     policy: AssistantTurnPolicy,
     memory: string,
+    telemetry?: AssistantAiTelemetry,
   ): Promise<AssistantAnswer>;
 }
 
@@ -187,7 +189,7 @@ export function createAssistantOrchestrator(
       });
     },
 
-    async answer(env, tenantId, history, message, identity, policy, memory) {
+    async answer(env, tenantId, history, message, identity, policy, memory, telemetry) {
       if (policy.deterministicResponse) {
         return {
           content: policy.deterministicResponse,
@@ -222,17 +224,20 @@ export function createAssistantOrchestrator(
           const missingRequiredGroups = policy.requiredToolGroups.filter(
             (group) => !satisfiedGroups.has(group),
           );
-          const completion = await provider.complete(env, {
+          const request = {
             messages,
             tools: assistantToolDefinitions,
             toolChoice:
               missingRequiredGroups.length > 0
-                ? "required"
+                ? ("required" as const)
                 : answerValidationRetryUsed
-                  ? "none"
-                  : "auto",
+                  ? ("none" as const)
+                  : ("auto" as const),
             signal: controller.signal,
-          });
+          };
+          const completion = telemetry
+            ? await telemetry.complete("assistant_answer", provider, env, request)
+            : await provider.complete(env, request);
           providerCallCount += 1;
           totals.model = completion.model;
           totals.finishReason = completion.finishReason;

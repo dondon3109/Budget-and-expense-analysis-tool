@@ -6,12 +6,23 @@ import {
   assistantThreadIdSchema,
   assistantThreadListQuerySchema,
 } from "@zoption/shared";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 
-import type { AssistantService } from "../assistant/service";
+import type { AssistantService, AssistantTurnExecution } from "../assistant/service";
 import { HttpError } from "../errors";
 import { parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
+
+function assistantTurnExecution(
+  context: Context<AppEnvironment>,
+): AssistantTurnExecution | undefined {
+  try {
+    const executionContext = context.executionCtx;
+    return { defer: (promise) => executionContext.waitUntil(promise) };
+  } catch {
+    return undefined;
+  }
+}
 
 export function createAssistantRoutes(service: AssistantService) {
   const routes = new Hono<AppEnvironment>();
@@ -95,7 +106,12 @@ export function createAssistantRoutes(service: AssistantService) {
       );
     }
     return context.json(
-      await service.createThreadTurn(context.env, context.get("tenant").tenantId, parsed.data),
+      await service.createThreadTurn(
+        context.env,
+        context.get("tenant").tenantId,
+        parsed.data,
+        assistantTurnExecution(context),
+      ),
       201,
     );
   });
@@ -136,6 +152,7 @@ export function createAssistantRoutes(service: AssistantService) {
         context.get("tenant").tenantId,
         parsePathParameter(context.req.param("id"), assistantThreadIdSchema),
         parsed.data,
+        assistantTurnExecution(context),
       ),
     );
   });

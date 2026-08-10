@@ -148,6 +148,54 @@ describe("Wrangler deployment config validation", () => {
     expect(() => validateWranglerDeploymentConfig(config)).toThrow(
       "preview must store SUPABASE_SERVICE_ROLE_KEY as a Worker secret",
     );
+
+    config.env.preview.vars.SUPABASE_SERVICE_ROLE_KEY = undefined;
+    config.env.preview.vars.POSTHOG_PROJECT_TOKEN = "phc_never-commit";
+    expect(() => validateWranglerDeploymentConfig(config)).toThrow(
+      "preview must store POSTHOG_PROJECT_TOKEN as a Worker secret",
+    );
+  });
+
+  it("validates optional PostHog AI Observability settings", () => {
+    const config = validConfig();
+    Object.assign(config.env.preview.vars, {
+      POSTHOG_AI_OBSERVABILITY_ENABLED: "true",
+      POSTHOG_HOST: "https://us.i.posthog.com",
+      POSTHOG_AI_ENVIRONMENT: "preview",
+    });
+    Object.assign(config.env.production.vars, {
+      POSTHOG_AI_OBSERVABILITY_ENABLED: "false",
+      POSTHOG_HOST: "https://us.i.posthog.com",
+      POSTHOG_AI_ENVIRONMENT: "production",
+    });
+    expect(validateWranglerDeploymentConfig(config)).toEqual(["preview", "production"]);
+
+    config.env.preview.vars.POSTHOG_AI_OBSERVABILITY_ENABLED = "yes";
+    expect(() => validateWranglerDeploymentConfig(config)).toThrow(
+      "preview POSTHOG_AI_OBSERVABILITY_ENABLED must be the string true or false",
+    );
+  });
+
+  it("rejects an unapproved PostHog host or mismatched environment label", () => {
+    const wrongHost = validConfig();
+    Object.assign(wrongHost.env.preview.vars, {
+      POSTHOG_AI_OBSERVABILITY_ENABLED: "true",
+      POSTHOG_HOST: "https://eu.i.posthog.com",
+      POSTHOG_AI_ENVIRONMENT: "preview",
+    });
+    expect(() => validateWranglerDeploymentConfig(wrongHost)).toThrow(
+      "preview POSTHOG_HOST must use the approved PostHog US Cloud origin",
+    );
+
+    const wrongEnvironment = validConfig();
+    Object.assign(wrongEnvironment.env.preview.vars, {
+      POSTHOG_AI_OBSERVABILITY_ENABLED: "true",
+      POSTHOG_HOST: "https://us.i.posthog.com",
+      POSTHOG_AI_ENVIRONMENT: "production",
+    });
+    expect(() => validateWranglerDeploymentConfig(wrongEnvironment)).toThrow(
+      "preview POSTHOG_AI_ENVIRONMENT must be preview",
+    );
   });
 
   it("rejects production origins in preview and cross-environment Supabase reuse", () => {

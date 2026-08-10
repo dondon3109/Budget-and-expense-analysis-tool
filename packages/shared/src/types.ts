@@ -531,7 +531,7 @@ export interface AssistantResponseMetadata {
   sources: AssistantSourceMetadata[];
 }
 
-export const CURRENT_ASSISTANT_CONSENT_VERSION = 3;
+export const CURRENT_ASSISTANT_CONSENT_VERSION = 5;
 
 export type AssistantDebtStrategy = "avalanche" | "snowball";
 export type AssistantMemoryKind = "preference" | "fact" | "summary";

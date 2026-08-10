@@ -29,7 +29,7 @@ describe("legal pages", () => {
     renderPage(<TermsOfServicePage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Terms of Service" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: August 2, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: August 10, 2026")).toBeInTheDocument();
     expect(
       screen.getByText(/does not currently connect directly to your bank/i),
     ).toBeInTheDocument();
@@ -53,12 +53,17 @@ describe("legal pages", () => {
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/DeepSeek/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/PostHog/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/PayPal/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/public storage link/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Full payment-card credentials/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/minimal verified-webhook event metadata/i)).toBeInTheDocument();
     expect(screen.getByText(/transaction-derived balances/i)).toBeInTheDocument();
     expect(screen.getAllByText(/sanitized audit/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/does not receive the question, prior chat, answer/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/current 12-month event-retention plan/i)).toBeInTheDocument();
     expect(screen.getByText(/not a complete account-data archive/i)).toBeInTheDocument();
     expect(screen.getByText(/includes an in-app account-deletion control/i)).toBeInTheDocument();
   });
@@ -68,11 +73,14 @@ describe("legal pages", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Cookie Policy" })).toBeInTheDocument();
     expect(
-      screen.getByText(/Google Analytics 4 for optional usage and performance measurement/i),
+      screen.getByText(/Google Analytics 4 and Cloudflare Web Analytics for optional usage/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/No marketing provider is currently enabled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open Cookie Settings" })).toBeInTheDocument();
-    expect(screen.getByText(/assistant has a separate consent flow/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/assistant has a separate, versioned consent flow/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/does not load a PostHog browser SDK/i)).toBeInTheDocument();
   });
 
   it("uses one shared legal footer on legal surfaces", () => {

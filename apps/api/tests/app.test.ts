@@ -3,6 +3,7 @@ import {
   type AccountInterestUpdate,
   type AccountRecord,
   type AccountUpdate,
+  type AssistantTurnResult,
   type BudgetMonthPlan,
   type CalendarEventMonth,
   type CalendarEventRecord,
@@ -20,6 +21,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 import type { AccountDeletionService } from "../src/account-deletion";
+import type { AssistantService, AssistantTurnExecution } from "../src/assistant/service";
 import { createApp, type AppOptions } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
 import type { AccountRepository } from "../src/db/accounts";
@@ -453,6 +455,74 @@ describe("API foundation", () => {
       tenantId: TENANT_ID,
     });
   });
+
+  it.each([
+    ["new thread", "/api/app/assistant/threads", 201],
+    [
+      "existing thread",
+      "/api/app/assistant/threads/00000000-0000-4000-8000-000000000001/messages",
+      200,
+    ],
+  ])(
+    "forwards Cloudflare waitUntil for an assistant turn in a %s",
+    async (_label, path, status) => {
+      const result: AssistantTurnResult = {
+        thread: {
+          id: "00000000-0000-4000-8000-000000000001",
+          title: "Assistant test",
+          lastMessageAt: "2026-08-10T00:00:01.000Z",
+          createdAt: "2026-08-10T00:00:00.000Z",
+        },
+        userMessage: {
+          id: "00000000-0000-4000-8000-000000000002",
+          threadId: "00000000-0000-4000-8000-000000000001",
+          role: "user",
+          content: "Test message",
+          status: "completed",
+          createdAt: "2026-08-10T00:00:00.000Z",
+        },
+        assistantMessage: {
+          id: "00000000-0000-4000-8000-000000000003",
+          threadId: "00000000-0000-4000-8000-000000000001",
+          role: "assistant",
+          content: "Test answer",
+          status: "completed",
+          createdAt: "2026-08-10T00:00:01.000Z",
+        },
+      };
+      const completeTurn = vi.fn(async (...args: unknown[]) => {
+        const execution = args.at(-1) as AssistantTurnExecution | undefined;
+        execution?.defer(Promise.resolve());
+        return result;
+      });
+      const assistantService = {
+        createThreadTurn: completeTurn,
+        sendTurn: completeTurn,
+      } as unknown as AssistantService;
+      const app = createTestApp({ assistantService });
+      const waitUntil = vi.fn(() => undefined);
+      const executionContext = { waitUntil } as unknown as ExecutionContext;
+
+      const response = await app.request(
+        path,
+        {
+          method: "POST",
+          headers: privateHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({
+            message: "Test message",
+            clientRequestId: "00000000-0000-4000-8000-000000000004",
+          }),
+        },
+        { DB: {} as D1Database, ASSISTANT_ENABLED: "true" },
+        executionContext,
+      );
+
+      expect(response.status).toBe(status);
+      expect(completeTurn).toHaveBeenCalledOnce();
+      expect(waitUntil).toHaveBeenCalledOnce();
+      expect(waitUntil).toHaveBeenCalledWith(expect.any(Promise));
+    },
+  );
 
   it("deletes only the authenticated account without resolving or bootstrapping a tenant", async () => {
     const tenantResolver = createTenantResolver();

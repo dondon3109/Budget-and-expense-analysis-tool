@@ -6,6 +6,10 @@ SUPABASE_PUBLISHABLE_KEY=
 
 DEEPSEEK_API_KEY=
 
+# Optional server-side, metadata-only PostHog AI Observability. Keep disabled unless a project
+# token is supplied; never expose this token through VITE_* browser variables.
+POSTHOG_PROJECT_TOKEN=
+
 # PayPal is the active subscription provider. Keep the client secret and webhook ID
 # in this ignored file or Worker secrets; plan IDs and environment are non-secret.
 PAYPAL_ENVIRONMENT=sandbox

@@ -51,8 +51,9 @@ export function PrivacyPolicyPage() {
           <li>
             <strong>Assistant:</strong> versioned consent state, display-name preferences, response
             and coaching preferences, questions, bounded conversation history, final responses,
-            source and data-quality metadata, and compact sanitized run/tool audit snapshots used to
-            trace enabled assistant requests.
+            source and data-quality metadata, compact sanitized run/tool audit snapshots, and
+            metadata-only AI observability records such as random trace identifiers, provider/model,
+            latency, token counts, call sequence, finish reasons, and error categories.
           </li>
           <li>
             <strong>Preferences and operations:</strong> theme and cookie/storage choices, request
@@ -60,9 +61,9 @@ export function PrivacyPolicyPage() {
           </li>
           <li>
             <strong>Optional analytics:</strong> limited page-use and performance information sent
-            to Google Analytics 4 only after you enable Analytics in Cookie Settings. Zoption does
-            not send financial workspace data, account credentials, or assistant conversations to
-            Google Analytics 4.
+            to Google Analytics 4 and Cloudflare Web Analytics only after you enable Analytics in
+            Cookie Settings. Zoption does not send financial workspace data, account credentials, or
+            assistant conversations to either analytics provider.
           </li>
         </ul>
         <div className="legal-callout">
@@ -84,7 +85,11 @@ export function PrivacyPolicyPage() {
           <li>
             provide tenant-isolated budgeting, transaction, calendar, import, and export features;
           </li>
-          <li>provide the AI assistant only after separate assistant consent;</li>
+          <li>
+            provide the AI assistant only after separate assistant consent and monitor provider
+            reliability, latency, token use, and safe error categories without sending assistant
+            content to the observability provider;
+          </li>
           <li>
             initiate PayPal subscription approval, reconcile verified PayPal billing webhooks, apply
             paid access, and enforce plan limits;
@@ -118,14 +123,24 @@ export function PrivacyPolicyPage() {
             metadata, and avatar storage.
           </li>
           <li>
-            <strong>Cloudflare</strong> for website and API hosting and Cloudflare D1 storage of
-            tenant-isolated application and financial data.
+            <strong>Cloudflare</strong> for website and API hosting, Cloudflare D1 storage of
+            tenant-isolated application and financial data, and consent-gated, cookie-free Web
+            Analytics for aggregate page-use and performance measurement.
           </li>
           <li>
             <strong>DeepSeek</strong> only for the separately enabled AI assistant. Zoption may send
             the current question, bounded prior chat, assistant and user display-name profile,
             trusted policy and date context, approved tool definitions, and only the tenant-scoped
             tool results needed for the answer through Zoption&apos;s server.
+          </li>
+          <li>
+            <strong>PostHog</strong> for server-side AI operational observability after separate
+            assistant consent. PostHog receives random trace/span identifiers, provider/model,
+            latency, token counts, call sequence, finish reasons, error categories, and deployment
+            environment. It does not receive questions, answers, conversation history, financial
+            records, tool names, arguments or results, credentials, or Zoption user, tenant, thread,
+            message, or run identifiers. Zoption disables PostHog person-profile processing for
+            these events.
           </li>
           <li>
             <strong>PayPal</strong> for subscription approval and payment processing. PayPal handles
@@ -197,6 +212,16 @@ export function PrivacyPolicyPage() {
           audit rows, but may not immediately remove information independently retained by the
           provider where its terms or law permit retention.
         </p>
+        <p>
+          For provider-backed turns, Zoption may send PostHog metadata-only generation events to
+          measure AI reliability, latency, token use, call structure, finish reasons, and safe error
+          categories. Each turn uses random telemetry-only identifiers and person-profile processing
+          is disabled. PostHog does not receive the question, prior chat, answer, financial records,
+          tool definitions, tool names, tool arguments or results, credentials, hidden reasoning, or
+          Zoption user, tenant, thread, message, request, or run identifiers. This server-side
+          processing does not set a PostHog browser cookie and is not controlled by the public-site
+          Analytics cookie preference; it is covered by the separate versioned assistant consent.
+        </p>
       </section>
 
       <section>
@@ -223,7 +248,10 @@ export function PrivacyPolicyPage() {
           remain temporarily in provider recovery copies according to provider backup lifecycles and
           is not ordinarily available for individual restoration. Provider-side retention of
           information sent to DeepSeek is governed by that provider&apos;s practices as described
-          above.
+          above. Metadata-only PostHog AI observability events are subject to the project&apos;s
+          current 12-month event-retention plan. PostHog controls provider-side retention
+          enforcement and deletion timing, so these events do not disappear when the related Zoption
+          chat is deleted and may remain through that provider retention period.
         </p>
       </section>
 
@@ -268,7 +296,8 @@ export function PrivacyPolicyPage() {
           financial database. Supabase processes identity, session, profile, and avatar information.
           PayPal processes subscription approval and payment information. When you enable the AI
           assistant, the request context described above may be transferred to and processed by
-          DeepSeek in locations where it or its subprocessors operate. Privacy laws in those
+          DeepSeek in locations where it or its subprocessors operate. Metadata-only AI
+          observability events are sent to PostHog&apos;s US Cloud region. Privacy laws in those
           locations may differ from those in your country. Zoption remains responsible for personal
           data under its control and restricts transfers to information reasonably necessary for the
           relevant service. We use applicable provider terms and reasonable access and security

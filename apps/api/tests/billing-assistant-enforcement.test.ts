@@ -28,7 +28,7 @@ const INPUT: AssistantMessageInput = {
 
 const PREFERENCES: AssistantPreferences = {
   consentedAt: "2026-07-27T00:00:00.000Z",
-  consentVersion: 3,
+  consentVersion: 5,
   retentionDays: 90,
   assistantName: "Aster",
   userPreferredName: "Sam",
@@ -111,7 +111,9 @@ function repository(beginTurn: AssistantRepository["beginTurn"] = vi.fn(async ()
     cleanupExpired: vi.fn(async () => 0),
     listMemories: vi.fn(async () => []),
     getMemory: vi.fn(async () => null),
-    upsertMemory: vi.fn(async (_env: Bindings, _tenantId: string, memory: AssistantMemory) => memory),
+    upsertMemory: vi.fn(
+      async (_env: Bindings, _tenantId: string, memory: AssistantMemory) => memory,
+    ),
     deleteMemory: vi.fn(async () => undefined),
     clearMemories: vi.fn(async () => undefined),
   } satisfies AssistantRepository;

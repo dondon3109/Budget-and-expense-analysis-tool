@@ -21,10 +21,19 @@ import type { Bindings } from "../types";
 import { DeepSeekError, type DeepSeekErrorKind, type DeepSeekFailureReason } from "./deepseek";
 import { buildMemoryBlock, deterministicExtract, runModelMemoryPass } from "./memory";
 import type { AssistantOrchestrator } from "./orchestrator";
+import {
+  createPostHogAiTelemetry,
+  type AssistantAiTelemetry,
+  type AssistantAiTelemetryFactory,
+} from "./posthog-ai";
 import type { AssistantProvider } from "./provider";
 import { responseMetadataForPolicy, serializeTurnPolicy } from "./turn-policy";
 
 const THREAD_SUMMARY_MAX_CHARACTERS = 500;
+
+export interface AssistantTurnExecution {
+  defer(promise: Promise<void>): void;
+}
 
 export interface AssistantService {
   getPreferences(env: Bindings, tenantId: string): Promise<AssistantPreferences>;
@@ -48,12 +57,14 @@ export interface AssistantService {
     env: Bindings,
     tenantId: string,
     input: AssistantMessageInput,
+    execution?: AssistantTurnExecution,
   ): Promise<AssistantTurnResult>;
   sendTurn(
     env: Bindings,
     tenantId: string,
     threadId: string,
     input: AssistantMessageInput,
+    execution?: AssistantTurnExecution,
   ): Promise<AssistantTurnResult>;
   deleteThread(env: Bindings, tenantId: string, threadId: string): Promise<void>;
   deleteAllThreads(env: Bindings, tenantId: string): Promise<void>;
@@ -129,6 +140,7 @@ export function createAssistantService(
   assistantUsage?: Pick<AssistantUsageRepository, "consumeUsage">,
   provider?: AssistantProvider,
   modelMemoryUsage?: Pick<AssistantModelMemoryUsageRepository, "tryConsumePass">,
+  telemetryFactory: AssistantAiTelemetryFactory = createPostHogAiTelemetry,
 ): AssistantService {
   async function requireReadyPreferences(
     env: Bindings,
@@ -184,7 +196,12 @@ export function createAssistantService(
     return { block };
   }
 
-  async function persistExtractedMemories(env: Bindings, tenantId: string, message: string) {
+  async function persistExtractedMemories(
+    env: Bindings,
+    tenantId: string,
+    message: string,
+    telemetry?: AssistantAiTelemetry,
+  ) {
     const extraction = deterministicExtract(message);
     for (const memory of extraction.memories) {
       await repository.upsertMemory(env, tenantId, memory);
@@ -197,7 +214,7 @@ export function createAssistantService(
     ) {
       const consumed = await modelMemoryUsage.tryConsumePass(env, tenantId);
       if (!consumed) return;
-      const extracted = await runModelMemoryPass(env, provider, message);
+      const extracted = await runModelMemoryPass(env, provider, message, telemetry);
       for (const memory of extracted) {
         await repository.upsertMemory(env, tenantId, memory);
       }
@@ -229,11 +246,13 @@ export function createAssistantService(
     tenantId: string,
     threadId: string,
     input: AssistantMessageInput,
+    execution?: AssistantTurnExecution,
   ): Promise<AssistantTurnResult> {
     const preferences = await requireReadyPreferences(env, tenantId);
     const start = await repository.beginTurn(env, tenantId, threadId, input);
     if (start.duplicate) return start.duplicate;
 
+    let telemetry: AssistantAiTelemetry | undefined;
     try {
       const policy = await orchestrator.plan(env, tenantId, start.history, input.message);
       if (policy.deterministicResponse) {
@@ -257,6 +276,11 @@ export function createAssistantService(
       }
 
       await assistantUsage?.consumeUsage(env, tenantId);
+      try {
+        telemetry = telemetryFactory(env);
+      } catch {
+        // Optional observability configuration must never block an assistant turn.
+      }
       const { block } = await loadMemoryContext(env, tenantId, start.thread.id);
       const answer = await orchestrator.answer(
         env,
@@ -271,6 +295,7 @@ export function createAssistantService(
         },
         policy,
         block,
+        telemetry,
       );
       const completed = await repository.completeTurn(env, tenantId, start, answer.content, {
         model: answer.model,
@@ -281,16 +306,28 @@ export function createAssistantService(
         audit: answer.audit,
       });
       try {
-        await persistExtractedMemories(env, tenantId, input.message);
+        await persistExtractedMemories(env, tenantId, input.message, telemetry);
         await updateThreadSummary(env, tenantId, start.thread.id, answer.content);
       } catch {
         // Memory updates are best-effort and must never fail a completed turn.
       }
+      telemetry?.finalize(
+        answer.finishReason === "validation_fallback" ? "validation_fallback" : "completed",
+      );
       return completed;
     } catch (error) {
+      telemetry?.finalize(error instanceof DeepSeekError ? "provider_error" : "application_error");
       if (error instanceof DeepSeekError) reportProviderFailure(error, reporter);
       await repository.failTurn(env, tenantId, start);
-      mapProviderError(error);
+      return mapProviderError(error);
+    } finally {
+      if (telemetry && execution) {
+        try {
+          execution.defer(telemetry.flush());
+        } catch {
+          // Deferred telemetry must never alter the assistant response or cleanup.
+        }
+      }
     }
   }
 
@@ -305,10 +342,10 @@ export function createAssistantService(
     listMessages: (env, tenantId, threadId, query) =>
       repository.listMessages(env, tenantId, threadId, query),
 
-    async createThreadTurn(env, tenantId, input) {
+    async createThreadTurn(env, tenantId, input, execution) {
       await requireReadyPreferences(env, tenantId);
       const thread = await repository.createThread(env, tenantId, input.message);
-      return runTurn(env, tenantId, thread.id, input);
+      return runTurn(env, tenantId, thread.id, input, execution);
     },
 
     sendTurn: runTurn,

@@ -21,6 +21,7 @@ const secretVariableNames = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "RESEND_API_KEY",
   "DEEPSEEK_API_KEY",
+  "POSTHOG_PROJECT_TOKEN",
   "PAYPAL_CLIENT_ID",
   "PAYPAL_CLIENT_SECRET",
   "PAYPAL_WEBHOOK_ID",
@@ -146,6 +147,33 @@ function validatePublishableKey(value, environment) {
   );
 }
 
+function validatePostHogConfig(vars, environment) {
+  const enabled = vars.POSTHOG_AI_OBSERVABILITY_ENABLED;
+  if (enabled !== undefined && enabled !== "true" && enabled !== "false") {
+    throw new Error(
+      `${environment} POSTHOG_AI_OBSERVABILITY_ENABLED must be the string true or false.`,
+    );
+  }
+
+  const host = vars.POSTHOG_HOST;
+  if (host !== undefined) {
+    const origin = exactHttpsOrigin(host, "POSTHOG_HOST", environment);
+    if (origin !== "https://us.i.posthog.com") {
+      throw new Error(`${environment} POSTHOG_HOST must use the approved PostHog US Cloud origin.`);
+    }
+  }
+
+  const telemetryEnvironment = vars.POSTHOG_AI_ENVIRONMENT;
+  if (telemetryEnvironment !== undefined && telemetryEnvironment !== environment) {
+    throw new Error(`${environment} POSTHOG_AI_ENVIRONMENT must be ${environment}.`);
+  }
+
+  if (enabled === "true") {
+    requiredString(vars, "POSTHOG_HOST", environment);
+    requiredString(vars, "POSTHOG_AI_ENVIRONMENT", environment);
+  }
+}
+
 function validateEnvironment(environment, config) {
   if (!config || typeof config !== "object") {
     throw new Error(`Wrangler config is missing the ${environment} environment.`);
@@ -160,6 +188,7 @@ function validateEnvironment(environment, config) {
       throw new Error(`${environment} must store ${name} as a Worker secret, not a Wrangler var.`);
     }
   }
+  validatePostHogConfig(vars, environment);
 
   const allowedOrigins = requiredString(vars, "ALLOWED_ORIGINS", environment)
     .split(",")

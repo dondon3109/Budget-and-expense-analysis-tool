@@ -14,8 +14,16 @@ import {
   type DeepSeekFailureReason,
 } from "../src/assistant/deepseek";
 import type { AssistantOrchestrator } from "../src/assistant/orchestrator";
+import type {
+  AssistantAiTelemetry,
+  AssistantAiTelemetryFactory,
+} from "../src/assistant/posthog-ai";
 import type { AssistantProvider } from "../src/assistant/provider";
-import { createAssistantService, type AssistantDiagnosticReporter } from "../src/assistant/service";
+import {
+  createAssistantService,
+  type AssistantDiagnosticReporter,
+  type AssistantTurnExecution,
+} from "../src/assistant/service";
 import type {
   AssistantCompletedTurn,
   AssistantRepository,
@@ -34,7 +42,7 @@ const input: AssistantMessageInput = {
 };
 const preferences: AssistantPreferences = {
   consentedAt: "2026-07-27T00:00:00.000Z",
-  consentVersion: 3,
+  consentVersion: 5,
   retentionDays: 90,
   assistantName: "Aster",
   userPreferredName: "Sam",
@@ -433,5 +441,145 @@ describe("assistant service model-memory pass usage", () => {
         .mocked(repository.upsertMemory)
         .mock.calls.some(([, , memory]) => memory.source === "model_assisted"),
     ).toBe(false);
+  });
+});
+
+describe("assistant service AI observability lifecycle", () => {
+  function telemetryHarness() {
+    const telemetry: AssistantAiTelemetry = {
+      complete: vi.fn(),
+      finalize: vi.fn(),
+      flush: vi.fn(async () => undefined),
+    };
+    const factory = vi.fn<AssistantAiTelemetryFactory>(() => telemetry);
+    const execution: AssistantTurnExecution = { defer: vi.fn() };
+    return { telemetry, factory, execution };
+  }
+
+  it("finalizes and defers metadata capture after a provider-backed turn", async () => {
+    const repository = createRepository();
+    const { telemetry, factory, execution } = telemetryHarness();
+    const service = createAssistantService(
+      repository,
+      successfulOrchestrator(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      factory,
+    );
+
+    await expect(service.sendTurn(env, tenantId, threadId, input, execution)).resolves.toEqual(
+      completed,
+    );
+
+    expect(factory).toHaveBeenCalledOnce();
+    expect(factory).toHaveBeenCalledWith(env);
+    expect(telemetry.finalize).toHaveBeenCalledWith("completed");
+    expect(telemetry.flush).toHaveBeenCalledOnce();
+    expect(execution.defer).toHaveBeenCalledOnce();
+    expect(execution.defer).toHaveBeenCalledWith(expect.any(Promise));
+  });
+
+  it("finalizes validation fallback turns with their distinct outcome", async () => {
+    const repository = createRepository();
+    const orchestrator = successfulOrchestrator();
+    vi.mocked(orchestrator.answer).mockResolvedValue({
+      content: assistantMessage.content,
+      model: "deepseek-v4-flash",
+      finishReason: "validation_fallback",
+      responseMetadata,
+      audit: { ...audit, validationStatus: "fallback" },
+    });
+    const { telemetry, factory, execution } = telemetryHarness();
+    const service = createAssistantService(
+      repository,
+      orchestrator,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      factory,
+    );
+
+    await service.sendTurn(env, tenantId, threadId, input, execution);
+
+    expect(telemetry.finalize).toHaveBeenCalledWith("validation_fallback");
+    expect(execution.defer).toHaveBeenCalledOnce();
+  });
+
+  it("marks provider failures and still defers capture without changing error mapping", async () => {
+    const repository = createRepository();
+    const { telemetry, factory, execution } = telemetryHarness();
+    const service = createAssistantService(
+      repository,
+      failingOrchestrator(
+        new DeepSeekError("unavailable", "upstream_unavailable", "Provider unavailable.", 503),
+      ),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      factory,
+    );
+
+    await expect(service.sendTurn(env, tenantId, threadId, input, execution)).rejects.toMatchObject(
+      {
+        status: 503,
+        code: "assistant_unavailable",
+      },
+    );
+
+    expect(telemetry.finalize).toHaveBeenCalledWith("provider_error");
+    expect(telemetry.flush).toHaveBeenCalledOnce();
+    expect(execution.defer).toHaveBeenCalledOnce();
+    expect(repository.failTurn).toHaveBeenCalledWith(env, tenantId, start);
+  });
+
+  it("creates no telemetry for deterministic policy responses", async () => {
+    const repository = createRepository();
+    const deterministicPolicy = {
+      ...policy,
+      deterministicResponse: "Please choose a specific reporting period.",
+    };
+    const orchestrator: AssistantOrchestrator = {
+      plan: vi.fn(async () => deterministicPolicy),
+      answer: vi.fn(),
+    };
+    const { factory, execution } = telemetryHarness();
+    const service = createAssistantService(
+      repository,
+      orchestrator,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      factory,
+    );
+
+    await service.sendTurn(env, tenantId, threadId, input, execution);
+
+    expect(factory).not.toHaveBeenCalled();
+    expect(orchestrator.answer).not.toHaveBeenCalled();
+    expect(execution.defer).not.toHaveBeenCalled();
+  });
+
+  it("drops telemetry when no Cloudflare deferred execution context is available", async () => {
+    const repository = createRepository();
+    const { telemetry, factory } = telemetryHarness();
+    const service = createAssistantService(
+      repository,
+      successfulOrchestrator(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      factory,
+    );
+
+    await service.sendTurn(env, tenantId, threadId, input);
+
+    expect(telemetry.finalize).toHaveBeenCalledWith("completed");
+    expect(telemetry.flush).not.toHaveBeenCalled();
   });
 });

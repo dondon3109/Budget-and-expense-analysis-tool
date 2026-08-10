@@ -12,6 +12,7 @@ import { bodyLimit } from "hono/body-limit";
 import { createAssistantOrchestrator } from "./assistant/orchestrator";
 import { deepSeekProvider } from "./assistant/deepseek";
 import { createFinancialReader } from "./assistant/financial-reader";
+import type { AssistantAiTelemetryFactory } from "./assistant/posthog-ai";
 import type { AssistantProvider } from "./assistant/provider";
 import { createAssistantService, type AssistantService } from "./assistant/service";
 import { createAccountDeletionService, type AccountDeletionService } from "./account-deletion";
@@ -115,6 +116,7 @@ export interface AppOptions {
   assistantUsage?: AssistantUsageRepository;
   assistantModelMemoryUsage?: AssistantModelMemoryUsageRepository;
   assistantProvider?: AssistantProvider;
+  assistantTelemetryFactory?: AssistantAiTelemetryFactory;
   assistantService?: AssistantService;
   accountDeletionService?: AccountDeletionService;
   platformAdmins?: PlatformAdminRepository;
@@ -164,6 +166,7 @@ export function createApp(options: AppOptions = {}) {
       assistantUsage,
       assistantProvider,
       assistantModelMemoryUsage,
+      options.assistantTelemetryFactory,
     );
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =

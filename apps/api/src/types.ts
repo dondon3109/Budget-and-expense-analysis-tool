@@ -25,6 +25,10 @@ export interface Bindings {
   ASSISTANT_PROVIDER_TIMEOUT_MS?: string;
   ASSISTANT_OVERALL_TIMEOUT_MS?: string;
   ASSISTANT_MEMORY_MODEL_PASS?: string;
+  POSTHOG_AI_OBSERVABILITY_ENABLED?: string;
+  POSTHOG_HOST?: string;
+  POSTHOG_PROJECT_TOKEN?: string;
+  POSTHOG_AI_ENVIRONMENT?: string;
   PAYPAL_ENVIRONMENT?: "sandbox" | "production";
   PAYPAL_PRO_MONTHLY_PLAN_ID?: string;
   PAYPAL_PRO_ANNUAL_PLAN_ID?: string;

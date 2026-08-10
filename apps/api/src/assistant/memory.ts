@@ -8,6 +8,7 @@ import type {
 } from "@zoption/shared";
 
 import type { Bindings } from "../types";
+import type { AssistantAiTelemetry } from "./posthog-ai";
 import type { AssistantProvider, AssistantProviderMessage } from "./provider";
 
 export const MAX_MEMORY_CHARACTERS = 6_000;
@@ -156,6 +157,7 @@ export async function runModelMemoryPass(
   env: Bindings,
   provider: AssistantProvider,
   message: string,
+  telemetry?: AssistantAiTelemetry,
 ): Promise<ExtractedMemory[]> {
   if (env.ASSISTANT_MEMORY_MODEL_PASS === "off") return [];
   try {
@@ -163,11 +165,14 @@ export async function runModelMemoryPass(
       { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
       { role: "user", content: message.slice(0, 2_000) },
     ];
-    const completion = await provider.complete(env, {
+    const request = {
       messages,
       tools: [],
-      toolChoice: "none",
-    });
+      toolChoice: "none" as const,
+    };
+    const completion = telemetry
+      ? await telemetry.complete("assistant_memory_extraction", provider, env, request)
+      : await provider.complete(env, request);
     return parseModelMemories(completion.message.content ?? "");
   } catch {
     return [];

@@ -202,7 +202,7 @@ function legalPageStructuredData(
   });
 }
 
-const LEGAL_PAGE_LAST_MODIFIED = "2026-08-02";
+const LEGAL_PAGE_LAST_MODIFIED = "2026-08-10";
 
 export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata> = {
   "/": {
@@ -257,12 +257,12 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/cookie-policy": {
     title: "Cookie Policy — Zoption",
     description:
-      "Learn about the necessary browser storage Zoption uses and how Google Analytics 4 remains blocked until Analytics consent is granted.",
+      "Learn about the necessary browser storage Zoption uses and how Google Analytics 4 and Cloudflare Web Analytics remain blocked until Analytics consent is granted.",
     canonical: `${SITE_ORIGIN}/cookie-policy`,
     robots: "index,follow",
     structuredData: legalPageStructuredData(
       "Cookie Policy — Zoption",
-      "The necessary browser storage Zoption uses and how Google Analytics 4 remains blocked until Analytics consent is granted.",
+      "The necessary browser storage Zoption uses and how Google Analytics 4 and Cloudflare Web Analytics remain blocked until Analytics consent is granted.",
       `${SITE_ORIGIN}/cookie-policy`,
       LEGAL_PAGE_LAST_MODIFIED,
     ),
