@@ -1220,7 +1220,10 @@
   }
 }
 @media (max-width: 380px) {
-  .landing-sign-in {
+  .landing-nav .brand {
+    gap: 0;
+  }
+  .landing-nav .brand-wordmark {
     display: none;
   }
 }

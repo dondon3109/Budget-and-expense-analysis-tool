@@ -1437,6 +1437,17 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 @media (max-width: 760px) {
+  .app-shell:has(.assistant-page) .app-main {
+    height: calc(100dvh - 64px);
+    min-height: calc(100dvh - 64px);
+    overflow: hidden;
+  }
+
+  .app-shell:has(.assistant-page) .app-main-content {
+    height: 100%;
+    min-height: 0;
+  }
+
   .assistant-page {
     width: 100%;
     min-height: calc(100vh - 64px);
@@ -1444,7 +1455,7 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-page:not(.consent-view) {
-    height: calc(100dvh - 64px);
+    height: 100%;
     min-height: 0;
     box-sizing: border-box;
   }
@@ -1466,7 +1477,7 @@ main:has(.assistant-page) > .legal-footer,
   .assistant-workspace {
     position: relative;
     flex: 1 1 auto;
-    height: auto;
+    height: 100%;
     min-height: 0;
     grid-template-columns: 1fr;
     border: 0;
@@ -1491,6 +1502,7 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-chat {
+    height: 100%;
     min-height: 0;
   }
 
@@ -1524,12 +1536,37 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-empty {
-    padding: 30px 18px;
+    padding: 20px 14px 16px;
+    justify-content: flex-start;
+  }
+
+  .assistant-empty h2 {
+    max-width: 17ch;
+    font-size: clamp(26px, 7.4vw, 30px);
+    line-height: 1.08;
+  }
+
+  .assistant-empty > p:not(.eyebrow) {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.5;
   }
 
   .assistant-quick-prompts {
     grid-template-columns: 1fr;
-    margin-top: 24px;
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  .assistant-quick-prompts button {
+    min-height: 54px;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .assistant-quick-prompts .assistant-quick-prompt-icon {
+    width: 32px;
+    height: 32px;
   }
 
   .assistant-messages {
@@ -1541,7 +1578,29 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-composer {
-    margin: 0 10px 10px;
+    margin: 0 10px 8px;
+    padding: 10px 50px 30px 10px;
+    border-radius: 16px;
+  }
+
+  .assistant-composer-ai {
+    width: 32px;
+    height: 32px;
+  }
+
+  .assistant-send {
+    right: 10px;
+    bottom: 30px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .assistant-composer-note {
+    right: 52px;
+    bottom: 8px;
+    left: 10px;
+    gap: 8px;
+    font-size: 9px;
   }
 
   .assistant-consent {
