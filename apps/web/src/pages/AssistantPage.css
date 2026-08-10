@@ -1569,23 +1569,50 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-chat-corner {
-    gap: 8px;
-  }
-
-  .assistant-chat-corner .theme-sw {
     display: none;
   }
 
-  .assistant-chat-retention {
-    display: none;
-  }
-
-  .assistant-memory-trigger {
-    min-height: 44px;
-    padding-inline: 11px;
-  }
-
+  /* On mobile, replace the Memory button with a compact plan-limit usage
+     pill so we keep the same single-row topline and preserve chat space. */
   .assistant-chat-usage {
+    grid-area: retention;
+    display: block;
+    justify-self: end;
+    min-width: 0;
+  }
+
+  .assistant-chat-usage .plan-usage-indicator.meter {
+    width: auto;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .assistant-chat-usage .plan-usage-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .assistant-chat-usage .plan-usage-label {
+    font-size: 8px;
+  }
+
+  .assistant-chat-usage .plan-usage-track {
+    width: 34px;
+    height: 5px;
+  }
+
+  .assistant-chat-usage .plan-usage-value {
+    font-size: 10px;
+  }
+
+  .assistant-chat-usage .plan-usage-meta {
     display: none;
   }
 
