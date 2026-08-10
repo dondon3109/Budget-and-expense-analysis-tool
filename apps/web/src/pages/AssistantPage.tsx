@@ -53,6 +53,9 @@ export function AssistantPage() {
   const { activeThreadId, draft, setActiveThreadId, setDraft, startNewChat } =
     useAssistantSession();
   const limitTriggerRef = useRef<HTMLElement | null>(null);
+  const historyToggleRef = useRef<HTMLButtonElement>(null);
+  const historyCloseRef = useRef<HTMLButtonElement>(null);
+  const historyWasOpenRef = useRef(false);
   const [pendingMessage, setPendingMessage] = useState<string>();
   const [sendError, setSendError] = useState<Error>();
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
@@ -103,6 +106,25 @@ export function AssistantPage() {
     (usage) => usage.feature === "assistant_question",
   );
   const isFreePlan = billingQuery.data?.plan === "free";
+
+  useEffect(() => {
+    if (historyOpen) historyCloseRef.current?.focus();
+    else if (historyWasOpenRef.current) historyToggleRef.current?.focus();
+    historyWasOpenRef.current = historyOpen;
+  }, [historyOpen]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+
+    function closeOnEscape(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setHistoryOpen(false);
+    }
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [historyOpen]);
 
   useEffect(() => {
     if (
@@ -323,6 +345,8 @@ export function AssistantPage() {
             threads={threads.data?.items ?? []}
             activeThreadId={activeThreadId}
             busy={busy}
+            closeButtonRef={historyCloseRef}
+            onClose={() => setHistoryOpen(false)}
             onSelect={(threadId) => {
               setActiveThreadId(threadId);
               setHistoryOpen(false);
@@ -332,9 +356,18 @@ export function AssistantPage() {
             onDelete={(threadId) => deleteMutation.mutateAsync(threadId)}
             onDeleteAll={() => deleteAllMutation.mutateAsync()}
           />
+          <button
+            className="assistant-history-backdrop"
+            type="button"
+            aria-label="Dismiss chat history"
+            aria-hidden={historyOpen ? undefined : true}
+            tabIndex={historyOpen ? 0 : -1}
+            onClick={() => setHistoryOpen(false)}
+          />
           <section className="assistant-chat" aria-label="Financial assistant conversation">
             <div className="assistant-chat-topline">
               <button
+                ref={historyToggleRef}
                 className="button secondary compact assistant-history-toggle"
                 type="button"
                 aria-label="History"

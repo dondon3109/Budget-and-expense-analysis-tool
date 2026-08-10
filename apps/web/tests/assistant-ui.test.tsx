@@ -648,6 +648,32 @@ describe("assistant UI", () => {
     expect(container.querySelector(".assistant-workspace")).not.toHaveClass("history-open");
   });
 
+  it("closes mobile chat history from the close control, backdrop, or Escape", async () => {
+    const { container } = renderPage();
+
+    const historyToggle = await screen.findByRole("button", { name: "History" });
+    const history = screen.getByRole("complementary", { name: "Assistant chat history" });
+    const closeButton = within(history).getByRole("button", { name: "Close chat history" });
+
+    fireEvent.click(historyToggle);
+    expect(container.querySelector(".assistant-workspace")).toHaveClass("history-open");
+    expect(closeButton).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss chat history" }));
+    expect(container.querySelector(".assistant-workspace")).not.toHaveClass("history-open");
+    expect(historyToggle).toHaveFocus();
+
+    fireEvent.click(historyToggle);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(container.querySelector(".assistant-workspace")).not.toHaveClass("history-open");
+    expect(historyToggle).toHaveFocus();
+
+    fireEvent.click(historyToggle);
+    fireEvent.click(closeButton);
+    expect(container.querySelector(".assistant-workspace")).not.toHaveClass("history-open");
+    expect(historyToggle).toHaveFocus();
+  });
+
   it("restores the active chat and draft after switching dashboard tabs", async () => {
     apiMocks.getAssistantMessages.mockResolvedValue({
       items: [
