@@ -10,6 +10,7 @@ import {
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../../auth/AuthProvider";
+import { useBodyScrollLock } from "../../hooks/useRootLock";
 import { useInitialDashboardExperience } from "../dashboard/InitialDashboardExperienceProvider";
 
 import { FullPageLoadingStatus } from "./FullPageLoadingStatus";
@@ -58,6 +59,8 @@ export function PrivateAppStartupGate() {
   const routeCommitted = committedLocationKey === location.key;
   const routeReady = routeCommitted && (!isDashboardRoute || dashboardSettled);
 
+  useBodyScrollLock(startupActive);
+
   const handleMinimumDurationComplete = useCallback(() => {
     setMinimumDurationElapsed(true);
   }, []);
@@ -70,16 +73,6 @@ export function PrivateAppStartupGate() {
     if (!startupActive || !user || !minimumDurationElapsed || !routeReady) return;
     completeInitialDashboardExperience();
   }, [completeInitialDashboardExperience, minimumDurationElapsed, routeReady, startupActive, user]);
-
-  useEffect(() => {
-    if (!startupActive) return undefined;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [startupActive]);
 
   const readinessValue = useMemo(() => reportDashboardSettled, [reportDashboardSettled]);
   const handleRouteCommit = useCallback((locationKey: string) => {
