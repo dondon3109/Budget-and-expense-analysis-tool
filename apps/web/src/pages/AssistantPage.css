@@ -1646,6 +1646,12 @@ main:has(.assistant-page) > .legal-footer,
     height: 32px;
   }
 
+  /* Hide the proactive transfer-fee insight on mobile so it doesn't cover the
+     prompt suggestion cards in a new conversation. It stays on desktop. */
+  .assistant-empty-with-insight .assistant-fee-welcome {
+    display: none;
+  }
+
   .assistant-messages {
     padding: 14px 10px;
     gap: 18px;
