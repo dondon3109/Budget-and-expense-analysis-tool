@@ -20,6 +20,7 @@ import "./AppShell.css";
 import "../transactions/TransactionForm.css";
 import { useAuth } from "../../auth/AuthProvider";
 import { avatarPathFromMetadata } from "../../lib/avatar";
+import { BrandMark } from "../brand/BrandMark";
 import { LegalFooter } from "../legal/LegalFooter";
 import { UserAvatar } from "../profile/UserAvatar";
 import { ThemeToggle } from "../theme/ThemeToggle";
@@ -68,9 +69,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className={`app-shell ${navCollapsed ? "nav-collapsed" : ""}`}>
       <header className="mobile-header">
         <Link className="brand compact" to="/" aria-label="Zoption home">
-          <span className="brand-mark" aria-hidden="true">
-            <span className="brand-monogram">Z</span>
-          </span>
+          <BrandMark />
           <span className="brand-wordmark">Zoption</span>
         </Link>
         <div className="mobile-header-actions">
@@ -91,9 +90,7 @@ export function AppShell({ children }: AppShellProps) {
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         <div className="sidebar-toggle-row">
           <Link className="brand" to="/" aria-label="Zoption home">
-            <span className="brand-mark" aria-hidden="true">
-              <span className="brand-monogram">Z</span>
-            </span>
+            <BrandMark />
             <span className="brand-wordmark">Zoption</span>
           </Link>
           <button

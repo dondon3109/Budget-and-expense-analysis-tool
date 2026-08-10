@@ -61,18 +61,10 @@
   height: 32px;
   display: grid;
   place-items: center;
-  color: var(--action-strong);
-  border: 1px solid color-mix(in srgb, var(--action) 30%, var(--line));
+  overflow: hidden;
   border-radius: var(--radius-sm);
-  background: var(--action-soft);
+  background: var(--solid-bg);
   box-shadow: none;
-}
-
-.sidebar .brand-mark .brand-monogram,
-.mobile-header .brand-mark .brand-monogram {
-  font-family: var(--font-display);
-  font-style: normal;
-  font-weight: 600;
 }
 
 .sidebar .brand-wordmark,

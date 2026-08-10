@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
+import { BrandMark } from "../brand/BrandMark";
 import { LegalFooter } from "./LegalFooter";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import "./LegalPageLayout.css";
@@ -18,9 +19,7 @@ export function LegalPageLayout({
     <div className="legal-page">
       <header className="legal-page-header">
         <Link className="brand compact" to="/" aria-label="Zoption home">
-          <span className="brand-mark" aria-hidden="true">
-            <span className="brand-monogram">Z</span>
-          </span>
+          <BrandMark />
           <span className="brand-wordmark">Zoption</span>
         </Link>
         <ThemeToggle />

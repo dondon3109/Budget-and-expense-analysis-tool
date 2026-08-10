@@ -2,6 +2,19 @@
 
 All notable product changes are documented here.
 
+## 1.2.4 — 2026-08-10
+
+### Added
+
+- Introduced a premium animated loading experience that prepares the authenticated workspace while private route code and dashboard data load in the background.
+- Added consent-aware product and AI observability, with assistant analytics limited to operational metadata rather than prompts, responses, or financial content.
+- Added a new Zoption brand mark across the landing page, authentication, legal pages, app navigation, browser tabs, and saved shortcuts.
+
+### Fixed
+
+- Post-sign-in loading now runs exactly once per authenticated session instead of restarting during lazy route loading or showing the retired dashboard loading screen afterward.
+- Calendar interactions no longer leave the screen frozen, and calendar amounts now support US dollar transactions correctly.
+
 ## 1.2.3 — 2026-08-09
 
 ### Added

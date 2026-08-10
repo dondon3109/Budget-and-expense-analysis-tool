@@ -1,15 +1,8 @@
-import {
-  ArrowRight,
-  Check,
-  Landmark,
-  PiggyBank,
-  ShieldCheck,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowRight, Check, PiggyBank, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import "./LandingPage.css";
 
+import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
 
@@ -23,9 +16,7 @@ export function LandingPage() {
     <div className="landing-page">
       <header className="landing-nav" id="top">
         <a className="brand" href="#top">
-          <span className="brand-mark" aria-hidden="true">
-            <span className="brand-monogram">Z</span>
-          </span>
+          <BrandMark />
           <span className="brand-wordmark">Zoption</span>
         </a>
         <nav className="landing-links" aria-label="Learn more">
@@ -65,9 +56,9 @@ export function LandingPage() {
               See where your money goes. Decide <em>what comes next.</em>
             </h1>
             <p className="hero-lead">
-              Import everyday transactions, set practical budgets, and turn scattered spending into a
-              clear monthly picture — inside a workspace that only ever contains what you choose to
-              add.
+              Import everyday transactions, set practical budgets, and turn scattered spending into
+              a clear monthly picture — inside a workspace that only ever contains what you choose
+              to add.
             </p>
             <div className="hero-actions">
               <Link className="button primary" to="/signup">
@@ -99,9 +90,7 @@ export function LandingPage() {
           >
             <div className="preview-top">
               <div>
-                <span className="preview-logo">
-                  <Landmark size={15} aria-hidden="true" />
-                </span>
+                <BrandMark className="preview-logo" />
                 <b>Monthly overview</b>
               </div>
               <span className="status-dot">Illustration</span>
@@ -140,8 +129,8 @@ export function LandingPage() {
             <p className="eyebrow">Six modules, one calm view</p>
             <h2 id="modules-title">Everything that shapes your month, in one quiet place.</h2>
             <p className="section-lead">
-              Zoption works the way you actually track money — reviewing files, following budgets, and
-              noticing the recurring costs that quietly add up.
+              Zoption works the way you actually track money — reviewing files, following budgets,
+              and noticing the recurring costs that quietly add up.
             </p>
           </div>
 
@@ -154,8 +143,8 @@ export function LandingPage() {
                 <h4>Bring your bank export</h4>
                 <p>
                   Whether it&rsquo;s a bank export or a spreadsheet, choosing a CSV, XLSX, or XLS
-                  workbook opens a preview where you map columns, catch errors, and flag duplicates —
-                  before any row is saved.
+                  workbook opens a preview where you map columns, catch errors, and flag duplicates
+                  — before any row is saved.
                 </p>
                 <div className="facet-tags">
                   <span>CSV &middot; XLSX &middot; XLS</span>
@@ -211,9 +200,9 @@ export function LandingPage() {
                 <p className="facet-kicker">Budgeting</p>
                 <h3>Set budgets that follow you.</h3>
                 <p>
-                  Give each category a practical monthly target and watch progress in plain language.
-                  Recurring expenses roll into the same clear picture, so nothing sneaks up at the end
-                  of the month.
+                  Give each category a practical monthly target and watch progress in plain
+                  language. Recurring expenses roll into the same clear picture, so nothing sneaks
+                  up at the end of the month.
                 </p>
                 <div className="facet-tags">
                   <span>Per-category targets</span>
@@ -261,9 +250,9 @@ export function LandingPage() {
                 <p className="facet-kicker">Subscription tracking</p>
                 <h3>Name the bills that quietly repeat.</h3>
                 <p>
-                  Log a subscription and Zoption records its next charge as an expense, so your balance
-                  already reflects what&rsquo;s coming. Edit, cancel, or delete it and the charge stays
-                  in sync.
+                  Log a subscription and Zoption records its next charge as an expense, so your
+                  balance already reflects what&rsquo;s coming. Edit, cancel, or delete it and the
+                  charge stays in sync.
                 </p>
                 <div className="facet-tags">
                   <span>Next-charge forecasting</span>
@@ -300,9 +289,9 @@ export function LandingPage() {
                 <p className="facet-kicker">Transferring</p>
                 <h3>Move money without surprises.</h3>
                 <p>
-                  Transfer between your own accounts and see the exact amount that arrives after any fee
-                  is deducted — then add the transfer to the ledger. No guessing what a move really
-                  costs.
+                  Transfer between your own accounts and see the exact amount that arrives after any
+                  fee is deducted — then add the transfer to the ledger. No guessing what a move
+                  really costs.
                 </p>
                 <div className="facet-tags">
                   <span>Fee-aware transfers</span>
@@ -375,9 +364,9 @@ export function LandingPage() {
                 <p className="facet-kicker">Assist &mdash; always grounded</p>
                 <h3>Ask your numbers, not a chatbot.</h3>
                 <p>
-                  The AI Financial Assistant answers questions about <em>your</em> data with evidence
-                  and clear limits. It reads only what you ask about, never edits a number, and
-                  explains the reasoning behind each answer.
+                  The AI Financial Assistant answers questions about <em>your</em> data with
+                  evidence and clear limits. It reads only what you ask about, never edits a number,
+                  and explains the reasoning behind each answer.
                 </p>
                 <div className="facet-tags">
                   <span>Your data only</span>
@@ -419,7 +408,11 @@ export function LandingPage() {
           <div className="formats-marquee" aria-hidden="true">
             <div className="formats-track" aria-hidden="true">
               {[0, 1].map((g) => (
-                <div className="formats-group" data-marquee-copy={g === 1 ? "duplicate" : "primary"} key={g}>
+                <div
+                  className="formats-group"
+                  data-marquee-copy={g === 1 ? "duplicate" : "primary"}
+                  key={g}
+                >
                   {["BPI", "BDO", "MariBank", "Bank of America", "JPMorgan / Chase"].map((name) => (
                     <span key={name}>{name}</span>
                   ))}
@@ -433,8 +426,8 @@ export function LandingPage() {
             ))}
           </ul>
           <p className="formats-disclaimer">
-            Bank names are shown to indicate supported export formats only. Zoption is not affiliated
-            with or endorsed by these institutions.
+            Bank names are shown to indicate supported export formats only. Zoption is not
+            affiliated with or endorsed by these institutions.
           </p>
         </section>
 
@@ -460,16 +453,16 @@ export function LandingPage() {
               <span className="step-n">02</span>
               <h3>Review the math</h3>
               <p>
-                Zoption keeps amounts in exact centavos and shows every calculation in plain language,
-                so the picture matches your own figures.
+                Zoption keeps amounts in exact centavos and shows every calculation in plain
+                language, so the picture matches your own figures.
               </p>
             </article>
             <article className="step">
               <span className="step-n">03</span>
               <h3>Decide what&rsquo;s next</h3>
               <p>
-                Budgets, subscriptions, savings interest, and an assistant — all pointing at the same
-                monthly view, ready for one next move.
+                Budgets, subscriptions, savings interest, and an assistant — all pointing at the
+                same monthly view, ready for one next move.
               </p>
             </article>
           </div>
@@ -499,9 +492,9 @@ export function LandingPage() {
             <details className="faq-item">
               <summary>Does Zoption connect to my bank?</summary>
               <dd>
-                No. Zoption never connects to banks or asks for banking credentials. You import a CSV,
-                Excel, or bank export file — or add rows yourself — and review every entry before
-                anything is saved.
+                No. Zoption never connects to banks or asks for banking credentials. You import a
+                CSV, Excel, or bank export file — or add rows yourself — and review every entry
+                before anything is saved.
               </dd>
             </details>
             <details className="faq-item">
@@ -515,8 +508,8 @@ export function LandingPage() {
               <summary>Is my workspace private?</summary>
               <dd>
                 Your workspace starts empty and contains only the records you choose to add. For
-                details about how account, financial, and imported-transaction information is handled,
-                see the Privacy Policy.
+                details about how account, financial, and imported-transaction information is
+                handled, see the Privacy Policy.
               </dd>
             </details>
             <details className="faq-item">

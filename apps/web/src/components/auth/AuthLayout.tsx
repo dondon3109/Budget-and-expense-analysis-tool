@@ -1,7 +1,7 @@
-import { Landmark } from "lucide-react";
 import { useId, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
+import { BrandMark } from "../brand/BrandMark";
 import { LegalFooter } from "../legal/LegalFooter";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import "./AuthLayout.css";
@@ -27,9 +27,7 @@ export function AuthLayout({
         <section className="auth-card" aria-labelledby={headingId}>
           <div className="auth-card-header">
             <Link className="brand" to="/" aria-label="Zoption home">
-              <span className="brand-mark">
-                <Landmark size={20} aria-hidden="true" />
-              </span>
+              <BrandMark />
               <span>Zoption</span>
             </Link>
             <ThemeToggle />

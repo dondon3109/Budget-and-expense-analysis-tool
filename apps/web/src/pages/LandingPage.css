@@ -138,12 +138,9 @@
   height: 30px;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 9px;
-  color: var(--lp-surface);
   background: var(--lp-accent-strong);
-  font-family: var(--lp-font-display);
-  font-style: normal;
-  font-weight: 600;
 }
 .landing-nav .brand-wordmark {
   color: var(--lp-fg);
@@ -339,9 +336,9 @@
   height: 29px;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 8px;
-  color: var(--lp-surface);
-  background: var(--lp-accent);
+  background: var(--lp-accent-strong);
 }
 .status-dot {
   padding: 5px 10px;

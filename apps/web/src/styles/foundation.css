@@ -550,9 +550,18 @@ textarea:focus-visible {
   height: 36px;
   display: inline-grid;
   place-items: center;
+  overflow: hidden;
   color: var(--solid-text);
   background: var(--solid-bg);
   border-radius: 11px;
+}
+.brand-logo-image {
+  width: 112%;
+  max-width: none;
+  height: 112%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
 }
 .brand.compact {
   font-size: 20px;
@@ -904,16 +913,4 @@ button:disabled {
     animation: none !important;
     transition: none !important;
   }
-}
-
-/* Shared brand primitive used by public and private navigation. */
-.brand-monogram {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  color: var(--subtle);
-  transform: translateX(-0.5px);
 }

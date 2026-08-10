@@ -11,17 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 9, 2026",
+  releasedOn: "August 10, 2026",
   changes: [
     {
-      title: "Goals and subscriptions at a glance",
+      title: "A smoother welcome to your workspace",
       description:
-        "The profile dashboard now shows your active savings goals alongside the combined monthly cost of every active subscription, giving you a clearer view of what you are building toward and paying for.",
+        "Zoption now uses one polished loading experience after sign-in while your private workspace prepares in the background. It no longer restarts or hands off to an older loading screen before showing your dashboard.",
     },
     {
-      title: "Sign-in stays responsive",
+      title: "Privacy-conscious product insights",
       description:
-        "Setup, update, billing, and account dialogs now coordinate how they pause the page, preventing the dashboard from remaining unclickable or unscrollable after overlapping dialogs close.",
+        "Consent-aware product and AI observability now helps improve reliability while keeping assistant prompts, responses, and financial content out of analytics events.",
+    },
+    {
+      title: "More reliable calendar activity",
+      description:
+        "Calendar interactions no longer leave the page frozen, and calendar amounts now handle US dollar transactions correctly.",
+    },
+    {
+      title: "A sharper Zoption identity",
+      description:
+        "A new brand mark now gives Zoption a clearer, more consistent identity across the landing page, sign-in, app navigation, browser tabs, and saved shortcuts.",
     },
   ],
 };
@@ -33,6 +43,22 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "1.2.3",
+    releasedOn: "August 9, 2026",
+    changes: [
+      {
+        title: "Goals and subscriptions at a glance",
+        description:
+          "The profile dashboard now shows your active savings goals alongside the combined monthly cost of every active subscription, giving you a clearer view of what you are building toward and paying for.",
+      },
+      {
+        title: "Sign-in stays responsive",
+        description:
+          "Setup, update, billing, and account dialogs now coordinate how they pause the page, preventing the dashboard from remaining unclickable or unscrollable after overlapping dialogs close.",
+      },
+    ],
+  },
   {
     version: "1.2.2",
     releasedOn: "August 9, 2026",
