@@ -28,7 +28,8 @@ describe("landing page", () => {
   it("offers account creation and sign in without linking to a public dashboard", () => {
     const { container } = renderLanding();
 
-    expect(screen.getAllByRole("link", { name: /create account/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/signup");
+    expect(screen.getAllByRole("link", { name: "Start for free" })).toHaveLength(2);
     expect(screen.getAllByRole("link", { name: /sign in/i }).length).toBeGreaterThan(0);
     expect(container.querySelector('a[href="/signup"]')).toBeInTheDocument();
     expect(container.querySelector('a[href="/login"]')).toBeInTheDocument();
@@ -38,6 +39,8 @@ describe("landing page", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Learn more" })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Zoption at a glance" })).toBeInTheDocument();
+    expect(screen.getByText(/no payment required\. upgrade only/i)).toBeInTheDocument();
+    expect(screen.getByText("Can I use Zoption for free?")).toBeInTheDocument();
   });
 
   it("highlights the six modules including subscriptions, savings, and the assistant", () => {

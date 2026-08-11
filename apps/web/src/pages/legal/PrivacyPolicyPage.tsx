@@ -6,7 +6,8 @@ export function PrivacyPolicyPage() {
   return (
     <LegalPageLayout
       title="Privacy Policy"
-      summary="This policy describes how Zoption handles account, profile, financial, import, assistant, consent, and operational information."
+      summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, assistant, consent, and operational information."
+      lastUpdated="August 11, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -15,7 +16,7 @@ export function PrivacyPolicyPage() {
           address at Baring, San Isidro, San Francisco, Cebu, Philippines. Our data-protection
           contact is Don Leonard E. Estrera. Privacy questions and requests to access, correct,
           delete, restrict, or otherwise exercise rights relating to personal data may be submitted
-          through support@zoption.site.
+          through <a href="mailto:support@zoption.site">support@zoption.site</a>.
         </p>
       </section>
 
@@ -43,10 +44,12 @@ export function PrivacyPolicyPage() {
             results, import audit information, and requested filtered transaction CSV exports.
           </li>
           <li>
-            <strong>Plan and billing:</strong> PayPal payer, subscription, plan, and
+            <strong>Plan and billing:</strong> plan tier, including Free or Zoption Pro, plus
+            feature usage and allowance records used to apply plan limits. If you start a Pro
+            checkout or subscribe, this also includes PayPal payer, subscription, plan, and
             checkout-reference identifiers; subscription status and billing interval; current-period
-            and scheduled-change timestamps; monthly feature usage; and minimal verified-webhook
-            event metadata needed to process an event and avoid processing it twice.
+            and scheduled-change timestamps; and minimal verified-webhook event metadata needed to
+            process an event and avoid processing it twice.
           </li>
           <li>
             <strong>Assistant:</strong> versioned consent state, display-name preferences, response
@@ -91,8 +94,9 @@ export function PrivacyPolicyPage() {
             content to the observability provider;
           </li>
           <li>
-            initiate PayPal subscription approval, reconcile verified PayPal billing webhooks, apply
-            paid access, and enforce plan limits;
+            determine available plan features and enforce Free and Pro usage limits; and, if you
+            choose Pro, initiate PayPal subscription approval, reconcile verified PayPal billing
+            webhooks, and apply paid access;
           </li>
           <li>remember browser preferences and honor privacy choices;</li>
           <li>
@@ -143,9 +147,9 @@ export function PrivacyPolicyPage() {
             these events.
           </li>
           <li>
-            <strong>PayPal</strong> for subscription approval and payment processing. PayPal handles
-            payment details in its interfaces and sends billing webhooks that Zoption verifies on
-            its server before reconciling subscription state and paid access.
+            <strong>PayPal</strong> only if you start checkout for or subscribe to Zoption Pro.
+            PayPal handles payment details in its interfaces and sends billing webhooks that Zoption
+            verifies on its server before reconciling subscription state and paid access.
           </li>
           <li>
             <strong>Google Analytics 4</strong> only after you enable Analytics through Cookie
@@ -181,7 +185,7 @@ export function PrivacyPolicyPage() {
           internet-based service or method of electronic storage can guarantee absolute security.
           Keep your login credentials confidential, use a unique password, protect the devices you
           use to access Zoption, and promptly report suspected unauthorized access to
-          support@zoption.site.
+          <a href="mailto:support@zoption.site">support@zoption.site</a>.
         </p>
       </section>
 
@@ -227,13 +231,15 @@ export function PrivacyPolicyPage() {
       <section>
         <h2>7. Retention</h2>
         <p>
-          Account, profile, billing, and financial workspace records are generally retained while
+          Account, profile, plan-usage, and financial workspace records are generally retained while
           the account is active and as needed to operate, secure, and support the service. Import
           previews and commit tokens are temporary; successfully committed records become part of
-          the financial workspace. Billing provider identifiers, subscription state, usage, and
-          minimal verified event metadata are retained as needed to operate paid access, resolve
-          billing issues, meet legal obligations, and defend claims. Full payment-card credentials
-          are handled by PayPal and are not stored by this integration.
+          the financial workspace. Plan tier, usage, and allowance records are retained as needed to
+          operate Free and Pro access and apply feature limits. If you start a Pro checkout or
+          subscribe, billing provider identifiers, subscription state, and minimal verified event
+          metadata are retained as needed to operate paid access, resolve billing issues, meet legal
+          obligations, and defend claims. Full payment-card credentials are handled by PayPal and
+          are not stored by this integration.
         </p>
         <p>
           Each assistant thread has a 90-day retention window measured from its latest completed
@@ -266,18 +272,18 @@ export function PrivacyPolicyPage() {
           data-protection authority. You may delete your Zoption account and associated data through
           the account deletion control in Account Settings. For access, correction, objection,
           portability, consent withdrawal, or other privacy requests, contact us at
-          [support@zoption.site](mailto:support@zoption.site) and describe the request and the
-          account concerned. We may request information reasonably necessary to verify your identity
-          or your authority to act for another person before processing a request. We will use
-          verification information only for handling and documenting the request. We may limit or
-          deny a request where permitted or required by applicable law, including where fulfilling
-          it would adversely affect another person’s rights, conflict with a legal obligation, or
-          where the request is manifestly unfounded or unreasonable. Where appropriate, we will
-          explain the reason for the decision. You may also file a complaint with the Philippine
-          National Privacy Commission or another data-protection authority with jurisdiction over
-          your concern. Exercising your privacy rights will not result in discriminatory treatment,
-          although deleting or restricting information necessary to provide Zoption may prevent some
-          or all features from functioning.
+          <a href="mailto:support@zoption.site">support@zoption.site</a> and describe the request
+          and the account concerned. We may request information reasonably necessary to verify your
+          identity or your authority to act for another person before processing a request. We will
+          use verification information only for handling and documenting the request. We may limit
+          or deny a request where permitted or required by applicable law, including where
+          fulfilling it would adversely affect another person’s rights, conflict with a legal
+          obligation, or where the request is manifestly unfounded or unreasonable. Where
+          appropriate, we will explain the reason for the decision. You may also file a complaint
+          with the Philippine National Privacy Commission or another data-protection authority with
+          jurisdiction over your concern. Exercising your privacy rights will not result in
+          discriminatory treatment, although deleting or restricting information necessary to
+          provide Zoption may prevent some or all features from functioning.
         </p>
         <p>
           The product currently exports filtered transactions as CSV. That export is not a complete
@@ -294,16 +300,17 @@ export function PrivacyPolicyPage() {
           Zoption uses service providers that may process personal data outside the Philippines or
           the country where you live. Cloudflare hosts the application, API, and primary D1
           financial database. Supabase processes identity, session, profile, and avatar information.
-          PayPal processes subscription approval and payment information. When you enable the AI
-          assistant, the request context described above may be transferred to and processed by
-          DeepSeek in locations where it or its subprocessors operate. Metadata-only AI
-          observability events are sent to PostHog&apos;s US Cloud region. Privacy laws in those
-          locations may differ from those in your country. Zoption remains responsible for personal
-          data under its control and restricts transfers to information reasonably necessary for the
-          relevant service. We use applicable provider terms and reasonable access and security
-          controls, and will use any additional consent or transfer mechanism required by law.
-          Contact [support@zoption.site](mailto:support@zoption.site) for information about relevant
-          processing locations or safeguards.
+          If you start a Pro checkout or subscribe, PayPal processes subscription approval and
+          payment information. When you enable the AI assistant, the request context described above
+          may be transferred to and processed by DeepSeek in locations where it or its subprocessors
+          operate. Metadata-only AI observability events are sent to PostHog&apos;s US Cloud region.
+          Privacy laws in those locations may differ from those in your country. Zoption remains
+          responsible for personal data under its control and restricts transfers to information
+          reasonably necessary for the relevant service. We use applicable provider terms and
+          reasonable access and security controls, and will use any additional consent or transfer
+          mechanism required by law. Contact{" "}
+          <a href="mailto:support@zoption.site">support@zoption.site</a> for information about
+          relevant processing locations or safeguards.
         </p>
       </section>
 
@@ -319,11 +326,11 @@ export function PrivacyPolicyPage() {
       <section>
         <h2>11. Complaints, changes, and contact</h2>
         <p>
-          You may contact us at [support@zoption.site](mailto:support@zoption.site) with questions,
-          privacy requests, or complaints about how Zoption handles your personal data. We will
-          review your concern and may request information reasonably necessary to verify your
-          identity, understand the issue, and respond appropriately. You may also have the right to
-          file a complaint with the Philippine National Privacy Commission or another
+          You may contact us at <a href="mailto:support@zoption.site">support@zoption.site</a> with
+          questions, privacy requests, or complaints about how Zoption handles your personal data.
+          We will review your concern and may request information reasonably necessary to verify
+          your identity, understand the issue, and respond appropriately. You may also have the
+          right to file a complaint with the Philippine National Privacy Commission or another
           data-protection authority with jurisdiction over your location. We encourage you to
           contact us first so that we have an opportunity to address your concern, but doing so does
           not prevent you from contacting a competent authority where permitted by applicable law.

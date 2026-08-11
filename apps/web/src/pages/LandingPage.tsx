@@ -33,7 +33,7 @@ export function LandingPage() {
             Sign in
           </Link>
           <Link className="button primary" to="/signup">
-            Create account
+            Start free
           </Link>
         </div>
       </header>
@@ -52,36 +52,41 @@ export function LandingPage() {
         <section className="hero">
           <div className="hero-copy">
             <p className="hero-eyebrow">
-              <ShieldCheck size={15} aria-hidden="true" /> Private by design &middot; starts empty
+              <ShieldCheck size={15} aria-hidden="true" /> Free plan available &middot; private by
+              design
             </p>
             <h1>
               Zoption makes your money clear. Decide <em>what comes next.</em>
             </h1>
             <p className="hero-lead">
-              Zoption is a private budget and expense tracker for importing or recording
+              Start for free with a private budget and expense tracker for importing or recording
               transactions, setting practical budgets, tracking recurring expenses, and
               understanding monthly cash flow — without connecting to your bank.
             </p>
             <div className="hero-actions">
               <Link className="button primary" to="/signup">
-                Create account <ArrowRight size={18} aria-hidden="true" />
+                Start for free <ArrowRight size={18} aria-hidden="true" />
               </Link>
               <a className="button secondary" href="#modules">
                 Explore the modules
               </a>
             </div>
+            <p className="hero-cta-note">
+              <Check size={15} aria-hidden="true" /> No payment required. Upgrade only if you want
+              higher limits and Pro features.
+            </p>
             <ul className="hero-proof" aria-label="Zoption at a glance">
               <li>
-                <strong>Review every row</strong>
-                <span>before anything is saved</span>
+                <strong>Free plan</strong>
+                <span>track without paying</span>
               </li>
               <li>
                 <strong>No bank connection</strong>
                 <span>you choose what to add</span>
               </li>
               <li>
-                <strong>Track more</strong>
-                <span>subscriptions, interest &amp; plans</span>
+                <strong>Upgrade when ready</strong>
+                <span>for higher limits &amp; Pro features</span>
               </li>
             </ul>
           </div>
@@ -526,14 +531,15 @@ export function LandingPage() {
           </div>
           <div className="final-cta-actions">
             <Link className="button primary" to="/signup">
-              Create your workspace <ArrowRight size={17} aria-hidden="true" />
+              Start for free <ArrowRight size={17} aria-hidden="true" />
             </Link>
             <Link className="button secondary" to="/login">
               Sign in
             </Link>
           </div>
           <p className="cta-note">
-            Starts empty and private. No bank connection, no credentials to hand over.
+            No payment required. Your workspace starts empty and private, with no bank credentials
+            to hand over.
           </p>
         </section>
 
@@ -547,6 +553,14 @@ export function LandingPage() {
             </p>
           </div>
           <dl className="faq-list">
+            <details className="faq-item">
+              <summary>Can I use Zoption for free?</summary>
+              <dd>
+                Yes. Create an account and use Zoption&rsquo;s Free plan without paying. It includes
+                core tracking features with plan limits; upgrade to Pro only if you want higher
+                limits and additional features.
+              </dd>
+            </details>
             <details className="faq-item">
               <summary>Does Zoption connect to my bank?</summary>
               <dd>

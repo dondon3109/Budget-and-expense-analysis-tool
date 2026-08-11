@@ -55,7 +55,7 @@ export interface SitemapEntry extends SitemapFields {
 const WEBSITE_ID = `${SITE_ORIGIN}/#website`;
 const WEB_APPLICATION_ID = `${SITE_ORIGIN}/#webapplication`;
 const WEBSITE_DESCRIPTION =
-  "A private budget and expense tracker for reviewing imported transactions, budgets, and monthly cash flow.";
+  "A private budget and expense tracker with a Free plan for reviewing imported transactions, budgets, and monthly cash flow.";
 
 function websiteNode(): StructuredDataNode {
   return {
@@ -81,10 +81,11 @@ function homepageStructuredData(): StructuredDataGraph {
     operatingSystem: "Web",
     url: SITE_ORIGIN,
     description:
-      "A private budget and expense tracker for reviewing imported transactions, budgets, and monthly cash flow without a direct bank connection.",
+      "A private budget and expense tracker with a Free plan for reviewing imported transactions, budgets, and monthly cash flow without a direct bank connection.",
     inLanguage: "en",
     isPartOf: { "@id": WEBSITE_ID },
     featureList: [
+      "Start with a Free plan and upgrade only for higher limits and Pro features.",
       "Map columns, catch errors, and prevent duplicate entries.",
       "See totals, trends, categories, and budget progress together.",
       "Start from a clean workspace and add only the records you choose.",
@@ -99,6 +100,11 @@ type FaqItem = {
 };
 
 const FAQ_ITEMS: FaqItem[] = [
+  {
+    question: "Can I use Zoption for free?",
+    answer:
+      "Yes. Create an account and use Zoption's Free plan without paying. It includes core tracking features with plan limits; upgrade to Pro only if you want higher limits and additional features.",
+  },
   {
     question: "Does Zoption connect to my bank?",
     answer:
@@ -169,7 +175,7 @@ function faqStructuredData(): StructuredDataGraph {
         "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, subscription tracking, savings interest, the AI assistant, privacy, and billing.",
       url: `${SITE_ORIGIN}/faq`,
       inLanguage: "en",
-      dateModified: LEGAL_PAGE_LAST_MODIFIED,
+      dateModified: PUBLIC_CONTENT_LAST_MODIFIED,
       isPartOf: { "@id": WEBSITE_ID },
     },
     {
@@ -239,18 +245,20 @@ function installPageStructuredData(): StructuredDataGraph {
   );
 }
 
-const LEGAL_PAGE_LAST_MODIFIED = "2026-08-10";
+const PUBLIC_CONTENT_LAST_MODIFIED = "2026-08-11";
+const TERMS_AND_PRIVACY_LAST_MODIFIED = "2026-08-11";
+const COOKIE_POLICY_LAST_MODIFIED = "2026-08-10";
 
 export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata> = {
   "/": {
     title: "Zoption — Private Budget & Expense Tracker",
     description:
-      "Track expenses, review CSV or Excel transaction imports, set practical budgets, and understand monthly cash flow in a private workspace without a direct bank connection.",
+      "Start for free to track expenses, review CSV or Excel transaction imports, set practical budgets, and understand monthly cash flow without a direct bank connection.",
     canonical: SITE_ORIGIN,
     robots: "index,follow",
     structuredData: homepageStructuredData(),
     sitemap: {
-      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      lastModified: PUBLIC_CONTENT_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 1,
     },
@@ -258,17 +266,17 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/terms-of-service": {
     title: "Terms of Service — Zoption",
     description:
-      "Read the terms that govern Zoption accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
+      "Read the terms that govern Zoption Free and Pro plans, accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
     canonical: `${SITE_ORIGIN}/terms-of-service`,
     robots: "index,follow",
     structuredData: legalPageStructuredData(
       "Terms of Service — Zoption",
-      "The terms that govern Zoption accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
+      "The terms that govern Zoption Free and Pro plans, accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
       `${SITE_ORIGIN}/terms-of-service`,
-      LEGAL_PAGE_LAST_MODIFIED,
+      TERMS_AND_PRIVACY_LAST_MODIFIED,
     ),
     sitemap: {
-      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      lastModified: TERMS_AND_PRIVACY_LAST_MODIFIED,
       changeFrequency: "yearly",
       priority: 0.4,
     },
@@ -276,17 +284,17 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/privacy-policy": {
     title: "Privacy Policy — Zoption",
     description:
-      "Learn how Zoption handles account, profile, financial workspace, imported transaction, assistant, consent, and operational information.",
+      "Learn how Zoption handles account, profile, financial workspace, plan, billing, imported transaction, assistant, consent, and operational information.",
     canonical: `${SITE_ORIGIN}/privacy-policy`,
     robots: "index,follow",
     structuredData: legalPageStructuredData(
       "Privacy Policy — Zoption",
-      "How Zoption handles account, profile, financial workspace, imported transaction, assistant, consent, and operational information.",
+      "How Zoption handles account, profile, financial workspace, plan, billing, imported transaction, assistant, consent, and operational information.",
       `${SITE_ORIGIN}/privacy-policy`,
-      LEGAL_PAGE_LAST_MODIFIED,
+      TERMS_AND_PRIVACY_LAST_MODIFIED,
     ),
     sitemap: {
-      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      lastModified: TERMS_AND_PRIVACY_LAST_MODIFIED,
       changeFrequency: "yearly",
       priority: 0.4,
     },
@@ -301,10 +309,10 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       "Cookie Policy — Zoption",
       "The necessary browser storage Zoption uses and how Google Analytics 4 and Cloudflare Web Analytics remain blocked until Analytics consent is granted.",
       `${SITE_ORIGIN}/cookie-policy`,
-      LEGAL_PAGE_LAST_MODIFIED,
+      COOKIE_POLICY_LAST_MODIFIED,
     ),
     sitemap: {
-      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      lastModified: COOKIE_POLICY_LAST_MODIFIED,
       changeFrequency: "yearly",
       priority: 0.4,
     },
@@ -317,7 +325,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
     robots: "index,follow",
     structuredData: faqStructuredData(),
     sitemap: {
-      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      lastModified: PUBLIC_CONTENT_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.6,
     },
@@ -330,7 +338,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
     robots: "index,follow",
     structuredData: installPageStructuredData(),
     sitemap: {
-      lastModified: LEGAL_PAGE_LAST_MODIFIED,
+      lastModified: ANDROID_RELEASE.releaseDate,
       changeFrequency: "monthly",
       priority: 0.7,
     },

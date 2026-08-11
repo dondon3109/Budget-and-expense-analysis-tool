@@ -286,6 +286,21 @@
 .hero-actions .button.secondary:hover {
   border-color: var(--lp-accent);
 }
+.hero-cta-note {
+  max-width: 520px;
+  margin-top: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--lp-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.hero-cta-note svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--lp-accent-strong);
+}
 .hero-proof {
   margin: 30px 0 0;
   padding: 24px 0 0;

@@ -4,13 +4,15 @@ export function TermsOfServicePage() {
   return (
     <LegalPageLayout
       title="Terms of Service"
-      summary="These terms explain the rules for using Zoption, including its personal-finance workspace, file imports, exports, and optional AI assistant."
+      summary="These terms explain the rules for using Zoption, including its Free and Pro plans, personal-finance workspace, file imports, exports, and optional AI assistant."
+      lastUpdated="August 11, 2026"
     >
       <section>
         <h2>1. Who operates Zoption</h2>
         <p>
           Zoption is operated by Don Leonard E. Estrera, doing this business as Zoption. Questions
-          about these Terms may be sent to support@zoption.site.
+          about these Terms may be sent to{" "}
+          <a href="mailto:support@zoption.site">support@zoption.site</a>.
         </p>
       </section>
 
@@ -30,15 +32,15 @@ export function TermsOfServicePage() {
           You must provide accurate, complete, and current account information and keep that
           information updated. You are responsible for safeguarding your login credentials and
           taking reasonable measures to secure the devices you use to access Zoption. You must
-          promptly notify us at [support@zoption.site](mailto:support@zoption.site) if you suspect
-          that your account, password, or other login credentials have been lost, compromised, or
-          accessed without authorization. We may require you to verify your email address before
-          activating your account or allowing access to certain features. We may temporarily suspend
-          or restrict access when reasonably necessary to investigate suspected misuse, protect
-          Zoption or its users, prevent security threats, or comply with applicable law. We may
-          terminate an account for a material or repeated violation of these Terms. Where reasonably
-          practicable, we will provide notice of the action taken, unless doing so could create a
-          security risk or violate applicable law.
+          promptly notify us at <a href="mailto:support@zoption.site">support@zoption.site</a> if
+          you suspect that your account, password, or other login credentials have been lost,
+          compromised, or accessed without authorization. We may require you to verify your email
+          address before activating your account or allowing access to certain features. We may
+          temporarily suspend or restrict access when reasonably necessary to investigate suspected
+          misuse, protect Zoption or its users, prevent security threats, or comply with applicable
+          law. We may terminate an account for a material or repeated violation of these Terms.
+          Where reasonably practicable, we will provide notice of the action taken, unless doing so
+          could create a security risk or violate applicable law.
         </p>
       </section>
 
@@ -115,18 +117,27 @@ export function TermsOfServicePage() {
       </section>
 
       <section>
-        <h2>8. Subscriptions and billing</h2>
+        <h2>8. Free plan, subscriptions, and billing</h2>
         <p>
-          Zoption offers monthly and annual paid subscription options through PayPal. Prices are
-          charged in Philippine pesos; the price, billing interval, and plan shown in PayPal
-          approval apply to the subscription you confirm. Subscriptions renew automatically for the
-          selected interval unless you cancel renewal. Taxes may apply.
+          Creating an account places you on the Free plan. The Free plan has no subscription charge
+          and does not require a payment method, but it is subject to the feature and usage limits
+          shown in Zoption. If you reach a limit, the affected action may remain unavailable until
+          the relevant usage window resets, you free available capacity where supported, or you
+          upgrade to Zoption Pro. Free-plan features and limits may change as described in Section
+          9.
+        </p>
+        <p>
+          Zoption Pro is an optional paid plan offered through monthly and annual PayPal
+          subscriptions. Prices are charged in Philippine pesos; the price, billing interval, and
+          plan shown in PayPal approval apply to the subscription you confirm. Subscriptions renew
+          automatically for the selected interval unless you cancel renewal. Taxes may apply.
         </p>
 
         <p>
           You can request cancellation through Plan and billing in Zoption. Cancellation stops
           future renewal, and your paid access remains available through the end of the current paid
-          period. Zoption does not issue automatic refunds for the current paid period.
+          period. When paid access ends, your account returns to the Free plan and its current
+          limits apply. Zoption does not issue automatic refunds for the current paid period.
         </p>
 
         <p>
@@ -218,26 +229,26 @@ export function TermsOfServicePage() {
           of the Republic of the Philippines, without regard to conflict-of-laws principles.
           However, nothing in these Terms limits any mandatory rights or protections available to
           you under the laws applicable in your location. Before commencing formal proceedings, you
-          should contact us at [support@zoption.site](mailto:support@zoption.site) and provide
-          sufficient details about the dispute. You and Zoption agree to attempt in good faith to
-          resolve the matter through our internal complaint-resolution process. For disputes covered
-          by applicable Philippine internet-transaction laws, the internal complaint-resolution
-          process will be considered exhausted if the complaint remains unresolved seven calendar
-          days after it was submitted. If the dispute cannot be resolved informally, either party
-          may bring the matter before a court of competent jurisdiction and proper venue under
-          applicable Philippine law. Nothing in these Terms prevents you from filing a complaint
-          with the Department of Trade and Industry, the National Privacy Commission, or another
-          government authority with jurisdiction over the matter. We may update these Terms from
-          time to time to reflect changes to Zoption, our business practices, or applicable legal
-          and regulatory requirements. The updated Terms will identify their effective date. When
-          required by law, or when changes materially affect your rights or obligations, we will
-          provide reasonable advance notice through email, an in-service notification, or another
-          appropriate method. Unless otherwise required by law, updated Terms will apply
-          prospectively from their stated effective date. By continuing to use Zoption after that
-          date, you agree to the updated Terms. If you do not agree to an update, you must stop
-          using Zoption and may delete your account through your account settings. Where applicable
-          law requires your express consent to a change, the change will not apply to you unless
-          that consent is obtained.
+          should contact us at <a href="mailto:support@zoption.site">support@zoption.site</a> and
+          provide sufficient details about the dispute. You and Zoption agree to attempt in good
+          faith to resolve the matter through our internal complaint-resolution process. For
+          disputes covered by applicable Philippine internet-transaction laws, the internal
+          complaint-resolution process will be considered exhausted if the complaint remains
+          unresolved seven calendar days after it was submitted. If the dispute cannot be resolved
+          informally, either party may bring the matter before a court of competent jurisdiction and
+          proper venue under applicable Philippine law. Nothing in these Terms prevents you from
+          filing a complaint with the Department of Trade and Industry, the National Privacy
+          Commission, or another government authority with jurisdiction over the matter. We may
+          update these Terms from time to time to reflect changes to Zoption, our business
+          practices, or applicable legal and regulatory requirements. The updated Terms will
+          identify their effective date. When required by law, or when changes materially affect
+          your rights or obligations, we will provide reasonable advance notice through email, an
+          in-service notification, or another appropriate method. Unless otherwise required by law,
+          updated Terms will apply prospectively from their stated effective date. By continuing to
+          use Zoption after that date, you agree to the updated Terms. If you do not agree to an
+          update, you must stop using Zoption and may delete your account through your account
+          settings. Where applicable law requires your express consent to a change, the change will
+          not apply to you unless that consent is obtained.
         </p>
       </section>
 
@@ -248,7 +259,7 @@ export function TermsOfServicePage() {
           <br />
           Address: San Francisco, Cebu, Philippines
           <br />
-          Email: support@zoption.site
+          Email: <a href="mailto:support@zoption.site">support@zoption.site</a>
         </p>
       </section>
     </LegalPageLayout>

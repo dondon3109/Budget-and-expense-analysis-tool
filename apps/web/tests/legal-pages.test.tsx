@@ -29,7 +29,7 @@ describe("legal pages", () => {
     renderPage(<TermsOfServicePage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Terms of Service" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: August 10, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: August 11, 2026")).toBeInTheDocument();
     expect(
       screen.getByText(/does not currently connect directly to your bank/i),
     ).toBeInTheDocument();
@@ -37,18 +37,22 @@ describe("legal pages", () => {
     expect(screen.getByText(/separate, versioned consent/i)).toBeInTheDocument();
     expect(screen.getByText(/calculated from the transactions recorded/i)).toBeInTheDocument();
     expect(screen.getByText(/sanitized audit snapshots/i)).toBeInTheDocument();
-    expect(screen.getByText(/through PayPal/i)).toBeInTheDocument();
+    expect(screen.getByText(/monthly and annual PayPal subscriptions/i)).toBeInTheDocument();
+    expect(screen.getByText(/Free plan has no subscription charge/i)).toBeInTheDocument();
+    expect(screen.getByText(/account returns to the Free plan/i)).toBeInTheDocument();
     expect(screen.getByText(/renew automatically/i)).toBeInTheDocument();
     expect(screen.getByText(/verified PayPal webhook notification/i)).toBeInTheDocument();
     expect(
       screen.getByText(/account deletion control in your account settings/i),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "support@zoption.site" })).toHaveLength(4);
   });
 
   it("describes actual processors, financial security, and user rights", () => {
     renderPage(<PrivacyPolicyPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeInTheDocument();
+    expect(screen.getByText("Last updated: August 11, 2026")).toBeInTheDocument();
     expect(screen.getByText(/Zoption does not sell user financial data/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);
@@ -58,6 +62,8 @@ describe("legal pages", () => {
     expect(screen.getByText(/public storage link/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Full payment-card credentials/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/minimal verified-webhook event metadata/i)).toBeInTheDocument();
+    expect(screen.getByText(/plan tier, including Free or Zoption Pro/i)).toBeInTheDocument();
+    expect(screen.getByText(/only if you start checkout for or subscribe/i)).toBeInTheDocument();
     expect(screen.getByText(/transaction-derived balances/i)).toBeInTheDocument();
     expect(screen.getAllByText(/sanitized audit/i).length).toBeGreaterThan(0);
     expect(
@@ -66,6 +72,7 @@ describe("legal pages", () => {
     expect(screen.getByText(/current 12-month event-retention plan/i)).toBeInTheDocument();
     expect(screen.getByText(/not a complete account-data archive/i)).toBeInTheDocument();
     expect(screen.getByText(/includes an in-app account-deletion control/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "support@zoption.site" })).toHaveLength(5);
   });
 
   it("states optional categories are inactive and exposes Cookie Settings", () => {

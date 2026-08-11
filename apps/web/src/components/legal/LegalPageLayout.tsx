@@ -9,10 +9,12 @@ import "./LegalPageLayout.css";
 export function LegalPageLayout({
   title,
   summary,
+  lastUpdated = "August 10, 2026",
   children,
 }: {
   title: string;
   summary: string;
+  lastUpdated?: string;
   children: ReactNode;
 }) {
   return (
@@ -32,7 +34,7 @@ export function LegalPageLayout({
             </Link>
             <h1>{title}</h1>
             <p className="legal-summary">{summary}</p>
-            <p className="legal-updated">Last updated: August 10, 2026</p>
+            <p className="legal-updated">Last updated: {lastUpdated}</p>
           </header>
           {children}
         </article>
