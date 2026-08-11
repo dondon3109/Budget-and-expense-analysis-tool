@@ -193,6 +193,53 @@ describe("dashboard calculations", () => {
     expect(result.metrics.expenseByCurrency).toEqual({ PHP: 40_000, USD: 5_000 });
   });
 
+  it("keeps remaining budget at zero when expenses have no budget plan", () => {
+    const transactions: TransactionRecord[] = [
+      { ...baseTransaction, id: "expense", kind: "expense", amountMinor: -70_000 },
+    ];
+
+    const result = buildDashboardSummary(transactions, [], {
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+
+    expect(result.metrics.moneyOutMinor).toBe(70_000);
+    expect(result.metrics.remainingBudgetMinor).toBe(0);
+    expect(result.metrics.budgetUsedPercent).toBe(0);
+  });
+
+  it("only applies spending from categories with a budget plan", () => {
+    const transactions: TransactionRecord[] = [
+      { ...baseTransaction, id: "food-expense", kind: "expense", amountMinor: -30_000 },
+      {
+        ...baseTransaction,
+        id: "travel-expense",
+        kind: "expense",
+        amountMinor: -90_000,
+        categoryId: "travel",
+        categoryName: "Travel",
+      },
+    ];
+    const budgets: BudgetRecord[] = [
+      {
+        categoryId: "food",
+        categoryName: "Food",
+        categoryColor: "#a56f39",
+        month: "2026-07-01",
+        limitMinor: 60_000,
+      },
+    ];
+
+    const result = buildDashboardSummary(transactions, budgets, {
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+
+    expect(result.metrics.moneyOutMinor).toBe(120_000);
+    expect(result.metrics.remainingBudgetMinor).toBe(30_000);
+    expect(result.metrics.budgetUsedPercent).toBe(50);
+  });
+
   it("returns stable empty-state totals", () => {
     const result = buildDashboardSummary([], [], { from: "2026-07-01", to: "2026-07-31" });
     expect(result.metrics.budgetUsedPercent).toBe(0);

@@ -211,6 +211,10 @@ export function buildDashboardSummary(
   const budgetMonth = period.from.slice(0, 7);
   const currentBudgets = budgets.filter((budget) => budget.month.startsWith(budgetMonth));
   const budgetLimitMinor = currentBudgets.reduce((sum, budget) => sum + budget.limitMinor, 0);
+  const budgetedSpendingMinor = currentBudgets.reduce(
+    (sum, budget) => sum + (spending.get(budget.categoryId)?.amountMinor ?? 0),
+    0,
+  );
 
   const monthly = new Map<string, { incomeMinor: number; expenseMinor: number }>();
   for (const transaction of transactions) {
@@ -233,9 +237,11 @@ export function buildDashboardSummary(
       incomeByCurrency,
       expenseByCurrency,
       budgetLimitMinor,
-      remainingBudgetMinor: budgetLimitMinor - moneyOutMinor,
+      remainingBudgetMinor: budgetLimitMinor - budgetedSpendingMinor,
       budgetUsedPercent:
-        budgetLimitMinor === 0 ? 0 : clampRoundPercent((moneyOutMinor / budgetLimitMinor) * 100),
+        budgetLimitMinor === 0
+          ? 0
+          : clampRoundPercent((budgetedSpendingMinor / budgetLimitMinor) * 100),
     },
     spendingByCategory: [...spending.entries()]
       .map(([categoryId, category]) => ({
