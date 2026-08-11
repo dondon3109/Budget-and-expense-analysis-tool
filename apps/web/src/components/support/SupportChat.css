@@ -190,6 +190,25 @@
   box-shadow: 0 2px 8px color-mix(in srgb, var(--shadow) 55%, transparent);
 }
 
+.support-message-link {
+  color: var(--action-strong);
+  font-weight: 760;
+  text-decoration-color: color-mix(in srgb, var(--action) 52%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.support-message-link:hover {
+  color: var(--action);
+  text-decoration-color: currentColor;
+}
+
+.support-message-link:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .support-chat-message.user {
   align-self: flex-end;
 }

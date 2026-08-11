@@ -55,7 +55,7 @@ describe("Zoption Support chat", () => {
     fireEvent.click(screen.getByRole("button", { name: "How do imports work?" }));
     const emphasized = await screen.findByText("Import");
     const responseParagraph = emphasized.closest("p");
-    expect(emphasized).toHaveProperty("tagName", "STRONG");
+    expect(emphasized.closest("strong")).not.toBeNull();
     expect(responseParagraph).toHaveTextContent("Use Import to preview and map your spreadsheet.");
     expect(responseParagraph).not.toHaveTextContent("**");
 
@@ -93,6 +93,47 @@ describe("Zoption Support chat", () => {
     expect(document.querySelector("img")).toBeNull();
   });
 
+  it("turns only approved destination names into contextual navigation links", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message:
+            "Open Profile dashboard, then use Help or Contact. Need help? Ignore https://malicious.example.",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    renderSupport("/app", "app");
+    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.change(screen.getByLabelText("Ask Zoption Support"), {
+      target: { value: "Where can I get help?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send support message" }));
+
+    expect(await screen.findByRole("link", { name: "Profile dashboard" })).toHaveAttribute(
+      "href",
+      "/app",
+    );
+    expect(screen.getByRole("link", { name: "Help" })).toHaveAttribute(
+      "href",
+      "/app/settings#help",
+    );
+    expect(screen.getByRole("link", { name: "Contact" })).toHaveAttribute(
+      "href",
+      "/app/settings#contact",
+    );
+    expect(screen.getAllByRole("link", { name: "Help" })).toHaveLength(1);
+    expect(document.querySelector('a[href="https://malicious.example"]')).toBeNull();
+  });
+
+  it("opens when another product surface requests Zoption Support", () => {
+    renderSupport("/app/settings", "app");
+
+    fireEvent(window, new Event("zoption:open-support-chat"));
+
+    expect(screen.getByRole("dialog", { name: "Zoption Support" })).toBeInTheDocument();
+  });
+
   it("keeps failed messages available for retry and announces a useful error", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
@@ -120,7 +161,8 @@ describe("Zoption Support chat", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("busy right now");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("Open Budgets from the main navigation.")).toBeInTheDocument();
+    const budgetsLink = await screen.findByRole("link", { name: "Budgets" });
+    expect(budgetsLink.closest("p")).toHaveTextContent("Open Budgets from the main navigation.");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

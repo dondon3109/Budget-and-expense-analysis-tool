@@ -64,6 +64,8 @@ describe("product support chat", () => {
     expect(request?.messages[0]?.content).toContain("You have no access to the person's account");
     expect(request?.messages[0]?.content).toContain("Current surface: import");
     expect(request?.messages[0]?.content).toContain("CSV, XLSX, and XLS");
+    expect(request?.messages[0]?.content).toContain("safe clickable links");
+    expect(request?.messages[0]?.content).toContain("support@zoption.site");
     expect(request?.messages[1]).toEqual({
       role: "user",
       content: "How do I import my spreadsheet?",

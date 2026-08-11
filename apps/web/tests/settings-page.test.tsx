@@ -44,6 +44,7 @@ import { ApiRequestError } from "../src/lib/api";
 import { SettingsPage } from "../src/pages/SettingsPage";
 
 const scrollIntoView = vi.fn();
+const writeClipboardText = vi.fn();
 
 function renderSettings(entry = "/app/settings") {
   return render(
@@ -84,6 +85,11 @@ describe("SettingsPage", () => {
       configurable: true,
       value: vi.fn(),
     });
+    writeClipboardText.mockReset().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: writeClipboardText },
+    });
   });
 
   it("shows current profile and email information", () => {
@@ -98,6 +104,9 @@ describe("SettingsPage", () => {
   it.each([
     ["profile", "/app/settings#profile-settings", "profile-settings"],
     ["billing", "/app/settings#plan-and-billing", "plan-and-billing"],
+    ["help and contact", "/app/settings#help-and-contact", "help-and-contact"],
+    ["help", "/app/settings#help", "help"],
+    ["contact", "/app/settings#contact", "contact"],
   ])("scrolls to and focuses the %s section from its hash", async (_label, entry, sectionId) => {
     renderSettings(entry);
 
@@ -105,6 +114,34 @@ describe("SettingsPage", () => {
     expect(section).toHaveAttribute("tabindex", "-1");
     await waitFor(() => expect(section).toHaveFocus());
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+  });
+
+  it("offers FAQ, chat, and resilient email support from Account Settings", async () => {
+    const openSupportListener = vi.fn();
+    window.addEventListener("zoption:open-support-chat", openSupportListener, { once: true });
+    renderSettings();
+
+    expect(screen.getByRole("heading", { name: "Help & contact" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Browse FAQ" })).toHaveAttribute("href", "/faq");
+    const copyEmailButton = screen.getByRole("button", { name: "Copy email address" });
+    fireEvent.click(copyEmailButton);
+    await waitFor(() => expect(writeClipboardText).toHaveBeenCalledWith("support@zoption.site"));
+    expect(screen.getByRole("button", { name: "Email copied" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Paste it into the To field in your email app",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Ask Zoption" }));
+    expect(openSupportListener).toHaveBeenCalledOnce();
+  });
+
+  it("shows the support address when clipboard access is unavailable", () => {
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+    renderSettings();
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy email address" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("copy support@zoption.site manually");
   });
 
   it("uploads a validated profile picture", async () => {

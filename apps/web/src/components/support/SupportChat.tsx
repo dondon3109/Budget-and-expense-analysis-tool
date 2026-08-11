@@ -8,7 +8,8 @@ import {
   type SupportChatMessageInput,
   type SupportPageContext,
 } from "../../lib/api";
-import { renderInlineEmphasis } from "../chat/renderInlineEmphasis";
+import { renderSupportMessage } from "./renderSupportMessage";
+import { OPEN_SUPPORT_CHAT_EVENT } from "./supportEvents";
 import "./SupportChat.css";
 
 type SupportSurface = "landing" | "app";
@@ -122,6 +123,12 @@ export function SupportChat({ surface }: SupportChatProps) {
     const frame = window.requestAnimationFrame(() => composerRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [open]);
+
+  useEffect(() => {
+    const handleOpenRequest = () => setOpen(true);
+    window.addEventListener(OPEN_SUPPORT_CHAT_EVENT, handleOpenRequest);
+    return () => window.removeEventListener(OPEN_SUPPORT_CHAT_EVENT, handleOpenRequest);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -260,7 +267,7 @@ export function SupportChat({ surface }: SupportChatProps) {
                 <span>{message.role === "assistant" ? "Support" : "You"}</span>
                 <p>
                   {message.role === "assistant"
-                    ? renderInlineEmphasis(message.content)
+                    ? renderSupportMessage(message.content)
                     : message.content}
                 </p>
               </article>
