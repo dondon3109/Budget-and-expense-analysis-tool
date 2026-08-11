@@ -33,14 +33,16 @@ vi.mock("../src/components/layout/AppShell", () => ({
 
 vi.mock("../src/components/account/BillingSettings", () => ({
   BillingSettings: () => (
-    <section>
-      <h2>Plan and billing</h2>
+    <section id="plan-and-billing" aria-labelledby="billing-settings-title" tabIndex={-1}>
+      <h2 id="billing-settings-title">Plan and billing</h2>
     </section>
   ),
 }));
 
 import { ApiRequestError } from "../src/lib/api";
 import { SettingsPage } from "../src/pages/SettingsPage";
+
+const scrollIntoView = vi.fn();
 
 function renderSettings(entry = "/app/settings") {
   return render(
@@ -54,6 +56,11 @@ describe("SettingsPage", () => {
   afterEach(cleanup);
 
   beforeEach(() => {
+    scrollIntoView.mockReset();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
     authState.user = {
       id: "test-user",
       email: "test@example.com",
@@ -84,6 +91,18 @@ describe("SettingsPage", () => {
     expect(screen.getByLabelText(/^Display name/)).toHaveValue("Taylor");
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
     expect(screen.getByText("Pending confirmation: pending@example.com")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["profile", "/app/settings#profile-settings", "profile-settings"],
+    ["billing", "/app/settings#plan-and-billing", "plan-and-billing"],
+  ])("scrolls to and focuses the %s section from its hash", async (_label, entry, sectionId) => {
+    renderSettings(entry);
+
+    const section = document.getElementById(sectionId);
+    expect(section).toHaveAttribute("tabindex", "-1");
+    await waitFor(() => expect(section).toHaveFocus());
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
   });
 
   it("uploads a validated profile picture", async () => {

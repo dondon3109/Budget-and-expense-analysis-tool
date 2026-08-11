@@ -3,7 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "../src/components/layout/AppShell";
@@ -30,6 +30,11 @@ vi.mock("../src/lib/supabase", () => ({
     },
   },
 }));
+
+function CurrentLocation() {
+  const location = useLocation();
+  return <output data-testid="current-location">{`${location.pathname}${location.hash}`}</output>;
+}
 
 describe("AppShell", () => {
   afterEach(cleanup);
@@ -75,6 +80,10 @@ describe("AppShell", () => {
     expect(screen.getByText("Signed in as")).toBeInTheDocument();
     expect(screen.getByText("Taylor")).toBeInTheDocument();
     expect(screen.queryByText("test@example.com")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open profile settings" })).toHaveAttribute(
+      "href",
+      "/app/settings#profile-settings",
+    );
     expect(document.querySelector(".sidebar-profile img")).toHaveAttribute(
       "src",
       "https://example.com/avatar.png",
@@ -128,6 +137,7 @@ describe("AppShell", () => {
           <MemoryRouter initialEntries={["/app/calendar"]}>
             <AppShell>
               <div>Calendar content</div>
+              <CurrentLocation />
             </AppShell>
           </MemoryRouter>
         </CookieConsentProvider>
@@ -152,5 +162,16 @@ describe("AppShell", () => {
       "false",
     );
     expect(document.querySelector(".sidebar")).not.toHaveClass("open");
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    fireEvent.click(screen.getByRole("link", { name: "Open profile settings" }));
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings#profile-settings",
+    );
+    expect(document.querySelector(".sidebar")).not.toHaveClass("open");
+    expect(screen.getByRole("button", { name: "Open menu" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
   });
 });

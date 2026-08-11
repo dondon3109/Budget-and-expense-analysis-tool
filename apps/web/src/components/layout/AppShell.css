@@ -85,10 +85,33 @@
 
 .sidebar-account-identity {
   min-width: 0;
+  margin: -6px;
+  padding: 6px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
+  color: inherit;
+  border-radius: 10px;
+  outline: 0;
+  text-decoration: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.sidebar-account-identity:hover {
+  background: var(--surface-hover);
+}
+
+.sidebar-account-identity:active {
+  color: var(--action-strong);
+  background: var(--action-soft);
+}
+
+.sidebar-account-identity:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
 .sidebar-account-identity > div {

@@ -15,6 +15,10 @@ import "./SettingsPage.css";
 
 const DISPLAY_NAME_LIMIT = 80;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SETTINGS_SECTION_BY_HASH: Record<string, string> = {
+  "#profile-settings": "profile-settings",
+  "#plan-and-billing": "plan-and-billing",
+};
 
 interface Feedback {
   error?: string;
@@ -81,9 +85,11 @@ export function SettingsPage() {
   }, [selectedAvatar]);
 
   useEffect(() => {
-    if (location.hash !== "#plan-and-billing") return;
+    const sectionId = SETTINGS_SECTION_BY_HASH[location.hash];
+    if (!sectionId) return;
+
     const frame = window.requestAnimationFrame(() => {
-      const section = document.getElementById("plan-and-billing");
+      const section = document.getElementById(sectionId);
       section?.scrollIntoView({ behavior: "smooth", block: "start" });
       section?.focus({ preventScroll: true });
     });
@@ -336,7 +342,12 @@ export function SettingsPage() {
         )}
 
         <div className="settings-sections">
-          <section className="settings-section" aria-labelledby="profile-settings-title">
+          <section
+            id="profile-settings"
+            className="settings-section"
+            aria-labelledby="profile-settings-title"
+            tabIndex={-1}
+          >
             <div className="settings-section-heading">
               <div>
                 <h2 id="profile-settings-title">Profile</h2>

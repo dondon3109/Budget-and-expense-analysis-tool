@@ -163,7 +163,12 @@ export function AppShell({ children }: AppShellProps) {
           </button>
         </div>
         <div className="sidebar-profile">
-          <div className="sidebar-account-identity">
+          <Link
+            className="sidebar-account-identity"
+            to="/app/settings#profile-settings"
+            aria-label="Open profile settings"
+            onClick={() => setMenuOpen(false)}
+          >
             <UserAvatar
               avatarPath={avatarPath}
               displayName={displayName}
@@ -176,7 +181,7 @@ export function AppShell({ children }: AppShellProps) {
                 {displayName || user?.email || "Zoption user"}
               </strong>
             </div>
-          </div>
+          </Link>
           <div className="sidebar-profile-theme">
             <span>Appearance</span>
             <ThemeToggle />
