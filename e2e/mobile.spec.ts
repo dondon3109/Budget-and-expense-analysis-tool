@@ -9,7 +9,7 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: "See where your money goes. Decide what comes next." }),
+    page.getByRole("heading", { name: "Zoption makes your money clear. Decide what comes next." }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Create account" }).last()).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign in" }).last()).toBeVisible();

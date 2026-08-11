@@ -25,13 +25,13 @@ try {
     name: "landing-desktop.png",
     path: "/",
     viewport: { width: 1440, height: 1000 },
-    heading: "See where your money goes. Decide what comes next.",
+    heading: "Zoption makes your money clear. Decide what comes next.",
   });
   await capture({
     name: "landing-mobile.png",
     path: "/",
     viewport: { width: 390, height: 844 },
-    heading: "See where your money goes. Decide what comes next.",
+    heading: "Zoption makes your money clear. Decide what comes next.",
   });
   await capture({
     name: "login-desktop.png",

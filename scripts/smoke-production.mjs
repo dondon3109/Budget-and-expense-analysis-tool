@@ -94,7 +94,7 @@ function assertPublicSeoDocument(html, path, canonical, label) {
 
 const apiHeaders = { Origin: origin };
 const publicPages = [
-  ["landing page", "/", "See where your money goes. Decide"],
+  ["landing page", "/", "Zoption makes your money clear. Decide"],
   ["terms page", "/terms-of-service", "Terms of Service"],
   ["privacy page", "/privacy-policy", "Privacy Policy"],
   ["cookie page", "/cookie-policy", "Cookie Policy"],

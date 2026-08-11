@@ -12,7 +12,7 @@ test("landing page leads visitors to account creation or sign in", async ({ page
 
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "See where your money goes. Decide what comes next." }),
+    page.getByRole("heading", { name: "Zoption makes your money clear. Decide what comes next." }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Create account" }).first()).toHaveAttribute(
     "href",
