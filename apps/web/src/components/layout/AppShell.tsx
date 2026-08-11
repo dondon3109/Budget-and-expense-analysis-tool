@@ -2,6 +2,7 @@ import {
   CalendarDays,
   CircleUserRound,
   FileUp,
+  House,
   List,
   LogOut,
   Menu,
@@ -12,14 +13,15 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 
 import "../../styles/private-primitives.css";
 import "./AppShell.css";
 import "../transactions/TransactionForm.css";
 import { useAuth } from "../../auth/AuthProvider";
 import { avatarPathFromMetadata } from "../../lib/avatar";
+import { useBodyScrollLock } from "../../hooks/useRootLock";
 import { BrandMark } from "../brand/BrandMark";
 import { LegalFooter } from "../legal/LegalFooter";
 import { UserAvatar } from "../profile/UserAvatar";
@@ -40,8 +42,16 @@ const navItems = [
   { label: "Subscriptions", icon: Repeat2, to: "/app/subscriptions" },
 ];
 
+const mobileNavItems = [
+  { label: "Home", icon: House, to: "/app", end: true },
+  { label: "Transactions", icon: List, to: "/app/transactions" },
+  { label: "Calendar", icon: CalendarDays, to: "/app/calendar" },
+  { label: "Budgets", icon: PiggyBank, to: "/app/budgets" },
+];
+
 export function AppShell({ children }: AppShellProps) {
   const { user, signOut } = useAuth();
+  const location = useLocation();
   const displayName =
     typeof user?.user_metadata?.display_name === "string"
       ? user.user_metadata.display_name.trim()
@@ -53,6 +63,26 @@ export function AppShell({ children }: AppShellProps) {
   );
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
+  const mobilePrimaryRoute = mobileNavItems.some(({ end, to }) =>
+    end ? location.pathname === to || location.pathname === `${to}/` : location.pathname === to,
+  );
+
+  useBodyScrollLock(menuOpen);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [menuOpen]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -75,7 +105,7 @@ export function AppShell({ children }: AppShellProps) {
         <div className="mobile-header-actions">
           <ThemeToggle />
           <button
-            className="icon-button"
+            className="icon-button mobile-header-menu"
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
             aria-label={menuOpen ? "Close navigation" : "Open navigation"}
@@ -86,6 +116,14 @@ export function AppShell({ children }: AppShellProps) {
           </button>
         </div>
       </header>
+
+      <button
+        className={`mobile-nav-backdrop ${menuOpen ? "open" : ""}`}
+        type="button"
+        aria-label="Close navigation"
+        tabIndex={menuOpen ? 0 : -1}
+        onClick={() => setMenuOpen(false)}
+      />
 
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         <div className="sidebar-toggle-row">
@@ -108,6 +146,20 @@ export function AppShell({ children }: AppShellProps) {
             aria-label={navCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <Menu size={20} />
+          </button>
+        </div>
+        <div className="mobile-menu-header">
+          <div>
+            <span>Workspace</span>
+            <strong>Navigate Zoption</strong>
+          </div>
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close navigation"
+          >
+            <X size={21} />
           </button>
         </div>
         <div className="sidebar-profile">
@@ -179,6 +231,38 @@ export function AppShell({ children }: AppShellProps) {
         <div className="app-main-content">{children}</div>
         <LegalFooter />
       </main>
+
+      <nav className="mobile-tab-bar" aria-label="Mobile navigation">
+        {mobileNavItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.label}
+              to={item.to}
+              end={item.end}
+              aria-label={`${item.label} tab`}
+              className={({ isActive }) =>
+                isActive ? "mobile-tab-item current" : "mobile-tab-item"
+              }
+              onClick={() => setMenuOpen(false)}
+            >
+              <Icon size={20} aria-hidden="true" />
+              <span>{item.label}</span>
+            </NavLink>
+          );
+        })}
+        <button
+          className={`mobile-tab-item ${menuOpen || !mobilePrimaryRoute ? "current" : ""}`}
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          aria-controls="primary-navigation"
+        >
+          {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+          <span>More</span>
+        </button>
+      </nav>
     </div>
   );
 }
