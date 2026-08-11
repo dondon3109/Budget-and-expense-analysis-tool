@@ -54,6 +54,7 @@ import { createImportRoutes } from "./routes/imports";
 import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
+import { createSupportRoutes } from "./routes/support";
 import { createTransactionRoutes } from "./routes/transactions";
 import type { AppEnvironment, Bindings } from "./types";
 
@@ -67,7 +68,13 @@ const PAYPAL_WEBHOOK_RATE_LIMIT = {
   limit: 60,
   windowSeconds: 60,
 } as const;
+const SUPPORT_CHAT_BODY_LIMIT = 24 * 1024;
+const SUPPORT_CHAT_RATE_LIMITS = [
+  { scope: "public-support-minute", limit: 8, windowSeconds: 60 },
+  { scope: "public-support-day", limit: 40, windowSeconds: 24 * 60 * 60 },
+] as const;
 const MISSING_PAYPAL_WEBHOOK_CLIENT = "missing-cf-connecting-ip";
+const MISSING_SUPPORT_CLIENT = "missing-cf-connecting-ip";
 
 function isJsonContentType(contentType: string | undefined): boolean {
   if (!contentType) return false;
@@ -116,6 +123,7 @@ export interface AppOptions {
   assistantUsage?: AssistantUsageRepository;
   assistantModelMemoryUsage?: AssistantModelMemoryUsageRepository;
   assistantProvider?: AssistantProvider;
+  supportProvider?: AssistantProvider;
   assistantTelemetryFactory?: AssistantAiTelemetryFactory;
   assistantService?: AssistantService;
   accountDeletionService?: AccountDeletionService;
@@ -146,6 +154,7 @@ export function createApp(options: AppOptions = {}) {
   const assistantModelMemoryUsage =
     options.assistantModelMemoryUsage ?? assistantModelMemoryUsageRepository;
   const assistantProvider = options.assistantProvider ?? deepSeekProvider;
+  const supportProvider = options.supportProvider ?? assistantProvider;
   const assistantService =
     options.assistantService ??
     createAssistantService(
@@ -208,6 +217,58 @@ export function createApp(options: AppOptions = {}) {
 
   app.use("/api/app/*", async (context, next) => {
     context.header("Cache-Control", "no-store");
+    await next();
+  });
+
+  app.use("/api/support/*", async (context, next) => {
+    context.header("Cache-Control", "no-store");
+    if (context.req.method !== "POST") {
+      await next();
+      return;
+    }
+    if (!isJsonContentType(context.req.header("Content-Type"))) {
+      throw new HttpError(
+        415,
+        "unsupported_media_type",
+        "Send the request body as application/json.",
+      );
+    }
+    const limitBody = bodyLimit({
+      maxSize: SUPPORT_CHAT_BODY_LIMIT,
+      onError: (limitedContext) =>
+        limitedContext.json(
+          { error: "payload_too_large", message: "The request body is too large." },
+          413,
+        ),
+    }) as MiddlewareHandler<AppEnvironment>;
+    // Hono narrows the wildcard route context more than its built-in middleware type.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    return limitBody(context, next);
+  });
+
+  app.use("/api/support/*", async (context, next) => {
+    if (context.req.method !== "POST") {
+      await next();
+      return;
+    }
+    const clientIdentifier =
+      context.req.header("CF-Connecting-IP")?.trim() || MISSING_SUPPORT_CLIENT;
+    for (const policy of SUPPORT_CHAT_RATE_LIMITS) {
+      const decision = await rateLimiter.consume(context.env, clientIdentifier, policy);
+      context.header("RateLimit-Limit", String(decision.limit));
+      context.header("RateLimit-Remaining", String(decision.remaining));
+      context.header("RateLimit-Reset", String(decision.retryAfterSeconds));
+      if (!decision.allowed) {
+        context.header("Retry-After", String(decision.retryAfterSeconds));
+        return context.json(
+          {
+            error: "rate_limit_exceeded",
+            message: `Too many support messages. Try again in ${decision.retryAfterSeconds} seconds.`,
+          },
+          429,
+        );
+      }
+    }
     await next();
   });
   app.use(
@@ -430,6 +491,7 @@ export function createApp(options: AppOptions = {}) {
     }) as MiddlewareHandler<AppEnvironment>,
   );
   app.route("/api/billing/paypal/webhook", createPayPalWebhookRoutes(billingStore));
+  app.route("/api/support", createSupportRoutes(supportProvider));
   app.route("/api/app/account", createAccountDeletionRoutes(accountDeletionService));
   app.route("/api/app/identity", createIdentityRoutes(platformAdminService));
   app.route("/api/app/admin", createPlatformAdminRoutes(platformAdminService));

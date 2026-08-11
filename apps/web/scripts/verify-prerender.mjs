@@ -179,8 +179,8 @@ export function assertPublicStructuredDataGraph(
       "Homepage WebApplication must be English and link to the WebSite.",
     );
     structuredDataAssert(
-      Array.isArray(application.featureList) && application.featureList.length === 3,
-      "Homepage WebApplication must describe the three visible feature claims.",
+      Array.isArray(application.featureList) && application.featureList.length === 4,
+      "Homepage WebApplication must describe the four visible feature claims.",
     );
     return;
   }

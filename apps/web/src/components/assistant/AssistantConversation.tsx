@@ -3,18 +3,11 @@ import type {
   AssistantSourceMetadata,
   TransferFeeInsight,
 } from "@zoption/shared";
-import {
-  Bot,
-  Database,
-  PiggyBank,
-  Scale,
-  Sparkles,
-  TrendingUp,
-  UserRound,
-} from "lucide-react";
-import { Fragment, useEffect, useRef, type ReactNode } from "react";
+import { Bot, Database, PiggyBank, Scale, Sparkles, TrendingUp, UserRound } from "lucide-react";
+import { Fragment, useEffect, useRef } from "react";
 
 import { formatMoney, formatMoneyParts } from "../../lib/formatters";
+import { renderInlineEmphasis } from "../chat/renderInlineEmphasis";
 
 const QUICK_PROMPTS: { prompt: string; title: string; desc: string; icon: typeof Scale }[] = [
   {
@@ -57,36 +50,6 @@ function messageTime(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function renderAssistantContent(content: string): ReactNode[] {
-  const parts: ReactNode[] = [];
-  let cursor = 0;
-
-  while (cursor < content.length) {
-    const opening = content.indexOf("**", cursor);
-    if (opening === -1) {
-      parts.push(content.slice(cursor));
-      break;
-    }
-
-    const closing = content.indexOf("**", opening + 2);
-    if (closing === -1) {
-      parts.push(content.slice(cursor));
-      break;
-    }
-
-    if (opening > cursor) parts.push(content.slice(cursor, opening));
-    const emphasized = content.slice(opening + 2, closing);
-    if (emphasized) {
-      parts.push(<strong key={opening}>{emphasized}</strong>);
-    } else {
-      parts.push("****");
-    }
-    cursor = closing + 2;
-  }
-
-  return parts;
 }
 
 function formatDate(value: string): string {
@@ -311,7 +274,7 @@ export function AssistantConversation({
             </div>
             <p>
               {message.role === "assistant"
-                ? renderAssistantContent(message.content)
+                ? renderInlineEmphasis(message.content)
                 : message.content}
             </p>
             {message.role === "assistant" && <AssistantMessageEvidence message={message} />}

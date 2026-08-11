@@ -51,6 +51,9 @@ The public landing page contains a static dashboard illustration only. It does n
 Public:
 
 - `GET /health` — verifies that the Worker can reach D1.
+- `POST /api/support/chat` — bounded, rate-limited product help through the configured DeepSeek
+  provider, without authentication, financial tools, tenant data, or server-side conversation
+  storage.
 
 Authenticated (`Authorization: Bearer <Supabase access token>`):
 

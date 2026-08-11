@@ -78,6 +78,7 @@ describe("public SEO metadata", () => {
             inLanguage: "en",
             isPartOf: { "@id": websiteId },
             featureList: [
+              "Start with a Free plan and upgrade only for higher limits and Pro features.",
               "Map columns, catch errors, and prevent duplicate entries.",
               "See totals, trends, categories, and budget progress together.",
               "Start from a clean workspace and add only the records you choose.",

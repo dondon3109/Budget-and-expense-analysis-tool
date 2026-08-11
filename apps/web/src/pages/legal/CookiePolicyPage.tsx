@@ -95,12 +95,14 @@ export function CookiePolicyPage() {
       <section>
         <h2>6. Relationship to other processing</h2>
         <p>
-          Cookie Settings do not control the DeepSeek assistant or its metadata-only PostHog AI
-          observability. The assistant has a separate, versioned consent flow because it involves
-          feature-specific server processing. PostHog receives operational model, latency, token,
-          call-structure, finish, and error metadata without questions, answers, financial records,
-          tool payloads, credentials, or internal IDs. This server-side processing does not load a
-          PostHog browser SDK or set a PostHog browser cookie. Read the{" "}
+          Cookie Settings do not control the DeepSeek financial assistant, the user-initiated
+          product-support chat, or metadata-only PostHog AI observability. The financial assistant
+          has a separate, versioned consent flow because it involves feature-specific server
+          processing. The support chat sends a message only when you choose to submit it and keeps
+          its browser copy in session storage. PostHog receives operational model, latency, token,
+          call-structure, finish, and error metadata for the financial assistant without questions,
+          answers, financial records, tool payloads, credentials, or internal IDs. This server-side
+          processing does not load a PostHog browser SDK or set a PostHog browser cookie. Read the{" "}
           <Link to="/privacy-policy">Privacy Policy</Link> for account, financial, provider,
           assistant, and rights information.
         </p>

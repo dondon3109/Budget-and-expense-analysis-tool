@@ -72,6 +72,14 @@ export function TermsOfServicePage() {
       <section>
         <h2>5. AI financial assistant</h2>
         <p>
+          Zoption also offers a separate product-support chat on the landing page and signed-in
+          workspace. It can explain Zoption features and navigation but cannot see your account,
+          financial workspace, or private Assistant history. When you send a support message, that
+          message and bounded support-chat context are sent to the AI provider. Do not include
+          passwords, authentication codes, banking credentials, or unnecessary sensitive personal or
+          financial information.
+        </p>
+        <p>
           The optional assistant requires separate, versioned consent. When enabled, Zoption sends
           your question, bounded chat history, trusted policy and date context, approved tool
           definitions, and tenant-scoped financial results needed to answer the request to the AI

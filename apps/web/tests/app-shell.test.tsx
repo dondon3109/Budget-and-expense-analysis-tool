@@ -98,6 +98,7 @@ describe("AppShell", () => {
     expect(
       screen.getAllByRole("button", { name: /choose theme\. current theme: (light|dark|coffee)/i }),
     ).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Open Zoption Support" })).toBeInTheDocument();
   });
 
   it("marks account settings as current without adding it to main navigation", () => {

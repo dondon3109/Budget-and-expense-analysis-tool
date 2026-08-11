@@ -25,6 +25,7 @@ import { useBodyScrollLock } from "../../hooks/useRootLock";
 import { BrandMark } from "../brand/BrandMark";
 import { LegalFooter } from "../legal/LegalFooter";
 import { UserAvatar } from "../profile/UserAvatar";
+import { SupportChat } from "../support/SupportChat";
 import { ThemeToggle } from "../theme/ThemeToggle";
 
 interface AppShellProps {
@@ -268,6 +269,7 @@ export function AppShell({ children }: AppShellProps) {
           <span>More</span>
         </button>
       </nav>
+      <SupportChat surface="app" />
     </div>
   );
 }

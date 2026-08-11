@@ -4,6 +4,7 @@ import "./LandingPage.css";
 
 import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
+import { SupportChat } from "../components/support/SupportChat";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { ANDROID_RELEASE } from "../releases/androidRelease";
 
@@ -605,6 +606,7 @@ export function LandingPage() {
         </section>
       </main>
       <LegalFooter />
+      <SupportChat surface="landing" />
     </div>
   );
 }

@@ -59,6 +59,12 @@ export function PrivacyPolicyPage() {
             latency, token counts, call sequence, finish reasons, and error categories.
           </li>
           <li>
+            <strong>Product support chat:</strong> questions you choose to send, bounded prior
+            messages from the same browser-session conversation, and the page area from which you
+            asked for help. The support chat does not receive your financial workspace, account
+            session, or private AI Assistant history.
+          </li>
+          <li>
             <strong>Preferences and operations:</strong> theme and cookie/storage choices, request
             and security diagnostics, rate-limit data, errors, and service-health information.
           </li>
@@ -92,6 +98,10 @@ export function PrivacyPolicyPage() {
             provide the AI assistant only after separate assistant consent and monitor provider
             reliability, latency, token use, and safe error categories without sending assistant
             content to the observability provider;
+          </li>
+          <li>
+            answer user-initiated product-support questions about Zoption without accessing the
+            user&apos;s account or financial workspace;
           </li>
           <li>
             determine available plan features and enforce Free and Pro usage limits; and, if you
@@ -132,10 +142,14 @@ export function PrivacyPolicyPage() {
             Analytics for aggregate page-use and performance measurement.
           </li>
           <li>
-            <strong>DeepSeek</strong> only for the separately enabled AI assistant. Zoption may send
-            the current question, bounded prior chat, assistant and user display-name profile,
-            trusted policy and date context, approved tool definitions, and only the tenant-scoped
-            tool results needed for the answer through Zoption&apos;s server.
+            <strong>DeepSeek</strong> for the separately enabled AI financial assistant and for a
+            user-initiated product-support chat. For the financial assistant, Zoption may send the
+            current question, bounded prior chat, assistant and user display-name profile, trusted
+            policy and date context, approved tool definitions, and only the tenant-scoped tool
+            results needed for the answer through Zoption&apos;s server. For product support,
+            Zoption sends only the support question, bounded support-chat history, the current
+            product area, and product-help instructions; it does not attach account or financial
+            workspace data.
           </li>
           <li>
             <strong>PostHog</strong> for server-side AI operational observability after separate
@@ -192,6 +206,14 @@ export function PrivacyPolicyPage() {
       <section>
         <h2>6. Assistant processing</h2>
         <p>
+          The product-support chat is separate from the financial assistant. When you send a support
+          message, Zoption sends that message, bounded prior support messages from the same browser
+          session, the current product area, and product-help instructions to DeepSeek. The support
+          endpoint does not authenticate or inspect your account, retrieve financial data, or add
+          messages to financial Assistant history. Avoid putting sensitive personal or financial
+          information in a support question.
+        </p>
+        <p>
           Browser cookie consent does not enable the assistant. The assistant has separate,
           versioned, server-persisted consent. It is read-only and may retrieve bounded
           tenant-scoped financial information needed to answer a question. Saved goals and
@@ -240,6 +262,13 @@ export function PrivacyPolicyPage() {
           metadata are retained as needed to operate paid access, resolve billing issues, meet legal
           obligations, and defend claims. Full payment-card credentials are handled by PayPal and
           are not stored by this integration.
+        </p>
+        <p>
+          Product-support messages are kept in the current browser tab&apos;s session storage so the
+          widget can preserve context while you navigate. Zoption&apos;s support endpoint does not
+          save a support conversation to D1. Closing the browser session normally clears the browser
+          copy; provider-side processing or retention of messages sent to DeepSeek remains governed
+          by that provider&apos;s practices and applicable law.
         </p>
         <p>
           Each assistant thread has a 90-day retention window measured from its latest completed
@@ -301,16 +330,16 @@ export function PrivacyPolicyPage() {
           the country where you live. Cloudflare hosts the application, API, and primary D1
           financial database. Supabase processes identity, session, profile, and avatar information.
           If you start a Pro checkout or subscribe, PayPal processes subscription approval and
-          payment information. When you enable the AI assistant, the request context described above
-          may be transferred to and processed by DeepSeek in locations where it or its subprocessors
-          operate. Metadata-only AI observability events are sent to PostHog&apos;s US Cloud region.
-          Privacy laws in those locations may differ from those in your country. Zoption remains
-          responsible for personal data under its control and restricts transfers to information
-          reasonably necessary for the relevant service. We use applicable provider terms and
-          reasonable access and security controls, and will use any additional consent or transfer
-          mechanism required by law. Contact{" "}
-          <a href="mailto:support@zoption.site">support@zoption.site</a> for information about
-          relevant processing locations or safeguards.
+          payment information. When you enable the AI assistant or send a product-support chat
+          message, the relevant request context described above may be transferred to and processed
+          by DeepSeek in locations where it or its subprocessors operate. Metadata-only AI
+          observability events are sent to PostHog&apos;s US Cloud region. Privacy laws in those
+          locations may differ from those in your country. Zoption remains responsible for personal
+          data under its control and restricts transfers to information reasonably necessary for the
+          relevant service. We use applicable provider terms and reasonable access and security
+          controls, and will use any additional consent or transfer mechanism required by law.
+          Contact <a href="mailto:support@zoption.site">support@zoption.site</a> for information
+          about relevant processing locations or safeguards.
         </p>
       </section>
 

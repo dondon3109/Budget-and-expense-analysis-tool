@@ -41,6 +41,7 @@ describe("landing page", () => {
     expect(screen.getByRole("list", { name: "Zoption at a glance" })).toBeInTheDocument();
     expect(screen.getByText(/no payment required\. upgrade only/i)).toBeInTheDocument();
     expect(screen.getByText("Can I use Zoption for free?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open Zoption Support" })).toBeInTheDocument();
   });
 
   it("highlights the six modules including subscriptions, savings, and the assistant", () => {
