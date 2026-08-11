@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -119,5 +119,38 @@ describe("AppShell", () => {
       "Goals & debt",
       "Subscriptions",
     ]);
+  });
+
+  it("offers thumb-friendly primary navigation and an accessible mobile menu", () => {
+    render(
+      <ThemeProvider>
+        <CookieConsentProvider>
+          <MemoryRouter initialEntries={["/app/calendar"]}>
+            <AppShell>
+              <div>Calendar content</div>
+            </AppShell>
+          </MemoryRouter>
+        </CookieConsentProvider>
+      </ThemeProvider>,
+    );
+
+    const mobileNavigation = screen.getByRole("navigation", { name: "Mobile navigation" });
+    expect(
+      Array.from(mobileNavigation.querySelectorAll("a")).map((link) => link.textContent?.trim()),
+    ).toEqual(["Home", "Transactions", "Calendar", "Budgets"]);
+    expect(mobileNavigation.querySelector('a[href="/app/calendar"]')).toHaveClass("current");
+
+    const menuButton = screen.getByRole("button", { name: "Open menu" });
+    fireEvent.click(menuButton);
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+    expect(document.querySelector(".sidebar")).toHaveClass("open");
+    expect(document.body).toHaveStyle({ overflow: "hidden" });
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByRole("button", { name: "Open menu" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(document.querySelector(".sidebar")).not.toHaveClass("open");
   });
 });
