@@ -47,7 +47,7 @@ describe("landing page", () => {
       name: /everything that shapes your month/i,
     });
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(
-      "See where your money goes",
+      "Zoption makes your money clear",
     );
     expect(
       within(modules).getByRole("heading", { name: "Import from the files you already use." }),

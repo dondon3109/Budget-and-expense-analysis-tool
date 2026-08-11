@@ -55,12 +55,12 @@ export function LandingPage() {
               <ShieldCheck size={15} aria-hidden="true" /> Private by design &middot; starts empty
             </p>
             <h1>
-              See where your money goes. Decide <em>what comes next.</em>
+              Zoption makes your money clear. Decide <em>what comes next.</em>
             </h1>
             <p className="hero-lead">
-              Import everyday transactions, set practical budgets, and turn scattered spending into
-              a clear monthly picture — inside a workspace that only ever contains what you choose
-              to add.
+              Zoption is a private budget and expense tracker for importing or recording
+              transactions, setting practical budgets, tracking recurring expenses, and
+              understanding monthly cash flow — without connecting to your bank.
             </p>
             <div className="hero-actions">
               <Link className="button primary" to="/signup">
