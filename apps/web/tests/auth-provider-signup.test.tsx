@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const supabaseMocks = vi.hoisted(() => ({
   signUp: vi.fn(),
+  signInWithOAuth: vi.fn(),
   getSession: vi.fn(),
   onAuthStateChange: vi.fn(),
 }));
@@ -16,6 +17,7 @@ vi.mock("../src/lib/supabase", () => {
   const client = {
     auth: {
       signUp: supabaseMocks.signUp,
+      signInWithOAuth: supabaseMocks.signInWithOAuth,
       getSession: supabaseMocks.getSession,
       onAuthStateChange: supabaseMocks.onAuthStateChange,
     },
@@ -31,20 +33,28 @@ vi.mock("../src/lib/supabase", () => {
 import { AuthProvider, useAuth } from "../src/auth/AuthProvider";
 
 function SignupOperation() {
-  const { signUp } = useAuth();
+  const { signUp, signInWithSocial } = useAuth();
 
   return (
-    <button
-      type="button"
-      onClick={() =>
-        void signUp("trimmed@example.com", "Budgeting-2026!").catch((error: unknown) => {
-          const authError = error as { code?: string; message?: string };
-          document.body.dataset.error = `${authError.code}:${authError.message}`;
-        })
-      }
-    >
-      Create account
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() =>
+          void signUp("trimmed@example.com", "Budgeting-2026!").catch((error: unknown) => {
+            const authError = error as { code?: string; message?: string };
+            document.body.dataset.error = `${authError.code}:${authError.message}`;
+          })
+        }
+      >
+        Create account
+      </button>
+      <button type="button" onClick={() => void signInWithSocial("google", "/app/settings")}>
+        Google sign-in
+      </button>
+      <button type="button" onClick={() => void signInWithSocial("facebook", "//evil.test")}>
+        Facebook sign-in
+      </button>
+    </>
   );
 }
 
@@ -64,6 +74,7 @@ describe("AuthProvider signup", () => {
 
   beforeEach(() => {
     supabaseMocks.signUp.mockReset().mockResolvedValue({ data: { session: null }, error: null });
+    supabaseMocks.signInWithOAuth.mockReset().mockResolvedValue({ data: {}, error: null });
     supabaseMocks.getSession
       .mockReset()
       .mockResolvedValue({ data: { session: null }, error: null });
@@ -83,6 +94,32 @@ describe("AuthProvider signup", () => {
         email: "trimmed@example.com",
         password: "Budgeting-2026!",
         options: { emailRedirectTo: "http://localhost:3000/auth/callback" },
+      }),
+    );
+  });
+
+  it("starts provider OAuth with email access and a safe PKCE callback", async () => {
+    renderProvider();
+
+    fireEvent.click(screen.getByRole("button", { name: "Google sign-in" }));
+    await waitFor(() =>
+      expect(supabaseMocks.signInWithOAuth).toHaveBeenCalledWith({
+        provider: "google",
+        options: {
+          redirectTo: "http://localhost:3000/auth/callback?next=%2Fapp%2Fsettings",
+          scopes: "openid email profile",
+        },
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Facebook sign-in" }));
+    await waitFor(() =>
+      expect(supabaseMocks.signInWithOAuth).toHaveBeenLastCalledWith({
+        provider: "facebook",
+        options: {
+          redirectTo: "http://localhost:3000/auth/callback",
+          scopes: "email public_profile",
+        },
       }),
     );
   });

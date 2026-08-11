@@ -5,7 +5,7 @@
 ## Implemented and locally testable
 
 - Public landing page with clear signup/login entry points and a static, labeled product illustration.
-- Supabase email/password signup, confirmation, login, recovery, session refresh, and sign-out flows.
+- Supabase email/password, Google, and Facebook signup/login flows, verified-email identity linking, confirmation, recovery, session refresh, and sign-out.
 - Fail-closed authenticated application routes and Worker APIs.
 - Per-user D1 tenant resolution and atomic bootstrap of an account plus starter categories only.
 - Empty first-use onboarding with import and manual-entry actions.
@@ -20,6 +20,8 @@
 
 ## Deployment verification required for this change
 
+- Configure separate Google and Facebook provider credentials in Preview and Production Supabase projects, including Google/Meta callback URLs and Facebook `email` permission.
+- Prove each same-verified-email provider flow adds an identity to one existing Supabase user ID and opens the same D1 tenant without duplicating a workspace.
 - Create a D1 recovery point in preview and production before the cleanup migration.
 - Apply the cleanup migration and verify only the retired public tenant was removed.
 - Deploy the Worker and Pages build with current Supabase variables and allowed origins.

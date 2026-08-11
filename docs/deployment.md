@@ -34,6 +34,18 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
 
 After changing redirect or template settings, request a fresh recovery email; previously issued links retain their original destination and reset links are short-lived and single-use. Open the fresh link once in the same browser profile that requested it so the PKCE verifier is available. If a newly issued link immediately returns `otp_expired`, check whether the email provider's click tracking or security scanner is opening the link before the user.
 
+### Social login providers
+
+Configure Google and Facebook independently in every Preview and Production Supabase project. Never put either provider secret in the repository, a `VITE_*` variable, Cloudflare Pages, D1, logs, or chat.
+
+1. In the Google Cloud console, create a Web OAuth client. Register the Supabase callback shown under **Authentication > Sign In / Providers > Google**, with the form `https://PROJECT_REF.supabase.co/auth/v1/callback`. Enter the client ID and secret only in that Supabase provider panel and enable Google.
+2. In Meta for Developers, create or select the Facebook app, add Facebook Login, and register the Supabase callback shown under **Authentication > Sign In / Providers > Facebook** as a Valid OAuth Redirect URI. Under **Use Cases > Authentication and Account Creation**, require both `public_profile` and `email` to be ready for testing. Enter the app ID and secret only in the Supabase provider panel and enable Facebook.
+3. Keep the Zoption callback URLs from step 2 of the one-time setup in Supabase's redirect allow-list. The provider redirects to Supabase first; Supabase then returns the browser to Zoption's `/auth/callback` route for the PKCE code exchange.
+4. Keep Supabase automatic identity linking enabled. When an OAuth provider returns the same verified email as an existing email/password or OAuth account, Supabase links the new identity to that Auth user. Zoption therefore retains the same subject, tenant mapping, and financial workspace instead of creating a duplicate. Do not add a public email-existence lookup or client-side merge flow.
+5. Complete Meta App Review and move the app out of Development mode before production use. Until then, Facebook login works only for app roles and testers.
+
+Before release, test each provider in Preview with a fresh address and with the verified email of an existing password account. In **Authentication > Users**, the existing-account case must show one user with the added provider identity and the same user ID. Sign in both ways and confirm the same D1 workspace appears. Repeat the same-email test across Google and Facebook, verify a cancelled/failed provider flow returns to a neutral retry screen, and confirm a provider-only user can create a password in Account Settings before permanent deletion.
+
 ## One-time Cloudflare setup
 
 1. Authenticate locally with `pnpm --filter @zoption/api exec wrangler login`.

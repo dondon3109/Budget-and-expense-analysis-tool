@@ -1,6 +1,6 @@
 # Zoption — Budget and Expense Analysis
 
-Zoption is a privacy-conscious budgeting web application that turns imported or manually entered transactions into understandable monthly totals, category spending, budget progress, and trends. Supabase Auth provides email/password accounts and sessions, while a Cloudflare Worker stores each user's financial records in an isolated D1 tenant.
+Zoption is a privacy-conscious budgeting web application that turns imported or manually entered transactions into understandable monthly totals, category spending, budget progress, and trends. Supabase Auth provides email/password, Google, and Facebook accounts and sessions, while a Cloudflare Worker stores each user's financial records in an isolated D1 tenant.
 
 ## Hosted app
 
@@ -20,7 +20,7 @@ The public site is a marketing and authentication surface with a static illustra
 The implementation includes:
 
 - Responsive landing, signup, login, recovery, public legal, and private application routes with persistent Light, Dark, and Coffee themes.
-- Supabase email/password signup, confirmation, login, session refresh, password recovery, and sign-out.
+- Supabase email/password, Google, and Facebook signup/login with verified-email identity linking, session refresh, password recovery, and sign-out.
 - Worker-side Supabase JWT verification and fail-closed `/api/app/*` routes.
 - Automatic D1 tenant bootstrap with an Everyday account and starter categories.
 - High-friction, permanent account deletion from Account Settings: server-side password reauthentication, D1 workspace purge, owned-avatar cleanup, Auth hard deletion, and a durable tombstone that prevents stale tokens from recreating a workspace.
@@ -60,6 +60,7 @@ With the local app running, `pnpm capture:screenshots` captures repeatable landi
 Requirements: Node.js 24+ and pnpm 11.
 
 1. In Supabase Auth URL configuration, add `http://localhost:5173/auth/callback` as an allowed redirect URL.
+   Configure Google and Facebook in the Supabase project before testing provider login. Provider credentials remain in the provider console and Supabase dashboard; see the [deployment runbook](docs/deployment.md#social-login-providers).
 2. Apply the tracked Supabase migrations to the project used for local development:
 
    ```bash

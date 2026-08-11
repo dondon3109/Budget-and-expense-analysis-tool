@@ -121,4 +121,19 @@ describe("AuthCallbackPage", () => {
     ).toBeInTheDocument();
     expect(authState.exchangeCodeForSession).not.toHaveBeenCalled();
   });
+
+  it("offers a retry without exposing social-provider callback details", async () => {
+    renderCallback(
+      "/auth/callback?error=access_denied&error_description=Private%20provider%20detail",
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Sign-in could not be completed" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return to sign in" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+    expect(screen.queryByText(/Private provider detail/i)).not.toBeInTheDocument();
+  });
 });

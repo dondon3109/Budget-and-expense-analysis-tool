@@ -46,6 +46,9 @@ export function SettingsPage() {
   const savedDisplayName = displayNameFromMetadata(user?.user_metadata);
   const currentAvatarPath = avatarPathFromMetadata(user?.user_metadata);
   const currentEmail = user?.email ?? "";
+  const hasPasswordIdentity = user?.identities
+    ? user.identities.some((identity) => identity.provider === "email")
+    : Boolean(currentEmail);
   const pendingEmail = user?.new_email;
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const deletionTriggerRef = useRef<HTMLButtonElement>(null);
@@ -243,7 +246,7 @@ export function SettingsPage() {
       setPasswordFeedback({ error: "New password and confirmation do not match." });
       return;
     }
-    if (newPassword === currentPassword) {
+    if (hasPasswordIdentity && newPassword === currentPassword) {
       setPasswordFeedback({
         error: "Choose a new password that differs from your current password.",
       });
@@ -253,11 +256,13 @@ export function SettingsPage() {
     setPasswordBusy(true);
     setPasswordFeedback({});
     try {
-      try {
-        await verifyCurrentPassword(currentPassword);
-      } catch {
-        setPasswordFeedback({ error: "The current password could not be verified." });
-        return;
+      if (hasPasswordIdentity) {
+        try {
+          await verifyCurrentPassword(currentPassword);
+        } catch {
+          setPasswordFeedback({ error: "The current password could not be verified." });
+          return;
+        }
       }
 
       await updatePassword(newPassword);
@@ -268,7 +273,9 @@ export function SettingsPage() {
       setNewPasswordTouched(false);
       setConfirmPasswordTouched(false);
       setPasswordFeedback({
-        success: "Password updated. Use the new password the next time you sign in.",
+        success: hasPasswordIdentity
+          ? "Password updated. Use the new password the next time you sign in."
+          : "Password created. You can now sign in with email or your connected provider.",
       });
     } catch (error) {
       setPasswordFeedback({
@@ -540,9 +547,15 @@ export function SettingsPage() {
             <div className="settings-section-heading">
               <div>
                 <h2 id="password-settings-title">Password</h2>
-                <p>Verify your current password before replacing it with a new one.</p>
+                <p>
+                  {hasPasswordIdentity
+                    ? "Verify your current password before replacing it with a new one."
+                    : "Create a password to add email sign-in and unlock password-protected account actions."}
+                </p>
               </div>
-              <span>12+ characters and mixed character types</span>
+              <span>
+                {hasPasswordIdentity ? "12+ characters and mixed character types" : "Optional"}
+              </span>
             </div>
 
             <form
@@ -550,18 +563,20 @@ export function SettingsPage() {
               onSubmit={(event) => void handlePasswordSubmit(event)}
               aria-busy={passwordBusy}
             >
-              <PasswordField
-                id="settings-current-password"
-                label="Current password"
-                autoComplete="current-password"
-                value={currentPassword}
-                onChange={(event) => {
-                  setCurrentPassword(event.target.value);
-                  clearPasswordFeedback();
-                }}
-                disabled={passwordBusy || !currentEmail}
-                required
-              />
+              {hasPasswordIdentity && (
+                <PasswordField
+                  id="settings-current-password"
+                  label="Current password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(event) => {
+                    setCurrentPassword(event.target.value);
+                    clearPasswordFeedback();
+                  }}
+                  disabled={passwordBusy || !currentEmail}
+                  required
+                />
+              )}
               <div className="settings-password-row">
                 <PasswordField
                   id="settings-new-password"
@@ -634,7 +649,13 @@ export function SettingsPage() {
                   type="submit"
                   disabled={passwordBusy || !currentEmail}
                 >
-                  {passwordBusy ? "Updating password…" : "Update password"}
+                  {passwordBusy
+                    ? hasPasswordIdentity
+                      ? "Updating password…"
+                      : "Creating password…"
+                    : hasPasswordIdentity
+                      ? "Update password"
+                      : "Create password"}
                 </button>
               </div>
             </form>
@@ -665,11 +686,19 @@ export function SettingsPage() {
                   sign-in account. Copies you have downloaded or public-avatar caches outside
                   Zoption&apos;s control may remain elsewhere.
                 </p>
+                {!hasPasswordIdentity && (
+                  <p id="social-account-deletion-help">
+                    Create a password above before deleting an account that currently uses only a
+                    connected provider.
+                  </p>
+                )}
               </div>
               <button
                 ref={deletionTriggerRef}
                 className="button danger compact"
                 type="button"
+                aria-describedby={hasPasswordIdentity ? undefined : "social-account-deletion-help"}
+                disabled={!hasPasswordIdentity}
                 onClick={() => setDeletionOpen(true)}
               >
                 Delete account

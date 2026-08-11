@@ -2,20 +2,24 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import type { SocialAuthProvider } from "../auth/AuthProvider";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { PasswordField } from "../components/auth/PasswordField";
+import { SocialAuthButtons } from "../components/auth/SocialAuthButtons";
 function safeRedirect(value: string | null): string {
   return value?.startsWith("/") && !value.startsWith("//") ? value : "/app?proCheckout=open";
 }
 
 export function LoginPage() {
-  const { configured, signIn } = useAuth();
+  const { configured, signIn, signInWithSocial } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [busyProvider, setBusyProvider] = useState<SocialAuthProvider | null>(null);
   const [error, setError] = useState<string>();
+  const authenticationBusy = busy || busyProvider !== null;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -32,6 +36,19 @@ export function LoginPage() {
       setBusy(false);
     }
   }
+
+  async function handleSocialSignIn(provider: SocialAuthProvider) {
+    setBusyProvider(provider);
+    setError(undefined);
+    try {
+      await signInWithSocial(provider, safeRedirect(searchParams.get("redirectTo")));
+    } catch {
+      setError(
+        `${provider === "google" ? "Google" : "Facebook"} sign-in could not be started. Check your connection and try again.`,
+      );
+      setBusyProvider(null);
+    }
+  }
   return (
     <AuthLayout
       eyebrow="Welcome back"
@@ -43,6 +60,11 @@ export function LoginPage() {
         </p>
       }
     >
+      <SocialAuthButtons
+        busyProvider={busyProvider}
+        disabled={authenticationBusy || !configured}
+        onSelect={(provider) => void handleSocialSignIn(provider)}
+      />
       <form className="auth-form" onSubmit={(event) => void handleSubmit(event)} aria-busy={busy}>
         <label>
           <span>Email address</span>
@@ -51,7 +73,7 @@ export function LoginPage() {
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            disabled={busy}
+            disabled={authenticationBusy}
             required
           />
         </label>
@@ -61,7 +83,7 @@ export function LoginPage() {
           autoComplete="current-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          disabled={busy}
+          disabled={authenticationBusy}
           minLength={8}
           required
         />
@@ -78,7 +100,11 @@ export function LoginPage() {
             {error}
           </p>
         )}
-        <button className="button primary" type="submit" disabled={busy || !configured}>
+        <button
+          className="button primary"
+          type="submit"
+          disabled={authenticationBusy || !configured}
+        >
           {busy ? "Signing in…" : "Sign in"}
         </button>
       </form>

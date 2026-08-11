@@ -30,6 +30,7 @@ interface AuthContextValue {
   loading: boolean;
   configured: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithSocial: (provider: SocialAuthProvider, next?: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<{ confirmationRequired: boolean }>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
@@ -43,13 +44,20 @@ interface AuthContextValue {
   exchangeCodeForSession: (code: string) => Promise<boolean>;
 }
 
+export type SocialAuthProvider = "google" | "facebook";
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function callbackUrl(next?: string): string {
   const url = new URL("/auth/callback", window.location.origin);
-  if (next) url.searchParams.set("next", next);
+  if (next?.startsWith("/") && !next.startsWith("//")) url.searchParams.set("next", next);
   return url.toString();
 }
+
+const SOCIAL_SCOPES: Record<SocialAuthProvider, string> = {
+  google: "openid email profile",
+  facebook: "email public_profile",
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -107,6 +115,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }, []);
+
+  const signInWithSocial = useCallback(async (provider: SocialAuthProvider, next?: string) => {
+    // Supabase owns email uniqueness and automatically links a verified OAuth
+    // identity to an existing user with the same email. Keeping this as a
+    // normal OAuth sign-in preserves the existing user ID and D1 workspace.
+    const { error } = await getSupabaseClient().auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: callbackUrl(next),
+        scopes: SOCIAL_SCOPES[provider],
+      },
+    });
     if (error) throw error;
   }, []);
 
@@ -281,6 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       configured: isSupabaseConfigured,
       signIn,
+      signInWithSocial,
       signUp,
       signOut,
       sendPasswordReset,
@@ -302,6 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sendPasswordReset,
       session,
       signIn,
+      signInWithSocial,
       signOut,
       signUp,
       updateAvatar,

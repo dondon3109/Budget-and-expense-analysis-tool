@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const authState = vi.hoisted(() => ({
   configured: true,
   signUp: vi.fn(),
+  signInWithSocial: vi.fn(),
 }));
 
 vi.mock("../src/auth/AuthProvider", () => ({
@@ -68,6 +69,19 @@ describe("SignupPage", () => {
   beforeEach(() => {
     authState.configured = true;
     authState.signUp.mockReset().mockResolvedValue({ confirmationRequired: false });
+    authState.signInWithSocial.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("offers provider signup through the same deduplicating social sign-in flow", async () => {
+    renderSignup();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Facebook" }));
+
+    await waitFor(() =>
+      expect(authState.signInWithSocial).toHaveBeenCalledWith("facebook", "/app?proCheckout=open"),
+    );
+    expect(screen.getByRole("button", { name: "Connecting to Facebook…" })).toBeDisabled();
+    expect(authState.signUp).not.toHaveBeenCalled();
   });
 
   it("renders accessible password guidance and updates it while typing", () => {

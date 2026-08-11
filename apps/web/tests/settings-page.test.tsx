@@ -12,6 +12,7 @@ const authState = vi.hoisted(() => ({
     id: "test-user",
     email: "test@example.com",
     new_email: "pending@example.com",
+    identities: [{ provider: "email" }] as Array<{ provider: string }> | undefined,
     user_metadata: { display_name: "Taylor", avatar_path: undefined as string | undefined },
   },
   updateDisplayName: vi.fn(),
@@ -65,6 +66,7 @@ describe("SettingsPage", () => {
       id: "test-user",
       email: "test@example.com",
       new_email: "pending@example.com",
+      identities: [{ provider: "email" }],
       user_metadata: { display_name: "Taylor", avatar_path: undefined },
     };
     authState.updateDisplayName.mockReset();
@@ -244,6 +246,27 @@ describe("SettingsPage", () => {
     expect(callOrder).toEqual(["verify", "update"]);
     expect(screen.getByLabelText("Current password")).toHaveValue("");
     expect(screen.getByRole("status")).toHaveTextContent("Password updated");
+  });
+
+  it("lets a provider-only account create a password without asking for one it does not have", async () => {
+    authState.user.identities = [{ provider: "google" }];
+    renderSettings();
+
+    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete account" })).toBeDisabled();
+    expect(screen.getByText(/Create a password above before deleting/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("New password"), {
+      target: { value: "Budgeting-2026!" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirm new password"), {
+      target: { value: "Budgeting-2026!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create password" }));
+
+    await waitFor(() => expect(authState.updatePassword).toHaveBeenCalledWith("Budgeting-2026!"));
+    expect(authState.verifyCurrentPassword).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Password created");
   });
 
   it("stops when the current password cannot be verified", async () => {

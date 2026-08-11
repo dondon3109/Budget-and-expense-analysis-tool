@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const authState = vi.hoisted(() => ({
   configured: true,
   signIn: vi.fn(),
+  signInWithSocial: vi.fn(),
 }));
 
 vi.mock("../src/auth/AuthProvider", () => ({
@@ -63,6 +64,56 @@ describe("LoginPage", () => {
   beforeEach(() => {
     authState.configured = true;
     authState.signIn.mockReset().mockResolvedValue(undefined);
+    authState.signInWithSocial.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("offers Google and Facebook without creating a separate workspace", () => {
+    renderLogin();
+
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue with Facebook" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/same verified email keeps your existing Zoption workspace/i),
+    ).toBeInTheDocument();
+  });
+
+  it("starts social sign-in with the requested safe destination and prevents duplicate clicks", async () => {
+    renderLogin("/login?redirectTo=%2Fapp%2Fsettings%3Fsection%3Dbilling");
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+
+    await waitFor(() =>
+      expect(authState.signInWithSocial).toHaveBeenCalledWith(
+        "google",
+        "/app/settings?section=billing",
+      ),
+    );
+    expect(screen.getByRole("button", { name: "Connecting to Google…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Continue with Facebook" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
+  });
+
+  it("falls back to the app destination for an unsafe social redirect", async () => {
+    renderLogin("/login?redirectTo=%2F%2Fevil.test");
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Facebook" }));
+
+    await waitFor(() =>
+      expect(authState.signInWithSocial).toHaveBeenCalledWith("facebook", "/app?proCheckout=open"),
+    );
+  });
+
+  it("shows a recoverable social sign-in error without provider details", async () => {
+    authState.signInWithSocial.mockRejectedValueOnce(new Error("provider configuration detail"));
+    renderLogin();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Facebook" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Facebook sign-in could not be started. Check your connection and try again.",
+    );
+    expect(screen.queryByText(/provider configuration detail/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue with Facebook" })).toBeEnabled();
   });
 
   it("lets someone reveal their password before signing in", async () => {

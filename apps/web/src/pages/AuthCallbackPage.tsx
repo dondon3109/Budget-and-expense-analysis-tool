@@ -41,14 +41,12 @@ export function AuthCallbackPage() {
   if (error) {
     return (
       <AuthLayout
-        eyebrow="Account link"
-        title={
-          recoveryRequested ? "Request a new reset link" : "This account link is no longer valid"
-        }
+        eyebrow={recoveryRequested ? "Account recovery" : "Secure sign-in"}
+        title={recoveryRequested ? "Request a new reset link" : "Sign-in could not be completed"}
         description={
           recoveryRequested
             ? "This password reset link is invalid, expired, or has already been used."
-            : "The link may be invalid, expired, or already used."
+            : "The provider did not complete sign-in. Return and try again, or use email and password."
         }
         footer={recoveryRequested ? <Link to="/login">Return to sign in</Link> : undefined}
       >
@@ -63,7 +61,7 @@ export function AuthCallbackPage() {
 
   return (
     <div className="full-page-status">
-      <InlineLoader label="Completing your secure account link" />
+      <InlineLoader label="Completing secure sign-in" />
     </div>
   );
 }
