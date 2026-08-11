@@ -57,6 +57,7 @@ describe("AuthCallbackPage", () => {
 
   beforeEach(() => {
     authState.exchangeCodeForSession.mockReset().mockResolvedValue(false);
+    sessionStorage.clear();
   });
 
   it("routes recovery codes to the password form even without a next parameter", async () => {
@@ -77,6 +78,18 @@ describe("AuthCallbackPage", () => {
     await waitFor(() =>
       expect(screen.getByTestId("current-location")).toHaveTextContent("/app/settings"),
     );
+  });
+
+  it("restores a social sign-in destination without changing the allow-listed callback URL", async () => {
+    sessionStorage.setItem("zoption-social-auth-destination", "/app/settings?section=billing");
+    renderCallback("/auth/callback?code=social-code");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("current-location")).toHaveTextContent(
+        "/app/settings?section=billing",
+      ),
+    );
+    expect(sessionStorage.getItem("zoption-social-auth-destination")).toBeNull();
   });
 
   it.each(["https%3A%2F%2Fevil.example", "%2F%2Fevil.example"])(

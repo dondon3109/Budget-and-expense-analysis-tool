@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { consumeSocialAuthDestination } from "../auth/socialAuthDestination";
 import { InlineLoader } from "../components/layout/InlineLoader";
 import { AuthLayout } from "../components/auth/AuthLayout";
 
@@ -24,15 +25,17 @@ export function AuthCallbackPage() {
     const providerError = searchParams.get("error_description") ?? searchParams.get("error");
     const code = searchParams.get("code");
     if (providerError || !code) {
+      consumeSocialAuthDestination();
       setError(true);
       return;
     }
 
+    const requestedDestination = searchParams.get("next") ?? consumeSocialAuthDestination();
     void exchangeCodeForSession(code)
       .then((isPasswordRecovery) => {
         const destination = isPasswordRecovery
           ? "/update-password"
-          : safeNext(searchParams.get("next"));
+          : safeNext(requestedDestination);
         void navigate(destination, { replace: true });
       })
       .catch(() => setError(true));

@@ -82,6 +82,7 @@ describe("AuthProvider signup", () => {
       data: { subscription: { unsubscribe: vi.fn() } },
     });
     delete document.body.dataset.error;
+    sessionStorage.clear();
   });
 
   it("uses Supabase's server-side signup operation and callback URL", async () => {
@@ -106,11 +107,12 @@ describe("AuthProvider signup", () => {
       expect(supabaseMocks.signInWithOAuth).toHaveBeenCalledWith({
         provider: "google",
         options: {
-          redirectTo: "http://localhost:3000/auth/callback?next=%2Fapp%2Fsettings",
+          redirectTo: "http://localhost:3000/auth/callback",
           scopes: "openid email profile",
         },
       }),
     );
+    expect(sessionStorage.getItem("zoption-social-auth-destination")).toBe("/app/settings");
 
     fireEvent.click(screen.getByRole("button", { name: "Facebook sign-in" }));
     await waitFor(() =>
@@ -122,6 +124,7 @@ describe("AuthProvider signup", () => {
         },
       }),
     );
+    expect(sessionStorage.getItem("zoption-social-auth-destination")).toBeNull();
   });
 
   it("reports confirmation-required and immediate-session responses", async () => {

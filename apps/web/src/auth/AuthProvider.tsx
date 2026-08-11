@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { normalizePasswordError, normalizeSignupError } from "./authErrors";
+import { saveSocialAuthDestination } from "./socialAuthDestination";
 import {
   AVATAR_BUCKET,
   type AvatarOperationResult,
@@ -122,14 +123,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Supabase owns email uniqueness and automatically links a verified OAuth
     // identity to an existing user with the same email. Keeping this as a
     // normal OAuth sign-in preserves the existing user ID and D1 workspace.
+    saveSocialAuthDestination(next);
     const { error } = await getSupabaseClient().auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: callbackUrl(next),
+        // Keep this URL exact so it matches Supabase's production redirect allow-list.
+        // The safe in-app destination is kept in this tab instead of changing the callback URL.
+        redirectTo: callbackUrl(),
         scopes: SOCIAL_SCOPES[provider],
       },
     });
-    if (error) throw error;
+    if (error) {
+      saveSocialAuthDestination(null);
+      throw error;
+    }
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
