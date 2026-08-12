@@ -26,6 +26,7 @@ import { useBodyScrollLock } from "../../hooks/useRootLock";
 import { BrandMark } from "../brand/BrandMark";
 import { LegalFooter } from "../legal/LegalFooter";
 import { UserAvatar } from "../profile/UserAvatar";
+import { CustomerReviewPrompt } from "../reviews/CustomerReviewPrompt";
 import { SupportChat } from "../support/SupportChat";
 import { ThemeToggle } from "../theme/ThemeToggle";
 
@@ -271,6 +272,9 @@ export function AppShell({ children }: AppShellProps) {
         </button>
       </nav>
       <SupportChat surface="app" workspace={user ? userWorkspace(user) : undefined} />
+      {user && !location.pathname.startsWith("/app/admin/") && (
+        <CustomerReviewPrompt user={user} workspace={userWorkspace(user)} />
+      )}
     </div>
   );
 }

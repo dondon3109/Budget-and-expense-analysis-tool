@@ -8,6 +8,9 @@ import {
   type CalendarEventMonth,
   type CalendarEventRecord,
   type CategoryRecord,
+  type CustomerReview,
+  type CustomerReviewAdminDashboard,
+  type PublicCustomerReview,
   type DashboardSummary,
   type Debt,
   type FinancialGoal,
@@ -28,6 +31,7 @@ import type { AccountRepository } from "../src/db/accounts";
 import type { BillingRepository } from "../src/db/billing";
 import type { BudgetRepository } from "../src/db/budgets";
 import type { CategoryRepository } from "../src/db/categories";
+import type { CustomerReviewRepository } from "../src/db/customer-reviews";
 import type { DebtRepository } from "../src/db/debts";
 import type { CalendarEventRepository } from "../src/db/events";
 import type { FinancialGoalRepository } from "../src/db/goals";
@@ -37,10 +41,39 @@ import type { TenantResolver } from "../src/db/tenants";
 import type { TransactionRepository } from "../src/db/transactions";
 import { HttpError } from "../src/errors";
 import type { RateLimiter } from "../src/rate-limit";
+import type { PlatformAdminService } from "../src/platform-admin";
 import type { Bindings } from "../src/types";
 
 const AUTHORIZATION = { Authorization: "Bearer valid-token" };
 const TENANT_ID = "user:user-1";
+const customerReviewFixture: CustomerReview = {
+  id: "00000000-0000-4000-8000-000000000099",
+  displayName: "Don",
+  rating: 5,
+  review: "Zoption gives me a much clearer view of my monthly spending.",
+  publishConsent: true,
+  moderationStatus: "pending",
+  featuredOrder: null,
+  createdAt: "2026-08-12T00:00:00.000Z",
+  updatedAt: "2026-08-12T00:00:00.000Z",
+};
+const publicCustomerReviewFixture: PublicCustomerReview = {
+  id: customerReviewFixture.id,
+  displayName: customerReviewFixture.displayName,
+  rating: customerReviewFixture.rating,
+  review: customerReviewFixture.review,
+  featuredOrder: 1,
+  updatedAt: customerReviewFixture.updatedAt,
+};
+const customerReviewAdminDashboard: CustomerReviewAdminDashboard = {
+  items: [customerReviewFixture],
+  lineup: [],
+  summary: { total: 1, pending: 1, published: 0, hidden: 0, featured: 0 },
+  page: 1,
+  pageSize: 50,
+  totalFiltered: 1,
+  totalPages: 1,
+};
 
 const transactionItem: TransactionListItem = {
   id: "transaction-1",
@@ -299,6 +332,18 @@ function createImportStore(): ImportRepository {
   };
 }
 
+function createCustomerReviewStore(): CustomerReviewRepository {
+  return {
+    listPublic: vi.fn(async () => [publicCustomerReviewFixture]),
+    getState: vi.fn(async () => ({ review: null, promptEligible: true })),
+    upsert: vi.fn(async () => customerReviewFixture),
+    remove: vi.fn(async () => undefined),
+    getAdminDashboard: vi.fn(async () => customerReviewAdminDashboard),
+    updateModeration: vi.fn(async () => customerReviewAdminDashboard),
+    setLineup: vi.fn(async () => customerReviewAdminDashboard),
+  };
+}
+
 function createAuthVerifier(): AuthVerifier {
   return {
     verify: vi.fn(async (_env, token) => {
@@ -409,6 +454,111 @@ describe("API foundation", () => {
     const response = await app.request("/api/demo/dashboard?from=2026-07-01&to=2026-07-31");
     expect(response.status).toBe(404);
     expect(loader).not.toHaveBeenCalled();
+  });
+
+  it("lists only repository-approved public customer reviews without authentication", async () => {
+    const customerReviews = createCustomerReviewStore();
+    const app = createTestApp({ customerReviews });
+    const response = await app.request("/api/reviews");
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toContain("max-age=60");
+    await expect(response.json()).resolves.toEqual({
+      items: [publicCustomerReviewFixture],
+    });
+    expect(customerReviews.listPublic).toHaveBeenCalledWith(undefined, 6);
+  });
+
+  it("protects review moderation with platform-admin authorization", async () => {
+    const customerReviews = createCustomerReviewStore();
+    const requireAdmin = vi.fn().mockResolvedValue(undefined);
+    const app = createTestApp({
+      customerReviews,
+      platformAdminService: { requireAdmin } as unknown as PlatformAdminService,
+    });
+    const response = await app.request("/api/app/admin/reviews", {
+      headers: AUTHORIZATION,
+    });
+
+    expect(response.status).toBe(200);
+    expect(requireAdmin).toHaveBeenCalledWith(undefined, "user-1");
+    expect(customerReviews.getAdminDashboard).toHaveBeenCalledWith(undefined, {
+      page: 1,
+      pageSize: 50,
+    });
+  });
+
+  it("lets a platform admin publish reviews and set a distinct six-item lineup", async () => {
+    const customerReviews = createCustomerReviewStore();
+    const app = createTestApp({
+      customerReviews,
+      platformAdminService: {
+        requireAdmin: vi.fn().mockResolvedValue(undefined),
+      } as unknown as PlatformAdminService,
+    });
+    const publishResponse = await app.request(
+      `/api/app/admin/reviews/${customerReviewFixture.id}`,
+      {
+        method: "PATCH",
+        headers: privateHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ status: "published" }),
+      },
+    );
+    const lineupResponse = await app.request("/api/app/admin/reviews/lineup", {
+      method: "PUT",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ reviewIds: [customerReviewFixture.id] }),
+    });
+
+    expect(publishResponse.status).toBe(200);
+    expect(lineupResponse.status).toBe(200);
+    expect(customerReviews.updateModeration).toHaveBeenCalledWith(
+      undefined,
+      customerReviewFixture.id,
+      "published",
+    );
+    expect(customerReviews.setLineup).toHaveBeenCalledWith(undefined, [customerReviewFixture.id]);
+  });
+
+  it("lets an authenticated customer publish one validated review for their tenant", async () => {
+    const customerReviews = createCustomerReviewStore();
+    const app = createTestApp({ customerReviews });
+    const response = await app.request("/api/app/reviews/me", {
+      method: "PUT",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        displayName: "Don",
+        rating: 5,
+        review: "Zoption gives me a much clearer view of my monthly spending.",
+        publishConsent: true,
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(customerReviews.upsert).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      "user-1",
+      expect.objectContaining({ rating: 5, publishConsent: true }),
+    );
+  });
+
+  it("rejects a customer review without explicit public consent", async () => {
+    const customerReviews = createCustomerReviewStore();
+    const app = createTestApp({ customerReviews });
+    const response = await app.request("/api/app/reviews/me", {
+      method: "PUT",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        displayName: "Don",
+        rating: 5,
+        review: "Zoption gives me a much clearer view of my monthly spending.",
+        publishConsent: false,
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(customerReviews.upsert).not.toHaveBeenCalled();
   });
 
   it("validates dashboard date ranges", async () => {

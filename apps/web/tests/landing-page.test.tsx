@@ -2,15 +2,18 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { LandingPage } from "../src/pages/LandingPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 function renderLanding() {
   return render(
@@ -130,5 +133,40 @@ describe("landing page", () => {
     expect(screen.getByRole("navigation", { name: "Learn more" })).toContainElement(
       screen.getByRole("link", { name: "Android APK" }),
     );
+  });
+
+  it("shows customer-published reviews without manufacturing fallback testimonials", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: "review-1",
+                  displayName: "Don",
+                  rating: 5,
+                  review: "Zoption keeps my monthly spending clear without connecting to my bank.",
+                  featuredOrder: 1,
+                  updatedAt: "2026-08-12T00:00:00.000Z",
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+
+    renderLanding();
+    const section = screen.getByRole("region", { name: "Clearer money, in their own words." });
+    await waitFor(() =>
+      expect(within(section).getByText(/keeps my monthly spending clear/i)).toBeInTheDocument(),
+    );
+    expect(within(section).getByText("Don")).toBeInTheDocument();
+    expect(within(section).getByLabelText("5 out of 5 stars")).toBeInTheDocument();
+    expect(
+      within(section).getByText(/explicitly consent to sharing; Zoption selects/i),
+    ).toBeInTheDocument();
   });
 });

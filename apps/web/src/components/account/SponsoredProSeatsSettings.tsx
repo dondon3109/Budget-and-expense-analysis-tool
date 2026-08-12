@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
   addSponsoredProSeat,
@@ -126,7 +127,12 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
           <h2 id="sponsored-pro-seats-title">Sponsored Pro seats</h2>
           <p>Manage five complimentary Pro seats without accessing anyone&apos;s financial data.</p>
         </div>
-        <span>{seats.data ? `${seats.data.activeCount} of 5 active` : "Loading"}</span>
+        <div className="sponsored-pro-seats-admin-actions">
+          <Link className="button secondary compact" to="/app/admin/reviews">
+            Manage reviews
+          </Link>
+          <span>{seats.data ? `${seats.data.activeCount} of 5 active` : "Loading"}</span>
+        </div>
       </div>
 
       <form

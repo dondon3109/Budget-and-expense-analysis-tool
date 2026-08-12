@@ -33,9 +33,11 @@ vi.mock("../src/lib/api", () => ({
   deleteSubscription: vi.fn(),
   getAccounts: vi.fn(),
   getCategories: vi.fn(),
+  getCustomerReviewState: vi.fn().mockResolvedValue({ review: {}, promptEligible: false }),
   getSubscriptions: vi.fn(),
   setSubscriptionStatus: vi.fn(),
   updateSubscription: vi.fn(),
+  saveCustomerReview: vi.fn(),
 }));
 
 const category: CategoryRecord = {

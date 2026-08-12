@@ -67,6 +67,13 @@ export function PrivacyPolicyPage() {
             and report status.
           </li>
           <li>
+            <strong>Optional customer reviews:</strong> the star rating, review text, and public
+            name you consent to submit for possible publication. Zoption associates the review with
+            your verified account so only you can replace or remove it. Authorized platform
+            administrators may publish, hide, and position the review, but cannot rewrite it.
+            Zoption does not publish your email address or financial workspace data.
+          </li>
+          <li>
             <strong>Preferences and operations:</strong> theme and cookie/storage choices, request
             and security diagnostics, rate-limit data, errors, and service-health information.
           </li>
@@ -105,6 +112,10 @@ export function PrivacyPolicyPage() {
             answer user-initiated product-support questions about Zoption without accessing the
             user&apos;s financial workspace, and receive bug reports only after a signed-in user
             reviews and confirms the report;
+          </li>
+          <li>
+            invite established customers to share optional product feedback and, only after explicit
+            consent, display that review and chosen public name on the landing page;
           </li>
           <li>
             determine available plan features and enforce Free and Pro usage limits; and, if you
@@ -184,6 +195,12 @@ export function PrivacyPolicyPage() {
           Zoption does not sell user financial data. Zoption may disclose information when required
           by law, to protect rights and security, or in a properly structured business transaction
           with appropriate safeguards and notice where required.
+        </p>
+        <p>
+          A customer review becomes public only after you provide publication consent and an
+          authorized platform administrator selects it for the landing page. Anyone visiting the
+          landing page may read and copy the selected review and public name. Do not include
+          financial details or other sensitive personal information in a review.
         </p>
       </section>
 
@@ -303,6 +320,12 @@ export function PrivacyPolicyPage() {
           current 12-month event-retention plan. PostHog controls provider-side retention
           enforcement and deletion timing, so these events do not disappear when the related Zoption
           chat is deleted and may remain through that provider retention period.
+        </p>
+        <p>
+          Selected customer reviews remain available while the account is active unless you remove
+          or replace the review or a platform administrator hides it. Replacing a review returns it
+          to moderation before it can appear again. Account deletion removes the review from active
+          D1 storage and the landing page.
         </p>
       </section>
 

@@ -22,7 +22,9 @@ vi.mock("../src/auth/AuthProvider", () => ({
 
 vi.mock("../src/lib/api", () => ({
   getBudgets: vi.fn(),
+  getCustomerReviewState: vi.fn().mockResolvedValue({ review: {}, promptEligible: false }),
   saveBudgets: vi.fn(),
+  saveCustomerReview: vi.fn(),
 }));
 
 const budgetPlan: BudgetMonthPlan = {

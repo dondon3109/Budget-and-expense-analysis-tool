@@ -10,9 +10,11 @@ import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { AppShell } from "../components/layout/AppShell";
 import { UserAvatar } from "../components/profile/UserAvatar";
+import { CustomerReviewSettings } from "../components/reviews/CustomerReviewSettings";
 import { openSupportChat } from "../components/support/supportEvents";
 import { AVATAR_ACCEPT, avatarPathFromMetadata, validateAvatarFile } from "../lib/avatar";
 import { isSubscriptionBlocksAccountDeletionError } from "../lib/api";
+import { userWorkspace } from "../lib/workspace";
 import "./SettingsPage.css";
 
 const DISPLAY_NAME_LIMIT = 80;
@@ -21,6 +23,7 @@ const SUPPORT_EMAIL = "support@zoption.site";
 const SETTINGS_SECTION_BY_HASH: Record<string, string> = {
   "#profile-settings": "profile-settings",
   "#plan-and-billing": "plan-and-billing",
+  "#customer-review": "customer-review",
   "#help-and-contact": "help-and-contact",
   "#help": "help",
   "#contact": "contact",
@@ -689,6 +692,8 @@ export function SettingsPage() {
               </div>
             </form>
           </section>
+
+          {user && <CustomerReviewSettings workspace={userWorkspace(user)} />}
 
           {user && <BillingSettings user={user} />}
 

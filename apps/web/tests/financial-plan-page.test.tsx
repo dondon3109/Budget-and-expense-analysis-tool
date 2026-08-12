@@ -37,11 +37,13 @@ vi.mock("../src/lib/api", () => ({
   deleteDebt: vi.fn(),
   deleteFinancialGoal: vi.fn(),
   getAssistantPreferences: vi.fn(),
+  getCustomerReviewState: vi.fn().mockResolvedValue({ review: {}, promptEligible: false }),
   getDebts: vi.fn(),
   getFinancialGoals: vi.fn(),
   updateAssistantResponsePreferences: vi.fn(),
   updateDebt: vi.fn(),
   updateFinancialGoal: vi.fn(),
+  saveCustomerReview: vi.fn(),
 }));
 
 const goal: FinancialGoal = {
