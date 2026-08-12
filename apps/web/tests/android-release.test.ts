@@ -46,22 +46,20 @@ interface AssetLinkStatement {
 }
 
 describe("Android release contract", () => {
-  it("keeps web and Android versions synchronized with a deterministic version code", async () => {
-    const rootPackage = await json<PackageManifest>(resolve(repositoryRoot, "package.json"));
+  it("keeps Android artifact metadata synchronized with a deterministic version code", async () => {
     const androidPackage = await json<PackageManifest>(resolve(androidRoot, "package.json"));
     const twaManifest = await json<TwaManifest>(resolve(androidRoot, "twa-manifest.json"));
-    const [major = Number.NaN, minor = Number.NaN, patch = Number.NaN] = rootPackage.version
+    const [major = Number.NaN, minor = Number.NaN, patch = Number.NaN] = androidPackage.version
       .split(".")
       .map(Number);
     expect([major, minor, patch].every(Number.isInteger)).toBe(true);
     const expectedCode = major * 10_000 + minor * 100 + patch;
 
-    expect(ANDROID_RELEASE.versionName).toBe(rootPackage.version);
-    expect(androidPackage.version).toBe(rootPackage.version);
+    expect(ANDROID_RELEASE.versionName).toBe(androidPackage.version);
     expect(ANDROID_RELEASE.versionCode).toBe(expectedCode);
     expect(twaManifest.appVersionCode).toBe(expectedCode);
-    expect(twaManifest.appVersionName).toBe(rootPackage.version);
-    expect(ANDROID_RELEASE.filename).toBe(`zoption-android-${rootPackage.version}.apk`);
+    expect(twaManifest.appVersionName).toBe(androidPackage.version);
+    expect(ANDROID_RELEASE.filename).toBe(`zoption-android-${androidPackage.version}.apk`);
   });
 
   it("binds the production domain to the final release certificate", async () => {

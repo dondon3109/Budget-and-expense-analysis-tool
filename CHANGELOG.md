@@ -2,6 +2,26 @@
 
 All notable product changes are documented here.
 
+## 2.1.0 — 2026-08-12
+
+### Added
+
+- Added separately consented voice mode to the Financial Assistant, with Cloudflare Workers AI transcription and optional Fish Audio spoken replies for completed, tenant-owned assistant messages.
+- Added per-user voice preferences for review-first or automatic transcript submission and for spoken-and-text or text-only assistant replies.
+- Added Google and Facebook authentication, contextual product support, AI-assisted bug reporting, and customer review moderation.
+
+### Changed
+
+- Voice recordings now stop automatically after speech is followed by silence. Recordings with no detected speech end locally without being sent for transcription.
+- Automatic voice submission now waits for the transcription provider to return a completed transcript. Review-first remains the default and can be enforced by environment configuration.
+- Spoken assistant replies now remove markdown formatting, table separators, and raw URLs for more natural playback, with a visible preparation state before audio is available.
+- Improved signed-in mobile navigation, assistant space usage, Free-plan messaging, profile navigation, and remaining-budget calculations.
+
+### Fixed
+
+- Voice recording resources are released safely when the assistant route closes, and text-only voice turns no longer request speech generation.
+- Voice playback preserves authenticated cross-origin responses and reports provider failures without exposing credentials or provider response bodies.
+
 ## 2.0.0 — 2026-08-10
 
 ### Added

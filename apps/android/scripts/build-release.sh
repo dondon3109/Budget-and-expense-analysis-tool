@@ -38,7 +38,7 @@ if [[ ! -x "${ZIPALIGN}" || ! -x "${APKSIGNER}" ]]; then
   exit 1
 fi
 
-VERSION_NAME="$(node -p "require('${REPOSITORY_ROOT}/package.json').version")"
+VERSION_NAME="$(node -p "require('${ANDROID_ROOT}/package.json').version")"
 RELEASE_FILENAME="zoption-android-${VERSION_NAME}.apk"
 RELEASE_APK="${RELEASE_DIRECTORY}/${RELEASE_FILENAME}"
 RELEASE_CHECKSUM="${RELEASE_APK}.sha256"

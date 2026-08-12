@@ -97,7 +97,7 @@ describe("assistant voice service", () => {
     await service.synthesize(env, "tenant-id", completedMessage.id);
     expect(voiceProviders.speech.synthesize).toHaveBeenCalledWith(
       env,
-      "Result Your budget is ready.",
+      "Result. Your budget is ready.",
     );
   });
 

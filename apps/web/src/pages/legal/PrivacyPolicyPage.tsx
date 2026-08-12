@@ -177,11 +177,11 @@ export function PrivacyPolicyPage() {
           <li>
             <strong>Cloudflare Workers AI and Fish Audio</strong> for the separately enabled voice
             feature. After voice consent, Cloudflare Workers AI receives a user-initiated recording
-            to produce a transcript. Preview lets you review or edit the transcript before sending;
-            Production sends it to the assistant immediately after transcription. Fish Audio may
-            receive the completed assistant reply text to generate spoken audio. Zoption does not
-            send workspace records directly to either voice provider or store recordings or
-            generated audio in D1.
+            to produce a transcript. Review-first is the default; where configuration permits it,
+            you may instead choose to send automatically only after transcription is complete. Fish
+            Audio may receive the completed assistant reply text when you choose spoken replies.
+            Zoption does not send workspace records directly to either voice provider or store
+            recordings or generated audio in D1.
           </li>
           <li>
             <strong>PayPal</strong> only if you start checkout for or subscribe to Zoption Pro.
@@ -289,10 +289,10 @@ export function PrivacyPolicyPage() {
           Voice mode is a separately consented feature. When you press the microphone control, your
           browser asks for microphone permission and sends the recording through Zoption&apos;s
           authenticated server to Cloudflare Workers AI&apos;s Whisper Large v3 Turbo model for
-          transcription. Preview returns the transcript to the composer for your review or editing;
-          Production sends it to the financial assistant immediately after transcription. After a
+          transcription. Review-first is the default. Where configuration permits, you may choose
+          automatic sending, which occurs only after transcription is complete. For a
           voice-originated question, Zoption may send the completed assistant reply text to Fish
-          Audio to generate spoken audio. Zoption keeps the recording and generated audio in
+          Audio when you choose spoken replies. Zoption keeps the recording and generated audio in
           transient processing and browser memory only; it does not save either in D1. Each
           provider&apos;s own processing, security, retention, and deletion practices apply to the
           information it receives.
