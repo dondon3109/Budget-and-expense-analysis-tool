@@ -22,7 +22,7 @@ describe("Fish Audio provider", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await fishAudioProvider.synthesize(env, "A safe spoken reply.");
+    const response = await fishAudioProvider.synthesize(env, "A safe spoken reply.", "default");
     const [url, init] = fetchMock.mock.calls[0]!;
     const headers = new Headers(init?.headers);
 
@@ -34,12 +34,31 @@ describe("Fish Audio provider", () => {
       text: "A safe spoken reply.",
       format: "mp3",
     });
+    expect(JSON.parse(init.body)).not.toHaveProperty("reference_id");
     expect((await response.arrayBuffer()).byteLength).toBe(3);
   });
 
   it("refuses a paid TTS model even if configuration drifts", async () => {
     await expect(
-      fishAudioProvider.synthesize({ ...env, FISH_AUDIO_TTS_MODEL: "s2.1" }, "Hello"),
+      fishAudioProvider.synthesize({ ...env, FISH_AUDIO_TTS_MODEL: "s2.1" }, "Hello", "default"),
     ).rejects.toMatchObject({ kind: "configuration" });
+  });
+
+  it.each([
+    ["bright", "ca3007f96ae7499ab87d27ea3599956a"],
+    ["energetic", "9a9cf47702da476aa4629e2506d4a857"],
+  ] as const)("maps the %s choice to its allowlisted Fish voice", async (voice, referenceId) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      void input;
+      void init;
+      return new Response(new Uint8Array([1]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fishAudioProvider.synthesize(env, "Voice preview", voice);
+
+    const init = fetchMock.mock.calls[0]?.[1];
+    if (typeof init?.body !== "string") throw new Error("Expected a JSON request body.");
+    expect(JSON.parse(init.body)).toMatchObject({ reference_id: referenceId });
   });
 });

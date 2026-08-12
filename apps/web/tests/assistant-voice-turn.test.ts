@@ -34,27 +34,28 @@ describe("prepareAssistantTurn", () => {
     const speech = new Promise<Blob>((resolve) => {
       finishSpeech = resolve;
     });
-    const onSpeechPending = vi.fn();
+    const getSpeech = vi.fn(() => speech);
     let presented = false;
 
     const prepared = prepareAssistantTurn({
       send: async () => turn,
       replyMode: "spoken",
+      speechVoice: "bright",
       voiceEnabled: true,
-      getSpeech: vi.fn(() => speech),
-      onSpeechPending,
+      getSpeech,
     });
     void prepared.then(() => {
       presented = true;
     });
 
-    await vi.waitFor(() => expect(onSpeechPending).toHaveBeenCalledOnce());
+    await Promise.resolve();
     expect(presented).toBe(false);
 
     const audio = new Blob(["spoken reply"], { type: "audio/mpeg" });
     finishSpeech(audio);
 
     await expect(prepared).resolves.toEqual({ result: turn, voice: { audio } });
+    expect(getSpeech).toHaveBeenCalledWith("assistant-1", "bright");
     expect(presented).toBe(true);
   });
 

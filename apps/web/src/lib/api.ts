@@ -12,6 +12,7 @@ import type {
   AssistantPreferenceUpdate,
   AssistantThreadPage,
   AssistantTurnResult,
+  AssistantSpeechVoice,
   AssistantVoicePreferences,
   AssistantVoiceTranscription,
   BillingCapability,
@@ -887,6 +888,7 @@ export async function transcribeAssistantVoice(
 export async function getAssistantVoiceSpeech(
   workspace: AuthenticatedWorkspace,
   messageId: string,
+  voice: AssistantSpeechVoice = "default",
 ): Promise<Blob> {
   const response = await workspaceFetch(
     workspace,
@@ -894,7 +896,7 @@ export async function getAssistantVoiceSpeech(
     {
       method: "POST",
       headers: { Accept: "audio/mpeg", "Content-Type": "application/json" },
-      body: JSON.stringify({ messageId }),
+      body: JSON.stringify({ messageId, voice }),
     },
     { timeoutMs: 45_000 },
   );
@@ -902,6 +904,32 @@ export async function getAssistantVoiceSpeech(
     const payload = apiErrorPayload(await response.json().catch(() => null));
     throw new ApiRequestError(
       payload.message ?? "The spoken reply could not be prepared.",
+      response.status,
+      payload.error ?? "assistant_voice_failed",
+      payload.details,
+    );
+  }
+  return response.blob();
+}
+
+export async function getAssistantVoicePreview(
+  workspace: AuthenticatedWorkspace,
+  voice: AssistantSpeechVoice,
+): Promise<Blob> {
+  const response = await workspaceFetch(
+    workspace,
+    "/api/app/assistant/voice/preview",
+    {
+      method: "POST",
+      headers: { Accept: "audio/mpeg", "Content-Type": "application/json" },
+      body: JSON.stringify({ voice }),
+    },
+    { timeoutMs: 45_000 },
+  );
+  if (!response.ok) {
+    const payload = apiErrorPayload(await response.json().catch(() => null));
+    throw new ApiRequestError(
+      payload.message ?? "The voice preview could not be prepared.",
       response.status,
       payload.error ?? "assistant_voice_failed",
       payload.details,

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   accountTypes,
+  assistantSpeechVoices,
   currencies,
   debtStatuses,
   debtTypes,
@@ -272,7 +273,18 @@ export type AssistantPreferenceUpdate = z.infer<typeof assistantPreferenceUpdate
 
 export const assistantVoiceConsentUpdateSchema = z.object({ consented: z.literal(true) }).strict();
 
-export const assistantVoiceSpeechInputSchema = z.object({ messageId: z.string().uuid() }).strict();
+export const assistantSpeechVoiceSchema = z.enum(assistantSpeechVoices);
+
+export const assistantVoiceSpeechInputSchema = z
+  .object({
+    messageId: z.string().uuid(),
+    voice: assistantSpeechVoiceSchema.default("default"),
+  })
+  .strict();
+
+export const assistantVoicePreviewInputSchema = z
+  .object({ voice: assistantSpeechVoiceSchema })
+  .strict();
 
 export const assistantMemoryPreferencesUpdateSchema = z
   .object({

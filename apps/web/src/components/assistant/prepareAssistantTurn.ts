@@ -1,4 +1,4 @@
-import type { AssistantTurnResult } from "@zoption/shared";
+import type { AssistantSpeechVoice, AssistantTurnResult } from "@zoption/shared";
 
 import type { AssistantVoiceReplyMode } from "./AssistantVoiceControl";
 
@@ -10,27 +10,26 @@ export interface PreparedAssistantTurn {
 interface PrepareAssistantTurnOptions {
   send: () => Promise<AssistantTurnResult>;
   replyMode?: AssistantVoiceReplyMode;
+  speechVoice?: AssistantSpeechVoice;
   voiceEnabled: boolean;
-  getSpeech: (assistantMessageId: string) => Promise<Blob>;
-  onSpeechPending?: () => void;
+  getSpeech: (assistantMessageId: string, voice: AssistantSpeechVoice) => Promise<Blob>;
 }
 
 /** Keeps a spoken turn pending until its text and generated audio can be presented together. */
 export async function prepareAssistantTurn({
   send,
   replyMode,
+  speechVoice = "default",
   voiceEnabled,
   getSpeech,
-  onSpeechPending,
 }: PrepareAssistantTurnOptions): Promise<PreparedAssistantTurn> {
   const result = await send();
   if (!voiceEnabled || replyMode !== "spoken") return { result };
 
-  onSpeechPending?.();
   try {
     return {
       result,
-      voice: { audio: await getSpeech(result.assistantMessage.id) },
+      voice: { audio: await getSpeech(result.assistantMessage.id, speechVoice) },
     };
   } catch (error) {
     return {

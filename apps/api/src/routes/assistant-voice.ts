@@ -1,5 +1,6 @@
 import {
   assistantVoiceConsentUpdateSchema,
+  assistantVoicePreviewInputSchema,
   assistantVoiceSpeechInputSchema,
 } from "@zoption/shared";
 import { Hono } from "hono";
@@ -56,10 +57,23 @@ export function createAssistantVoiceRoutes(service: AssistantVoiceService) {
       context.env,
       context.get("tenant").tenantId,
       parsed.data.messageId,
+      parsed.data.voice,
     );
     context.header("Content-Type", "audio/mpeg");
     context.header("Cache-Control", "no-store");
-    return context.body(await response.arrayBuffer());
+    // Hono's DOM stream type and Workers' byte-stream generic differ, but the body stays streamed.
+    return context.body(response.body as unknown as ReadableStream);
+  });
+
+  routes.post("/preview", async (context) => {
+    const parsed = assistantVoicePreviewInputSchema.safeParse(await readJson(context));
+    if (!parsed.success)
+      throw new HttpError(400, "invalid_request", "Choose a valid voice preview.");
+    const response = await service.preview(context.env, parsed.data.voice);
+    context.header("Content-Type", "audio/mpeg");
+    context.header("Cache-Control", "no-store");
+    // Hono's DOM stream type and Workers' byte-stream generic differ, but the body stays streamed.
+    return context.body(response.body as unknown as ReadableStream);
   });
 
   return routes;

@@ -5,7 +5,7 @@ import {
 } from "@zoption/shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { createAssistantVoiceService } from "../src/assistant/voice-service";
+import { assistantSpeechText, createAssistantVoiceService } from "../src/assistant/voice-service";
 import {
   AssistantVoiceProviderError,
   type AssistantVoiceProviders,
@@ -104,10 +104,34 @@ describe("assistant voice service", () => {
   it("speaks only a completed owned message and removes markdown from provider text", async () => {
     const voiceProviders = providers();
     const service = createAssistantVoiceService(repository(), voiceProviders);
-    await service.synthesize(env, "tenant-id", completedMessage.id);
+    await service.synthesize(env, "tenant-id", completedMessage.id, "bright");
     expect(voiceProviders.speech.synthesize).toHaveBeenCalledWith(
       env,
       "Result. Your budget is ready.",
+      "bright",
+    );
+  });
+
+  it.each([
+    ["PHP 70.00", "70 pesos"],
+    ["₱1,250.00", "1,250 pesos"],
+    ["PHP 70.50", "70 pesos and 50 centavos"],
+    ["₱0.01", "1 centavo"],
+    ["-PHP 1.50", "minus 1 peso and 50 centavos"],
+  ])("reads %s as %s", (written, spoken) => {
+    expect(assistantSpeechText(`You spent ${written} today.`)).toBe(`You spent ${spoken} today.`);
+  });
+
+  it("previews a curated voice without sending tenant records", async () => {
+    const voiceProviders = providers();
+    const service = createAssistantVoiceService(repository(false), voiceProviders);
+
+    await service.preview(env, "energetic");
+
+    expect(voiceProviders.speech.synthesize).toHaveBeenCalledWith(
+      env,
+      "Your total spending is 70 pesos.",
+      "energetic",
     );
   });
 

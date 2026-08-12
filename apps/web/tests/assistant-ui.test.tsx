@@ -345,21 +345,20 @@ describe("assistant UI", () => {
     expect(player.closest(".assistant-message-voice")).not.toBeNull();
   });
 
-  it("shows spoken-reply preparation in the pending assistant bubble", () => {
+  it("keeps the standard checking message while a spoken reply is prepared", () => {
     render(
       <AssistantConversation
         assistantName="Aster"
         messages={[]}
         pendingMessage="How much did I spend?"
         loading
-        loadingLabel="Preparing spoken reply…"
         onPrompt={() => undefined}
       />,
     );
 
     const status = screen.getByRole("status");
     expect(status).toHaveClass("assistant-message", "assistant", "checking");
-    expect(status).toHaveTextContent("Preparing spoken reply…");
+    expect(status).toHaveTextContent("Checking your records…");
   });
 
   it("keeps unmatched markers and user formatting literal", () => {

@@ -1,12 +1,14 @@
 import {
   CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
+  type AssistantSpeechVoice,
   type AssistantVoicePreferences,
 } from "@zoption/shared";
-import { Mic, Settings2, Square, X } from "lucide-react";
+import { Mic, Settings2, Square, Volume2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
   getAssistantVoicePreferences,
+  getAssistantVoicePreview,
   grantAssistantVoiceConsent,
   transcribeAssistantVoice,
 } from "../../lib/api";
@@ -18,6 +20,31 @@ const ENDING_SILENCE_MS = 1_400;
 const VOICE_SAMPLE_INTERVAL_MS = 100;
 const SPEECH_RMS_THRESHOLD = 0.025;
 const MIME_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"];
+const SPEECH_VOICES: ReadonlyArray<{
+  id: AssistantSpeechVoice;
+  label: string;
+  gender: "Female" | "Male" | "Unspecified";
+  description: string;
+}> = [
+  {
+    id: "default",
+    label: "Default",
+    gender: "Unspecified",
+    description: "Fish Audio’s balanced default voice.",
+  },
+  {
+    id: "bright",
+    label: "Bright",
+    gender: "Female",
+    description: "A bright, lively female voice.",
+  },
+  {
+    id: "energetic",
+    label: "Energetic",
+    gender: "Male",
+    description: "An upbeat, energetic male voice.",
+  },
+];
 
 export type AssistantVoiceSubmissionMode = "review" | "automatic";
 export type AssistantVoiceReplyMode = "spoken" | "text";
@@ -25,6 +52,7 @@ export type AssistantVoiceReplyMode = "spoken" | "text";
 export interface AssistantVoiceTranscriptOptions {
   submissionMode: AssistantVoiceSubmissionMode;
   replyMode: AssistantVoiceReplyMode;
+  speechVoice: AssistantSpeechVoice;
 }
 
 type StoredVoiceOptions = AssistantVoiceTranscriptOptions;
@@ -51,7 +79,10 @@ function readStoredOptions(userId: string): StoredVoiceOptions | undefined {
       (options.submissionMode === "review" || options.submissionMode === "automatic") &&
       (options.replyMode === "spoken" || options.replyMode === "text")
     ) {
-      return options as StoredVoiceOptions;
+      const speechVoice = SPEECH_VOICES.some((voice) => voice.id === options.speechVoice)
+        ? (options.speechVoice as AssistantSpeechVoice)
+        : "default";
+      return { ...options, speechVoice } as StoredVoiceOptions;
     }
   } catch {
     // Storage may be unavailable in hardened browser modes; session defaults still work.
@@ -91,19 +122,32 @@ export function AssistantVoiceControl({
   const microphoneButtonRef = useRef<HTMLButtonElement | null>(null);
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const noticeRef = useRef<HTMLDivElement | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewUrlRef = useRef<string | undefined>(undefined);
   const [preferences, setPreferences] = useState<AssistantVoicePreferences>();
   const [enabling, setEnabling] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [status, setStatus] = useState<"idle" | "recording" | "transcribing">("idle");
   const [message, setMessage] = useState<string>();
+  const [previewing, setPreviewing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>();
+  const [previewError, setPreviewError] = useState<string>();
   const [options, setOptions] = useState<StoredVoiceOptions>(() => {
     const stored = readStoredOptions(workspace.userId);
     return {
       submissionMode: reviewRequired ? "review" : (stored?.submissionMode ?? "automatic"),
       replyMode: stored?.replyMode ?? "spoken",
+      speechVoice: stored?.speechVoice ?? "default",
     };
   });
+
+  function clearPreview() {
+    previewAudioRef.current?.pause();
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = undefined;
+    setPreviewUrl(undefined);
+  }
 
   function clearRecordingResources() {
     window.clearTimeout(stopTimerRef.current);
@@ -140,6 +184,7 @@ export function AssistantVoiceControl({
       stopReasonRef.current = "cancelled";
       if (recorderRef.current?.state === "recording") recorderRef.current.stop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
   }, [workspace.key]);
 
@@ -152,6 +197,7 @@ export function AssistantVoiceControl({
         setShowNotice(false);
         microphoneButtonRef.current?.focus();
       } else {
+        clearPreview();
         setShowOptions(false);
         settingsButtonRef.current?.focus();
       }
@@ -163,6 +209,7 @@ export function AssistantVoiceControl({
   useEffect(() => {
     if (!disabled) return;
     setMessage(undefined);
+    clearPreview();
     setShowOptions(false);
   }, [disabled]);
 
@@ -171,6 +218,31 @@ export function AssistantVoiceControl({
     setOptions(enforced);
     saveStoredOptions(workspace.userId, enforced);
   }
+
+  async function previewSelectedVoice() {
+    if (previewing || !speechAvailable) return;
+    setPreviewing(true);
+    setPreviewError(undefined);
+    try {
+      const audio = await getAssistantVoicePreview(workspace, options.speechVoice);
+      if (!mountedRef.current) return;
+      clearPreview();
+      const audioUrl = URL.createObjectURL(audio);
+      previewUrlRef.current = audioUrl;
+      setPreviewUrl(audioUrl);
+    } catch (error) {
+      if (mountedRef.current) setPreviewError(errorMessage(error));
+    } finally {
+      if (mountedRef.current) setPreviewing(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!previewUrl) return;
+    void previewAudioRef.current?.play().catch(() => {
+      // Some browsers require a second user gesture; native controls remain available.
+    });
+  }, [previewUrl]);
 
   async function transcribe(blob: Blob) {
     setStatus("transcribing");
@@ -348,7 +420,10 @@ export function AssistantVoiceControl({
         aria-expanded={showOptions}
         onClick={() => {
           setShowNotice(false);
-          setShowOptions((current) => !current);
+          setShowOptions((current) => {
+            if (current) clearPreview();
+            return !current;
+          });
         }}
       >
         <Settings2 size={15} aria-hidden="true" />
@@ -363,9 +438,11 @@ export function AssistantVoiceControl({
         onClick={() => {
           if (status === "recording") stopRecording("manual");
           else if (!consented) {
+            clearPreview();
             setShowOptions(false);
             setShowNotice(true);
           } else {
+            clearPreview();
             setShowOptions(false);
             void startRecording();
           }
@@ -380,7 +457,10 @@ export function AssistantVoiceControl({
             <button
               type="button"
               aria-label="Close voice settings"
-              onClick={() => setShowOptions(false)}
+              onClick={() => {
+                clearPreview();
+                setShowOptions(false);
+              }}
             >
               <X size={15} aria-hidden="true" />
             </button>
@@ -444,6 +524,58 @@ export function AssistantVoiceControl({
                 <small>Keep the answer silent.</small>
               </span>
             </label>
+          </fieldset>
+          <fieldset className="assistant-voice-style-fieldset" disabled={!speechAvailable}>
+            <legend>Voice</legend>
+            <div className="assistant-voice-picker">
+              <label htmlFor="assistant-speech-voice">Voice and gender</label>
+              <select
+                id="assistant-speech-voice"
+                value={options.speechVoice}
+                onChange={(event) => {
+                  clearPreview();
+                  setPreviewError(undefined);
+                  updateOptions({
+                    ...options,
+                    speechVoice: event.target.value as AssistantSpeechVoice,
+                  });
+                }}
+              >
+                {SPEECH_VOICES.map((voice) => (
+                  <option key={voice.id} value={voice.id}>
+                    {voice.label} · {voice.gender}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="button secondary compact"
+                disabled={previewing || !speechAvailable}
+                onClick={() => void previewSelectedVoice()}
+              >
+                <Volume2 size={14} aria-hidden="true" />
+                {previewing ? "Loading…" : "Preview"}
+              </button>
+            </div>
+            <small className="assistant-voice-description">
+              {SPEECH_VOICES.find((voice) => voice.id === options.speechVoice)?.description}
+            </small>
+            {previewUrl && (
+              <audio
+                ref={previewAudioRef}
+                className="assistant-voice-preview-audio"
+                src={previewUrl}
+                controls
+                aria-label={`${
+                  SPEECH_VOICES.find((voice) => voice.id === options.speechVoice)?.label
+                } voice preview`}
+              />
+            )}
+            {previewError && (
+              <small className="assistant-voice-preview-error" role="alert">
+                {previewError}
+              </small>
+            )}
           </fieldset>
           <p>Recording stops automatically after you finish speaking.</p>
         </div>

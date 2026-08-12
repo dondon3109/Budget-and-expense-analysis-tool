@@ -9,6 +9,7 @@ import { AssistantVoiceControl } from "../src/components/assistant/AssistantVoic
 
 const apiMocks = vi.hoisted(() => ({
   getAssistantVoicePreferences: vi.fn(),
+  getAssistantVoicePreview: vi.fn(),
   grantAssistantVoiceConsent: vi.fn(),
   transcribeAssistantVoice: vi.fn(),
 }));
@@ -90,6 +91,9 @@ beforeEach(() => {
     transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
     ttsModel: "s2.1-pro-free",
   });
+  apiMocks.getAssistantVoicePreview.mockResolvedValue(
+    new Blob(["preview"], { type: "audio/mpeg" }),
+  );
 });
 
 afterEach(() => {
@@ -242,7 +246,7 @@ describe("AssistantVoiceControl", () => {
     expect(settings).toHaveTextContent("Recording stops automatically");
     expect(
       JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
-    ).toEqual({ submissionMode: "automatic", replyMode: "text" });
+    ).toEqual({ submissionMode: "automatic", replyMode: "text", speechVoice: "default" });
   });
 
   it("restores an existing user's saved voice choices", async () => {
@@ -264,6 +268,7 @@ describe("AssistantVoiceControl", () => {
 
     expect(screen.getByRole("radio", { name: /Review first/i })).toBeChecked();
     expect(screen.getByRole("radio", { name: /Text only/i })).toBeChecked();
+    expect(screen.getByLabelText("Voice and gender")).toHaveValue("default");
   });
 
   it("keeps voice input usable but falls back to text when speech is not configured", async () => {
@@ -299,7 +304,7 @@ describe("AssistantVoiceControl", () => {
     expect(screen.getByText(/Unavailable in this environment/i)).toBeInTheDocument();
     expect(
       JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
-    ).toEqual({ submissionMode: "review", replyMode: "text" });
+    ).toEqual({ submissionMode: "review", replyMode: "text", speechVoice: "default" });
     expect(screen.getByRole("button", { name: "Start voice recording" })).toBeEnabled();
   });
 
@@ -354,6 +359,7 @@ describe("AssistantVoiceControl", () => {
       expect(onTranscript).toHaveBeenCalledWith("Where did my money go?", {
         submissionMode: "automatic",
         replyMode: "spoken",
+        speechVoice: "default",
       }),
     );
   });
@@ -414,7 +420,57 @@ describe("AssistantVoiceControl", () => {
     expect(onTranscript).toHaveBeenCalledWith("How much did I spend?", {
       submissionMode: "automatic",
       replyMode: "text",
+      speechVoice: "default",
     });
+  });
+
+  it("offers gender-labelled voices, saves the choice, and previews fixed audio", async () => {
+    const createObjectURL = vi.fn(() => "blob:voice-preview");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL,
+      revokeObjectURL,
+    });
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
+
+    const voiceSelect = screen.getByLabelText("Voice and gender");
+    expect(voiceSelect).toHaveTextContent("Default · Unspecified");
+    expect(voiceSelect).toHaveTextContent("Bright · Female");
+    expect(voiceSelect).toHaveTextContent("Energetic · Male");
+
+    fireEvent.change(voiceSelect, { target: { value: "energetic" } });
+    expect(screen.getByText("An upbeat, energetic male voice.")).toBeInTheDocument();
+    expect(
+      JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
+    ).toEqual({
+      submissionMode: "automatic",
+      replyMode: "spoken",
+      speechVoice: "energetic",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    await waitFor(() =>
+      expect(apiMocks.getAssistantVoicePreview).toHaveBeenCalledWith(workspace, "energetic"),
+    );
+    expect(await screen.findByLabelText("Energetic voice preview")).toHaveAttribute(
+      "src",
+      "blob:voice-preview",
+    );
+    expect(createObjectURL).toHaveBeenCalledOnce();
   });
 
   it("removes transcript guidance once the reviewed message is sent", async () => {

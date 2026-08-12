@@ -392,7 +392,9 @@ export function createApp(options: AppOptions = {}) {
       context.req.method === "POST" &&
       context.req.path === "/api/app/assistant/voice/transcriptions";
     const isVoiceSpeech =
-      context.req.method === "POST" && context.req.path === "/api/app/assistant/voice/speech";
+      context.req.method === "POST" &&
+      (context.req.path === "/api/app/assistant/voice/speech" ||
+        context.req.path === "/api/app/assistant/voice/preview");
     const isExportRead =
       context.req.method === "GET" && context.req.path.startsWith("/api/app/exports");
     const isAssistantHistoryRead =

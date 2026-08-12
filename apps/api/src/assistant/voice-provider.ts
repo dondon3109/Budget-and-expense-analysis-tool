@@ -1,3 +1,5 @@
+import type { AssistantSpeechVoice } from "@zoption/shared";
+
 import type { Bindings } from "../types";
 
 export type AssistantVoiceProviderName = "cloudflare_workers_ai" | "fish_audio";
@@ -23,7 +25,7 @@ export interface AssistantVoiceTranscriptionProvider {
 }
 
 export interface AssistantVoiceSpeechProvider {
-  synthesize(env: Bindings, text: string): Promise<Response>;
+  synthesize(env: Bindings, text: string, voice: AssistantSpeechVoice): Promise<Response>;
 }
 
 export interface AssistantVoiceProviders {

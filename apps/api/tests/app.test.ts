@@ -653,7 +653,10 @@ describe("API foundation", () => {
         "Content-Type": "application/json",
         Origin: "http://localhost:5173",
       }),
-      body: JSON.stringify({ messageId: "00000000-0000-4000-8000-000000000003" }),
+      body: JSON.stringify({
+        messageId: "00000000-0000-4000-8000-000000000003",
+        voice: "bright",
+      }),
     });
 
     expect(response.status).toBe(200);
@@ -665,7 +668,25 @@ describe("API foundation", () => {
       undefined,
       TENANT_ID,
       "00000000-0000-4000-8000-000000000003",
+      "bright",
     );
+  });
+
+  it("returns an authenticated curated voice preview", async () => {
+    const preview = vi.fn(async () => new Response(new Uint8Array([4, 5, 6])));
+    const assistantVoiceService = { preview } as unknown as AssistantVoiceService;
+    const app = createTestApp({ assistantVoiceService });
+    const response = await app.request("/api/app/assistant/voice/preview", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ voice: "energetic" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("audio/mpeg");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([4, 5, 6]));
+    expect(preview).toHaveBeenCalledWith(undefined, "energetic");
   });
 
   it.each([

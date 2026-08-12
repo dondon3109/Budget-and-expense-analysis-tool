@@ -50,7 +50,6 @@ interface AssistantConversationProps {
   messages: AssistantMessage[];
   pendingMessage?: string;
   loading: boolean;
-  loadingLabel?: string;
   voiceReplies?: Readonly<Record<string, AssistantMessageVoiceReply>>;
   onPrompt: (prompt: string) => void;
   feeInsight?: TransferFeeInsight;
@@ -237,7 +236,6 @@ export function AssistantConversation({
   messages,
   pendingMessage,
   loading,
-  loadingLabel = "Checking your records…",
   voiceReplies,
   onPrompt,
   feeInsight,
@@ -355,7 +353,7 @@ export function AssistantConversation({
                 <i />
                 <i />
               </span>{" "}
-              {loadingLabel}
+              Checking your records…
             </p>
           </div>
         </article>

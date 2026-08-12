@@ -534,6 +534,9 @@ export interface AssistantResponseMetadata {
 export const CURRENT_ASSISTANT_CONSENT_VERSION = 5;
 export const CURRENT_ASSISTANT_VOICE_CONSENT_VERSION = 3;
 
+export const assistantSpeechVoices = ["default", "bright", "energetic"] as const;
+export type AssistantSpeechVoice = (typeof assistantSpeechVoices)[number];
+
 export type AssistantDebtStrategy = "avalanche" | "snowball";
 export type AssistantMemoryKind = "preference" | "fact" | "summary";
 export type AssistantMemorySource = "user_stated" | "deterministic" | "model_assisted";

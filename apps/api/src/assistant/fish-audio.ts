@@ -1,9 +1,19 @@
+import type { AssistantSpeechVoice } from "@zoption/shared";
+
 import type { Bindings } from "../types";
 import { AssistantVoiceProviderError, type AssistantVoiceSpeechProvider } from "./voice-provider";
 
 const FISH_API_ORIGIN = "https://api.fish.audio";
 const FREE_TTS_MODEL = "s2.1-pro-free";
 const DEFAULT_TIMEOUT_MS = 30_000;
+const FISH_VOICE_REFERENCE_IDS = {
+  bright: "ca3007f96ae7499ab87d27ea3599956a",
+  energetic: "9a9cf47702da476aa4629e2506d4a857",
+} satisfies Record<Exclude<AssistantSpeechVoice, "default">, string>;
+
+function referenceId(voice: AssistantSpeechVoice): string | undefined {
+  return voice === "default" ? undefined : FISH_VOICE_REFERENCE_IDS[voice];
+}
 
 function timeoutMs(env: Bindings): number {
   const parsed = Number(env.ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS);
@@ -44,11 +54,12 @@ async function fishFetch(env: Bindings, path: string, init: RequestInit): Promis
 }
 
 export const fishAudioProvider: AssistantVoiceSpeechProvider = {
-  async synthesize(env, text) {
+  async synthesize(env, text, voice) {
     const model = env.FISH_AUDIO_TTS_MODEL?.trim() || FREE_TTS_MODEL;
     if (model !== FREE_TTS_MODEL) {
       throw new AssistantVoiceProviderError("fish_audio", "configuration");
     }
+    const voiceReferenceId = referenceId(voice);
     return fishFetch(env, "/v1/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json", model },
@@ -57,6 +68,7 @@ export const fishAudioProvider: AssistantVoiceSpeechProvider = {
         format: "mp3",
         latency: "balanced",
         normalize: true,
+        ...(voiceReferenceId ? { reference_id: voiceReferenceId } : {}),
       }),
     });
   },

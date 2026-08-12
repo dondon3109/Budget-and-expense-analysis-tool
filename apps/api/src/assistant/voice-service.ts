@@ -1,6 +1,7 @@
 import {
   CURRENT_ASSISTANT_CONSENT_VERSION,
   CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
+  type AssistantSpeechVoice,
   type AssistantVoicePreferences,
   type AssistantVoiceTranscription,
 } from "@zoption/shared";
@@ -13,12 +14,21 @@ import { AssistantVoiceProviderError, type AssistantVoiceProviders } from "./voi
 
 const FREE_TTS_MODEL = "s2.1-pro-free" as const;
 const MAX_SPEECH_CHARACTERS = 6_000;
+const VOICE_PREVIEW_TEXT = "Your total spending is 70 pesos.";
+const PHILIPPINE_PESO_AMOUNT =
+  /(-)?(?:\bPHP|₱)\s*(-)?((?:\d{1,3}(?:,\d{3})+|\d+))(?:\.(\d{1,2}))?(?![\d.])/gi;
 
 export interface AssistantVoiceService {
   getPreferences(env: Bindings, tenantId: string): Promise<AssistantVoicePreferences>;
   grantConsent(env: Bindings, tenantId: string): Promise<AssistantVoicePreferences>;
   transcribe(env: Bindings, tenantId: string, audio: File): Promise<AssistantVoiceTranscription>;
-  synthesize(env: Bindings, tenantId: string, messageId: string): Promise<Response>;
+  synthesize(
+    env: Bindings,
+    tenantId: string,
+    messageId: string,
+    voice: AssistantSpeechVoice,
+  ): Promise<Response>;
+  preview(env: Bindings, voice: AssistantSpeechVoice): Promise<Response>;
 }
 
 export interface AssistantVoiceProviderFailureEvent {
@@ -84,7 +94,31 @@ function mapProviderError(error: unknown, reporter: AssistantVoiceDiagnosticRepo
   throw new HttpError(503, "assistant_voice_unavailable", "Voice mode is temporarily unavailable.");
 }
 
-function speechText(markdown: string): string {
+function spokenPesoAmount(
+  original: string,
+  leadingMinus: string | undefined,
+  innerMinus: string | undefined,
+  wholeDigits: string,
+  decimalDigits: string | undefined,
+): string {
+  try {
+    const whole = BigInt(wholeDigits.replaceAll(",", ""));
+    const centavos = Number((decimalDigits ?? "").padEnd(2, "0"));
+    const negative = Boolean(leadingMinus || innerMinus);
+    const parts: string[] = [];
+    if (whole > 0n || centavos === 0) {
+      parts.push(`${whole.toLocaleString("en-US")} ${whole === 1n ? "peso" : "pesos"}`);
+    }
+    if (centavos > 0) {
+      parts.push(`${centavos} ${centavos === 1 ? "centavo" : "centavos"}`);
+    }
+    return `${negative ? "minus " : ""}${parts.join(" and ")}`;
+  } catch {
+    return original;
+  }
+}
+
+export function assistantSpeechText(markdown: string): string {
   return markdown
     .replace(/```[\s\S]*?```/g, " Code example omitted. ")
     .replace(/^#{1,6}\s+(.+)$/gm, "$1.")
@@ -95,6 +129,7 @@ function speechText(markdown: string): string {
     .replace(/\[([^\]]+)]\([^\s)]+\)/g, "$1")
     .replace(/https?:\/\/\S+/g, "")
     .replace(/[*_~>]+/g, "")
+    .replace(PHILIPPINE_PESO_AMOUNT, spokenPesoAmount)
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, MAX_SPEECH_CHARACTERS);
@@ -156,7 +191,7 @@ export function createAssistantVoiceService(
         return mapProviderError(error, reporter);
       }
     },
-    async synthesize(env, tenantId, messageId) {
+    async synthesize(env, tenantId, messageId, voice) {
       await requireConsent(env, tenantId);
       const message = await repository.getCompletedAssistantMessage(env, tenantId, messageId);
       if (!message) {
@@ -166,11 +201,19 @@ export function createAssistantVoiceService(
           "That assistant reply was not found.",
         );
       }
-      const text = speechText(message.content);
+      const text = assistantSpeechText(message.content);
       if (!text)
         throw new HttpError(422, "assistant_voice_empty_reply", "That reply cannot be read aloud.");
       try {
-        return await providers.speech.synthesize(env, text);
+        return await providers.speech.synthesize(env, text, voice);
+      } catch (error) {
+        return mapProviderError(error, reporter);
+      }
+    },
+    async preview(env, voice) {
+      requireEnabled(env);
+      try {
+        return await providers.speech.synthesize(env, VOICE_PREVIEW_TEXT, voice);
       } catch (error) {
         return mapProviderError(error, reporter);
       }
