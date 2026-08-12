@@ -9,6 +9,7 @@ import {
   EyeOff,
   LockKeyhole,
   MessageSquareQuote,
+  RefreshCw,
   Search,
   Star,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import { userWorkspace } from "../lib/workspace";
 import "./AdminCustomerReviewsPage.css";
 
 const LANDING_REVIEW_LIMIT = 6;
+const INBOX_REFRESH_INTERVAL_MS = 30_000;
 
 const STATUS_LABELS: Record<CustomerReviewModerationStatus, string> = {
   pending: "Awaiting review",
@@ -101,6 +103,7 @@ export function AdminCustomerReviewsPage() {
     queryKey: queryKeys.adminCustomerReviews(workspace, reviewQuery),
     queryFn: () => getAdminCustomerReviews(workspace, reviewQuery),
     enabled: isAdmin,
+    refetchInterval: isAdmin ? INBOX_REFRESH_INTERVAL_MS : false,
   });
 
   const dashboard = reviews.data;
@@ -159,6 +162,11 @@ export function AdminCustomerReviewsPage() {
 
   const busy = statusMutation.isPending || lineupMutation.isPending;
   const mutationError = statusMutation.error ?? lineupMutation.error;
+
+  function applyStatusFilter(status: "all" | CustomerReviewModerationStatus) {
+    setStatusFilter(status);
+    setFeedback(undefined);
+  }
 
   function updateLineup(reviewIds: string[]) {
     setFeedback(undefined);
@@ -237,13 +245,28 @@ export function AdminCustomerReviewsPage() {
           <p>Platform administration</p>
           <h1>Customer reviews</h1>
           <span>
-            Moderate customer-submitted reviews and curate exactly what visitors see on the landing
-            page.
+            Review customer submissions, approve public wording, then choose which reviews appear on
+            the landing page. The inbox checks for new submissions every 30 seconds.
           </span>
         </div>
-        <a className="button secondary" href="/#reviews" target="_blank" rel="noreferrer">
-          Preview landing page <ExternalLink size={15} aria-hidden="true" />
-        </a>
+        <div className="admin-reviews-header-actions">
+          <button
+            className="refresh-button"
+            type="button"
+            onClick={() => void reviews.refetch()}
+            disabled={reviews.isFetching}
+          >
+            <RefreshCw
+              size={15}
+              className={reviews.isFetching ? "spinning" : ""}
+              aria-hidden="true"
+            />
+            {reviews.isFetching ? "Refreshing…" : "Refresh inbox"}
+          </button>
+          <a className="button secondary" href="/#reviews" target="_blank" rel="noreferrer">
+            Preview landing page <ExternalLink size={15} aria-hidden="true" />
+          </a>
+        </div>
       </header>
 
       {reviews.isLoading && (
@@ -261,30 +284,56 @@ export function AdminCustomerReviewsPage() {
 
       {dashboard && (
         <>
-          <dl className="admin-reviews-summary" aria-label="Review moderation summary">
+          <div
+            className="admin-reviews-summary"
+            role="group"
+            aria-label="Filter review inbox by moderation status"
+          >
+            <button
+              type="button"
+              className={statusFilter === "all" ? "current" : ""}
+              aria-pressed={statusFilter === "all"}
+              onClick={() => applyStatusFilter("all")}
+            >
+              <span>All reviews</span>
+              <strong>{dashboard.summary.total}</strong>
+            </button>
+            <button
+              type="button"
+              className={`${statusFilter === "pending" ? "current" : ""}${
+                dashboard.summary.pending > 0 ? " needs-attention" : ""
+              }`.trim()}
+              aria-pressed={statusFilter === "pending"}
+              onClick={() => applyStatusFilter("pending")}
+            >
+              <span>Needs review</span>
+              <strong>{dashboard.summary.pending}</strong>
+            </button>
+            <button
+              type="button"
+              className={statusFilter === "published" ? "current" : ""}
+              aria-pressed={statusFilter === "published"}
+              onClick={() => applyStatusFilter("published")}
+            >
+              <span>Published</span>
+              <strong>{dashboard.summary.published}</strong>
+            </button>
+            <button
+              type="button"
+              className={statusFilter === "hidden" ? "current" : ""}
+              aria-pressed={statusFilter === "hidden"}
+              onClick={() => applyStatusFilter("hidden")}
+            >
+              <span>Hidden</span>
+              <strong>{dashboard.summary.hidden}</strong>
+            </button>
             <div>
-              <dt>All reviews</dt>
-              <dd>{dashboard.summary.total}</dd>
-            </div>
-            <div>
-              <dt>Awaiting review</dt>
-              <dd>{dashboard.summary.pending}</dd>
-            </div>
-            <div>
-              <dt>Published</dt>
-              <dd>{dashboard.summary.published}</dd>
-            </div>
-            <div>
-              <dt>Hidden</dt>
-              <dd>{dashboard.summary.hidden}</dd>
-            </div>
-            <div>
-              <dt>On landing</dt>
-              <dd>
+              <span>On landing</span>
+              <strong>
                 {dashboard.summary.featured}/{LANDING_REVIEW_LIMIT}
-              </dd>
+              </strong>
             </div>
-          </dl>
+          </div>
 
           <section className="admin-review-lineup" aria-labelledby="landing-lineup-title">
             <div className="admin-review-section-heading">
@@ -353,7 +402,11 @@ export function AdminCustomerReviewsPage() {
               <div className="admin-review-section-heading">
                 <div>
                   <h2 id="review-inbox-title">Review inbox</h2>
-                  <p>Search every consented submission and filter by moderation state or rating.</p>
+                  <p>
+                    {dashboard.summary.pending > 0
+                      ? `${dashboard.summary.pending} submission${dashboard.summary.pending === 1 ? "" : "s"} awaiting your decision.`
+                      : "No submissions are waiting for a moderation decision."}
+                  </p>
                 </div>
                 <span>{dashboard.totalFiltered} matching</span>
               </div>
@@ -480,9 +533,38 @@ export function AdminCustomerReviewsPage() {
                   <blockquote>&ldquo;{selected.review}&rdquo;</blockquote>
                   <p className="admin-review-immutable">
                     <LockKeyhole size={15} aria-hidden="true" />
-                    Customer wording is immutable. The customer can replace or remove it from their
-                    own account.
+                    Customer wording is immutable. Zoption does not rewrite it with AI; the customer
+                    can replace or remove it from their own account.
                   </p>
+                  <div className="admin-review-next-step" role="status">
+                    <span>Current state</span>
+                    {selected.featuredOrder !== null ? (
+                      <>
+                        <strong>Live on the landing page</strong>
+                        <p>This review is publicly visible in position {selected.featuredOrder}.</p>
+                      </>
+                    ) : selected.moderationStatus === "published" ? (
+                      <>
+                        <strong>Approved, not yet public</strong>
+                        <p>
+                          Add this review to the lineup when it should appear on the landing page.
+                        </p>
+                      </>
+                    ) : selected.moderationStatus === "hidden" ? (
+                      <>
+                        <strong>Hidden from public view</strong>
+                        <p>Publish it again to make it eligible for the landing lineup.</p>
+                      </>
+                    ) : (
+                      <>
+                        <strong>Waiting for your decision</strong>
+                        <p>
+                          Publishing approves the wording; it will stay private until added to the
+                          lineup.
+                        </p>
+                      </>
+                    )}
+                  </div>
                   <dl>
                     <div>
                       <dt>Submitted</dt>

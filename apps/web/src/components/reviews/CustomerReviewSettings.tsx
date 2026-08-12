@@ -192,8 +192,8 @@ export function CustomerReviewSettings({ workspace }: { workspace: Authenticated
           </label>
 
           <p className="customer-review-settings-note">
-            Saving replacement wording removes its current landing placement and returns it to
-            moderation.
+            Zoption keeps your review in your own words and does not rewrite it with AI. Saving
+            replacement wording removes its current landing placement and returns it to moderation.
           </p>
 
           {feedback.error && (

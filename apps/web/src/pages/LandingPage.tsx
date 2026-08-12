@@ -573,7 +573,7 @@ export function LandingPage() {
             <h2 id="reviews-title">Clearer money, in their own words.</h2>
             <p>
               Reviews come from signed-in customers who explicitly consent to sharing; Zoption
-              selects which submissions appear here.
+              selects which submissions appear here and does not rewrite their words with AI.
             </p>
           </div>
 

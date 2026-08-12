@@ -123,6 +123,7 @@ describe("AdminCustomerReviewsPage", () => {
     expect(await screen.findByRole("heading", { name: "Landing lineup" })).toBeInTheDocument();
     expect(screen.getAllByText(firstFeaturedReview.review)).toHaveLength(2);
     expect(screen.getByText(/customer wording is immutable/i)).toBeInTheDocument();
+    expect(screen.getByText(/does not rewrite it with AI/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Publish review" }));
 
     await waitFor(() =>
@@ -158,7 +159,7 @@ describe("AdminCustomerReviewsPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "View review 1 from Alex" }));
 
     expect(screen.getByRole("heading", { name: "Alex" })).toBeInTheDocument();
-    expect(screen.getByText(/position 1/i)).toBeInTheDocument();
+    expect(screen.getByText("Position 1", { exact: true })).toBeInTheDocument();
   });
 
   it("loads the next server-backed inbox page", async () => {
@@ -183,6 +184,25 @@ describe("AdminCustomerReviewsPage", () => {
         { key: "user:admin-1", userId: "admin-1" },
         expect.objectContaining({ page: 2, pageSize: 50 }),
       ),
+    );
+  });
+
+  it("refreshes the inbox and makes summary counts actionable filters", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /needs review/i }));
+
+    await waitFor(() =>
+      expect(mocks.getReviews).toHaveBeenCalledWith(
+        { key: "user:admin-1", userId: "admin-1" },
+        expect.objectContaining({ status: "pending" }),
+      ),
+    );
+
+    const callsBeforeRefresh = mocks.getReviews.mock.calls.length;
+    fireEvent.click(await screen.findByRole("button", { name: "Refresh inbox" }));
+    await waitFor(() =>
+      expect(mocks.getReviews.mock.calls.length).toBeGreaterThan(callsBeforeRefresh),
     );
   });
 

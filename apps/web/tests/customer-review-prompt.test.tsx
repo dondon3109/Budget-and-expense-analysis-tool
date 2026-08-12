@@ -60,6 +60,7 @@ describe("customer review prompt", () => {
     renderPrompt();
 
     expect(await screen.findByRole("dialog", { name: /how is zoption working/i })).toBeVisible();
+    expect(screen.getByText(/does not use AI to rewrite it/i)).toBeInTheDocument();
     await userActions.click(screen.getByRole("button", { name: "5 stars" }));
     await userActions.type(
       screen.getByRole("textbox", { name: /your experience/i }),

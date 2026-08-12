@@ -184,6 +184,9 @@ export function CustomerReviewPrompt({
             />
             <small aria-hidden="true">{review.length}/600</small>
           </label>
+          <p className="review-prompt-wording-note">
+            Your review stays in your own words. Zoption does not use AI to rewrite it.
+          </p>
 
           <label className="review-publish-consent">
             <input

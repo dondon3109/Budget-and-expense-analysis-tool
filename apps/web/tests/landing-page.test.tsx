@@ -168,5 +168,6 @@ describe("landing page", () => {
     expect(
       within(section).getByText(/explicitly consent to sharing; Zoption selects/i),
     ).toBeInTheDocument();
+    expect(within(section).getByText(/does not rewrite their words with AI/i)).toBeInTheDocument();
   });
 });

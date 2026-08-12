@@ -71,7 +71,8 @@ export function PrivacyPolicyPage() {
             name you consent to submit for possible publication. Zoption associates the review with
             your verified account so only you can replace or remove it. Authorized platform
             administrators may publish, hide, and position the review, but cannot rewrite it.
-            Zoption does not publish your email address or financial workspace data.
+            Zoption does not use AI to rewrite customer reviews and does not publish your email
+            address or financial workspace data.
           </li>
           <li>
             <strong>Preferences and operations:</strong> theme and cookie/storage choices, request

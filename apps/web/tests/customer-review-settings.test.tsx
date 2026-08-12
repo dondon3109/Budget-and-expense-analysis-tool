@@ -47,6 +47,7 @@ describe("CustomerReviewSettings", () => {
     const user = userEvent.setup();
     render(<CustomerReviewSettings workspace={workspace} />);
 
+    expect(await screen.findByText(/does not rewrite it with AI/i)).toBeInTheDocument();
     const experience = await screen.findByRole("textbox", { name: /Your experience/ });
     await user.clear(experience);
     await user.type(experience, "I updated my review and want the new wording checked before use.");

@@ -39,6 +39,17 @@
   line-height: 1.6;
 }
 
+.admin-reviews-header-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin-reviews-header-actions .refresh-button {
+  cursor: pointer;
+}
+
 .admin-reviews-state,
 .admin-reviews-access {
   margin-top: 28px;
@@ -82,29 +93,60 @@
 
 .admin-reviews-summary {
   margin: 26px 0 0;
-  padding: 16px 20px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 34px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
 
+.admin-reviews-summary > button,
 .admin-reviews-summary > div {
-  min-width: 118px;
+  min-width: 0;
+  min-height: 62px;
+  padding: 12px 18px;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 14px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  font: inherit;
 }
 
-.admin-reviews-summary dt {
+.admin-reviews-summary > *:last-child {
+  border-right: 0;
+}
+
+.admin-reviews-summary > button {
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    color 0.16s ease,
+    background 0.16s ease;
+}
+
+.admin-reviews-summary > button:hover,
+.admin-reviews-summary > button.current {
+  background: var(--surface-hover);
+}
+
+.admin-reviews-summary > button.current {
+  box-shadow: inset 0 -2px 0 var(--action);
+}
+
+.admin-reviews-summary > button.needs-attention:not(.current) {
+  background: color-mix(in srgb, var(--warning-soft) 62%, transparent);
+}
+
+.admin-reviews-summary span {
   color: var(--subtle);
   font-size: 10px;
   font-weight: 740;
 }
 
-.admin-reviews-summary dd {
+.admin-reviews-summary strong {
   margin: 0;
   color: var(--ink);
   font-family: var(--font-mono);
@@ -546,6 +588,35 @@
   color: var(--action);
 }
 
+.admin-review-next-step {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.admin-review-next-step > span {
+  color: var(--subtle);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-review-next-step strong {
+  margin-top: 5px;
+  display: block;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.admin-review-next-step p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 .admin-review-detail dl {
   margin: 20px 0 0;
   display: grid;
@@ -640,6 +711,7 @@
 .admin-review-lineup-select:focus-visible,
 .admin-review-order-actions button:focus-visible,
 .admin-review-list > li > button:focus-visible,
+.admin-reviews-summary > button:focus-visible,
 .admin-review-filters select:focus-visible,
 .admin-review-search:focus-within {
   outline: 3px solid color-mix(in srgb, var(--focus) 30%, transparent);
@@ -679,17 +751,41 @@
     display: grid;
   }
 
-  .admin-reviews-header .button {
+  .admin-reviews-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-reviews-header-actions .button {
     width: fit-content;
   }
 
   .admin-reviews-summary {
-    padding-inline: 0;
-    gap: 12px 20px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .admin-reviews-summary > button,
   .admin-reviews-summary > div {
-    min-width: calc(50% - 10px);
+    min-height: 54px;
+    padding-inline: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .admin-reviews-summary > :nth-child(odd) {
+    padding-right: 14px;
+    border-right: 1px solid var(--line);
+  }
+
+  .admin-reviews-summary > :nth-child(even) {
+    padding-left: 14px;
+  }
+
+  .admin-reviews-summary > :last-child {
+    grid-column: 1 / -1;
+    padding-inline: 0;
+    border-right: 0;
+    border-bottom: 0;
   }
 
   .admin-review-section-heading {
@@ -747,18 +843,26 @@
 }
 
 @media (max-width: 420px) {
-  .admin-review-lineup-grid {
-    grid-template-columns: 1fr;
+  .admin-reviews-header-actions {
+    display: grid;
+    justify-content: start;
   }
 
-  .admin-review-lineup-card,
   .admin-review-lineup-empty {
-    border-right: 0 !important;
-    border-bottom: 1px solid var(--line) !important;
+    min-height: 112px;
+    padding: 12px 10px;
   }
 
-  .admin-review-lineup-card:last-child,
-  .admin-review-lineup-empty:last-child {
-    border-bottom: 0 !important;
+  .admin-review-lineup-card {
+    min-height: 200px;
+  }
+
+  .admin-review-lineup-select {
+    padding: 14px 12px 12px;
+  }
+
+  .admin-review-lineup-card blockquote {
+    font-size: 14px;
+    -webkit-line-clamp: 5;
   }
 }
