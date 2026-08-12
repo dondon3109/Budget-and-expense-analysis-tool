@@ -1,0 +1,103 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "budget-expense-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "triggers": {
+    "crons": [
+      "*/5 * * * *",
+      "17 3 * * *",
+      "17 4 * * *"
+    ]
+  },
+  "env": {
+    "preview": {
+      "name": "budget-expense-api-preview",
+      "ai": {
+        "binding": "AI"
+      },
+      "triggers": {
+        "crons": [
+          "*/5 * * * *",
+          "17 3 * * *"
+        ]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "budget-expense-preview",
+          "database_id": "edff68e8-49a2-4c35-a976-e6779592546e",
+          "migrations_dir": "../../db/migrations"
+        }
+      ],
+      "vars": {
+        "ALLOWED_ORIGINS": "https://clarity-budget-preview.pages.dev,https://codex-webapp.clarity-budget-preview.pages.dev",
+        "SUPABASE_URL": "https://kkxzpjdsvcbveuuiyomk.supabase.co",
+        "SUPABASE_JWT_AUDIENCE": "authenticated",
+        "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_yIO74YZrjUkxIZQrGm0lEQ_HgKKsyF5",
+        "ASSISTANT_ENABLED": "true",
+        "DEEPSEEK_MODEL": "deepseek-v4-flash",
+        "ASSISTANT_TIME_ZONE": "Asia/Manila",
+        "ASSISTANT_PROVIDER_TIMEOUT_MS": "12000",
+        "ASSISTANT_OVERALL_TIMEOUT_MS": "25000",
+        "ASSISTANT_VOICE_ENABLED": "true",
+        "ASSISTANT_VOICE_REVIEW_REQUIRED": "true",
+        "ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS": "30000",
+        "FISH_AUDIO_TTS_MODEL": "s2.1-pro-free",
+        "POSTHOG_AI_OBSERVABILITY_ENABLED": "true",
+        "POSTHOG_HOST": "https://us.i.posthog.com",
+        "POSTHOG_AI_ENVIRONMENT": "preview",
+        "WEB_APP_URL": "https://clarity-budget-preview.pages.dev",
+        "EMAIL_FROM": "hello@zoption.site",
+        "BUG_REPORT_TO": "support@zoption.site",
+        "PAYPAL_ENVIRONMENT": "production",
+        "PAYPAL_PRO_MONTHLY_PLAN_ID": "P-4G649363YX2188455NJX75XQ",
+        "PAYPAL_PRO_ANNUAL_PLAN_ID": "P-0F968078YM1473345NJX75XY"
+      }
+    },
+    "production": {
+      "name": "budget-expense-api-production",
+      "ai": {
+        "binding": "AI"
+      },
+      "routes": [
+        {
+          "pattern": "api.zoption.site",
+          "custom_domain": true
+        }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "budget-expense-production",
+          "database_id": "87ecafae-d103-44a6-a236-ef6e39b55ad0",
+          "migrations_dir": "../../db/migrations"
+        }
+      ],
+      "vars": {
+        "ALLOWED_ORIGINS": "https://zoption.site,https://www.zoption.site",
+        "SUPABASE_URL": "https://tsgfhhmpkvzmcxzbdtic.supabase.co",
+        "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzZ2ZoaG1wa3Z6bWN4emJkdGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMzEwNzUsImV4cCI6MjA5OTkwNzA3NX0.lIbM8zxc3srRZlcIN0PMb6akGWD8Lu5cXflQRFdY2J4",
+        "SUPABASE_JWT_AUDIENCE": "authenticated",
+        "WEB_APP_URL": "https://zoption.site",
+        "EMAIL_FROM": "hello@zoption.site",
+        "BUG_REPORT_TO": "support@zoption.site",
+        "ASSISTANT_ENABLED": "true",
+        "DEEPSEEK_MODEL": "deepseek-v4-flash",
+        "ASSISTANT_TIME_ZONE": "Asia/Manila",
+        "ASSISTANT_PROVIDER_TIMEOUT_MS": "12000",
+        "ASSISTANT_OVERALL_TIMEOUT_MS": "25000",
+        "ASSISTANT_VOICE_ENABLED": "true",
+        "ASSISTANT_VOICE_REVIEW_REQUIRED": "false",
+        "ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS": "30000",
+        "FISH_AUDIO_TTS_MODEL": "s2.1-pro-free",
+        "POSTHOG_AI_OBSERVABILITY_ENABLED": "true",
+        "POSTHOG_HOST": "https://us.i.posthog.com",
+        "POSTHOG_AI_ENVIRONMENT": "production",
+        "PAYPAL_ENVIRONMENT": "production",
+        "PAYPAL_PRO_MONTHLY_PLAN_ID": "P-4G649363YX2188455NJX75XQ",
+        "PAYPAL_PRO_ANNUAL_PLAN_ID": "P-0F968078YM1473345NJX75XY"
+      }
+    }
+  }
+}
