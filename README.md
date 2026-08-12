@@ -13,6 +13,7 @@ The public site is a marketing and authentication surface with a static illustra
 ## Releases
 
 - [Product changelog](CHANGELOG.md)
+- [Zoption 2.1.0 production release record](docs/releases/2.1.0.md)
 - [Zoption 2.0.0 production release record](docs/releases/2.0.0.md)
 
 ## Current state
