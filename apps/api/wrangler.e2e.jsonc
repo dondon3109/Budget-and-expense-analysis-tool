@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "budget-expense-api-e2e",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  // Browser tests exercise non-AI routes and must remain independent of Cloudflare credentials.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "budget-expense-local",
+      "database_id": "local-development",
+      "migrations_dir": "../../db/migrations",
+    },
+  ],
+  "vars": {
+    "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173",
+    "SUPABASE_URL": "http://127.0.0.1:54321",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_local-test-key",
+    "SUPABASE_JWT_AUDIENCE": "authenticated",
+    "WEB_APP_URL": "http://localhost:5173",
+    "ASSISTANT_ENABLED": "false",
+    "PAYPAL_ENVIRONMENT": "sandbox",
+  },
+}
