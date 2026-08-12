@@ -270,6 +270,10 @@ export const assistantPreferenceUpdateSchema = z.union([
 
 export type AssistantPreferenceUpdate = z.infer<typeof assistantPreferenceUpdateSchema>;
 
+export const assistantVoiceConsentUpdateSchema = z.object({ consented: z.literal(true) }).strict();
+
+export const assistantVoiceSpeechInputSchema = z.object({ messageId: z.string().uuid() }).strict();
+
 export const assistantMemoryPreferencesUpdateSchema = z
   .object({
     debtStrategy: z.enum(["avalanche", "snowball"]).nullable(),

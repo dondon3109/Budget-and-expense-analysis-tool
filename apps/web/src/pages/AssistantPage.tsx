@@ -16,6 +16,7 @@ import { AssistantConversation } from "../components/assistant/AssistantConversa
 import { AssistantIdentityDialog } from "../components/assistant/AssistantIdentityDialog";
 import { AssistantMemoryPanel } from "../components/assistant/AssistantMemoryPanel";
 import { AssistantThreadList } from "../components/assistant/AssistantThreadList";
+import { AssistantVoiceControl } from "../components/assistant/AssistantVoiceControl";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
 import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
@@ -31,6 +32,7 @@ import {
   getAssistantPreferences,
   getAssistantThreads,
   getTransferFeeInsight,
+  getAssistantVoiceSpeech,
   grantAssistantConsent,
   isBillingEnforcementError,
   isUsageLimitReachedError,
@@ -56,12 +58,15 @@ export function AssistantPage() {
   const historyToggleRef = useRef<HTMLButtonElement>(null);
   const historyCloseRef = useRef<HTMLButtonElement>(null);
   const historyWasOpenRef = useRef(false);
+  const voiceTurnRef = useRef(false);
   const [pendingMessage, setPendingMessage] = useState<string>();
   const [sendError, setSendError] = useState<Error>();
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
+  const [voiceAudioUrl, setVoiceAudioUrl] = useState<string>();
+  const [voicePlaybackError, setVoicePlaybackError] = useState<string>();
 
   const preferences = useQuery({
     queryKey: queryKeys.assistantPreferences(workspace),
@@ -112,6 +117,13 @@ export function AssistantPage() {
     else if (historyWasOpenRef.current) historyToggleRef.current?.focus();
     historyWasOpenRef.current = historyOpen;
   }, [historyOpen]);
+
+  useEffect(
+    () => () => {
+      if (voiceAudioUrl) URL.revokeObjectURL(voiceAudioUrl);
+    },
+    [voiceAudioUrl],
+  );
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -200,8 +212,25 @@ export function AssistantPage() {
       setDraft("");
       setPendingMessage(undefined);
       setSendError(undefined);
+      if (voiceTurnRef.current && __ASSISTANT_VOICE_ENABLED__) {
+        voiceTurnRef.current = false;
+        setVoicePlaybackError(undefined);
+        void getAssistantVoiceSpeech(workspace, result.assistantMessage.id)
+          .then((blob) => {
+            setVoiceAudioUrl((current) => {
+              if (current) URL.revokeObjectURL(current);
+              return URL.createObjectURL(blob);
+            });
+          })
+          .catch((error: unknown) => {
+            setVoicePlaybackError(
+              error instanceof Error ? error.message : "The spoken reply could not be prepared.",
+            );
+          });
+      }
     },
     onError: (error) => {
+      voiceTurnRef.current = false;
       setPendingMessage(undefined);
       const nextError =
         error instanceof Error ? error : new Error("Your message could not be sent.");
@@ -269,9 +298,17 @@ export function AssistantPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
   });
 
-  function send() {
-    const message = draft.trim();
+  function sendMessage(messageValue: string, fromVoice = false) {
+    const message = messageValue.trim();
     if (!message || sendMutation.isPending) return;
+    voiceTurnRef.current = fromVoice || voiceTurnRef.current;
+    if (voiceTurnRef.current) {
+      setVoiceAudioUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return undefined;
+      });
+      setVoicePlaybackError(undefined);
+    }
     limitTriggerRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setPendingMessage(message);
@@ -279,9 +316,19 @@ export function AssistantPage() {
     sendMutation.mutate(message);
   }
 
+  function send() {
+    sendMessage(draft);
+  }
+
   function startNew() {
     startNewChat();
     setSendError(undefined);
+    voiceTurnRef.current = false;
+    setVoicePlaybackError(undefined);
+    setVoiceAudioUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return undefined;
+    });
     setHistoryOpen(false);
   }
 
@@ -432,6 +479,20 @@ export function AssistantPage() {
               />
             )}
             <UpgradePrompt error={sendError} />
+            {__ASSISTANT_VOICE_ENABLED__ && (voiceAudioUrl || voicePlaybackError) && (
+              <div className="assistant-voice-playback" role="status">
+                {voiceAudioUrl ? (
+                  <audio
+                    controls
+                    autoPlay
+                    src={voiceAudioUrl}
+                    aria-label="Spoken assistant reply"
+                  />
+                ) : (
+                  <span>{voicePlaybackError}</span>
+                )}
+              </div>
+            )}
             <AssistantComposer
               value={draft}
               busy={sendMutation.isPending}
@@ -443,6 +504,24 @@ export function AssistantPage() {
                 if (sendError) setSendError(undefined);
               }}
               onSend={send}
+              voiceControl={
+                __ASSISTANT_VOICE_ENABLED__ ? (
+                  <AssistantVoiceControl
+                    workspace={workspace}
+                    disabled={sendMutation.isPending}
+                    reviewRequired={__ASSISTANT_VOICE_REVIEW_REQUIRED__}
+                    onTranscript={(transcript) => {
+                      voiceTurnRef.current = true;
+                      if (__ASSISTANT_VOICE_REVIEW_REQUIRED__) {
+                        setDraft(transcript);
+                        setSendError(undefined);
+                      } else {
+                        sendMessage(transcript, true);
+                      }
+                    }}
+                  />
+                ) : undefined
+              }
             />
           </section>
         </div>

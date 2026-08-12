@@ -1,5 +1,5 @@
 import { Bot, Send, ShieldCheck } from "lucide-react";
-import type { FormEvent, KeyboardEvent } from "react";
+import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 
 interface AssistantComposerProps {
   value: string;
@@ -7,6 +7,7 @@ interface AssistantComposerProps {
   error?: string;
   onChange: (value: string) => void;
   onSend: () => void;
+  voiceControl?: ReactNode;
 }
 
 export function AssistantComposer({
@@ -15,6 +16,7 @@ export function AssistantComposer({
   error,
   onChange,
   onSend,
+  voiceControl,
 }: AssistantComposerProps) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,6 +48,7 @@ export function AssistantComposer({
         onKeyDown={handleKeyDown}
         disabled={busy}
       />
+      {voiceControl}
       <button
         className="assistant-send"
         type="submit"

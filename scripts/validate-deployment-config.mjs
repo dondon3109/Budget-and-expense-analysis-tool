@@ -17,6 +17,10 @@ const requiredVariables = [
   "PAYPAL_ENVIRONMENT",
   "PAYPAL_PRO_MONTHLY_PLAN_ID",
   "PAYPAL_PRO_ANNUAL_PLAN_ID",
+  "ASSISTANT_VOICE_ENABLED",
+  "ASSISTANT_VOICE_REVIEW_REQUIRED",
+  "ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS",
+  "FISH_AUDIO_TTS_MODEL",
 ];
 const secretVariableNames = [
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -26,6 +30,7 @@ const secretVariableNames = [
   "PAYPAL_CLIENT_ID",
   "PAYPAL_CLIENT_SECRET",
   "PAYPAL_WEBHOOK_ID",
+  "FISH_AUDIO_API_KEY",
 ];
 const productionWebOrigins = ["https://www.zoption.site", "https://zoption.site"];
 
@@ -175,6 +180,32 @@ function validatePostHogConfig(vars, environment) {
   }
 }
 
+function validateAssistantVoiceConfig(vars, environment, config) {
+  const enabled = requiredString(vars, "ASSISTANT_VOICE_ENABLED", environment);
+  const reviewRequired = requiredString(vars, "ASSISTANT_VOICE_REVIEW_REQUIRED", environment);
+  if (!new Set(["true", "false"]).has(enabled) || !new Set(["true", "false"]).has(reviewRequired)) {
+    throw new Error(`${environment} assistant voice flags must be the strings true or false.`);
+  }
+  if (environment === "preview" && (enabled !== "true" || reviewRequired !== "true")) {
+    throw new Error("preview must enable assistant voice with transcript review required.");
+  }
+  if (environment === "production" && (enabled !== "true" || reviewRequired !== "false")) {
+    throw new Error("production must enable assistant voice with transcript review off.");
+  }
+  if (enabled === "true" && config.ai?.binding !== "AI") {
+    throw new Error(
+      `${environment} must bind Cloudflare Workers AI as AI for voice transcription.`,
+    );
+  }
+  if (requiredString(vars, "FISH_AUDIO_TTS_MODEL", environment) !== "s2.1-pro-free") {
+    throw new Error(`${environment} must use the free Fish Audio TTS model s2.1-pro-free.`);
+  }
+  const timeout = Number(requiredString(vars, "ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS", environment));
+  if (!Number.isInteger(timeout) || timeout < 5_000 || timeout > 60_000) {
+    throw new Error(`${environment} ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS must be 5000-60000.`);
+  }
+}
+
 function validateEnvironment(environment, config) {
   if (!config || typeof config !== "object") {
     throw new Error(`Wrangler config is missing the ${environment} environment.`);
@@ -190,6 +221,7 @@ function validateEnvironment(environment, config) {
     }
   }
   validatePostHogConfig(vars, environment);
+  validateAssistantVoiceConfig(vars, environment, config);
 
   const allowedOrigins = requiredString(vars, "ALLOWED_ORIGINS", environment)
     .split(",")

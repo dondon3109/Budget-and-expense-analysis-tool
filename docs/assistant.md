@@ -17,6 +17,16 @@ Zoption's AI Financial Assistant is a read-only budgeting and financial-wellness
 
 The browser cannot submit a tenant ID, model, system prompt, tool definition, assistant message, or tool result.
 
+## Voice mode
+
+Voice mode is available in Preview and Production. A user explicitly enables the separate, versioned voice consent before the browser requests microphone access. A push-to-talk recording of at most 60 seconds and 4 MB is sent through the authenticated Worker to Cloudflare Workers AI's `@cf/openai/whisper-large-v3-turbo` model. Preview places the transcript in the normal assistant composer for review and editing. Production sends the transcript to the assistant immediately after transcription to remove the extra review action.
+
+For a voice-originated turn, the Worker may send the completed assistant reply text to Fish Audio TTS and return MP3 audio. The browser holds recordings and generated audio only in memory, and Zoption does not write either to D1. Speech generation accepts only a completed assistant message owned by the current tenant. The Fish API key remains a Worker secret, request bodies are bounded before multipart parsing, and transcription and speech have separate tenant rate limits.
+
+The rollout remains dual-gated in each build and Worker environment. `ASSISTANT_VOICE_ENABLED` exposes the microphone and enables the authenticated voice routes. `ASSISTANT_VOICE_REVIEW_REQUIRED` is `true` in Preview and `false` in Production, matching the review-first evaluation and direct-send Production experience.
+
+TTS is pinned to Fish Audio's free `s2.1-pro-free` model. The Worker rejects any other configured TTS model. Transcription starts within Cloudflare Workers AI's daily free allocation and should be monitored before enabling paid Workers AI usage.
+
 ## Allowed tools
 
 - `get_account_balances` — balances calculated from recorded transaction ledger entries, optionally filtered to a tenant-owned account.
@@ -114,6 +124,10 @@ Non-secret Worker variables:
 - `ASSISTANT_TIME_ZONE=Asia/Manila`
 - `ASSISTANT_PROVIDER_TIMEOUT_MS=12000`
 - `ASSISTANT_OVERALL_TIMEOUT_MS=25000`
+- `ASSISTANT_VOICE_ENABLED=true` in Preview and Production
+- `ASSISTANT_VOICE_REVIEW_REQUIRED=true` in Preview and `false` in Production
+- `ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS=30000`
+- `FISH_AUDIO_TTS_MODEL=s2.1-pro-free`
 - `POSTHOG_AI_OBSERVABILITY_ENABLED=false` until the target environment is verified
 - `POSTHOG_HOST=https://us.i.posthog.com`
 - `POSTHOG_AI_ENVIRONMENT=preview` or `production`
@@ -139,6 +153,20 @@ pnpm --filter @zoption/api exec wrangler secret put POSTHOG_PROJECT_TOKEN \
   --config wrangler.deploy.jsonc \
   --env production
 ```
+
+Voice mode additionally requires `FISH_AUDIO_API_KEY` as a separate Worker secret in each enabled environment:
+
+```bash
+pnpm --filter @zoption/api exec wrangler secret put FISH_AUDIO_API_KEY \
+  --config wrangler.deploy.jsonc \
+  --env preview
+
+pnpm --filter @zoption/api exec wrangler secret put FISH_AUDIO_API_KEY \
+  --config wrangler.deploy.jsonc \
+  --env production
+```
+
+Voice transcription requires an `AI` binding named `AI` in both the Preview and Production Wrangler environments.
 
 For local development, put provider secrets in ignored `apps/api/.dev.vars`. Never use a `VITE_*` variable for either key. Keep local PostHog capture disabled unless explicitly testing it. Enable Preview first, inspect the raw event JSON for the metadata allow-list, confirm no person profile is created, verify and disclose the project's actual event-retention plan, require the matching consent version, and only then enable Production. The current rollout uses PostHog's 12-month event-retention plan and assistant consent version 5.
 

@@ -1031,7 +1031,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-composer {
   position: relative;
   margin: 0 clamp(16px, 4vw, 48px) 20px;
-  padding: 12px 54px 36px 14px;
+  padding: 12px 98px 36px 14px;
   display: flex;
   align-items: flex-end;
   gap: 12px;
@@ -1114,9 +1114,97 @@ main:has(.assistant-page) > .legal-footer,
   box-shadow: none;
 }
 
+.assistant-voice-control {
+  position: absolute;
+  right: 56px;
+  bottom: 34px;
+}
+
+.assistant-voice-button {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: var(--action);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.assistant-voice-button:hover:not(:disabled) {
+  border-color: var(--action);
+  background: color-mix(in srgb, var(--action) 8%, var(--surface));
+}
+
+.assistant-voice-button.recording {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+  background: var(--danger-soft);
+}
+
+.assistant-voice-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.assistant-voice-notice {
+  position: absolute;
+  right: -46px;
+  bottom: calc(100% + 14px);
+  z-index: 4;
+  width: min(360px, calc(100vw - 32px));
+  padding: 16px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 18px 42px -20px var(--shadow);
+}
+
+.assistant-voice-notice p {
+  margin: 7px 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.assistant-voice-notice > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.assistant-voice-status {
+  position: absolute;
+  right: -46px;
+  bottom: calc(100% + 8px);
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 7px 10px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: 0 8px 20px -16px var(--shadow);
+  font-size: 11px;
+}
+
+.assistant-voice-playback {
+  margin: 0 clamp(16px, 4vw, 48px) 8px;
+  display: flex;
+  justify-content: flex-end;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.assistant-voice-playback audio {
+  width: min(360px, 100%);
+  height: 34px;
+}
+
 .assistant-composer-note {
   position: absolute;
-  right: 58px;
+  right: 102px;
   bottom: 9px;
   left: 14px;
   display: flex;
@@ -1700,7 +1788,7 @@ main:has(.assistant-page) > .legal-footer,
 
   .assistant-composer {
     margin: 0 8px 6px;
-    padding: 8px 52px 28px 12px;
+    padding: 8px 100px 28px 12px;
     border-radius: 16px;
   }
 
@@ -1720,8 +1808,28 @@ main:has(.assistant-page) > .legal-footer,
     height: 44px;
   }
 
+  .assistant-voice-control {
+    right: 58px;
+    bottom: 28px;
+  }
+
+  .assistant-voice-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .assistant-voice-notice,
+  .assistant-voice-status {
+    position: fixed;
+    right: 12px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    width: auto;
+    max-width: none;
+  }
+
   .assistant-composer-note {
-    right: 56px;
+    right: 104px;
     bottom: 7px;
     left: 12px;
     gap: 8px;

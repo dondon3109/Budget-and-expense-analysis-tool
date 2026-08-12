@@ -1,4 +1,7 @@
-import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
+import {
+  CURRENT_ASSISTANT_CONSENT_VERSION,
+  CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
+} from "@zoption/shared";
 import type {
   AssistantMemory,
   AssistantMessage,
@@ -155,7 +158,11 @@ export interface AssistantRepository {
   deleteThread(env: Bindings, tenantId: string, threadId: string): Promise<void>;
   deleteAllThreads(env: Bindings, tenantId: string): Promise<void>;
   cleanupExpired(env: Bindings, tenantId?: string): Promise<number>;
-  listMemories(env: Bindings, tenantId: string, kind?: AssistantMemoryKind): Promise<AssistantMemory[]>;
+  listMemories(
+    env: Bindings,
+    tenantId: string,
+    kind?: AssistantMemoryKind,
+  ): Promise<AssistantMemory[]>;
   getMemory(
     env: Bindings,
     tenantId: string,
@@ -174,6 +181,22 @@ export interface AssistantRepository {
     key: string,
   ): Promise<void>;
   clearMemories(env: Bindings, tenantId: string, kind?: AssistantMemoryKind): Promise<void>;
+}
+
+export interface AssistantVoiceRepository {
+  getVoiceConsent(
+    env: Bindings,
+    tenantId: string,
+  ): Promise<{ consentedAt: string | null; consentVersion: number }>;
+  grantVoiceConsent(
+    env: Bindings,
+    tenantId: string,
+  ): Promise<{ consentedAt: string; consentVersion: number }>;
+  getCompletedAssistantMessage(
+    env: Bindings,
+    tenantId: string,
+    messageId: string,
+  ): Promise<AssistantMessage | null>;
 }
 
 function threadFromRow(row: ThreadRow): AssistantThread {
@@ -285,7 +308,7 @@ async function findDuplicateTurn(
   };
 }
 
-export const assistantRepository: AssistantRepository = {
+export const assistantRepository: AssistantRepository & AssistantVoiceRepository = {
   async getPreferences(env, tenantId) {
     const row = await env.DB.prepare(
       `SELECT consented_at, consent_version, assistant_name, user_preferred_name,
@@ -318,6 +341,59 @@ export const assistantRepository: AssistantRepository = {
       .bind(tenantId, now, CURRENT_ASSISTANT_CONSENT_VERSION, DEFAULT_RETENTION_DAYS, now)
       .run();
     return this.getPreferences(env, tenantId);
+  },
+
+  async getVoiceConsent(env, tenantId) {
+    const row = await env.DB.prepare(
+      `SELECT voice_consented_at, voice_consent_version
+       FROM assistant_preferences WHERE tenant_id = ?`,
+    )
+      .bind(tenantId)
+      .first<{ voice_consented_at: string | null; voice_consent_version: number }>();
+    return {
+      consentedAt: row?.voice_consented_at ?? null,
+      consentVersion: row?.voice_consent_version ?? 0,
+    };
+  },
+
+  async grantVoiceConsent(env, tenantId) {
+    const now = new Date().toISOString();
+    const result = await env.DB.prepare(
+      `UPDATE assistant_preferences
+       SET voice_consented_at = ?, voice_consent_version = ?, updated_at = ?
+       WHERE tenant_id = ? AND consented_at IS NOT NULL AND consent_version = ?`,
+    )
+      .bind(
+        now,
+        CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
+        now,
+        tenantId,
+        CURRENT_ASSISTANT_CONSENT_VERSION,
+      )
+      .run();
+    if (result.meta.changes !== 1) {
+      throw new HttpError(
+        409,
+        "assistant_consent_required",
+        "Accept the AI data-sharing notice before enabling voice preview.",
+      );
+    }
+    return {
+      consentedAt: now,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
+    };
+  },
+
+  async getCompletedAssistantMessage(env, tenantId, messageId) {
+    const row = await env.DB.prepare(
+      `SELECT id, thread_id, role, content, status, response_metadata_json, created_at
+       FROM assistant_messages
+       WHERE tenant_id = ? AND id = ? AND role = 'assistant' AND status = 'completed'
+       LIMIT 1`,
+    )
+      .bind(tenantId, messageId)
+      .first<MessageRow>();
+    return row ? messageFromRow(row) : null;
   },
 
   async setAssistantIdentity(env, tenantId, identity) {
@@ -702,7 +778,8 @@ export const assistantRepository: AssistantRepository = {
       )
       .run();
     const memory = await this.getMemory(env, tenantId, input.kind, input.key);
-    if (!memory) throw new HttpError(500, "assistant_memory_failed", "The memory could not be saved.");
+    if (!memory)
+      throw new HttpError(500, "assistant_memory_failed", "The memory could not be saved.");
     return memory;
   },
 
@@ -716,9 +793,10 @@ export const assistantRepository: AssistantRepository = {
 
   async clearMemories(env, tenantId, kind) {
     const statement = kind
-      ? env.DB.prepare(
-          `DELETE FROM assistant_memories WHERE tenant_id = ? AND kind = ?`,
-        ).bind(tenantId, kind)
+      ? env.DB.prepare(`DELETE FROM assistant_memories WHERE tenant_id = ? AND kind = ?`).bind(
+          tenantId,
+          kind,
+        )
       : env.DB.prepare(`DELETE FROM assistant_memories WHERE tenant_id = ?`).bind(tenantId);
     await statement.run();
   },
@@ -744,9 +822,7 @@ export const assistantRepository: AssistantRepository = {
       ),
     );
     if (tenantId) {
-      await env.DB.prepare(
-        `DELETE FROM assistant_memories WHERE tenant_id = ? AND expires_at < ?`,
-      )
+      await env.DB.prepare(`DELETE FROM assistant_memories WHERE tenant_id = ? AND expires_at < ?`)
         .bind(tenantId, now)
         .run();
     } else {

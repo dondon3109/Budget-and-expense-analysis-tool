@@ -66,6 +66,8 @@ export function AppShell({ children }: AppShellProps) {
   );
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
+  const showSupportChat =
+    location.pathname !== "/app/assistant" && location.pathname !== "/app/assistant/";
   const mobilePrimaryRoute = mobileNavItems.some(({ end, to }) =>
     end ? location.pathname === to || location.pathname === `${to}/` : location.pathname === to,
   );
@@ -271,7 +273,9 @@ export function AppShell({ children }: AppShellProps) {
           <span>More</span>
         </button>
       </nav>
-      <SupportChat surface="app" workspace={user ? userWorkspace(user) : undefined} />
+      {showSupportChat && (
+        <SupportChat surface="app" workspace={user ? userWorkspace(user) : undefined} />
+      )}
       {user && !location.pathname.startsWith("/app/admin/") && (
         <CustomerReviewPrompt user={user} workspace={userWorkspace(user)} />
       )}

@@ -13,6 +13,8 @@ if (typeof rootPackage.version !== "string" || !rootPackage.version.trim()) {
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(rootPackage.version),
+    __ASSISTANT_VOICE_ENABLED__: false,
+    __ASSISTANT_VOICE_REVIEW_REQUIRED__: true,
   },
   test: {
     include: [

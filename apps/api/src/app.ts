@@ -15,10 +15,18 @@ import { createFinancialReader } from "./assistant/financial-reader";
 import type { AssistantAiTelemetryFactory } from "./assistant/posthog-ai";
 import type { AssistantProvider } from "./assistant/provider";
 import { createAssistantService, type AssistantService } from "./assistant/service";
+import { cloudflareWhisperProvider } from "./assistant/cloudflare-whisper";
+import { fishAudioProvider } from "./assistant/fish-audio";
+import { createAssistantVoiceService, type AssistantVoiceService } from "./assistant/voice-service";
+import type { AssistantVoiceProviders } from "./assistant/voice-provider";
 import { createAccountDeletionService, type AccountDeletionService } from "./account-deletion";
 import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from "./auth";
 import { accountRepository, type AccountRepository } from "./db/accounts";
-import { assistantRepository, type AssistantRepository } from "./db/assistant";
+import {
+  assistantRepository,
+  type AssistantRepository,
+  type AssistantVoiceRepository,
+} from "./db/assistant";
 import {
   assistantModelMemoryUsageRepository,
   type AssistantModelMemoryUsageRepository,
@@ -45,6 +53,7 @@ import { createPlatformAdminService, type PlatformAdminService } from "./platfor
 import { createAccountDeletionRoutes } from "./routes/account-deletion";
 import { createAccountRoutes } from "./routes/accounts";
 import { createAssistantRoutes } from "./routes/assistant";
+import { createAssistantVoiceRoutes } from "./routes/assistant-voice";
 import { createBillingRoutes } from "./routes/billing";
 import { createBudgetRoutes } from "./routes/budgets";
 import { createCategoryRoutes } from "./routes/categories";
@@ -74,6 +83,7 @@ const WRITE_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 const JSON_METHODS = new Set(["POST", "PATCH", "PUT"]);
 const DEFAULT_JSON_BODY_LIMIT = 64 * 1024;
 const IMPORT_PREVIEW_BODY_LIMIT = 3 * 1024 * 1024;
+const ASSISTANT_VOICE_BODY_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
 const PAYPAL_WEBHOOK_BODY_LIMIT = 128 * 1024;
 const PAYPAL_WEBHOOK_RATE_LIMIT = {
   scope: "paypal-webhook",
@@ -132,12 +142,15 @@ export interface AppOptions {
   authVerifier?: AuthVerifier;
   tenantResolver?: TenantResolver;
   assistantRepository?: AssistantRepository;
+  assistantVoiceRepository?: AssistantVoiceRepository;
   assistantUsage?: AssistantUsageRepository;
   assistantModelMemoryUsage?: AssistantModelMemoryUsageRepository;
   assistantProvider?: AssistantProvider;
   supportProvider?: AssistantProvider;
   assistantTelemetryFactory?: AssistantAiTelemetryFactory;
   assistantService?: AssistantService;
+  assistantVoiceProviders?: AssistantVoiceProviders;
+  assistantVoiceService?: AssistantVoiceService;
   accountDeletionService?: AccountDeletionService;
   platformAdmins?: PlatformAdminRepository;
   platformAdminService?: PlatformAdminService;
@@ -191,6 +204,18 @@ export function createApp(options: AppOptions = {}) {
       assistantProvider,
       assistantModelMemoryUsage,
       options.assistantTelemetryFactory,
+    );
+  const assistantVoiceService =
+    options.assistantVoiceService ??
+    createAssistantVoiceService(
+      {
+        getPreferences: assistantStore.getPreferences.bind(assistantStore),
+        ...(options.assistantVoiceRepository ?? assistantRepository),
+      },
+      options.assistantVoiceProviders ?? {
+        transcription: cloudflareWhisperProvider,
+        speech: fishAudioProvider,
+      },
     );
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =
@@ -299,6 +324,29 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   app.use("/api/app/*", async (context, next) => {
+    const isVoiceTranscription =
+      context.req.method === "POST" &&
+      context.req.path === "/api/app/assistant/voice/transcriptions";
+    if (isVoiceTranscription) {
+      const contentType = context.req.header("Content-Type")?.toLowerCase() ?? "";
+      if (!contentType.startsWith("multipart/form-data;")) {
+        throw new HttpError(
+          415,
+          "unsupported_media_type",
+          "Send voice recordings as multipart form data.",
+        );
+      }
+      const limitBody = bodyLimit({
+        maxSize: ASSISTANT_VOICE_BODY_LIMIT,
+        onError: (limitedContext) =>
+          limitedContext.json(
+            { error: "payload_too_large", message: "The voice recording is too large." },
+            413,
+          ),
+      }) as MiddlewareHandler<AppEnvironment>;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      return limitBody(context, next);
+    }
     const requiresJson =
       JSON_METHODS.has(context.req.method) ||
       (context.req.method === "DELETE" && context.req.path === "/api/app/account");
@@ -340,42 +388,59 @@ export function createApp(options: AppOptions = {}) {
         /^\/api\/app\/assistant\/threads\/[^/]+\/messages$/.test(context.req.path));
     const isSupportGeneration =
       context.req.method === "POST" && context.req.path === "/api/app/support/chat";
+    const isVoiceTranscription =
+      context.req.method === "POST" &&
+      context.req.path === "/api/app/assistant/voice/transcriptions";
+    const isVoiceSpeech =
+      context.req.method === "POST" && context.req.path === "/api/app/assistant/voice/speech";
     const isExportRead =
       context.req.method === "GET" && context.req.path.startsWith("/api/app/exports");
     const isAssistantHistoryRead =
       context.req.method === "GET" && context.req.path.startsWith("/api/app/assistant/threads");
-    const policies = isAccountDeletion
-      ? [{ scope: "user-account-deletion", limit: 5, windowSeconds: 15 * 60 }]
-      : isPlatformAdminRoute && WRITE_METHODS.has(context.req.method)
-        ? [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: 15 * 60 }]
-        : isPlatformAdminRoute
-          ? [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: 60 }]
-          : isAssistantGeneration || isSupportGeneration
-            ? [
-                {
-                  scope: isSupportGeneration ? "tenant-support-minute" : "tenant-assistant-minute",
-                  limit: 10,
-                  windowSeconds: 60,
-                },
-                {
-                  scope: isSupportGeneration ? "tenant-support-day" : "tenant-assistant-day",
-                  limit: 100,
-                  windowSeconds: 24 * 60 * 60,
-                },
-              ]
-            : isExportRead
-              ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
-              : isAssistantHistoryRead
-                ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
-                : WRITE_METHODS.has(context.req.method)
-                  ? [
-                      context.req.path.startsWith("/api/app/imports")
-                        ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
-                        : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
-                    ]
-                  : context.req.method === "GET"
-                    ? [{ scope: "tenant-read", limit: 120, windowSeconds: 60 }]
-                    : [];
+    const policies = isVoiceTranscription
+      ? [
+          { scope: "tenant-assistant-voice-transcription-minute", limit: 6, windowSeconds: 60 },
+          { scope: "tenant-assistant-voice-transcription-day", limit: 30, windowSeconds: 86_400 },
+        ]
+      : isVoiceSpeech
+        ? [
+            { scope: "tenant-assistant-voice-speech-minute", limit: 12, windowSeconds: 60 },
+            { scope: "tenant-assistant-voice-speech-day", limit: 60, windowSeconds: 86_400 },
+          ]
+        : isAccountDeletion
+          ? [{ scope: "user-account-deletion", limit: 5, windowSeconds: 15 * 60 }]
+          : isPlatformAdminRoute && WRITE_METHODS.has(context.req.method)
+            ? [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: 15 * 60 }]
+            : isPlatformAdminRoute
+              ? [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: 60 }]
+              : isAssistantGeneration || isSupportGeneration
+                ? [
+                    {
+                      scope: isSupportGeneration
+                        ? "tenant-support-minute"
+                        : "tenant-assistant-minute",
+                      limit: 10,
+                      windowSeconds: 60,
+                    },
+                    {
+                      scope: isSupportGeneration ? "tenant-support-day" : "tenant-assistant-day",
+                      limit: 100,
+                      windowSeconds: 24 * 60 * 60,
+                    },
+                  ]
+                : isExportRead
+                  ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
+                  : isAssistantHistoryRead
+                    ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
+                    : WRITE_METHODS.has(context.req.method)
+                      ? [
+                          context.req.path.startsWith("/api/app/imports")
+                            ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
+                            : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
+                        ]
+                      : context.req.method === "GET"
+                        ? [{ scope: "tenant-read", limit: 120, windowSeconds: 60 }]
+                        : [];
 
     if (policies.length === 0) {
       await next();
@@ -536,6 +601,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/account", createAccountDeletionRoutes(accountDeletionService));
   app.route("/api/app/identity", createIdentityRoutes(platformAdminService));
   app.route("/api/app/admin", createPlatformAdminRoutes(platformAdminService));
+  app.route("/api/app/assistant/voice", createAssistantVoiceRoutes(assistantVoiceService));
   app.route("/api/app/assistant", createAssistantRoutes(assistantService));
   app.route("/api/app/transactions", createTransactionRoutes(transactionStore));
   app.route("/api/app/reviews", createAuthenticatedCustomerReviewRoutes(customerReviews));

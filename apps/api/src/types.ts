@@ -10,6 +10,7 @@ export interface EmailSender {
 
 export interface Bindings {
   DB: D1Database;
+  AI?: Ai;
   ALLOWED_ORIGINS?: string;
   SUPABASE_URL?: string;
   SUPABASE_JWT_AUDIENCE?: string;
@@ -26,6 +27,11 @@ export interface Bindings {
   ASSISTANT_PROVIDER_TIMEOUT_MS?: string;
   ASSISTANT_OVERALL_TIMEOUT_MS?: string;
   ASSISTANT_MEMORY_MODEL_PASS?: string;
+  ASSISTANT_VOICE_ENABLED?: string;
+  ASSISTANT_VOICE_REVIEW_REQUIRED?: string;
+  ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS?: string;
+  FISH_AUDIO_API_KEY?: string;
+  FISH_AUDIO_TTS_MODEL?: string;
   POSTHOG_AI_OBSERVABILITY_ENABLED?: string;
   POSTHOG_HOST?: string;
   POSTHOG_PROJECT_TOKEN?: string;
