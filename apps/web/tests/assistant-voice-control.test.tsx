@@ -238,7 +238,7 @@ describe("AssistantVoiceControl", () => {
 
     const settings = screen.getByRole("dialog", { name: "Voice settings" });
     expect(screen.getByRole("radio", { name: /Send automatically/i })).toBeChecked();
-    expect(screen.getByRole("radio", { name: /Spoken \+ text/i })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Voice \+ text/i })).toBeChecked();
 
     fireEvent.click(screen.getByRole("radio", { name: /Text only/i }));
 
@@ -298,7 +298,7 @@ describe("AssistantVoiceControl", () => {
     await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
     await waitFor(() =>
-      expect(screen.getByRole("radio", { name: /Spoken \+ text/i })).toBeDisabled(),
+      expect(screen.getByRole("radio", { name: /Voice \+ text/i })).toBeDisabled(),
     );
     expect(screen.getByRole("radio", { name: /Text only/i })).toBeChecked();
     expect(screen.getByText(/Unavailable in this environment/i)).toBeInTheDocument();
@@ -448,12 +448,12 @@ describe("AssistantVoiceControl", () => {
     fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
 
     const voiceSelect = screen.getByLabelText("Voice and gender");
-    expect(voiceSelect).toHaveTextContent("Default · Unspecified");
+    expect(voiceSelect).toHaveTextContent("Default · Male");
     expect(voiceSelect).toHaveTextContent("Bright · Female");
-    expect(voiceSelect).toHaveTextContent("Energetic · Male");
+    expect(voiceSelect).toHaveTextContent("Energetic · Female");
 
     fireEvent.change(voiceSelect, { target: { value: "energetic" } });
-    expect(screen.getByText("An upbeat, energetic male voice.")).toBeInTheDocument();
+    expect(screen.getByText("An upbeat, energetic female voice.")).toBeInTheDocument();
     expect(
       JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
     ).toEqual({
@@ -471,6 +471,44 @@ describe("AssistantVoiceControl", () => {
       "blob:voice-preview",
     );
     expect(createObjectURL).toHaveBeenCalledOnce();
+  });
+
+  it("points first-time users to voice settings and remembers the choice", async () => {
+    const firstRender = render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+
+    const tip = await screen.findByRole("complementary", { name: "Voice model tip" });
+    expect(tip).toHaveTextContent("change the voice model anytime in Voice Settings");
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose a voice" }));
+
+    expect(
+      screen.queryByRole("complementary", { name: "Voice model tip" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Voice settings" })).toBeInTheDocument();
+    expect(window.localStorage.getItem("zoption:assistant-voice-model-hint:v1:test-user")).toBe(
+      "true",
+    );
+
+    firstRender.unmount();
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledTimes(2));
+    expect(
+      screen.queryByRole("complementary", { name: "Voice model tip" }),
+    ).not.toBeInTheDocument();
   });
 
   it("removes transcript guidance once the reviewed message is sent", async () => {

@@ -23,14 +23,14 @@ const MIME_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opu
 const SPEECH_VOICES: ReadonlyArray<{
   id: AssistantSpeechVoice;
   label: string;
-  gender: "Female" | "Male" | "Unspecified";
+  gender: "Female" | "Male";
   description: string;
 }> = [
   {
     id: "default",
     label: "Default",
-    gender: "Unspecified",
-    description: "Fish Audio’s balanced default voice.",
+    gender: "Male",
+    description: "Fish Audio’s balanced male voice.",
   },
   {
     id: "bright",
@@ -41,8 +41,8 @@ const SPEECH_VOICES: ReadonlyArray<{
   {
     id: "energetic",
     label: "Energetic",
-    gender: "Male",
-    description: "An upbeat, energetic male voice.",
+    gender: "Female",
+    description: "An upbeat, energetic female voice.",
   },
 ];
 
@@ -68,6 +68,26 @@ interface AssistantVoiceControlProps {
 
 function storageKey(userId: string): string {
   return `zoption:assistant-voice-options:${userId}`;
+}
+
+function voiceModelHintKey(userId: string): string {
+  return `zoption:assistant-voice-model-hint:v1:${userId}`;
+}
+
+function hasDismissedVoiceModelHint(userId: string): boolean {
+  try {
+    return window.localStorage.getItem(voiceModelHintKey(userId)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function saveVoiceModelHintDismissal(userId: string): void {
+  try {
+    window.localStorage.setItem(voiceModelHintKey(userId), "true");
+  } catch {
+    // The hint can still be dismissed for this session when storage is unavailable.
+  }
 }
 
 function readStoredOptions(userId: string): StoredVoiceOptions | undefined {
@@ -133,6 +153,9 @@ export function AssistantVoiceControl({
   const [previewing, setPreviewing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewError, setPreviewError] = useState<string>();
+  const [voiceModelHintDismissed, setVoiceModelHintDismissed] = useState(() =>
+    hasDismissedVoiceModelHint(workspace.userId),
+  );
   const [options, setOptions] = useState<StoredVoiceOptions>(() => {
     const stored = readStoredOptions(workspace.userId);
     return {
@@ -157,6 +180,10 @@ export function AssistantVoiceControl({
     audioContextRef.current = undefined;
     if (audioContext && audioContext.state !== "closed") void audioContext.close();
   }
+
+  useEffect(() => {
+    setVoiceModelHintDismissed(hasDismissedVoiceModelHint(workspace.userId));
+  }, [workspace.userId]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -217,6 +244,18 @@ export function AssistantVoiceControl({
     const enforced = reviewRequired ? { ...next, submissionMode: "review" as const } : next;
     setOptions(enforced);
     saveStoredOptions(workspace.userId, enforced);
+  }
+
+  function dismissVoiceModelHint() {
+    setVoiceModelHintDismissed(true);
+    saveVoiceModelHintDismissal(workspace.userId);
+  }
+
+  function openVoiceSettings() {
+    dismissVoiceModelHint();
+    setShowNotice(false);
+    clearPreview();
+    setShowOptions(true);
   }
 
   async function previewSelectedVoice() {
@@ -408,6 +447,14 @@ export function AssistantVoiceControl({
   );
   const speechAvailable = preferences?.speechAvailable !== false;
   const busy = disabled || status === "transcribing";
+  const showVoiceModelHint =
+    !voiceModelHintDismissed &&
+    preferences?.speechAvailable === true &&
+    !disabled &&
+    status === "idle" &&
+    !message &&
+    !showNotice &&
+    !showOptions;
 
   return (
     <div className="assistant-voice-control">
@@ -419,6 +466,7 @@ export function AssistantVoiceControl({
         aria-label="Voice settings"
         aria-expanded={showOptions}
         onClick={() => {
+          dismissVoiceModelHint();
           setShowNotice(false);
           setShowOptions((current) => {
             if (current) clearPreview();
@@ -450,6 +498,28 @@ export function AssistantVoiceControl({
       >
         {status === "recording" ? <Square size={16} /> : <Mic size={18} />}
       </button>
+      {showVoiceModelHint && (
+        <aside className="assistant-voice-model-hint" aria-label="Voice model tip">
+          <span className="assistant-voice-model-hint-icon" aria-hidden="true">
+            <Volume2 size={15} />
+          </span>
+          <div>
+            <strong>Pick a voice you like</strong>
+            <p>You can change the voice model anytime in Voice Settings.</p>
+            <button type="button" onClick={openVoiceSettings}>
+              Choose a voice
+            </button>
+          </div>
+          <button
+            type="button"
+            className="assistant-voice-model-hint-close"
+            aria-label="Dismiss voice model tip"
+            onClick={dismissVoiceModelHint}
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        </aside>
+      )}
       {showOptions && (
         <div className="assistant-voice-options" role="dialog" aria-label="Voice settings">
           <div className="assistant-voice-options-header">
@@ -504,7 +574,7 @@ export function AssistantVoiceControl({
                 onChange={() => updateOptions({ ...options, replyMode: "spoken" })}
               />
               <span>
-                <strong>Spoken + text</strong>
+                <strong>Voice + text</strong>
                 <small>
                   {speechAvailable
                     ? "Play the answer aloud and keep it in chat."

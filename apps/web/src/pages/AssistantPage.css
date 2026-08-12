@@ -1208,6 +1208,109 @@ main:has(.assistant-page) > .legal-footer,
   opacity: 0.45;
 }
 
+.assistant-voice-model-hint {
+  position: absolute;
+  right: -46px;
+  bottom: calc(100% + 14px);
+  z-index: 3;
+  width: min(280px, calc(100vw - 32px));
+  padding: 12px 34px 12px 12px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  color: var(--ink);
+  border-radius: 13px;
+  background: var(--surface);
+  box-shadow: 0 16px 38px -20px var(--shadow);
+  animation: assistant-voice-hint-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.assistant-voice-model-hint::after {
+  position: absolute;
+  right: 102px;
+  bottom: -5px;
+  width: 11px;
+  height: 11px;
+  content: "";
+  background: var(--surface);
+  transform: rotate(45deg);
+}
+
+.assistant-voice-model-hint-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--action);
+  border-radius: 9px;
+  background: var(--action-soft);
+}
+
+.assistant-voice-model-hint > div {
+  min-width: 0;
+}
+
+.assistant-voice-model-hint strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.assistant-voice-model-hint p {
+  margin: 3px 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.assistant-voice-model-hint > div > button {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--action);
+  border: 0;
+  border-radius: 8px;
+  background: var(--action-soft);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.assistant-voice-model-hint > div > button:hover {
+  background: color-mix(in srgb, var(--action) 16%, var(--surface));
+}
+
+.assistant-voice-model-hint-close {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.assistant-voice-model-hint-close:hover {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.assistant-voice-model-hint button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--action) 55%, transparent);
+  outline-offset: 2px;
+}
+
+@keyframes assistant-voice-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px) scale(0.98);
+  }
+}
+
 .assistant-voice-notice {
   position: absolute;
   right: -46px;
@@ -2076,7 +2179,8 @@ main:has(.assistant-page) > .legal-footer,
 
 @media (prefers-reduced-motion: reduce) {
   .assistant-thinking-dots i,
-  .assistant-message {
+  .assistant-message,
+  .assistant-voice-model-hint {
     animation: none;
   }
 }
