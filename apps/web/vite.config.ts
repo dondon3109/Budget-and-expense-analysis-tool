@@ -8,7 +8,7 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 
 import {
   addContentSecurityPolicy,
-  addPreviewMicrophonePermission,
+  addAssistantVoiceMicrophonePermission,
   createContentSecurityPolicy,
   resolveDeployEnvironment,
   validateDeploymentConfigForBuild,
@@ -38,7 +38,7 @@ function deploymentHeadersPlugin(deploymentConfig: ResolvedDeploymentConfig): Pl
     closeBundle() {
       const headersPath = resolve(outputDirectory, "_headers");
       const headers = addContentSecurityPolicy(
-        addPreviewMicrophonePermission(
+        addAssistantVoiceMicrophonePermission(
           readFileSync(headersPath, "utf8"),
           deploymentConfig.deployEnvironment,
         ),
@@ -79,7 +79,9 @@ export default defineConfig(({ command, mode, isSsrBuild }) => {
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
       __SEARCH_INDEXING_ENABLED__: JSON.stringify(deployEnvironment === "production"),
-      __ASSISTANT_VOICE_ENABLED__: JSON.stringify(deployEnvironment === "preview"),
+      __ASSISTANT_VOICE_ENABLED__: JSON.stringify(
+        deployEnvironment === "preview" || deployEnvironment === "production",
+      ),
       __ASSISTANT_VOICE_REVIEW_REQUIRED__: JSON.stringify(deployEnvironment !== "production"),
     },
     server: {

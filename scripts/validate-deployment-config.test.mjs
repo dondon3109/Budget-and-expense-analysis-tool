@@ -10,7 +10,7 @@ function environment({
 } = {}) {
   return {
     ...(production ? { routes: [{ pattern: "api.zoption.site", custom_domain: true }] } : {}),
-    ...(production ? {} : { ai: { binding: "AI" } }),
+    ai: { binding: "AI" },
     d1_databases: [
       {
         binding: "DB",
@@ -30,7 +30,7 @@ function environment({
       PAYPAL_ENVIRONMENT: paypalEnvironment,
       PAYPAL_PRO_MONTHLY_PLAN_ID: production ? "P-PRODUCTION-MONTHLY" : "P-PREVIEW-MONTHLY",
       PAYPAL_PRO_ANNUAL_PLAN_ID: production ? "P-PRODUCTION-ANNUAL" : "P-PREVIEW-ANNUAL",
-      ASSISTANT_VOICE_ENABLED: production ? "false" : "true",
+      ASSISTANT_VOICE_ENABLED: "true",
       ASSISTANT_VOICE_REVIEW_REQUIRED: production ? "false" : "true",
       ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS: "30000",
       FISH_AUDIO_TTS_MODEL: "s2.1-pro-free",
@@ -60,17 +60,17 @@ describe("Wrangler deployment config validation", () => {
     expect(validateWranglerDeploymentConfig(validConfig())).toEqual(["preview", "production"]);
   });
 
-  it("requires the AI binding only where voice transcription is enabled", () => {
+  it("requires the AI binding wherever voice transcription is enabled", () => {
     const missingPreviewBinding = validConfig();
     delete missingPreviewBinding.env.preview.ai;
     expect(() => validateWranglerDeploymentConfig(missingPreviewBinding)).toThrow(
       "preview must bind Cloudflare Workers AI as AI for voice transcription",
     );
 
-    const productionBinding = validConfig();
-    productionBinding.env.production.ai = { binding: "AI" };
-    expect(() => validateWranglerDeploymentConfig(productionBinding)).toThrow(
-      "production must omit the Cloudflare Workers AI binding while voice is disabled",
+    const missingProductionBinding = validConfig();
+    delete missingProductionBinding.env.production.ai;
+    expect(() => validateWranglerDeploymentConfig(missingProductionBinding)).toThrow(
+      "production must bind Cloudflare Workers AI as AI for voice transcription",
     );
   });
 

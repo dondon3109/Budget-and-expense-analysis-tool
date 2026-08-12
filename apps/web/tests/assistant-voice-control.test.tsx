@@ -53,11 +53,11 @@ describe("AssistantVoiceControl", () => {
     await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
 
-    const notice = screen.getByRole("dialog", { name: "Voice preview notice" });
+    const notice = screen.getByRole("dialog", { name: "Voice notice" });
     expect(notice).toHaveFocus();
     expect(notice).toHaveTextContent("recording is sent to Cloudflare Workers AI");
     expect(notice).toHaveTextContent("assistant reply text is sent to Fish Audio");
-    expect(notice).toHaveTextContent("reviewed transcript");
+    expect(notice).toHaveTextContent("review or edit the transcript before sending it");
     expect(getUserMedia).not.toHaveBeenCalled();
     expect(apiMocks.grantAssistantVoiceConsent).not.toHaveBeenCalled();
   });
@@ -75,7 +75,25 @@ describe("AssistantVoiceControl", () => {
     fireEvent.click(microphone);
     fireEvent.keyDown(document, { key: "Escape" });
 
-    expect(screen.queryByRole("dialog", { name: "Voice preview notice" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Voice notice" })).not.toBeInTheDocument();
     expect(microphone).toHaveFocus();
+  });
+
+  it("discloses immediate transcript submission when review is disabled", async () => {
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
+
+    const notice = screen.getByRole("dialog", { name: "Voice notice" });
+    expect(notice).toHaveTextContent("transcript is sent to the assistant immediately");
+    expect(notice).not.toHaveTextContent("review or edit");
   });
 });

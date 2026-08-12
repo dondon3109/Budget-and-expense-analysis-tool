@@ -175,11 +175,12 @@ export function PrivacyPolicyPage() {
             these events.
           </li>
           <li>
-            <strong>Cloudflare Workers AI and Fish Audio</strong> for the separately enabled Preview
-            voice feature. After voice consent, Cloudflare Workers AI receives a user-initiated
-            recording to produce a transcript. After you review and send that transcript, Fish Audio
-            may receive the completed assistant reply text to generate spoken audio. Zoption does
-            not send workspace records directly to either voice provider or store recordings or
+            <strong>Cloudflare Workers AI and Fish Audio</strong> for the separately enabled voice
+            feature. After voice consent, Cloudflare Workers AI receives a user-initiated recording
+            to produce a transcript. Preview lets you review or edit the transcript before sending;
+            Production sends it to the assistant immediately after transcription. Fish Audio may
+            receive the completed assistant reply text to generate spoken audio. Zoption does not
+            send workspace records directly to either voice provider or store recordings or
             generated audio in D1.
           </li>
           <li>
@@ -285,11 +286,11 @@ export function PrivacyPolicyPage() {
           Analytics cookie preference; it is covered by the separate versioned assistant consent.
         </p>
         <p>
-          Voice mode is a Preview-only, separately consented feature. When you press the microphone
-          control, your browser asks for microphone permission and sends the recording through
-          Zoption&apos;s authenticated server to Cloudflare Workers AI&apos;s Whisper Large v3 Turbo
-          model for transcription. In Preview, the transcript is always returned to the composer for
-          your review or editing before it can be sent to the financial assistant. After a
+          Voice mode is a separately consented feature. When you press the microphone control, your
+          browser asks for microphone permission and sends the recording through Zoption&apos;s
+          authenticated server to Cloudflare Workers AI&apos;s Whisper Large v3 Turbo model for
+          transcription. Preview returns the transcript to the composer for your review or editing;
+          Production sends it to the financial assistant immediately after transcription. After a
           voice-originated question, Zoption may send the completed assistant reply text to Fish
           Audio to generate spoken audio. Zoption keeps the recording and generated audio in
           transient processing and browser memory only; it does not save either in D1. Each
@@ -336,7 +337,7 @@ export function PrivacyPolicyPage() {
           remain temporarily in provider recovery copies according to provider backup lifecycles and
           is not ordinarily available for individual restoration. Provider-side retention of
           information sent to DeepSeek is governed by that provider&apos;s practices as described
-          above. Preview voice recordings and generated audio are not stored in Zoption&apos;s D1;
+          above. Voice recordings and generated audio are not stored in Zoption&apos;s D1;
           information processed by Cloudflare Workers AI and Fish Audio remains subject to their
           provider practices. Metadata-only PostHog AI observability events are subject to the
           project&apos;s current 12-month event-retention plan. PostHog controls provider-side
@@ -393,8 +394,8 @@ export function PrivacyPolicyPage() {
           If you start a Pro checkout or subscribe, PayPal processes subscription approval and
           payment information. When you enable the AI assistant or send a product-support chat
           message, the relevant request context described above may be transferred to and processed
-          by DeepSeek in locations where it or its subprocessors operate. If you enable Preview
-          voice, the recording described above may be processed by Cloudflare Workers AI and the
+          by DeepSeek in locations where it or its subprocessors operate. If you enable voice, the
+          recording described above may be processed by Cloudflare Workers AI and the
           generated-reply text may be processed by Fish Audio in locations where they or their
           subprocessors operate. Metadata-only AI observability events are sent to PostHog&apos;s US
           Cloud region. Privacy laws in those locations may differ from those in your country.

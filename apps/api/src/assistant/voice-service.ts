@@ -53,7 +53,7 @@ function reportProviderFailure(
 
 function requireEnabled(env: Bindings): void {
   if (env.ASSISTANT_VOICE_ENABLED !== "true") {
-    throw new HttpError(404, "assistant_voice_not_enabled", "Voice preview is not available.");
+    throw new HttpError(404, "assistant_voice_not_enabled", "Voice mode is not available.");
   }
 }
 
@@ -71,7 +71,7 @@ function mapProviderError(error: unknown, reporter: AssistantVoiceDiagnosticRepo
     throw new HttpError(
       429,
       "assistant_voice_rate_limited",
-      "Voice preview is busy. Try again shortly.",
+      "Voice mode is busy. Try again shortly.",
     );
   }
   if (error.kind === "invalid_response") {
@@ -81,11 +81,7 @@ function mapProviderError(error: unknown, reporter: AssistantVoiceDiagnosticRepo
       "Voice processing returned an invalid response.",
     );
   }
-  throw new HttpError(
-    503,
-    "assistant_voice_unavailable",
-    "Voice preview is temporarily unavailable.",
-  );
+  throw new HttpError(503, "assistant_voice_unavailable", "Voice mode is temporarily unavailable.");
 }
 
 function speechText(markdown: string): string {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addContentSecurityPolicy,
-  addPreviewMicrophonePermission,
+  addAssistantVoiceMicrophonePermission,
   createContentSecurityPolicy,
   isSupabasePublishableKey,
   validateDeploymentConfigForBuild,
@@ -129,27 +129,34 @@ describe("environment-derived CSP", () => {
 
     expect(policy).toContain(`img-src 'self' data: blob: ${supabaseUrl}`);
     expect(policy).toContain(`connect-src 'self' ${supabaseUrl} ${productionApiUrl}`);
-    expect(policy).not.toContain("media-src");
+    expect(policy).toContain("media-src 'self' blob:");
     expect(policy).not.toContain("*.supabase.co");
     expect(policy).not.toContain("*.workers.dev");
     expect(() => verifyContentSecurityPolicy(headers, policy)).not.toThrow();
   });
 
-  it("allows microphone capture only in generated Preview headers", () => {
+  it("allows microphone capture only in voice-enabled deployment headers", () => {
     const template = "/*\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n";
-    expect(addPreviewMicrophonePermission(template, "production")).toContain("microphone=()");
-    expect(addPreviewMicrophonePermission(template, "preview")).toContain("microphone=(self)");
-    expect(() => addPreviewMicrophonePermission("/*\n", "preview")).toThrow(
+    expect(addAssistantVoiceMicrophonePermission(template, "production")).toContain(
+      "microphone=(self)",
+    );
+    expect(addAssistantVoiceMicrophonePermission(template, "preview")).toContain(
+      "microphone=(self)",
+    );
+    expect(addAssistantVoiceMicrophonePermission(template, "staging")).toContain("microphone=()");
+    expect(() => addAssistantVoiceMicrophonePermission("/*\n", "preview")).toThrow(
       "disable microphone access",
     );
   });
 
-  it("allows blob audio only in the Preview CSP", () => {
+  it("allows blob audio only in voice-enabled deployment CSPs", () => {
     const production = validateDeploymentConfigForBuild(validInput());
     const preview = validateDeploymentConfigForBuild(validInput("preview"));
-    if (!production || !preview) throw new Error("Expected deployment configs.");
-    expect(createContentSecurityPolicy(production)).not.toContain("media-src");
+    const staging = validateDeploymentConfigForBuild(validInput("staging"));
+    if (!production || !preview || !staging) throw new Error("Expected deployment configs.");
+    expect(createContentSecurityPolicy(production)).toContain("media-src 'self' blob:");
     expect(createContentSecurityPolicy(preview)).toContain("media-src 'self' blob:");
+    expect(createContentSecurityPolicy(staging)).not.toContain("media-src");
   });
 
   it("allows analytics origins only when the deployment enables analytics", () => {

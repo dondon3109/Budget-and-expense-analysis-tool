@@ -26,7 +26,7 @@ function errorMessage(error: unknown): string {
   if (error instanceof DOMException && error.name === "NotAllowedError") {
     return "Microphone access was blocked. Allow it in your browser settings and try again.";
   }
-  return error instanceof Error ? error.message : "Voice preview could not start.";
+  return error instanceof Error ? error.message : "Voice mode could not start.";
 }
 
 export function AssistantVoiceControl({
@@ -174,15 +174,18 @@ export function AssistantVoiceControl({
           ref={noticeRef}
           className="assistant-voice-notice"
           role="dialog"
-          aria-label="Voice preview notice"
+          aria-label="Voice notice"
           tabIndex={-1}
         >
-          <strong>Enable voice preview?</strong>
+          <strong>Enable voice mode?</strong>
           <p>
-            Your recording is sent to Cloudflare Workers AI for transcription. After you send the
-            reviewed transcript, the completed assistant reply text is sent to Fish Audio for
-            speech. Zoption does not store recordings or generated audio. Voice is Preview-only and
-            starts with Cloudflare&apos;s and Fish Audio&apos;s free usage options.
+            Your recording is sent to Cloudflare Workers AI for transcription.{" "}
+            {reviewRequired
+              ? "You can review or edit the transcript before sending it. "
+              : "The transcript is sent to the assistant immediately. "}
+            The completed assistant reply text is sent to Fish Audio for speech. Zoption does not
+            store recordings or generated audio. Voice starts with Cloudflare&apos;s and Fish
+            Audio&apos;s free usage options.
           </p>
           <div>
             <button

@@ -189,17 +189,12 @@ function validateAssistantVoiceConfig(vars, environment, config) {
   if (environment === "preview" && (enabled !== "true" || reviewRequired !== "true")) {
     throw new Error("preview must enable assistant voice with transcript review required.");
   }
-  if (environment === "production" && (enabled !== "false" || reviewRequired !== "false")) {
-    throw new Error("production must keep assistant voice disabled and transcript review off.");
+  if (environment === "production" && (enabled !== "true" || reviewRequired !== "false")) {
+    throw new Error("production must enable assistant voice with transcript review off.");
   }
   if (enabled === "true" && config.ai?.binding !== "AI") {
     throw new Error(
       `${environment} must bind Cloudflare Workers AI as AI for voice transcription.`,
-    );
-  }
-  if (environment === "production" && config.ai !== undefined) {
-    throw new Error(
-      "production must omit the Cloudflare Workers AI binding while voice is disabled.",
     );
   }
   if (requiredString(vars, "FISH_AUDIO_TTS_MODEL", environment) !== "s2.1-pro-free") {
