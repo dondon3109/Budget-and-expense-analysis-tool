@@ -13,14 +13,17 @@ All notable product changes are documented here.
 ### Changed
 
 - Voice recordings now stop automatically after speech is followed by silence. Recordings with no detected speech end locally without being sent for transcription.
-- Automatic voice submission now waits for the transcription provider to return a completed transcript. Review-first remains the default and can be enforced by environment configuration.
-- Spoken assistant replies now remove markdown formatting, table separators, and raw URLs for more natural playback, with a visible preparation state before audio is available.
+- Automatic voice submission now waits for the transcription provider to return a completed transcript. Production defaults push-to-talk to automatic submission with spoken-and-text replies, while review-first can still be enforced by environment configuration.
+- Spoken assistant replies now remove markdown formatting, table separators, and raw URLs for more natural playback. Text and audio are revealed together, with the audio control inside its assistant message and a visible preparation state while synthesis is still running.
 - Improved signed-in mobile navigation, assistant space usage, Free-plan messaging, profile navigation, and remaining-budget calculations.
 
 ### Fixed
 
 - Voice recording resources are released safely when the assistant route closes, and text-only voice turns no longer request speech generation.
 - Voice playback preserves authenticated cross-origin responses and reports provider failures without exposing credentials or provider response bodies.
+- Transcript guidance no longer overlaps the spoken-reply preparation state after a reviewed transcript is sent.
+- Voice consent now requests microphone access directly from the acceptance action, shows progress while enabling, and keeps retryable failures visible inside the notice.
+- Local development now enables the voice routes and remote Workers AI transcription binding instead of showing an unavailable-mode error.
 
 ## 2.0.0 — 2026-08-10
 

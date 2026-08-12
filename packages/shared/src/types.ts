@@ -579,6 +579,7 @@ export interface AssistantPreferences {
 
 export interface AssistantVoicePreferences {
   enabled: boolean;
+  speechAvailable: boolean;
   reviewRequired: boolean;
   consentedAt: string | null;
   consentVersion: number;

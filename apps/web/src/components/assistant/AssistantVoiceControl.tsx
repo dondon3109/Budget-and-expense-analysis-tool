@@ -92,6 +92,7 @@ export function AssistantVoiceControl({
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const noticeRef = useRef<HTMLDivElement | null>(null);
   const [preferences, setPreferences] = useState<AssistantVoicePreferences>();
+  const [enabling, setEnabling] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [status, setStatus] = useState<"idle" | "recording" | "transcribing">("idle");
@@ -99,7 +100,7 @@ export function AssistantVoiceControl({
   const [options, setOptions] = useState<StoredVoiceOptions>(() => {
     const stored = readStoredOptions(workspace.userId);
     return {
-      submissionMode: reviewRequired ? "review" : (stored?.submissionMode ?? "review"),
+      submissionMode: reviewRequired ? "review" : (stored?.submissionMode ?? "automatic"),
       replyMode: stored?.replyMode ?? "spoken",
     };
   });
@@ -118,7 +119,16 @@ export function AssistantVoiceControl({
     let current = true;
     void getAssistantVoicePreferences(workspace)
       .then((data) => {
-        if (current) setPreferences(data);
+        if (!current) return;
+        setPreferences(data);
+        if (!data.speechAvailable) {
+          setOptions((stored) => {
+            if (stored.replyMode === "text") return stored;
+            const textOnly = { ...stored, replyMode: "text" as const };
+            saveStoredOptions(workspace.userId, textOnly);
+            return textOnly;
+          });
+        }
       })
       .catch((error) => {
         if (current) setMessage(errorMessage(error));
@@ -137,7 +147,7 @@ export function AssistantVoiceControl({
     if (!showNotice && !showOptions) return;
     if (showNotice) noticeRef.current?.focus();
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || enabling) return;
       if (showNotice) {
         setShowNotice(false);
         microphoneButtonRef.current?.focus();
@@ -148,7 +158,13 @@ export function AssistantVoiceControl({
     }
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [showNotice, showOptions]);
+  }, [enabling, showNotice, showOptions]);
+
+  useEffect(() => {
+    if (!disabled) return;
+    setMessage(undefined);
+    setShowOptions(false);
+  }, [disabled]);
 
   function updateOptions(next: StoredVoiceOptions) {
     const enforced = reviewRequired ? { ...next, submissionMode: "review" as const } : next;
@@ -161,9 +177,13 @@ export function AssistantVoiceControl({
     try {
       const result = await transcribeAssistantVoice(workspace, blob);
       if (!mountedRef.current) return;
-      onTranscript(result.text, options);
+      const transcriptOptions =
+        preferences?.speechAvailable === false
+          ? { ...options, replyMode: "text" as const }
+          : options;
+      onTranscript(result.text, transcriptOptions);
       setMessage(
-        options.submissionMode === "review"
+        transcriptOptions.submissionMode === "review"
           ? "Transcript ready — review or edit it, then press Send."
           : "Transcript ready — sending now.",
       );
@@ -215,19 +235,29 @@ export function AssistantVoiceControl({
     }, VOICE_SAMPLE_INTERVAL_MS);
   }
 
-  async function startRecording() {
+  function requestMicrophone(): Promise<MediaStream> {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setMessage("Voice recording is not supported in this browser.");
-      return;
+      throw new Error("Voice recording is not supported in this browser.");
     }
+
+    return navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  }
+
+  async function startRecording(providedStream?: MediaStream) {
+    let stream = providedStream;
     try {
       setMessage(undefined);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
-      streamRef.current = stream;
+      stream ??= await requestMicrophone();
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      const activeStream = stream;
+      streamRef.current = activeStream;
       const mimeType = MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type));
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const recorder = new MediaRecorder(activeStream, mimeType ? { mimeType } : undefined);
       recorderRef.current = recorder;
       chunksRef.current = [];
       recorder.addEventListener("dataavailable", (event) => {
@@ -235,7 +265,7 @@ export function AssistantVoiceControl({
       });
       recorder.addEventListener("stop", () => {
         clearRecordingResources();
-        stream.getTracks().forEach((track) => track.stop());
+        activeStream.getTracks().forEach((track) => track.stop());
         streamRef.current = undefined;
         recorderRef.current = undefined;
         if (stopReasonRef.current === "cancelled") return;
@@ -255,14 +285,15 @@ export function AssistantVoiceControl({
       setStatus("recording");
       stopReasonRef.current = "manual";
       stopTimerRef.current = window.setTimeout(() => stopRecording("limit"), MAX_RECORDING_MS);
-      void monitorVoiceActivity(stream).catch(() => {
+      void monitorVoiceActivity(activeStream).catch(() => {
         // Browsers without Web Audio still retain manual stop and the hard recording limit.
         clearRecordingResources();
         stopTimerRef.current = window.setTimeout(() => stopRecording("limit"), MAX_RECORDING_MS);
       });
     } catch (error) {
       clearRecordingResources();
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      stream?.getTracks().forEach((track) => track.stop());
+      streamRef.current = undefined;
       setStatus("idle");
       setMessage(errorMessage(error));
     }
@@ -275,13 +306,27 @@ export function AssistantVoiceControl({
   }
 
   async function enableVoice() {
+    if (enabling) return;
+    setEnabling(true);
+    setMessage(undefined);
+    let stream: MediaStream | undefined;
     try {
+      // Start the permission request from the user's click so mobile browsers retain activation.
+      stream = await requestMicrophone();
       const data = await grantAssistantVoiceConsent(workspace);
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       setPreferences(data);
       setShowNotice(false);
-      await startRecording();
+      await startRecording(stream);
+      stream = undefined;
     } catch (error) {
+      stream?.getTracks().forEach((track) => track.stop());
       setMessage(errorMessage(error));
+    } finally {
+      if (mountedRef.current) setEnabling(false);
     }
   }
 
@@ -289,6 +334,7 @@ export function AssistantVoiceControl({
     preferences?.consentedAt &&
     preferences.consentVersion === CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
   );
+  const speechAvailable = preferences?.speechAvailable !== false;
   const busy = disabled || status === "transcribing";
 
   return (
@@ -369,16 +415,21 @@ export function AssistantVoiceControl({
           </fieldset>
           <fieldset>
             <legend>Assistant replies</legend>
-            <label>
+            <label className={speechAvailable ? "" : "disabled"}>
               <input
                 type="radio"
                 name="assistant-voice-reply"
                 checked={options.replyMode === "spoken"}
+                disabled={!speechAvailable}
                 onChange={() => updateOptions({ ...options, replyMode: "spoken" })}
               />
               <span>
                 <strong>Spoken + text</strong>
-                <small>Play the answer aloud and keep it in chat.</small>
+                <small>
+                  {speechAvailable
+                    ? "Play the answer aloud and keep it in chat."
+                    : "Unavailable in this environment. Voice input and text replies still work."}
+                </small>
               </span>
             </label>
             <label>
@@ -417,6 +468,7 @@ export function AssistantVoiceControl({
             <button
               type="button"
               className="button secondary compact"
+              disabled={enabling}
               onClick={() => setShowNotice(false)}
             >
               Not now
@@ -424,14 +476,20 @@ export function AssistantVoiceControl({
             <button
               type="button"
               className="button primary compact"
+              disabled={enabling}
               onClick={() => void enableVoice()}
             >
-              Accept and record
+              {enabling ? "Enabling voice…" : "Accept and record"}
             </button>
           </div>
+          {message && (
+            <p className="assistant-voice-notice-error" role="alert">
+              {message}
+            </p>
+          )}
         </div>
       )}
-      {(message || status !== "idle") && (
+      {!disabled && !showNotice && (message || status !== "idle") && (
         <span className="assistant-voice-status" role="status" aria-live="polite">
           {status === "recording"
             ? "Listening — I’ll stop after you finish speaking."

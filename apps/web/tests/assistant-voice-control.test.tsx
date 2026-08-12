@@ -83,6 +83,7 @@ beforeEach(() => {
   sampleLevel = 128;
   apiMocks.getAssistantVoicePreferences.mockResolvedValue({
     enabled: true,
+    speechAvailable: true,
     reviewRequired: true,
     consentedAt: null,
     consentVersion: 0,
@@ -128,6 +129,79 @@ describe("AssistantVoiceControl", () => {
     expect(apiMocks.grantAssistantVoiceConsent).not.toHaveBeenCalled();
   });
 
+  it("requests microphone access from the acceptance click and starts recording", async () => {
+    const { stopTrack } = installRecordingMocks();
+    let finishConsent!: (
+      preferences: Awaited<ReturnType<typeof apiMocks.grantAssistantVoiceConsent>>,
+    ) => void;
+    apiMocks.grantAssistantVoiceConsent.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishConsent = resolve;
+      }),
+    );
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired
+        onTranscript={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
+    fireEvent.click(screen.getByRole("button", { name: "Accept and record" }));
+
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Enabling voice…" })).toBeDisabled();
+
+    await act(async () => {
+      finishConsent({
+        enabled: true,
+        speechAvailable: true,
+        reviewRequired: true,
+        consentedAt: "2026-08-12T10:00:00.000Z",
+        consentVersion: 3,
+        transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
+        ttsModel: "s2.1-pro-free",
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole("dialog", { name: "Voice notice" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop voice recording" })).toBeInTheDocument();
+    expect(stopTrack).not.toHaveBeenCalled();
+  });
+
+  it("keeps consent failures visible in the voice notice and releases the microphone", async () => {
+    const { stopTrack } = installRecordingMocks();
+    apiMocks.grantAssistantVoiceConsent.mockRejectedValueOnce(
+      new Error("Voice consent could not be saved. Try again."),
+    );
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired
+        onTranscript={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
+    fireEvent.click(screen.getByRole("button", { name: "Accept and record" }));
+
+    const notice = screen.getByRole("dialog", { name: "Voice notice" });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Voice consent could not be saved. Try again.",
+    );
+    expect(notice).toContainElement(screen.getByRole("alert"));
+    expect(screen.getByRole("button", { name: "Accept and record" })).toBeEnabled();
+    expect(stopTrack).toHaveBeenCalledOnce();
+  });
+
   it("closes the disclosure with Escape and restores microphone focus", async () => {
     render(
       <AssistantVoiceControl
@@ -145,7 +219,7 @@ describe("AssistantVoiceControl", () => {
     expect(microphone).toHaveFocus();
   });
 
-  it("offers persisted transcript and reply choices when automatic sending is allowed", async () => {
+  it("defaults push-to-talk to automatic submission with a spoken and text reply", async () => {
     render(
       <AssistantVoiceControl
         workspace={workspace}
@@ -159,15 +233,74 @@ describe("AssistantVoiceControl", () => {
     fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
 
     const settings = screen.getByRole("dialog", { name: "Voice settings" });
-    fireEvent.click(screen.getByRole("radio", { name: /Send automatically/i }));
+    expect(screen.getByRole("radio", { name: /Send automatically/i })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Spoken \+ text/i })).toBeChecked();
+
     fireEvent.click(screen.getByRole("radio", { name: /Text only/i }));
 
-    expect(screen.getByRole("radio", { name: /Send automatically/i })).toBeChecked();
     expect(screen.getByRole("radio", { name: /Text only/i })).toBeChecked();
     expect(settings).toHaveTextContent("Recording stops automatically");
     expect(
       JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
     ).toEqual({ submissionMode: "automatic", replyMode: "text" });
+  });
+
+  it("restores an existing user's saved voice choices", async () => {
+    window.localStorage.setItem(
+      "zoption:assistant-voice-options:test-user",
+      JSON.stringify({ submissionMode: "review", replyMode: "text" }),
+    );
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
+
+    expect(screen.getByRole("radio", { name: /Review first/i })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Text only/i })).toBeChecked();
+  });
+
+  it("keeps voice input usable but falls back to text when speech is not configured", async () => {
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      speechAvailable: false,
+      reviewRequired: true,
+      consentedAt: null,
+      consentVersion: 0,
+      transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
+      ttsModel: "s2.1-pro-free",
+    });
+    window.localStorage.setItem(
+      "zoption:assistant-voice-options:test-user",
+      JSON.stringify({ submissionMode: "review", replyMode: "spoken" }),
+    );
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired
+        onTranscript={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
+    await waitFor(() =>
+      expect(screen.getByRole("radio", { name: /Spoken \+ text/i })).toBeDisabled(),
+    );
+    expect(screen.getByRole("radio", { name: /Text only/i })).toBeChecked();
+    expect(screen.getByText(/Unavailable in this environment/i)).toBeInTheDocument();
+    expect(
+      JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
+    ).toEqual({ submissionMode: "review", replyMode: "text" });
+    expect(screen.getByRole("button", { name: "Start voice recording" })).toBeEnabled();
   });
 
   it("keeps automatic sending unavailable when transcript review is required", async () => {
@@ -186,11 +319,51 @@ describe("AssistantVoiceControl", () => {
     expect(screen.getByRole("radio", { name: /Send automatically/i })).toBeDisabled();
   });
 
+  it("submits a completed push-to-talk transcript with the Production defaults", async () => {
+    installRecordingMocks();
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      speechAvailable: true,
+      reviewRequired: false,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
+      ttsModel: "s2.1-pro-free",
+    });
+    apiMocks.transcribeAssistantVoice.mockResolvedValue({
+      text: "Where did my money go?",
+      durationSeconds: 2,
+    });
+    const onTranscript = vi.fn();
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={onTranscript}
+      />,
+    );
+    await act(async () => Promise.resolve());
+
+    fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByRole("button", { name: "Stop voice recording" }));
+
+    await waitFor(() =>
+      expect(onTranscript).toHaveBeenCalledWith("Where did my money go?", {
+        submissionMode: "automatic",
+        replyMode: "spoken",
+      }),
+    );
+  });
+
   it("stops after the speaker falls silent and waits for the completed transcript", async () => {
     vi.useFakeTimers();
     installRecordingMocks();
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
       enabled: true,
+      speechAvailable: true,
       reviewRequired: false,
       consentedAt: "2026-08-12T10:00:00.000Z",
       consentVersion: 3,
@@ -244,11 +417,63 @@ describe("AssistantVoiceControl", () => {
     });
   });
 
+  it("removes transcript guidance once the reviewed message is sent", async () => {
+    installRecordingMocks();
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      speechAvailable: true,
+      reviewRequired: true,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
+      ttsModel: "s2.1-pro-free",
+    });
+    apiMocks.transcribeAssistantVoice.mockResolvedValue({
+      text: "How much did I spend?",
+      durationSeconds: 2,
+    });
+    const onTranscript = vi.fn();
+    const { rerender } = render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired
+        onTranscript={onTranscript}
+      />,
+    );
+    await act(async () => Promise.resolve());
+
+    fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByRole("button", { name: "Stop voice recording" }));
+
+    expect(
+      await screen.findByText("Transcript ready — review or edit it, then press Send."),
+    ).toBeInTheDocument();
+    expect(onTranscript).toHaveBeenCalledOnce();
+
+    rerender(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled
+        reviewRequired
+        onTranscript={onTranscript}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Transcript ready — review or edit it, then press Send."),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
   it("ends an empty recording without submitting it for transcription", async () => {
     vi.useFakeTimers();
     installRecordingMocks();
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
       enabled: true,
+      speechAvailable: true,
       reviewRequired: false,
       consentedAt: "2026-08-12T10:00:00.000Z",
       consentVersion: 3,

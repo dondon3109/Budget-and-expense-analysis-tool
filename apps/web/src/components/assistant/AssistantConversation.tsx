@@ -3,7 +3,16 @@ import type {
   AssistantSourceMetadata,
   TransferFeeInsight,
 } from "@zoption/shared";
-import { Bot, Database, PiggyBank, Scale, Sparkles, TrendingUp, UserRound } from "lucide-react";
+import {
+  Bot,
+  Database,
+  PiggyBank,
+  Scale,
+  Sparkles,
+  TrendingUp,
+  UserRound,
+  Volume2,
+} from "lucide-react";
 import { Fragment, useEffect, useRef } from "react";
 
 import { formatMoney, formatMoneyParts } from "../../lib/formatters";
@@ -41,8 +50,15 @@ interface AssistantConversationProps {
   messages: AssistantMessage[];
   pendingMessage?: string;
   loading: boolean;
+  loadingLabel?: string;
+  voiceReplies?: Readonly<Record<string, AssistantMessageVoiceReply>>;
   onPrompt: (prompt: string) => void;
   feeInsight?: TransferFeeInsight;
+}
+
+export interface AssistantMessageVoiceReply {
+  audioUrl?: string;
+  error?: string;
 }
 
 function messageTime(value: string): string {
@@ -221,6 +237,8 @@ export function AssistantConversation({
   messages,
   pendingMessage,
   loading,
+  loadingLabel = "Checking your records…",
+  voiceReplies,
   onPrompt,
   feeInsight,
 }: AssistantConversationProps) {
@@ -262,26 +280,52 @@ export function AssistantConversation({
 
   return (
     <div className="assistant-messages" aria-live="polite">
-      {messages.map((message) => (
-        <article className={`assistant-message ${message.role}`} key={message.id}>
-          <span className="assistant-message-avatar" aria-hidden="true">
-            {message.role === "assistant" ? <Bot size={16} /> : <UserRound size={16} />}
-          </span>
-          <div>
-            <div className="assistant-message-meta">
-              <strong>{message.role === "assistant" ? assistantName : "You"}</strong>
-              <time dateTime={message.createdAt}>{messageTime(message.createdAt)}</time>
+      {messages.map((message) => {
+        const voiceReply = message.role === "assistant" ? voiceReplies?.[message.id] : undefined;
+
+        return (
+          <article className={`assistant-message ${message.role}`} key={message.id}>
+            <span className="assistant-message-avatar" aria-hidden="true">
+              {message.role === "assistant" ? <Bot size={16} /> : <UserRound size={16} />}
+            </span>
+            <div>
+              <div className="assistant-message-meta">
+                <strong>{message.role === "assistant" ? assistantName : "You"}</strong>
+                <time dateTime={message.createdAt}>{messageTime(message.createdAt)}</time>
+              </div>
+              <p>
+                {message.role === "assistant"
+                  ? renderInlineEmphasis(message.content)
+                  : message.content}
+              </p>
+              {voiceReply && (
+                <div
+                  className={`assistant-message-voice ${voiceReply.error ? "error" : ""}`}
+                  role={voiceReply.error ? "status" : undefined}
+                >
+                  <span className="assistant-message-voice-label">
+                    <Volume2 size={13} aria-hidden="true" />
+                    {voiceReply.error ? "Spoken reply unavailable" : "Spoken reply"}
+                  </span>
+                  {voiceReply.audioUrl ? (
+                    <audio
+                      controls
+                      autoPlay
+                      preload="auto"
+                      src={voiceReply.audioUrl}
+                      aria-label="Spoken assistant reply"
+                    />
+                  ) : (
+                    <small>{voiceReply.error}</small>
+                  )}
+                </div>
+              )}
+              {message.role === "assistant" && <AssistantMessageEvidence message={message} />}
+              {message.status === "failed" && <small>Not sent. Try asking again.</small>}
             </div>
-            <p>
-              {message.role === "assistant"
-                ? renderInlineEmphasis(message.content)
-                : message.content}
-            </p>
-            {message.role === "assistant" && <AssistantMessageEvidence message={message} />}
-            {message.status === "failed" && <small>Not sent. Try asking again.</small>}
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
       {pendingMessage && (
         <article className="assistant-message user pending">
           <span className="assistant-message-avatar" aria-hidden="true">
@@ -311,7 +355,7 @@ export function AssistantConversation({
                 <i />
                 <i />
               </span>{" "}
-              Checking your records…
+              {loadingLabel}
             </p>
           </div>
         </article>

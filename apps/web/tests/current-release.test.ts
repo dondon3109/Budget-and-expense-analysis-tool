@@ -18,9 +18,8 @@ describe("current release notes", () => {
       .join(" ");
     expect(notes).toMatch(/voice recordings are transcribed/i);
     expect(notes).toMatch(/stops recording after you finish/i);
-    expect(notes).toMatch(/review-first default/i);
-    expect(notes).toMatch(/automatic sending after transcription is complete/i);
-    expect(notes).toMatch(/spoken and text replies|text only/i);
+    expect(notes).toMatch(/automatic sending and spoken plus text replies in Production/i);
+    expect(notes).toMatch(/transcript review or text-only answers/i);
     expect(notes).toMatch(/more natural speech/i);
   });
 });

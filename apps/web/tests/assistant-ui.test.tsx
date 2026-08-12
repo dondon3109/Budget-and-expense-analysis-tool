@@ -316,6 +316,52 @@ describe("assistant UI", () => {
     );
   });
 
+  it("places a spoken reply control inside its assistant message", () => {
+    render(
+      <AssistantConversation
+        assistantName="Aster"
+        messages={[
+          {
+            id: "assistant-voice-1",
+            threadId: "thread-1",
+            role: "assistant",
+            content: "You spent PHP 1,250 this month.",
+            status: "completed",
+            createdAt: "2026-08-12T10:00:00.000Z",
+          },
+        ]}
+        voiceReplies={{
+          "assistant-voice-1": { audioUrl: "blob:spoken-assistant-reply" },
+        }}
+        loading={false}
+        onPrompt={() => undefined}
+      />,
+    );
+
+    const message = screen.getByText("You spent PHP 1,250 this month.").closest("article");
+    expect(message).not.toBeNull();
+    const player = within(message!).getByLabelText("Spoken assistant reply");
+    expect(player).toHaveAttribute("src", "blob:spoken-assistant-reply");
+    expect(player.closest(".assistant-message-voice")).not.toBeNull();
+  });
+
+  it("shows spoken-reply preparation in the pending assistant bubble", () => {
+    render(
+      <AssistantConversation
+        assistantName="Aster"
+        messages={[]}
+        pendingMessage="How much did I spend?"
+        loading
+        loadingLabel="Preparing spoken reply…"
+        onPrompt={() => undefined}
+      />,
+    );
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveClass("assistant-message", "assistant", "checking");
+    expect(status).toHaveTextContent("Preparing spoken reply…");
+  });
+
   it("keeps unmatched markers and user formatting literal", () => {
     render(
       <AssistantConversation

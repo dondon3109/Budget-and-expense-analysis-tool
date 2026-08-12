@@ -17,6 +17,7 @@ const env = {
   DB: {} as D1Database,
   ASSISTANT_VOICE_ENABLED: "true",
   ASSISTANT_VOICE_REVIEW_REQUIRED: "true",
+  FISH_AUDIO_API_KEY: "fish-test-credential",
   FISH_AUDIO_TTS_MODEL: "s2.1-pro-free",
 } satisfies Bindings;
 
@@ -70,10 +71,19 @@ describe("assistant voice service", () => {
     const service = createAssistantVoiceService(repository(), providers());
     await expect(service.getPreferences(env, "tenant-id")).resolves.toMatchObject({
       enabled: true,
+      speechAvailable: true,
       reviewRequired: true,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
+  });
+
+  it("keeps voice transcription available when spoken replies are not configured", async () => {
+    const service = createAssistantVoiceService(repository(), providers());
+
+    await expect(
+      service.getPreferences({ ...env, FISH_AUDIO_API_KEY: undefined }, "tenant-id"),
+    ).resolves.toMatchObject({ enabled: true, speechAvailable: false });
   });
 
   it("requires separate voice consent before audio leaves Zoption", async () => {

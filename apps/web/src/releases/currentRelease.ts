@@ -26,7 +26,7 @@ export const currentRelease: ProductRelease = {
     {
       title: "Choose how voice works for you",
       description:
-        "Keep the review-first default or choose automatic sending after transcription is complete. You can also choose spoken and text replies or keep every assistant answer text only.",
+        "Push-to-talk now starts with automatic sending and spoken plus text replies in Production. You can still switch to transcript review or text-only answers in Voice settings.",
     },
     {
       title: "Clearer spoken answers",

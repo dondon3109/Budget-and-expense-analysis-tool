@@ -132,6 +132,7 @@ export function createAssistantVoiceService(
     const consent = await repository.getVoiceConsent(env, tenantId);
     return {
       enabled: true,
+      speechAvailable: Boolean(env.FISH_AUDIO_API_KEY?.trim()),
       reviewRequired: env.ASSISTANT_VOICE_REVIEW_REQUIRED !== "false",
       consentedAt: consent.consentedAt,
       consentVersion: consent.consentVersion,

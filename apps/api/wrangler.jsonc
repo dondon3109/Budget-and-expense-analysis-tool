@@ -3,6 +3,7 @@
   "name": "budget-expense-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
+  "ai": { "binding": "AI", "remote": true },
   "d1_databases": [
     {
       "binding": "DB",
@@ -25,6 +26,10 @@
     "ASSISTANT_TIME_ZONE": "Asia/Manila",
     "ASSISTANT_PROVIDER_TIMEOUT_MS": "12000",
     "ASSISTANT_OVERALL_TIMEOUT_MS": "25000",
+    "ASSISTANT_VOICE_ENABLED": "true",
+    "ASSISTANT_VOICE_REVIEW_REQUIRED": "true",
+    "ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS": "30000",
+    "FISH_AUDIO_TTS_MODEL": "s2.1-pro-free",
     "POSTHOG_AI_OBSERVABILITY_ENABLED": "false",
     "POSTHOG_HOST": "https://us.i.posthog.com",
     "POSTHOG_AI_ENVIRONMENT": "local",
