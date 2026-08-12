@@ -50,6 +50,10 @@ export function CustomerReviewSettings({ workspace }: { workspace: Authenticated
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!publishConsent) {
+      setFeedback({ error: "Confirm that Zoption may show your review before saving it." });
+      return;
+    }
     setBusy(true);
     setFeedback({});
     const input: CustomerReviewInput = {
