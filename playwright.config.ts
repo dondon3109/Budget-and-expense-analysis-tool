@@ -27,7 +27,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pnpm --filter @zoption/api dev",
+      command: "pnpm --filter @zoption/api dev:e2e",
       url: "http://localhost:8787/health",
       reuseExistingServer: false,
       timeout: 120_000,
