@@ -25,6 +25,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AccountDeletionService } from "../src/account-deletion";
 import type { AssistantService, AssistantTurnExecution } from "../src/assistant/service";
+import type { AssistantVoiceService } from "../src/assistant/voice-service";
 import { createApp, type AppOptions } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
 import type { AccountRepository } from "../src/db/accounts";
@@ -604,6 +605,42 @@ describe("API foundation", () => {
       },
       tenantId: TENANT_ID,
     });
+  });
+
+  it("accepts bounded multipart recordings on the authenticated voice route", async () => {
+    const transcribe = vi.fn(async () => ({
+      text: "Review this transcript",
+      durationSeconds: 2,
+      languageCode: "en",
+    }));
+    const assistantVoiceService = { transcribe } as unknown as AssistantVoiceService;
+    const app = createTestApp({ assistantVoiceService });
+    const form = new FormData();
+    form.set("audio", new File([new Uint8Array([1, 2, 3])], "voice.webm", { type: "audio/webm" }));
+
+    const response = await app.request("/api/app/assistant/voice/transcriptions", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: form,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ text: "Review this transcript" });
+    expect(transcribe).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
+  });
+
+  it("rejects JSON on the multipart voice transcription route", async () => {
+    const transcribe = vi.fn();
+    const assistantVoiceService = { transcribe } as unknown as AssistantVoiceService;
+    const app = createTestApp({ assistantVoiceService });
+    const response = await app.request("/api/app/assistant/voice/transcriptions", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ audio: "not-a-recording" }),
+    });
+
+    expect(response.status).toBe(415);
+    expect(transcribe).not.toHaveBeenCalled();
   });
 
   it.each([

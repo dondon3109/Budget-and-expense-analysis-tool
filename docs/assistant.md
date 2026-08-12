@@ -17,6 +17,16 @@ Zoption's AI Financial Assistant is a read-only budgeting and financial-wellness
 
 The browser cannot submit a tenant ID, model, system prompt, tool definition, assistant message, or tool result.
 
+## Preview voice mode
+
+Voice mode is available only in the Preview deployment. A user explicitly enables the separate, versioned voice consent before the browser requests microphone access. A push-to-talk recording of at most 60 seconds and 4 MB is sent through the authenticated Worker to Fish Audio ASR. The returned transcript is placed in the normal assistant composer for review and editing; Preview never sends it automatically. Only after the user presses **Send** does the existing assistant pipeline run.
+
+For a voice-originated turn, the Worker may send the completed assistant reply text to Fish Audio TTS and return MP3 audio. The browser holds recordings and generated audio only in memory, and Zoption does not write either to D1. Speech generation accepts only a completed assistant message owned by the current tenant. The Fish API key remains a Worker secret, request bodies are bounded before multipart parsing, and transcription and speech have separate tenant rate limits.
+
+The rollout is deliberately dual-gated: Preview builds expose the microphone and the Preview Worker accepts voice routes; Production builds omit the control and the Production Worker returns 404. `ASSISTANT_VOICE_REVIEW_REQUIRED` is `true` in Preview and `false` in Production so a later approved Production release can remove the extra review action without another UI redesign. Production voice remains disabled until that release decision.
+
+TTS is pinned to Fish Audio's free `s2.1-pro-free` model. The Worker rejects any other configured TTS model. Fish Audio ASR is usage-priced rather than free, so Preview transcription should be monitored before any paid rollout.
+
 ## Allowed tools
 
 - `get_account_balances` — balances calculated from recorded transaction ledger entries, optionally filtered to a tenant-owned account.
@@ -114,6 +124,10 @@ Non-secret Worker variables:
 - `ASSISTANT_TIME_ZONE=Asia/Manila`
 - `ASSISTANT_PROVIDER_TIMEOUT_MS=12000`
 - `ASSISTANT_OVERALL_TIMEOUT_MS=25000`
+- `ASSISTANT_VOICE_ENABLED=true` in Preview and `false` in Production
+- `ASSISTANT_VOICE_REVIEW_REQUIRED=true` in Preview and `false` in Production
+- `ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS=30000`
+- `FISH_AUDIO_TTS_MODEL=s2.1-pro-free`
 - `POSTHOG_AI_OBSERVABILITY_ENABLED=false` until the target environment is verified
 - `POSTHOG_HOST=https://us.i.posthog.com`
 - `POSTHOG_AI_ENVIRONMENT=preview` or `production`
@@ -138,6 +152,14 @@ pnpm --filter @zoption/api exec wrangler secret put POSTHOG_PROJECT_TOKEN \
 pnpm --filter @zoption/api exec wrangler secret put POSTHOG_PROJECT_TOKEN \
   --config wrangler.deploy.jsonc \
   --env production
+```
+
+Voice Preview additionally requires `FISH_AUDIO_API_KEY` as a Preview Worker secret. Do not create the Production secret while the Production gate is disabled:
+
+```bash
+pnpm --filter @zoption/api exec wrangler secret put FISH_AUDIO_API_KEY \
+  --config wrangler.deploy.jsonc \
+  --env preview
 ```
 
 For local development, put provider secrets in ignored `apps/api/.dev.vars`. Never use a `VITE_*` variable for either key. Keep local PostHog capture disabled unless explicitly testing it. Enable Preview first, inspect the raw event JSON for the metadata allow-list, confirm no person profile is created, verify and disclose the project's actual event-retention plan, require the matching consent version, and only then enable Production. The current rollout uses PostHog's 12-month event-retention plan and assistant consent version 5.

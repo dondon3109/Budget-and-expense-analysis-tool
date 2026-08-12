@@ -29,6 +29,10 @@ function environment({
       PAYPAL_ENVIRONMENT: paypalEnvironment,
       PAYPAL_PRO_MONTHLY_PLAN_ID: production ? "P-PRODUCTION-MONTHLY" : "P-PREVIEW-MONTHLY",
       PAYPAL_PRO_ANNUAL_PLAN_ID: production ? "P-PRODUCTION-ANNUAL" : "P-PREVIEW-ANNUAL",
+      ASSISTANT_VOICE_ENABLED: production ? "false" : "true",
+      ASSISTANT_VOICE_REVIEW_REQUIRED: production ? "false" : "true",
+      ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS: "30000",
+      FISH_AUDIO_TTS_MODEL: "s2.1-pro-free",
     },
   };
 }

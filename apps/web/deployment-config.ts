@@ -175,6 +175,7 @@ export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): s
     "style-src 'self' 'unsafe-inline'",
     `img-src ${imageSources.join(" ")}`,
     `connect-src ${connectSources.join(" ")}`,
+    ...(config.deployEnvironment === "preview" ? ["media-src 'self' blob:"] : []),
     "frame-src 'none'",
     "worker-src 'self' blob:",
     "object-src 'none'",
@@ -182,6 +183,22 @@ export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): s
     "form-action 'self'",
     "frame-ancestors 'none'",
   ].join("; ");
+}
+
+export function addPreviewMicrophonePermission(
+  headers: string,
+  deployEnvironment: DeployEnvironment,
+): string {
+  const lockedPolicy = "Permissions-Policy: camera=(), microphone=(), geolocation=()";
+  if (!headers.includes(lockedPolicy)) {
+    throw new Error("Expected the global Permissions-Policy to disable microphone access.");
+  }
+  return deployEnvironment === "preview"
+    ? headers.replace(
+        lockedPolicy,
+        "Permissions-Policy: camera=(), microphone=(self), geolocation=()",
+      )
+    : headers;
 }
 
 export function addContentSecurityPolicy(headers: string, policy: string): string {

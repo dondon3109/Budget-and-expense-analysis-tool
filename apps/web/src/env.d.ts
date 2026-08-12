@@ -1,5 +1,7 @@
 declare const __APP_VERSION__: string;
 declare const __SEARCH_INDEXING_ENABLED__: boolean;
+declare const __ASSISTANT_VOICE_ENABLED__: boolean;
+declare const __ASSISTANT_VOICE_REVIEW_REQUIRED__: boolean;
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;

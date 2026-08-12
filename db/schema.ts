@@ -376,6 +376,8 @@ export const assistantPreferences = sqliteTable("assistant_preferences", {
     .references(() => tenants.id, { onDelete: "cascade" }),
   consentedAt: text("consented_at"),
   consentVersion: integer("consent_version").notNull().default(0),
+  voiceConsentedAt: text("voice_consented_at"),
+  voiceConsentVersion: integer("voice_consent_version").notNull().default(0),
   assistantName: text("assistant_name"),
   userPreferredName: text("user_preferred_name"),
   responseDetail: text("response_detail", { enum: ["concise", "standard"] })

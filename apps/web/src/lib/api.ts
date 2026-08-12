@@ -12,6 +12,8 @@ import type {
   AssistantPreferenceUpdate,
   AssistantThreadPage,
   AssistantTurnResult,
+  AssistantVoicePreferences,
+  AssistantVoiceTranscription,
   BillingCapability,
   BillingCheckoutReconciliation,
   BillingFeature,
@@ -283,10 +285,10 @@ async function workspaceFetch(
   workspace: AuthenticatedWorkspace,
   path: string,
   init: RequestInit,
-  options: { retryUnauthorized?: boolean } = {},
+  options: { retryUnauthorized?: boolean; timeoutMs?: number } = {},
 ): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? REQUEST_TIMEOUT_MS);
 
   const callerSignal = init.signal;
   const abortFromCaller = () => controller.abort();
@@ -336,7 +338,7 @@ async function requestJson<T>(
   workspace: AuthenticatedWorkspace,
   path: string,
   init: RequestInit = {},
-  options: { retryUnauthorized?: boolean } = {},
+  options: { retryUnauthorized?: boolean; timeoutMs?: number } = {},
 ): Promise<T> {
   const response = await workspaceFetch(
     workspace,
@@ -832,6 +834,80 @@ export function grantAssistantConsent(
     method: "PATCH",
     body: JSON.stringify({ consented: true }),
   });
+}
+
+export function getAssistantVoicePreferences(
+  workspace: AuthenticatedWorkspace,
+): Promise<AssistantVoicePreferences> {
+  return requestJson(workspace, "/api/app/assistant/voice/preferences");
+}
+
+export function grantAssistantVoiceConsent(
+  workspace: AuthenticatedWorkspace,
+): Promise<AssistantVoicePreferences> {
+  return requestJson(workspace, "/api/app/assistant/voice/preferences", {
+    method: "PATCH",
+    body: JSON.stringify({ consented: true }),
+  });
+}
+
+export async function transcribeAssistantVoice(
+  workspace: AuthenticatedWorkspace,
+  audio: Blob,
+): Promise<AssistantVoiceTranscription> {
+  const form = new FormData();
+  const extension = audio.type.includes("mp4")
+    ? "m4a"
+    : audio.type.includes("ogg")
+      ? "ogg"
+      : "webm";
+  form.set("audio", audio, `voice-input.${extension}`);
+  const response = await workspaceFetch(
+    workspace,
+    "/api/app/assistant/voice/transcriptions",
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: form,
+    },
+    { timeoutMs: 45_000 },
+  );
+  if (!response.ok) {
+    const payload = apiErrorPayload(await response.json().catch(() => null));
+    throw new ApiRequestError(
+      payload.message ?? "The recording could not be transcribed.",
+      response.status,
+      payload.error ?? "assistant_voice_failed",
+      payload.details,
+    );
+  }
+  return (await response.json()) as AssistantVoiceTranscription;
+}
+
+export async function getAssistantVoiceSpeech(
+  workspace: AuthenticatedWorkspace,
+  messageId: string,
+): Promise<Blob> {
+  const response = await workspaceFetch(
+    workspace,
+    "/api/app/assistant/voice/speech",
+    {
+      method: "POST",
+      headers: { Accept: "audio/mpeg", "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId }),
+    },
+    { timeoutMs: 45_000 },
+  );
+  if (!response.ok) {
+    const payload = apiErrorPayload(await response.json().catch(() => null));
+    throw new ApiRequestError(
+      payload.message ?? "The spoken reply could not be prepared.",
+      response.status,
+      payload.error ?? "assistant_voice_failed",
+      payload.details,
+    );
+  }
+  return response.blob();
 }
 
 export function updateAssistantIdentity(

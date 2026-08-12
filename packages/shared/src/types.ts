@@ -532,6 +532,7 @@ export interface AssistantResponseMetadata {
 }
 
 export const CURRENT_ASSISTANT_CONSENT_VERSION = 5;
+export const CURRENT_ASSISTANT_VOICE_CONSENT_VERSION = 1;
 
 export type AssistantDebtStrategy = "avalanche" | "snowball";
 export type AssistantMemoryKind = "preference" | "fact" | "summary";
@@ -574,6 +575,20 @@ export interface AssistantPreferences {
   userPreferredName: string | null;
   responseDetail: AssistantResponseDetail;
   coachingStyle: AssistantCoachingStyle;
+}
+
+export interface AssistantVoicePreferences {
+  enabled: boolean;
+  reviewRequired: boolean;
+  consentedAt: string | null;
+  consentVersion: number;
+  ttsModel: "s2.1-pro-free";
+}
+
+export interface AssistantVoiceTranscription {
+  text: string;
+  durationSeconds: number;
+  languageCode?: string;
 }
 
 export interface AssistantThread {
