@@ -57,9 +57,9 @@ export function createAssistantVoiceRoutes(service: AssistantVoiceService) {
       context.get("tenant").tenantId,
       parsed.data.messageId,
     );
-    return new Response(response.body, {
-      headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
-    });
+    context.header("Content-Type", "audio/mpeg");
+    context.header("Cache-Control", "no-store");
+    return context.body(await response.arrayBuffer());
   });
 
   return routes;

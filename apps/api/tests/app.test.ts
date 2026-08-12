@@ -643,6 +643,31 @@ describe("API foundation", () => {
     expect(transcribe).not.toHaveBeenCalled();
   });
 
+  it("returns spoken audio with the authenticated Preview origin headers", async () => {
+    const synthesize = vi.fn(async () => new Response(new Uint8Array([1, 2, 3])));
+    const assistantVoiceService = { synthesize } as unknown as AssistantVoiceService;
+    const app = createTestApp({ assistantVoiceService });
+    const response = await app.request("/api/app/assistant/voice/speech", {
+      method: "POST",
+      headers: privateHeaders({
+        "Content-Type": "application/json",
+        Origin: "http://localhost:5173",
+      }),
+      body: JSON.stringify({ messageId: "00000000-0000-4000-8000-000000000003" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:5173");
+    expect(response.headers.get("Content-Type")).toBe("audio/mpeg");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+    expect(synthesize).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      "00000000-0000-4000-8000-000000000003",
+    );
+  });
+
   it.each([
     ["new thread", "/api/app/assistant/threads", 201],
     [
