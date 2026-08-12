@@ -21,6 +21,7 @@ import "./AppShell.css";
 import "../transactions/TransactionForm.css";
 import { useAuth } from "../../auth/AuthProvider";
 import { avatarPathFromMetadata } from "../../lib/avatar";
+import { userWorkspace } from "../../lib/workspace";
 import { useBodyScrollLock } from "../../hooks/useRootLock";
 import { BrandMark } from "../brand/BrandMark";
 import { LegalFooter } from "../legal/LegalFooter";
@@ -269,7 +270,7 @@ export function AppShell({ children }: AppShellProps) {
           <span>More</span>
         </button>
       </nav>
-      <SupportChat surface="app" />
+      <SupportChat surface="app" workspace={user ? userWorkspace(user) : undefined} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { billingRepository } from "./db/billing";
 import { refreshDailyFxRate } from "./fx/rates";
 import { creditDueInterest } from "./interest/scheduled-credit";
 import { validateRequiredApiBindings } from "./readiness";
+import { bugReportService } from "./support/bug-reports";
 import type { Bindings } from "./types";
 
 const app = createApp();
@@ -22,6 +23,12 @@ export default {
       const result = await reconcileDuePayPalCheckouts(billingRepository, env, 25);
       if (result.checked > 0) {
         console.log(JSON.stringify({ message: "Pending PayPal checkouts reconciled", ...result }));
+      }
+      const notifications = await bugReportService.retryPendingNotifications(env, 25);
+      if (notifications.claimed > 0) {
+        console.log(
+          JSON.stringify({ message: "Bug report notifications retried", ...notifications }),
+        );
       }
       return;
     }
@@ -54,5 +61,11 @@ export default {
     const reconciled = await accountDeletionService.reconcile(env, 25);
     if (reconciled > 0)
       console.log(JSON.stringify({ message: "Pending account deletions reconciled", reconciled }));
+    for (;;) {
+      const deleted = await bugReportService.cleanupExpired(env, 100);
+      if (deleted > 0)
+        console.log(JSON.stringify({ message: "Expired bug reports deleted", deleted }));
+      if (deleted < 100) break;
+    }
   },
 } satisfies ExportedHandler<Bindings>;

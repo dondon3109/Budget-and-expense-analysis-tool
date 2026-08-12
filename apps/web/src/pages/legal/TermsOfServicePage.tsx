@@ -5,7 +5,7 @@ export function TermsOfServicePage() {
     <LegalPageLayout
       title="Terms of Service"
       summary="These terms explain the rules for using Zoption, including its Free and Pro plans, personal-finance workspace, file imports, exports, and optional AI assistant."
-      lastUpdated="August 11, 2026"
+      lastUpdated="August 12, 2026"
     >
       <section>
         <h2>1. Who operates Zoption</h2>
@@ -74,10 +74,11 @@ export function TermsOfServicePage() {
         <p>
           Zoption also offers a separate product-support chat on the landing page and signed-in
           workspace. It can explain Zoption features and navigation but cannot see your account,
-          financial workspace, or private Assistant history. When you send a support message, that
-          message and bounded support-chat context are sent to the AI provider. Do not include
-          passwords, authentication codes, banking credentials, or unnecessary sensitive personal or
-          financial information.
+          financial workspace, or private Assistant history. Signed-in users may ask it to prepare a
+          bug-report draft, but the draft is not submitted until the user reviews it and presses the
+          submission control. When you send a support message, that message and bounded support-chat
+          context are sent to the AI provider. Do not include passwords, authentication codes,
+          banking credentials, or unnecessary sensitive personal or financial information.
         </p>
         <p>
           The optional assistant requires separate, versioned consent. When enabled, Zoption sends

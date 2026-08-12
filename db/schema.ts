@@ -723,3 +723,70 @@ export const fxRates = sqliteTable(
   },
   (table) => [index("fx_rates_fetched_at_idx").on(table.fetchedAt)],
 );
+
+export const bugReports = sqliteTable(
+  "bug_reports",
+  {
+    id: text("id").primaryKey(),
+    reference: text("reference").notNull(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    reporterUserId: text("reporter_user_id").notNull(),
+    reporterEmail: text("reporter_email"),
+    clientRequestId: text("client_request_id").notNull(),
+    title: text("title").notNull(),
+    category: text("category", {
+      enum: ["ui", "data", "import", "billing", "authentication", "performance", "other"],
+    }).notNull(),
+    actualBehavior: text("actual_behavior").notNull(),
+    expectedBehavior: text("expected_behavior").notNull(),
+    stepsToReproduce: text("steps_to_reproduce").notNull(),
+    frequency: text("frequency", {
+      enum: ["once", "sometimes", "always", "unknown"],
+    }).notNull(),
+    pageContext: text("page_context", {
+      enum: [
+        "dashboard",
+        "assistant",
+        "calendar",
+        "transactions",
+        "import",
+        "budgets",
+        "subscriptions",
+        "plan",
+        "settings",
+        "app",
+      ],
+    }).notNull(),
+    diagnosticsJson: text("diagnostics_json").notNull(),
+    status: text("status", {
+      enum: ["new", "triaged", "needs_info", "in_progress", "resolved", "closed", "duplicate"],
+    })
+      .notNull()
+      .default("new"),
+    notificationStatus: text("notification_status", { enum: ["pending", "sent", "failed"] })
+      .notNull()
+      .default("pending"),
+    notificationAttempts: integer("notification_attempts").notNull().default(0),
+    notificationLeaseUntil: text("notification_lease_until"),
+    lastNotificationErrorCode: text("last_notification_error_code"),
+    notifiedAt: text("notified_at"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("bug_reports_reference_unique").on(table.reference),
+    uniqueIndex("bug_reports_tenant_client_request_unique").on(
+      table.tenantId,
+      table.clientRequestId,
+    ),
+    index("bug_reports_tenant_created_idx").on(table.tenantId, table.createdAt),
+    index("bug_reports_status_updated_idx").on(table.status, table.updatedAt),
+    index("bug_reports_notification_retry_idx").on(
+      table.notificationStatus,
+      table.notificationLeaseUntil,
+      table.notificationAttempts,
+    ),
+    check("bug_reports_notification_attempts_nonnegative", sql`${table.notificationAttempts} >= 0`),
+  ],
+);

@@ -25,6 +25,7 @@ function environment({
       SUPABASE_JWT_AUDIENCE: "authenticated",
       WEB_APP_URL: production ? "https://zoption.site" : "https://preview.example.pages.dev",
       EMAIL_FROM: "hello@zoption.site",
+      BUG_REPORT_TO: "support@zoption.site",
       PAYPAL_ENVIRONMENT: paypalEnvironment,
       PAYPAL_PRO_MONTHLY_PLAN_ID: production ? "P-PRODUCTION-MONTHLY" : "P-PREVIEW-MONTHLY",
       PAYPAL_PRO_ANNUAL_PLAN_ID: production ? "P-PRODUCTION-ANNUAL" : "P-PREVIEW-ANNUAL",

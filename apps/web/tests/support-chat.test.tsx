@@ -6,14 +6,43 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const authState = vi.hoisted(() => ({
+  user: null as null | { id: string; email: string },
+}));
+
+vi.mock("../src/auth/AuthProvider", () => ({
+  useAuth: () => authState,
+}));
+
+vi.mock("../src/lib/supabase", () => ({
+  getSupabaseClient: () => ({
+    auth: {
+      getSession: vi.fn().mockResolvedValue({
+        error: null,
+        data: {
+          session: {
+            access_token: "access-token",
+            user: { id: "user-1" },
+          },
+        },
+      }),
+      refreshSession: vi.fn(),
+      signOut: vi.fn(),
+    },
+  }),
+}));
+
 import { SupportChat } from "../src/components/support/SupportChat";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 function renderSupport(path = "/", surface: "landing" | "app" = "landing") {
+  const workspace = authState.user
+    ? { key: `user:${authState.user.id}` as const, userId: authState.user.id }
+    : undefined;
   return render(
     <ThemeProvider>
       <MemoryRouter initialEntries={[path]}>
-        <SupportChat surface={surface} />
+        <SupportChat surface={surface} workspace={workspace} />
       </MemoryRouter>
     </ThemeProvider>,
   );
@@ -21,10 +50,19 @@ function renderSupport(path = "/", surface: "landing" | "app" = "landing") {
 
 describe("Zoption Support chat", () => {
   beforeEach(() => {
+    authState.user = null;
     window.sessionStorage.clear();
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
+    });
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
     });
   });
 
@@ -49,7 +87,7 @@ describe("Zoption Support chat", () => {
     fireEvent.click(launcher);
 
     expect(screen.getByRole("dialog", { name: "Zoption Support" })).toBeInTheDocument();
-    expect(screen.getByText(/no account access/i)).toBeInTheDocument();
+    expect(screen.getByText(/no financial-data access/i)).toBeInTheDocument();
     expect(screen.getByText(/messages go to DeepSeek/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "How do imports work?" }));
@@ -71,6 +109,76 @@ describe("Zoption Support chat", () => {
     };
     expect(payload.pageContext).toBe("import");
     expect(payload.messages).toContainEqual({ role: "user", content: "How do imports work?" });
+  });
+
+  it("requires review and explicit confirmation before storing a signed-in bug report", async () => {
+    authState.user = { id: "user-1", email: "person@example.com" };
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            message: "Review the draft below.",
+            bugReportDraft: {
+              title: "Calendar event details stay empty",
+              category: "ui",
+              actualBehavior: "The details panel stays empty after selecting an event.",
+              expectedBehavior: "The selected event details should appear.",
+              stepsToReproduce: "Open Calendar, choose a populated day, then select an event.",
+              frequency: "always",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "00000000-0000-4000-8000-000000000099",
+            reference: "BR-20260812-001122334455",
+            title: "Calendar event details stay empty",
+            category: "ui",
+            actualBehavior: "The details panel stays empty after selecting an event.",
+            expectedBehavior: "The selected event details should appear.",
+            stepsToReproduce: "Open Calendar, choose a populated day, then select an event.",
+            frequency: "always",
+            pageContext: "calendar",
+            diagnostics: {
+              route: "/app/calendar",
+              releaseVersion: "2.0.0",
+              viewportWidth: 1024,
+              viewportHeight: 768,
+              displayMode: "browser",
+              platform: "desktop",
+            },
+            status: "new",
+            createdAt: "2026-08-12T00:00:00.000Z",
+            updatedAt: "2026-08-12T00:00:00.000Z",
+          }),
+          { status: 201, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    renderSupport("/app/calendar", "app");
+    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.click(screen.getByRole("button", { name: "Report a problem" }));
+
+    expect(await screen.findByRole("heading", { name: "Bug report draft" })).toBeInTheDocument();
+    expect(screen.getByText(/Nothing is saved yet/i)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/app/support/chat");
+
+    fireEvent.click(screen.getByRole("button", { name: "Submit bug report" }));
+    expect(await screen.findByText("BR-20260812-001122334455 received")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/app/support/bug-reports");
+    const submitBody = fetchMock.mock.calls[1]?.[1]?.body;
+    expect(typeof submitBody).toBe("string");
+    expect(JSON.parse(submitBody as string)).toMatchObject({
+      title: "Calendar event details stay empty",
+      pageContext: "calendar",
+      diagnostics: { route: "/app/calendar" },
+    });
   });
 
   it("renders assistant emphasis safely while preserving user markers as literal text", async () => {

@@ -33,6 +33,7 @@ import { calendarEventRepository, type CalendarEventRepository } from "./db/even
 import { financialGoalRepository, type FinancialGoalRepository } from "./db/goals";
 import { createImportRepository, type ImportRepository } from "./db/imports";
 import { platformAdminRepository, type PlatformAdminRepository } from "./db/platform-admin";
+import { bugReportRepository, type BugReportRepository } from "./db/bug-reports";
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
 import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
@@ -54,7 +55,12 @@ import { createImportRoutes } from "./routes/imports";
 import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
-import { createSupportRoutes } from "./routes/support";
+import {
+  createAuthenticatedSupportRoutes,
+  createBugReportAdminRoutes,
+  createSupportRoutes,
+} from "./routes/support";
+import { createBugReportService, type BugReportService } from "./support/bug-reports";
 import { createTransactionRoutes } from "./routes/transactions";
 import type { AppEnvironment, Bindings } from "./types";
 
@@ -129,6 +135,8 @@ export interface AppOptions {
   accountDeletionService?: AccountDeletionService;
   platformAdmins?: PlatformAdminRepository;
   platformAdminService?: PlatformAdminService;
+  bugReports?: BugReportRepository;
+  bugReportService?: BugReportService;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -180,6 +188,8 @@ export function createApp(options: AppOptions = {}) {
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =
     options.platformAdminService ?? createPlatformAdminService(platformAdminStore);
+  const bugReportService =
+    options.bugReportService ?? createBugReportService(options.bugReports ?? bugReportRepository);
   const accountDeletionService =
     options.accountDeletionService ??
     createAccountDeletionService(undefined, undefined, billingStore, platformAdminStore);
@@ -320,6 +330,8 @@ export function createApp(options: AppOptions = {}) {
       context.req.method === "POST" &&
       (context.req.path === "/api/app/assistant/threads" ||
         /^\/api\/app\/assistant\/threads\/[^/]+\/messages$/.test(context.req.path));
+    const isSupportGeneration =
+      context.req.method === "POST" && context.req.path === "/api/app/support/chat";
     const isExportRead =
       context.req.method === "GET" && context.req.path.startsWith("/api/app/exports");
     const isAssistantHistoryRead =
@@ -330,10 +342,18 @@ export function createApp(options: AppOptions = {}) {
         ? [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: 15 * 60 }]
         : isPlatformAdminRoute
           ? [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: 60 }]
-          : isAssistantGeneration
+          : isAssistantGeneration || isSupportGeneration
             ? [
-                { scope: "tenant-assistant-minute", limit: 10, windowSeconds: 60 },
-                { scope: "tenant-assistant-day", limit: 100, windowSeconds: 24 * 60 * 60 },
+                {
+                  scope: isSupportGeneration ? "tenant-support-minute" : "tenant-assistant-minute",
+                  limit: 10,
+                  windowSeconds: 60,
+                },
+                {
+                  scope: isSupportGeneration ? "tenant-support-day" : "tenant-assistant-day",
+                  limit: 100,
+                  windowSeconds: 24 * 60 * 60,
+                },
               ]
             : isExportRead
               ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
@@ -492,6 +512,14 @@ export function createApp(options: AppOptions = {}) {
   );
   app.route("/api/billing/paypal/webhook", createPayPalWebhookRoutes(billingStore));
   app.route("/api/support", createSupportRoutes(supportProvider));
+  app.route(
+    "/api/app/admin/bug-reports",
+    createBugReportAdminRoutes(bugReportService, platformAdminService),
+  );
+  app.route(
+    "/api/app/support",
+    createAuthenticatedSupportRoutes(supportProvider, bugReportService),
+  );
   app.route("/api/app/account", createAccountDeletionRoutes(accountDeletionService));
   app.route("/api/app/identity", createIdentityRoutes(platformAdminService));
   app.route("/api/app/admin", createPlatformAdminRoutes(platformAdminService));

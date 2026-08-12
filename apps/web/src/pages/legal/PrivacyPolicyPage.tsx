@@ -7,7 +7,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, assistant, consent, and operational information."
-      lastUpdated="August 11, 2026"
+      lastUpdated="August 12, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -61,8 +61,10 @@ export function PrivacyPolicyPage() {
           <li>
             <strong>Product support chat:</strong> questions you choose to send, bounded prior
             messages from the same browser-session conversation, and the page area from which you
-            asked for help. The support chat does not receive your financial workspace, account
-            session, or private AI Assistant history.
+            asked for help. The support chat does not receive your financial workspace or private AI
+            Assistant history. Signed-in users may review and explicitly submit a structured bug
+            report containing their description, safe page and device diagnostics, account identity,
+            and report status.
           </li>
           <li>
             <strong>Preferences and operations:</strong> theme and cookie/storage choices, request
@@ -101,7 +103,8 @@ export function PrivacyPolicyPage() {
           </li>
           <li>
             answer user-initiated product-support questions about Zoption without accessing the
-            user&apos;s account or financial workspace;
+            user&apos;s financial workspace, and receive bug reports only after a signed-in user
+            reviews and confirms the report;
           </li>
           <li>
             determine available plan features and enforce Free and Pro usage limits; and, if you
@@ -166,6 +169,12 @@ export function PrivacyPolicyPage() {
             verifies on its server before reconciling subscription state and paid access.
           </li>
           <li>
+            <strong>Resend</strong> for operational email delivery, including notifying the Zoption
+            team after a confirmed bug report is stored. The notification contains the reviewed
+            report, reporter email when available, and safe diagnostics, but not financial workspace
+            data.
+          </li>
+          <li>
             <strong>Google Analytics 4</strong> only after you enable Analytics through Cookie
             Settings. It receives limited page-use and performance information, not financial
             workspace data, account credentials, or assistant conversations.
@@ -209,9 +218,11 @@ export function PrivacyPolicyPage() {
           The product-support chat is separate from the financial assistant. When you send a support
           message, Zoption sends that message, bounded prior support messages from the same browser
           session, the current product area, and product-help instructions to DeepSeek. The support
-          endpoint does not authenticate or inspect your account, retrieve financial data, or add
-          messages to financial Assistant history. Avoid putting sensitive personal or financial
-          information in a support question.
+          chat does not retrieve financial data or add messages to financial Assistant history.
+          Public support remains unauthenticated. Inside the signed-in workspace, authentication is
+          used to offer a reviewable bug-report draft and to associate a report you explicitly
+          submit with your account. The AI prepares draft fields but cannot submit a report. Avoid
+          putting sensitive personal or financial information in a support question or report.
         </p>
         <p>
           Browser cookie consent does not enable the assistant. The assistant has separate,
@@ -265,10 +276,15 @@ export function PrivacyPolicyPage() {
         </p>
         <p>
           Product-support messages are kept in the current browser tab&apos;s session storage so the
-          widget can preserve context while you navigate. Zoption&apos;s support endpoint does not
-          save a support conversation to D1. Closing the browser session normally clears the browser
-          copy; provider-side processing or retention of messages sent to DeepSeek remains governed
-          by that provider&apos;s practices and applicable law.
+          widget can preserve context while you navigate. Zoption does not save the support
+          conversation to D1. Closing the browser session normally clears the browser copy;
+          provider-side processing or retention of messages sent to DeepSeek remains governed by
+          that provider&apos;s practices and applicable law. If you explicitly submit a bug report,
+          Zoption stores the reviewed report and safe diagnostics in D1 and may send an operational
+          copy through Resend. Open reports are retained while needed to investigate and support the
+          service. Resolved, closed, or duplicate reports are scheduled for deletion after 180 days,
+          unless a longer period is required for security, disputes, or legal obligations. Account
+          deletion removes the account&apos;s bug reports from active D1 storage.
         </p>
         <p>
           Each assistant thread has a 90-day retention window measured from its latest completed

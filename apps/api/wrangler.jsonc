@@ -19,6 +19,7 @@
     "SUPABASE_JWT_AUDIENCE": "authenticated",
     "WEB_APP_URL": "http://localhost:5173",
     "EMAIL_FROM": "hello@zoption.site",
+    "BUG_REPORT_TO": "support@zoption.site",
     "ASSISTANT_ENABLED": "true",
     "DEEPSEEK_MODEL": "deepseek-v4-flash",
     "ASSISTANT_TIME_ZONE": "Asia/Manila",

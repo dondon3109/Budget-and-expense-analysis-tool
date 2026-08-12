@@ -1,4 +1,4 @@
-import { BookOpenText, Check, Copy, Mail, MessageCircleQuestion } from "lucide-react";
+import { BookOpenText, Bug, Check, Copy, Mail, MessageCircleQuestion } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -721,7 +721,10 @@ export function SettingsPage() {
                 <MessageCircleQuestion size={21} aria-hidden="true" />
                 <div>
                   <strong>Zoption Support</strong>
-                  <p>Ask how a feature works or where to find it. Support cannot see your data.</p>
+                  <p>
+                    Ask how a feature works or prepare a bug report. Support cannot see your
+                    financial data, and no report is saved before you confirm it.
+                  </p>
                 </div>
                 <button
                   className="button secondary compact"
@@ -730,6 +733,18 @@ export function SettingsPage() {
                 >
                   Ask Zoption
                 </button>
+              </li>
+              <li className="settings-support-item">
+                <Bug size={21} aria-hidden="true" />
+                <div>
+                  <strong>Bug reports</strong>
+                  <p>
+                    Review the status of reports you explicitly submitted through Zoption Support.
+                  </p>
+                </div>
+                <Link className="button secondary compact" to="/app/support/reports">
+                  View reports
+                </Link>
               </li>
               <li id="contact" className="settings-support-item" tabIndex={-1}>
                 <Mail size={21} aria-hidden="true" />

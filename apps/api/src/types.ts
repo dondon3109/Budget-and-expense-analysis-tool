@@ -18,6 +18,7 @@ export interface Bindings {
   RESEND_API_KEY?: string;
   WEB_APP_URL?: string;
   EMAIL_FROM?: string;
+  BUG_REPORT_TO?: string;
   DEEPSEEK_API_KEY?: string;
   DEEPSEEK_MODEL?: string;
   ASSISTANT_ENABLED?: string;

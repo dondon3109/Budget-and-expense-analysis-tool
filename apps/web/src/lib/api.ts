@@ -18,6 +18,11 @@ import type {
   BillingInterval,
   BillingResource,
   BillingSummary,
+  AdminBugReport,
+  BugReport,
+  BugReportCreateInput,
+  BugReportDraft,
+  BugReportStatus,
   SponsoredProSeat,
   SponsoredProSeatSummary,
   BudgetMonthPlan,
@@ -76,6 +81,11 @@ export type SupportPageContext =
 export interface SupportChatMessageInput {
   role: "user" | "assistant";
   content: string;
+}
+
+export interface SupportChatResponse {
+  message: string;
+  bugReportDraft?: BugReportDraft;
 }
 
 export class ApiRequestError extends Error {
@@ -370,7 +380,7 @@ export async function sendSupportChat(
   messages: SupportChatMessageInput[],
   pageContext: SupportPageContext,
   signal?: AbortSignal,
-): Promise<{ message: string }> {
+): Promise<SupportChatResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort("request_timeout"), REQUEST_TIMEOUT_MS);
   const abortFromCaller = () => controller.abort(signal?.reason ?? "request_aborted");
@@ -422,6 +432,48 @@ export async function sendSupportChat(
     clearTimeout(timer);
     signal?.removeEventListener("abort", abortFromCaller);
   }
+}
+
+export function sendAuthenticatedSupportChat(
+  workspace: AuthenticatedWorkspace,
+  messages: SupportChatMessageInput[],
+  pageContext: Exclude<SupportPageContext, "landing">,
+  signal?: AbortSignal,
+): Promise<SupportChatResponse> {
+  return requestJson(workspace, "/api/app/support/chat", {
+    method: "POST",
+    body: JSON.stringify({ messages, pageContext }),
+    signal,
+  });
+}
+
+export function createBugReport(
+  workspace: AuthenticatedWorkspace,
+  input: BugReportCreateInput,
+): Promise<BugReport> {
+  return requestJson(workspace, "/api/app/support/bug-reports", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function getBugReports(workspace: AuthenticatedWorkspace): Promise<BugReport[]> {
+  return requestJson(workspace, "/api/app/support/bug-reports");
+}
+
+export function getAdminBugReports(workspace: AuthenticatedWorkspace): Promise<AdminBugReport[]> {
+  return requestJson(workspace, "/api/app/admin/bug-reports");
+}
+
+export function updateAdminBugReportStatus(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+  status: BugReportStatus,
+): Promise<AdminBugReport> {
+  return requestJson(workspace, `/api/app/admin/bug-reports/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
 
 export function getBillingSummary(workspace: AuthenticatedWorkspace): Promise<BillingSummary> {

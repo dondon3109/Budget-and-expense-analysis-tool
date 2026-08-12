@@ -608,3 +608,87 @@ export interface AssistantTurnResult {
   userMessage: AssistantMessage;
   assistantMessage: AssistantMessage;
 }
+
+export const bugReportCategories = [
+  "ui",
+  "data",
+  "import",
+  "billing",
+  "authentication",
+  "performance",
+  "other",
+] as const;
+export type BugReportCategory = (typeof bugReportCategories)[number];
+
+export const bugReportFrequencies = ["once", "sometimes", "always", "unknown"] as const;
+export type BugReportFrequency = (typeof bugReportFrequencies)[number];
+
+export const bugReportStatuses = [
+  "new",
+  "triaged",
+  "needs_info",
+  "in_progress",
+  "resolved",
+  "closed",
+  "duplicate",
+] as const;
+export type BugReportStatus = (typeof bugReportStatuses)[number];
+
+export const bugReportNotificationStatuses = ["pending", "sent", "failed"] as const;
+export type BugReportNotificationStatus = (typeof bugReportNotificationStatuses)[number];
+
+export const bugReportPageContexts = [
+  "dashboard",
+  "assistant",
+  "calendar",
+  "transactions",
+  "import",
+  "budgets",
+  "subscriptions",
+  "plan",
+  "settings",
+  "app",
+] as const;
+export type BugReportPageContext = (typeof bugReportPageContexts)[number];
+
+export interface BugReportDraft {
+  title: string;
+  category: BugReportCategory;
+  actualBehavior: string;
+  expectedBehavior: string;
+  stepsToReproduce: string;
+  frequency: BugReportFrequency;
+}
+
+export interface BugReportDiagnostics {
+  route: string;
+  releaseVersion: string;
+  viewportWidth: number;
+  viewportHeight: number;
+  displayMode: "browser" | "standalone";
+  platform: "android" | "ios" | "desktop" | "other";
+}
+
+export interface BugReport {
+  id: string;
+  reference: string;
+  title: string;
+  category: BugReportCategory;
+  actualBehavior: string;
+  expectedBehavior: string;
+  stepsToReproduce: string;
+  frequency: BugReportFrequency;
+  pageContext: BugReportPageContext;
+  diagnostics: BugReportDiagnostics;
+  status: BugReportStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminBugReport extends BugReport {
+  reporterUserId: string;
+  reporterEmail: string | null;
+  notificationStatus: BugReportNotificationStatus;
+  notificationAttempts: number;
+  notifiedAt: string | null;
+}

@@ -123,6 +123,10 @@ describe("SettingsPage", () => {
 
     expect(screen.getByRole("heading", { name: "Help & contact" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Browse FAQ" })).toHaveAttribute("href", "/faq");
+    expect(screen.getByRole("link", { name: "View reports" })).toHaveAttribute(
+      "href",
+      "/app/support/reports",
+    );
     const copyEmailButton = screen.getByRole("button", { name: "Copy email address" });
     fireEvent.click(copyEmailButton);
     await waitFor(() => expect(writeClipboardText).toHaveBeenCalledWith("support@zoption.site"));

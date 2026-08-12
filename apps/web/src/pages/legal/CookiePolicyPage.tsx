@@ -99,10 +99,12 @@ export function CookiePolicyPage() {
           product-support chat, or metadata-only PostHog AI observability. The financial assistant
           has a separate, versioned consent flow because it involves feature-specific server
           processing. The support chat sends a message only when you choose to submit it and keeps
-          its browser copy in session storage. PostHog receives operational model, latency, token,
-          call-structure, finish, and error metadata for the financial assistant without questions,
-          answers, financial records, tool payloads, credentials, or internal IDs. This server-side
-          processing does not load a PostHog browser SDK or set a PostHog browser cookie. Read the{" "}
+          its browser copy in session storage. A signed-in bug report is stored only after you
+          review and explicitly submit it; this account-bound storage is not controlled by Cookie
+          Settings. PostHog receives operational model, latency, token, call-structure, finish, and
+          error metadata for the financial assistant without questions, answers, financial records,
+          tool payloads, credentials, or internal IDs. This server-side processing does not load a
+          PostHog browser SDK or set a PostHog browser cookie. Read the{" "}
           <Link to="/privacy-policy">Privacy Policy</Link> for account, financial, provider,
           assistant, and rights information.
         </p>

@@ -7,6 +7,8 @@ const cleanupExpired = vi.hoisted(() => vi.fn());
 const reconcileAccountDeletions = vi.hoisted(() => vi.fn());
 const creditDueInterest = vi.hoisted(() => vi.fn());
 const validateRequiredApiBindings = vi.hoisted(() => vi.fn());
+const retryPendingBugReportNotifications = vi.hoisted(() => vi.fn());
+const cleanupExpiredBugReports = vi.hoisted(() => vi.fn());
 const billingRepository = vi.hoisted(() => ({}));
 
 vi.mock("../src/app", () => ({ createApp: () => ({ fetch: vi.fn() }) }));
@@ -17,6 +19,12 @@ vi.mock("../src/db/billing", () => ({ billingRepository }));
 vi.mock("../src/interest/scheduled-credit", () => ({ creditDueInterest }));
 vi.mock("../src/account-deletion", () => ({
   createAccountDeletionService: () => ({ reconcile: reconcileAccountDeletions }),
+}));
+vi.mock("../src/support/bug-reports", () => ({
+  bugReportService: {
+    retryPendingNotifications: retryPendingBugReportNotifications,
+    cleanupExpired: cleanupExpiredBugReports,
+  },
 }));
 
 import worker from "../src/index";
@@ -39,6 +47,8 @@ beforeEach(() => {
   cleanupExpired.mockResolvedValue(0);
   reconcileAccountDeletions.mockResolvedValue(0);
   creditDueInterest.mockResolvedValue({ checked: 0, credited: 0, skipped: 0 });
+  retryPendingBugReportNotifications.mockResolvedValue({ claimed: 0, sent: 0, failed: 0 });
+  cleanupExpiredBugReports.mockResolvedValue(0);
 });
 
 describe("scheduled worker handler", () => {
@@ -47,6 +57,7 @@ describe("scheduled worker handler", () => {
 
     expect(validateRequiredApiBindings).toHaveBeenCalledWith(environment);
     expect(reconcileDuePayPalCheckouts).toHaveBeenCalledWith(billingRepository, environment, 25);
+    expect(retryPendingBugReportNotifications).toHaveBeenCalledWith(environment, 25);
     expect(cleanupExpired).not.toHaveBeenCalled();
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();
     expect(creditDueInterest).not.toHaveBeenCalled();
@@ -59,6 +70,7 @@ describe("scheduled worker handler", () => {
 
     expect(cleanupExpired).toHaveBeenCalledTimes(2);
     expect(reconcileAccountDeletions).toHaveBeenCalledWith(environment, 25);
+    expect(cleanupExpiredBugReports).toHaveBeenCalledWith(environment, 100);
     expect(reconcileDuePayPalCheckouts).not.toHaveBeenCalled();
     expect(creditDueInterest).not.toHaveBeenCalled();
   });

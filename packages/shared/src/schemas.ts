@@ -5,12 +5,61 @@ import {
   currencies,
   debtStatuses,
   debtTypes,
+  bugReportCategories,
+  bugReportFrequencies,
+  bugReportPageContexts,
+  bugReportStatuses,
   financialGoalStatuses,
   interestFrequencies,
   subscriptionBillingCycles,
   subscriptionStatuses,
   transactionKinds,
 } from "./types";
+
+const bugReportDetailSchema = z.string().trim().min(5).max(2_000);
+
+export const bugReportDraftSchema = z
+  .object({
+    title: z.string().trim().min(5).max(120),
+    category: z.enum(bugReportCategories),
+    actualBehavior: bugReportDetailSchema,
+    expectedBehavior: bugReportDetailSchema,
+    stepsToReproduce: bugReportDetailSchema,
+    frequency: z.enum(bugReportFrequencies),
+  })
+  .strict();
+
+export type BugReportDraftInput = z.infer<typeof bugReportDraftSchema>;
+
+export const bugReportDiagnosticsSchema = z
+  .object({
+    route: z
+      .string()
+      .trim()
+      .min(1)
+      .max(180)
+      .regex(/^\/[A-Za-z0-9/_-]*$/, "Include only the page path without a query or fragment."),
+    releaseVersion: z.string().trim().min(1).max(40),
+    viewportWidth: z.number().int().min(240).max(10_000),
+    viewportHeight: z.number().int().min(240).max(10_000),
+    displayMode: z.enum(["browser", "standalone"]),
+    platform: z.enum(["android", "ios", "desktop", "other"]),
+  })
+  .strict();
+
+export const bugReportCreateSchema = bugReportDraftSchema
+  .extend({
+    clientRequestId: z.string().uuid(),
+    pageContext: z.enum(bugReportPageContexts),
+    diagnostics: bugReportDiagnosticsSchema,
+  })
+  .strict();
+
+export type BugReportCreateInput = z.infer<typeof bugReportCreateSchema>;
+
+export const bugReportStatusUpdateSchema = z.object({ status: z.enum(bugReportStatuses) }).strict();
+
+export type BugReportStatusUpdate = z.infer<typeof bugReportStatusUpdateSchema>;
 
 export const isoDateSchema = z
   .string()
@@ -114,7 +163,11 @@ export const interestUpdateSchema = z
       });
     }
     if (value.frequency === "daily" && value.payDay !== null) {
-      context.addIssue({ code: "custom", path: ["payDay"], message: "Daily interest has no pay day." });
+      context.addIssue({
+        code: "custom",
+        path: ["payDay"],
+        message: "Daily interest has no pay day.",
+      });
     }
     if ((value.frequency === "monthly" || value.frequency === "yearly") && value.payDay === null) {
       context.addIssue({

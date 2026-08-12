@@ -1,7 +1,12 @@
+import { bugReportDraftSchema, type BugReportDraft } from "@zoption/shared";
 import { z } from "zod";
 
 import { DeepSeekError } from "../assistant/deepseek";
-import type { AssistantProvider, AssistantProviderMessage } from "../assistant/provider";
+import type {
+  AssistantProvider,
+  AssistantProviderMessage,
+  AssistantToolDefinition,
+} from "../assistant/provider";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 
@@ -53,6 +58,8 @@ Hard boundaries:
 - Answer questions about Zoption only. For unrelated requests, briefly explain that you can help with Zoption and suggest a relevant example.
 - For personalized analysis of the user's own recorded finances, direct signed-in users to AI Assistant. For account-specific billing or access failures you cannot resolve, give safe troubleshooting steps and explain the limit of your access.
 - Do not invent features, policies, integrations, affiliations, support channels, prices, limits, or completion claims.
+- When signed-in bug-report drafting is available, help the person describe what happened, what they expected, and repeatable steps. Never claim a report was submitted; only the confirmed Zoption interface can submit it.
+- Do not put secrets, financial values, banking details, authentication material, or unnecessary personal information in a bug-report draft.
 
 How Zoption works:
 - Zoption is a private budget and expense tracker. It starts empty and does not connect directly to a bank.
@@ -84,6 +91,47 @@ Response style:
 - Use plain text only. Do not use Markdown tables.
 - End with a focused next action when useful.`;
 
+const BUG_REPORT_DRAFT_TOOL: AssistantToolDefinition = {
+  type: "function",
+  function: {
+    name: "draft_bug_report",
+    description:
+      "Prepare a bug report for the signed-in user to review. Call only after the conversation contains a concrete problem, expected behavior, and useful reproduction steps. This does not submit anything.",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "title",
+        "category",
+        "actualBehavior",
+        "expectedBehavior",
+        "stepsToReproduce",
+        "frequency",
+      ],
+      properties: {
+        title: { type: "string", minLength: 5, maxLength: 120 },
+        category: {
+          type: "string",
+          enum: ["ui", "data", "import", "billing", "authentication", "performance", "other"],
+        },
+        actualBehavior: { type: "string", minLength: 5, maxLength: 2_000 },
+        expectedBehavior: { type: "string", minLength: 5, maxLength: 2_000 },
+        stepsToReproduce: { type: "string", minLength: 5, maxLength: 2_000 },
+        frequency: { type: "string", enum: ["once", "sometimes", "always", "unknown"] },
+      },
+    },
+  },
+};
+
+export interface SupportChatResult {
+  message: string;
+  bugReportDraft?: BugReportDraft;
+}
+
+export interface SupportChatOptions {
+  bugReportDrafting?: boolean;
+}
+
 function providerFailure(error: DeepSeekError): HttpError {
   if (error.kind === "blocked") {
     return new HttpError(
@@ -110,11 +158,12 @@ export async function completeSupportChat(
   env: Bindings,
   provider: AssistantProvider,
   input: SupportChatInput,
-): Promise<{ message: string }> {
+  options: SupportChatOptions = {},
+): Promise<SupportChatResult> {
   const messages: AssistantProviderMessage[] = [
     {
       role: "system",
-      content: `${PRODUCT_SUPPORT_PROMPT}\n\nCurrent surface: ${input.pageContext}. Use this only to make navigation help more relevant.`,
+      content: `${PRODUCT_SUPPORT_PROMPT}\n\nCurrent surface: ${input.pageContext}. Use this only to make navigation help more relevant.\nBug-report drafting: ${options.bugReportDrafting ? "available for review only" : "unavailable; direct signed-in users to Zoption Support inside their workspace or support@zoption.site"}.`,
     },
     ...input.messages,
   ];
@@ -122,9 +171,28 @@ export async function completeSupportChat(
   try {
     const completion = await provider.complete(env, {
       messages,
-      tools: [],
-      toolChoice: "none",
+      tools: options.bugReportDrafting ? [BUG_REPORT_DRAFT_TOOL] : [],
+      toolChoice: options.bugReportDrafting ? "auto" : "none",
     });
+    const draftCall = completion.message.tool_calls?.find(
+      (call) => call.function.name === "draft_bug_report",
+    );
+    if (draftCall && options.bugReportDrafting) {
+      let argumentsValue: unknown;
+      try {
+        argumentsValue = JSON.parse(draftCall.function.arguments) as unknown;
+      } catch {
+        argumentsValue = null;
+      }
+      const draft = bugReportDraftSchema.safeParse(argumentsValue);
+      if (draft.success) {
+        return {
+          message:
+            "I prepared a bug-report draft from what you shared. Review every field below, remove anything sensitive, then submit it only if it is accurate.",
+          bugReportDraft: draft.data,
+        };
+      }
+    }
     const message = completion.message.content?.trim();
     if (!message) {
       throw new HttpError(

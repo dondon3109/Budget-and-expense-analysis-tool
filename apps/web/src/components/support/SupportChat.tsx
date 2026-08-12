@@ -1,13 +1,28 @@
-import { ArrowUp, MessageCircleQuestion, RefreshCcw, ShieldCheck, Sparkles, X } from "lucide-react";
+import type { BugReport, BugReportDiagnostics, BugReportDraft } from "@zoption/shared";
+import {
+  ArrowUp,
+  CheckCircle2,
+  MessageCircleQuestion,
+  RefreshCcw,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useLocation } from "react-router-dom";
 
 import {
+  createBugReport,
   isApiRequestError,
+  sendAuthenticatedSupportChat,
   sendSupportChat,
+  type SupportChatResponse,
   type SupportChatMessageInput,
   type SupportPageContext,
 } from "../../lib/api";
+import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { currentRelease } from "../../releases/currentRelease";
+import { BugReportReviewCard } from "./BugReportReviewCard";
 import { renderSupportMessage } from "./renderSupportMessage";
 import { OPEN_SUPPORT_CHAT_EVENT } from "./supportEvents";
 import "./SupportChat.css";
@@ -16,6 +31,7 @@ type SupportSurface = "landing" | "app";
 
 interface SupportChatProps {
   surface: SupportSurface;
+  workspace?: AuthenticatedWorkspace;
 }
 
 interface SupportMessage extends SupportChatMessageInput {
@@ -24,9 +40,14 @@ interface SupportMessage extends SupportChatMessageInput {
 
 const STORAGE_KEY = "zoption:support-chat:v1";
 const MAX_STORED_MESSAGES = 12;
-const SUGGESTIONS = [
+const PUBLIC_SUGGESTIONS = [
   "How do imports work?",
   "Where do I set a budget?",
+  "What can the AI Assistant access?",
+];
+const APP_SUGGESTIONS = [
+  "Report a problem",
+  "How do imports work?",
   "What can the AI Assistant access?",
 ];
 
@@ -88,7 +109,7 @@ function pageContext(pathname: string, surface: SupportSurface): SupportPageCont
   return "app";
 }
 
-export function SupportChat({ surface }: SupportChatProps) {
+export function SupportChat({ surface, workspace }: SupportChatProps) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<SupportMessage[]>(() => readStoredMessages(surface));
@@ -96,6 +117,11 @@ export function SupportChat({ surface }: SupportChatProps) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string>();
   const [canRetry, setCanRetry] = useState(false);
+  const [reportDraft, setReportDraft] = useState<BugReportDraft>();
+  const [reportRequestId, setReportRequestId] = useState<string>();
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState<string>();
+  const [submittedReport, setSubmittedReport] = useState<BugReport>();
   const nextMessageId = useRef(0);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -107,6 +133,28 @@ export function SupportChat({ surface }: SupportChatProps) {
   );
 
   const hasUserMessage = messages.some((message) => message.role === "user");
+  const suggestions = surface === "app" ? APP_SUGGESTIONS : PUBLIC_SUGGESTIONS;
+
+  function reportDiagnostics(): BugReportDiagnostics {
+    const userAgent = navigator.userAgent;
+    const platform: BugReportDiagnostics["platform"] = /Android/i.test(userAgent)
+      ? "android"
+      : /iPhone|iPad|iPod/i.test(userAgent)
+        ? "ios"
+        : /Macintosh|Windows|Linux/i.test(userAgent)
+          ? "desktop"
+          : "other";
+    return {
+      route: location.pathname,
+      releaseVersion: currentRelease.version,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      displayMode: window.matchMedia("(display-mode: standalone)").matches
+        ? "standalone"
+        : "browser",
+      platform,
+    };
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -160,17 +208,30 @@ export function SupportChat({ surface }: SupportChatProps) {
     setError(undefined);
     setCanRetry(false);
     try {
-      const result = await sendSupportChat(
-        history.slice(-MAX_STORED_MESSAGES).map(({ role, content }) => ({ role, content })),
-        context,
-        controller.signal,
-      );
+      const requestMessages = history
+        .slice(-MAX_STORED_MESSAGES)
+        .map(({ role, content }) => ({ role, content }));
+      const result: SupportChatResponse =
+        surface === "app" && workspace
+          ? await sendAuthenticatedSupportChat(
+              workspace,
+              requestMessages,
+              context === "landing" ? "app" : context,
+              controller.signal,
+            )
+          : await sendSupportChat(requestMessages, context, controller.signal);
       const assistantMessage: SupportMessage = {
         id: messageId(),
         role: "assistant",
         content: result.message,
       };
       setMessages((current) => [...current, assistantMessage].slice(-MAX_STORED_MESSAGES));
+      if (result.bugReportDraft) {
+        setReportDraft(result.bugReportDraft);
+        setReportRequestId(crypto.randomUUID());
+        setReportError(undefined);
+        setSubmittedReport(undefined);
+      }
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
       setError(
@@ -184,6 +245,31 @@ export function SupportChat({ surface }: SupportChatProps) {
         requestRef.current = undefined;
         setSending(false);
       }
+    }
+  }
+
+  async function submitBugReport() {
+    if (!workspace || !reportDraft || !reportRequestId || surface !== "app") return;
+    setReportSubmitting(true);
+    setReportError(undefined);
+    try {
+      const report = await createBugReport(workspace, {
+        ...reportDraft,
+        clientRequestId: reportRequestId,
+        pageContext: context === "landing" ? "app" : context,
+        diagnostics: reportDiagnostics(),
+      });
+      setSubmittedReport(report);
+      setReportDraft(undefined);
+      setReportRequestId(undefined);
+    } catch (caught) {
+      setReportError(
+        isApiRequestError(caught)
+          ? caught.message
+          : "The report could not be submitted. Review it and try again.",
+      );
+    } finally {
+      setReportSubmitting(false);
     }
   }
 
@@ -215,6 +301,11 @@ export function SupportChat({ surface }: SupportChatProps) {
     setError(undefined);
     setCanRetry(false);
     setSending(false);
+    setReportDraft(undefined);
+    setReportRequestId(undefined);
+    setReportSubmitting(false);
+    setReportError(undefined);
+    setSubmittedReport(undefined);
     composerRef.current?.focus();
   }
 
@@ -234,7 +325,7 @@ export function SupportChat({ surface }: SupportChatProps) {
             <div>
               <h2 id="support-chat-title">Zoption Support</h2>
               <p>
-                <span className="support-chat-presence" /> Product help · no account access
+                <span className="support-chat-presence" /> Product help · no financial-data access
               </p>
             </div>
             <div className="support-chat-header-actions">
@@ -274,11 +365,35 @@ export function SupportChat({ surface }: SupportChatProps) {
             ))}
             {!hasUserMessage && (
               <div className="support-chat-suggestions" aria-label="Suggested questions">
-                {SUGGESTIONS.map((suggestion) => (
+                {suggestions.map((suggestion) => (
                   <button type="button" key={suggestion} onClick={() => submitMessage(suggestion)}>
                     {suggestion}
                   </button>
                 ))}
+              </div>
+            )}
+            {reportDraft && surface === "app" && (
+              <BugReportReviewCard
+                draft={reportDraft}
+                diagnostics={reportDiagnostics()}
+                busy={reportSubmitting}
+                error={reportError}
+                onChange={setReportDraft}
+                onSubmit={() => void submitBugReport()}
+                onCancel={() => {
+                  setReportDraft(undefined);
+                  setReportRequestId(undefined);
+                  setReportError(undefined);
+                }}
+              />
+            )}
+            {submittedReport && (
+              <div className="support-report-success" role="status">
+                <CheckCircle2 size={18} aria-hidden="true" />
+                <div>
+                  <strong>{submittedReport.reference} received</strong>
+                  <p>Your report is saved with status “New.” Track it from Help &amp; contact.</p>
+                </div>
               </div>
             )}
             {sending && (
@@ -328,8 +443,8 @@ export function SupportChat({ surface }: SupportChatProps) {
               </button>
             </div>
             <p className="support-chat-disclosure">
-              <ShieldCheck size={13} aria-hidden="true" /> Messages go to DeepSeek for a reply and
-              are not added to your financial Assistant history.
+              <ShieldCheck size={13} aria-hidden="true" /> Messages go to DeepSeek for a reply. Bug
+              reports are saved only after you review and submit them.
             </p>
           </form>
         </section>

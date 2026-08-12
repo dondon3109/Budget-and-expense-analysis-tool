@@ -61,6 +61,15 @@
   outline-offset: 2px;
 }
 
+.support-report-review button:focus-visible,
+.support-report-review input:focus-visible,
+.support-report-review textarea:focus-visible,
+.support-report-review select:focus-visible,
+.support-report-diagnostics summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus) 30%, transparent);
+  outline-offset: 2px;
+}
+
 .support-chat-panel {
   width: min(390px, calc(100vw - 32px));
   height: min(610px, calc(100dvh - 116px));
@@ -306,6 +315,243 @@
   font-weight: 800;
 }
 
+.support-report-review {
+  width: 100%;
+  padding: 14px;
+  display: grid;
+  align-self: stretch;
+  gap: 13px;
+  border: 1px solid color-mix(in srgb, var(--action) 28%, var(--line));
+  border-radius: 14px;
+  background: var(--paper);
+}
+
+.support-report-review-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.support-report-review-heading > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--action-strong);
+  border-radius: 10px;
+  background: var(--action-soft);
+}
+
+.support-report-review-heading p,
+.support-report-review-heading h3,
+.support-report-review-note,
+.support-report-diagnostics p,
+.support-report-submit-error,
+.support-report-success p {
+  margin: 0;
+}
+
+.support-report-review-heading p {
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.support-report-review-heading h3 {
+  margin-top: 2px;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.support-report-review-heading > button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.support-report-review-heading > button:hover {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
+
+.support-report-review-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.support-report-fields {
+  display: grid;
+  gap: 11px;
+}
+
+.support-report-fields label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.support-report-fields label > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.support-report-field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 9px;
+}
+
+.support-report-fields input,
+.support-report-fields textarea,
+.support-report-fields select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.support-report-fields input,
+.support-report-fields select {
+  min-height: 40px;
+}
+
+.support-report-fields textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.support-report-fields input:focus,
+.support-report-fields textarea:focus,
+.support-report-fields select:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 15%, transparent);
+}
+
+.support-report-fields :disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.support-report-diagnostics {
+  color: var(--subtle);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.support-report-diagnostics summary {
+  width: max-content;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--action-strong);
+  cursor: pointer;
+  font-weight: 760;
+}
+
+.support-report-diagnostics p {
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+
+.support-report-submit-error {
+  padding: 9px 10px;
+  color: var(--danger);
+  border-radius: 10px;
+  background: var(--danger-soft);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.support-report-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 8px;
+}
+
+.support-report-actions button {
+  min-height: 40px;
+  padding: 8px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--solid-text);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--solid-bg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.support-report-actions button.secondary {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface);
+}
+
+.support-report-actions button:hover:not(:disabled) {
+  background: var(--solid-hover);
+}
+
+.support-report-actions button.secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.support-report-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.support-report-success {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  color: var(--success);
+  border-radius: 12px;
+  background: var(--success-soft);
+}
+
+.support-report-success strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.support-report-success p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
 .support-chat-composer {
   padding: 12px 13px 11px;
   border-top: 1px solid var(--line);
@@ -508,5 +754,10 @@
 
   .support-chat-composer {
     padding-inline: 10px;
+  }
+
+  .support-report-field-row,
+  .support-report-actions {
+    grid-template-columns: 1fr;
   }
 }
