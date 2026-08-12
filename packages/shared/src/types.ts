@@ -532,7 +532,7 @@ export interface AssistantResponseMetadata {
 }
 
 export const CURRENT_ASSISTANT_CONSENT_VERSION = 5;
-export const CURRENT_ASSISTANT_VOICE_CONSENT_VERSION = 1;
+export const CURRENT_ASSISTANT_VOICE_CONSENT_VERSION = 2;
 
 export type AssistantDebtStrategy = "avalanche" | "snowball";
 export type AssistantMemoryKind = "preference" | "fact" | "summary";
@@ -582,6 +582,7 @@ export interface AssistantVoicePreferences {
   reviewRequired: boolean;
   consentedAt: string | null;
   consentVersion: number;
+  transcriptionModel: "@cf/openai/whisper-large-v3-turbo";
   ttsModel: "s2.1-pro-free";
 }
 

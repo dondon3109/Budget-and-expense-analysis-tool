@@ -10,6 +10,7 @@ function environment({
 } = {}) {
   return {
     ...(production ? { routes: [{ pattern: "api.zoption.site", custom_domain: true }] } : {}),
+    ...(production ? {} : { ai: { binding: "AI" } }),
     d1_databases: [
       {
         binding: "DB",
@@ -57,6 +58,20 @@ describe("Wrangler deployment config validation", () => {
 
   it("accepts complete preview and production binding metadata", () => {
     expect(validateWranglerDeploymentConfig(validConfig())).toEqual(["preview", "production"]);
+  });
+
+  it("requires the AI binding only where voice transcription is enabled", () => {
+    const missingPreviewBinding = validConfig();
+    delete missingPreviewBinding.env.preview.ai;
+    expect(() => validateWranglerDeploymentConfig(missingPreviewBinding)).toThrow(
+      "preview must bind Cloudflare Workers AI as AI for voice transcription",
+    );
+
+    const productionBinding = validConfig();
+    productionBinding.env.production.ai = { binding: "AI" };
+    expect(() => validateWranglerDeploymentConfig(productionBinding)).toThrow(
+      "production must omit the Cloudflare Workers AI binding while voice is disabled",
+    );
   });
 
   it("requires a publishable key in every deployment environment", () => {

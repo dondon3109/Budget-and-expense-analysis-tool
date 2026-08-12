@@ -23,6 +23,7 @@ beforeEach(() => {
     reviewRequired: true,
     consentedAt: null,
     consentVersion: 0,
+    transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
     ttsModel: "s2.1-pro-free",
   });
 });
@@ -54,8 +55,9 @@ describe("AssistantVoiceControl", () => {
 
     const notice = screen.getByRole("dialog", { name: "Voice preview notice" });
     expect(notice).toHaveFocus();
-    expect(notice).toHaveTextContent("sent to Fish Audio");
-    expect(notice).toHaveTextContent("transcription may incur usage charges");
+    expect(notice).toHaveTextContent("recording is sent to Cloudflare Workers AI");
+    expect(notice).toHaveTextContent("assistant reply text is sent to Fish Audio");
+    expect(notice).toHaveTextContent("reviewed transcript");
     expect(getUserMedia).not.toHaveBeenCalled();
     expect(apiMocks.grantAssistantVoiceConsent).not.toHaveBeenCalled();
   });

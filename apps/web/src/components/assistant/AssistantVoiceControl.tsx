@@ -179,9 +179,10 @@ export function AssistantVoiceControl({
         >
           <strong>Enable voice preview?</strong>
           <p>
-            Your recording and the assistant reply text are sent to Fish Audio. Zoption does not
-            store recordings or generated audio. Voice is Preview-only and uses Fish’s free TTS
-            model; transcription may incur usage charges.
+            Your recording is sent to Cloudflare Workers AI for transcription. After you send the
+            reviewed transcript, the completed assistant reply text is sent to Fish Audio for
+            speech. Zoption does not store recordings or generated audio. Voice is Preview-only and
+            starts with Cloudflare&apos;s and Fish Audio&apos;s free usage options.
           </p>
           <div>
             <button

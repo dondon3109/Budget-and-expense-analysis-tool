@@ -37,25 +37,6 @@ describe("Fish Audio provider", () => {
     expect((await response.arrayBuffer()).byteLength).toBe(3);
   });
 
-  it("sends recordings as multipart form data and normalizes the transcript", async () => {
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
-      void _url;
-      expect(init?.body).toBeInstanceOf(FormData);
-      const form = init?.body as FormData;
-      expect(form.get("audio")).toBeInstanceOf(File);
-      expect(form.get("ignore_timestamps")).toBe("true");
-      return Response.json({ text: "  Review   this first. ", duration: 2.5, language_code: "en" });
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(
-      fishAudioProvider.transcribe(
-        env,
-        new File([new Uint8Array([1])], "voice.webm", { type: "audio/webm" }),
-      ),
-    ).resolves.toEqual({ text: "Review this first.", durationSeconds: 2.5, languageCode: "en" });
-  });
-
   it("refuses a paid TTS model even if configuration drifts", async () => {
     await expect(
       fishAudioProvider.synthesize({ ...env, FISH_AUDIO_TTS_MODEL: "s2.1" }, "Hello"),

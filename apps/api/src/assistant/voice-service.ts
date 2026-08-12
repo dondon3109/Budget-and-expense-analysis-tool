@@ -8,7 +8,8 @@ import {
 import type { AssistantRepository, AssistantVoiceRepository } from "../db/assistant";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import { FishAudioError, type AssistantVoiceProvider } from "./fish-audio";
+import { CLOUDFLARE_WHISPER_MODEL } from "./cloudflare-whisper";
+import { AssistantVoiceProviderError, type AssistantVoiceProviders } from "./voice-provider";
 
 const FREE_TTS_MODEL = "s2.1-pro-free" as const;
 const MAX_SPEECH_CHARACTERS = 6_000;
@@ -22,26 +23,24 @@ export interface AssistantVoiceService {
 
 export interface AssistantVoiceProviderFailureEvent {
   event: "assistant_voice_provider_failure";
-  provider: "fish_audio";
-  kind: FishAudioError["kind"];
+  provider: AssistantVoiceProviderError["provider"];
+  kind: AssistantVoiceProviderError["kind"];
   providerStatus?: number;
 }
 
-export type AssistantVoiceDiagnosticReporter = (
-  event: AssistantVoiceProviderFailureEvent,
-) => void;
+export type AssistantVoiceDiagnosticReporter = (event: AssistantVoiceProviderFailureEvent) => void;
 
 function defaultDiagnosticReporter(event: AssistantVoiceProviderFailureEvent): void {
   console.warn(JSON.stringify(event));
 }
 
 function reportProviderFailure(
-  error: FishAudioError,
+  error: AssistantVoiceProviderError,
   reporter: AssistantVoiceDiagnosticReporter,
 ): void {
   const event: AssistantVoiceProviderFailureEvent = {
     event: "assistant_voice_provider_failure",
-    provider: "fish_audio",
+    provider: error.provider,
     kind: error.kind,
     ...(error.providerStatus === undefined ? {} : { providerStatus: error.providerStatus }),
   };
@@ -59,7 +58,7 @@ function requireEnabled(env: Bindings): void {
 }
 
 function mapProviderError(error: unknown, reporter: AssistantVoiceDiagnosticReporter): never {
-  if (!(error instanceof FishAudioError)) throw error;
+  if (!(error instanceof AssistantVoiceProviderError)) throw error;
   reportProviderFailure(error, reporter);
   if (error.kind === "timeout") {
     throw new HttpError(
@@ -103,7 +102,7 @@ function speechText(markdown: string): string {
 
 export function createAssistantVoiceService(
   repository: Pick<AssistantRepository, "getPreferences"> & AssistantVoiceRepository,
-  provider: AssistantVoiceProvider,
+  providers: AssistantVoiceProviders,
   reporter: AssistantVoiceDiagnosticReporter = defaultDiagnosticReporter,
 ): AssistantVoiceService {
   async function requireConsent(env: Bindings, tenantId: string): Promise<void> {
@@ -136,6 +135,7 @@ export function createAssistantVoiceService(
       reviewRequired: env.ASSISTANT_VOICE_REVIEW_REQUIRED !== "false",
       consentedAt: consent.consentedAt,
       consentVersion: consent.consentVersion,
+      transcriptionModel: CLOUDFLARE_WHISPER_MODEL,
       ttsModel: FREE_TTS_MODEL,
     };
   }
@@ -150,7 +150,7 @@ export function createAssistantVoiceService(
     async transcribe(env, tenantId, audio) {
       await requireConsent(env, tenantId);
       try {
-        return await provider.transcribe(env, audio);
+        return await providers.transcription.transcribe(env, audio);
       } catch (error) {
         return mapProviderError(error, reporter);
       }
@@ -169,7 +169,7 @@ export function createAssistantVoiceService(
       if (!text)
         throw new HttpError(422, "assistant_voice_empty_reply", "That reply cannot be read aloud.");
       try {
-        return await provider.synthesize(env, text);
+        return await providers.speech.synthesize(env, text);
       } catch (error) {
         return mapProviderError(error, reporter);
       }

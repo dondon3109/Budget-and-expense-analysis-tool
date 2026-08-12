@@ -19,13 +19,13 @@ The browser cannot submit a tenant ID, model, system prompt, tool definition, as
 
 ## Preview voice mode
 
-Voice mode is available only in the Preview deployment. A user explicitly enables the separate, versioned voice consent before the browser requests microphone access. A push-to-talk recording of at most 60 seconds and 4 MB is sent through the authenticated Worker to Fish Audio ASR. The returned transcript is placed in the normal assistant composer for review and editing; Preview never sends it automatically. Only after the user presses **Send** does the existing assistant pipeline run.
+Voice mode is available only in the Preview deployment. A user explicitly enables the separate, versioned voice consent before the browser requests microphone access. A push-to-talk recording of at most 60 seconds and 4 MB is sent through the authenticated Worker to Cloudflare Workers AI's `@cf/openai/whisper-large-v3-turbo` model. The returned transcript is placed in the normal assistant composer for review and editing; Preview never sends it automatically. Only after the user presses **Send** does the existing assistant pipeline run.
 
 For a voice-originated turn, the Worker may send the completed assistant reply text to Fish Audio TTS and return MP3 audio. The browser holds recordings and generated audio only in memory, and Zoption does not write either to D1. Speech generation accepts only a completed assistant message owned by the current tenant. The Fish API key remains a Worker secret, request bodies are bounded before multipart parsing, and transcription and speech have separate tenant rate limits.
 
 The rollout is deliberately dual-gated: Preview builds expose the microphone and the Preview Worker accepts voice routes; Production builds omit the control and the Production Worker returns 404. `ASSISTANT_VOICE_REVIEW_REQUIRED` is `true` in Preview and `false` in Production so a later approved Production release can remove the extra review action without another UI redesign. Production voice remains disabled until that release decision.
 
-TTS is pinned to Fish Audio's free `s2.1-pro-free` model. The Worker rejects any other configured TTS model. Fish Audio ASR is usage-priced rather than free, so Preview transcription should be monitored before any paid rollout.
+TTS is pinned to Fish Audio's free `s2.1-pro-free` model. The Worker rejects any other configured TTS model. Preview transcription starts within Cloudflare Workers AI's daily free allocation and should be monitored before enabling paid Workers AI usage.
 
 ## Allowed tools
 
@@ -161,6 +161,8 @@ pnpm --filter @zoption/api exec wrangler secret put FISH_AUDIO_API_KEY \
   --config wrangler.deploy.jsonc \
   --env preview
 ```
+
+Preview transcription also requires an `AI` binding named `AI` in the Preview Wrangler environment. Production deliberately omits this binding while voice remains disabled.
 
 For local development, put provider secrets in ignored `apps/api/.dev.vars`. Never use a `VITE_*` variable for either key. Keep local PostHog capture disabled unless explicitly testing it. Enable Preview first, inspect the raw event JSON for the metadata allow-list, confirm no person profile is created, verify and disclose the project's actual event-retention plan, require the matching consent version, and only then enable Production. The current rollout uses PostHog's 12-month event-retention plan and assistant consent version 5.
 

@@ -10,6 +10,7 @@ export interface EmailSender {
 
 export interface Bindings {
   DB: D1Database;
+  AI?: Ai;
   ALLOWED_ORIGINS?: string;
   SUPABASE_URL?: string;
   SUPABASE_JWT_AUDIENCE?: string;

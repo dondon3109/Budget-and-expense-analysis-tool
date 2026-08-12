@@ -15,8 +15,10 @@ import { createFinancialReader } from "./assistant/financial-reader";
 import type { AssistantAiTelemetryFactory } from "./assistant/posthog-ai";
 import type { AssistantProvider } from "./assistant/provider";
 import { createAssistantService, type AssistantService } from "./assistant/service";
-import { fishAudioProvider, type AssistantVoiceProvider } from "./assistant/fish-audio";
+import { cloudflareWhisperProvider } from "./assistant/cloudflare-whisper";
+import { fishAudioProvider } from "./assistant/fish-audio";
 import { createAssistantVoiceService, type AssistantVoiceService } from "./assistant/voice-service";
+import type { AssistantVoiceProviders } from "./assistant/voice-provider";
 import { createAccountDeletionService, type AccountDeletionService } from "./account-deletion";
 import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from "./auth";
 import { accountRepository, type AccountRepository } from "./db/accounts";
@@ -147,7 +149,7 @@ export interface AppOptions {
   supportProvider?: AssistantProvider;
   assistantTelemetryFactory?: AssistantAiTelemetryFactory;
   assistantService?: AssistantService;
-  assistantVoiceProvider?: AssistantVoiceProvider;
+  assistantVoiceProviders?: AssistantVoiceProviders;
   assistantVoiceService?: AssistantVoiceService;
   accountDeletionService?: AccountDeletionService;
   platformAdmins?: PlatformAdminRepository;
@@ -210,7 +212,10 @@ export function createApp(options: AppOptions = {}) {
         getPreferences: assistantStore.getPreferences.bind(assistantStore),
         ...(options.assistantVoiceRepository ?? assistantRepository),
       },
-      options.assistantVoiceProvider ?? fishAudioProvider,
+      options.assistantVoiceProviders ?? {
+        transcription: cloudflareWhisperProvider,
+        speech: fishAudioProvider,
+      },
     );
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =

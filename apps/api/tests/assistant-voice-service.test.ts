@@ -5,9 +5,11 @@ import {
 } from "@zoption/shared";
 import { describe, expect, it, vi } from "vitest";
 
-import type { AssistantVoiceProvider } from "../src/assistant/fish-audio";
-import { FishAudioError } from "../src/assistant/fish-audio";
 import { createAssistantVoiceService } from "../src/assistant/voice-service";
+import {
+  AssistantVoiceProviderError,
+  type AssistantVoiceProviders,
+} from "../src/assistant/voice-provider";
 import type { AssistantRepository, AssistantVoiceRepository } from "../src/db/assistant";
 import type { Bindings } from "../src/types";
 
@@ -52,26 +54,31 @@ function repository(
   };
 }
 
-function provider(): AssistantVoiceProvider {
+function providers(): AssistantVoiceProviders {
   return {
-    transcribe: vi.fn(async () => ({ text: "Check my budget", durationSeconds: 2 })),
-    synthesize: vi.fn(async () => new Response(new Uint8Array([1]))),
+    transcription: {
+      transcribe: vi.fn(async () => ({ text: "Check my budget", durationSeconds: 2 })),
+    },
+    speech: {
+      synthesize: vi.fn(async () => new Response(new Uint8Array([1]))),
+    },
   };
 }
 
 describe("assistant voice service", () => {
   it("advertises Preview review and the free model", async () => {
-    const service = createAssistantVoiceService(repository(), provider());
+    const service = createAssistantVoiceService(repository(), providers());
     await expect(service.getPreferences(env, "tenant-id")).resolves.toMatchObject({
       enabled: true,
       reviewRequired: true,
+      transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
   });
 
   it("requires separate voice consent before audio leaves Zoption", async () => {
-    const voiceProvider = provider();
-    const service = createAssistantVoiceService(repository(false), voiceProvider);
+    const voiceProviders = providers();
+    const service = createAssistantVoiceService(repository(false), voiceProviders);
     const request = service.transcribe(
       env,
       "tenant-id",
@@ -81,30 +88,33 @@ describe("assistant voice service", () => {
       status: 409,
       code: "assistant_voice_consent_required",
     });
-    expect(voiceProvider.transcribe).not.toHaveBeenCalled();
+    expect(voiceProviders.transcription.transcribe).not.toHaveBeenCalled();
   });
 
   it("speaks only a completed owned message and removes markdown from provider text", async () => {
-    const voiceProvider = provider();
-    const service = createAssistantVoiceService(repository(), voiceProvider);
+    const voiceProviders = providers();
+    const service = createAssistantVoiceService(repository(), voiceProviders);
     await service.synthesize(env, "tenant-id", completedMessage.id);
-    expect(voiceProvider.synthesize).toHaveBeenCalledWith(env, "Result Your budget is ready.");
+    expect(voiceProviders.speech.synthesize).toHaveBeenCalledWith(
+      env,
+      "Result Your budget is ready.",
+    );
   });
 
   it("is unavailable when the production gate is off", async () => {
-    const service = createAssistantVoiceService(repository(), provider());
+    const service = createAssistantVoiceService(repository(), providers());
     await expect(
       service.getPreferences({ ...env, ASSISTANT_VOICE_ENABLED: "false" }, "tenant-id"),
     ).rejects.toMatchObject({ status: 404, code: "assistant_voice_not_enabled" });
   });
 
   it("reports provider failures without exposing credentials or response bodies", async () => {
-    const voiceProvider = provider();
-    vi.mocked(voiceProvider.transcribe).mockRejectedValueOnce(
-      new FishAudioError("unavailable", 402),
+    const voiceProviders = providers();
+    vi.mocked(voiceProviders.transcription.transcribe).mockRejectedValueOnce(
+      new AssistantVoiceProviderError("cloudflare_workers_ai", "unavailable", 503),
     );
     const reporter = vi.fn();
-    const service = createAssistantVoiceService(repository(), voiceProvider, reporter);
+    const service = createAssistantVoiceService(repository(), voiceProviders, reporter);
 
     await expect(
       service.transcribe(
@@ -115,9 +125,9 @@ describe("assistant voice service", () => {
     ).rejects.toMatchObject({ status: 503, code: "assistant_voice_unavailable" });
     expect(reporter).toHaveBeenCalledWith({
       event: "assistant_voice_provider_failure",
-      provider: "fish_audio",
+      provider: "cloudflare_workers_ai",
       kind: "unavailable",
-      providerStatus: 402,
+      providerStatus: 503,
     });
   });
 });

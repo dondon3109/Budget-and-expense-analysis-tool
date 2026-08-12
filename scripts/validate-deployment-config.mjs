@@ -180,7 +180,7 @@ function validatePostHogConfig(vars, environment) {
   }
 }
 
-function validateAssistantVoiceConfig(vars, environment) {
+function validateAssistantVoiceConfig(vars, environment, config) {
   const enabled = requiredString(vars, "ASSISTANT_VOICE_ENABLED", environment);
   const reviewRequired = requiredString(vars, "ASSISTANT_VOICE_REVIEW_REQUIRED", environment);
   if (!new Set(["true", "false"]).has(enabled) || !new Set(["true", "false"]).has(reviewRequired)) {
@@ -191,6 +191,16 @@ function validateAssistantVoiceConfig(vars, environment) {
   }
   if (environment === "production" && (enabled !== "false" || reviewRequired !== "false")) {
     throw new Error("production must keep assistant voice disabled and transcript review off.");
+  }
+  if (enabled === "true" && config.ai?.binding !== "AI") {
+    throw new Error(
+      `${environment} must bind Cloudflare Workers AI as AI for voice transcription.`,
+    );
+  }
+  if (environment === "production" && config.ai !== undefined) {
+    throw new Error(
+      "production must omit the Cloudflare Workers AI binding while voice is disabled.",
+    );
   }
   if (requiredString(vars, "FISH_AUDIO_TTS_MODEL", environment) !== "s2.1-pro-free") {
     throw new Error(`${environment} must use the free Fish Audio TTS model s2.1-pro-free.`);
@@ -216,7 +226,7 @@ function validateEnvironment(environment, config) {
     }
   }
   validatePostHogConfig(vars, environment);
-  validateAssistantVoiceConfig(vars, environment);
+  validateAssistantVoiceConfig(vars, environment, config);
 
   const allowedOrigins = requiredString(vars, "ALLOWED_ORIGINS", environment)
     .split(",")
