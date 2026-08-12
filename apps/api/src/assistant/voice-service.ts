@@ -20,14 +20,47 @@ export interface AssistantVoiceService {
   synthesize(env: Bindings, tenantId: string, messageId: string): Promise<Response>;
 }
 
+export interface AssistantVoiceProviderFailureEvent {
+  event: "assistant_voice_provider_failure";
+  provider: "fish_audio";
+  kind: FishAudioError["kind"];
+  providerStatus?: number;
+}
+
+export type AssistantVoiceDiagnosticReporter = (
+  event: AssistantVoiceProviderFailureEvent,
+) => void;
+
+function defaultDiagnosticReporter(event: AssistantVoiceProviderFailureEvent): void {
+  console.warn(JSON.stringify(event));
+}
+
+function reportProviderFailure(
+  error: FishAudioError,
+  reporter: AssistantVoiceDiagnosticReporter,
+): void {
+  const event: AssistantVoiceProviderFailureEvent = {
+    event: "assistant_voice_provider_failure",
+    provider: "fish_audio",
+    kind: error.kind,
+    ...(error.providerStatus === undefined ? {} : { providerStatus: error.providerStatus }),
+  };
+  try {
+    reporter(event);
+  } catch {
+    // Operational diagnostics must never alter the user-facing voice response.
+  }
+}
+
 function requireEnabled(env: Bindings): void {
   if (env.ASSISTANT_VOICE_ENABLED !== "true") {
     throw new HttpError(404, "assistant_voice_not_enabled", "Voice preview is not available.");
   }
 }
 
-function mapProviderError(error: unknown): never {
+function mapProviderError(error: unknown, reporter: AssistantVoiceDiagnosticReporter): never {
   if (!(error instanceof FishAudioError)) throw error;
+  reportProviderFailure(error, reporter);
   if (error.kind === "timeout") {
     throw new HttpError(
       504,
@@ -71,6 +104,7 @@ function speechText(markdown: string): string {
 export function createAssistantVoiceService(
   repository: Pick<AssistantRepository, "getPreferences"> & AssistantVoiceRepository,
   provider: AssistantVoiceProvider,
+  reporter: AssistantVoiceDiagnosticReporter = defaultDiagnosticReporter,
 ): AssistantVoiceService {
   async function requireConsent(env: Bindings, tenantId: string): Promise<void> {
     requireEnabled(env);
@@ -118,7 +152,7 @@ export function createAssistantVoiceService(
       try {
         return await provider.transcribe(env, audio);
       } catch (error) {
-        return mapProviderError(error);
+        return mapProviderError(error, reporter);
       }
     },
     async synthesize(env, tenantId, messageId) {
@@ -137,7 +171,7 @@ export function createAssistantVoiceService(
       try {
         return await provider.synthesize(env, text);
       } catch (error) {
-        return mapProviderError(error);
+        return mapProviderError(error, reporter);
       }
     },
   };

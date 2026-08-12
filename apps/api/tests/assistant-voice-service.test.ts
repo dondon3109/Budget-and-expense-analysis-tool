@@ -6,6 +6,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 import type { AssistantVoiceProvider } from "../src/assistant/fish-audio";
+import { FishAudioError } from "../src/assistant/fish-audio";
 import { createAssistantVoiceService } from "../src/assistant/voice-service";
 import type { AssistantRepository, AssistantVoiceRepository } from "../src/db/assistant";
 import type { Bindings } from "../src/types";
@@ -95,5 +96,28 @@ describe("assistant voice service", () => {
     await expect(
       service.getPreferences({ ...env, ASSISTANT_VOICE_ENABLED: "false" }, "tenant-id"),
     ).rejects.toMatchObject({ status: 404, code: "assistant_voice_not_enabled" });
+  });
+
+  it("reports provider failures without exposing credentials or response bodies", async () => {
+    const voiceProvider = provider();
+    vi.mocked(voiceProvider.transcribe).mockRejectedValueOnce(
+      new FishAudioError("unavailable", 402),
+    );
+    const reporter = vi.fn();
+    const service = createAssistantVoiceService(repository(), voiceProvider, reporter);
+
+    await expect(
+      service.transcribe(
+        env,
+        "tenant-id",
+        new File([new Uint8Array([1])], "voice.webm", { type: "audio/webm" }),
+      ),
+    ).rejects.toMatchObject({ status: 503, code: "assistant_voice_unavailable" });
+    expect(reporter).toHaveBeenCalledWith({
+      event: "assistant_voice_provider_failure",
+      provider: "fish_audio",
+      kind: "unavailable",
+      providerStatus: 402,
+    });
   });
 });
