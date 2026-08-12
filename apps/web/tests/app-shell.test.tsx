@@ -131,6 +131,23 @@ describe("AppShell", () => {
     ]);
   });
 
+  it("keeps Zoption Support off the Assistant dashboard so the composer stays clear", () => {
+    render(
+      <ThemeProvider>
+        <CookieConsentProvider>
+          <MemoryRouter initialEntries={["/app/assistant"]}>
+            <AppShell>
+              <div>Assistant content</div>
+            </AppShell>
+          </MemoryRouter>
+        </CookieConsentProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Open Zoption Support" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Assistant" })).toHaveClass("current");
+  });
+
   it("offers thumb-friendly primary navigation and an accessible mobile menu", () => {
     render(
       <ThemeProvider>
