@@ -11,32 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 10, 2026",
+  releasedOn: "August 12, 2026",
   changes: [
     {
-      title: "Zoption for Android",
+      title: "Talk naturally with your Financial Assistant",
       description:
-        "Download the release-signed Zoption 2.0.0 APK directly from zoption.site. The Android app opens the same private workspace with your existing account and is distributed independently of Google Play.",
+        "Ask a question by voice and receive the same read-only, grounded financial answer in chat. Voice recordings are transcribed only after you enable the separate voice notice, and recordings and generated audio are not stored in your Zoption workspace.",
     },
     {
-      title: "A trustworthy installation guide",
+      title: "Recording stops when you finish",
       description:
-        "The new installation page lists the APK version, file size, checksum, Android requirements, and safe sideloading steps, with a direct download that never starts without your action.",
+        "Push to talk, speak normally, and Zoption stops recording after you finish. If no speech is detected, the recording ends without sending an empty clip for transcription.",
     },
     {
-      title: "Installable, without weakening privacy",
+      title: "Choose how voice works for you",
       description:
-        "Zoption now includes its installable web foundation and connection guidance while keeping authentication, financial records, assistant conversations, imports, and billing responses out of offline caches.",
+        "Keep the review-first default or choose automatic sending after transcription is complete. You can also choose spoken and text replies or keep every assistant answer text only.",
     },
     {
-      title: "More room on mobile",
+      title: "Clearer spoken answers",
       description:
-        "Calendar, billing, plan selection, and the Financial Assistant now fit smaller screens more reliably. Assistant history closes by tapping outside or using its close control, and the mobile chat keeps more space for your conversation.",
+        "Spoken replies now show when audio is being prepared and turn headings, lists, tables, and links into more natural speech instead of reading formatting aloud.",
     },
     {
-      title: "Profile scrolling restored",
+      title: "A more capable, easier-to-reach Zoption",
       description:
-        "The first-launch workspace loader and release notes now coordinate page scrolling, so the Profile dashboard remains scrollable after startup in the Android app and mobile browsers.",
+        "This release also adds Google and Facebook sign-in, in-product help and bug reporting, clearer Free-plan information, improved mobile navigation, and more accurate remaining-budget calculations.",
     },
   ],
 };
@@ -48,6 +48,37 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.0.0",
+    releasedOn: "August 10, 2026",
+    changes: [
+      {
+        title: "Zoption for Android",
+        description:
+          "Download the release-signed Zoption 2.0.0 APK directly from zoption.site. The Android app opens the same private workspace with your existing account and is distributed independently of Google Play.",
+      },
+      {
+        title: "A trustworthy installation guide",
+        description:
+          "The installation page lists the APK version, file size, checksum, Android requirements, and safe sideloading steps, with a direct download that never starts without your action.",
+      },
+      {
+        title: "Installable, without weakening privacy",
+        description:
+          "Zoption includes its installable web foundation and connection guidance while keeping authentication, financial records, assistant conversations, imports, and billing responses out of offline caches.",
+      },
+      {
+        title: "More room on mobile",
+        description:
+          "Calendar, billing, plan selection, and the Financial Assistant fit smaller screens more reliably. Assistant history closes by tapping outside or using its close control, and the mobile chat keeps more space for your conversation.",
+      },
+      {
+        title: "Profile scrolling restored",
+        description:
+          "The first-launch workspace loader and release notes coordinate page scrolling, so the Profile dashboard remains scrollable after startup in the Android app and mobile browsers.",
+      },
+    ],
+  },
   {
     version: "1.2.4",
     releasedOn: "August 10, 2026",

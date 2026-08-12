@@ -5,13 +5,13 @@ Zoption's Android package is a Trusted Web Activity generated with Bubblewrap 1.
 ## Identity and versions
 
 - Package ID: `site.zoption.android`
-- Release version: read from the repository root `package.json`
+- APK release version: read from `apps/android/package.json`
 - Version code: `major * 10000 + minor * 100 + patch` (minor and patch must each be 0–99)
 - Minimum Android: Android 5.0 / API 21
 - Target and compile SDK: API 36
 - Launch URL: `https://zoption.site/app`
 
-Run `node apps/android/scripts/verify-version.mjs` before every build. Keep the root package version, `apps/android/package.json`, `twa-manifest.json`, and `app/build.gradle` synchronized.
+Run `node apps/android/scripts/verify-version.mjs` before every APK build. Keep `apps/android/package.json`, `twa-manifest.json`, and `app/build.gradle` synchronized. The hosted Zoption product version may advance independently because the TWA loads the current production web app; a web-only release does not require an identical wrapper rebuild.
 
 ## Permanent release identity
 
@@ -39,7 +39,7 @@ For the initial bootstrap only, before the production web manifest exists, set `
 
 ## Web release order
 
-1. Update the root version and synchronized Android version fields.
+1. When the Android wrapper changes, update `apps/android/package.json` and its synchronized Android version fields. For web-only releases, leave the immutable APK metadata unchanged.
 2. Update the web manifest and PWA assets, then deploy them if Bubblewrap needs the new live manifest.
 3. Build the signed APK and record its exact byte size and SHA-256 in `apps/web/src/releases/androidRelease.json`.
 4. Build the web app.

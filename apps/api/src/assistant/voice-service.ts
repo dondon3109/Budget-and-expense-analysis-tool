@@ -87,9 +87,13 @@ function mapProviderError(error: unknown, reporter: AssistantVoiceDiagnosticRepo
 function speechText(markdown: string): string {
   return markdown
     .replace(/```[\s\S]*?```/g, " Code example omitted. ")
+    .replace(/^#{1,6}\s+(.+)$/gm, "$1.")
+    .replace(/^\s*(?:[-+*]|\d+[.)])\s+/gm, "")
+    .replace(/^\s*\|?[\s:|-]+\|?\s*$/gm, " ")
+    .replace(/\s*\|\s*/g, ", ")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)]\([^\s)]+\)/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/https?:\/\/\S+/g, "")
     .replace(/[*_~>]+/g, "")
     .replace(/\s+/g, " ")
     .trim()

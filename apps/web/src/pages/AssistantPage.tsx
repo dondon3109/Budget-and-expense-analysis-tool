@@ -16,7 +16,10 @@ import { AssistantConversation } from "../components/assistant/AssistantConversa
 import { AssistantIdentityDialog } from "../components/assistant/AssistantIdentityDialog";
 import { AssistantMemoryPanel } from "../components/assistant/AssistantMemoryPanel";
 import { AssistantThreadList } from "../components/assistant/AssistantThreadList";
-import { AssistantVoiceControl } from "../components/assistant/AssistantVoiceControl";
+import {
+  AssistantVoiceControl,
+  type AssistantVoiceReplyMode,
+} from "../components/assistant/AssistantVoiceControl";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
 import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
@@ -58,7 +61,7 @@ export function AssistantPage() {
   const historyToggleRef = useRef<HTMLButtonElement>(null);
   const historyCloseRef = useRef<HTMLButtonElement>(null);
   const historyWasOpenRef = useRef(false);
-  const voiceTurnRef = useRef(false);
+  const voiceTurnRef = useRef<AssistantVoiceReplyMode | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string>();
   const [sendError, setSendError] = useState<Error>();
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
@@ -66,6 +69,7 @@ export function AssistantPage() {
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [voiceAudioUrl, setVoiceAudioUrl] = useState<string>();
+  const [voicePlaybackPending, setVoicePlaybackPending] = useState(false);
   const [voicePlaybackError, setVoicePlaybackError] = useState<string>();
 
   const preferences = useQuery({
@@ -212,8 +216,10 @@ export function AssistantPage() {
       setDraft("");
       setPendingMessage(undefined);
       setSendError(undefined);
-      if (voiceTurnRef.current && __ASSISTANT_VOICE_ENABLED__) {
-        voiceTurnRef.current = false;
+      const voiceReply = voiceTurnRef.current;
+      voiceTurnRef.current = null;
+      if (voiceReply === "spoken" && __ASSISTANT_VOICE_ENABLED__) {
+        setVoicePlaybackPending(true);
         setVoicePlaybackError(undefined);
         void getAssistantVoiceSpeech(workspace, result.assistantMessage.id)
           .then((blob) => {
@@ -226,11 +232,12 @@ export function AssistantPage() {
             setVoicePlaybackError(
               error instanceof Error ? error.message : "The spoken reply could not be prepared.",
             );
-          });
+          })
+          .finally(() => setVoicePlaybackPending(false));
       }
     },
     onError: (error) => {
-      voiceTurnRef.current = false;
+      voiceTurnRef.current = null;
       setPendingMessage(undefined);
       const nextError =
         error instanceof Error ? error : new Error("Your message could not be sent.");
@@ -298,11 +305,12 @@ export function AssistantPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
   });
 
-  function sendMessage(messageValue: string, fromVoice = false) {
+  function sendMessage(messageValue: string, voiceReply?: AssistantVoiceReplyMode) {
     const message = messageValue.trim();
     if (!message || sendMutation.isPending) return;
-    voiceTurnRef.current = fromVoice || voiceTurnRef.current;
+    if (voiceReply) voiceTurnRef.current = voiceReply;
     if (voiceTurnRef.current) {
+      setVoicePlaybackPending(false);
       setVoiceAudioUrl((current) => {
         if (current) URL.revokeObjectURL(current);
         return undefined;
@@ -323,7 +331,8 @@ export function AssistantPage() {
   function startNew() {
     startNewChat();
     setSendError(undefined);
-    voiceTurnRef.current = false;
+    voiceTurnRef.current = null;
+    setVoicePlaybackPending(false);
     setVoicePlaybackError(undefined);
     setVoiceAudioUrl((current) => {
       if (current) URL.revokeObjectURL(current);
@@ -474,25 +483,32 @@ export function AssistantPage() {
                 messages={messages.data?.items ?? []}
                 pendingMessage={pendingMessage}
                 loading={sendMutation.isPending || (Boolean(activeThreadId) && messages.isLoading)}
-                onPrompt={setDraft}
+                onPrompt={(prompt) => {
+                  voiceTurnRef.current = null;
+                  setDraft(prompt);
+                }}
                 feeInsight={feeInsightQuery.data}
               />
             )}
             <UpgradePrompt error={sendError} />
-            {__ASSISTANT_VOICE_ENABLED__ && (voiceAudioUrl || voicePlaybackError) && (
-              <div className="assistant-voice-playback" role="status">
-                {voiceAudioUrl ? (
-                  <audio
-                    controls
-                    autoPlay
-                    src={voiceAudioUrl}
-                    aria-label="Spoken assistant reply"
-                  />
-                ) : (
-                  <span>{voicePlaybackError}</span>
-                )}
-              </div>
-            )}
+            {__ASSISTANT_VOICE_ENABLED__ &&
+              (voicePlaybackPending || voiceAudioUrl || voicePlaybackError) && (
+                <div className="assistant-voice-playback" role="status">
+                  {voicePlaybackPending ? (
+                    <span>Preparing spoken reply…</span>
+                  ) : voiceAudioUrl ? (
+                    <audio
+                      controls
+                      autoPlay
+                      preload="auto"
+                      src={voiceAudioUrl}
+                      aria-label="Spoken assistant reply"
+                    />
+                  ) : (
+                    <span>{voicePlaybackError}</span>
+                  )}
+                </div>
+              )}
             <AssistantComposer
               value={draft}
               busy={sendMutation.isPending}
@@ -501,6 +517,7 @@ export function AssistantPage() {
               }
               onChange={(value) => {
                 setDraft(value);
+                if (!value.trim()) voiceTurnRef.current = null;
                 if (sendError) setSendError(undefined);
               }}
               onSend={send}
@@ -510,13 +527,13 @@ export function AssistantPage() {
                     workspace={workspace}
                     disabled={sendMutation.isPending}
                     reviewRequired={__ASSISTANT_VOICE_REVIEW_REQUIRED__}
-                    onTranscript={(transcript) => {
-                      voiceTurnRef.current = true;
-                      if (__ASSISTANT_VOICE_REVIEW_REQUIRED__) {
+                    onTranscript={(transcript, voiceOptions) => {
+                      voiceTurnRef.current = voiceOptions.replyMode;
+                      if (voiceOptions.submissionMode === "review") {
                         setDraft(transcript);
                         setSendError(undefined);
                       } else {
-                        sendMessage(transcript, true);
+                        sendMessage(transcript, voiceOptions.replyMode);
                       }
                     }}
                   />
