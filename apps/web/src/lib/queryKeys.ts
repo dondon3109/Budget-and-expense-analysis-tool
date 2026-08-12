@@ -12,6 +12,10 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "bug-reports"] as const,
   adminBugReports: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "admin", "bug-reports"] as const,
+  adminCustomerReviews: (
+    workspace: AuthenticatedWorkspace,
+    query?: { page: number; status?: string; rating?: number; search?: string },
+  ) => [...queryKeys.workspace(workspace), "admin", "customer-reviews", query] as const,
   dashboard: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "dashboard"] as const,
   dashboardSummary: (workspace: AuthenticatedWorkspace, period: { from: string; to: string }) =>

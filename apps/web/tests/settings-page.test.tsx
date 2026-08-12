@@ -40,6 +40,14 @@ vi.mock("../src/components/account/BillingSettings", () => ({
   ),
 }));
 
+vi.mock("../src/components/reviews/CustomerReviewSettings", () => ({
+  CustomerReviewSettings: () => (
+    <section id="customer-review" aria-labelledby="customer-review-settings-title" tabIndex={-1}>
+      <h2 id="customer-review-settings-title">Your customer review</h2>
+    </section>
+  ),
+}));
+
 import { ApiRequestError } from "../src/lib/api";
 import { SettingsPage } from "../src/pages/SettingsPage";
 
@@ -103,6 +111,7 @@ describe("SettingsPage", () => {
 
   it.each([
     ["profile", "/app/settings#profile-settings", "profile-settings"],
+    ["customer review", "/app/settings#customer-review", "customer-review"],
     ["billing", "/app/settings#plan-and-billing", "plan-and-billing"],
     ["help and contact", "/app/settings#help-and-contact", "help-and-contact"],
     ["help", "/app/settings#help", "help"],

@@ -790,3 +790,40 @@ export const bugReports = sqliteTable(
     check("bug_reports_notification_attempts_nonnegative", sql`${table.notificationAttempts} >= 0`),
   ],
 );
+
+export const customerReviews = sqliteTable(
+  "customer_reviews",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    reviewerUserId: text("reviewer_user_id").notNull(),
+    displayName: text("display_name").notNull(),
+    rating: integer("rating").notNull(),
+    review: text("review").notNull(),
+    published: integer("published", { mode: "boolean" }).notNull().default(true),
+    moderationStatus: text("moderation_status", {
+      enum: ["pending", "published", "hidden"],
+    })
+      .notNull()
+      .default("pending"),
+    featuredOrder: integer("featured_order"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("customer_reviews_tenant_unique").on(table.tenantId),
+    index("customer_reviews_published_updated_idx").on(table.published, table.updatedAt),
+    index("customer_reviews_moderation_updated_idx").on(table.moderationStatus, table.updatedAt),
+    uniqueIndex("customer_reviews_featured_order_unique").on(table.featuredOrder),
+    check("customer_reviews_rating_check", sql`${table.rating} BETWEEN 1 AND 5`),
+    check(
+      "customer_reviews_moderation_status_check",
+      sql`${table.moderationStatus} IN ('pending', 'published', 'hidden')`,
+    ),
+    check(
+      "customer_reviews_featured_order_check",
+      sql`${table.featuredOrder} IS NULL OR ${table.featuredOrder} BETWEEN 1 AND 6`,
+    ),
+  ],
+);

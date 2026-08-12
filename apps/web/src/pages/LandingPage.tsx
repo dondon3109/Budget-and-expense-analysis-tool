@@ -1,4 +1,14 @@
-import { ArrowRight, Check, PiggyBank, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import type { PublicCustomerReview } from "@zoption/shared";
+import {
+  ArrowRight,
+  Check,
+  PiggyBank,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  TrendingUp,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import "./LandingPage.css";
 
@@ -6,6 +16,7 @@ import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { SupportChat } from "../components/support/SupportChat";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
+import { getPublicCustomerReviews } from "../lib/api";
 import { ANDROID_RELEASE } from "../releases/androidRelease";
 
 const previewBars = [42, 55, 38, 66, 50, 61];
@@ -13,6 +24,17 @@ const previewBars = [42, 55, 38, 66, 50, 61];
 export function LandingPage() {
   const [searchParams] = useSearchParams();
   const accountDeleted = searchParams.get("accountDeleted");
+  const [reviews, setReviews] = useState<PublicCustomerReview[]>([]);
+  const [reviewsLoaded, setReviewsLoaded] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getPublicCustomerReviews(controller.signal)
+      .then(setReviews)
+      .catch(() => undefined)
+      .finally(() => setReviewsLoaded(true));
+    return () => controller.abort();
+  }, []);
 
   return (
     <div className="landing-page">
@@ -24,6 +46,7 @@ export function LandingPage() {
         <nav className="landing-links" aria-label="Learn more">
           <a href="#modules">Features</a>
           <a href="#approach">How it works</a>
+          <a href="#reviews">Reviews</a>
           <a href="#banks">Supported imports</a>
           <a href="#install">Android APK</a>
           <a href="#faq">FAQ</a>
@@ -544,6 +567,68 @@ export function LandingPage() {
           </p>
         </section>
 
+        <section className="customer-reviews" id="reviews" aria-labelledby="reviews-title">
+          <div className="reviews-intro">
+            <p className="eyebrow">From real Zoption customers</p>
+            <h2 id="reviews-title">Clearer money, in their own words.</h2>
+            <p>
+              Reviews come from signed-in customers who explicitly consent to sharing; Zoption
+              selects which submissions appear here.
+            </p>
+          </div>
+
+          {reviews.length > 0 ? (
+            <div className="review-wall" aria-live="polite">
+              {reviews.map((customerReview) => (
+                <article
+                  className={
+                    customerReview.featuredOrder === 1
+                      ? "customer-review featured"
+                      : "customer-review"
+                  }
+                  key={customerReview.id}
+                >
+                  <div
+                    className="review-stars"
+                    aria-label={`${customerReview.rating} out of 5 stars`}
+                  >
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        size={16}
+                        fill="currentColor"
+                        aria-hidden="true"
+                        className={star <= customerReview.rating ? "filled" : ""}
+                      />
+                    ))}
+                  </div>
+                  <blockquote>&ldquo;{customerReview.review}&rdquo;</blockquote>
+                  <footer>
+                    <strong>{customerReview.displayName}</strong>
+                    <span>Zoption customer</span>
+                  </footer>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="reviews-empty" aria-live="polite">
+              <MessageCircleReviewMark />
+              <div>
+                <strong>
+                  {reviewsLoaded
+                    ? "The first customer story starts here."
+                    : "Loading customer stories…"}
+                </strong>
+                <span>
+                  {reviewsLoaded
+                    ? "Signed-in customers can share a review after they have spent time with Zoption."
+                    : "Only reviews customers explicitly publish are shown."}
+                </span>
+              </div>
+            </div>
+          )}
+        </section>
+
         <section className="faq" id="faq" aria-labelledby="faq-title">
           <div className="section-head">
             <p className="eyebrow">Common questions</p>
@@ -608,5 +693,13 @@ export function LandingPage() {
       <LegalFooter />
       <SupportChat surface="landing" />
     </div>
+  );
+}
+
+function MessageCircleReviewMark() {
+  return (
+    <span className="reviews-empty-mark" aria-hidden="true">
+      <Star size={22} fill="currentColor" />
+    </span>
   );
 }

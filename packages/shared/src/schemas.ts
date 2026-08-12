@@ -9,6 +9,7 @@ import {
   bugReportFrequencies,
   bugReportPageContexts,
   bugReportStatuses,
+  customerReviewModerationStatuses,
   financialGoalStatuses,
   interestFrequencies,
   subscriptionBillingCycles,
@@ -60,6 +61,33 @@ export type BugReportCreateInput = z.infer<typeof bugReportCreateSchema>;
 export const bugReportStatusUpdateSchema = z.object({ status: z.enum(bugReportStatuses) }).strict();
 
 export type BugReportStatusUpdate = z.infer<typeof bugReportStatusUpdateSchema>;
+
+export const customerReviewInputSchema = z
+  .object({
+    displayName: z.string().trim().min(2).max(50),
+    rating: z.number().int().min(1).max(5),
+    review: z.string().trim().min(20).max(600),
+    publishConsent: z.literal(true),
+  })
+  .strict();
+
+export type CustomerReviewInput = z.infer<typeof customerReviewInputSchema>;
+
+export const customerReviewModerationUpdateSchema = z
+  .object({ status: z.enum(customerReviewModerationStatuses).exclude(["pending"]) })
+  .strict();
+
+export type CustomerReviewModerationUpdate = z.infer<typeof customerReviewModerationUpdateSchema>;
+
+export const customerReviewLineupUpdateSchema = z
+  .object({ reviewIds: z.array(z.string().uuid()).max(6) })
+  .strict()
+  .refine((value) => new Set(value.reviewIds).size === value.reviewIds.length, {
+    path: ["reviewIds"],
+    message: "Choose each review only once.",
+  });
+
+export type CustomerReviewLineupUpdate = z.infer<typeof customerReviewLineupUpdateSchema>;
 
 export const isoDateSchema = z
   .string()

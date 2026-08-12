@@ -27,6 +27,7 @@ import { assistantUsageRepository, type AssistantUsageRepository } from "./db/as
 import { billingRepository, type BillingRepository } from "./db/billing";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
+import { customerReviewRepository, type CustomerReviewRepository } from "./db/customer-reviews";
 import { loadCashflowTrend, loadDashboard, loadTransferFeeInsight } from "./db/dashboard";
 import { debtRepository, type DebtRepository } from "./db/debts";
 import { calendarEventRepository, type CalendarEventRepository } from "./db/events";
@@ -47,6 +48,11 @@ import { createAssistantRoutes } from "./routes/assistant";
 import { createBillingRoutes } from "./routes/billing";
 import { createBudgetRoutes } from "./routes/budgets";
 import { createCategoryRoutes } from "./routes/categories";
+import {
+  createAdminCustomerReviewRoutes,
+  createAuthenticatedCustomerReviewRoutes,
+  createPublicCustomerReviewRoutes,
+} from "./routes/customer-reviews";
 import { createDebtRoutes } from "./routes/debts";
 import { createCalendarEventRoutes } from "./routes/events";
 import { createExportRoutes } from "./routes/exports";
@@ -137,6 +143,7 @@ export interface AppOptions {
   platformAdminService?: PlatformAdminService;
   bugReports?: BugReportRepository;
   bugReportService?: BugReportService;
+  customerReviews?: CustomerReviewRepository;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -190,6 +197,7 @@ export function createApp(options: AppOptions = {}) {
     options.platformAdminService ?? createPlatformAdminService(platformAdminStore);
   const bugReportService =
     options.bugReportService ?? createBugReportService(options.bugReports ?? bugReportRepository);
+  const customerReviews = options.customerReviews ?? customerReviewRepository;
   const accountDeletionService =
     options.accountDeletionService ??
     createAccountDeletionService(undefined, undefined, billingStore, platformAdminStore);
@@ -512,6 +520,11 @@ export function createApp(options: AppOptions = {}) {
   );
   app.route("/api/billing/paypal/webhook", createPayPalWebhookRoutes(billingStore));
   app.route("/api/support", createSupportRoutes(supportProvider));
+  app.route("/api/reviews", createPublicCustomerReviewRoutes(customerReviews));
+  app.route(
+    "/api/app/admin/reviews",
+    createAdminCustomerReviewRoutes(customerReviews, platformAdminService),
+  );
   app.route(
     "/api/app/admin/bug-reports",
     createBugReportAdminRoutes(bugReportService, platformAdminService),
@@ -525,6 +538,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/admin", createPlatformAdminRoutes(platformAdminService));
   app.route("/api/app/assistant", createAssistantRoutes(assistantService));
   app.route("/api/app/transactions", createTransactionRoutes(transactionStore));
+  app.route("/api/app/reviews", createAuthenticatedCustomerReviewRoutes(customerReviews));
   app.route("/api/app/accounts", createAccountRoutes(accountStore, billingStore));
   app.route("/api/app/categories", createCategoryRoutes(categoryStore));
   app.route("/api/app/budgets", createBudgetRoutes(budgetStore));

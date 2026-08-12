@@ -7,6 +7,14 @@
   background: color-mix(in srgb, var(--action) 4%, var(--surface));
 }
 
+.sponsored-pro-seats-admin-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .sponsored-pro-seats-add-heading {
   margin-bottom: 16px;
 }
@@ -137,6 +145,11 @@
 }
 
 @media (max-width: 760px) {
+  .sponsored-pro-seats-admin-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .sponsored-pro-seats-add {
     padding: 16px;
   }

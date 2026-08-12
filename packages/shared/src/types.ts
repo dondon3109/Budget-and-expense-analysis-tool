@@ -692,3 +692,45 @@ export interface AdminBugReport extends BugReport {
   notificationAttempts: number;
   notifiedAt: string | null;
 }
+
+export interface PublicCustomerReview {
+  id: string;
+  displayName: string;
+  rating: number;
+  review: string;
+  featuredOrder: number;
+  updatedAt: string;
+}
+
+export const customerReviewModerationStatuses = ["pending", "published", "hidden"] as const;
+export type CustomerReviewModerationStatus = (typeof customerReviewModerationStatuses)[number];
+
+export interface CustomerReview extends Omit<PublicCustomerReview, "featuredOrder"> {
+  publishConsent: boolean;
+  moderationStatus: CustomerReviewModerationStatus;
+  featuredOrder: number | null;
+  createdAt: string;
+}
+
+export interface CustomerReviewState {
+  review: CustomerReview | null;
+  promptEligible: boolean;
+}
+
+export interface CustomerReviewAdminSummary {
+  total: number;
+  pending: number;
+  published: number;
+  hidden: number;
+  featured: number;
+}
+
+export interface CustomerReviewAdminDashboard {
+  items: CustomerReview[];
+  lineup: CustomerReview[];
+  summary: CustomerReviewAdminSummary;
+  page: number;
+  pageSize: number;
+  totalFiltered: number;
+  totalPages: number;
+}

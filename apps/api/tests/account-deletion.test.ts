@@ -181,5 +181,6 @@ describe("account deletion repository", () => {
 
     expect(batchedSql).toContain("DELETE FROM bug_reports WHERE tenant_id = ?");
     expect(preparedSql).toContain("DELETE FROM bug_reports WHERE tenant_id = ?");
+    expect(batchedSql).toContain("DELETE FROM customer_reviews WHERE tenant_id = ?");
   });
 });
