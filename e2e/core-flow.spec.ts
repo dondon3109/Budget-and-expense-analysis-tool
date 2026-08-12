@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import ANDROID_RELEASE from "../apps/web/src/releases/androidRelease.json" with { type: "json" };
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("zoption-theme", "light"));
 });
@@ -14,7 +16,7 @@ test("landing page leads visitors to account creation or sign in", async ({ page
   await expect(
     page.getByRole("heading", { name: "Zoption makes your money clear. Decide what comes next." }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Create account" }).first()).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Start free", exact: true })).toHaveAttribute(
     "href",
     "/signup",
   );
@@ -98,7 +100,7 @@ test("Android download page renders as a public deep link with exact release gui
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
     "href",
-    "/downloads/zoption-android-1.2.4.apk",
+    ANDROID_RELEASE.downloadPath,
   );
   await expect(page.getByText(/does not receive bank credentials/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Online-first by design" })).toBeVisible();

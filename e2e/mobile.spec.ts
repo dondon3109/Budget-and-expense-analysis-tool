@@ -11,7 +11,8 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   await expect(
     page.getByRole("heading", { name: "Zoption makes your money clear. Decide what comes next." }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Create account" }).last()).toBeVisible();
+  const startFree = page.getByRole("link", { name: "Start free", exact: true });
+  await expect(startFree).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign in" }).last()).toBeVisible();
   await expect(
     page.getByRole("img", { name: "Illustrative preview of the Zoption monthly dashboard" }),
@@ -54,7 +55,7 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   );
   expect(hasHorizontalOverflow).toBe(false);
 
-  await page.getByRole("link", { name: "Create account" }).last().click();
+  await startFree.click();
   await expect(page).toHaveURL(/\/signup$/);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator(".auth-card")).toBeVisible();
