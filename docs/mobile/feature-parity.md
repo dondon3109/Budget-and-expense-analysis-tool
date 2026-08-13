@@ -1,0 +1,45 @@
+# Mobile feature-parity matrix
+
+Status as of 2026-08-13 at verified `origin/main` commit `c533706b84765d5dcaf1ac42bf969baa6ddc6c5d`.
+
+| Capability                      | Current authority                                | Mobile target                                               | Milestone | Discovery note                                                                               |
+| ------------------------------- | ------------------------------------------------ | ----------------------------------------------------------- | --------- | -------------------------------------------------------------------------------------------- |
+| Email/password auth             | Supabase Auth; web login/signup/recovery routes  | Native forms, secure session persistence, recovery callback | 2         | Existing password policy and account deletion remain server-owned.                           |
+| Google auth                     | `AuthProvider.tsx`, Supabase OAuth               | Native system-browser OAuth, preserve immutable subject     | 2         | Google is the only currently verified social provider.                                       |
+| Sign in with Apple              | Not present                                      | Native iOS flow compatible with Supabase identity linking   | 2         | Requires Apple/Supabase configuration and identifiers; no registration is authorized yet.    |
+| User/tenant bootstrap           | `GET /api/app/me`, Worker auth/tenant middleware | Same bearer-token call; clear caches on subject change      | 2         | Mobile must never accept a tenant ID as authority.                                           |
+| Accounts                        | `/api/app/accounts`; D1 accounts                 | Encrypted local read model and offline sync                 | 4         | Custom account writes and interest settings require Pro. Balances are ledger-derived.        |
+| Categories                      | `/api/app/categories`; D1 categories             | Encrypted local read model and offline sync                 | 4         | Free has one active custom category plus starters; server enforcement stays authoritative.   |
+| Transactions                    | `/api/app/transactions`; shared schemas          | Native list/forms, offline CRUD, conflict recovery          | 4         | Current CRUD is server-ID based and has no revisions or tombstones.                          |
+| Transfers and fees              | Transaction repository and shared calculations   | One atomic local command and one atomic server operation    | 4/6       | Existing server stores two linked legs; sync must never expose a half-transfer.              |
+| Dashboard                       | `/api/app/dashboard*`; shared calculations       | Local-first totals, trends, accessible alternatives         | 5         | Calculations must match current transfer and currency semantics.                             |
+| Budgets                         | `/api/app/budgets`; shared budget contracts      | Monthly native editor and local read model                  | 5         | Existing API replaces/upserts a month as a bounded set.                                      |
+| Cash-flow views                 | Dashboard trend endpoint                         | Weekly for Free; monthly/six-month for Pro                  | 5         | Entitlement is server-authoritative.                                                         |
+| Search and filters              | Transaction list query schema                    | Native filter sheet and SQLite query                        | 5         | Local queries must preserve current sort/date/search semantics.                              |
+| Subscriptions                   | `/api/app/subscriptions`                         | Native recurring-money screens                              | 6         | Account/category relationships are server validated.                                         |
+| Calendar                        | `/api/app/events` and transaction calendar       | Native calendar agenda                                      | 6         | Financial and user-created events remain distinct records.                                   |
+| Savings goals                   | `/api/app/goals`; shared planning                | Native goal ledger and deterministic projections            | 6         | Use shared pure calculations where compatible.                                               |
+| Debt planning                   | `/api/app/debts`; shared planning                | Avalanche/snowball planning                                 | 6         | Projections are models, not advice.                                                          |
+| Savings interest                | Account interest route and scheduled credit      | Native configuration/model views                            | 6         | Current account management write is Pro-only.                                                |
+| CSV import                      | Shared CSV parser; Worker preview/commit         | Native file picker, preview, explicit commit                | 7         | Canonical CSV is supported by shared code.                                                   |
+| XLS/XLSX import                 | Browser SheetJS worker                           | Secure native conversion if reliable                        | 7         | Current browser-specific worker and SheetJS packaging are not React Native-compatible as-is. |
+| Duplicate prevention            | Shared SHA-256 fingerprint; D1 unique index      | Same canonical fingerprint and server atomicity             | 4/7       | Shared helper assumes `crypto.subtle`; mobile adapter required.                              |
+| AI Financial Assistant          | `/api/app/assistant`; consent/preferences        | Online-only native conversation                             | 8         | Financial records must not be inferred from stale local cache.                               |
+| Assistant voice                 | `/api/app/assistant/voice`                       | Review-first recording/transcription/playback               | 8         | Requires microphone permission and development builds.                                       |
+| Billing                         | `/api/app/billing`; PayPal hosted approval       | System browser and server-confirmed state                   | 8         | No PayPal secret or entitlement logic in client.                                             |
+| Product support and bug reports | `/api/support`, authenticated support routes     | Native support surface                                      | 8         | Keep product support separate from the financial assistant.                                  |
+| Account/profile management      | Supabase Auth/Storage and Worker deletion        | Native settings and high-friction online deletion           | 8         | Local workspace clears only after safe server outcome.                                       |
+| Themes                          | Web Light/Dark/Coffee tokens                     | Native Light/Dark/Coffee tokens and system-aware choice     | 1         | Theme preference is harmless UI state with validated/versioned persistence.                  |
+| Existing Android TWA            | `apps/android`                                   | Remains intact until explicit replacement                   | 9         | No files are deleted or replaced during rebuild.                                             |
+
+## Current route inventory
+
+Public web routes are `/`, `/terms-of-service`, `/privacy-policy`, `/cookie-policy`, `/faq`, and `/install`. Authentication routes are `/login`, `/signup`, `/forgot-password`, `/auth/callback`, and `/update-password`. Authenticated web surfaces are dashboard, assistant, calendar, transactions, import, budgets, subscriptions, financial plan, settings, support reports, and customer-review administration.
+
+The Worker exposes public health/support/review and PayPal-webhook routes plus authenticated identity, account deletion, dashboard, accounts, categories, transactions, budgets, subscriptions, calendar events, goals, debts, imports, exports, billing, reviews, support reports, assistant, voice, and platform-admin routes. `docs/architecture.md` lists the stable boundary; route implementations are authoritative for exact methods and schemas.
+
+## Explicit non-parity
+
+- Mobile is not a WebView or a screen-for-screen copy of the website.
+- The public marketing site, platform-admin review workflow, and PayPal webhook receiver do not need native equivalents for initial release readiness.
+- Transaction CSV export is a Pro web/API capability; a native share/export surface is deferred until privacy and file-lifecycle behavior are designed.

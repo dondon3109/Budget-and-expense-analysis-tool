@@ -6,6 +6,7 @@ packages:
 allowBuilds:
   esbuild: true
   sharp: true
+  unrs-resolver: false
   workerd: true
 
 overrides:
@@ -42,3 +43,4 @@ minimumReleaseAgeExclude:
   - "@remotion/web-renderer@4.0.509"
   - "@remotion/zod-types@4.0.509"
   - remotion@4.0.509
+  - zustand@5.0.15

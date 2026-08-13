@@ -31,7 +31,7 @@ export default tseslint.config(
   },
   {
     ...tseslint.configs.disableTypeChecked,
-    files: ["**/scripts/**/*.mjs", "apps/web/public/**/*.js"],
+    files: ["**/scripts/**/*.mjs", "apps/mobile/*.cjs", "apps/web/public/**/*.js"],
     languageOptions: {
       ...tseslint.configs.disableTypeChecked.languageOptions,
       globals: {
@@ -43,8 +43,15 @@ export default tseslint.config(
         document: "readonly",
         localStorage: "readonly",
         matchMedia: "readonly",
+        module: "readonly",
+        require: "readonly",
+        __dirname: "readonly",
         URL: "readonly",
       },
+    },
+    rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
   {
