@@ -41,6 +41,7 @@ import { debtRepository, type DebtRepository } from "./db/debts";
 import { calendarEventRepository, type CalendarEventRepository } from "./db/events";
 import { financialGoalRepository, type FinancialGoalRepository } from "./db/goals";
 import { createImportRepository, type ImportRepository } from "./db/imports";
+import { mobileSyncRepository, type MobileSyncRepository } from "./db/mobile-sync";
 import { platformAdminRepository, type PlatformAdminRepository } from "./db/platform-admin";
 import { bugReportRepository, type BugReportRepository } from "./db/bug-reports";
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
@@ -67,6 +68,7 @@ import { createCalendarEventRoutes } from "./routes/events";
 import { createExportRoutes } from "./routes/exports";
 import { createFinancialGoalRoutes } from "./routes/goals";
 import { createImportRoutes } from "./routes/imports";
+import { createMobileSyncRoutes } from "./routes/mobile-sync";
 import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
@@ -138,6 +140,7 @@ export interface AppOptions {
   goals?: FinancialGoalRepository;
   debts?: DebtRepository;
   imports?: ImportRepository;
+  mobileSync?: MobileSyncRepository;
   rateLimiter?: RateLimiter;
   authVerifier?: AuthVerifier;
   tenantResolver?: TenantResolver;
@@ -174,6 +177,7 @@ export function createApp(options: AppOptions = {}) {
   const goalStore = options.goals ?? financialGoalRepository;
   const debtStore = options.debts ?? debtRepository;
   const importStore = options.imports ?? createImportRepository(billingStore);
+  const mobileSyncStore = options.mobileSync ?? mobileSyncRepository;
   const rateLimiter = options.rateLimiter ?? d1RateLimiter;
   const authVerifier = options.authVerifier ?? supabaseAuthVerifier;
   const resolveTenant = options.tenantResolver ?? tenantResolver;
@@ -616,6 +620,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/goals", createFinancialGoalRoutes(goalStore));
   app.route("/api/app/debts", createDebtRoutes(debtStore));
   app.route("/api/app/imports", createImportRoutes(importStore));
+  app.route("/api/app/sync", createMobileSyncRoutes(mobileSyncStore));
   app.route("/api/app/exports", createExportRoutes(transactionStore, billingStore));
 
   app.notFound((context) => context.json({ error: "not_found" }, 404));

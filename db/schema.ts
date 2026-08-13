@@ -109,6 +109,8 @@ export const accounts = sqliteTable(
     annualRateBasisPoints: integer("annual_rate_basis_points"),
     interestFrequency: text("interest_frequency", { enum: ["daily", "monthly", "yearly"] }),
     interestPayDay: integer("interest_pay_day"),
+    revision: integer("revision").notNull().default(1),
+    deletedAt: text("deleted_at"),
     ...timestamps,
   },
   (table) => [
@@ -135,6 +137,8 @@ export const categories = sqliteTable(
     requiredPlan: text("required_plan", { enum: ["free", "zoption_pro"] })
       .notNull()
       .default("free"),
+    revision: integer("revision").notNull().default(1),
+    deletedAt: text("deleted_at"),
     ...timestamps,
   },
   (table) => [
@@ -177,6 +181,8 @@ export const transactions = sqliteTable(
     notes: text("notes"),
     transferFeeMinor: integer("transfer_fee_minor"),
     subscriptionId: text("subscription_id"),
+    revision: integer("revision").notNull().default(1),
+    deletedAt: text("deleted_at"),
     ...timestamps,
   },
   (table) => [
@@ -190,6 +196,60 @@ export const transactions = sqliteTable(
       table.tenantId,
       table.importFingerprint,
     ),
+  ],
+);
+
+export const mobileSyncState = sqliteTable("mobile_sync_state", {
+  tenantId: text("tenant_id")
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  sequence: integer("sequence").notNull().default(0),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const mobileSyncChanges = sqliteTable(
+  "mobile_sync_changes",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    entityType: text("entity_type", { enum: ["account", "category", "transaction"] }).notNull(),
+    entityId: text("entity_id").notNull(),
+    rowRevision: integer("row_revision").notNull(),
+    operation: text("operation", { enum: ["upsert", "delete"] }).notNull(),
+    payloadJson: text("payload_json"),
+    serverUpdatedAt: text("server_updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tenantId, table.sequence] }),
+    index("mobile_sync_changes_tenant_entity_idx").on(
+      table.tenantId,
+      table.entityType,
+      table.entityId,
+    ),
+  ],
+);
+
+export const mobileSyncIdempotency = sqliteTable(
+  "mobile_sync_idempotency",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    clientId: text("client_id").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    responseJson: text("response_json").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tenantId, table.clientId, table.idempotencyKey] }),
+    index("mobile_sync_idempotency_created_idx").on(table.createdAt),
   ],
 );
 

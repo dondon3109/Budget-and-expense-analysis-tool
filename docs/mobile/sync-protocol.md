@@ -1,6 +1,8 @@
 # Mobile synchronization protocol
 
-Status: design contract for Milestone 4. The current production API does not implement this protocol.
+Status: Milestone 4 implementation in progress. The isolated branch implements versioned contracts,
+D1 revision/change foundations, and authenticated read-only pull. Push and mobile application remain
+unimplemented. The current production API and D1 have not been changed.
 
 ## Goals and invariants
 
@@ -18,6 +20,11 @@ Each syncable row gains a server-owned integer `revision`, `created_at`, `update
 The sequence is monotonic within a tenant, not global. Clients treat it as an opaque cursor and never compare device timestamps.
 
 The Worker maintains tenant-scoped idempotency records keyed by `(tenant_id, client_id, idempotency_key)`, including a canonical request hash and the prior result. Reuse with a different payload is rejected.
+
+The local implementation names these tables `mobile_sync_state`, `mobile_sync_changes`, and
+`mobile_sync_idempotency`. D1 triggers add existing web/API account, category, and transaction writes
+to the same change stream. Migration bootstrap changes are ordered by entity type and ID within each
+tenant so an existing workspace can start from cursor zero.
 
 ## Client identifiers
 
@@ -59,6 +66,11 @@ The first implementation should use atomic batches for one dependency graph. It 
 `POST /api/app/sync/pull` accepts the last opaque tenant cursor and a bounded limit. The Worker returns an ordered change batch, row payloads or tombstones, and `next_cursor`. The next cursor advances only after the mobile client applies the entire batch in one local transaction.
 
 An unknown/expired cursor returns a typed `full_resync_required` response. Full resync builds a new encrypted generation beside the current database, verifies it, then atomically switches generations; it never clears the only readable local copy first.
+
+Protocol version 1 encodes the tenant-local integer sequence as a canonical opaque `v1.<base36>`
+cursor. Pull is bounded to 200 changes and reads one extra row to report `hasMore` without claiming
+completion. The current implementation detects an ahead-of-server cursor; retention-based expiry and
+full-resync generation switching remain pending.
 
 ## Conflict policy
 

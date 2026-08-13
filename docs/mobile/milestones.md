@@ -6,9 +6,9 @@ Last updated: 2026-08-13.
 | ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | 0. Discovery and design              | Complete    | Verified repository/worktree baseline, parity matrix, architecture, sync protocol, threat model, shared compatibility review |
 | 1. Mobile foundation                 | Complete    | Native Android/iOS development builds, iOS runtime navigation/input, themes/components, focused tests                        |
-| 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS; social auth and Android runtime remain                     |
-| 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                        |
-| 4. Transaction sync vertical slice   | Not started | Offline CRUD, restart recovery, idempotent reconnect, web/mobile conflicts, convergence                                      |
+| 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS; social auth and Android runtime remain                      |
+| 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
+| 4. Transaction sync vertical slice   | In progress | Versioned contracts, D1 revisions/change log, tenant cursor, and authenticated bounded pull                                  |
 | 5. Core budgeting                    | Not started | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
 | 6. Planning and recurring money      | Not started | Subscriptions/calendar/goals/debts/transfers/interest with plan boundaries                                                   |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
@@ -34,7 +34,7 @@ Last updated: 2026-08-13.
 
 ## Existing production impact
 
-None. Milestones 0 and 1 exist only in the isolated worktree. They do not modify the main checkout, production Worker, D1, Supabase project, Pages site, TWA, store records, or deployed artifacts.
+None. All mobile, shared-contract, Worker, and migration work exists only in the isolated worktree. It does not modify the main checkout, production Worker or D1, Supabase project, Pages site, TWA, store records, or deployed artifacts.
 
 ## Milestone 1 evidence
 
@@ -117,3 +117,31 @@ None. Milestones 0 and 1 exist only in the isolated worktree. They do not modify
 - Android backup is disabled in generated configuration and database keys are device-only. A fixed
   local Expo module now applies and reads back iOS `isExcludedFromBackup` before SQLite opens. The
   rebuilt simulator app rendered and the directory exposed Apple's backup-exclusion extended attribute.
+
+## Milestone 4 progress
+
+- Shared protocol-version-1 schemas strictly bound pull and future push payloads. They reject tenant
+  ownership fields, non-UUID mobile creates, duplicate/self-dependent operations, oversized batches,
+  malformed cursors, and transfers submitted as non-atomic transaction creates.
+- D1 migration `0034_mobile_sync_foundation.sql` adds row revisions, tenant-scoped monotonic sequences,
+  immutable change payloads, tombstones, and tenant/client/idempotency storage. Existing rows are
+  deterministically bootstrapped into the change log.
+- Database triggers bring existing web/API account, category, transaction, transfer-leg, import, and
+  scheduled writes into the same revision/change stream without changing their public response shapes.
+- Authenticated `POST /api/app/sync/pull` derives the tenant from middleware, accepts no tenant ID,
+  returns at most 200 ordered changes, and uses an opaque canonical cursor. A cursor ahead of server
+  state fails with `full_resync_required` instead of silently accepting data loss.
+- Focused in-memory SQLite behavior proves bounded pagination, tenant isolation, server-derived category
+  locks, web-write revision increments, transaction tombstones, and safe tenant cascade deletion.
+
+## Milestone 4 remaining gaps
+
+- Push, idempotent acknowledgement, outbox application, retry/backoff, local pull transactions,
+  conflicts, and resolution UI are not implemented yet. The mobile app still intentionally renders no
+  server financial records.
+- Transfer changes currently enter the internal change stream as their two atomic D1 legs. The mobile
+  apply layer must preserve the group as one logical transfer before financial screens consume it.
+- Tombstones are retained indefinitely in this first foundation. Cursor expiry, client acknowledgement,
+  compaction, and beside-the-current-database full-resync switching remain required before release.
+- Migration performance has only been exercised on fresh/local SQLite data; production-scale migration
+  timing and rollback rehearsal are pending and no D1 migration has been deployed.
