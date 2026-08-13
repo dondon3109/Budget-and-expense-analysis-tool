@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { mobileSyncPullRequestSchema, mobileSyncPushRequestSchema } from "../src/sync";
+import {
+  mobileSyncPullRequestSchema,
+  mobileSyncPushRequestSchema,
+  mobileSyncPushResponseSchema,
+} from "../src/sync";
 
 const clientId = "00000000-0000-4000-8000-000000000001";
 const operationId = "00000000-0000-4000-8000-000000000002";
@@ -88,6 +92,58 @@ describe("mobile sync boundary schemas", () => {
               categoryId: "transfer",
               fromAccountId: "wallet",
               toAccountId: "savings",
+            },
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates acknowledged server revisions", () => {
+    expect(
+      mobileSyncPushResponseSchema.safeParse({
+        protocolVersion: 1,
+        results: [
+          {
+            operationId,
+            entityType: "transaction",
+            entityId,
+            status: "acknowledged",
+            revision: 2,
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a conflict snapshot whose entity type does not match", () => {
+    expect(
+      mobileSyncPushResponseSchema.safeParse({
+        protocolVersion: 1,
+        results: [
+          {
+            operationId,
+            entityType: "transaction",
+            entityId,
+            status: "conflict",
+            code: "stale_revision",
+            serverRevision: 2,
+            serverUpdatedAt: "2026-08-13 16:00:00",
+            serverPayload: {
+              id: entityId,
+              name: "Wrong entity",
+              type: "cash",
+              currency: "PHP",
+              archived: false,
+              system: false,
+              interest: {
+                enabled: false,
+                annualRateBasisPoints: null,
+                frequency: null,
+                payDay: null,
+              },
+              revision: 2,
+              updatedAt: "2026-08-13 16:00:00",
             },
           },
         ],

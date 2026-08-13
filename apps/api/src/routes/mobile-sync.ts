@@ -1,4 +1,4 @@
-import { mobileSyncPullRequestSchema } from "@zoption/shared";
+import { mobileSyncPullRequestSchema, mobileSyncPushRequestSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { MobileSyncRepository } from "../db/mobile-sync";
@@ -21,6 +21,21 @@ export function createMobileSyncRoutes(repository: MobileSyncRepository) {
     }
     return context.json(
       await repository.pull(context.env, context.get("tenant").tenantId, parsed.data),
+    );
+  });
+
+  routes.post("/push", async (context) => {
+    const parsed = mobileSyncPushRequestSchema.safeParse(await readJson(context));
+    if (!parsed.success) {
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Check the synchronization operations.",
+        parsed.error.flatten(),
+      );
+    }
+    return context.json(
+      await repository.push(context.env, context.get("tenant").tenantId, parsed.data),
     );
   });
 

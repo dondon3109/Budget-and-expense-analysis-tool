@@ -236,11 +236,12 @@ async function readLogicalRows(
   return result.results.map(normalizeRow);
 }
 
-async function validateReferences(
+export async function validateTransactionReferences(
   env: Bindings,
   tenantId: string,
   input: TransactionInput,
   existingCategoryId?: string,
+  readProEntitlement: (env: Bindings, tenantId: string) => Promise<boolean> = hasProEntitlement,
 ): Promise<void> {
   const db = drizzle(env.DB);
   const [category] = await db
@@ -264,7 +265,7 @@ async function validateReferences(
   }
   if (
     input.categoryId !== existingCategoryId &&
-    !isCategoryPlanAvailable(category.requiredPlan, await hasProEntitlement(env, tenantId))
+    !isCategoryPlanAvailable(category.requiredPlan, await readProEntitlement(env, tenantId))
   ) {
     throw categoryRequiresProError();
   }
@@ -397,7 +398,7 @@ export const transactionRepository: TransactionRepository = {
   },
 
   async create(env, tenantId, input) {
-    await validateReferences(env, tenantId, input);
+    await validateTransactionReferences(env, tenantId, input);
     if (input.kind === "transfer") {
       const groupId = crypto.randomUUID();
       const fromId = crypto.randomUUID();
@@ -485,7 +486,7 @@ export const transactionRepository: TransactionRepository = {
         throw new HttpError(400, "invalid_transfer_update", "Provide complete transfer details.");
       }
       const transfer = parsed.data;
-      await validateReferences(env, tenantId, transfer, existing.categoryId);
+      await validateTransactionReferences(env, tenantId, transfer, existing.categoryId);
       const [fromLeg, toLeg] = buildTransferLegs(transfer);
       await env.DB.batch([
         env.DB.prepare(
@@ -544,7 +545,7 @@ export const transactionRepository: TransactionRepository = {
       throw new HttpError(400, "invalid_transaction_update", "Provide valid transaction details.");
     }
     const transaction = parsed.data;
-    await validateReferences(env, tenantId, transaction, current.categoryId);
+    await validateTransactionReferences(env, tenantId, transaction, current.categoryId);
     await env.DB.prepare(
       `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = ?, notes = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
     )

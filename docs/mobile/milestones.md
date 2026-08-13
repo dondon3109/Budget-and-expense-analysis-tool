@@ -153,10 +153,18 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
 - Focused mobile tests cover transport/error bounds, migration 2, atomic cursor application,
   rollback on invalid dependencies, retained tombstones, local-conflict refusal, restart persistence,
   and repository transaction mapping. Thirteen suites and 42 tests pass.
+- Shared push-result contracts now distinguish acknowledgement, durable rejection, and conflicts with
+  validated current-server snapshots. The first Worker push slice handles dependency-free,
+  non-transfer transaction create/update/delete with client UUIDs and exact base revisions.
+- D1 mutation, revision/change-log trigger, and the tenant/client/idempotency acknowledgement execute
+  in one batch. Identical retries replay the stored result; a reused key with different content is
+  rejected. Focused SQLite tests prove create replay, key misuse rejection, stale-edit preservation,
+  tenant derivation, and revisioned deletion tombstones.
 
 ## Milestone 4 remaining gaps
 
-- Push, idempotent acknowledgement, offline mutation composition, durable retry/backoff,
+- Account/category push, dependent batches, atomic transfer push, offline mutation composition,
+  local acknowledgement consumption, durable retry/backoff,
   conflict materialization, and resolution UI are not implemented yet. Pull conflicts currently stop
   safely and preserve both durable states, but do not yet offer a resolution workflow.
 - Transfer changes currently enter the internal change stream as their two atomic D1 legs. The mobile

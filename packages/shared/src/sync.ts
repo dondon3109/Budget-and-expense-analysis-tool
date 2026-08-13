@@ -263,8 +263,82 @@ export const mobileSyncPushRequestSchema = z
     }
   });
 
+const mobileSyncPushResultIdentitySchema = z.object({
+  operationId: uuidSchema,
+  entityType: z.enum(mobileSyncEntityTypes).exclude(["transfer"]),
+  entityId: resourceIdSchema,
+});
+
+export const mobileSyncPushResultSchema = z
+  .union([
+    mobileSyncPushResultIdentitySchema
+      .extend({
+        status: z.literal("acknowledged"),
+        revision: serverRevisionSchema,
+      })
+      .strict(),
+    mobileSyncPushResultIdentitySchema
+      .extend({
+        status: z.literal("conflict"),
+        code: z.enum(["stale_revision", "entity_exists", "entity_missing"]),
+        serverRevision: serverRevisionSchema.nullable(),
+        serverUpdatedAt: serverTimestampSchema.nullable(),
+        serverPayload: mobileSyncSnapshotSchema.nullable(),
+      })
+      .strict(),
+    mobileSyncPushResultIdentitySchema
+      .extend({
+        status: z.literal("rejected"),
+        code: z.enum([
+          "invalid_category",
+          "invalid_account",
+          "plan_limit",
+          "invalid_operation",
+          "unsupported_operation",
+        ]),
+        message: z.string().min(1).max(240),
+      })
+      .strict(),
+  ])
+  .superRefine((result, context) => {
+    if (result.status !== "conflict" || !result.serverPayload) return;
+    if (
+      result.serverPayload.id !== result.entityId ||
+      result.serverPayload.revision !== result.serverRevision ||
+      result.serverPayload.updatedAt !== result.serverUpdatedAt
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["serverPayload"],
+        message: "Conflict snapshot metadata must match the result.",
+      });
+    }
+    const expectedSchema =
+      result.entityType === "account"
+        ? mobileSyncAccountSnapshotSchema
+        : result.entityType === "category"
+          ? mobileSyncCategorySnapshotSchema
+          : mobileSyncTransactionSnapshotSchema;
+    if (!expectedSchema.safeParse(result.serverPayload).success) {
+      context.addIssue({
+        code: "custom",
+        path: ["serverPayload"],
+        message: "Conflict snapshot does not match its entity type.",
+      });
+    }
+  });
+
+export const mobileSyncPushResponseSchema = z
+  .object({
+    protocolVersion: z.literal(MOBILE_SYNC_PROTOCOL_VERSION),
+    results: z.array(mobileSyncPushResultSchema).min(1).max(50),
+  })
+  .strict();
+
 export type MobileSyncChange = z.infer<typeof mobileSyncChangeSchema>;
 export type MobileSyncPullRequest = z.infer<typeof mobileSyncPullRequestSchema>;
 export type MobileSyncPullResponse = z.infer<typeof mobileSyncPullResponseSchema>;
 export type MobileSyncPushOperation = z.infer<typeof mobileSyncPushOperationSchema>;
 export type MobileSyncPushRequest = z.infer<typeof mobileSyncPushRequestSchema>;
+export type MobileSyncPushResult = z.infer<typeof mobileSyncPushResultSchema>;
+export type MobileSyncPushResponse = z.infer<typeof mobileSyncPushResponseSchema>;

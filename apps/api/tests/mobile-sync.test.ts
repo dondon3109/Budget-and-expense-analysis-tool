@@ -18,7 +18,7 @@ import type { Bindings } from "../src/types";
 const databases: DatabaseSync[] = [];
 
 function d1FromSqlite(database: DatabaseSync): D1Database {
-  return {
+  const api = {
     prepare(sql: string) {
       let bindings: SQLInputValue[] = [];
       const statement = {
@@ -35,10 +35,34 @@ function d1FromSqlite(database: DatabaseSync): D1Database {
             results: database.prepare(sql).all(...bindings) as T[],
           };
         },
+        async raw<T = unknown[]>() {
+          const rows = database.prepare(sql).all(...bindings) as Record<string, unknown>[];
+          return rows.map((row) => Object.values(row)) as T[];
+        },
+        async run() {
+          const result = database.prepare(sql).run(...bindings);
+          return { success: true, meta: { changes: Number(result.changes) } };
+        },
+        execute() {
+          const result = database.prepare(sql).run(...bindings);
+          return { success: true, meta: { changes: Number(result.changes) } };
+        },
       };
       return statement;
     },
-  } as unknown as D1Database;
+    async batch(statements: Array<{ execute(): unknown }>) {
+      database.exec("BEGIN IMMEDIATE");
+      try {
+        const results = statements.map((statement) => statement.execute());
+        database.exec("COMMIT");
+        return results;
+      } catch (error) {
+        database.exec("ROLLBACK");
+        throw error;
+      }
+    },
+  };
+  return api as unknown as D1Database;
 }
 
 function createSyncEnvironment(): { env: Bindings; database: DatabaseSync } {
@@ -101,6 +125,12 @@ function createSyncEnvironment(): { env: Bindings; database: DatabaseSync } {
     .filter(Boolean)) {
     database.exec(statement);
   }
+  database.exec(
+    readFileSync(
+      new URL("../../../db/migrations/0035_mobile_sync_transaction_push.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   return { env: { DB: d1FromSqlite(database) }, database };
 }
 
@@ -213,6 +243,146 @@ describe("mobile sync pull repository", () => {
   });
 });
 
+describe("mobile sync transaction push repository", () => {
+  const clientId = "00000000-0000-4000-8000-000000000001";
+  const entityId = "00000000-0000-4000-8000-000000000002";
+
+  function createOperation() {
+    return {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "00000000-0000-4000-8000-000000000003",
+          idempotencyKey: "00000000-0000-4000-8000-000000000004",
+          entityType: "transaction" as const,
+          entityId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: {
+            kind: "expense" as const,
+            date: "2026-08-13",
+            description: "Offline lunch",
+            amountMinor: 12_345,
+            currency: "PHP" as const,
+            categoryId: "category-1",
+            accountId: "account-1",
+          },
+        },
+      ],
+    };
+  }
+
+  it("creates a client-ID transaction and replays the same acknowledgement idempotently", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const input = createOperation();
+
+    const first = await repository.push(env, "tenant-1", input);
+    const replay = await repository.push(env, "tenant-1", input);
+
+    expect(first).toEqual(replay);
+    expect(first.results[0]).toMatchObject({ status: "acknowledged", revision: 1, entityId });
+    expect(
+      database
+        .prepare("SELECT amount_minor, revision FROM transactions WHERE id = ?")
+        .get(entityId),
+    ).toEqual({ amount_minor: -12_345, revision: 1 });
+    expect(
+      database.prepare("SELECT count(*) AS count FROM transactions WHERE id = ?").get(entityId),
+    ).toEqual({ count: 1 });
+  });
+
+  it("rejects reuse of one idempotency key with a different payload", async () => {
+    const { env } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const input = createOperation();
+    await repository.push(env, "tenant-1", input);
+    input.operations[0]!.payload.description = "Changed request";
+
+    await expect(repository.push(env, "tenant-1", input)).rejects.toMatchObject({
+      status: 409,
+      code: "idempotency_key_reused",
+    });
+  });
+
+  it("updates only the expected revision and returns the server snapshot for a stale edit", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    await repository.push(env, "tenant-1", createOperation());
+    const update = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "00000000-0000-4000-8000-000000000005",
+          idempotencyKey: "00000000-0000-4000-8000-000000000006",
+          entityType: "transaction" as const,
+          entityId,
+          operationType: "update" as const,
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { description: "Updated offline lunch" },
+        },
+      ],
+    };
+    const updated = await repository.push(env, "tenant-1", update);
+    expect(updated.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+    expect(
+      database.prepare("SELECT description, revision FROM transactions WHERE id = ?").get(entityId),
+    ).toEqual({
+      description: "Updated offline lunch",
+      revision: 2,
+    });
+
+    const stale = structuredClone(update);
+    stale.operations[0]!.operationId = "00000000-0000-4000-8000-000000000007";
+    stale.operations[0]!.idempotencyKey = "00000000-0000-4000-8000-000000000008";
+    stale.operations[0]!.payload.description = "Stale overwrite";
+    const conflicted = await repository.push(env, "tenant-1", stale);
+    expect(conflicted.results[0]).toMatchObject({
+      status: "conflict",
+      code: "stale_revision",
+      serverRevision: 2,
+      serverPayload: { description: "Updated offline lunch" },
+    });
+  });
+
+  it("deletes once and emits a revisioned tombstone", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    await repository.push(env, "tenant-1", createOperation());
+    const removed = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "00000000-0000-4000-8000-000000000009",
+          idempotencyKey: "00000000-0000-4000-8000-000000000010",
+          entityType: "transaction",
+          entityId,
+          operationType: "delete",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    expect(removed.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+    expect(
+      database.prepare("SELECT id FROM transactions WHERE id = ?").get(entityId),
+    ).toBeUndefined();
+    expect(
+      database
+        .prepare(
+          "SELECT operation, row_revision FROM mobile_sync_changes WHERE tenant_id = ? AND entity_id = ? ORDER BY sequence DESC LIMIT 1",
+        )
+        .get("tenant-1", entityId),
+    ).toEqual({ operation: "delete", row_revision: 2 });
+  });
+});
+
 describe("mobile sync route", () => {
   it("derives the tenant and rejects ownership fields", async () => {
     const pull = vi.fn(async () => ({
@@ -221,7 +391,22 @@ describe("mobile sync route", () => {
       nextCursor: "v1.0",
       hasMore: false,
     }));
-    const mobileSync: MobileSyncRepository = { pull };
+    const push = vi.fn(async () => ({
+      protocolVersion: 1 as const,
+      results: [
+        {
+          operationId: "00000000-0000-4000-8000-000000000003",
+          entityType: "transaction" as const,
+          entityId: "00000000-0000-4000-8000-000000000002",
+          status: "acknowledged" as const,
+          revision: 1,
+        },
+      ],
+    }));
+    const mobileSync: MobileSyncRepository = {
+      pull,
+      push,
+    };
     const authVerifier: AuthVerifier = {
       verify: vi.fn(async () => ({ id: "user-1", role: "authenticated" })),
     };
@@ -264,5 +449,41 @@ describe("mobile sync route", () => {
     });
     expect(forged.status).toBe(400);
     expect(pull).toHaveBeenCalledTimes(1);
+
+    const pushed = await app.request("/api/app/sync/push", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        protocolVersion: 1,
+        clientId: "00000000-0000-4000-8000-000000000001",
+        operations: [
+          {
+            operationId: "00000000-0000-4000-8000-000000000003",
+            idempotencyKey: "00000000-0000-4000-8000-000000000004",
+            entityType: "transaction",
+            entityId: "00000000-0000-4000-8000-000000000002",
+            operationType: "delete",
+            baseRevision: 1,
+            dependencyIds: [],
+            payload: {},
+          },
+        ],
+      }),
+    });
+    expect(pushed.status).toBe(200);
+    expect(push).toHaveBeenCalledWith(undefined, "tenant-safe", expect.any(Object));
+
+    const forgedPush = await app.request("/api/app/sync/push", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        protocolVersion: 1,
+        clientId: "00000000-0000-4000-8000-000000000001",
+        tenantId: "tenant-other",
+        operations: [],
+      }),
+    });
+    expect(forgedPush.status).toBe(400);
+    expect(push).toHaveBeenCalledTimes(1);
   });
 });

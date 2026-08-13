@@ -2,8 +2,9 @@
 
 Status: Milestone 4 implementation in progress. The isolated branch implements versioned contracts,
 D1 revision/change foundations, authenticated read-only pull, and atomic encrypted mobile pull
-application for accounts, categories, transactions, and tombstones. Push remains unimplemented. The
-current production API and D1 have not been changed.
+application for accounts, categories, transactions, and tombstones. The first server push slice
+supports non-transfer transaction create, update, and delete; local mutation/outbox consumption is
+next. The current production API and D1 have not been changed.
 
 ## Goals and invariants
 
@@ -61,6 +62,14 @@ A process kill before commit changes nothing; a kill after commit leaves enough 
 6. Returns one result per operation: acknowledged, conflict, retryable rejection, or permanent rejection.
 
 The first implementation should use atomic batches for one dependency graph. It must not acknowledge a dependent child if its parent failed. A transfer is one command whose two legs and change-log entries commit in one D1 transaction.
+
+The implemented server slice accepts dependency-free non-transfer transaction operations only.
+Client-generated UUID creation, exact-base-revision updates/deletes, the D1 mutation, trigger-generated
+change row, and tenant/client/idempotency acknowledgement commit in one D1 batch. Retrying the same
+key and canonical operation returns its stored result; using that key for different content is a
+conflict. Concurrent loss of the expected revision returns the current validated server snapshot
+instead of overwriting it. Account/category push, dependency graphs, and atomic transfers remain
+explicitly unsupported until their complete invariants are implemented.
 
 ## Pull
 
