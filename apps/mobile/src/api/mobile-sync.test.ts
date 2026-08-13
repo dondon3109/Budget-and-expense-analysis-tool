@@ -1,4 +1,4 @@
-import { pullMobileSync, pushMobileSync } from "./mobile-sync";
+import { acknowledgeMobileSync, pullMobileSync, pushMobileSync } from "./mobile-sync";
 
 const accountChange = {
   entityType: "account",
@@ -96,6 +96,59 @@ describe("fixed mobile synchronization transport", () => {
     expect(call[1].method).toBe("POST");
     expect(new Headers(call[1].headers).get("Authorization")).toBe("Bearer token");
     expect(call[1].body).not.toContain("tenant");
+  });
+
+  it("acknowledges only the encrypted workspace client and committed cursor", async () => {
+    const clientId = "00000000-0000-4000-8000-000000000001";
+    const fetchImpl = jest.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            protocolVersion: 1,
+            acknowledgedCursor: "v1.9",
+            retentionFloorCursor: "v1.2",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    await expect(
+      acknowledgeMobileSync({
+        accessToken: "token",
+        clientId,
+        cursor: "v1.9",
+        fetchImpl,
+      }),
+    ).resolves.toMatchObject({ acknowledgedCursor: "v1.9", retentionFloorCursor: "v1.2" });
+    const request = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(request[0].pathname).toBe("/api/app/sync/acknowledge");
+    expect(new Headers(request[1].headers).get("Authorization")).toBe("Bearer token");
+    expect(request[1].body).toBe(JSON.stringify({ protocolVersion: 1, clientId, cursor: "v1.9" }));
+    expect(request[1].body).not.toContain("tenant");
+  });
+
+  it("rejects an acknowledgement that echoes a different cursor", async () => {
+    const fetchImpl = jest.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            protocolVersion: 1,
+            acknowledgedCursor: "v1.8",
+            retentionFloorCursor: "v1.2",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    await expect(
+      acknowledgeMobileSync({
+        accessToken: "token",
+        clientId: "00000000-0000-4000-8000-000000000001",
+        cursor: "v1.9",
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_response" });
   });
 
   it("classifies idempotency mismatch without discarding the local operation", async () => {

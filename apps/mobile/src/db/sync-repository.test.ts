@@ -140,6 +140,28 @@ describe("atomic encrypted pull application", () => {
     ).toEqual({ description: "Lunch", server_revision: 1, sync_state: "synced" });
   });
 
+  it("records a server acknowledgement only for the currently committed cursor", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, bootstrapPage);
+    await repository.recordAcknowledgement("v1.3", "v1.1");
+    expect(
+      database.native
+        .prepare(
+          `SELECT server_cursor, server_acknowledged_cursor, retention_floor_cursor
+           FROM sync_metadata`,
+        )
+        .get(),
+    ).toEqual({
+      server_cursor: "v1.3",
+      server_acknowledged_cursor: "v1.3",
+      retention_floor_cursor: "v1.1",
+    });
+
+    await expect(repository.recordAcknowledgement("v1.2", "v1.1")).rejects.toMatchObject({
+      code: "cursor_mismatch",
+    });
+  });
+
   it("rolls back every row and the cursor when a dependency is invalid", async () => {
     const page: MobileSyncPullResponse = {
       ...bootstrapPage,

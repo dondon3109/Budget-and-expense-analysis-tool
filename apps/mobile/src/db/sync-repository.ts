@@ -14,6 +14,11 @@ interface CursorRow {
   server_cursor: string | null;
 }
 
+interface CursorAcknowledgementRow extends CursorRow {
+  server_acknowledged_cursor: string | null;
+  retention_floor_cursor: string | null;
+}
+
 interface EntityStateRow {
   server_revision: number;
   sync_state: "synced" | "pending" | "failed" | "conflicted";
@@ -268,6 +273,29 @@ export class LocalSyncRepository {
       "SELECT server_cursor FROM sync_metadata WHERE singleton = 1",
     );
     return row?.server_cursor ?? null;
+  }
+
+  recordAcknowledgement(cursor: string, retentionFloorCursor: string): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const row = await this.database.getFirstAsync<CursorAcknowledgementRow>(
+          `SELECT server_cursor, server_acknowledged_cursor, retention_floor_cursor
+           FROM sync_metadata WHERE singleton = 1`,
+        );
+        if (row?.server_cursor !== cursor) {
+          throw new LocalSyncApplyError(
+            "The local cursor changed before its server acknowledgement was recorded.",
+            "cursor_mismatch",
+          );
+        }
+        await this.database.runAsync(
+          `UPDATE sync_metadata SET server_acknowledged_cursor = ?, retention_floor_cursor = ?
+           WHERE singleton = 1`,
+          cursor,
+          retentionFloorCursor,
+        );
+      });
+    });
   }
 
   applyPullPage(expectedCursor: string | null, value: MobileSyncPullResponse): Promise<void> {

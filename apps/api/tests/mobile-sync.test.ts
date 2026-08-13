@@ -6,9 +6,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
 import {
+  compactMobileSyncChanges,
   createMobileSyncRepository,
   decodeMobileSyncCursor,
+  decodeMobileSyncSnapshotCursor,
   encodeMobileSyncCursor,
+  encodeMobileSyncSnapshotCursor,
   type MobileSyncRepository,
 } from "../src/db/mobile-sync";
 import type { TenantResolver } from "../src/db/tenants";
@@ -147,6 +150,16 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
     .filter(Boolean)) {
     database.exec(statement);
   }
+  const acknowledgementMigration = readFileSync(
+    new URL("../../../db/migrations/0037_mobile_sync_client_acknowledgements.sql", import.meta.url),
+    "utf8",
+  );
+  for (const statement of acknowledgementMigration
+    .split("--> statement-breakpoint")
+    .map((part) => part.trim())
+    .filter(Boolean)) {
+    database.exec(statement);
+  }
   return { env: { DB: d1FromSqlite(database) }, database };
 }
 
@@ -158,6 +171,268 @@ describe("mobile sync cursor", () => {
   it("round-trips canonical opaque sequences", () => {
     expect(decodeMobileSyncCursor(encodeMobileSyncCursor(12_345))).toBe(12_345);
     expect(() => decodeMobileSyncCursor("v1.00")).toThrow();
+    expect(decodeMobileSyncSnapshotCursor(encodeMobileSyncSnapshotCursor(12_345))).toBe(12_345);
+    expect(() => decodeMobileSyncSnapshotCursor("s1.00")).toThrow();
+  });
+});
+
+describe("mobile sync client acknowledgement", () => {
+  const clientId = "00000000-0000-4000-8000-000000000001";
+
+  it("advances monotonically and never accepts a regressed client cursor", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository();
+    const currentSequence = Number(
+      database
+        .prepare("SELECT sequence FROM mobile_sync_state WHERE tenant_id = ?")
+        .get("tenant-1")!.sequence,
+    );
+
+    await expect(
+      repository.acknowledge(env, "tenant-1", {
+        protocolVersion: 1,
+        clientId,
+        cursor: encodeMobileSyncCursor(currentSequence),
+      }),
+    ).resolves.toEqual({
+      protocolVersion: 1,
+      acknowledgedCursor: encodeMobileSyncCursor(currentSequence),
+      retentionFloorCursor: "v1.0",
+    });
+    expect(
+      database
+        .prepare(
+          `SELECT acknowledged_sequence AS acknowledgedSequence
+           FROM mobile_sync_clients WHERE tenant_id = ? AND client_id = ?`,
+        )
+        .get("tenant-1", clientId),
+    ).toEqual({ acknowledgedSequence: currentSequence });
+
+    await expect(
+      repository.acknowledge(env, "tenant-1", {
+        protocolVersion: 1,
+        clientId,
+        cursor: encodeMobileSyncCursor(currentSequence - 1),
+      }),
+    ).rejects.toMatchObject({ status: 409, code: "full_resync_required" });
+  });
+
+  it("rejects acknowledgements outside the current retention window", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository();
+    database
+      .prepare(
+        "UPDATE mobile_sync_state SET retention_floor_sequence = 2 WHERE tenant_id = 'tenant-1'",
+      )
+      .run();
+
+    await expect(
+      repository.acknowledge(env, "tenant-1", {
+        protocolVersion: 1,
+        clientId,
+        cursor: "v1.1",
+      }),
+    ).rejects.toMatchObject({ status: 409, code: "full_resync_required" });
+    await expect(
+      repository.acknowledge(env, "tenant-1", {
+        protocolVersion: 1,
+        clientId,
+        cursor: "v1.z",
+      }),
+    ).rejects.toMatchObject({ status: 409, code: "full_resync_required" });
+  });
+});
+
+describe("mobile sync full snapshot", () => {
+  const clientId = "00000000-0000-4000-8000-000000000001";
+
+  it("keeps a stable server sequence across resumable pages", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const first = await repository.snapshot(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      snapshotCursor: null,
+      offset: 0,
+      limit: 2,
+    });
+    expect(first).toMatchObject({
+      snapshotCursor: "s1.3",
+      nextOffset: 2,
+      hasMore: true,
+      resumeCursor: "v1.3",
+    });
+    expect(first.changes.map((change) => change.entityId)).toEqual(["account-1", "category-1"]);
+
+    database
+      .prepare("INSERT INTO accounts (id, tenant_id, name, type) VALUES (?, ?, ?, ?)")
+      .run("account-after-snapshot", "tenant-1", "Later", "cash");
+    const second = await repository.snapshot(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      snapshotCursor: first.snapshotCursor,
+      offset: first.nextOffset,
+      limit: 2,
+    });
+    expect(second).toMatchObject({ nextOffset: 3, hasMore: false, resumeCursor: "v1.3" });
+    expect(second.changes.map((change) => change.entityId)).toEqual(["transaction-1"]);
+    expect(JSON.stringify(second)).not.toContain("account-after-snapshot");
+  });
+
+  it("binds a resumable snapshot to one non-expired installation session", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository();
+    const first = await repository.snapshot(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      snapshotCursor: null,
+      offset: 0,
+      limit: 1,
+    });
+    await expect(
+      repository.snapshot(env, "tenant-1", {
+        protocolVersion: 1,
+        clientId: "00000000-0000-4000-8000-000000000002",
+        snapshotCursor: first.snapshotCursor,
+        offset: first.nextOffset,
+        limit: 1,
+      }),
+    ).rejects.toMatchObject({ status: 409, code: "full_resync_required" });
+
+    database
+      .prepare(
+        `UPDATE mobile_sync_clients SET snapshot_expires_at = datetime('now', '-1 second')
+         WHERE tenant_id = ? AND client_id = ?`,
+      )
+      .run("tenant-1", clientId);
+    await expect(
+      repository.snapshot(env, "tenant-1", {
+        protocolVersion: 1,
+        clientId,
+        snapshotCursor: first.snapshotCursor,
+        offset: first.nextOffset,
+        limit: 1,
+      }),
+    ).rejects.toMatchObject({ status: 409, code: "full_resync_required" });
+  });
+});
+
+describe("mobile sync retention compaction", () => {
+  const clientId = "00000000-0000-4000-8000-000000000001";
+
+  it("removes only old acknowledged superseded rows and tombstones", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const entityId = "00000000-0000-4000-8000-000000000010";
+    await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "00000000-0000-4000-8000-000000000011",
+          idempotencyKey: "00000000-0000-4000-8000-000000000012",
+          entityType: "transaction",
+          entityId,
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: {
+            kind: "expense",
+            accountId: "account-1",
+            categoryId: "category-1",
+            date: "2026-01-01",
+            description: "Old temporary row",
+            amountMinor: 100,
+            currency: "PHP",
+          },
+        },
+      ],
+    });
+    await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "00000000-0000-4000-8000-000000000013",
+          idempotencyKey: "00000000-0000-4000-8000-000000000014",
+          entityType: "transaction",
+          entityId,
+          operationType: "delete",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    const sequence = Number(
+      database
+        .prepare("SELECT sequence FROM mobile_sync_state WHERE tenant_id = ?")
+        .get("tenant-1")!.sequence,
+    );
+    await repository.acknowledge(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      cursor: encodeMobileSyncCursor(sequence),
+    });
+    database
+      .prepare(
+        `UPDATE mobile_sync_changes SET server_updated_at = '2025-01-01 00:00:00'
+         WHERE tenant_id = ?`,
+      )
+      .run("tenant-1");
+
+    await expect(compactMobileSyncChanges(env, "2026-08-14 00:00:00")).resolves.toMatchObject({
+      tenants: 1,
+      deletedChanges: 2,
+    });
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM mobile_sync_changes WHERE entity_id = ?")
+        .get(entityId),
+    ).toEqual({ count: 0 });
+    expect(
+      database
+        .prepare(
+          `SELECT retention_floor_sequence AS retentionFloorSequence
+           FROM mobile_sync_state WHERE tenant_id = ?`,
+        )
+        .get("tenant-1"),
+    ).toEqual({ retentionFloorSequence: sequence });
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM mobile_sync_changes WHERE entity_id = ?")
+        .get("account-1"),
+    ).toEqual({ count: 1 });
+  });
+
+  it("does not compact while a resumable full snapshot is active", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository();
+    const sequence = Number(
+      database
+        .prepare("SELECT sequence FROM mobile_sync_state WHERE tenant_id = ?")
+        .get("tenant-1")!.sequence,
+    );
+    await repository.acknowledge(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      cursor: encodeMobileSyncCursor(sequence),
+    });
+    await repository.snapshot(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      snapshotCursor: null,
+      offset: 0,
+      limit: 1,
+    });
+    database
+      .prepare("UPDATE mobile_sync_changes SET server_updated_at = '2025-01-01 00:00:00'")
+      .run();
+
+    await expect(compactMobileSyncChanges(env, "2026-08-14 00:00:00")).resolves.toMatchObject({
+      tenants: 0,
+      deletedChanges: 0,
+    });
   });
 });
 
@@ -223,6 +498,23 @@ describe("mobile sync pull repository", () => {
       repository.pull(env, "tenant-1", {
         protocolVersion: 1,
         cursor: "v1.z",
+        limit: 10,
+      }),
+    ).rejects.toMatchObject({ status: 409, code: "full_resync_required" });
+  });
+
+  it("requires a safe full resync when a cursor predates retained changes", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository();
+    database
+      .prepare(
+        "UPDATE mobile_sync_state SET retention_floor_sequence = 2 WHERE tenant_id = 'tenant-1'",
+      )
+      .run();
+    await expect(
+      repository.pull(env, "tenant-1", {
+        protocolVersion: 1,
+        cursor: "v1.1",
         limit: 10,
       }),
     ).rejects.toMatchObject({ status: 409, code: "full_resync_required" });
@@ -1283,9 +1575,24 @@ describe("mobile sync route", () => {
         },
       ],
     }));
+    const acknowledge = vi.fn(async () => ({
+      protocolVersion: 1 as const,
+      acknowledgedCursor: "v1.3",
+      retentionFloorCursor: "v1.0",
+    }));
+    const snapshot = vi.fn(async () => ({
+      protocolVersion: 1 as const,
+      snapshotCursor: "s1.3",
+      changes: [],
+      nextOffset: 0,
+      hasMore: false,
+      resumeCursor: "v1.3",
+    }));
     const mobileSync: MobileSyncRepository = {
+      acknowledge,
       pull,
       push,
+      snapshot,
     };
     const authVerifier: AuthVerifier = {
       verify: vi.fn(async () => ({ id: "user-1", role: "authenticated" })),
@@ -1329,6 +1636,55 @@ describe("mobile sync route", () => {
     });
     expect(forged.status).toBe(400);
     expect(pull).toHaveBeenCalledTimes(1);
+
+    const acknowledged = await app.request("/api/app/sync/acknowledge", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        protocolVersion: 1,
+        clientId: "00000000-0000-4000-8000-000000000001",
+        cursor: "v1.3",
+      }),
+    });
+    expect(acknowledged.status).toBe(200);
+    expect(acknowledge).toHaveBeenCalledWith(undefined, "tenant-safe", {
+      protocolVersion: 1,
+      clientId: "00000000-0000-4000-8000-000000000001",
+      cursor: "v1.3",
+    });
+
+    const forgedAcknowledgement = await app.request("/api/app/sync/acknowledge", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        protocolVersion: 1,
+        clientId: "00000000-0000-4000-8000-000000000001",
+        cursor: "v1.3",
+        tenantId: "tenant-other",
+      }),
+    });
+    expect(forgedAcknowledgement.status).toBe(400);
+    expect(acknowledge).toHaveBeenCalledTimes(1);
+
+    const snapshotted = await app.request("/api/app/sync/snapshot", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        protocolVersion: 1,
+        clientId: "00000000-0000-4000-8000-000000000001",
+        snapshotCursor: null,
+        offset: 0,
+        limit: 10,
+      }),
+    });
+    expect(snapshotted.status).toBe(200);
+    expect(snapshot).toHaveBeenCalledWith(undefined, "tenant-safe", {
+      protocolVersion: 1,
+      clientId: "00000000-0000-4000-8000-000000000001",
+      snapshotCursor: null,
+      offset: 0,
+      limit: 10,
+    });
 
     const pushed = await app.request("/api/app/sync/push", {
       method: "POST",

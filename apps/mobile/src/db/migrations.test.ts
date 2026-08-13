@@ -26,9 +26,12 @@ describe("local SQLCipher migrations", () => {
     expect(statements.some((statement) => statement.includes("CREATE TABLE sync_tombstones"))).toBe(
       true,
     );
-    expect(
-      statements.some((statement) => statement.includes("sync_outbox_entity_unique")),
-    ).toBe(true);
+    expect(statements.some((statement) => statement.includes("sync_outbox_entity_unique"))).toBe(
+      true,
+    );
+    expect(statements.some((statement) => statement.includes("server_acknowledged_cursor"))).toBe(
+      true,
+    );
     expect(statements.at(-2)).toBe(`PRAGMA user_version = ${LOCAL_SCHEMA_VERSION}`);
     expect(statements.at(-1)).toContain(`migration:${LOCAL_SCHEMA_VERSION}`);
   });

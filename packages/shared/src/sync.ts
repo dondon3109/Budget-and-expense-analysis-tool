@@ -35,6 +35,11 @@ export const mobileSyncCursorSchema = z
   .regex(/^v1\.[0-9a-z]+$/)
   .max(40);
 
+export const mobileSyncSnapshotCursorSchema = z
+  .string()
+  .regex(/^s1\.[0-9a-z]+$/)
+  .max(40);
+
 export const mobileSyncAccountSnapshotSchema = z
   .object({
     id: resourceIdSchema,
@@ -182,6 +187,47 @@ export const mobileSyncPullResponseSchema = z
     changes: z.array(mobileSyncChangeSchema).max(200),
     nextCursor: mobileSyncCursorSchema,
     hasMore: z.boolean(),
+  })
+  .strict();
+
+export const mobileSyncAcknowledgeRequestSchema = z
+  .object({
+    protocolVersion: z.literal(MOBILE_SYNC_PROTOCOL_VERSION),
+    clientId: uuidSchema,
+    cursor: mobileSyncCursorSchema,
+  })
+  .strict();
+
+export const mobileSyncAcknowledgeResponseSchema = z
+  .object({
+    protocolVersion: z.literal(MOBILE_SYNC_PROTOCOL_VERSION),
+    acknowledgedCursor: mobileSyncCursorSchema,
+    retentionFloorCursor: mobileSyncCursorSchema,
+  })
+  .strict();
+
+export const mobileSyncSnapshotRequestSchema = z
+  .object({
+    protocolVersion: z.literal(MOBILE_SYNC_PROTOCOL_VERSION),
+    clientId: uuidSchema,
+    snapshotCursor: mobileSyncSnapshotCursorSchema.nullable().default(null),
+    offset: z.number().int().nonnegative().default(0),
+    limit: z.number().int().min(1).max(200).default(100),
+  })
+  .strict()
+  .refine((value) => value.snapshotCursor !== null || value.offset === 0, {
+    path: ["offset"],
+    message: "A new snapshot starts at offset zero.",
+  });
+
+export const mobileSyncSnapshotResponseSchema = z
+  .object({
+    protocolVersion: z.literal(MOBILE_SYNC_PROTOCOL_VERSION),
+    snapshotCursor: mobileSyncSnapshotCursorSchema,
+    changes: z.array(mobileSyncChangeSchema).max(200),
+    nextOffset: z.number().int().nonnegative(),
+    hasMore: z.boolean(),
+    resumeCursor: mobileSyncCursorSchema,
   })
   .strict();
 
@@ -419,6 +465,10 @@ export const mobileSyncPushResponseSchema = z
   .strict();
 
 export type MobileSyncChange = z.infer<typeof mobileSyncChangeSchema>;
+export type MobileSyncAcknowledgeRequest = z.infer<typeof mobileSyncAcknowledgeRequestSchema>;
+export type MobileSyncAcknowledgeResponse = z.infer<typeof mobileSyncAcknowledgeResponseSchema>;
+export type MobileSyncSnapshotRequest = z.infer<typeof mobileSyncSnapshotRequestSchema>;
+export type MobileSyncSnapshotResponse = z.infer<typeof mobileSyncSnapshotResponseSchema>;
 export type MobileSyncPullRequest = z.infer<typeof mobileSyncPullRequestSchema>;
 export type MobileSyncPullResponse = z.infer<typeof mobileSyncPullResponseSchema>;
 export type MobileSyncPushOperation = z.infer<typeof mobileSyncPushOperationSchema>;

@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 3;
+export const LOCAL_SCHEMA_VERSION = 4;
 
 export const migrations: readonly Migration[] = [
   {
@@ -154,6 +154,14 @@ export const migrations: readonly Migration[] = [
     sql: `
       CREATE UNIQUE INDEX sync_outbox_entity_unique
         ON sync_outbox(entity_type, entity_id);
+    `,
+  },
+  {
+    version: 4,
+    name: "sync_cursor_acknowledgements",
+    sql: `
+      ALTER TABLE sync_metadata ADD COLUMN server_acknowledged_cursor TEXT;
+      ALTER TABLE sync_metadata ADD COLUMN retention_floor_cursor TEXT;
     `,
   },
 ] as const;

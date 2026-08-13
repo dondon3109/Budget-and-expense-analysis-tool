@@ -242,8 +242,10 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
 
 - Atomic transfers now have automated local/D1 and full native iOS reconnect/process-restart proof.
   Android runtime proof still requires a device or installed emulator/system image.
-- Tombstones are retained indefinitely in this first foundation. Cursor expiry, client acknowledgement,
-  compaction, and beside-the-current-database full-resync switching remain required before release.
+- Tenant-scoped client acknowledgement, a 90-day cursor-retention floor, resumable fixed-sequence
+  server snapshots, and guarded daily change/tombstone compaction are implemented and focused-tested.
+  The mobile beside-the-current-database snapshot builder, verification, and atomic generation switch
+  remain required before release; current recovery continues preserving and displaying the old copy.
 - Migration performance has only been exercised on fresh/local SQLite data; production-scale migration
   timing and rollback rehearsal are pending and no D1 migration has been deployed.
 - `apps/mobile` intentionally targets Android and iOS. A combined Expo export that also requests web

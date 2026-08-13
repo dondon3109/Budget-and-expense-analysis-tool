@@ -545,7 +545,7 @@ export class LocalTransactionMutationRepository {
     private readonly random: () => number = Math.random,
   ) {}
 
-  private async clientId(): Promise<string> {
+  async clientId(): Promise<string> {
     const current = await this.database.getFirstAsync<{ value: string }>(
       "SELECT value FROM workspace_metadata WHERE key = 'mobile_client_id'",
     );

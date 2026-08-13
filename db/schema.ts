@@ -200,15 +200,64 @@ export const transactions = sqliteTable(
   ],
 );
 
-export const mobileSyncState = sqliteTable("mobile_sync_state", {
-  tenantId: text("tenant_id")
-    .primaryKey()
-    .references(() => tenants.id, { onDelete: "cascade" }),
-  sequence: integer("sequence").notNull().default(0),
-  updatedAt: text("updated_at")
-    .notNull()
-    .default(sql`(datetime('now'))`),
-});
+export const mobileSyncState = sqliteTable(
+  "mobile_sync_state",
+  {
+    tenantId: text("tenant_id")
+      .primaryKey()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull().default(0),
+    retentionFloorSequence: integer("retention_floor_sequence").notNull().default(0),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    check(
+      "mobile_sync_state_retention_floor_nonnegative",
+      sql`${table.retentionFloorSequence} >= 0`,
+    ),
+  ],
+);
+
+export const mobileSyncClients = sqliteTable(
+  "mobile_sync_clients",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    clientId: text("client_id").notNull(),
+    acknowledgedSequence: integer("acknowledged_sequence").notNull().default(0),
+    lastSeenAt: text("last_seen_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    expiresAt: text("expires_at")
+      .notNull()
+      .default(sql`(datetime('now', '+90 days'))`),
+    snapshotSequence: integer("snapshot_sequence"),
+    snapshotExpiresAt: text("snapshot_expires_at"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tenantId, table.clientId] }),
+    index("mobile_sync_clients_expiry_idx").on(
+      table.tenantId,
+      table.expiresAt,
+      table.acknowledgedSequence,
+    ),
+    check(
+      "mobile_sync_clients_acknowledged_sequence_nonnegative",
+      sql`${table.acknowledgedSequence} >= 0`,
+    ),
+    check(
+      "mobile_sync_clients_snapshot_sequence_nonnegative",
+      sql`${table.snapshotSequence} IS NULL OR ${table.snapshotSequence} >= 0`,
+    ),
+    check(
+      "mobile_sync_clients_snapshot_pair_check",
+      sql`(${table.snapshotSequence} IS NULL) = (${table.snapshotExpiresAt} IS NULL)`,
+    ),
+  ],
+);
 
 export const mobileSyncChanges = sqliteTable(
   "mobile_sync_changes",

@@ -3,21 +3,27 @@ import {
   accountInputSchema,
   buildTransferLegs,
   categoryInputSchema,
+  mobileSyncAcknowledgeResponseSchema,
   mobileSyncAccountSnapshotSchema,
   mobileSyncPushResultSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncChangeSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
+  mobileSyncSnapshotResponseSchema,
   normalizeSignedAmount,
   transactionInputSchema,
   type MobileSyncChange,
+  type MobileSyncAcknowledgeRequest,
+  type MobileSyncAcknowledgeResponse,
   type MobileSyncPullRequest,
   type MobileSyncPullResponse,
   type MobileSyncPushOperation,
   type MobileSyncPushRequest,
   type MobileSyncPushResponse,
   type MobileSyncPushResult,
+  type MobileSyncSnapshotRequest,
+  type MobileSyncSnapshotResponse,
   type AccountInput,
   type CategoryInput,
   type TransactionInput,
@@ -54,6 +60,17 @@ interface EntitySyncRow {
   payloadJson: string;
 }
 
+interface CompactionTenantRow {
+  tenantId: string;
+  safeSequence: number;
+}
+
+export interface MobileSyncCompactionResult {
+  tenants: number;
+  deletedChanges: number;
+  expiredClients: number;
+}
+
 type AccountSnapshot = ReturnType<typeof mobileSyncAccountSnapshotSchema.parse>;
 type CategorySnapshot = ReturnType<typeof mobileSyncCategorySnapshotSchema.parse>;
 type TransactionSnapshot = ReturnType<typeof mobileSyncTransactionSnapshotSchema.parse>;
@@ -71,6 +88,16 @@ function withCategoryLock(snapshot: EntitySnapshot | null, hasPro: boolean): Ent
 }
 
 export interface MobileSyncRepository {
+  acknowledge(
+    env: Bindings,
+    tenantId: string,
+    input: MobileSyncAcknowledgeRequest,
+  ): Promise<MobileSyncAcknowledgeResponse>;
+  snapshot(
+    env: Bindings,
+    tenantId: string,
+    input: MobileSyncSnapshotRequest,
+  ): Promise<MobileSyncSnapshotResponse>;
   pull(
     env: Bindings,
     tenantId: string,
@@ -102,6 +129,26 @@ export function decodeMobileSyncCursor(cursor: string | null): number {
     encodeMobileSyncCursor(sequence) !== cursor
   ) {
     throw new HttpError(400, "invalid_sync_cursor", "Restart synchronization from this device.");
+  }
+  return sequence;
+}
+
+export function encodeMobileSyncSnapshotCursor(sequence: number): string {
+  if (!Number.isSafeInteger(sequence) || sequence < 0) {
+    throw new Error("Cannot encode an invalid mobile snapshot sequence.");
+  }
+  return `s1.${sequence.toString(36)}`;
+}
+
+export function decodeMobileSyncSnapshotCursor(cursor: string): number {
+  const encoded = cursor.slice(3);
+  const sequence = Number.parseInt(encoded, 36);
+  if (
+    !Number.isSafeInteger(sequence) ||
+    sequence < 0 ||
+    encodeMobileSyncSnapshotCursor(sequence) !== cursor
+  ) {
+    throw new HttpError(400, "invalid_snapshot_cursor", "Restart the safe full snapshot.");
   }
   return sequence;
 }
@@ -167,6 +214,97 @@ function serverTimestamp(): string {
     .toISOString()
     .replace("T", " ")
     .replace(/\.\d{3}Z$/, "");
+}
+
+/**
+ * Removes only changes every non-expired installation has acknowledged and that
+ * are older than the supported 90-day offline window. Latest live snapshots are
+ * retained; acknowledged deletion tombstones may be compacted because a future
+ * full snapshot represents their absence.
+ */
+export async function compactMobileSyncChanges(
+  env: Bindings,
+  now = serverTimestamp(),
+  batchLimit = 1_000,
+): Promise<MobileSyncCompactionResult> {
+  if (!Number.isSafeInteger(batchLimit) || batchLimit < 1 || batchLimit > 5_000) {
+    throw new Error("Choose a mobile sync compaction batch from 1 to 5,000.");
+  }
+  const cutoff = new Date(`${now.replace(" ", "T")}Z`);
+  if (Number.isNaN(cutoff.getTime())) throw new Error("Choose a valid compaction timestamp.");
+  cutoff.setUTCDate(cutoff.getUTCDate() - 90);
+  const cutoffTimestamp = cutoff
+    .toISOString()
+    .replace("T", " ")
+    .replace(/\.\d{3}Z$/, "");
+
+  await env.DB.prepare(
+    `UPDATE mobile_sync_clients SET snapshot_sequence = NULL, snapshot_expires_at = NULL
+     WHERE snapshot_expires_at IS NOT NULL AND snapshot_expires_at < ?`,
+  )
+    .bind(now)
+    .run();
+  const expired = await env.DB.prepare(
+    `DELETE FROM mobile_sync_clients
+     WHERE expires_at < ? AND snapshot_sequence IS NULL`,
+  )
+    .bind(now)
+    .run();
+  const candidates = await env.DB.prepare(
+    `SELECT state.tenant_id AS tenantId,
+            MIN(clients.acknowledged_sequence) AS safeSequence
+     FROM mobile_sync_state state
+     JOIN mobile_sync_clients clients ON clients.tenant_id = state.tenant_id
+     WHERE clients.expires_at >= ?
+       AND NOT EXISTS (
+         SELECT 1 FROM mobile_sync_clients snapshot
+         WHERE snapshot.tenant_id = state.tenant_id
+           AND snapshot.snapshot_expires_at >= ?
+       )
+     GROUP BY state.tenant_id
+     HAVING MIN(clients.acknowledged_sequence) > state.retention_floor_sequence
+     LIMIT 100`,
+  )
+    .bind(now, now)
+    .all<CompactionTenantRow>();
+
+  let deletedChanges = 0;
+  for (const candidate of candidates.results) {
+    const safeSequence = Number(candidate.safeSequence);
+    if (!Number.isSafeInteger(safeSequence) || safeSequence < 1) continue;
+    const results = await env.DB.batch([
+      env.DB.prepare(
+        `DELETE FROM mobile_sync_changes
+         WHERE tenant_id = ? AND sequence IN (
+           SELECT old.sequence
+           FROM mobile_sync_changes old
+           WHERE old.tenant_id = ? AND old.sequence <= ? AND old.server_updated_at < ?
+             AND (
+               old.operation = 'delete'
+               OR EXISTS (
+                 SELECT 1 FROM mobile_sync_changes newer
+                 WHERE newer.tenant_id = old.tenant_id
+                   AND newer.entity_type = old.entity_type
+                   AND newer.entity_id = old.entity_id
+                   AND newer.sequence > old.sequence
+               )
+             )
+           ORDER BY old.sequence LIMIT ?
+         )`,
+      ).bind(candidate.tenantId, candidate.tenantId, safeSequence, cutoffTimestamp, batchLimit),
+      env.DB.prepare(
+        `UPDATE mobile_sync_state
+         SET retention_floor_sequence = MAX(retention_floor_sequence, ?), updated_at = ?
+         WHERE tenant_id = ?`,
+      ).bind(safeSequence, now, candidate.tenantId),
+    ]);
+    deletedChanges += Number(results[0]?.meta.changes ?? 0);
+  }
+  return {
+    tenants: candidates.results.length,
+    deletedChanges,
+    expiredClients: Number(expired.meta.changes ?? 0),
+  };
 }
 
 async function requestHash(operation: MobileSyncPushOperation): Promise<string> {
@@ -1203,14 +1341,200 @@ export function createMobileSyncRepository(
   readEntitlement: EntitlementReader = hasProEntitlement,
 ): MobileSyncRepository {
   return {
+    async snapshot(env, tenantId, input) {
+      let snapshotSequence: number;
+      if (input.snapshotCursor === null) {
+        const state = await env.DB.prepare(
+          "SELECT sequence FROM mobile_sync_state WHERE tenant_id = ?",
+        )
+          .bind(tenantId)
+          .first<{ sequence: number }>();
+        snapshotSequence = Number(state?.sequence ?? 0);
+        await env.DB.prepare(
+          `INSERT INTO mobile_sync_clients (
+            tenant_id, client_id, acknowledged_sequence, last_seen_at, expires_at,
+            snapshot_sequence, snapshot_expires_at
+          ) VALUES (?, ?, 0, datetime('now'), datetime('now', '+90 days'), ?, datetime('now', '+1 day'))
+          ON CONFLICT (tenant_id, client_id) DO UPDATE SET
+            last_seen_at = datetime('now'),
+            expires_at = datetime('now', '+90 days'),
+            snapshot_sequence = excluded.snapshot_sequence,
+            snapshot_expires_at = excluded.snapshot_expires_at`,
+        )
+          .bind(tenantId, input.clientId, snapshotSequence)
+          .run();
+      } else {
+        snapshotSequence = decodeMobileSyncSnapshotCursor(input.snapshotCursor);
+        const client = await env.DB.prepare(
+          `SELECT snapshot_sequence AS snapshotSequence
+           FROM mobile_sync_clients
+           WHERE tenant_id = ? AND client_id = ?
+             AND snapshot_sequence = ? AND snapshot_expires_at >= datetime('now')`,
+        )
+          .bind(tenantId, input.clientId, snapshotSequence)
+          .first<{ snapshotSequence: number }>();
+        if (!client) {
+          throw new HttpError(
+            409,
+            "full_resync_required",
+            "This full snapshot expired or belongs to another installation. Restart it safely.",
+            { reason: "snapshot_session_expired" },
+          );
+        }
+        await env.DB.prepare(
+          `UPDATE mobile_sync_clients
+           SET last_seen_at = datetime('now'), expires_at = datetime('now', '+90 days')
+           WHERE tenant_id = ? AND client_id = ?`,
+        )
+          .bind(tenantId, input.clientId)
+          .run();
+      }
+
+      const result = await env.DB.prepare(
+        `WITH ranked AS (
+          SELECT changes.sequence, changes.entity_type AS entityType,
+            changes.entity_id AS entityId, changes.row_revision AS rowRevision,
+            changes.operation, changes.payload_json AS payloadJson,
+            changes.server_updated_at AS serverUpdatedAt,
+            groups.atomic_group_id AS atomicGroupId,
+            ROW_NUMBER() OVER (
+              PARTITION BY changes.entity_type, changes.entity_id
+              ORDER BY changes.sequence DESC
+            ) AS entityRank
+          FROM mobile_sync_changes changes
+          LEFT JOIN mobile_sync_change_groups groups
+            ON groups.tenant_id = changes.tenant_id AND groups.sequence = changes.sequence
+          WHERE changes.tenant_id = ? AND changes.sequence <= ?
+        ), ordered AS (
+          SELECT sequence, entityType, entityId, rowRevision, operation, payloadJson,
+            serverUpdatedAt, atomicGroupId,
+            ROW_NUMBER() OVER (
+              ORDER BY CASE entityType
+                WHEN 'account' THEN 1 WHEN 'category' THEN 2 ELSE 3 END,
+                COALESCE(atomicGroupId, entityId), entityId
+            ) - 1 AS snapshotPosition
+          FROM ranked WHERE entityRank = 1 AND operation = 'upsert'
+        )
+        SELECT sequence, entityType, entityId, rowRevision, operation, payloadJson,
+          serverUpdatedAt, atomicGroupId
+        FROM ordered WHERE snapshotPosition >= ?
+        ORDER BY snapshotPosition LIMIT ?`,
+      )
+        .bind(tenantId, snapshotSequence, input.offset, input.limit + 2)
+        .all<ChangeRow>();
+      const page = atomicPullPage(result.results, input.limit);
+      const hasPro = page.some((change) => change.entityType === "category")
+        ? await readEntitlement(env, tenantId)
+        : false;
+      const changes = page.map((change) => decodePayload(change, hasPro));
+      const snapshotCursor = encodeMobileSyncSnapshotCursor(snapshotSequence);
+      return mobileSyncSnapshotResponseSchema.parse({
+        protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
+        snapshotCursor,
+        changes,
+        nextOffset: input.offset + page.length,
+        hasMore: result.results.length > page.length,
+        resumeCursor: encodeMobileSyncCursor(snapshotSequence),
+      });
+    },
+
+    async acknowledge(env, tenantId, input) {
+      const acknowledgedSequence = decodeMobileSyncCursor(input.cursor);
+      const state = await env.DB.prepare(
+        `SELECT sequence, retention_floor_sequence AS retentionFloorSequence
+         FROM mobile_sync_state WHERE tenant_id = ?`,
+      )
+        .bind(tenantId)
+        .first<{ sequence: number; retentionFloorSequence: number }>();
+      const currentSequence = Number(state?.sequence ?? 0);
+      const retentionFloorSequence = Number(state?.retentionFloorSequence ?? 0);
+      if (acknowledgedSequence > currentSequence || acknowledgedSequence < retentionFloorSequence) {
+        throw new HttpError(
+          409,
+          "full_resync_required",
+          "This device cursor is outside the retained synchronization window.",
+          { reason: "acknowledgement_outside_retention_window" },
+        );
+      }
+      if (acknowledgedSequence > 0) {
+        const boundary = await env.DB.prepare(
+          `SELECT current_group.atomic_group_id AS currentGroupId,
+                  next_group.atomic_group_id AS nextGroupId
+           FROM (SELECT 1) marker
+           LEFT JOIN mobile_sync_change_groups current_group
+             ON current_group.tenant_id = ? AND current_group.sequence = ?
+           LEFT JOIN mobile_sync_change_groups next_group
+             ON next_group.tenant_id = ? AND next_group.sequence = ?`,
+        )
+          .bind(tenantId, acknowledgedSequence, tenantId, acknowledgedSequence + 1)
+          .first<{ currentGroupId: string | null; nextGroupId: string | null }>();
+        if (boundary?.currentGroupId && boundary.currentGroupId === boundary.nextGroupId) {
+          throw new HttpError(
+            400,
+            "invalid_sync_cursor",
+            "A device cannot acknowledge only half of an atomic transfer.",
+          );
+        }
+      }
+
+      await env.DB.prepare(
+        `INSERT INTO mobile_sync_clients (
+          tenant_id, client_id, acknowledged_sequence, last_seen_at, expires_at
+        ) VALUES (?, ?, ?, datetime('now'), datetime('now', '+90 days'))
+        ON CONFLICT (tenant_id, client_id) DO UPDATE SET
+          acknowledged_sequence = MAX(acknowledged_sequence, excluded.acknowledged_sequence),
+          last_seen_at = datetime('now'),
+          expires_at = datetime('now', '+90 days'),
+          snapshot_sequence = CASE
+            WHEN snapshot_sequence IS NOT NULL
+              AND excluded.acknowledged_sequence >= snapshot_sequence THEN NULL
+            ELSE snapshot_sequence END,
+          snapshot_expires_at = CASE
+            WHEN snapshot_sequence IS NOT NULL
+              AND excluded.acknowledged_sequence >= snapshot_sequence THEN NULL
+            ELSE snapshot_expires_at END`,
+      )
+        .bind(tenantId, input.clientId, acknowledgedSequence)
+        .run();
+      const client = await env.DB.prepare(
+        `SELECT acknowledged_sequence AS acknowledgedSequence
+         FROM mobile_sync_clients WHERE tenant_id = ? AND client_id = ?`,
+      )
+        .bind(tenantId, input.clientId)
+        .first<{ acknowledgedSequence: number }>();
+      if (Number(client?.acknowledgedSequence ?? 0) !== acknowledgedSequence) {
+        throw new HttpError(
+          409,
+          "full_resync_required",
+          "This installation reported an older cursor than it previously acknowledged.",
+          { reason: "client_cursor_regressed" },
+        );
+      }
+      return mobileSyncAcknowledgeResponseSchema.parse({
+        protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
+        acknowledgedCursor: encodeMobileSyncCursor(acknowledgedSequence),
+        retentionFloorCursor: encodeMobileSyncCursor(retentionFloorSequence),
+      });
+    },
+
     async pull(env, tenantId, input) {
       const cursorSequence = decodeMobileSyncCursor(input.cursor);
       const state = await env.DB.prepare(
-        "SELECT sequence FROM mobile_sync_state WHERE tenant_id = ?",
+        `SELECT sequence, retention_floor_sequence AS retentionFloorSequence
+         FROM mobile_sync_state WHERE tenant_id = ?`,
       )
         .bind(tenantId)
-        .first<{ sequence: number }>();
+        .first<{ sequence: number; retentionFloorSequence: number }>();
       const currentSequence = Number(state?.sequence ?? 0);
+      const retentionFloorSequence = Number(state?.retentionFloorSequence ?? 0);
+      if (cursorSequence < retentionFloorSequence) {
+        throw new HttpError(
+          409,
+          "full_resync_required",
+          "This device cursor has expired. Start a safe full resynchronization.",
+          { reason: "cursor_expired" },
+        );
+      }
       if (cursorSequence > currentSequence) {
         throw new HttpError(
           409,

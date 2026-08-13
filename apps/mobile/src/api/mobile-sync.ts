@@ -1,9 +1,12 @@
 import {
   MOBILE_SYNC_PROTOCOL_VERSION,
+  mobileSyncAcknowledgeRequestSchema,
+  mobileSyncAcknowledgeResponseSchema,
   mobileSyncPullResponseSchema,
   mobileSyncPushRequestSchema,
   mobileSyncPushResponseSchema,
   type MobileSyncPullResponse,
+  type MobileSyncAcknowledgeResponse,
   type MobileSyncPushRequest,
   type MobileSyncPushResponse,
 } from "@zoption/shared";
@@ -150,6 +153,92 @@ export async function pullMobileSync({
   if (!parsed.success) {
     throw new MobileSyncTransportError(
       "Zoption returned an invalid synchronization response.",
+      "invalid_response",
+      response.status,
+    );
+  }
+  return parsed.data;
+}
+
+export async function acknowledgeMobileSync({
+  accessToken,
+  clientId,
+  cursor,
+  signal,
+  fetchImpl = fetch,
+}: {
+  accessToken: string;
+  clientId: string;
+  cursor: string;
+  signal?: AbortSignal;
+  fetchImpl?: (input: URL | RequestInfo, init?: RequestInit) => Promise<Response>;
+}): Promise<MobileSyncAcknowledgeResponse> {
+  const request = mobileSyncAcknowledgeRequestSchema.parse({
+    protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
+    clientId,
+    cursor,
+  });
+  let response: Response;
+  try {
+    response = await fetchImpl(new URL("/api/app/sync/acknowledge", publicConfig.apiUrl), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+      signal,
+    });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new MobileSyncTransportError(
+      "Zoption could not confirm synchronization progress.",
+      "retryable",
+      0,
+    );
+  }
+  if (response.status === 401) {
+    throw new MobileSyncTransportError(
+      "Your session expired before synchronization completed.",
+      "session_expired",
+      401,
+    );
+  }
+  if (response.status === 410) {
+    throw new MobileSyncTransportError(
+      "This account was deleted while synchronization was in progress.",
+      "account_deleted",
+      410,
+    );
+  }
+  if (response.status === 409) {
+    throw new MobileSyncTransportError(
+      "This local copy needs a safe full resynchronization.",
+      "full_resync_required",
+      409,
+    );
+  }
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    throw new MobileSyncTransportError(
+      "Zoption is receiving too many synchronization requests. Try again shortly.",
+      "rate_limited",
+      429,
+      Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : null,
+    );
+  }
+  if (!response.ok) {
+    throw new MobileSyncTransportError(
+      "Zoption could not confirm synchronization progress.",
+      "retryable",
+      response.status,
+    );
+  }
+  const parsed = mobileSyncAcknowledgeResponseSchema.safeParse(await decodeResponse(response));
+  if (!parsed.success || parsed.data.acknowledgedCursor !== cursor) {
+    throw new MobileSyncTransportError(
+      "Zoption returned an invalid synchronization acknowledgement.",
       "invalid_response",
       response.status,
     );

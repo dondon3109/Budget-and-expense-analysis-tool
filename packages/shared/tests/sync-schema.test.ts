@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  mobileSyncAcknowledgeRequestSchema,
+  mobileSyncAcknowledgeResponseSchema,
   mobileSyncPullRequestSchema,
   mobileSyncPushRequestSchema,
   mobileSyncPushResponseSchema,
+  mobileSyncSnapshotRequestSchema,
+  mobileSyncSnapshotResponseSchema,
 } from "../src/sync";
 
 const clientId = "00000000-0000-4000-8000-000000000001";
@@ -20,6 +24,61 @@ describe("mobile sync boundary schemas", () => {
     expect(
       mobileSyncPullRequestSchema.safeParse({ protocolVersion: 1, cursor: "123" }).success,
     ).toBe(false);
+  });
+
+  it("validates tenant-free client cursor acknowledgements", () => {
+    expect(
+      mobileSyncAcknowledgeRequestSchema.safeParse({
+        protocolVersion: 1,
+        clientId,
+        cursor: "v1.z",
+      }).success,
+    ).toBe(true);
+    expect(
+      mobileSyncAcknowledgeRequestSchema.safeParse({
+        protocolVersion: 1,
+        clientId,
+        cursor: "v1.z",
+        tenantId: "forged-tenant",
+      }).success,
+    ).toBe(false);
+    expect(
+      mobileSyncAcknowledgeResponseSchema.safeParse({
+        protocolVersion: 1,
+        acknowledgedCursor: "v1.z",
+        retentionFloorCursor: "v1.0",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("requires resumable snapshots to begin at offset zero", () => {
+    expect(
+      mobileSyncSnapshotRequestSchema.safeParse({
+        protocolVersion: 1,
+        clientId,
+        snapshotCursor: null,
+        offset: 0,
+        limit: 100,
+      }).success,
+    ).toBe(true);
+    expect(
+      mobileSyncSnapshotRequestSchema.safeParse({
+        protocolVersion: 1,
+        clientId,
+        snapshotCursor: null,
+        offset: 2,
+      }).success,
+    ).toBe(false);
+    expect(
+      mobileSyncSnapshotResponseSchema.safeParse({
+        protocolVersion: 1,
+        snapshotCursor: "s1.z",
+        changes: [],
+        nextOffset: 0,
+        hasMore: false,
+        resumeCursor: "v1.z",
+      }).success,
+    ).toBe(true);
   });
 
   it("requires UUIDs and revision zero for an offline create", () => {

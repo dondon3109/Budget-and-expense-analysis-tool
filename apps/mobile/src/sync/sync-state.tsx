@@ -11,7 +11,12 @@ import {
   type PropsWithChildren,
 } from "react";
 
-import { MobileSyncTransportError, pullMobileSync, pushMobileSync } from "@/api/mobile-sync";
+import {
+  acknowledgeMobileSync,
+  MobileSyncTransportError,
+  pullMobileSync,
+  pushMobileSync,
+} from "@/api/mobile-sync";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
 import { LocalSyncApplyError } from "@/db/sync-repository";
@@ -86,6 +91,42 @@ async function pushWithTimeout(
     if (timedOut && error instanceof Error && error.name === "AbortError") {
       throw new MobileSyncTransportError(
         "Zoption did not respond before synchronization timed out.",
+        "retryable",
+        0,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    parentSignal.removeEventListener("abort", abort);
+  }
+}
+
+async function acknowledgeWithTimeout(
+  accessToken: string,
+  clientId: string,
+  cursor: string,
+  parentSignal: AbortSignal,
+) {
+  const controller = new AbortController();
+  const abort = (): void => controller.abort();
+  parentSignal.addEventListener("abort", abort, { once: true });
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    abort();
+  }, 30_000);
+  try {
+    return await acknowledgeMobileSync({
+      accessToken,
+      clientId,
+      cursor,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (timedOut && error instanceof Error && error.name === "AbortError") {
+      throw new MobileSyncTransportError(
+        "Zoption did not confirm synchronization progress before timing out.",
         "retryable",
         0,
       );
@@ -227,6 +268,37 @@ export function SyncProvider({
             throw error;
           }
           if (!page.hasMore) {
+            const clientId = await workspace.transactionMutations.clientId();
+            let acknowledgement;
+            try {
+              acknowledgement = await acknowledgeWithTimeout(
+                accessToken,
+                clientId,
+                page.nextCursor,
+                controller.signal,
+              );
+            } catch (error) {
+              if (
+                error instanceof MobileSyncTransportError &&
+                error.code === "session_expired" &&
+                !refreshed
+              ) {
+                accessToken = await session.getAccessToken(true);
+                refreshed = true;
+                acknowledgement = await acknowledgeWithTimeout(
+                  accessToken,
+                  clientId,
+                  page.nextCursor,
+                  controller.signal,
+                );
+              } else {
+                throw error;
+              }
+            }
+            await workspace.syncRepository.recordAcknowledgement(
+              acknowledgement.acknowledgedCursor,
+              acknowledgement.retentionFloorCursor,
+            );
             if (requestRef.current === requestId) {
               const schedule = await scheduleOutstandingRetry();
               if (requestRef.current === requestId && !controller.signal.aborted) {

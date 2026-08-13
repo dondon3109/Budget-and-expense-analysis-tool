@@ -3,6 +3,7 @@ import { createApp } from "./app";
 import { reconcileDuePayPalCheckouts } from "./billing/scheduled-reconciliation";
 import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
+import { compactMobileSyncChanges } from "./db/mobile-sync";
 import { refreshDailyFxRate } from "./fx/rates";
 import { creditDueInterest } from "./interest/scheduled-credit";
 import { validateRequiredApiBindings } from "./readiness";
@@ -66,6 +67,12 @@ export default {
       if (deleted > 0)
         console.log(JSON.stringify({ message: "Expired bug reports deleted", deleted }));
       if (deleted < 100) break;
+    }
+    const syncCompaction = await compactMobileSyncChanges(env);
+    if (syncCompaction.deletedChanges > 0 || syncCompaction.expiredClients > 0) {
+      console.log(
+        JSON.stringify({ message: "Mobile sync retention compacted", ...syncCompaction }),
+      );
     }
   },
 } satisfies ExportedHandler<Bindings>;

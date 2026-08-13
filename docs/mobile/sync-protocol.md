@@ -128,8 +128,17 @@ An unknown/expired cursor returns a typed `full_resync_required` response. Full 
 
 Protocol version 1 encodes the tenant-local integer sequence as a canonical opaque `v1.<base36>`
 cursor. Pull is bounded to 200 changes and reads one extra row to report `hasMore` without claiming
-completion. The current implementation detects an ahead-of-server cursor; retention-based expiry and
-full-resync generation switching remain pending.
+completion. The Worker now rejects cursors below its retained floor. After the final page commits, the
+mobile client acknowledges the exact encrypted-workspace client UUID and committed cursor; cursor
+regression and acknowledgements outside the retained window fail closed.
+
+The Worker also exposes a client-bound, one-day resumable full snapshot at a fixed server sequence.
+Snapshot pages contain each entity's latest live version in dependency order, preserve atomic transfer
+pairs, and return the incremental cursor from which normal pull resumes. Daily compaction expires
+inactive clients after the documented 90-day offline window and removes only old changes that every
+active client acknowledged; it pauses while a snapshot session is active and retains each latest live
+row. The mobile beside-the-current-database generation builder, verification, and atomic switch remain
+pending, so the app continues to surface `full-resync-required` without deleting its readable copy.
 
 Each transfer revision assigns the same atomic-group token to its two adjacent change rows. Pull never
 cuts that pair: a limit of one still returns both legs when the pair is first, while a pair that would
@@ -167,7 +176,7 @@ field-level merge in this first vertical slice.
 
 ## Deletions
 
-Deletes create server tombstones with a new revision and sequence. Clients retain local tombstones until the server cursor proves the delete is acknowledged. Server tombstones are retained for a documented window longer than the maximum supported offline period, or until a per-client acknowledgement strategy permits safe compaction.
+Deletes create server tombstones with a new revision and sequence. Clients retain local tombstones until the server cursor proves the delete is acknowledged. The server retains changes for the 90-day supported offline window and compacts acknowledged tombstones only after every active client advances beyond them; a later full snapshot represents the deleted row by its absence.
 
 ## Retry classification
 
