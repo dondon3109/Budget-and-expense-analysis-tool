@@ -13,6 +13,7 @@ import { addDatabaseChangeListener } from "expo-sqlite";
 import { closeLocalWorkspace, openLocalWorkspace, type LocalWorkspace } from "./workspace";
 import type { LocalWorkspaceStats } from "./repository";
 import type { LocalTransactionItem, TransactionFormData } from "./repository";
+import type { LocalTransactionConflict } from "./transaction-mutation-repository";
 
 export type LocalWorkspaceStatus = "opening" | "ready" | "error";
 
@@ -225,4 +226,61 @@ export function useTransactionFormData(id?: string): {
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { data, error, retry };
+}
+
+export function useTransactionConflict(id?: string): {
+  conflict: LocalTransactionConflict | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [conflict, setConflict] = useState<LocalTransactionConflict | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setConflict(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.transactionMutations
+        .getConflict(id)
+        .then((next) => {
+          if (active) {
+            setConflict(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The preserved conflict could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["transactions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { conflict, loading, error, retry };
 }

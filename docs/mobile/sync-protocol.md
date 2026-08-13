@@ -117,6 +117,12 @@ the independent Worker identity assertion gates synchronization, not offline rea
 - A conflict record stores the local proposed command, the acknowledged base snapshot, and the current server snapshot. The visible entity stays explicitly conflicted until the user chooses a resolution.
 - Resolution is a new operation based on the current server revision. “Keep mine” is never an unversioned overwrite.
 
+The implemented transaction review presents the preserved device and server versions. `keep_server`
+applies the validated server snapshot and closes the conflicted outbox row atomically. `keep_local`
+closes the old operation, creates a fresh idempotency key, and queues a full update using the preserved
+server revision as its base. If the server changed again first, that new operation conflicts again
+instead of overwriting it.
+
 Account/category display metadata may later gain explicit field-level merge rules, but no automatic merge is part of the first vertical slice.
 
 ## Deletions

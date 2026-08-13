@@ -294,6 +294,19 @@ export function TransactionEditorScreen() {
                 Zoption kept both versions. Editing stays disabled until conflict resolution is
                 available.
               </Text>
+              {id ? (
+                <Button
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(app)/transaction-conflict",
+                      params: { id },
+                    })
+                  }
+                  variant="secondary"
+                >
+                  Review conflict
+                </Button>
+              ) : null}
             </Card>
           ) : blockedState === "failed" ? (
             <Card style={{ backgroundColor: theme.colors.dangerSoft }}>

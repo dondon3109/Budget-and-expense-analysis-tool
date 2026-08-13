@@ -290,6 +290,125 @@ describe("durable local transaction mutations", () => {
     });
   });
 
+  it("accepts the preserved server version and closes the conflicted operation atomically", async () => {
+    seedSynchronizedTransaction(database);
+    const mutations = repository(database);
+    await mutations.updateTransaction("transaction-server", { description: "My offline edit" });
+    const request = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "transaction",
+          entityId: "transaction-server",
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 4,
+          serverUpdatedAt: "2026-08-13 15:30:00",
+          serverPayload: {
+            id: "transaction-server",
+            accountId: "account-1",
+            categoryId: "category-1",
+            date: "2026-08-13",
+            description: "Web edit",
+            amountMinor: -20_000,
+            currency: "PHP",
+            kind: "expense",
+            notes: null,
+            transferGroupId: null,
+            transferFeeMinor: null,
+            importFingerprint: null,
+            revision: 4,
+            updatedAt: "2026-08-13 15:30:00",
+          },
+        },
+      ],
+    });
+
+    await expect(mutations.getConflict("transaction-server")).resolves.toMatchObject({
+      local: { input: { description: "My offline edit", amountMinor: 10_000 } },
+      server: { input: { description: "Web edit", amountMinor: 20_000 } },
+      serverRevision: 4,
+    });
+    await mutations.resolveConflict("transaction-server", "keep_server");
+
+    expect(
+      database.native
+        .prepare(
+          "SELECT description, amount_minor, server_revision, sync_state FROM transactions WHERE id = ?",
+        )
+        .get("transaction-server"),
+    ).toEqual({
+      description: "Web edit",
+      amount_minor: -20_000,
+      server_revision: 4,
+      sync_state: "synced",
+    });
+    expect(database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get()).toEqual({
+      count: 0,
+    });
+    expect(
+      database.native.prepare("SELECT resolution, resolved_at FROM sync_conflicts").get(),
+    ).toEqual({ resolution: "keep_server", resolved_at: "2026-08-13T16:00:00.000Z" });
+  });
+
+  it("turns keep-mine into a new operation based on the preserved server revision", async () => {
+    seedSynchronizedTransaction(database);
+    const mutations = repository(database);
+    await mutations.updateTransaction("transaction-server", { description: "My offline edit" });
+    const request = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "transaction",
+          entityId: "transaction-server",
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 4,
+          serverUpdatedAt: "2026-08-13 15:30:00",
+          serverPayload: {
+            id: "transaction-server",
+            accountId: "account-1",
+            categoryId: "category-1",
+            date: "2026-08-13",
+            description: "Web edit",
+            amountMinor: -10_000,
+            currency: "PHP",
+            kind: "expense",
+            notes: null,
+            transferGroupId: null,
+            transferFeeMinor: null,
+            importFingerprint: null,
+            revision: 4,
+            updatedAt: "2026-08-13 15:30:00",
+          },
+        },
+      ],
+    });
+
+    await mutations.resolveConflict("transaction-server", "keep_local");
+    const resolution = await mutations.getPushBatch();
+    expect(resolution?.operations).toMatchObject([
+      {
+        entityId: "transaction-server",
+        operationType: "update",
+        baseRevision: 4,
+        payload: { description: "My offline edit", amountMinor: 10_000 },
+      },
+    ]);
+    expect(resolution?.operations[0]?.idempotencyKey).not.toBe(
+      request.operations[0]!.idempotencyKey,
+    );
+    expect(
+      database.native
+        .prepare("SELECT sync_state FROM transactions WHERE id = ?")
+        .get("transaction-server"),
+    ).toEqual({ sync_state: "pending" });
+  });
+
   it("cancels an unpushed create when it is deleted offline", async () => {
     const mutations = repository(database);
     const id = await mutations.createTransaction(input);

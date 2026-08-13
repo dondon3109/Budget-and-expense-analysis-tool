@@ -6,6 +6,7 @@ import {
   MOBILE_SYNC_PROTOCOL_VERSION,
   mobileSyncPushOperationSchema,
   mobileSyncPushResponseSchema,
+  mobileSyncTransactionSnapshotSchema,
   normalizeSignedAmount,
   transactionInputSchema,
   transactionUpdateSchema,
@@ -63,11 +64,34 @@ const pushScheduleRowSchema = z.object({
   blocked_count: z.number().int().nonnegative(),
   next_attempt_at: z.string().nullable(),
 });
+const conflictRowSchema = z.object({
+  conflict_id: uuidSchema,
+  operation_id: uuidSchema.nullable(),
+  base_json: z.string(),
+  local_json: z.string(),
+  server_json: z.string(),
+  server_revision: z.number().int().nonnegative(),
+  created_at: z.string(),
+});
 
 export interface LocalPushSchedule {
   outstandingCount: number;
   blockedCount: number;
   nextAttemptAt: string | null;
+}
+
+export interface LocalTransactionConflictVersion {
+  input: NonTransferInput;
+  deleted: boolean;
+}
+
+export interface LocalTransactionConflict {
+  id: string;
+  entityId: string;
+  local: LocalTransactionConflictVersion;
+  server: LocalTransactionConflictVersion | null;
+  serverRevision: number;
+  createdAt: string;
 }
 
 export class LocalMutationError extends Error {
@@ -143,6 +167,26 @@ function fullUpdate(input: NonTransferInput): TransactionUpdate {
     amountMinor: input.amountMinor,
     currency: input.currency,
     notes: input.notes ?? "",
+  };
+}
+
+function commandFromSnapshot(value: unknown): NonTransferInput {
+  const snapshot = mobileSyncTransactionSnapshotSchema.parse(value);
+  if (snapshot.kind === "transfer" || !snapshot.accountId || snapshot.transferGroupId) {
+    throw new LocalMutationError(
+      "This conflict cannot be resolved with the non-transfer protocol.",
+      "unsupported_transfer",
+    );
+  }
+  return {
+    kind: snapshot.kind,
+    accountId: snapshot.accountId,
+    categoryId: snapshot.categoryId,
+    date: snapshot.date,
+    description: snapshot.description,
+    amountMinor: Math.abs(snapshot.amountMinor),
+    currency: snapshot.currency,
+    notes: snapshot.notes ?? undefined,
   };
 }
 
@@ -234,6 +278,27 @@ export class LocalTransactionMutationRepository {
     const decoded = outboxRowSchema.safeParse(row);
     if (!decoded.success) {
       throw new LocalMutationError("The encrypted outbox is invalid.", "invalid_outbox");
+    }
+    return decoded.data;
+  }
+
+  private async currentConflict(entityId: string) {
+    const decoded = conflictRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT conflict_id, operation_id, base_json, local_json, server_json,
+          server_revision, created_at
+         FROM sync_conflicts
+         WHERE entity_type = 'transaction' AND entity_id = ? AND resolved_at IS NULL
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        entityId,
+      ),
+    );
+    if (!decoded.success) {
+      throw new LocalMutationError(
+        "No unresolved transaction conflict was found.",
+        "mutation_blocked",
+      );
     }
     return decoded.data;
   }
@@ -497,6 +562,151 @@ export class LocalTransactionMutationRepository {
         blockedCount: row.blocked_count,
         nextAttemptAt: row.next_attempt_at,
       };
+    });
+  }
+
+  getConflict(entityId: string): Promise<LocalTransactionConflict | null> {
+    return this.writer.run(async () => {
+      const row = await this.database.getFirstAsync(
+        `SELECT conflict_id, operation_id, base_json, local_json, server_json,
+          server_revision, created_at
+         FROM sync_conflicts
+         WHERE entity_type = 'transaction' AND entity_id = ? AND resolved_at IS NULL
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        entityId,
+      );
+      if (!row) return null;
+      const conflict = conflictRowSchema.parse(row);
+      const localRow = await this.currentTransaction(entityId);
+      let serverValue: unknown;
+      try {
+        serverValue = JSON.parse(conflict.server_json) as unknown;
+      } catch {
+        throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+      }
+      return {
+        id: conflict.conflict_id,
+        entityId,
+        local: {
+          input: commandFromRow(localRow),
+          deleted: localRow.deleted_at !== null,
+        },
+        server:
+          serverValue === null
+            ? null
+            : {
+                input: commandFromSnapshot(serverValue),
+                deleted: false,
+              },
+        serverRevision: conflict.server_revision,
+        createdAt: conflict.created_at,
+      };
+    });
+  }
+
+  resolveConflict(entityId: string, resolution: "keep_local" | "keep_server"): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const conflict = await this.currentConflict(entityId);
+        const current = await this.currentTransaction(entityId);
+        const outbox = await this.currentOutbox(entityId);
+        if (
+          !outbox ||
+          outbox.operation_id !== conflict.operation_id ||
+          outbox.state !== "conflicted"
+        ) {
+          throw new LocalMutationError(
+            "The preserved conflict changed before it could be resolved.",
+            "mutation_blocked",
+          );
+        }
+        let serverValue: unknown;
+        try {
+          serverValue = JSON.parse(conflict.server_json) as unknown;
+        } catch {
+          throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+        }
+        const serverSnapshot =
+          serverValue === null ? null : mobileSyncTransactionSnapshotSchema.parse(serverValue);
+
+        await this.database.runAsync(
+          `UPDATE sync_conflicts
+           SET resolved_at = ?, resolution = ?, operation_id = NULL
+           WHERE conflict_id = ? AND resolved_at IS NULL`,
+          this.now().toISOString(),
+          resolution,
+          conflict.conflict_id,
+        );
+        await this.database.runAsync(
+          "DELETE FROM sync_outbox WHERE operation_id = ?",
+          outbox.operation_id,
+        );
+
+        if (resolution === "keep_server") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM transactions WHERE id = ?", entityId);
+            return;
+          }
+          await this.database.runAsync(
+            `UPDATE transactions SET
+              account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?,
+              currency = ?, kind = ?, notes = ?, transfer_group_id = ?,
+              transfer_fee_minor = ?, import_fingerprint = ?, server_revision = ?,
+              server_updated_at = ?, deleted_at = NULL, sync_state = 'synced'
+             WHERE id = ?`,
+            serverSnapshot.accountId,
+            serverSnapshot.categoryId,
+            serverSnapshot.date,
+            serverSnapshot.description,
+            serverSnapshot.amountMinor,
+            serverSnapshot.currency,
+            serverSnapshot.kind,
+            serverSnapshot.notes,
+            serverSnapshot.transferGroupId,
+            serverSnapshot.transferFeeMinor,
+            serverSnapshot.importFingerprint,
+            serverSnapshot.revision,
+            serverSnapshot.updatedAt,
+            entityId,
+          );
+          return;
+        }
+
+        if (current.deleted_at && !serverSnapshot) {
+          await this.database.runAsync("DELETE FROM transactions WHERE id = ?", entityId);
+          return;
+        }
+
+        const operationId = uuidSchema.parse(this.randomUuid());
+        const idempotencyKey = uuidSchema.parse(this.randomUuid());
+        const operationType = current.deleted_at ? "delete" : serverSnapshot ? "update" : "create";
+        const localInput = commandFromRow(current);
+        const payload =
+          operationType === "delete"
+            ? {}
+            : operationType === "update"
+              ? fullUpdate(localInput)
+              : localInput;
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'transaction', ?, ?, ?, ?, '[]', ?, ?)`,
+          operationId,
+          idempotencyKey,
+          entityId,
+          operationType,
+          serverSnapshot?.revision ?? 0,
+          JSON.stringify(payload),
+          serverSnapshot ? JSON.stringify(serverSnapshot) : "{}",
+          await this.nextSequence(),
+        );
+        await this.database.runAsync(
+          "UPDATE transactions SET sync_state = 'pending' WHERE id = ?",
+          entityId,
+        );
+      });
     });
   }
 
