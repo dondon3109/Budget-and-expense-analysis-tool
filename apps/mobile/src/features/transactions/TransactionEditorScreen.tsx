@@ -158,12 +158,13 @@ export function TransactionEditorScreen() {
     formData.data?.accounts.map((account) => ({
       id: account.id,
       label: account.name,
-      detail: account.currency,
+      detail: account.pending ? `${account.currency} · Pending setup` : account.currency,
     })) ?? [];
   const categoryOptions = categories.map((category) => ({
     id: category.id,
     label: category.name,
     color: category.color,
+    detail: category.pending ? "Pending setup" : undefined,
   }));
 
   const updateValue = <Key extends keyof TransactionFormValues>(
@@ -337,8 +338,8 @@ export function TransactionEditorScreen() {
                 Account setup needed
               </Text>
               <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                Synchronize at least one active account and an available {values.kind} category
-                before saving.
+                Add at least one active account and an available {values.kind} category before
+                saving.
               </Text>
             </Card>
           ) : null}

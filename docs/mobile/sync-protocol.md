@@ -4,8 +4,8 @@ Status: Milestone 4 implementation in progress. The isolated branch implements v
 D1 revision/change foundations, authenticated pull, and atomic encrypted mobile pull application for
 accounts, categories, transactions, and tombstones. The end-to-end push slice supports account and
 category create/update/archive plus non-transfer transaction create/update/delete, including local
-composition, restart replay, acknowledgement, retry, and conflict preservation. The current
-production API and D1 have not changed.
+composition, restart replay, acknowledgement, retry, conflict preservation, and atomic creation of
+new references with their dependent transaction. The current production API and D1 have not changed.
 
 ## Goals and invariants
 
@@ -55,6 +55,10 @@ The implemented transaction repository shares one serialized writer with pull ap
 outbox row is allowed per entity. A pending, never-attempted operation may be coalesced; once marked
 `sending` or attempted, its payload and idempotency key are immutable. A process restart therefore
 replays the exact saved request instead of mutating a key underneath an uncertain server result.
+New account and category creates may be selected immediately for a new transaction. The transaction
+outbox row records the exact parent operation IDs, and a parent cannot be cancelled while that child
+exists. The batch selector treats the connected component as one unit: it neither splits the graph nor
+mixes it with unrelated operations.
 
 ## Push
 
@@ -79,9 +83,17 @@ snapshot instead of overwriting it.
 Account and category `delete` commands preserve the existing product behavior: they archive the row
 and emit a revisioned upsert rather than hard-delete user-visible metadata. Permanent system rows,
 case-insensitive name uniqueness, category restore rules, and the current Free/Pro custom-category
-allowance remain server-authoritative. Dependency graphs and atomic transfers remain explicitly
-unsupported until the Worker can commit an entire graph without acknowledging a child whose parent
-failed.
+allowance remain server-authoritative.
+
+The Worker also accepts one connected create graph containing new account/category roots and dependent
+non-transfer transactions. Dependencies must reference earlier operations and exactly match the new
+references used by each transaction. All names, entitlements, existing references, category kinds,
+and projected Free-plan limits are preflighted. Success executes every mutation and idempotency
+acknowledgement in one guarded D1 batch; any zero-row conditional mutation aborts and rolls back the
+whole graph. A preflight rejection persists one deterministic result set: the failing operation keeps
+its specific code and every otherwise-valid operation receives `dependency_failed`. Replaying the
+whole graph returns the stored results, while a partial replay or reused key fails closed. Atomic
+transfer commands remain unsupported until their paired-leg protocol is implemented.
 
 The mobile coordinator drains up to 100 bounded operation batches before pull, refreshes an expired
 session once, and applies each response on the keyed database connection. Acknowledgements remove the

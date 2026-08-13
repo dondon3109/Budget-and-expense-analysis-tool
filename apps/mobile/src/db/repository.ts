@@ -49,6 +49,12 @@ const localAccountOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
   currency: z.enum(["PHP", "USD"]),
+  pending: z
+    .number()
+    .int()
+    .min(0)
+    .max(1)
+    .transform((value) => value === 1),
 });
 
 const localCategoryOptionSchema = z.object({
@@ -56,6 +62,12 @@ const localCategoryOptionSchema = z.object({
   name: z.string(),
   kind: z.enum(["income", "expense"]),
   color: z.string(),
+  pending: z
+    .number()
+    .int()
+    .min(0)
+    .max(1)
+    .transform((value) => value === 1),
 });
 
 const editableTransactionRowSchema = z.object({
@@ -290,16 +302,32 @@ export class LocalWorkspaceRepository {
   async getTransactionFormData(id?: string): Promise<TransactionFormData> {
     const [accounts, categories, transactionRow] = await Promise.all([
       this.database.getAllAsync(
-        `SELECT id, name, currency
+        `SELECT id, name, currency, CASE WHEN server_revision = 0 THEN 1 ELSE 0 END AS pending
          FROM accounts
-         WHERE deleted_at IS NULL AND archived = 0 AND server_revision > 0
+         WHERE deleted_at IS NULL AND archived = 0
+           AND (
+             server_revision > 0
+             OR EXISTS (
+               SELECT 1 FROM sync_outbox
+               WHERE entity_type = 'account' AND entity_id = accounts.id
+                 AND operation_type = 'create' AND state = 'pending' AND attempt_count = 0
+             )
+           )
          ORDER BY name COLLATE NOCASE, id`,
       ),
       this.database.getAllAsync(
-        `SELECT id, name, kind, color
+        `SELECT id, name, kind, color,
+          CASE WHEN server_revision = 0 THEN 1 ELSE 0 END AS pending
          FROM categories
          WHERE deleted_at IS NULL AND archived = 0 AND locked = 0
-           AND server_revision > 0
+           AND (
+             server_revision > 0
+             OR EXISTS (
+               SELECT 1 FROM sync_outbox
+               WHERE entity_type = 'category' AND entity_id = categories.id
+                 AND operation_type = 'create' AND state = 'pending' AND attempt_count = 0
+             )
+           )
            AND kind IN ('income', 'expense')
          ORDER BY kind, name COLLATE NOCASE, id`,
       ),

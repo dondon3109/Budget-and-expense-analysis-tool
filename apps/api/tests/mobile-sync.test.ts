@@ -17,7 +17,7 @@ import type { Bindings } from "../src/types";
 
 const databases: DatabaseSync[] = [];
 
-function d1FromSqlite(database: DatabaseSync): D1Database {
+function d1FromSqlite(database: DatabaseSync, beforeBatch?: () => void): D1Database {
   const api = {
     prepare(sql: string) {
       let bindings: SQLInputValue[] = [];
@@ -51,6 +51,7 @@ function d1FromSqlite(database: DatabaseSync): D1Database {
       return statement;
     },
     async batch(statements: Array<{ execute(): unknown }>) {
+      beforeBatch?.();
       database.exec("BEGIN IMMEDIATE");
       try {
         const results = statements.map((statement) => statement.execute());
@@ -718,6 +719,212 @@ describe("mobile sync account and category push repository", () => {
     expect(
       database.prepare("SELECT id FROM accounts WHERE id = ?").get(dependentId),
     ).toBeUndefined();
+  });
+
+  it("commits new references and their dependent transaction as one idempotent graph", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const accountId = "15000000-0000-4000-8000-000000000001";
+    const categoryId = "15000000-0000-4000-8000-000000000002";
+    const transactionId = "15000000-0000-4000-8000-000000000003";
+    const accountOperationId = "15000000-0000-4000-8000-000000000004";
+    const categoryOperationId = "15000000-0000-4000-8000-000000000005";
+    const input = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: accountOperationId,
+          idempotencyKey: "15000000-0000-4000-8000-000000000006",
+          entityType: "account" as const,
+          entityId: accountId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: { name: "Graph wallet", type: "cash" as const },
+        },
+        {
+          operationId: categoryOperationId,
+          idempotencyKey: "15000000-0000-4000-8000-000000000007",
+          entityType: "category" as const,
+          entityId: categoryId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: { name: "Graph dining", kind: "expense" as const, color: "#0F766E" },
+        },
+        {
+          operationId: "15000000-0000-4000-8000-000000000008",
+          idempotencyKey: "15000000-0000-4000-8000-000000000009",
+          entityType: "transaction" as const,
+          entityId: transactionId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [accountOperationId, categoryOperationId],
+          payload: {
+            kind: "expense" as const,
+            accountId,
+            categoryId,
+            date: "2026-08-13",
+            description: "Atomic graph purchase",
+            amountMinor: 5_000,
+            currency: "PHP" as const,
+          },
+        },
+      ],
+    };
+
+    const first = await repository.push(env, "tenant-1", input);
+    expect(await repository.push(env, "tenant-1", input)).toEqual(first);
+    expect(first.results).toMatchObject([
+      { status: "acknowledged", revision: 1 },
+      { status: "acknowledged", revision: 1 },
+      { status: "acknowledged", revision: 1 },
+    ]);
+    expect(database.prepare("SELECT name FROM accounts WHERE id = ?").get(accountId)).toEqual({
+      name: "Graph wallet",
+    });
+    expect(database.prepare("SELECT name FROM categories WHERE id = ?").get(categoryId)).toEqual({
+      name: "Graph dining",
+    });
+    expect(
+      database
+        .prepare("SELECT account_id, category_id, amount_minor FROM transactions WHERE id = ?")
+        .get(transactionId),
+    ).toEqual({ account_id: accountId, category_id: categoryId, amount_minor: -5_000 });
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM mobile_sync_idempotency WHERE tenant_id = ?")
+        .get("tenant-1"),
+    ).toEqual({ count: 3 });
+  });
+
+  it("rejects disconnected dependency graphs as one unsupported atomic batch", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const accountIds = [crypto.randomUUID(), crypto.randomUUID()];
+    const operations = accountIds.flatMap((accountId, index) => {
+      const accountOperationId = crypto.randomUUID();
+      return [
+        {
+          operationId: accountOperationId,
+          idempotencyKey: crypto.randomUUID(),
+          entityType: "account" as const,
+          entityId: accountId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: { name: `Disconnected wallet ${index}`, type: "cash" as const },
+        },
+        {
+          operationId: crypto.randomUUID(),
+          idempotencyKey: crypto.randomUUID(),
+          entityType: "transaction" as const,
+          entityId: crypto.randomUUID(),
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [accountOperationId],
+          payload: {
+            kind: "expense" as const,
+            accountId,
+            categoryId: "category-1",
+            date: "2026-08-14",
+            description: `Disconnected purchase ${index}`,
+            amountMinor: 1_000,
+            currency: "PHP" as const,
+          },
+        },
+      ];
+    });
+
+    const result = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations,
+    });
+    expect(result.results).toHaveLength(4);
+    expect(result.results.every((item) => item.status === "rejected")).toBe(true);
+    expect(result.results).toMatchObject([
+      { code: "unsupported_operation" },
+      { code: "unsupported_operation" },
+      { code: "unsupported_operation" },
+      { code: "unsupported_operation" },
+    ]);
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM accounts WHERE id IN (?, ?)")
+        .get(...accountIds),
+    ).toEqual({ count: 0 });
+  });
+
+  it("rolls back every graph mutation when a guarded statement loses a race", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const accountId = "16000000-0000-4000-8000-000000000001";
+    const accountOperationId = "16000000-0000-4000-8000-000000000002";
+    let injectRace = true;
+    env.DB = d1FromSqlite(database, () => {
+      if (!injectRace) return;
+      injectRace = false;
+      database
+        .prepare("INSERT INTO accounts (id, tenant_id, name, type) VALUES (?, ?, ?, ?)")
+        .run("race-account", "tenant-1", "Raced graph wallet", "cash");
+    });
+    const input = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: accountOperationId,
+          idempotencyKey: "16000000-0000-4000-8000-000000000003",
+          entityType: "account" as const,
+          entityId: accountId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: { name: "Raced graph wallet", type: "cash" as const },
+        },
+        {
+          operationId: "16000000-0000-4000-8000-000000000004",
+          idempotencyKey: "16000000-0000-4000-8000-000000000005",
+          entityType: "transaction" as const,
+          entityId: "16000000-0000-4000-8000-000000000006",
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [accountOperationId],
+          payload: {
+            kind: "expense" as const,
+            accountId,
+            categoryId: "category-1",
+            date: "2026-08-13",
+            description: "Must not commit",
+            amountMinor: 1_000,
+            currency: "PHP" as const,
+          },
+        },
+      ],
+    };
+
+    await expect(repository.push(env, "tenant-1", input)).rejects.toThrow(
+      "rolled back before acknowledgement",
+    );
+    expect(database.prepare("SELECT id FROM accounts WHERE id = ?").get(accountId)).toBeUndefined();
+    expect(
+      database
+        .prepare("SELECT id FROM transactions WHERE id = ?")
+        .get("16000000-0000-4000-8000-000000000006"),
+    ).toBeUndefined();
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM mobile_sync_idempotency WHERE tenant_id = ?")
+        .get("tenant-1"),
+    ).toEqual({ count: 0 });
+
+    const retry = await repository.push(env, "tenant-1", input);
+    expect(retry.results).toMatchObject([
+      { status: "rejected", code: "invalid_operation" },
+      { status: "rejected", code: "dependency_failed" },
+    ]);
   });
 
   it("returns an entitlement-derived category snapshot for stale conflicts", async () => {

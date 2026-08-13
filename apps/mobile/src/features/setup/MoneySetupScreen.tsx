@@ -231,8 +231,8 @@ export function MoneySetupScreen() {
             )}
           </View>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            New accounts and categories become available to transactions after the server confirms
-            them. This prevents partially synchronized financial records.
+            New accounts and categories can be used in a transaction immediately. Zoption keeps the
+            pending setup and transaction together so they synchronize as one atomic group.
           </Text>
         </>
       )}

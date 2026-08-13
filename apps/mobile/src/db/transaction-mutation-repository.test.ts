@@ -111,7 +111,7 @@ describe("durable local transaction mutations", () => {
 
   afterEach(() => database.close());
 
-  it("persists dependency-free account and category commands and keeps pending references unavailable", async () => {
+  it("persists an atomic dependency graph for new references and their transaction", async () => {
     const mutations = repository(database);
     const accountId = await mutations.createAccount({ name: "Offline bank", type: "checking" });
     const categoryId = await mutations.createCategory({
@@ -137,11 +137,13 @@ describe("durable local transaction mutations", () => {
       server_revision: 0,
       sync_state: "pending",
     });
-    await expect(
-      mutations.createTransaction({ ...input, accountId, categoryId }),
-    ).rejects.toMatchObject({ code: "invalid_reference" });
+    const transactionId = await mutations.createTransaction({ ...input, accountId, categoryId });
+    await expect(mutations.archiveAccount(accountId)).rejects.toMatchObject({
+      code: "mutation_blocked",
+    });
 
     const batch = await mutations.getPushBatch();
+    expect(batch?.operations).toHaveLength(3);
     expect(batch?.operations).toMatchObject([
       { entityType: "account", entityId: accountId, operationType: "create", dependencyIds: [] },
       {
@@ -150,7 +152,56 @@ describe("durable local transaction mutations", () => {
         operationType: "create",
         dependencyIds: [],
       },
+      {
+        entityType: "transaction",
+        entityId: transactionId,
+        operationType: "create",
+      },
     ]);
+    expect(batch?.operations[2]?.dependencyIds).toEqual([
+      batch?.operations[0]?.operationId,
+      batch?.operations[1]?.operationId,
+    ]);
+    if (!batch) throw new Error("Expected a dependency graph batch.");
+    await mutations.applyPushResponse(batch, {
+      protocolVersion: 1,
+      results: batch.operations.map((operation) => ({
+        operationId: operation.operationId,
+        entityType: operation.entityType,
+        entityId: operation.entityId,
+        status: "acknowledged" as const,
+        revision: 1,
+      })),
+    });
+    expect(
+      database.native
+        .prepare(
+          `SELECT
+            (SELECT sync_state FROM accounts WHERE id = ?) AS account_state,
+            (SELECT sync_state FROM categories WHERE id = ?) AS category_state,
+            (SELECT sync_state FROM transactions WHERE id = ?) AS transaction_state,
+            (SELECT count(*) FROM sync_outbox) AS outbox_count`,
+        )
+        .get(accountId, categoryId, transactionId),
+    ).toEqual({
+      account_state: "synced",
+      category_state: "synced",
+      transaction_state: "synced",
+      outbox_count: 0,
+    });
+  });
+
+  it("does not split one dependency graph into an undersized push batch", async () => {
+    const mutations = repository(database);
+    const accountId = await mutations.createAccount({ name: "Graph account", type: "cash" });
+    await mutations.createTransaction({ ...input, accountId });
+
+    await expect(mutations.getPushBatch(1)).rejects.toMatchObject({ code: "invalid_outbox" });
+    expect(
+      database.native
+        .prepare("SELECT state, count(*) AS count FROM sync_outbox GROUP BY state")
+        .all(),
+    ).toEqual([{ state: "pending", count: 2 }]);
   });
 
   it("coalesces reference edits and cancels unpushed create/archive pairs", async () => {

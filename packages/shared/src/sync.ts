@@ -261,6 +261,29 @@ export const mobileSyncPushRequestSchema = z
         message: "Operation IDs must be unique within a batch.",
       });
     }
+    const entityKeys = request.operations.map(
+      (operation) => `${operation.entityType}:${operation.entityId}`,
+    );
+    if (new Set(entityKeys).size !== entityKeys.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["operations"],
+        message: "A batch can contain only one operation for each entity.",
+      });
+    }
+    const positions = new Map(operationIds.map((operationId, index) => [operationId, index]));
+    request.operations.forEach((operation, index) => {
+      operation.dependencyIds.forEach((dependencyId, dependencyIndex) => {
+        const dependencyPosition = positions.get(dependencyId);
+        if (dependencyPosition === undefined || dependencyPosition >= index) {
+          context.addIssue({
+            code: "custom",
+            path: ["operations", index, "dependencyIds", dependencyIndex],
+            message: "Dependencies must reference an earlier operation in the same batch.",
+          });
+        }
+      });
+    });
   });
 
 const mobileSyncPushResultIdentitySchema = z.object({
@@ -293,6 +316,7 @@ export const mobileSyncPushResultSchema = z
           "invalid_category",
           "invalid_account",
           "plan_limit",
+          "dependency_failed",
           "invalid_operation",
           "unsupported_operation",
         ]),

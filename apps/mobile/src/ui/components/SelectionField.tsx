@@ -44,7 +44,11 @@ export function SelectionField({
       <Text style={[typography.label, { color: theme.colors.text }]}>{label}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={selected ? `${label}, ${selected.label}` : label}
+        accessibilityLabel={
+          selected
+            ? `${label}, ${selected.label}${selected.detail ? `, ${selected.detail}` : ""}`
+            : label
+        }
         accessibilityHint={error ?? hint ?? `Opens ${sheetTitle.toLowerCase()}`}
         accessibilityState={{ disabled: Boolean(disabled), expanded: open }}
         disabled={disabled}

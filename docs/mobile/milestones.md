@@ -177,15 +177,21 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   applies that validated snapshot locally; choosing the device creates a fresh idempotency key and
   revision-aware operation based on the preserved server revision. Both resolutions close the prior
   conflict and outbox reference in the same SQLCipher transaction.
-- The Worker now accepts dependency-free account and category create/update/archive commands with
+- The Worker accepts dependency-free account and category create/update/archive commands with
   client UUIDs, exact revisions, idempotent acknowledgements, tenant-scoped snapshots, permanent-row
   protection, and case-insensitive name checks. Category creation and restore keep the current atomic
   Free/Pro allowance logic; archive commands intentionally produce upserts to match the existing web
-  product. Dependency-bearing batches still fail closed until graph-level atomicity is implemented.
+  product.
+- One connected create graph may atomically add account/category roots and dependent non-transfer
+  transactions. The client records exact operation dependencies, never splits or mixes the graph,
+  and prevents cancelling a referenced parent. The Worker validates dependency order and exact
+  references, preflights tenant-owned relationships and entitlements, then commits every mutation and
+  idempotency acknowledgement in one guarded D1 batch. Any failure rolls back the entire graph;
+  otherwise-valid siblings receive `dependency_failed` rather than a false acknowledgement.
 - Native Money setup now lists observable encrypted accounts/categories and provides touch-safe
   create, edit, and confirmed archive sheets. Every mutation commits its local projection and outbox
-  row together. Unsynchronized new references remain unavailable to transaction entry until their
-  server revision is acknowledged, preventing unsupported parent/child graphs.
+  row together. A pending, never-attempted account or category is visibly marked as pending setup and
+  may be used immediately by a transaction that joins its atomic dependency graph.
 - On iPhone 17 Pro Simulator, a synthetic account was created with the isolated Worker stopped and
   remained pending after full process termination/relaunch. Reconnect acknowledged revision 1 in
   local D1. The same row was archived offline, survived another process restart, and reconnect
@@ -206,15 +212,21 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   both names and colors; choosing the device version queued a new idempotent operation against revision
   2, which the Worker acknowledged as revision 3. A full app-process termination/relaunch retained the
   resolved local row without a pending or conflict label. No remote D1 or production service changed.
-- Sixteen mobile suites with 70 focused tests pass. Repository-wide ESLint/typecheck and all 148
-  Vitest files with 1,044 tests pass; Worker dry-run packaging and separate production-mode iOS and
-  Android Hermes exports also succeed.
+- An iOS dependency-graph run created “Atomic proof wallet,” “Atomic proof category,” and a synthetic
+  ₱321 expense with the isolated Worker stopped. All three encrypted local rows survived full process
+  termination. Reconnect produced one authenticated push and pull; isolated D1 showed all three at
+  revision 1 with three idempotency acknowledgements, and the native pending labels cleared only after
+  the Worker response. No remote D1 or production service changed.
+- Sixteen mobile suites with 71 focused tests pass. Repository-wide ESLint/typecheck and all 148
+  Vitest files with 1,048 tests pass. Worker dry-run packaging is 1,418.75 KiB raw / 259.23 KiB gzip;
+  production-mode exports complete in 16.7 seconds for iOS (9.5 MiB total, 5.7 MB reported Hermes
+  bundle) and 16.8 seconds for Android (11 MiB total, 5.9 MB reported Hermes bundle). These are bundle
+  export measurements, not signed archive or installed-device size claims.
 
 ## Milestone 4 remaining gaps
 
-- Dependency graphs and atomic transfer push are not implemented yet. Explicit conflict resolution is
-  implemented for accounts, categories, and non-transfer transactions; transfer conflicts remain
-  future protocol work.
+- Atomic transfer push is not implemented yet. Explicit conflict resolution is implemented for
+  accounts, categories, and non-transfer transactions; transfer conflicts remain future protocol work.
 - Transfer changes currently enter the internal change stream as their two atomic D1 legs. The mobile
   apply layer must preserve the group as one logical transfer before financial screens consume it.
 - Tombstones are retained indefinitely in this first foundation. Cursor expiry, client acknowledgement,

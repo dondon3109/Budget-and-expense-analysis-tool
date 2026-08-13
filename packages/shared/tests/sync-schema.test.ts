@@ -69,6 +69,59 @@ describe("mobile sync boundary schemas", () => {
     ).toBe(false);
   });
 
+  it("requires dependencies to appear earlier in the same batch", () => {
+    const dependent = {
+      operationId: "00000000-0000-4000-8000-000000000010",
+      idempotencyKey: "00000000-0000-4000-8000-000000000011",
+      entityType: "transaction" as const,
+      entityId: "00000000-0000-4000-8000-000000000012",
+      operationType: "create" as const,
+      baseRevision: 0 as const,
+      payload: {
+        kind: "expense" as const,
+        accountId: entityId,
+        categoryId: "category-1",
+        date: "2026-08-13",
+        description: "Dependent purchase",
+        amountMinor: 1_000,
+        currency: "PHP" as const,
+      },
+      dependencyIds: [operationId],
+    };
+    const parent = {
+      operationId,
+      idempotencyKey,
+      entityType: "account" as const,
+      entityId,
+      operationType: "create" as const,
+      baseRevision: 0 as const,
+      payload: { name: "Offline wallet", type: "cash" as const },
+      dependencyIds: [],
+    };
+
+    expect(
+      mobileSyncPushRequestSchema.safeParse({
+        protocolVersion: 1,
+        clientId,
+        operations: [parent, dependent],
+      }).success,
+    ).toBe(true);
+    expect(
+      mobileSyncPushRequestSchema.safeParse({
+        protocolVersion: 1,
+        clientId,
+        operations: [dependent, parent],
+      }).success,
+    ).toBe(false);
+    expect(
+      mobileSyncPushRequestSchema.safeParse({
+        protocolVersion: 1,
+        clientId,
+        operations: [{ ...dependent, dependencyIds: [crypto.randomUUID()] }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("keeps transfers out of non-atomic transaction creates", () => {
     expect(
       mobileSyncPushRequestSchema.safeParse({
