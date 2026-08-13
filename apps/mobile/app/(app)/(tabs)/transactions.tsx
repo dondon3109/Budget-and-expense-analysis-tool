@@ -1,4 +1,6 @@
-import { FlatList, RefreshControl, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 
 import { useLocalTransactions } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
@@ -11,7 +13,8 @@ import {
   TransactionRow,
 } from "@/ui/components";
 import { Screen } from "@/ui/screen";
-import { spacing } from "@/ui/tokens";
+import { spacing, touchTarget } from "@/ui/tokens";
+import { useZoptionTheme } from "@/ui/theme-provider";
 
 function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
   if (status === "syncing") return "syncing" as const;
@@ -23,9 +26,33 @@ function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
 export default function TransactionsScreen() {
   const local = useLocalTransactions();
   const sync = useSyncState();
+  const theme = useZoptionTheme();
   return (
     <Screen
-      action={<SyncStatus state={visibleSyncState(sync.status)} />}
+      action={
+        <View className="flex-row items-center gap-2">
+          <SyncStatus state={visibleSyncState(sync.status)} />
+          <Pressable
+            accessibilityLabel="Add transaction"
+            accessibilityHint="Opens the new transaction form"
+            accessibilityRole="button"
+            onPress={() => router.push("/(app)/transaction")}
+            style={({ pressed }) => [
+              styles.add,
+              {
+                backgroundColor: pressed ? theme.colors.brandPressed : theme.colors.brand,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color={theme.colors.onBrand}
+              name="plus"
+              size={24}
+            />
+          </Pressable>
+        </View>
+      }
       scroll={false}
       title="Transactions"
     >
@@ -62,7 +89,11 @@ export default function TransactionsScreen() {
           renderItem={({ item }) => (
             <TransactionRow
               conflicted={item.syncState === "conflicted"}
-              pending={item.syncState !== "synced" && item.syncState !== "conflicted"}
+              failed={item.syncState === "failed"}
+              onPress={() =>
+                router.push({ pathname: "/(app)/transaction", params: { id: item.transaction.id } })
+              }
+              pending={item.syncState === "pending"}
               transaction={item.transaction}
             />
           )}
@@ -71,3 +102,13 @@ export default function TransactionsScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  add: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    borderRadius: touchTarget / 2,
+  },
+});

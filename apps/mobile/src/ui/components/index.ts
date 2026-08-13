@@ -8,6 +8,7 @@ export * from "./ErrorState";
 export * from "./FormField";
 export * from "./MoneyValue";
 export * from "./OfflineBanner";
+export * from "./SelectionField";
 export * from "./Skeleton";
 export * from "./SyncStatus";
 export * from "./TransactionRow";

@@ -1,4 +1,4 @@
-import type { TransactionListItem } from "@zoption/shared";
+import type { TransactionInput, TransactionListItem } from "@zoption/shared";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { z } from "zod";
 
@@ -41,6 +41,52 @@ const localTransactionRowSchema = z.object({
 export interface LocalTransactionItem {
   transaction: TransactionListItem;
   syncState: "synced" | "pending" | "failed" | "conflicted";
+}
+
+type EditableTransactionInput = Extract<TransactionInput, { kind: "income" | "expense" }>;
+
+const localAccountOptionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  currency: z.enum(["PHP", "USD"]),
+});
+
+const localCategoryOptionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: z.enum(["income", "expense"]),
+  color: z.string(),
+});
+
+const editableTransactionRowSchema = z.object({
+  id: z.string(),
+  account_id: z.string().nullable(),
+  category_id: z.string(),
+  date: z.string(),
+  description: z.string(),
+  amount_minor: z.number().int().safe(),
+  currency: z.enum(["PHP", "USD"]),
+  kind: z.enum(["income", "expense", "transfer"]),
+  notes: z.string().nullable(),
+  deleted_at: z.string().nullable(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
+
+export type LocalAccountOption = z.infer<typeof localAccountOptionSchema>;
+
+export type LocalCategoryOption = z.infer<typeof localCategoryOptionSchema>;
+
+export interface EditableLocalTransaction {
+  id: string;
+  input: EditableTransactionInput;
+  syncState: "synced" | "pending" | "failed" | "conflicted";
+}
+
+export interface TransactionFormData {
+  accounts: LocalAccountOption[];
+  categories: LocalCategoryOption[];
+  transaction: EditableLocalTransaction | null;
+  unavailableReason: string | null;
 }
 
 export class LocalWorkspaceRepository {
@@ -144,5 +190,78 @@ export class LocalWorkspaceRepository {
       };
       return { transaction, syncState: row.sync_state };
     });
+  }
+
+  async getTransactionFormData(id?: string): Promise<TransactionFormData> {
+    const [accounts, categories, transactionRow] = await Promise.all([
+      this.database.getAllAsync(
+        `SELECT id, name, currency
+         FROM accounts
+         WHERE deleted_at IS NULL AND archived = 0
+         ORDER BY name COLLATE NOCASE, id`,
+      ),
+      this.database.getAllAsync(
+        `SELECT id, name, kind, color
+         FROM categories
+         WHERE deleted_at IS NULL AND archived = 0 AND locked = 0
+           AND kind IN ('income', 'expense')
+         ORDER BY kind, name COLLATE NOCASE, id`,
+      ),
+      id
+        ? this.database.getFirstAsync(
+            `SELECT id, account_id, category_id, date, description, amount_minor, currency,
+              kind, notes, deleted_at, sync_state
+             FROM transactions WHERE id = ?`,
+            id,
+          )
+        : Promise.resolve(null),
+    ]);
+    const decodedAccounts = z.array(localAccountOptionSchema).parse(accounts);
+    const decodedCategories = z.array(localCategoryOptionSchema).parse(categories);
+    if (!id) {
+      return {
+        accounts: decodedAccounts,
+        categories: decodedCategories,
+        transaction: null,
+        unavailableReason: null,
+      };
+    }
+    const decoded = editableTransactionRowSchema.safeParse(transactionRow);
+    if (!decoded.success || decoded.data.deleted_at) {
+      return {
+        accounts: decodedAccounts,
+        categories: decodedCategories,
+        transaction: null,
+        unavailableReason: "This transaction is no longer available on this device.",
+      };
+    }
+    if (decoded.data.kind === "transfer" || !decoded.data.account_id) {
+      return {
+        accounts: decodedAccounts,
+        categories: decodedCategories,
+        transaction: null,
+        unavailableReason:
+          "Transfers cannot be edited until the atomic offline transfer protocol is ready.",
+      };
+    }
+    return {
+      accounts: decodedAccounts,
+      categories: decodedCategories,
+      transaction: {
+        id: decoded.data.id,
+        input: {
+          kind: decoded.data.kind,
+          accountId: decoded.data.account_id,
+          categoryId: decoded.data.category_id,
+          date: decoded.data.date,
+          description: decoded.data.description,
+          amountMinor: Math.abs(decoded.data.amount_minor),
+          currency: decoded.data.currency,
+          notes: decoded.data.notes ?? undefined,
+        },
+        syncState: decoded.data.sync_state,
+      },
+      unavailableReason: null,
+    };
   }
 }

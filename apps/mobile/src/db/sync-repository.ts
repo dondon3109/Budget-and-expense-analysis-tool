@@ -8,6 +8,8 @@ import {
 } from "@zoption/shared";
 import type { SQLiteDatabase } from "expo-sqlite";
 
+import { LocalDatabaseWriter } from "./database-writer";
+
 interface CursorRow {
   server_cursor: string | null;
 }
@@ -18,6 +20,10 @@ interface EntityStateRow {
 }
 
 interface TombstoneRow {
+  server_revision: number;
+}
+
+interface ConflictStateRow {
   server_revision: number;
 }
 
@@ -64,6 +70,18 @@ async function assertCanApply(
   );
   if (tombstone && tombstone.server_revision >= change.revision) return false;
   if (entity && entity.server_revision > change.revision) return false;
+  if (entity?.sync_state === "conflicted") {
+    const conflict = await database.getFirstAsync<ConflictStateRow>(
+      `SELECT server_revision
+       FROM sync_conflicts
+       WHERE entity_type = ? AND entity_id = ? AND resolved_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      change.entityType,
+      change.entityId,
+    );
+    if (conflict && conflict.server_revision >= change.revision) return false;
+  }
   if (entity && entity.sync_state !== "synced") {
     throw new LocalSyncApplyError(
       "A synchronized server change overlaps unsynchronized work on this device.",
@@ -233,18 +251,10 @@ async function applyChange(database: SQLiteDatabase, change: MobileSyncChange): 
 }
 
 export class LocalSyncRepository {
-  private operation = Promise.resolve();
-
-  constructor(private readonly database: SQLiteDatabase) {}
-
-  private serialize<T>(task: () => Promise<T>): Promise<T> {
-    const next = this.operation.then(task, task);
-    this.operation = next.then(
-      () => undefined,
-      () => undefined,
-    );
-    return next;
-  }
+  constructor(
+    private readonly database: SQLiteDatabase,
+    private readonly writer = new LocalDatabaseWriter(),
+  ) {}
 
   async getCursor(): Promise<string | null> {
     const row = await this.database.getFirstAsync<CursorRow>(
@@ -254,7 +264,7 @@ export class LocalSyncRepository {
   }
 
   applyPullPage(expectedCursor: string | null, value: MobileSyncPullResponse): Promise<void> {
-    return this.serialize(async () => {
+    return this.writer.run(async () => {
       const parsed = mobileSyncPullResponseSchema.safeParse(value);
       if (!parsed.success) {
         throw new LocalSyncApplyError("The pull page failed local validation.", "invalid_page");

@@ -1,12 +1,20 @@
 import {
   MOBILE_SYNC_PROTOCOL_VERSION,
   mobileSyncPullResponseSchema,
+  mobileSyncPushRequestSchema,
+  mobileSyncPushResponseSchema,
   type MobileSyncPullResponse,
+  type MobileSyncPushRequest,
+  type MobileSyncPushResponse,
 } from "@zoption/shared";
 
 import { publicConfig } from "@/config/public-config";
 
 const MAX_PULL_RESPONSE_BYTES = 512 * 1024;
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
 
 export type MobileSyncTransportErrorCode =
   | "session_expired"
@@ -14,6 +22,8 @@ export type MobileSyncTransportErrorCode =
   | "full_resync_required"
   | "rate_limited"
   | "retryable"
+  | "permanent_rejection"
+  | "idempotency_mismatch"
   | "invalid_response";
 
 export class MobileSyncTransportError extends Error {
@@ -82,7 +92,7 @@ export async function pullMobileSync({
       signal,
     });
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    if (isAbortError(error)) throw error;
     throw new MobileSyncTransportError(
       "Zoption could not reach the synchronization service.",
       "retryable",
@@ -137,6 +147,108 @@ export async function pullMobileSync({
   }
 
   const parsed = mobileSyncPullResponseSchema.safeParse(await decodeResponse(response));
+  if (!parsed.success) {
+    throw new MobileSyncTransportError(
+      "Zoption returned an invalid synchronization response.",
+      "invalid_response",
+      response.status,
+    );
+  }
+  return parsed.data;
+}
+
+export async function pushMobileSync({
+  accessToken,
+  request,
+  signal,
+  fetchImpl = fetch,
+}: {
+  accessToken: string;
+  request: MobileSyncPushRequest;
+  signal?: AbortSignal;
+  fetchImpl?: (input: URL | RequestInfo, init?: RequestInit) => Promise<Response>;
+}): Promise<MobileSyncPushResponse> {
+  const encodedRequest = mobileSyncPushRequestSchema.parse(request);
+  let response: Response;
+  try {
+    response = await fetchImpl(new URL("/api/app/sync/push", publicConfig.apiUrl), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(encodedRequest),
+      signal,
+    });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw new MobileSyncTransportError(
+      "Zoption could not reach the synchronization service.",
+      "retryable",
+      0,
+    );
+  }
+
+  if (response.status === 401) {
+    throw new MobileSyncTransportError(
+      "Your session expired before synchronization completed.",
+      "session_expired",
+      401,
+    );
+  }
+  if (response.status === 410) {
+    throw new MobileSyncTransportError(
+      "This account was deleted while synchronization was in progress.",
+      "account_deleted",
+      410,
+    );
+  }
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    throw new MobileSyncTransportError(
+      "Zoption is receiving too many synchronization requests. Try again shortly.",
+      "rate_limited",
+      429,
+      Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : null,
+    );
+  }
+  if (response.status === 409) {
+    const payload = await decodeResponse(response);
+    if (
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      payload.error === "idempotency_key_reused"
+    ) {
+      throw new MobileSyncTransportError(
+        "A saved synchronization operation no longer matches its server key. Zoption preserved it for recovery.",
+        "idempotency_mismatch",
+        409,
+      );
+    }
+    throw new MobileSyncTransportError(
+      "Zoption rejected the saved synchronization operation. It was preserved for recovery.",
+      "permanent_rejection",
+      409,
+    );
+  }
+  if ([400, 403, 404, 422].includes(response.status)) {
+    throw new MobileSyncTransportError(
+      "Zoption rejected the saved synchronization operation. It was preserved for repair.",
+      "permanent_rejection",
+      response.status,
+    );
+  }
+  if (!response.ok) {
+    throw new MobileSyncTransportError(
+      "Zoption could not synchronize right now. Your local records are unchanged.",
+      "retryable",
+      response.status,
+    );
+  }
+
+  const parsed = mobileSyncPushResponseSchema.safeParse(await decodeResponse(response));
   if (!parsed.success) {
     throw new MobileSyncTransportError(
       "Zoption returned an invalid synchronization response.",

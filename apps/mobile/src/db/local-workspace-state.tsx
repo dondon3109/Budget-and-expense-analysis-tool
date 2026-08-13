@@ -12,7 +12,7 @@ import { addDatabaseChangeListener } from "expo-sqlite";
 
 import { closeLocalWorkspace, openLocalWorkspace, type LocalWorkspace } from "./workspace";
 import type { LocalWorkspaceStats } from "./repository";
-import type { LocalTransactionItem } from "./repository";
+import type { LocalTransactionItem, TransactionFormData } from "./repository";
 
 export type LocalWorkspaceStatus = "opening" | "ready" | "error";
 
@@ -174,4 +174,55 @@ export function useLocalTransactions(): {
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { items, error, retry };
+}
+
+export function useTransactionFormData(id?: string): {
+  data: TransactionFormData | null;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [data, setData] = useState<TransactionFormData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace) {
+      setData(null);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      void workspace.repository
+        .getTransactionFormData(id)
+        .then((next) => {
+          if (active) {
+            setData(next);
+            setError(null);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("Transaction details could not be read from encrypted local storage.");
+          }
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["accounts", "categories", "transactions", "sync_outbox"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { data, error, retry };
 }

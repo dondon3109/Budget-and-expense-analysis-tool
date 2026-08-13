@@ -218,6 +218,57 @@ describe("atomic encrypted pull application", () => {
     });
   });
 
+  it("advances past the server version already preserved in an unresolved conflict", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, bootstrapPage);
+    database.native.exec(`
+      INSERT INTO sync_outbox (
+        operation_id, idempotency_key, entity_type, entity_id, operation_type,
+        base_revision, payload_json, dependency_ids_json, base_json, state, created_sequence
+      ) VALUES (
+        '00000000-0000-4000-8000-000000000001',
+        '00000000-0000-4000-8000-000000000002',
+        'transaction', 'transaction-1', 'update', 1, '{}', '[]', '{}', 'conflicted', 1
+      );
+      INSERT INTO sync_conflicts (
+        conflict_id, entity_type, entity_id, operation_id, base_json, local_json,
+        server_json, server_revision, created_at
+      ) VALUES (
+        '00000000-0000-4000-8000-000000000003', 'transaction', 'transaction-1',
+        '00000000-0000-4000-8000-000000000001', '{}', '{}', '{}', 2,
+        '2026-08-13T15:00:00.000Z'
+      );
+      UPDATE transactions SET description = 'My edit', sync_state = 'conflicted'
+      WHERE id = 'transaction-1';
+    `);
+
+    await repository.applyPullPage("v1.3", {
+      protocolVersion: 1,
+      nextCursor: "v1.4",
+      hasMore: false,
+      changes: [
+        {
+          ...bootstrapPage.changes[2]!,
+          revision: 2,
+          serverUpdatedAt: "2026-08-13 15:00:00",
+          payload: {
+            ...bootstrapPage.changes[2]!.payload!,
+            description: "Web edit",
+            revision: 2,
+            updatedAt: "2026-08-13 15:00:00",
+          },
+        },
+      ],
+    });
+
+    await expect(repository.getCursor()).resolves.toBe("v1.4");
+    expect(
+      database.native
+        .prepare("SELECT description, sync_state FROM transactions WHERE id = ?")
+        .get("transaction-1"),
+    ).toEqual({ description: "My edit", sync_state: "conflicted" });
+  });
+
   it("rejects stale page application after another page advances the cursor", async () => {
     const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
     await repository.applyPullPage(null, bootstrapPage);

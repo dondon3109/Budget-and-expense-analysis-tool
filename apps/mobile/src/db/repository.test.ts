@@ -84,4 +84,79 @@ describe("encrypted local workspace repository", () => {
       },
     ]);
   });
+
+  it("returns only decoded local choices and an editable non-transfer transaction", async () => {
+    const database = {
+      getAllAsync: jest
+        .fn()
+        .mockResolvedValueOnce([{ id: "account-1", name: "Wallet", currency: "PHP" }])
+        .mockResolvedValueOnce([
+          { id: "category-1", name: "Dining", kind: "expense", color: "#123456" },
+        ]),
+      getFirstAsync: jest.fn(() =>
+        Promise.resolve({
+          id: "transaction-1",
+          account_id: "account-1",
+          category_id: "category-1",
+          date: "2026-08-13",
+          description: "Lunch",
+          amount_minor: -25_000,
+          currency: "PHP",
+          kind: "expense",
+          notes: "Team meal",
+          deleted_at: null,
+          sync_state: "pending",
+        }),
+      ),
+    };
+
+    await expect(
+      new LocalWorkspaceRepository(database as never).getTransactionFormData("transaction-1"),
+    ).resolves.toEqual({
+      accounts: [{ id: "account-1", name: "Wallet", currency: "PHP" }],
+      categories: [{ id: "category-1", name: "Dining", kind: "expense", color: "#123456" }],
+      transaction: {
+        id: "transaction-1",
+        input: {
+          accountId: "account-1",
+          categoryId: "category-1",
+          date: "2026-08-13",
+          description: "Lunch",
+          amountMinor: 25_000,
+          currency: "PHP",
+          kind: "expense",
+          notes: "Team meal",
+        },
+        syncState: "pending",
+      },
+      unavailableReason: null,
+    });
+  });
+
+  it("refuses to expose a transfer through the non-atomic editor", async () => {
+    const database = {
+      getAllAsync: jest.fn(() => Promise.resolve([])),
+      getFirstAsync: jest.fn(() =>
+        Promise.resolve({
+          id: "transaction-1",
+          account_id: "account-1",
+          category_id: "category-1",
+          date: "2026-08-13",
+          description: "Transfer",
+          amount_minor: -25_000,
+          currency: "PHP",
+          kind: "transfer",
+          notes: null,
+          deleted_at: null,
+          sync_state: "synced",
+        }),
+      ),
+    };
+
+    const result = await new LocalWorkspaceRepository(database as never).getTransactionFormData(
+      "transaction-1",
+    );
+    expect(result.transaction).toBeNull();
+    expect(result.unavailableReason).toContain("atomic offline transfer protocol");
+  });
 });

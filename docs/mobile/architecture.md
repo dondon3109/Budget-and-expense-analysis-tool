@@ -81,6 +81,9 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
   only the middleware-derived tenant. The mobile cursor is progress metadata, never authorization.
 - Pull application and cursor advancement share one keyed local transaction. Financial observers are
   invalidated only after commit, so the interface cannot render or label a partial page as synchronized.
+- Local financial mutation, outbox state transitions, push acknowledgement, and pull application share
+  one serialized writer around that keyed connection. The UI renders only after the durable local
+  transaction completes; an in-flight idempotency payload cannot be edited into a different request.
 
 ## Development-build requirement
 

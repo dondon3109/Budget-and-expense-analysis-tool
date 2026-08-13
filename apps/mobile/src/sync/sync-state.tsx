@@ -1,4 +1,5 @@
 import { useNetInfo } from "@react-native-community/netinfo";
+import type { MobileSyncPushRequest } from "@zoption/shared";
 import {
   createContext,
   useCallback,
@@ -10,7 +11,7 @@ import {
   type PropsWithChildren,
 } from "react";
 
-import { MobileSyncTransportError, pullMobileSync } from "@/api/mobile-sync";
+import { MobileSyncTransportError, pullMobileSync, pushMobileSync } from "@/api/mobile-sync";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
 import { LocalSyncApplyError } from "@/db/sync-repository";
@@ -44,9 +45,52 @@ async function pullWithTimeout(
   const controller = new AbortController();
   const abort = (): void => controller.abort();
   parentSignal.addEventListener("abort", abort, { once: true });
-  const timeout = setTimeout(abort, 30_000);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    abort();
+  }, 30_000);
   try {
     return await pullMobileSync({ accessToken, cursor, signal: controller.signal });
+  } catch (error) {
+    if (timedOut && error instanceof Error && error.name === "AbortError") {
+      throw new MobileSyncTransportError(
+        "Zoption did not respond before synchronization timed out.",
+        "retryable",
+        0,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    parentSignal.removeEventListener("abort", abort);
+  }
+}
+
+async function pushWithTimeout(
+  accessToken: string,
+  request: MobileSyncPushRequest,
+  parentSignal: AbortSignal,
+) {
+  const controller = new AbortController();
+  const abort = (): void => controller.abort();
+  parentSignal.addEventListener("abort", abort, { once: true });
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    abort();
+  }, 30_000);
+  try {
+    return await pushMobileSync({ accessToken, request, signal: controller.signal });
+  } catch (error) {
+    if (timedOut && error instanceof Error && error.name === "AbortError") {
+      throw new MobileSyncTransportError(
+        "Zoption did not respond before synchronization timed out.",
+        "retryable",
+        0,
+      );
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
     parentSignal.removeEventListener("abort", abort);
@@ -90,11 +134,65 @@ export function SyncProvider({
     }
 
     const controller = new AbortController();
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleOutstandingRetry = async () => {
+      const schedule = await workspace.transactionMutations.getPushSchedule();
+      if (
+        schedule.nextAttemptAt &&
+        requestRef.current === requestId &&
+        !controller.signal.aborted
+      ) {
+        const delay = Math.max(250, Date.parse(schedule.nextAttemptAt) - Date.now());
+        retryTimer = setTimeout(() => setAttempt((value) => value + 1), delay);
+      }
+      return schedule;
+    };
     setSnapshot({ status: "syncing", message: null });
     const run = async (): Promise<void> => {
       try {
         let accessToken = await session.getAccessToken(false);
         let refreshed = false;
+        for (let batchNumber = 0; batchNumber < 100; batchNumber += 1) {
+          const request = await workspace.transactionMutations.getPushBatch();
+          if (!request) break;
+          let response;
+          try {
+            response = await pushWithTimeout(accessToken, request, controller.signal);
+          } catch (error) {
+            if (
+              error instanceof MobileSyncTransportError &&
+              error.code === "session_expired" &&
+              !refreshed
+            ) {
+              accessToken = await session.getAccessToken(true);
+              refreshed = true;
+              batchNumber -= 1;
+              continue;
+            }
+            if (
+              error instanceof MobileSyncTransportError &&
+              (error.code === "permanent_rejection" || error.code === "idempotency_mismatch")
+            ) {
+              await workspace.transactionMutations.recordPushPermanentFailure(request, error.code);
+            } else if (
+              error instanceof MobileSyncTransportError &&
+              error.code !== "account_deleted" &&
+              error.code !== "session_expired"
+            ) {
+              await workspace.transactionMutations.recordPushFailure(
+                request,
+                error.code,
+                error.retryAfterSeconds,
+              );
+            }
+            throw error;
+          }
+          if (requestRef.current !== requestId || controller.signal.aborted) return;
+          await workspace.transactionMutations.applyPushResponse(request, response);
+          if (batchNumber === 99) {
+            throw new Error("Synchronization exceeded the safe foreground push limit.");
+          }
+        }
         for (let pageNumber = 0; pageNumber < 250; pageNumber += 1) {
           const cursor = await workspace.syncRepository.getCursor();
           let page;
@@ -130,7 +228,21 @@ export function SyncProvider({
           }
           if (!page.hasMore) {
             if (requestRef.current === requestId) {
-              setSnapshot({ status: "synced", message: null });
+              const schedule = await scheduleOutstandingRetry();
+              if (requestRef.current === requestId && !controller.signal.aborted) {
+                setSnapshot({
+                  status:
+                    schedule.blockedCount > 0
+                      ? "failed"
+                      : schedule.outstandingCount > 0
+                        ? "waiting"
+                        : "synced",
+                  message:
+                    schedule.blockedCount > 0
+                      ? "Some saved changes need review before synchronization can finish."
+                      : null,
+                });
+              }
             }
             return;
           }
@@ -151,6 +263,15 @@ export function SyncProvider({
           });
           return;
         }
+        if (
+          error instanceof MobileSyncTransportError &&
+          error.code !== "session_expired" &&
+          error.code !== "permanent_rejection" &&
+          error.code !== "idempotency_mismatch"
+        ) {
+          await scheduleOutstandingRetry().catch(() => undefined);
+        }
+        if (requestRef.current !== requestId || controller.signal.aborted) return;
         setSnapshot({
           status: "failed",
           message:
@@ -166,7 +287,10 @@ export function SyncProvider({
     };
 
     void run();
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [attempt, enabled, reachable, session, unavailableMessage, workspace]);
 
   const retry = useCallback(() => {

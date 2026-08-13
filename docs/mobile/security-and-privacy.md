@@ -71,3 +71,6 @@ opens. It exposes no caller-selected path; failure prevents workspace access.
   on iOS Simulator. Android runtime proof remains.
 - iOS background execution is system scheduled and unavailable in Simulator; a physical-device test is required.
 - A fully compromised device can observe data while the user has unlocked and opened the app.
+- The Expo application is a native Android/iOS target. Its optional web export is unsupported while
+  Expo SQLite's web WASM asset is absent in the pinned pnpm package; the existing `apps/web` site remains
+  the supported responsive-web surface.

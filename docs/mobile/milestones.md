@@ -8,7 +8,7 @@ Last updated: 2026-08-13.
 | 1. Mobile foundation                 | Complete    | Native Android/iOS development builds, iOS runtime navigation/input, themes/components, focused tests                        |
 | 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS; social auth and Android runtime remain                      |
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
-| 4. Transaction sync vertical slice   | In progress | Authenticated pull is atomically applied to encrypted SQLite and rendered/reopened offline on iOS                            |
+| 4. Transaction sync vertical slice   | In progress | Native transaction create/edit plus durable encrypted outbox push/retry/ack/conflict behavior proven on iOS                  |
 | 5. Core budgeting                    | Not started | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
 | 6. Planning and recurring money      | Not started | Subscriptions/calendar/goals/debts/transfers/interest with plan boundaries                                                   |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
@@ -93,7 +93,8 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   startup transaction. Expo's exclusive helper was deliberately rejected because it creates a second
   unkeyed native connection under SQLCipher.
 - Schema version 2 adds immutable outbox base snapshots and retained sync tombstones for pull
-  conflict/deletion handling. Both versions run through the same keyed connection and transactional
+  conflict/deletion handling. Schema version 3 enforces one active outbox operation per entity so
+  unsent edits coalesce without duplicating logical mutations. All versions use the keyed connection and transactional
   migration boundary.
 - Typed repository results are Zod-decoded. Aggregate local state is observable through SQLite change
   events without placing financial records in Zustand or AsyncStorage.
@@ -160,16 +161,37 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   in one batch. Identical retries replay the stored result; a reused key with different content is
   rejected. Focused SQLite tests prove create replay, key misuse rejection, stale-edit preservation,
   tenant derivation, and revisioned deletion tombstones.
+- A shared local writer serializes financial writes on the keyed SQLCipher connection. Native
+  non-transfer create, update, and delete now commit the local projection and encrypted outbox row in
+  one transaction. Unsent edits coalesce; an unpushed create/delete pair cancels locally; once an
+  operation has been attempted its idempotency payload is immutable and restart replays it unchanged.
+- Foreground synchronization now drains bounded push batches before pulling. Acknowledgements update
+  the local server revision and remove the outbox row atomically; retryable failures persist bounded
+  full-jitter backoff; permanent failures stay visible; conflicts retain base, local, and server
+  versions without allowing the following pull to overwrite them.
+- The native transaction stack supports create/edit entry, integer-minor-unit amount validation,
+  active local account/category selection, durable-write-before-navigation, pending/failed/conflict
+  labels, and explicit deletion confirmation. Transfers remain deliberately unavailable until their
+  atomic protocol is implemented.
+- On iPhone 17 Pro Simulator, a synthetic expense was saved while the isolated local Worker was down,
+  rendered as pending, and survived full app-process termination. After reconnect, the same outbox
+  operation received `POST /api/app/sync/push` 200 followed by pull convergence; a subsequent native
+  edit completed a second push/pull cycle and the pending label cleared only after acknowledgement.
+- Sixteen mobile suites with 61 focused tests pass. Repository-wide ESLint/typecheck and all 148
+  Vitest files with 1,039 tests pass; Worker dry-run packaging and separate production-mode iOS and
+  Android Hermes exports also succeed.
 
 ## Milestone 4 remaining gaps
 
-- Account/category push, dependent batches, atomic transfer push, offline mutation composition,
-  local acknowledgement consumption, durable retry/backoff,
-  conflict materialization, and resolution UI are not implemented yet. Pull conflicts currently stop
-  safely and preserve both durable states, but do not yet offer a resolution workflow.
+- Account/category push, dependent batches, atomic transfer push, and conflict resolution UI are not
+  implemented yet. Transaction conflicts preserve all three durable versions and block unsafe edits,
+  but do not yet offer the user a resolution workflow.
 - Transfer changes currently enter the internal change stream as their two atomic D1 legs. The mobile
   apply layer must preserve the group as one logical transfer before financial screens consume it.
 - Tombstones are retained indefinitely in this first foundation. Cursor expiry, client acknowledgement,
   compaction, and beside-the-current-database full-resync switching remain required before release.
 - Migration performance has only been exercised on fresh/local SQLite data; production-scale migration
   timing and rollback rehearsal are pending and no D1 migration has been deployed.
+- `apps/mobile` intentionally targets Android and iOS. A combined Expo export that also requests web
+  fails because the pnpm-installed Expo SQLite package does not contain its optional web WASM asset;
+  the required standalone iOS and Android exports pass, and responsive web remains owned by `apps/web`.

@@ -5,6 +5,8 @@ import { ensureLocalDataBackupProtection } from "./local-data-security";
 import { applyLocalMigrations, asMigrationDatabase } from "./migrations";
 import { LocalWorkspaceRepository, type LocalWorkspaceStats } from "./repository";
 import { LocalSyncRepository } from "./sync-repository";
+import { LocalDatabaseWriter } from "./database-writer";
+import { LocalTransactionMutationRepository } from "./transaction-mutation-repository";
 
 interface CipherVersionRow {
   cipher_version?: string;
@@ -30,6 +32,7 @@ export interface LocalWorkspace {
   databaseName: string;
   repository: LocalWorkspaceRepository;
   syncRepository: LocalSyncRepository;
+  transactionMutations: LocalTransactionMutationRepository;
   schemaVersion: number;
 }
 
@@ -121,11 +124,13 @@ export function openLocalWorkspace(subject: string): Promise<LocalWorkspace> {
           { cause: error },
         );
       }
+      const writer = new LocalDatabaseWriter();
       const workspace = {
         database,
         databaseName: name,
         repository: new LocalWorkspaceRepository(database),
-        syncRepository: new LocalSyncRepository(database),
+        syncRepository: new LocalSyncRepository(database, writer),
+        transactionMutations: new LocalTransactionMutationRepository(database, writer),
         schemaVersion,
       };
       current = { subject, alias, workspace };

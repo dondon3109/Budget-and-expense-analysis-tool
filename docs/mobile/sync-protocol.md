@@ -1,10 +1,10 @@
 # Mobile synchronization protocol
 
 Status: Milestone 4 implementation in progress. The isolated branch implements versioned contracts,
-D1 revision/change foundations, authenticated read-only pull, and atomic encrypted mobile pull
-application for accounts, categories, transactions, and tombstones. The first server push slice
-supports non-transfer transaction create, update, and delete; local mutation/outbox consumption is
-next. The current production API and D1 have not been changed.
+D1 revision/change foundations, authenticated pull, and atomic encrypted mobile pull application for
+accounts, categories, transactions, and tombstones. The first end-to-end push slice supports
+non-transfer transaction create, update, and delete, including local composition, restart replay,
+acknowledgement, retry, and conflict preservation. The current production API and D1 have not changed.
 
 ## Goals and invariants
 
@@ -50,6 +50,11 @@ An approved offline mutation uses one SQLCipher transaction:
 
 A process kill before commit changes nothing; a kill after commit leaves enough state to resume.
 
+The implemented transaction repository shares one serialized writer with pull application. One active
+outbox row is allowed per entity. A pending, never-attempted operation may be coalesced; once marked
+`sending` or attempted, its payload and idempotency key are immutable. A process restart therefore
+replays the exact saved request instead of mutating a key underneath an uncertain server result.
+
 ## Push
 
 `POST /api/app/sync/push` accepts a bounded ordered batch. Operations include entity, command, entity UUID, base revision, idempotency key, dependencies, and a strictly validated command payload. The Worker:
@@ -70,6 +75,14 @@ key and canonical operation returns its stored result; using that key for differ
 conflict. Concurrent loss of the expected revision returns the current validated server snapshot
 instead of overwriting it. Account/category push, dependency graphs, and atomic transfers remain
 explicitly unsupported until their complete invariants are implemented.
+
+The mobile coordinator drains up to 100 bounded transaction batches before pull, refreshes an expired
+session once, and applies each response on the keyed database connection. Acknowledgements remove the
+outbox row only while updating the local server revision in the same transaction. Network and timeout
+failures persist exponential full-jitter retry metadata; permanent rejections remain failed and
+visible. A conflict writes the acknowledged base, local command, and current server snapshot before
+marking the entity conflicted. The foreground coordinator schedules the earliest persisted retry and
+cannot report `synced` while any outbox operation remains outstanding.
 
 ## Pull
 

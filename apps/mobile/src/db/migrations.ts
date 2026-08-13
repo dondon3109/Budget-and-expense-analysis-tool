@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 2;
+export const LOCAL_SCHEMA_VERSION = 3;
 
 export const migrations: readonly Migration[] = [
   {
@@ -146,6 +146,14 @@ export const migrations: readonly Migration[] = [
 
       CREATE INDEX sync_tombstones_revision_idx
         ON sync_tombstones(entity_type, server_revision);
+    `,
+  },
+  {
+    version: 3,
+    name: "single_entity_outbox_operation",
+    sql: `
+      CREATE UNIQUE INDEX sync_outbox_entity_unique
+        ON sync_outbox(entity_type, entity_id);
     `,
   },
 ] as const;

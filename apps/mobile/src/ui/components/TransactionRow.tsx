@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { TransactionListItem } from "@zoption/shared";
-import { MoneyValue } from "./MoneyValue";
+import { MoneyValue, moneyAccessibilityLabel } from "./MoneyValue";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
@@ -9,16 +9,29 @@ interface TransactionRowProps {
   transaction: TransactionListItem;
   pending?: boolean;
   conflicted?: boolean;
+  failed?: boolean;
   onPress?: () => void;
 }
 
-export function TransactionRow({ transaction, pending, conflicted, onPress }: TransactionRowProps) {
+export function TransactionRow({
+  transaction,
+  pending,
+  conflicted,
+  failed,
+  onPress,
+}: TransactionRowProps) {
   const theme = useZoptionTheme();
-  const stateLabel = conflicted ? "Conflict needs review" : pending ? "Pending sync" : null;
+  const stateLabel = conflicted
+    ? "Conflict needs review"
+    : failed
+      ? "Sync needs repair"
+      : pending
+        ? "Pending sync"
+        : null;
   return (
     <Pressable
       accessibilityRole={onPress ? "button" : undefined}
-      accessibilityLabel={`${transaction.description}, ${transaction.categoryName}`}
+      accessibilityLabel={`${transaction.description}, ${transaction.categoryName}, ${transaction.date}, ${moneyAccessibilityLabel(transaction.amountMinor, transaction.currency)}`}
       accessibilityHint={stateLabel ?? (onPress ? "Opens transaction details" : undefined)}
       disabled={!onPress}
       onPress={onPress}

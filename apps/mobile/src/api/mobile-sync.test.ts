@@ -1,4 +1,4 @@
-import { pullMobileSync } from "./mobile-sync";
+import { pullMobileSync, pushMobileSync } from "./mobile-sync";
 
 const accountChange = {
   entityType: "account",
@@ -51,6 +51,83 @@ describe("fixed mobile synchronization transport", () => {
     expect(request[1].body).not.toContain("tenant");
   });
 
+  it("pushes a validated outbox batch only to the fixed Worker route", async () => {
+    const request = {
+      protocolVersion: 1 as const,
+      clientId: "00000000-0000-4000-8000-000000000001",
+      operations: [
+        {
+          operationId: "00000000-0000-4000-8000-000000000002",
+          idempotencyKey: "00000000-0000-4000-8000-000000000003",
+          entityType: "transaction" as const,
+          entityId: "00000000-0000-4000-8000-000000000004",
+          operationType: "delete" as const,
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    };
+    const fetchImpl = jest.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            protocolVersion: 1,
+            results: [
+              {
+                operationId: request.operations[0]!.operationId,
+                entityType: "transaction",
+                entityId: request.operations[0]!.entityId,
+                status: "acknowledged",
+                revision: 3,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    await expect(
+      pushMobileSync({ accessToken: "token", request, fetchImpl }),
+    ).resolves.toMatchObject({ results: [{ status: "acknowledged", revision: 3 }] });
+    const call = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(call[0].pathname).toBe("/api/app/sync/push");
+    expect(call[1].method).toBe("POST");
+    expect(new Headers(call[1].headers).get("Authorization")).toBe("Bearer token");
+    expect(call[1].body).not.toContain("tenant");
+  });
+
+  it("classifies idempotency mismatch without discarding the local operation", async () => {
+    const fetchImpl = jest.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: "idempotency_key_reused" }), { status: 409 }),
+      ),
+    );
+    await expect(
+      pushMobileSync({
+        accessToken: "token",
+        request: {
+          protocolVersion: 1,
+          clientId: "00000000-0000-4000-8000-000000000001",
+          operations: [
+            {
+              operationId: "00000000-0000-4000-8000-000000000002",
+              idempotencyKey: "00000000-0000-4000-8000-000000000003",
+              entityType: "transaction",
+              entityId: "00000000-0000-4000-8000-000000000004",
+              operationType: "delete",
+              baseRevision: 2,
+              dependencyIds: [],
+              payload: {},
+            },
+          ],
+        },
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({ code: "idempotency_mismatch" });
+  });
+
   it.each([
     [401, "session_expired"],
     [410, "account_deleted"],
@@ -74,6 +151,33 @@ describe("fixed mobile synchronization transport", () => {
     await expect(
       pullMobileSync({ accessToken: "token", cursor: "v1.z", fetchImpl }),
     ).rejects.toMatchObject({ code: "full_resync_required" });
+  });
+
+  it("preserves abort signals so the coordinator can distinguish cancellation", async () => {
+    const abort = Object.assign(new Error("cancelled"), { name: "AbortError" });
+    const fetchImpl = jest.fn(() => Promise.reject(abort));
+    await expect(
+      pushMobileSync({
+        accessToken: "token",
+        request: {
+          protocolVersion: 1,
+          clientId: "00000000-0000-4000-8000-000000000001",
+          operations: [
+            {
+              operationId: "00000000-0000-4000-8000-000000000002",
+              idempotencyKey: "00000000-0000-4000-8000-000000000003",
+              entityType: "transaction",
+              entityId: "00000000-0000-4000-8000-000000000004",
+              operationType: "delete",
+              baseRevision: 2,
+              dependencyIds: [],
+              payload: {},
+            },
+          ],
+        },
+        fetchImpl,
+      }),
+    ).rejects.toBe(abort);
   });
 
   it("rejects invalid and oversized response bodies", async () => {
