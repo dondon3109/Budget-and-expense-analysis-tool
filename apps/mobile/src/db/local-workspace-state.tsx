@@ -12,7 +12,7 @@ import { addDatabaseChangeListener } from "expo-sqlite";
 
 import { closeLocalWorkspace, openLocalWorkspace, type LocalWorkspace } from "./workspace";
 import type { LocalWorkspaceStats } from "./repository";
-import type { LocalTransactionItem, TransactionFormData } from "./repository";
+import type { LocalReferenceData, LocalTransactionItem, TransactionFormData } from "./repository";
 import type { LocalTransactionConflict } from "./transaction-mutation-repository";
 
 export type LocalWorkspaceStatus = "opening" | "ready" | "error";
@@ -175,6 +175,55 @@ export function useLocalTransactions(): {
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { items, error, retry };
+}
+
+export function useLocalReferenceData(): {
+  data: LocalReferenceData | null;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [data, setData] = useState<LocalReferenceData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace) {
+      setData(null);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      void workspace.repository
+        .getReferenceData()
+        .then((next) => {
+          if (active) {
+            setData(next);
+            setError(null);
+          }
+        })
+        .catch(() => {
+          if (active) setError("Accounts and categories could not be read from encrypted storage.");
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["accounts", "categories", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { data, error, retry };
 }
 
 export function useTransactionFormData(id?: string): {

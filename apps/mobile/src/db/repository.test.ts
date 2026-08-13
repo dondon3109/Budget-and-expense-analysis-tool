@@ -85,6 +85,66 @@ describe("encrypted local workspace repository", () => {
     ]);
   });
 
+  it("decodes native account and category setup rows without financial state in memory stores", async () => {
+    const database = {
+      getAllAsync: jest
+        .fn()
+        .mockResolvedValueOnce([
+          {
+            id: "account-1",
+            name: "Wallet",
+            type: "cash",
+            currency: "PHP",
+            system: 0,
+            server_revision: 2,
+            sync_state: "synced",
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "category-1",
+            name: "Dining",
+            kind: "expense",
+            color: "#123456",
+            system: 0,
+            required_plan: "free",
+            locked: 0,
+            server_revision: 3,
+            sync_state: "pending",
+          },
+        ]),
+    };
+
+    await expect(
+      new LocalWorkspaceRepository(database as never).getReferenceData(),
+    ).resolves.toEqual({
+      accounts: [
+        {
+          id: "account-1",
+          name: "Wallet",
+          type: "cash",
+          currency: "PHP",
+          system: false,
+          serverRevision: 2,
+          syncState: "synced",
+        },
+      ],
+      categories: [
+        {
+          id: "category-1",
+          name: "Dining",
+          kind: "expense",
+          color: "#123456",
+          system: false,
+          requiredPlan: "free",
+          locked: false,
+          serverRevision: 3,
+          syncState: "pending",
+        },
+      ],
+    });
+  });
+
   it("returns only decoded local choices and an editable non-transfer transaction", async () => {
     const database = {
       getAllAsync: jest
@@ -131,6 +191,14 @@ describe("encrypted local workspace repository", () => {
       },
       unavailableReason: null,
     });
+    expect(database.getAllAsync).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("server_revision > 0"),
+    );
+    expect(database.getAllAsync).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("server_revision > 0"),
+    );
   });
 
   it("refuses to expose a transfer through the non-atomic editor", async () => {

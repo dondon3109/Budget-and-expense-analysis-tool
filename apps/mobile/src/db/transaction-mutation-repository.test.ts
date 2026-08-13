@@ -111,6 +111,148 @@ describe("durable local transaction mutations", () => {
 
   afterEach(() => database.close());
 
+  it("persists dependency-free account and category commands and keeps pending references unavailable", async () => {
+    const mutations = repository(database);
+    const accountId = await mutations.createAccount({ name: "Offline bank", type: "checking" });
+    const categoryId = await mutations.createCategory({
+      name: "Offline groceries",
+      kind: "expense",
+      color: "#0F766E",
+    });
+
+    expect(
+      database.native
+        .prepare("SELECT name, server_revision, sync_state FROM accounts WHERE id = ?")
+        .get(accountId),
+    ).toEqual({ name: "Offline bank", server_revision: 0, sync_state: "pending" });
+    expect(
+      database.native
+        .prepare(
+          "SELECT name, required_plan, server_revision, sync_state FROM categories WHERE id = ?",
+        )
+        .get(categoryId),
+    ).toEqual({
+      name: "Offline groceries",
+      required_plan: "free",
+      server_revision: 0,
+      sync_state: "pending",
+    });
+    await expect(
+      mutations.createTransaction({ ...input, accountId, categoryId }),
+    ).rejects.toMatchObject({ code: "invalid_reference" });
+
+    const batch = await mutations.getPushBatch();
+    expect(batch?.operations).toMatchObject([
+      { entityType: "account", entityId: accountId, operationType: "create", dependencyIds: [] },
+      {
+        entityType: "category",
+        entityId: categoryId,
+        operationType: "create",
+        dependencyIds: [],
+      },
+    ]);
+  });
+
+  it("coalesces reference edits and cancels unpushed create/archive pairs", async () => {
+    const mutations = repository(database);
+    const accountId = await mutations.createAccount({ name: "Draft wallet", type: "cash" });
+    const categoryId = await mutations.createCategory({
+      name: "Draft category",
+      kind: "expense",
+      color: "#123456",
+    });
+
+    await mutations.updateAccount(accountId, { name: "Edited wallet", type: "savings" });
+    await mutations.updateCategory(categoryId, { name: "Edited category", color: "#654321" });
+    const batch = await mutations.getPushBatch();
+    expect(batch?.operations).toMatchObject([
+      {
+        entityType: "account",
+        operationType: "create",
+        payload: { name: "Edited wallet", type: "savings" },
+      },
+      {
+        entityType: "category",
+        operationType: "create",
+        payload: { name: "Edited category", color: "#654321" },
+      },
+    ]);
+
+    const fresh = repository(database);
+    const canceledAccount = await fresh.createAccount({ name: "Cancel account", type: "cash" });
+    const canceledCategory = await fresh.createCategory({
+      name: "Cancel category",
+      kind: "income",
+      color: "#ABCDEF",
+    });
+    await fresh.archiveAccount(canceledAccount);
+    await fresh.archiveCategory(canceledCategory);
+    expect(
+      database.native.prepare("SELECT id FROM accounts WHERE id = ?").get(canceledAccount),
+    ).toBeUndefined();
+    expect(
+      database.native.prepare("SELECT id FROM categories WHERE id = ?").get(canceledCategory),
+    ).toBeUndefined();
+  });
+
+  it("archives synchronized references and applies acknowledgements to the correct tables", async () => {
+    const mutations = repository(database);
+    await mutations.archiveAccount("account-1");
+    await mutations.archiveCategory("category-1");
+    const request = (await mutations.getPushBatch())!;
+    expect(request.operations).toMatchObject([
+      { entityType: "account", entityId: "account-1", operationType: "delete", baseRevision: 1 },
+      { entityType: "category", entityId: "category-1", operationType: "delete", baseRevision: 1 },
+    ]);
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: request.operations.map((operation) => ({
+        operationId: operation.operationId,
+        entityType: operation.entityType,
+        entityId: operation.entityId,
+        status: "acknowledged" as const,
+        revision: 2,
+      })),
+    });
+
+    expect(
+      database.native
+        .prepare(
+          "SELECT archived, server_revision, sync_state FROM accounts WHERE id = 'account-1'",
+        )
+        .get(),
+    ).toEqual({ archived: 1, server_revision: 2, sync_state: "synced" });
+    expect(
+      database.native
+        .prepare(
+          "SELECT archived, server_revision, sync_state FROM categories WHERE id = 'category-1'",
+        )
+        .get(),
+    ).toEqual({ archived: 1, server_revision: 2, sync_state: "synced" });
+  });
+
+  it("protects local names and permanent reference rows before queueing", async () => {
+    const mutations = repository(database);
+    await expect(mutations.createAccount({ name: "wallet", type: "cash" })).rejects.toMatchObject({
+      code: "name_conflict",
+    });
+    await expect(
+      mutations.createCategory({ name: "DINING", kind: "income", color: "#FFFFFF" }),
+    ).rejects.toMatchObject({ code: "name_conflict" });
+
+    database.native.prepare("UPDATE accounts SET system = 1 WHERE id = 'account-1'").run();
+    database.native.prepare("UPDATE categories SET system = 1 WHERE id = 'category-1'").run();
+    await expect(mutations.updateAccount("account-1", { name: "Renamed" })).rejects.toMatchObject({
+      code: "mutation_blocked",
+    });
+    await expect(mutations.archiveAccount("account-1")).rejects.toMatchObject({
+      code: "mutation_blocked",
+    });
+    await expect(
+      mutations.updateCategory("category-1", { color: "#FFFFFF" }),
+    ).rejects.toMatchObject({ code: "mutation_blocked" });
+  });
+
   it("commits a pending transaction and encrypted outbox operation together", async () => {
     const mutations = repository(database);
     const id = await mutations.createTransaction(input);

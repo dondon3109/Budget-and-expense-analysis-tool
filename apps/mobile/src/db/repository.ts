@@ -89,6 +89,55 @@ export interface TransactionFormData {
   unavailableReason: string | null;
 }
 
+const localAccountItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(["cash", "checking", "savings", "credit", "other"]),
+  currency: z.enum(["PHP", "USD"]),
+  system: z.number().int().min(0).max(1),
+  server_revision: z.number().int().nonnegative(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
+
+const localCategoryItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: z.enum(["income", "expense", "transfer"]),
+  color: z.string(),
+  system: z.number().int().min(0).max(1),
+  required_plan: z.enum(["free", "zoption_pro"]),
+  locked: z.number().int().min(0).max(1),
+  server_revision: z.number().int().nonnegative(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
+
+export interface LocalAccountItem {
+  id: string;
+  name: string;
+  type: z.infer<typeof localAccountItemSchema>["type"];
+  currency: z.infer<typeof localAccountItemSchema>["currency"];
+  system: boolean;
+  serverRevision: number;
+  syncState: z.infer<typeof localAccountItemSchema>["sync_state"];
+}
+
+export interface LocalCategoryItem {
+  id: string;
+  name: string;
+  kind: z.infer<typeof localCategoryItemSchema>["kind"];
+  color: string;
+  system: boolean;
+  requiredPlan: z.infer<typeof localCategoryItemSchema>["required_plan"];
+  locked: boolean;
+  serverRevision: number;
+  syncState: z.infer<typeof localCategoryItemSchema>["sync_state"];
+}
+
+export interface LocalReferenceData {
+  accounts: LocalAccountItem[];
+  categories: LocalCategoryItem[];
+}
+
 export class LocalWorkspaceRepository {
   constructor(private readonly database: SQLiteDatabase) {}
 
@@ -192,18 +241,65 @@ export class LocalWorkspaceRepository {
     });
   }
 
+  async getReferenceData(): Promise<LocalReferenceData> {
+    const [accountRows, categoryRows] = await Promise.all([
+      this.database.getAllAsync(
+        `SELECT id, name, type, currency, system, server_revision, sync_state
+         FROM accounts
+         WHERE deleted_at IS NULL AND archived = 0
+         ORDER BY name COLLATE NOCASE, id`,
+      ),
+      this.database.getAllAsync(
+        `SELECT id, name, kind, color, system, required_plan, locked,
+          server_revision, sync_state
+         FROM categories
+         WHERE deleted_at IS NULL AND archived = 0
+         ORDER BY kind, name COLLATE NOCASE, id`,
+      ),
+    ]);
+    return {
+      accounts: z
+        .array(localAccountItemSchema)
+        .parse(accountRows)
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          currency: row.currency,
+          system: row.system === 1,
+          serverRevision: row.server_revision,
+          syncState: row.sync_state,
+        })),
+      categories: z
+        .array(localCategoryItemSchema)
+        .parse(categoryRows)
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          kind: row.kind,
+          color: row.color,
+          system: row.system === 1,
+          requiredPlan: row.required_plan,
+          locked: row.locked === 1,
+          serverRevision: row.server_revision,
+          syncState: row.sync_state,
+        })),
+    };
+  }
+
   async getTransactionFormData(id?: string): Promise<TransactionFormData> {
     const [accounts, categories, transactionRow] = await Promise.all([
       this.database.getAllAsync(
         `SELECT id, name, currency
          FROM accounts
-         WHERE deleted_at IS NULL AND archived = 0
+         WHERE deleted_at IS NULL AND archived = 0 AND server_revision > 0
          ORDER BY name COLLATE NOCASE, id`,
       ),
       this.database.getAllAsync(
         `SELECT id, name, kind, color
          FROM categories
          WHERE deleted_at IS NULL AND archived = 0 AND locked = 0
+           AND server_revision > 0
            AND kind IN ('income', 'expense')
          ORDER BY kind, name COLLATE NOCASE, id`,
       ),

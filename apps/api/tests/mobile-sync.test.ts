@@ -71,6 +71,7 @@ function createSyncEnvironment(): { env: Bindings; database: DatabaseSync } {
   database.exec(`
     PRAGMA foreign_keys = ON;
     CREATE TABLE tenants (id text PRIMARY KEY NOT NULL, kind text NOT NULL, name text NOT NULL);
+    CREATE TABLE effective_pro_entitlements (tenant_id text PRIMARY KEY NOT NULL);
     CREATE TABLE accounts (
       id text PRIMARY KEY NOT NULL, tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
       name text NOT NULL,
@@ -380,6 +381,372 @@ describe("mobile sync transaction push repository", () => {
         )
         .get("tenant-1", entityId),
     ).toEqual({ operation: "delete", row_revision: 2 });
+  });
+});
+
+describe("mobile sync account and category push repository", () => {
+  const clientId = "10000000-0000-4000-8000-000000000001";
+
+  it("creates, updates, and archives a client-ID account idempotently", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const entityId = "10000000-0000-4000-8000-000000000002";
+    const create = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-000000000003",
+          idempotencyKey: "10000000-0000-4000-8000-000000000004",
+          entityType: "account" as const,
+          entityId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: { name: "Offline savings", type: "savings" as const },
+        },
+      ],
+    };
+
+    const first = await repository.push(env, "tenant-1", create);
+    expect(await repository.push(env, "tenant-1", create)).toEqual(first);
+    expect(first.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+
+    const updated = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-000000000005",
+          idempotencyKey: "10000000-0000-4000-8000-000000000006",
+          entityType: "account",
+          entityId,
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { name: "Emergency savings", type: "savings" },
+        },
+      ],
+    });
+    expect(updated.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+
+    const archived = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-000000000007",
+          idempotencyKey: "10000000-0000-4000-8000-000000000008",
+          entityType: "account",
+          entityId,
+          operationType: "delete",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    expect(archived.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
+    expect(
+      database.prepare("SELECT name, archived, revision FROM accounts WHERE id = ?").get(entityId),
+    ).toEqual({ name: "Emergency savings", archived: 1, revision: 3 });
+    expect(
+      database
+        .prepare(
+          "SELECT operation FROM mobile_sync_changes WHERE entity_id = ? ORDER BY sequence DESC LIMIT 1",
+        )
+        .get(entityId),
+    ).toEqual({ operation: "upsert" });
+  });
+
+  it("protects account names, system rows, revisions, and tenant ownership", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    database.prepare("UPDATE accounts SET system_key = ? WHERE id = ?").run("cash", "account-1");
+
+    const duplicate = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "11000000-0000-4000-8000-000000000001",
+          idempotencyKey: "11000000-0000-4000-8000-000000000002",
+          entityType: "account",
+          entityId: "11000000-0000-4000-8000-000000000003",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { name: "wallet", type: "cash" },
+        },
+      ],
+    });
+    expect(duplicate.results[0]).toMatchObject({ status: "rejected", code: "invalid_operation" });
+
+    const protectedEdit = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "11000000-0000-4000-8000-000000000004",
+          idempotencyKey: "11000000-0000-4000-8000-000000000005",
+          entityType: "account",
+          entityId: "account-1",
+          operationType: "update",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: { name: "Renamed system account" },
+        },
+      ],
+    });
+    expect(protectedEdit.results[0]).toMatchObject({
+      status: "rejected",
+      code: "invalid_operation",
+    });
+
+    database.prepare("UPDATE accounts SET type = ? WHERE id = ?").run("checking", "account-1");
+    const stale = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "11000000-0000-4000-8000-000000000006",
+          idempotencyKey: "11000000-0000-4000-8000-000000000007",
+          entityType: "account",
+          entityId: "account-1",
+          operationType: "update",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: { name: "Wallet", type: "cash" },
+        },
+      ],
+    });
+    expect(stale.results[0]).toMatchObject({
+      status: "conflict",
+      code: "stale_revision",
+      serverRevision: 3,
+      serverPayload: { type: "checking" },
+    });
+
+    const otherTenant = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "11000000-0000-4000-8000-000000000008",
+          idempotencyKey: "11000000-0000-4000-8000-000000000009",
+          entityType: "account",
+          entityId: "account-2",
+          operationType: "delete",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    expect(otherTenant.results[0]).toMatchObject({
+      status: "conflict",
+      code: "entity_missing",
+      serverPayload: null,
+    });
+  });
+
+  it("enforces Free and Pro category creation atomically and preserves archive semantics", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(async (bindings, tenantId) =>
+      Boolean(
+        await bindings.DB.prepare(
+          "SELECT 1 AS entitled FROM effective_pro_entitlements WHERE tenant_id = ?",
+        )
+          .bind(tenantId)
+          .first(),
+      ),
+    );
+    const freeCategoryId = "12000000-0000-4000-8000-000000000001";
+    const free = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "12000000-0000-4000-8000-000000000002",
+          idempotencyKey: "12000000-0000-4000-8000-000000000003",
+          entityType: "category",
+          entityId: freeCategoryId,
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { name: "Offline needs", kind: "expense", color: "#0F766E" },
+        },
+      ],
+    });
+    expect(free.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+    expect(
+      database.prepare("SELECT required_plan FROM categories WHERE id = ?").get(freeCategoryId),
+    ).toEqual({ required_plan: "free" });
+
+    const limited = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "12000000-0000-4000-8000-000000000004",
+          idempotencyKey: "12000000-0000-4000-8000-000000000005",
+          entityType: "category",
+          entityId: "12000000-0000-4000-8000-000000000006",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { name: "Second free", kind: "expense", color: "#1D4ED8" },
+        },
+      ],
+    });
+    expect(limited.results[0]).toMatchObject({ status: "rejected", code: "plan_limit" });
+
+    database
+      .prepare("INSERT INTO effective_pro_entitlements (tenant_id) VALUES (?)")
+      .run("tenant-1");
+    const proCategoryId = "12000000-0000-4000-8000-000000000007";
+    const pro = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "12000000-0000-4000-8000-000000000008",
+          idempotencyKey: "12000000-0000-4000-8000-000000000009",
+          entityType: "category",
+          entityId: proCategoryId,
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { name: "Pro wants", kind: "expense", color: "#7C3AED" },
+        },
+      ],
+    });
+    expect(pro.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+    expect(
+      database.prepare("SELECT required_plan FROM categories WHERE id = ?").get(proCategoryId),
+    ).toEqual({ required_plan: "zoption_pro" });
+
+    const archived = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "12000000-0000-4000-8000-000000000010",
+          idempotencyKey: "12000000-0000-4000-8000-000000000011",
+          entityType: "category",
+          entityId: proCategoryId,
+          operationType: "delete",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    expect(archived.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+    expect(
+      database.prepare("SELECT archived, revision FROM categories WHERE id = ?").get(proCategoryId),
+    ).toEqual({ archived: 1, revision: 2 });
+  });
+
+  it("rejects category name collisions, protected rows, and dependency graphs fail-closed", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    database
+      .prepare("UPDATE categories SET system_key = ? WHERE id = ?")
+      .run("expense", "category-1");
+
+    const duplicate = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "13000000-0000-4000-8000-000000000001",
+          idempotencyKey: "13000000-0000-4000-8000-000000000002",
+          entityType: "category",
+          entityId: "13000000-0000-4000-8000-000000000003",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { name: "dining", kind: "income", color: "#111827" },
+        },
+      ],
+    });
+    expect(duplicate.results[0]).toMatchObject({ status: "rejected", code: "invalid_operation" });
+
+    const protectedCategory = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "13000000-0000-4000-8000-000000000004",
+          idempotencyKey: "13000000-0000-4000-8000-000000000005",
+          entityType: "category",
+          entityId: "category-1",
+          operationType: "update",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: { color: "#FFFFFF" },
+        },
+      ],
+    });
+    expect(protectedCategory.results[0]).toMatchObject({
+      status: "rejected",
+      code: "invalid_operation",
+    });
+
+    const dependentId = "13000000-0000-4000-8000-000000000006";
+    const dependent = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "13000000-0000-4000-8000-000000000007",
+          idempotencyKey: "13000000-0000-4000-8000-000000000008",
+          entityType: "account",
+          entityId: dependentId,
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: ["13000000-0000-4000-8000-000000000009"],
+          payload: { name: "Dependent account", type: "cash" },
+        },
+      ],
+    });
+    expect(dependent.results[0]).toMatchObject({
+      status: "rejected",
+      code: "unsupported_operation",
+    });
+    expect(
+      database.prepare("SELECT id FROM accounts WHERE id = ?").get(dependentId),
+    ).toBeUndefined();
+  });
+
+  it("returns an entitlement-derived category snapshot for stale conflicts", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    database.prepare("UPDATE categories SET color = ? WHERE id = ?").run("#ABCDEF", "category-1");
+
+    const stale = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "14000000-0000-4000-8000-000000000001",
+          idempotencyKey: "14000000-0000-4000-8000-000000000002",
+          entityType: "category",
+          entityId: "category-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { color: "#FFFFFF" },
+        },
+      ],
+    });
+    expect(stale.results[0]).toMatchObject({
+      status: "conflict",
+      code: "stale_revision",
+      serverRevision: 2,
+      serverPayload: { color: "#ABCDEF", requiredPlan: "zoption_pro", locked: true },
+    });
   });
 });
 

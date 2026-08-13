@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -39,6 +40,21 @@ export default function MoreScreen() {
       title="More"
       description="Appearance is device-local and never contains financial records."
     >
+      <Card accessibilityLabel="Financial setup">
+        <View className="gap-3">
+          <Text style={[typography.headline, { color: theme.colors.text }]}>Money setup</Text>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+            Manage accounts and categories from encrypted local data, including while offline.
+          </Text>
+          <Button
+            accessibilityHint="Opens native account and category management"
+            variant="secondary"
+            onPress={() => router.push("/(app)/money-setup")}
+          >
+            Accounts & categories
+          </Button>
+        </View>
+      </Card>
       <Card accessibilityLabel="Local data protection status">
         <View className="gap-1">
           <Text style={[typography.headline, { color: theme.colors.text }]}>Local data</Text>
@@ -59,7 +75,10 @@ export default function MoreScreen() {
             safety check. Synced records remain in your Zoption workspace.
           </Text>
           {signOutError ? (
-            <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.danger }]}>
+            <Text
+              accessibilityRole="alert"
+              style={[typography.body, { color: theme.colors.danger }]}
+            >
               {signOutError}
             </Text>
           ) : null}

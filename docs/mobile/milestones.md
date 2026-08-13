@@ -177,6 +177,21 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   applies that validated snapshot locally; choosing the device creates a fresh idempotency key and
   revision-aware operation based on the preserved server revision. Both resolutions close the prior
   conflict and outbox reference in the same SQLCipher transaction.
+- The Worker now accepts dependency-free account and category create/update/archive commands with
+  client UUIDs, exact revisions, idempotent acknowledgements, tenant-scoped snapshots, permanent-row
+  protection, and case-insensitive name checks. Category creation and restore keep the current atomic
+  Free/Pro allowance logic; archive commands intentionally produce upserts to match the existing web
+  product. Dependency-bearing batches still fail closed until graph-level atomicity is implemented.
+- Native Money setup now lists observable encrypted accounts/categories and provides touch-safe
+  create, edit, and confirmed archive sheets. Every mutation commits its local projection and outbox
+  row together. Unsynchronized new references remain unavailable to transaction entry until their
+  server revision is acknowledged, preventing unsupported parent/child graphs.
+- On iPhone 17 Pro Simulator, a synthetic account was created with the isolated Worker stopped and
+  remained pending after full process termination/relaunch. Reconnect acknowledged revision 1 in
+  local D1. The same row was archived offline, survived another process restart, and reconnect
+  acknowledged the existing product's archive-upsert behavior at revision 2. No remote D1,
+  deployment, production checkout, or Android TWA was changed. A reset isolated Worker cursor also
+  remained visibly in full-resync recovery; the app did not clear the encrypted workspace to hide it.
 - On iPhone 17 Pro Simulator, a synthetic expense was saved while the isolated local Worker was down,
   rendered as pending, and survived full app-process termination. After reconnect, the same outbox
   operation received `POST /api/app/sync/push` 200 followed by pull convergence; a subsequent native
@@ -185,15 +200,15 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   local D1, and produced a visible conflict after reconnect. The native review sheet showed both
   versions; “Keep mine” generated a new operation against the newer server revision, received push
   and pull `200` responses, and returned to `Up to date` only after acknowledgement.
-- Sixteen mobile suites with 63 focused tests pass. Repository-wide ESLint/typecheck and all 148
-  Vitest files with 1,039 tests pass; Worker dry-run packaging and separate production-mode iOS and
+- Sixteen mobile suites with 68 focused tests pass. Repository-wide ESLint/typecheck and all 148
+  Vitest files with 1,044 tests pass; Worker dry-run packaging and separate production-mode iOS and
   Android Hermes exports also succeed.
 
 ## Milestone 4 remaining gaps
 
-- Account/category push, dependent batches, and atomic transfer push are not implemented yet.
-  Conflict resolution is implemented for non-transfer transactions; account/category and transfer
-  conflicts remain future protocol work.
+- Dependency graphs and atomic transfer push are not implemented yet. Conflict resolution is
+  implemented for non-transfer transactions; account/category and transfer conflicts remain future
+  protocol work.
 - Transfer changes currently enter the internal change stream as their two atomic D1 legs. The mobile
   apply layer must preserve the group as one logical transfer before financial screens consume it.
 - Tombstones are retained indefinitely in this first foundation. Cursor expiry, client acknowledgement,

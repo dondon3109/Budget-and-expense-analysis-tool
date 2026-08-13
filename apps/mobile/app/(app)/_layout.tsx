@@ -61,6 +61,22 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
+          name="money-setup"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+          }}
+        />
+        <Stack.Screen
+          name="reference"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Money setup",
+            presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            sheetGrabberVisible: Platform.OS === "ios",
+          }}
+        />
+        <Stack.Screen
           name="transaction"
           options={{
             headerShown: true,

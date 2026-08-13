@@ -68,13 +68,19 @@ replays the exact saved request instead of mutating a key underneath an uncertai
 
 The first implementation should use atomic batches for one dependency graph. It must not acknowledge a dependent child if its parent failed. A transfer is one command whose two legs and change-log entries commit in one D1 transaction.
 
-The implemented server slice accepts dependency-free non-transfer transaction operations only.
-Client-generated UUID creation, exact-base-revision updates/deletes, the D1 mutation, trigger-generated
-change row, and tenant/client/idempotency acknowledgement commit in one D1 batch. Retrying the same
-key and canonical operation returns its stored result; using that key for different content is a
-conflict. Concurrent loss of the expected revision returns the current validated server snapshot
-instead of overwriting it. Account/category push, dependency graphs, and atomic transfers remain
-explicitly unsupported until their complete invariants are implemented.
+The implemented server slice accepts dependency-free account, category, and non-transfer transaction
+operations. Client-generated UUID creation, exact-base-revision updates/deletes, the D1 mutation,
+trigger-generated change row, and tenant/client/idempotency acknowledgement commit in one D1 batch.
+Retrying the same key and canonical operation returns its stored result; using that key for different
+content is a conflict. Concurrent loss of the expected revision returns the current validated server
+snapshot instead of overwriting it.
+
+Account and category `delete` commands preserve the existing product behavior: they archive the row
+and emit a revisioned upsert rather than hard-delete user-visible metadata. Permanent system rows,
+case-insensitive name uniqueness, category restore rules, and the current Free/Pro custom-category
+allowance remain server-authoritative. Dependency graphs and atomic transfers remain explicitly
+unsupported until the Worker can commit an entire graph without acknowledging a child whose parent
+failed.
 
 The mobile coordinator drains up to 100 bounded transaction batches before pull, refreshes an expired
 session once, and applies each response on the keyed database connection. Acknowledgements remove the
