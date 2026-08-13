@@ -11,32 +11,12 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 12, 2026",
+  releasedOn: "August 13, 2026",
   changes: [
     {
-      title: "Talk naturally with your Financial Assistant",
+      title: "Android status bar restored",
       description:
-        "Ask a question by voice and receive the same read-only, grounded financial answer in chat. Voice recordings are transcribed only after you enable the separate voice notice, and recordings and generated audio are not stored in your Zoption workspace.",
-    },
-    {
-      title: "Recording stops when you finish",
-      description:
-        "Push to talk, speak normally, and Zoption stops recording after you finish. If no speech is detected, the recording ends without sending an empty clip for transcription.",
-    },
-    {
-      title: "Choose how voice works for you",
-      description:
-        "Push-to-talk now starts with automatic sending and spoken plus text replies in Production. You can still switch to transcript review or text-only answers in Voice settings.",
-    },
-    {
-      title: "Clearer spoken answers",
-      description:
-        "Spoken replies now show when audio is being prepared and turn headings, lists, tables, and links into more natural speech instead of reading formatting aloud.",
-    },
-    {
-      title: "A more capable, easier-to-reach Zoption",
-      description:
-        "This release also adds Google and Facebook sign-in, in-product help and bug reporting, clearer Free-plan information, improved mobile navigation, and more accurate remaining-budget calculations.",
+        "The installed Android app no longer opens in immersive fullscreen. The system status bar with the time, Wi-Fi, and battery indicators is visible again while Zoption keeps its standalone, chrome-free window. Already using the app? Download the updated APK from the Install page and install it over your current version — your signed-in workspace is preserved.",
     },
   ],
 };
@@ -48,6 +28,37 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.1.0",
+    releasedOn: "August 12, 2026",
+    changes: [
+      {
+        title: "Talk naturally with your Financial Assistant",
+        description:
+          "Ask a question by voice and receive the same read-only, grounded financial answer in chat. Voice recordings are transcribed only after you enable the separate voice notice, and recordings and generated audio are not stored in your Zoption workspace.",
+      },
+      {
+        title: "Recording stops when you finish",
+        description:
+          "Push to talk, speak normally, and Zoption stops recording after you finish. If no speech is detected, the recording ends without sending an empty clip for transcription.",
+      },
+      {
+        title: "Choose how voice works for you",
+        description:
+          "Push-to-talk now starts with automatic sending and spoken plus text replies in Production. You can still switch to transcript review or text-only answers in Voice settings.",
+      },
+      {
+        title: "Clearer spoken answers",
+        description:
+          "Spoken replies now show when audio is being prepared and turn headings, lists, tables, and links into more natural speech instead of reading formatting aloud.",
+      },
+      {
+        title: "A more capable, easier-to-reach Zoption",
+        description:
+          "This release also adds Google and Facebook sign-in, in-product help and bug reporting, clearer Free-plan information, improved mobile navigation, and more accurate remaining-budget calculations.",
+      },
+    ],
+  },
   {
     version: "2.0.0",
     releasedOn: "August 10, 2026",

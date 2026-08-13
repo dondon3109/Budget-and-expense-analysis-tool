@@ -121,7 +121,7 @@
 
 
             <meta-data android:name="android.support.customtabs.trusted.DISPLAY_MODE"
-                android:value="immersive" />
+                android:value="standalone" />
 
 
             <meta-data android:name="android.support.customtabs.trusted.SCREEN_ORIENTATION"

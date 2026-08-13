@@ -1,6 +1,6 @@
 # Zoption Android APK
 
-Zoption's Android package is a Trusted Web Activity generated with Bubblewrap 1.25.0 and Android Browser Helper. It opens `https://zoption.site/app` in fullscreen mode and is distributed only as a release-signed APK from `zoption.site`. This project does not create a Play Store listing or ship an Android App Bundle.
+Zoption's Android package is a Trusted Web Activity generated with Bubblewrap 1.25.0 and Android Browser Helper. It opens `https://zoption.site/app` in standalone mode with the Android system status bar visible, and is distributed only as a release-signed APK from `zoption.site`. This project does not create a Play Store listing or ship an Android App Bundle.
 
 ## Identity and versions
 
