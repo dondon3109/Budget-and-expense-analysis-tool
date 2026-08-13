@@ -118,6 +118,33 @@ function namedDayRange(message: string): AssistantDateRange | undefined {
   return from && to && from <= to ? { from, to, label: label(from, to) } : undefined;
 }
 
+function namedMonthRange(message: string): PeriodResolution | undefined {
+  const pattern = new RegExp(
+    `(?:from\\s+)?(${MONTH_NAME})(?:\\s+((?:19|20)\\d{2}))?\\s*(?:to|through|-)\\s*(${MONTH_NAME})(?:\\s+((?:19|20)\\d{2}))?\\b`,
+    "i",
+  );
+  const match = pattern.exec(message);
+  if (!match) return undefined;
+  if (!match[2] && !match[4]) {
+    return {
+      clarification:
+        "Which year should I use for that month range? For example, July to August 2026.",
+    };
+  }
+
+  const fromMonth = MONTHS[match[1]!.toLocaleLowerCase("en")]!;
+  const toMonth = MONTHS[match[3]!.toLocaleLowerCase("en")]!;
+  const fromYear = match[2] ? Number(match[2]) : Number(match[4]) - (fromMonth > toMonth ? 1 : 0);
+  const toYear = match[4] ? Number(match[4]) : Number(match[2]) + (toMonth < fromMonth ? 1 : 0);
+  const from = monthStart(fromYear, fromMonth);
+  const to = monthEnd(toYear, toMonth);
+
+  if (from > to) {
+    return { clarification: "The start of the month range must be before the end." };
+  }
+  return { period: { from, to, label: label(from, to) } };
+}
+
 function namedMonth(message: string): PeriodResolution | undefined {
   const match = new RegExp(`\\b(${MONTH_NAME})(?:\\s+((?:19|20)\\d{2}))?\\b`, "i").exec(message);
   if (!match) return undefined;
@@ -256,6 +283,8 @@ export function resolveAssistantPeriod(
   if (namedRange) return { period: namedRange };
   const relative = relativePeriod(message, currentDate, bounds);
   if (relative) return relative;
+  const monthRange = requiresPeriod ? namedMonthRange(message) : undefined;
+  if (monthRange) return monthRange;
   const month = requiresPeriod ? namedMonth(message) : undefined;
   if (month) return month;
 

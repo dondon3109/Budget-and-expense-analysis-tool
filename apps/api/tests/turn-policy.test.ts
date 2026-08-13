@@ -47,6 +47,10 @@ describe("assistant date resolution", () => {
     ["2024", { from: "2024-01-01", to: "2024-12-31" }],
     ["February 2024", { from: "2024-02-01", to: "2024-02-29" }],
     ["July 1 to August 2, 2026", { from: "2026-07-01", to: "2026-08-02" }],
+    ["July 2026 to August 2026", { from: "2026-07-01", to: "2026-08-31" }],
+    ["July to August 2026", { from: "2026-07-01", to: "2026-08-31" }],
+    ["November to February 2026", { from: "2025-11-01", to: "2026-02-28" }],
+    ["November 2026 through February", { from: "2026-11-01", to: "2027-02-28" }],
   ] as const)("resolves %s deterministically", (phrase, period) => {
     const result = resolveAssistantPeriod(
       [],
@@ -62,6 +66,18 @@ describe("assistant date resolution", () => {
     expect(
       resolveAssistantPeriod([], "How much did I spend in March?", currentDate, null, true)
         .clarification,
+    ).toMatch(/year/i);
+  });
+
+  it("asks for a year when a month range omits both years", () => {
+    expect(
+      resolveAssistantPeriod(
+        [],
+        "How much did I spend from July to August?",
+        currentDate,
+        null,
+        true,
+      ).clarification,
     ).toMatch(/year/i);
   });
 
