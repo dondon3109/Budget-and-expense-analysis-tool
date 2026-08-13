@@ -253,6 +253,110 @@ describe("durable local transaction mutations", () => {
     ).rejects.toMatchObject({ code: "mutation_blocked" });
   });
 
+  it("accepts the preserved server account after a stale edit conflict", async () => {
+    const mutations = repository(database);
+    await mutations.updateAccount("account-1", { name: "Device wallet", type: "cash" });
+    const request = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "account",
+          entityId: "account-1",
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 2,
+          serverUpdatedAt: "2026-08-13 15:30:00",
+          serverPayload: {
+            id: "account-1",
+            name: "Web wallet",
+            type: "checking",
+            currency: "PHP",
+            archived: false,
+            system: false,
+            interest: {
+              enabled: false,
+              annualRateBasisPoints: null,
+              frequency: null,
+              payDay: null,
+            },
+            revision: 2,
+            updatedAt: "2026-08-13 15:30:00",
+          },
+        },
+      ],
+    });
+
+    await expect(mutations.getReferenceConflict("account", "account-1")).resolves.toMatchObject({
+      local: { name: "Device wallet", detail: "Cash · PHP", archived: false },
+      server: { name: "Web wallet", detail: "Checking · PHP", archived: false },
+      serverRevision: 2,
+    });
+    await mutations.resolveReferenceConflict("account", "account-1", "keep_server");
+    expect(
+      database.native
+        .prepare("SELECT name, type, server_revision, sync_state FROM accounts WHERE id = ?")
+        .get("account-1"),
+    ).toEqual({
+      name: "Web wallet",
+      type: "checking",
+      server_revision: 2,
+      sync_state: "synced",
+    });
+  });
+
+  it("turns keep-mine category recovery into a fresh revision-aware operation", async () => {
+    const mutations = repository(database);
+    await mutations.updateCategory("category-1", { name: "Device dining", color: "#0F766E" });
+    const request = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "category",
+          entityId: "category-1",
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 2,
+          serverUpdatedAt: "2026-08-13 15:30:00",
+          serverPayload: {
+            id: "category-1",
+            name: "Web dining",
+            kind: "expense",
+            color: "#ABCDEF",
+            archived: false,
+            system: false,
+            origin: "custom",
+            requiredPlan: "free",
+            locked: false,
+            revision: 2,
+            updatedAt: "2026-08-13 15:30:00",
+          },
+        },
+      ],
+    });
+
+    await expect(mutations.getReferenceConflict("category", "category-1")).resolves.toMatchObject({
+      local: { name: "Device dining", detail: "Expense", color: "#0F766E" },
+      server: { name: "Web dining", detail: "Expense", color: "#ABCDEF" },
+      serverRevision: 2,
+    });
+    await mutations.resolveReferenceConflict("category", "category-1", "keep_local");
+    const retry = await mutations.getPushBatch();
+    expect(retry?.operations).toMatchObject([
+      {
+        entityType: "category",
+        entityId: "category-1",
+        operationType: "update",
+        baseRevision: 2,
+        payload: { name: "Device dining", color: "#0F766E", archived: false },
+      },
+    ]);
+    expect(retry?.operations[0]?.idempotencyKey).not.toBe(request.operations[0]!.idempotencyKey);
+  });
+
   it("commits a pending transaction and encrypted outbox operation together", async () => {
     const mutations = repository(database);
     const id = await mutations.createTransaction(input);

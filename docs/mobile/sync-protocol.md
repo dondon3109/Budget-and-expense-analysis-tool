@@ -2,9 +2,10 @@
 
 Status: Milestone 4 implementation in progress. The isolated branch implements versioned contracts,
 D1 revision/change foundations, authenticated pull, and atomic encrypted mobile pull application for
-accounts, categories, transactions, and tombstones. The first end-to-end push slice supports
-non-transfer transaction create, update, and delete, including local composition, restart replay,
-acknowledgement, retry, and conflict preservation. The current production API and D1 have not changed.
+accounts, categories, transactions, and tombstones. The end-to-end push slice supports account and
+category create/update/archive plus non-transfer transaction create/update/delete, including local
+composition, restart replay, acknowledgement, retry, and conflict preservation. The current
+production API and D1 have not changed.
 
 ## Goals and invariants
 
@@ -82,7 +83,7 @@ allowance remain server-authoritative. Dependency graphs and atomic transfers re
 unsupported until the Worker can commit an entire graph without acknowledging a child whose parent
 failed.
 
-The mobile coordinator drains up to 100 bounded transaction batches before pull, refreshes an expired
+The mobile coordinator drains up to 100 bounded operation batches before pull, refreshes an expired
 session once, and applies each response on the keyed database connection. Acknowledgements remove the
 outbox row only while updating the local server revision in the same transaction. Network and timeout
 failures persist exponential full-jitter retry metadata; permanent rejections remain failed and
@@ -123,13 +124,12 @@ the independent Worker identity assertion gates synchronization, not offline rea
 - A conflict record stores the local proposed command, the acknowledged base snapshot, and the current server snapshot. The visible entity stays explicitly conflicted until the user chooses a resolution.
 - Resolution is a new operation based on the current server revision. “Keep mine” is never an unversioned overwrite.
 
-The implemented transaction review presents the preserved device and server versions. `keep_server`
-applies the validated server snapshot and closes the conflicted outbox row atomically. `keep_local`
-closes the old operation, creates a fresh idempotency key, and queues a full update using the preserved
-server revision as its base. If the server changed again first, that new operation conflicts again
-instead of overwriting it.
-
-Account/category display metadata may later gain explicit field-level merge rules, but no automatic merge is part of the first vertical slice.
+The implemented transaction, account, and category reviews present the preserved device and server
+versions. `keep_server` applies the validated server snapshot and closes the conflicted outbox row
+atomically. `keep_local` closes the old operation, creates a fresh idempotency key, and queues a full
+update using the preserved server revision as its base. If the server changed again first, that new
+operation conflicts again instead of overwriting it. Account/category metadata has no automatic
+field-level merge in this first vertical slice.
 
 ## Deletions
 

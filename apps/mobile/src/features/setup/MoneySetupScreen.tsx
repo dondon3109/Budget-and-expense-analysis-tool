@@ -51,7 +51,13 @@ function SetupRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${detail}${status ? `, ${status}` : ""}`}
-      accessibilityHint={disabled ? "This item cannot be edited" : "Opens item details"}
+      accessibilityHint={
+        disabled
+          ? "This item cannot be edited"
+          : state === "conflicted"
+            ? "Opens conflict review"
+            : "Opens item details"
+      }
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
@@ -139,6 +145,9 @@ export function MoneySetupScreen() {
       params: { entityType, ...(id ? { id } : {}) },
     });
   };
+  const openConflict = (entityType: "account" | "category", id: string): void => {
+    router.push({ pathname: "/(app)/reference-conflict", params: { entityType, id } });
+  };
 
   return (
     <Screen
@@ -177,10 +186,12 @@ export function MoneySetupScreen() {
                       title={account.name}
                       detail={`${accountTypeLabel[account.type]} · ${account.currency}${account.system ? " · Permanent" : ""}`}
                       state={account.syncState}
-                      disabled={
-                        account.syncState === "failed" || account.syncState === "conflicted"
+                      disabled={account.syncState === "failed"}
+                      onPress={() =>
+                        account.syncState === "conflicted"
+                          ? openConflict("account", account.id)
+                          : open("account", account.id)
                       }
-                      onPress={() => open("account", account.id)}
                     />
                   </View>
                 ))}
@@ -207,12 +218,12 @@ export function MoneySetupScreen() {
                       detail={`${category.kind[0]!.toUpperCase()}${category.kind.slice(1)}${category.requiredPlan === "zoption_pro" ? " · Pro" : ""}${category.locked ? " · Locked" : ""}${category.system ? " · Permanent" : ""}`}
                       state={category.syncState}
                       color={category.color}
-                      disabled={
-                        category.system ||
-                        category.syncState === "failed" ||
+                      disabled={category.system || category.syncState === "failed"}
+                      onPress={() =>
                         category.syncState === "conflicted"
+                          ? openConflict("category", category.id)
+                          : open("category", category.id)
                       }
-                      onPress={() => open("category", category.id)}
                     />
                   </View>
                 ))}

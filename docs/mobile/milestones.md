@@ -1,6 +1,6 @@
 # Native mobile milestone status
 
-Last updated: 2026-08-13.
+Last updated: 2026-08-14.
 
 | Milestone                            | Status      | Exit evidence                                                                                                                |
 | ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -8,7 +8,7 @@ Last updated: 2026-08-13.
 | 1. Mobile foundation                 | Complete    | Native Android/iOS development builds, iOS runtime navigation/input, themes/components, focused tests                        |
 | 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS; social auth and Android runtime remain                      |
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
-| 4. Transaction sync vertical slice   | In progress | Native transaction create/edit plus durable encrypted outbox push/retry/ack/conflict behavior proven on iOS                  |
+| 4. Transaction sync vertical slice   | In progress | Account/category/transaction offline push, restart durability, and explicit conflict recovery proven on iOS                  |
 | 5. Core budgeting                    | Not started | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
 | 6. Planning and recurring money      | Not started | Subscriptions/calendar/goals/debts/transfers/interest with plan boundaries                                                   |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
@@ -200,15 +200,21 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   local D1, and produced a visible conflict after reconnect. The native review sheet showed both
   versions; “Keep mine” generated a new operation against the newer server revision, received push
   and pull `200` responses, and returned to `Up to date` only after acknowledgement.
-- Sixteen mobile suites with 68 focused tests pass. Repository-wide ESLint/typecheck and all 148
+- A category adversarial run saved “Device dining conflict” offline while the isolated Worker was
+  stopped, then independently changed the same local D1 row to “Server dining conflict” at revision 2.
+  Reconnect preserved both versions and marked the row `Needs review`. The native review sheet exposed
+  both names and colors; choosing the device version queued a new idempotent operation against revision
+  2, which the Worker acknowledged as revision 3. A full app-process termination/relaunch retained the
+  resolved local row without a pending or conflict label. No remote D1 or production service changed.
+- Sixteen mobile suites with 70 focused tests pass. Repository-wide ESLint/typecheck and all 148
   Vitest files with 1,044 tests pass; Worker dry-run packaging and separate production-mode iOS and
   Android Hermes exports also succeed.
 
 ## Milestone 4 remaining gaps
 
-- Dependency graphs and atomic transfer push are not implemented yet. Conflict resolution is
-  implemented for non-transfer transactions; account/category and transfer conflicts remain future
-  protocol work.
+- Dependency graphs and atomic transfer push are not implemented yet. Explicit conflict resolution is
+  implemented for accounts, categories, and non-transfer transactions; transfer conflicts remain
+  future protocol work.
 - Transfer changes currently enter the internal change stream as their two atomic D1 legs. The mobile
   apply layer must preserve the group as one logical transfer before financial screens consume it.
 - Tombstones are retained indefinitely in this first foundation. Cursor expiry, client acknowledgement,

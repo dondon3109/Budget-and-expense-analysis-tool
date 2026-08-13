@@ -77,6 +77,15 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
           }}
         />
         <Stack.Screen
+          name="reference-conflict"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Money setup",
+            presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            sheetGrabberVisible: Platform.OS === "ios",
+          }}
+        />
+        <Stack.Screen
           name="transaction"
           options={{
             headerShown: true,
