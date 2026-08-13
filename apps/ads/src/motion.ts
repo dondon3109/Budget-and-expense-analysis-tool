@@ -5,17 +5,21 @@ export const clamp = {
   extrapolateRight: "clamp",
 } as const;
 
+const cubic = (t: number) => Easing.cubic(t);
+const outCubic = (t: number) => Easing.out(cubic)(t);
+const inOutCubic = (t: number) => Easing.inOut(cubic)(t);
+
 export function easeOut(frame: number, start: number, duration = 18) {
   return interpolate(frame, [start, start + duration], [0, 1], {
     ...clamp,
-    easing: Easing.out(Easing.cubic),
+    easing: outCubic,
   });
 }
 
 export function easeInOut(frame: number, start: number, end: number) {
   return interpolate(frame, [start, end], [0, 1], {
     ...clamp,
-    easing: Easing.inOut(Easing.cubic),
+    easing: inOutCubic,
   });
 }
 
