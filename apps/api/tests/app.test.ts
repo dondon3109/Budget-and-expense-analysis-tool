@@ -26,6 +26,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AccountDeletionService } from "../src/account-deletion";
 import type { AssistantService, AssistantTurnExecution } from "../src/assistant/service";
 import type { AssistantVoiceService } from "../src/assistant/voice-service";
+import type { ReceiptService } from "../src/receipts/service";
 import { createApp, type AppOptions } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
 import type { AccountRepository } from "../src/db/accounts";
@@ -687,6 +688,82 @@ describe("API foundation", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([4, 5, 6]));
     expect(preview).toHaveBeenCalledWith(undefined, "energetic");
+  });
+
+  it("returns authenticated receipt preferences", async () => {
+    const receiptService = {
+      getPreferences: vi.fn(async () => ({
+        enabled: true,
+        consentedAt: null,
+        consentVersion: 0,
+        visionModel: "@cf/meta/llama-3.2-11b-vision-instruct",
+      })),
+    } as unknown as ReceiptService;
+    const app = createTestApp({ receiptService });
+    const response = await app.request("/api/app/receipts/preferences", {
+      headers: AUTHORIZATION,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ enabled: true, consentVersion: 0 });
+    expect(receiptService.getPreferences).toHaveBeenCalledWith(undefined, TENANT_ID);
+  });
+
+  it("rejects an invalid receipt consent update", async () => {
+    const grantConsent = vi.fn();
+    const receiptService = { grantConsent } as unknown as ReceiptService;
+    const app = createTestApp({ receiptService });
+    const response = await app.request("/api/app/receipts/preferences", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ consented: false }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(grantConsent).not.toHaveBeenCalled();
+  });
+
+  it("accepts a bounded multipart photo on the authenticated receipt route", async () => {
+    const extract = vi.fn(async () => ({
+      merchant: "Jollibee",
+      date: "2026-08-13",
+      amountMinor: -28500,
+      currency: "PHP",
+      kind: "expense",
+      categoryName: "Food & dining",
+      rawText: "JOLLIBEE 285.00",
+    }));
+    const receiptService = { extract } as unknown as ReceiptService;
+    const app = createTestApp({ receiptService });
+    const form = new FormData();
+    form.set("image", new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" }));
+
+    const response = await app.request("/api/app/receipts/extract", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: form,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      merchant: "Jollibee",
+      amountMinor: -28500,
+    });
+    expect(extract).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
+  });
+
+  it("rejects JSON on the multipart receipt extraction route", async () => {
+    const extract = vi.fn();
+    const receiptService = { extract } as unknown as ReceiptService;
+    const app = createTestApp({ receiptService });
+    const response = await app.request("/api/app/receipts/extract", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ image: "not-a-photo" }),
+    });
+
+    expect(response.status).toBe(415);
+    expect(extract).not.toHaveBeenCalled();
   });
 
   it.each([

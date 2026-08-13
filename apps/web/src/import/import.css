@@ -908,3 +908,37 @@
     0 1px 0 rgba(0, 0, 0, 0.2),
     0 14px 34px -18px rgba(0, 0, 0, 0.5);
 }
+/* ============================================================
+   SOURCE TABS (CSV/EXCEL · PHOTO RECEIPT)
+   ============================================================ */
+.import-tabs {
+  display: inline-flex;
+  gap: 6px;
+  margin: 6px 0 16px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-soft);
+}
+
+.import-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px;
+  color: var(--muted);
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.import-tab:hover {
+  color: var(--ink);
+}
+
+.import-tab.active {
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 1px 3px var(--shadow);
+}

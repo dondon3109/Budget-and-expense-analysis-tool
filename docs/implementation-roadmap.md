@@ -71,3 +71,15 @@ Status: implemented; deployment verification remains.
 - [x] Add coordinated account deletion and 90-day assistant message/audit retention controls.
 - [ ] Add complete account-data export and complete final provider-retention/privacy legal review.
 - [ ] Add field performance monitoring and review Worker logs after normal traffic.
+
+## Milestone 7 — AI-assisted entry (R1)
+
+Status: photo entry implemented; voice entry and PDF statements remain.
+
+- [x] Photo receipt entry with its own one-time consent and no image persistence.
+- [x] Cloudflare Workers AI vision extraction behind a provider abstraction with stable error mapping.
+- [x] Editable draft step that feeds the existing import preview, duplicate detection, and commit path unchanged.
+- [x] Entry points on the Import page (tab) and dashboard quick actions.
+- [ ] Voice entry ("Tanghalian sa Jollibee, ₱285, food") reusing the assistant voice stack.
+- [ ] PDF statement photos through the same extraction route.
+- [ ] PostHog AI observability parity for extraction calls.

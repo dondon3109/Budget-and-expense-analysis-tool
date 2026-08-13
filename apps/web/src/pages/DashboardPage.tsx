@@ -448,6 +448,9 @@ export function DashboardPage() {
                 });
               }}
             />
+            <Link className="button secondary" to="/app/import?mode=receipt">
+              <Receipt size={17} aria-hidden="true" /> Scan receipt
+            </Link>
             <Link className="button primary" to="/app/transactions?add=1">
               <Plus size={17} aria-hidden="true" /> Add transaction
             </Link>

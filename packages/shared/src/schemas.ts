@@ -273,6 +273,31 @@ export type AssistantPreferenceUpdate = z.infer<typeof assistantPreferenceUpdate
 
 export const assistantVoiceConsentUpdateSchema = z.object({ consented: z.literal(true) }).strict();
 
+export const receiptConsentUpdateSchema = z.object({ consented: z.literal(true) }).strict();
+
+export type ReceiptConsentUpdate = z.infer<typeof receiptConsentUpdateSchema>;
+
+export const receiptDraftSchema = z
+  .object({
+    merchant: z.string().trim().min(1).max(240),
+    date: isoDateSchema,
+    amountMinor: z.number().int(),
+    currency: z.literal("PHP"),
+    kind: z.enum(transactionKinds),
+    categoryName: z.string().trim().min(1).max(80).optional(),
+    rawText: z.string().max(6_000),
+  })
+  .strict()
+  .superRefine((draft, context) => {
+    if (draft.amountMinor === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["amountMinor"],
+        message: "Amount cannot be zero.",
+      });
+    }
+  });
+
 export const assistantSpeechVoiceSchema = z.enum(assistantSpeechVoices);
 
 export const assistantVoiceSpeechInputSchema = z

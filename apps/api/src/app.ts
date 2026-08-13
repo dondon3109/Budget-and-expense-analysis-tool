@@ -67,6 +67,10 @@ import { createCalendarEventRoutes } from "./routes/events";
 import { createExportRoutes } from "./routes/exports";
 import { createFinancialGoalRoutes } from "./routes/goals";
 import { createImportRoutes } from "./routes/imports";
+import { createReceiptRoutes } from "./routes/receipts";
+import { receiptRepository } from "./db/receipts";
+import { cloudflareVisionProvider } from "./receipts/cloudflare-vision";
+import { createReceiptService, type ReceiptService } from "./receipts/service";
 import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
@@ -84,6 +88,7 @@ const JSON_METHODS = new Set(["POST", "PATCH", "PUT"]);
 const DEFAULT_JSON_BODY_LIMIT = 64 * 1024;
 const IMPORT_PREVIEW_BODY_LIMIT = 3 * 1024 * 1024;
 const ASSISTANT_VOICE_BODY_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
+const RECEIPT_IMAGE_BODY_LIMIT = 8 * 1024 * 1024 + 64 * 1024;
 const PAYPAL_WEBHOOK_BODY_LIMIT = 128 * 1024;
 const PAYPAL_WEBHOOK_RATE_LIMIT = {
   scope: "paypal-webhook",
@@ -151,6 +156,7 @@ export interface AppOptions {
   assistantService?: AssistantService;
   assistantVoiceProviders?: AssistantVoiceProviders;
   assistantVoiceService?: AssistantVoiceService;
+  receiptService?: ReceiptService;
   accountDeletionService?: AccountDeletionService;
   platformAdmins?: PlatformAdminRepository;
   platformAdminService?: PlatformAdminService;
@@ -217,6 +223,8 @@ export function createApp(options: AppOptions = {}) {
         speech: fishAudioProvider,
       },
     );
+  const receiptService =
+    options.receiptService ?? createReceiptService(receiptRepository, cloudflareVisionProvider);
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =
     options.platformAdminService ?? createPlatformAdminService(platformAdminStore);
@@ -324,23 +332,30 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   app.use("/api/app/*", async (context, next) => {
-    const isVoiceTranscription =
+    const multipartRoute =
       context.req.method === "POST" &&
-      context.req.path === "/api/app/assistant/voice/transcriptions";
-    if (isVoiceTranscription) {
+      {
+        "/api/app/assistant/voice/transcriptions": {
+          maxSize: ASSISTANT_VOICE_BODY_LIMIT,
+          typeMessage: "Send voice recordings as multipart form data.",
+          sizeMessage: "The voice recording is too large.",
+        },
+        "/api/app/receipts/extract": {
+          maxSize: RECEIPT_IMAGE_BODY_LIMIT,
+          typeMessage: "Send the receipt photo as multipart form data.",
+          sizeMessage: "The receipt photo is too large.",
+        },
+      }[context.req.path];
+    if (multipartRoute) {
       const contentType = context.req.header("Content-Type")?.toLowerCase() ?? "";
       if (!contentType.startsWith("multipart/form-data;")) {
-        throw new HttpError(
-          415,
-          "unsupported_media_type",
-          "Send voice recordings as multipart form data.",
-        );
+        throw new HttpError(415, "unsupported_media_type", multipartRoute.typeMessage);
       }
       const limitBody = bodyLimit({
-        maxSize: ASSISTANT_VOICE_BODY_LIMIT,
+        maxSize: multipartRoute.maxSize,
         onError: (limitedContext) =>
           limitedContext.json(
-            { error: "payload_too_large", message: "The voice recording is too large." },
+            { error: "payload_too_large", message: multipartRoute.sizeMessage },
             413,
           ),
       }) as MiddlewareHandler<AppEnvironment>;
@@ -395,6 +410,8 @@ export function createApp(options: AppOptions = {}) {
       context.req.method === "POST" &&
       (context.req.path === "/api/app/assistant/voice/speech" ||
         context.req.path === "/api/app/assistant/voice/preview");
+    const isReceiptExtraction =
+      context.req.method === "POST" && context.req.path === "/api/app/receipts/extract";
     const isExportRead =
       context.req.method === "GET" && context.req.path.startsWith("/api/app/exports");
     const isAssistantHistoryRead =
@@ -409,40 +426,45 @@ export function createApp(options: AppOptions = {}) {
             { scope: "tenant-assistant-voice-speech-minute", limit: 12, windowSeconds: 60 },
             { scope: "tenant-assistant-voice-speech-day", limit: 60, windowSeconds: 86_400 },
           ]
-        : isAccountDeletion
-          ? [{ scope: "user-account-deletion", limit: 5, windowSeconds: 15 * 60 }]
-          : isPlatformAdminRoute && WRITE_METHODS.has(context.req.method)
-            ? [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: 15 * 60 }]
-            : isPlatformAdminRoute
-              ? [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: 60 }]
-              : isAssistantGeneration || isSupportGeneration
-                ? [
-                    {
-                      scope: isSupportGeneration
-                        ? "tenant-support-minute"
-                        : "tenant-assistant-minute",
-                      limit: 10,
-                      windowSeconds: 60,
-                    },
-                    {
-                      scope: isSupportGeneration ? "tenant-support-day" : "tenant-assistant-day",
-                      limit: 100,
-                      windowSeconds: 24 * 60 * 60,
-                    },
-                  ]
-                : isExportRead
-                  ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
-                  : isAssistantHistoryRead
-                    ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
-                    : WRITE_METHODS.has(context.req.method)
-                      ? [
-                          context.req.path.startsWith("/api/app/imports")
-                            ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
-                            : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
-                        ]
-                      : context.req.method === "GET"
-                        ? [{ scope: "tenant-read", limit: 120, windowSeconds: 60 }]
-                        : [];
+        : isReceiptExtraction
+          ? [
+              { scope: "tenant-receipt-extraction-minute", limit: 6, windowSeconds: 60 },
+              { scope: "tenant-receipt-extraction-day", limit: 60, windowSeconds: 86_400 },
+            ]
+          : isAccountDeletion
+            ? [{ scope: "user-account-deletion", limit: 5, windowSeconds: 15 * 60 }]
+            : isPlatformAdminRoute && WRITE_METHODS.has(context.req.method)
+              ? [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: 15 * 60 }]
+              : isPlatformAdminRoute
+                ? [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: 60 }]
+                : isAssistantGeneration || isSupportGeneration
+                  ? [
+                      {
+                        scope: isSupportGeneration
+                          ? "tenant-support-minute"
+                          : "tenant-assistant-minute",
+                        limit: 10,
+                        windowSeconds: 60,
+                      },
+                      {
+                        scope: isSupportGeneration ? "tenant-support-day" : "tenant-assistant-day",
+                        limit: 100,
+                        windowSeconds: 24 * 60 * 60,
+                      },
+                    ]
+                  : isExportRead
+                    ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
+                    : isAssistantHistoryRead
+                      ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
+                      : WRITE_METHODS.has(context.req.method)
+                        ? [
+                            context.req.path.startsWith("/api/app/imports")
+                              ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
+                              : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
+                          ]
+                        : context.req.method === "GET"
+                          ? [{ scope: "tenant-read", limit: 120, windowSeconds: 60 }]
+                          : [];
 
     if (policies.length === 0) {
       await next();
@@ -616,6 +638,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/goals", createFinancialGoalRoutes(goalStore));
   app.route("/api/app/debts", createDebtRoutes(debtStore));
   app.route("/api/app/imports", createImportRoutes(importStore));
+  app.route("/api/app/receipts", createReceiptRoutes(receiptService));
   app.route("/api/app/exports", createExportRoutes(transactionStore, billingStore));
 
   app.notFound((context) => context.json({ error: "not_found" }, 404));

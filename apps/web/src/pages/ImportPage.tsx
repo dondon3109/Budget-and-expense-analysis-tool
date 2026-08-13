@@ -13,6 +13,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  Camera,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -25,8 +26,10 @@ import {
   Tags,
 } from "lucide-react";
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { ReceiptEntry, type ReceiptEntryDraft } from "../components/receipts/ReceiptEntry";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
 import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
@@ -159,6 +162,51 @@ export function ImportPage() {
   } = useImportDraft();
   const [dragActive, setDragActive] = useState(false);
   const dragDepthRef = useRef(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const entryMode = searchParams.get("mode") === "receipt" ? "receipt" : "file";
+
+  function csvField(value: string): string {
+    return '"' + value.replaceAll('"', '""') + '"';
+  }
+
+  function beginReceiptPreview(draft: ReceiptEntryDraft) {
+    const signedAmount =
+      draft.kind === "expense"
+        ? -Math.abs(draft.amountMinor)
+        : draft.kind === "income"
+          ? Math.abs(draft.amountMinor)
+          : draft.amountMinor;
+    const headers = ["Description", "Amount", "Category", "Type"];
+    const receiptCsv = [
+      headers.join(","),
+      [
+        csvField(draft.merchant),
+        (signedAmount / 100).toFixed(2),
+        csvField(draft.categoryName),
+        draft.kind,
+      ].join(","),
+    ].join("\r\n");
+
+    beginFileSelection();
+    setFileName("receipt-" + draft.date + ".csv");
+    setCsvText(receiptCsv);
+    setInspection(inspectCsv(receiptCsv));
+    setHeaderRowNumber(1);
+    setHeaders(headers);
+    setSelectedRowCount(1);
+    setMapping({
+      description: "Description",
+      amount: "Amount",
+      category: "Category",
+      kind: "Type",
+    });
+    setAmountMode("amount");
+    setSelectedPresetId("generic");
+    setResolvedPresetId("generic");
+    setFallbackDate(draft.date);
+    setFileError(undefined);
+    setSearchParams({}, { replace: true });
+  }
 
   const categoriesQuery = useQuery({
     queryKey: queryKeys.categories(workspace),
@@ -640,6 +688,17 @@ export function ImportPage() {
           </button>
         </header>
 
+        <nav className="import-tabs" aria-label="Import source">
+          <Link className={`import-tab ${entryMode === "file" ? "active" : ""}`} to="/app/import">
+            <FileUp size={15} /> CSV / Excel file
+          </Link>
+          <Link
+            className={`import-tab ${entryMode === "receipt" ? "active" : ""}`}
+            to="/app/import?mode=receipt"
+          >
+            <Camera size={15} /> Photo receipt
+          </Link>
+        </nav>
         {result ? (
           <section className="import-success">
             <CheckCircle2 size={42} />
@@ -656,6 +715,14 @@ export function ImportPage() {
               <RotateCcw size={16} /> Import another file
             </button>
           </section>
+        ) : entryMode === "receipt" ? (
+          <div className="import-layout">
+            <ReceiptEntry
+              workspace={workspace}
+              categories={categoriesQuery.data ?? []}
+              onContinue={beginReceiptPreview}
+            />
+          </div>
         ) : (
           <>
           <div className="import-layout">

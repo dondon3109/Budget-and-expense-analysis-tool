@@ -2,6 +2,13 @@
 
 All notable product changes are documented here.
 
+## Unreleased
+
+### Added
+
+- Added photo receipt entry to the Import page, with a dashboard quick link: snap a receipt, review the AI-drafted merchant, date, amount, and category, then confirm the entry on the same import preview screen with the existing duplicate detection and commit path.
+- Receipt scanning requires its own one-time consent and processes photos in-flight only — images are never stored, retained, or used for anything else.
+
 ## 2.1.1 — 2026-08-13
 
 ### Fixed
