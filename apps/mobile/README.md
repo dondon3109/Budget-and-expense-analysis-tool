@@ -60,7 +60,8 @@ the authenticated financial shell receives the database.
 The development app exposes only the local schema version and encryption status, never the key. To
 verify encryption on a stopped Simulator build, locate the app container and confirm that ordinary
 `sqlite3` rejects the `Documents/SQLite/zoption-*.db` file. Do not retrieve or print SecureStore values.
-The iOS database-directory backup exclusion is still a documented Milestone 3 gap.
+The fixed local data-security module applies and verifies iOS backup exclusion on the SQLite directory
+before opening a workspace; Android startup similarly verifies that application backup remains disabled.
 
 If Expo advertises a VPN address that the Simulator cannot reach, bind the development server to
 the Mac's active Wi-Fi address before starting Metro:

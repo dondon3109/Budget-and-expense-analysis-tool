@@ -1,0 +1,9 @@
+{
+  "platforms": ["android", "apple"],
+  "apple": {
+    "modules": ["ZoptionLocalDataSecurityModule"]
+  },
+  "android": {
+    "modules": ["site.zoption.localdatasecurity.ZoptionLocalDataSecurityModule"]
+  }
+}

@@ -114,6 +114,6 @@ None. Milestones 0 and 1 exist only in the isolated worktree. They do not modify
 - Android SQLCipher runtime/reopen proof still needs a device or emulator. A fresh development APK
   compile with autolinked `expo-crypto` and SQLCipher passed 736 Gradle tasks in 21m06s; this is native
   compile/package evidence, not runtime encryption proof.
-- Android backup is disabled in generated configuration and database keys are device-only. A fail-closed
-  iOS database-directory backup-exclusion mechanism still needs native implementation and runtime proof;
-  encrypted-at-rest evidence alone is not being treated as that proof.
+- Android backup is disabled in generated configuration and database keys are device-only. A fixed
+  local Expo module now applies and reads back iOS `isExcludedFromBackup` before SQLite opens. The
+  rebuilt simulator app rendered and the directory exposed Apple's backup-exclusion extended attribute.

@@ -1,6 +1,7 @@
 import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 
 import { getOrCreateWorkspaceKey, removeWorkspaceKey, workspaceAlias } from "./key-store";
+import { ensureLocalDataBackupProtection } from "./local-data-security";
 import { applyLocalMigrations, asMigrationDatabase } from "./migrations";
 import { LocalWorkspaceRepository, type LocalWorkspaceStats } from "./repository";
 
@@ -101,6 +102,7 @@ export function openLocalWorkspace(subject: string): Promise<LocalWorkspace> {
     const alias = await workspaceAlias(subject);
     const name = databaseName(alias);
     const key = await getOrCreateWorkspaceKey(alias);
+    await ensureLocalDataBackupProtection();
     const database = await openDatabaseAsync(name, {
       enableChangeListener: true,
       useNewConnection: true,

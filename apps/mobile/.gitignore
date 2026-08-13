@@ -1,6 +1,7 @@
 .expo/
-android/
-ios/
+/android/
+/ios/
+modules/**/android/build/
 web-build/
 *.jks
 *.keystore

@@ -47,9 +47,9 @@
 Supabase session storage and the database-key record use separate aliases and deletion flows.
 
 The implemented iOS key accessibility is `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`, so the key does not
-migrate to another device. Android application backup is disabled. The iOS database directory still
-needs an explicit, fail-closed `isExcludedFromBackup` control before Milestone 3 exits; the encrypted
-file's successful unreadability check does not replace that control.
+migrate to another device. Android application backup is disabled. A fixed local native module applies
+and verifies Apple's `isExcludedFromBackup` resource value on `Documents/SQLite` before the database
+opens. It exposes no caller-selected path; failure prevents workspace access.
 
 ## Sign-out and deletion
 
@@ -67,7 +67,7 @@ file's successful unreadability check does not replace that control.
 
 ## Known limitations
 
-- SQLCipher file-level encryption and process-reopen behavior are proven on iOS Simulator, but Android
-  runtime and iOS database backup-exclusion proofs remain.
+- SQLCipher file-level encryption, process-reopen behavior, and database backup exclusion are proven
+  on iOS Simulator. Android runtime proof remains.
 - iOS background execution is system scheduled and unavailable in Simulator; a physical-device test is required.
 - A fully compromised device can observe data while the user has unlocked and opened the app.
