@@ -8,6 +8,7 @@ import {
   Globe2,
   Info,
   LockKeyhole,
+  RefreshCw,
   ShieldCheck,
   Smartphone,
   Wifi,
@@ -65,6 +66,11 @@ function DownloadPanel() {
       <p className="apk-store-note">
         <ShieldCheck size={16} aria-hidden="true" /> Signed by Zoption and distributed only from
         zoption.site — not through Google Play.
+      </p>
+
+      <p className="apk-update-note">
+        <RefreshCw size={16} aria-hidden="true" /> Already installed? This update restores the
+        system status bar — install it over your current app and your workspace stays signed in.
       </p>
 
       <dl className="apk-release-facts">
@@ -164,7 +170,8 @@ export function InstallPage() {
           <div className="install-hero-summary">
             <p className="install-hero-lead">
               Get the release-signed Zoption APK directly from the official website. It opens the
-              same private, online-first workspace in a focused full-screen Android app.
+              same private, online-first workspace in a focused, standalone Android app with the
+              system status bar visible.
             </p>
             <ul className="install-benefits" aria-label="Android app benefits">
               <li>
