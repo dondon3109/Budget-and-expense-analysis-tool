@@ -71,11 +71,16 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
 - API payloads and persisted rows are decoded with Zod before use.
 - Tokens, tenant identity, financial entities, outbox rows, and plan entitlement never enter Zustand or AsyncStorage.
 - Identity change closes the old database, clears in-memory repositories/query observers, and opens a subject-derived workspace only after the key is resolved.
-- Authenticated navigation opens only after `/api/app/me` confirms that the Worker-derived user and tenant match the immutable Supabase subject.
+- A restored Supabase session opens only the immutable-subject-scoped encrypted workspace, allowing
+  cached financial screens to render offline. The independent `/api/app/me` assertion must confirm the
+  Worker-derived user and tenant before synchronization starts. An identity mismatch signs out the
+  session while preserving the encrypted workspace for deliberate recovery.
 - Startup migrations use the keyed connection's regular transaction. Expo's exclusive transaction helper creates another native connection and therefore cannot be used unless that connection is separately keyed.
 - D1 owns cross-device ordering through tenant-scoped integer sequences. Database triggers attach
   existing web/API writes to immutable mobile change rows, while the authenticated pull route exposes
   only the middleware-derived tenant. The mobile cursor is progress metadata, never authorization.
+- Pull application and cursor advancement share one keyed local transaction. Financial observers are
+  invalidated only after commit, so the interface cannot render or label a partial page as synchronized.
 
 ## Development-build requirement
 

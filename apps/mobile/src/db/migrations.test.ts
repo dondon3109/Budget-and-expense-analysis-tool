@@ -23,8 +23,11 @@ describe("local SQLCipher migrations", () => {
     expect(statements.some((statement) => statement.includes("CREATE TABLE sync_outbox"))).toBe(
       true,
     );
+    expect(statements.some((statement) => statement.includes("CREATE TABLE sync_tombstones"))).toBe(
+      true,
+    );
     expect(statements.at(-2)).toBe(`PRAGMA user_version = ${LOCAL_SCHEMA_VERSION}`);
-    expect(statements.at(-1)).toContain("migration:1");
+    expect(statements.at(-1)).toContain(`migration:${LOCAL_SCHEMA_VERSION}`);
   });
 
   it("does not mutate a current workspace", async () => {

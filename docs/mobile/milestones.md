@@ -8,7 +8,7 @@ Last updated: 2026-08-13.
 | 1. Mobile foundation                 | Complete    | Native Android/iOS development builds, iOS runtime navigation/input, themes/components, focused tests                        |
 | 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS; social auth and Android runtime remain                      |
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
-| 4. Transaction sync vertical slice   | In progress | Versioned contracts, D1 revisions/change log, tenant cursor, and authenticated bounded pull                                  |
+| 4. Transaction sync vertical slice   | In progress | Authenticated pull is atomically applied to encrypted SQLite and rendered/reopened offline on iOS                            |
 | 5. Core budgeting                    | Not started | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
 | 6. Planning and recurring money      | Not started | Subscriptions/calendar/goals/debts/transfers/interest with plan boundaries                                                   |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
@@ -92,6 +92,9 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   tombstone/revision fields, cursor metadata, foreign keys, and duplicate-import protection in one
   startup transaction. Expo's exclusive helper was deliberately rejected because it creates a second
   unkeyed native connection under SQLCipher.
+- Schema version 2 adds immutable outbox base snapshots and retained sync tombstones for pull
+  conflict/deletion handling. Both versions run through the same keyed connection and transactional
+  migration boundary.
 - Typed repository results are Zod-decoded. Aggregate local state is observable through SQLite change
   events without placing financial records in Zustand or AsyncStorage.
 - On iPhone 17 Pro Simulator, the real authenticated session created schema version 1, rendered the
@@ -133,12 +136,29 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   state fails with `full_resync_required` instead of silently accepting data loss.
 - Focused in-memory SQLite behavior proves bounded pagination, tenant isolation, server-derived category
   locks, web-write revision increments, transaction tombstones, and safe tenant cascade deletion.
+- The mobile transport calls only the fixed `/api/app/sync/pull` route, sends no tenant identifier,
+  bounds responses to 512 KiB, Zod-decodes the shared contract, and classifies authentication,
+  deletion, full-resync, rate-limit, retryable, and invalid-response failures.
+- Pull pages are applied to SQLCipher in one transaction with the cursor. Account, category,
+  transaction, and deletion-tombstone revisions reject stale changes; unsynchronized overlapping
+  local rows stop as explicit conflicts rather than being overwritten.
+- Foreground synchronization uses NetInfo only as a hint, refreshes an expired token once, limits
+  page count and request duration, and never shows `Up to date` before the local transaction commits.
+  Financial screens subscribe to repositories and render their encrypted copy before network work.
+- On iPhone 17 Pro Simulator, an existing Supabase session authenticated to an isolated local Worker,
+  pulled three accounts, eleven categories, and a synthetic transaction from local D1, committed the
+  cursor/rows into SQLCipher, and rendered the transaction with its category and peso amount. The
+  Worker and app process were then stopped; relaunch still rendered the cached counts and transaction
+  while honestly reporting synchronization unavailable. No production D1 or deployment was touched.
+- Focused mobile tests cover transport/error bounds, migration 2, atomic cursor application,
+  rollback on invalid dependencies, retained tombstones, local-conflict refusal, restart persistence,
+  and repository transaction mapping. Thirteen suites and 42 tests pass.
 
 ## Milestone 4 remaining gaps
 
-- Push, idempotent acknowledgement, outbox application, retry/backoff, local pull transactions,
-  conflicts, and resolution UI are not implemented yet. The mobile app still intentionally renders no
-  server financial records.
+- Push, idempotent acknowledgement, offline mutation composition, durable retry/backoff,
+  conflict materialization, and resolution UI are not implemented yet. Pull conflicts currently stop
+  safely and preserve both durable states, but do not yet offer a resolution workflow.
 - Transfer changes currently enter the internal change stream as their two atomic D1 legs. The mobile
   apply layer must preserve the group as one logical transfer before financial screens consume it.
 - Tombstones are retained indefinitely in this first foundation. Cursor expiry, client acknowledgement,

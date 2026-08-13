@@ -52,10 +52,11 @@ persisted in encrypted, device-only SecureStore chunks rather than AsyncStorage.
 for the development variant is `zoption-dev://auth/callback`; it must be present in the Supabase
 redirect allow-list before recovery links can return to the app.
 
-After Supabase authentication, the app verifies the immutable subject against the existing Worker
-before opening a subject-scoped SQLCipher database. The Worker derives the tenant; the mobile app does
-not send or authorize with a tenant ID. Local schema migrations and the identity assertion run before
-the authenticated financial shell receives the database.
+After Supabase authentication, the app opens only the immutable-subject-scoped SQLCipher database so
+previously synchronized screens remain available without the Worker. In parallel, it verifies that
+subject against the existing Worker before synchronization begins. The Worker derives the tenant; the
+mobile app does not send or authorize with a tenant ID. A failed reachability check leaves local reads
+available, while an authenticated identity mismatch signs out and preserves the encrypted workspace.
 
 The development app exposes only the local schema version and encryption status, never the key. To
 verify encryption on a stopped Simulator build, locate the app container and confirm that ordinary

@@ -6,9 +6,7 @@ export interface MigrationTransaction {
 
 export interface MigrationDatabase {
   getFirstAsync(source: string): Promise<{ user_version: number } | null>;
-  withTransactionAsync(
-    task: (transaction: MigrationTransaction) => Promise<void>,
-  ): Promise<void>;
+  withTransactionAsync(task: (transaction: MigrationTransaction) => Promise<void>): Promise<void>;
 }
 
 interface Migration {
@@ -17,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 1;
+export const LOCAL_SCHEMA_VERSION = 2;
 
 export const migrations: readonly Migration[] = [
   {
@@ -130,6 +128,24 @@ export const migrations: readonly Migration[] = [
       );
 
       INSERT INTO sync_metadata (singleton) VALUES (1);
+    `,
+  },
+  {
+    version: 2,
+    name: "pull_application_safety",
+    sql: `
+      ALTER TABLE sync_outbox ADD COLUMN base_json TEXT NOT NULL DEFAULT '{}';
+
+      CREATE TABLE sync_tombstones (
+        entity_type TEXT NOT NULL CHECK (entity_type IN ('account', 'category', 'transaction')),
+        entity_id TEXT NOT NULL,
+        server_revision INTEGER NOT NULL CHECK (server_revision > 0),
+        server_updated_at TEXT NOT NULL,
+        PRIMARY KEY (entity_type, entity_id)
+      );
+
+      CREATE INDEX sync_tombstones_revision_idx
+        ON sync_tombstones(entity_type, server_revision);
     `,
   },
 ] as const;

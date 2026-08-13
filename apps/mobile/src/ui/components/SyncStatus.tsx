@@ -3,9 +3,10 @@ import { StyleSheet, Text, View } from "react-native";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
-export type SyncState = "synced" | "pending" | "syncing" | "failed" | "conflicted";
+export type SyncState = "waiting" | "synced" | "pending" | "syncing" | "failed" | "conflicted";
 
 const labels: Record<SyncState, string> = {
+  waiting: "Waiting to sync",
   synced: "Up to date",
   pending: "Saved on this device",
   syncing: "Syncing",
@@ -18,7 +19,7 @@ export function SyncStatus({ state, count }: { state: SyncState; count?: number 
   const color =
     state === "failed" || state === "conflicted"
       ? theme.colors.danger
-      : state === "pending"
+      : state === "pending" || state === "waiting"
         ? theme.colors.warning
         : theme.colors.brand;
   const label = `${labels[state]}${count ? ` · ${count}` : ""}`;

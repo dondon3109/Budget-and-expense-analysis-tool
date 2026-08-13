@@ -42,4 +42,46 @@ describe("encrypted local workspace repository", () => {
 
     await expect(new LocalWorkspaceRepository(database as never).getStats()).rejects.toThrow();
   });
+
+  it("maps synchronized rows to the shared transaction presentation contract", async () => {
+    const database = {
+      getAllAsync: jest.fn(() =>
+        Promise.resolve([
+          {
+            id: "transaction-1",
+            date: "2026-08-13",
+            description: "Lunch",
+            amount_minor: -25_000,
+            currency: "PHP",
+            kind: "expense",
+            category_id: "category-1",
+            category_name: "Dining",
+            category_color: "#123456",
+            account_id: "account-1",
+            account_name: "Wallet",
+            notes: null,
+            transfer_group_id: null,
+            transfer_fee_minor: null,
+            to_account_id: null,
+            to_account_name: null,
+            sync_state: "synced",
+          },
+        ]),
+      ),
+    };
+
+    await expect(
+      new LocalWorkspaceRepository(database as never).listTransactions(),
+    ).resolves.toMatchObject([
+      {
+        transaction: {
+          id: "transaction-1",
+          description: "Lunch",
+          amountMinor: -25_000,
+          accountName: "Wallet",
+        },
+        syncState: "synced",
+      },
+    ]);
+  });
 });

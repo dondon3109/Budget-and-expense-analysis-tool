@@ -1,8 +1,9 @@
 # Mobile synchronization protocol
 
 Status: Milestone 4 implementation in progress. The isolated branch implements versioned contracts,
-D1 revision/change foundations, and authenticated read-only pull. Push and mobile application remain
-unimplemented. The current production API and D1 have not been changed.
+D1 revision/change foundations, authenticated read-only pull, and atomic encrypted mobile pull
+application for accounts, categories, transactions, and tombstones. Push remains unimplemented. The
+current production API and D1 have not been changed.
 
 ## Goals and invariants
 
@@ -71,6 +72,18 @@ Protocol version 1 encodes the tenant-local integer sequence as a canonical opaq
 cursor. Pull is bounded to 200 changes and reads one extra row to report `hasMore` without claiming
 completion. The current implementation detects an ahead-of-server cursor; retention-based expiry and
 full-resync generation switching remain pending.
+
+The mobile transport uses the fixed pull path, caps decoded response size, and validates the shared
+schema before persistence. Each page and its cursor commit on the keyed SQLCipher connection in one
+transaction. A process interruption therefore leaves either the prior page/cursor or the complete new
+page/cursor. Tombstones remain even when the deleted row was never present locally. Server revisions
+older than the local durable revision are ignored; any server change overlapping a pending, failed, or
+conflicted local row stops with `local_conflict` and does not advance the cursor.
+
+Foreground pulls are bounded by page count and per-request timeout. An expired token is refreshed
+once. NetInfo can delay an attempt but only the Worker response and local commit produce `synced`.
+Startup opens the immutable-subject-scoped local workspace without waiting for Worker availability;
+the independent Worker identity assertion gates synchronization, not offline reads.
 
 ## Conflict policy
 

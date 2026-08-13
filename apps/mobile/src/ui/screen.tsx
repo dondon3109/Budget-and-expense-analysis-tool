@@ -15,7 +15,7 @@ interface ScreenProps extends PropsWithChildren {
 export function Screen({ title, description, action, scroll = true, children }: ScreenProps) {
   const theme = useZoptionTheme();
   const body = (
-    <View className="w-full gap-6 px-4 pb-8 pt-3" style={styles.content}>
+    <View className="w-full gap-6 px-4 pb-8 pt-3" style={[styles.content, !scroll && styles.fill]}>
       <View className="flex-row items-start justify-between gap-4">
         <View className="flex-1 gap-1">
           <Text
@@ -38,12 +38,12 @@ export function Screen({ title, description, action, scroll = true, children }: 
 
   return (
     <SafeAreaView
-      edges={["left", "right"]}
+      edges={["top", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
       {scroll ? (
         <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
+          contentInsetAdjustmentBehavior="never"
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scroll}
         >
@@ -60,4 +60,5 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flexGrow: 1, alignItems: "center" },
   content: { maxWidth: 760, gap: spacing.lg },
+  fill: { flex: 1, alignSelf: "center" },
 });

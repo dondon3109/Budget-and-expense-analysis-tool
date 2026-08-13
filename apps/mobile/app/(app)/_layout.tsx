@@ -4,51 +4,24 @@ import { ActivityIndicator, Text, View } from "react-native";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
-import { Button, ErrorState } from "@/ui/components";
+import { SyncProvider } from "@/sync/sync-state";
+import { ErrorState } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { spacing, typography } from "@/ui/tokens";
+import { typography } from "@/ui/tokens";
 
 export default function AuthenticatedLayout() {
   const session = useSessionSnapshot();
   const identity = useWorkerIdentity();
-  const theme = useZoptionTheme();
   if (session.status !== "signed-in") return <Redirect href="/(public)/sign-in" />;
-  if (identity.status === "checking" || identity.status === "idle") {
-    return (
-      <View className="flex-1 items-center justify-center gap-3 px-6">
-        <ActivityIndicator
-          accessibilityLabel="Verifying your Zoption workspace"
-          color={theme.colors.brand}
-        />
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Opening your secure workspace…
-        </Text>
-      </View>
-    );
-  }
-  if (identity.status === "error") {
-    return (
-      <View className="flex-1 items-start justify-center px-6" style={{ gap: spacing.md }}>
-        <ErrorState
-          title="Workspace unavailable"
-          message={identity.message ?? "Zoption could not verify your financial workspace."}
-          onRetry={identity.retry}
-        />
-        <Button variant="quiet" onPress={() => void session.signOut()}>
-          Sign out
-        </Button>
-      </View>
-    );
-  }
   if (!session.subject) return <Redirect href="/(public)/sign-in" />;
   return (
     <LocalWorkspaceProvider subject={session.subject}>
-      <LocalWorkspaceGate />
+      <LocalWorkspaceGate identity={identity} />
     </LocalWorkspaceProvider>
   );
 }
 
-function LocalWorkspaceGate() {
+function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorkerIdentity> }) {
   const local = useLocalWorkspace();
   const theme = useZoptionTheme();
   if (local.status === "opening") {
@@ -75,5 +48,17 @@ function LocalWorkspaceGate() {
       </View>
     );
   }
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <SyncProvider
+      enabled={identity.status === "verified"}
+      onUnavailableRetry={identity.retry}
+      unavailableMessage={
+        identity.status === "error"
+          ? (identity.message ?? "Zoption could not verify your financial workspace.")
+          : null
+      }
+    >
+      <Stack screenOptions={{ headerShown: false }} />
+    </SyncProvider>
+  );
 }

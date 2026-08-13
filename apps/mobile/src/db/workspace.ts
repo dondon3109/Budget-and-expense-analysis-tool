@@ -4,6 +4,7 @@ import { getOrCreateWorkspaceKey, removeWorkspaceKey, workspaceAlias } from "./k
 import { ensureLocalDataBackupProtection } from "./local-data-security";
 import { applyLocalMigrations, asMigrationDatabase } from "./migrations";
 import { LocalWorkspaceRepository, type LocalWorkspaceStats } from "./repository";
+import { LocalSyncRepository } from "./sync-repository";
 
 interface CipherVersionRow {
   cipher_version?: string;
@@ -28,6 +29,7 @@ export interface LocalWorkspace {
   database: SQLiteDatabase;
   databaseName: string;
   repository: LocalWorkspaceRepository;
+  syncRepository: LocalSyncRepository;
   schemaVersion: number;
 }
 
@@ -123,6 +125,7 @@ export function openLocalWorkspace(subject: string): Promise<LocalWorkspace> {
         database,
         databaseName: name,
         repository: new LocalWorkspaceRepository(database),
+        syncRepository: new LocalSyncRepository(database),
         schemaVersion,
       };
       current = { subject, alias, workspace };

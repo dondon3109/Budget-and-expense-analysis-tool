@@ -1,0 +1,228 @@
+/// <reference types="node" />
+
+import { DatabaseSync, type SQLInputValue } from "node:sqlite";
+
+import type { MobileSyncPullResponse } from "@zoption/shared";
+import type { SQLiteDatabase } from "expo-sqlite";
+
+import { migrations } from "./migrations";
+import { LocalSyncRepository } from "./sync-repository";
+
+class TestDatabase {
+  readonly native = new DatabaseSync(":memory:");
+
+  constructor() {
+    this.native.exec("PRAGMA foreign_keys = ON");
+    for (const migration of migrations) this.native.exec(migration.sql);
+  }
+
+  async getFirstAsync<T>(source: string, ...params: unknown[]): Promise<T | null> {
+    return (
+      (this.native.prepare(source).get(...(params as SQLInputValue[])) as T | undefined) ?? null
+    );
+  }
+
+  async runAsync(source: string, ...params: unknown[]): Promise<unknown> {
+    return this.native.prepare(source).run(...(params as SQLInputValue[]));
+  }
+
+  async withTransactionAsync(task: () => Promise<void>): Promise<void> {
+    this.native.exec("BEGIN IMMEDIATE");
+    try {
+      await task();
+      this.native.exec("COMMIT");
+    } catch (error) {
+      this.native.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  close(): void {
+    this.native.close();
+  }
+}
+
+const timestamp = "2026-08-13 14:00:00";
+
+const bootstrapPage: MobileSyncPullResponse = {
+  protocolVersion: 1,
+  nextCursor: "v1.3",
+  hasMore: false,
+  changes: [
+    {
+      entityType: "account",
+      entityId: "account-1",
+      revision: 1,
+      operation: "upsert",
+      serverUpdatedAt: timestamp,
+      payload: {
+        id: "account-1",
+        name: "Wallet",
+        type: "cash",
+        currency: "PHP",
+        archived: false,
+        system: false,
+        interest: {
+          enabled: false,
+          annualRateBasisPoints: null,
+          frequency: null,
+          payDay: null,
+        },
+        revision: 1,
+        updatedAt: timestamp,
+      },
+    },
+    {
+      entityType: "category",
+      entityId: "category-1",
+      revision: 1,
+      operation: "upsert",
+      serverUpdatedAt: timestamp,
+      payload: {
+        id: "category-1",
+        name: "Dining",
+        kind: "expense",
+        color: "#123456",
+        archived: false,
+        system: false,
+        origin: "custom",
+        requiredPlan: "free",
+        locked: false,
+        revision: 1,
+        updatedAt: timestamp,
+      },
+    },
+    {
+      entityType: "transaction",
+      entityId: "transaction-1",
+      revision: 1,
+      operation: "upsert",
+      serverUpdatedAt: timestamp,
+      payload: {
+        id: "transaction-1",
+        accountId: "account-1",
+        categoryId: "category-1",
+        date: "2026-08-13",
+        description: "Lunch",
+        amountMinor: -25_000,
+        currency: "PHP",
+        kind: "expense",
+        notes: null,
+        transferGroupId: null,
+        transferFeeMinor: null,
+        importFingerprint: null,
+        revision: 1,
+        updatedAt: timestamp,
+      },
+    },
+  ],
+};
+
+describe("atomic encrypted pull application", () => {
+  let database: TestDatabase;
+
+  beforeEach(() => {
+    database = new TestDatabase();
+  });
+
+  afterEach(() => database.close());
+
+  it("persists a validated page and cursor for process restart", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, bootstrapPage);
+
+    const reopened = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await expect(reopened.getCursor()).resolves.toBe("v1.3");
+    expect(
+      database.native
+        .prepare("SELECT description, server_revision, sync_state FROM transactions")
+        .get(),
+    ).toEqual({ description: "Lunch", server_revision: 1, sync_state: "synced" });
+  });
+
+  it("rolls back every row and the cursor when a dependency is invalid", async () => {
+    const page: MobileSyncPullResponse = {
+      ...bootstrapPage,
+      nextCursor: "v1.2",
+      changes: [bootstrapPage.changes[0]!, bootstrapPage.changes[2]!],
+    };
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+
+    await expect(repository.applyPullPage(null, page)).rejects.toThrow();
+    await expect(repository.getCursor()).resolves.toBeNull();
+    expect(database.native.prepare("SELECT count(*) AS count FROM accounts").get()).toEqual({
+      count: 0,
+    });
+  });
+
+  it("retains a tombstone when the deleted row was never present locally", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, {
+      protocolVersion: 1,
+      nextCursor: "v1.1",
+      hasMore: false,
+      changes: [
+        {
+          entityType: "transaction",
+          entityId: "missing-transaction",
+          revision: 4,
+          operation: "delete",
+          serverUpdatedAt: timestamp,
+          payload: null,
+        },
+      ],
+    });
+
+    expect(database.native.prepare("SELECT * FROM sync_tombstones").get()).toMatchObject({
+      entity_type: "transaction",
+      entity_id: "missing-transaction",
+      server_revision: 4,
+    });
+  });
+
+  it("does not advance past pending local work", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, {
+      ...bootstrapPage,
+      nextCursor: "v1.1",
+      changes: [bootstrapPage.changes[0]!],
+    });
+    database.native
+      .prepare("UPDATE accounts SET sync_state = 'pending' WHERE id = ?")
+      .run("account-1");
+
+    await expect(
+      repository.applyPullPage("v1.1", {
+        protocolVersion: 1,
+        nextCursor: "v1.2",
+        hasMore: false,
+        changes: [
+          {
+            ...bootstrapPage.changes[0]!,
+            revision: 2,
+            serverUpdatedAt: "2026-08-13 15:00:00",
+            payload: {
+              ...bootstrapPage.changes[0]!.payload!,
+              name: "Server wallet",
+              revision: 2,
+              updatedAt: "2026-08-13 15:00:00",
+            },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "local_conflict" });
+    await expect(repository.getCursor()).resolves.toBe("v1.1");
+    expect(database.native.prepare("SELECT name, sync_state FROM accounts").get()).toEqual({
+      name: "Wallet",
+      sync_state: "pending",
+    });
+  });
+
+  it("rejects stale page application after another page advances the cursor", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, bootstrapPage);
+    await expect(repository.applyPullPage(null, bootstrapPage)).rejects.toMatchObject({
+      code: "cursor_mismatch",
+    });
+  });
+});

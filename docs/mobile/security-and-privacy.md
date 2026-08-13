@@ -17,24 +17,24 @@
 
 ## Threats and controls
 
-| Threat                                           | Required control                                                                                                                              |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Service or deployment secrets extracted from app | Ship only public URL and Supabase publishable key; validate build config; scan bundles and logs                                               |
-| Cross-user data after account switch             | Subject-scoped database/key names, close-before-open transition, clear observers and in-memory caches, startup identity assertion             |
-| Plaintext local finance                          | SQLCipher enabled in both native targets; set key before schema access; verification test reads file bytes/native SQLite without key          |
-| Database key in backups                          | SecureStore configuration plus platform backup exclusions; database files excluded from unsafe cloud/device transfer paths                    |
-| Token leakage                                    | SecureStore-backed session persistence, no logs/breadcrumbs/screenshots, redacted network diagnostics                                         |
-| Client-supplied tenant or entitlement            | Strict request schemas reject tenant IDs; Worker derives both tenant and effective plan                                                       |
-| Replay/duplicate mutation                        | Tenant-scoped idempotency record and canonical request hash                                                                                   |
-| Device-clock overwrite                           | Server monotonic cursor, server timestamps, row revisions; no last-device-time-wins logic                                                     |
-| Half transfer                                    | One logical command and atomic local/server transactions                                                                                      |
-| Silent conflict loss                             | Preserve base/local/server versions and require explicit resolution                                                                           |
-| Malicious import                                 | Bounded file size/rows, safe parser, no formula execution, preview before online atomic commit, no file-content logging                       |
-| Compromised/crashed migration                    | Versioned transactional migrations, backup generation/recovery state, fail closed without deleting readable data                              |
-| Arbitrary exfiltration path                      | Allowlisted Worker base URL and typed routes only; no arbitrary HTTP/SQL/debug consoles in production                                         |
-| Sensitive telemetry                              | No financial fields, tokens, names, descriptions, file contents, or assistant messages in analytics/crash breadcrumbs                         |
-| Stale JWT after account deletion                 | Honor Worker `410` tombstone behavior; freeze and clear according to documented recovery state                                                |
-| Rooted/jailbroken device                         | At-rest encryption and minimal exposure reduce risk but cannot guarantee secrecy on a fully compromised runtime; document limitation honestly |
+| Threat                                           | Required control                                                                                                                               |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Service or deployment secrets extracted from app | Ship only public URL and Supabase publishable key; validate build config; scan bundles and logs                                                |
+| Cross-user data after account switch             | Subject-scoped database/key names, close-before-open transition, clear observers/caches; Worker identity assertion gates sync, not local reads |
+| Plaintext local finance                          | SQLCipher enabled in both native targets; set key before schema access; verification test reads file bytes/native SQLite without key           |
+| Database key in backups                          | SecureStore configuration plus platform backup exclusions; database files excluded from unsafe cloud/device transfer paths                     |
+| Token leakage                                    | SecureStore-backed session persistence, no logs/breadcrumbs/screenshots, redacted network diagnostics                                          |
+| Client-supplied tenant or entitlement            | Strict request schemas reject tenant IDs; Worker derives both tenant and effective plan                                                        |
+| Replay/duplicate mutation                        | Tenant-scoped idempotency record and canonical request hash                                                                                    |
+| Device-clock overwrite                           | Server monotonic cursor, server timestamps, row revisions; no last-device-time-wins logic                                                      |
+| Half transfer                                    | One logical command and atomic local/server transactions                                                                                       |
+| Silent conflict loss                             | Preserve base/local/server versions and require explicit resolution                                                                            |
+| Malicious import                                 | Bounded file size/rows, safe parser, no formula execution, preview before online atomic commit, no file-content logging                        |
+| Compromised/crashed migration                    | Versioned transactional migrations, backup generation/recovery state, fail closed without deleting readable data                               |
+| Arbitrary exfiltration path                      | Allowlisted Worker base URL and typed routes only; no arbitrary HTTP/SQL/debug consoles in production                                          |
+| Sensitive telemetry                              | No financial fields, tokens, names, descriptions, file contents, or assistant messages in analytics/crash breadcrumbs                          |
+| Stale JWT after account deletion                 | Honor Worker `410` tombstone behavior; freeze and clear according to documented recovery state                                                 |
+| Rooted/jailbroken device                         | At-rest encryption and minimal exposure reduce risk but cannot guarantee secrecy on a fully compromised runtime; document limitation honestly  |
 
 ## Key lifecycle
 

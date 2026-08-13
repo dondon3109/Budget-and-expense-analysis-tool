@@ -74,10 +74,12 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
         }
         if (
           error instanceof WorkerIdentityError &&
-          (error.code === "session_expired" || error.code === "account_deleted")
+          (error.code === "session_expired" ||
+            error.code === "account_deleted" ||
+            error.code === "identity_mismatch")
         ) {
-          // Preserve the encrypted workspace when an expired or deleted remote
-          // session makes it impossible to inspect or synchronize pending work.
+          // Preserve the subject-scoped encrypted workspace when remote identity
+          // can no longer be trusted enough to inspect or synchronize pending work.
           await signOut({ preserveLocalWorkspace: true }).catch(() => undefined);
           return;
         }
