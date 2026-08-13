@@ -1,0 +1,26 @@
+{
+  "name": "@zoption/ads",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "render:feature": "remotion render src/index.ts Zoption-Feature-Highlight out/feature-highlight.mp4 --codec=h264 --pixel-format=yuv420p",
+    "render:problem": "remotion render src/index.ts Zoption-Problem-To-Solution out/problem-to-solution.mp4 --codec=h264 --pixel-format=yuv420p",
+    "render:showcase": "remotion render src/index.ts Zoption-Product-Showcase out/product-showcase.mp4 --codec=h264 --pixel-format=yuv420p",
+    "render:all": "pnpm render:feature && pnpm render:problem && pnpm render:showcase",
+    "still:all": "remotion still src/index.ts Zoption-Feature-Highlight out/preview-feature.png --frame=180 && remotion still src/index.ts Zoption-Problem-To-Solution out/preview-problem.png --frame=245 && remotion still src/index.ts Zoption-Product-Showcase out/preview-showcase.png --frame=180"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.509",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "remotion": "4.0.509"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}

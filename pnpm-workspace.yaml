@@ -17,3 +17,28 @@ overrides:
 minimumReleaseAgeExclude:
   - miniflare@5.20260811.0-alpha
   - wrangler@4.122.0
+  - "@remotion/bundler@4.0.509"
+  - "@remotion/captions@4.0.509"
+  - "@remotion/cli@4.0.509"
+  - "@remotion/compositor-darwin-arm64@4.0.509"
+  - "@remotion/compositor-darwin-x64@4.0.509"
+  - "@remotion/compositor-linux-arm64-gnu@4.0.509"
+  - "@remotion/compositor-linux-arm64-musl@4.0.509"
+  - "@remotion/compositor-linux-x64-gnu@4.0.509"
+  - "@remotion/compositor-linux-x64-musl@4.0.509"
+  - "@remotion/compositor-win32-x64-msvc@4.0.509"
+  - "@remotion/licensing@4.0.509"
+  - "@remotion/media-parser@4.0.509"
+  - "@remotion/media-utils@4.0.509"
+  - "@remotion/player@4.0.509"
+  - "@remotion/renderer@4.0.509"
+  - "@remotion/streaming@4.0.509"
+  - "@remotion/studio-codemods@4.0.509"
+  - "@remotion/studio-protocol@4.0.509"
+  - "@remotion/studio-server@4.0.509"
+  - "@remotion/studio-shared@4.0.509"
+  - "@remotion/studio@4.0.509"
+  - "@remotion/timeline-utils@4.0.509"
+  - "@remotion/web-renderer@4.0.509"
+  - "@remotion/zod-types@4.0.509"
+  - remotion@4.0.509

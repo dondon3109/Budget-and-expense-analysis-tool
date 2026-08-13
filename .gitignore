@@ -34,3 +34,4 @@ apps/android/*.apk
 apps/android/*.aab
 apps/android/*.idsig
 apps/web/public/downloads/
+apps/ads/out/

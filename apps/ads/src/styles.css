@@ -1,0 +1,1187 @@
+@font-face {
+  font-family: "Zoption Manrope";
+  src: url("../../web/public/fonts/manrope-latin.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 800;
+}
+
+@font-face {
+  font-family: "Zoption Newsreader";
+  src: url("../../web/public/fonts/newsreader-latin.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 600;
+}
+
+@font-face {
+  font-family: "Zoption Mono";
+  src: url("../../web/public/fonts/ibm-plex-mono-600-latin.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+.ad-canvas {
+  overflow: hidden;
+  color: var(--ad-ink);
+  background:
+    radial-gradient(circle at 88% 18%, rgba(153, 232, 211, 0.4), transparent 29%), var(--ad-bg);
+  font-family: "Zoption Manrope", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ambient-shape {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ambient-shape-one {
+  top: -260px;
+  right: -260px;
+  width: 680px;
+  height: 680px;
+  background: rgba(213, 244, 234, 0.62);
+}
+
+.ambient-shape-two {
+  bottom: -310px;
+  left: -330px;
+  width: 770px;
+  height: 770px;
+  background: rgba(217, 231, 221, 0.56);
+}
+
+.timeline-progress {
+  position: absolute;
+  z-index: 50;
+  top: 42px;
+  left: 68px;
+  right: 68px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(23, 52, 46, 0.13);
+}
+
+.timeline-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ad-accent);
+}
+
+.safe-frame {
+  position: absolute;
+  inset: 0;
+  padding: 128px 78px 230px;
+}
+
+.ad-scene {
+  overflow: hidden;
+}
+
+.persistent-header {
+  position: absolute;
+  z-index: 40;
+  top: 78px;
+  left: 78px;
+  right: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--ad-ink);
+  font-weight: 770;
+  letter-spacing: -0.025em;
+}
+
+.sound-safe-label {
+  padding: 10px 16px;
+  color: var(--ad-muted);
+  border: 1px solid rgba(23, 52, 46, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.74);
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.hook-scene {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 300px;
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--ad-accent);
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+}
+
+.kicker > span {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.big-headline {
+  max-width: 910px;
+  margin: 34px 0 28px;
+  color: var(--ad-ink);
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 116px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 0.94;
+  text-wrap: balance;
+}
+
+.ad-caption {
+  max-width: 780px;
+  margin: 0;
+  color: var(--ad-muted);
+  font-size: 32px;
+  font-weight: 560;
+  letter-spacing: -0.018em;
+  line-height: 1.42;
+}
+
+.feature-product-scene,
+.showcase-scene,
+.solution-reveal-scene,
+.steps-scene {
+  background: var(--ad-bg);
+}
+
+.product-scene-frame {
+  padding-top: 152px;
+}
+
+.scene-copy h2,
+.steps-frame h2,
+.showcase-copy h2 {
+  margin: 18px 0 0;
+  color: var(--ad-ink);
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 70px;
+  font-weight: 500;
+  letter-spacing: -0.032em;
+  line-height: 0.98;
+}
+
+.compact-scene-copy {
+  position: relative;
+  z-index: 6;
+}
+
+.product-stage-wrap {
+  position: absolute;
+  top: 470px;
+  left: 78px;
+  right: 78px;
+  bottom: 225px;
+}
+
+.product-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 34px;
+  background: #fffdf8;
+  box-shadow: 0 34px 82px rgba(35, 51, 44, 0.2);
+  transform-origin: center center;
+}
+
+.product-stage.is-compact {
+  position: relative;
+  width: 100%;
+  height: 860px;
+}
+
+.product-browser-bar {
+  height: 68px;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  color: #65716b;
+  border-bottom: 1px solid #e4dfd3;
+  background: #faf8f2;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.product-browser-bar b {
+  justify-self: end;
+  color: #0f6b5b;
+  font-size: 12px;
+}
+
+.browser-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.browser-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d9d5cb;
+}
+
+.browser-dots span:first-child {
+  background: #d96b35;
+}
+.browser-dots span:nth-child(2) {
+  background: #dc8b3f;
+}
+.browser-dots span:last-child {
+  background: #0f6b5b;
+}
+
+.product-screenshot {
+  width: 100%;
+  height: calc(100% - 68px);
+  display: block;
+}
+
+.illustrative-label {
+  position: absolute;
+  z-index: 5;
+  right: 18px;
+  bottom: 16px;
+  padding: 7px 10px;
+  color: #5a655f;
+  border-radius: 7px;
+  background: rgba(244, 241, 233, 0.93);
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.synthetic-product {
+  height: calc(100% - 68px);
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  color: #17342e;
+  background: #f4f1e9;
+}
+
+.product-sidebar {
+  padding: 24px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e4dfd3;
+  background: #fffdf8;
+}
+
+.product-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 5px 22px;
+  font-size: 16px;
+  font-weight: 780;
+}
+
+.product-sidebar nav {
+  display: grid;
+  gap: 7px;
+}
+
+.product-sidebar nav span {
+  padding: 11px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 9px;
+  color: #6c716c;
+  font-size: 10px;
+  font-weight: 690;
+}
+
+.product-sidebar nav span.is-active {
+  color: #06473d;
+  background: #d5f4ea;
+}
+
+.product-sidebar nav i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.privacy-chip {
+  margin-top: auto;
+  padding: 10px 8px;
+  color: #0f6b5b;
+  border-radius: 8px;
+  background: #e5f0eb;
+  font-size: 9px;
+  font-weight: 740;
+  text-align: center;
+}
+
+.product-content {
+  min-width: 0;
+  padding: 30px 34px 24px;
+}
+
+.product-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.product-heading-row h3 {
+  margin: 7px 0 5px;
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.product-heading-row p {
+  margin: 0;
+  color: #6c716c;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.product-eyebrow {
+  color: #0f6b5b;
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.month-chip {
+  padding: 10px 13px;
+  color: #06473d;
+  border: 1px solid #e4dfd3;
+  border-radius: 9px;
+  background: #fffdf8;
+  font-size: 10px;
+  font-weight: 740;
+  white-space: nowrap;
+}
+
+.metric-strip,
+.budget-summary {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border-radius: 13px;
+  background: #fffdf8;
+  box-shadow: 0 10px 28px rgba(35, 51, 44, 0.07);
+}
+
+.preview-metric {
+  min-width: 0;
+  padding: 17px 18px 15px;
+  border-top: 3px solid #2f65c8;
+}
+
+.preview-metric + .preview-metric {
+  border-left: 1px solid #e4dfd3;
+}
+
+.preview-metric.tone-income {
+  border-top-color: #08776d;
+}
+.preview-metric.tone-expense {
+  border-top-color: #d96b35;
+}
+.preview-metric.tone-budget {
+  border-top-color: #6e4fc5;
+}
+
+.preview-metric span,
+.preview-metric small {
+  display: block;
+  color: #6c716c;
+  font-size: 9px;
+}
+
+.preview-metric strong {
+  display: block;
+  margin: 10px 0 5px;
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 24px;
+  font-weight: 550;
+  letter-spacing: -0.02em;
+}
+
+.product-panels {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1.18fr 0.82fr;
+  gap: 15px;
+}
+
+.chart-panel,
+.budget-panel-preview,
+.budget-editor-preview,
+.recent-transactions-preview {
+  padding: 19px;
+  border-radius: 13px;
+  background: #fffdf8;
+  box-shadow: 0 10px 28px rgba(35, 51, 44, 0.06);
+}
+
+.recent-transactions-preview {
+  margin-top: 16px;
+  padding: 18px 19px 12px;
+}
+
+.transaction-preview-row {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid #ece8df;
+}
+
+.transaction-preview-row:first-of-type {
+  margin-top: 14px;
+}
+
+.transaction-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #a0441f;
+  background: #ffe3d6;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.transaction-icon.income {
+  color: #08776d;
+  background: #d9f5f0;
+}
+
+.transaction-preview-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.transaction-preview-row strong,
+.transaction-preview-row span,
+.transaction-preview-row b {
+  font-size: 9px;
+}
+
+.transaction-preview-row span {
+  color: #6c716c;
+}
+
+.transaction-preview-row b {
+  color: #a0441f;
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-weight: 600;
+}
+
+.transaction-preview-row b.income {
+  color: #08776d;
+}
+
+.panel-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-title div {
+  display: grid;
+  gap: 4px;
+}
+
+.panel-title span,
+.panel-title small {
+  color: #6c716c;
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 8px;
+}
+
+.panel-title strong {
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 18px;
+  font-weight: 550;
+}
+
+.chart-area {
+  height: 185px;
+  margin-top: 20px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  border-bottom: 1px solid #e4dfd3;
+}
+
+.chart-area > span {
+  position: relative;
+  width: 28px;
+  display: block;
+  border-radius: 7px 7px 0 0;
+  background: #d5f4ea;
+}
+
+.chart-area > span i {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: #0f6b5b;
+}
+
+.chart-axis {
+  padding-top: 7px;
+  display: flex;
+  justify-content: space-between;
+  color: #7b807b;
+  font-size: 7px;
+}
+
+.budget-panel-preview {
+  display: grid;
+  align-content: start;
+  gap: 25px;
+}
+
+.budget-preview-row {
+  display: grid;
+  gap: 8px;
+}
+
+.budget-preview-row > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.budget-preview-row strong,
+.budget-preview-row span {
+  font-size: 9px;
+}
+
+.budget-preview-row span {
+  color: #6c716c;
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 8px;
+}
+
+.budget-preview-row > i {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f0eee7;
+}
+
+.budget-preview-row > i b {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  transform-origin: left center;
+}
+
+.budget-product-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.budget-editor-preview {
+  margin-top: 18px;
+  display: grid;
+  gap: 18px;
+}
+
+.assistant-product-view {
+  background: #fffdf8;
+}
+
+.assistant-preview-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fffdf8;
+}
+
+.assistant-preview-top {
+  height: 66px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e4dfd3;
+  font-size: 10px;
+}
+
+.assistant-preview-top > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assistant-preview-top span,
+.assistant-preview-top small {
+  color: #6c716c;
+  font-size: 9px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0f6b5b;
+}
+
+.assistant-preview-messages {
+  flex: 1;
+  padding: 44px 44px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.user-bubble {
+  max-width: 62%;
+  margin-left: auto;
+  padding: 17px 19px;
+  border-radius: 16px 16px 4px 16px;
+  color: #06473d;
+  background: #d5f4ea;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.assistant-bubble {
+  max-width: 76%;
+  padding: 22px;
+  border-radius: 4px 16px 16px 16px;
+  background: #f4f1e9;
+  box-shadow: 0 12px 28px rgba(35, 51, 44, 0.08);
+}
+
+.assistant-bubble span,
+.assistant-bubble small {
+  display: block;
+  color: #6c716c;
+  font-size: 8px;
+}
+
+.assistant-bubble strong {
+  display: block;
+  margin-top: 12px;
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 22px;
+  font-weight: 550;
+  line-height: 1.1;
+}
+
+.assistant-bubble p {
+  margin: 12px 0;
+  color: #485a53;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.assistant-composer {
+  margin: 0 34px 32px;
+  padding: 15px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #7a817c;
+  border: 1px solid #d9d5cb;
+  border-radius: 14px;
+  font-size: 10px;
+}
+
+.assistant-composer b {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: white;
+  border-radius: 8px;
+  background: #0f6b5b;
+}
+
+.floating-callout {
+  position: absolute;
+  z-index: 10;
+  min-height: 62px;
+  padding: 0 22px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #17342e;
+  border-radius: 14px;
+  background: #fffdf8;
+  box-shadow: 0 18px 48px rgba(35, 51, 44, 0.2);
+  font-size: 17px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.floating-callout > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: #06473d;
+  border-radius: 11px;
+  background: #d5f4ea;
+}
+
+.problem-scene {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding-top: 225px;
+}
+
+.problem-copy {
+  position: relative;
+  z-index: 6;
+}
+
+.problem-copy .big-headline {
+  margin-top: 24px;
+  font-size: 94px;
+}
+
+.problem-cluster {
+  position: relative;
+  margin-top: 65px;
+}
+
+.receipt-card {
+  position: absolute;
+  width: 405px;
+  height: 350px;
+  padding: 38px;
+  color: #17342e;
+  border-radius: 20px;
+  background: #fffdf8;
+  box-shadow: 0 26px 65px rgba(35, 51, 44, 0.17);
+}
+
+.receipt-card::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -12px;
+  left: 0;
+  height: 24px;
+  background: #fffdf8;
+  clip-path: polygon(
+    0 0,
+    4% 100%,
+    8% 0,
+    12% 100%,
+    16% 0,
+    20% 100%,
+    24% 0,
+    28% 100%,
+    32% 0,
+    36% 100%,
+    40% 0,
+    44% 100%,
+    48% 0,
+    52% 100%,
+    56% 0,
+    60% 100%,
+    64% 0,
+    68% 100%,
+    72% 0,
+    76% 100%,
+    80% 0,
+    84% 100%,
+    88% 0,
+    92% 100%,
+    96% 0,
+    100% 100%,
+    100% 0
+  );
+}
+
+.receipt-card span {
+  display: block;
+  color: #6c716c;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.receipt-card strong {
+  display: block;
+  margin: 34px 0 45px;
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 59px;
+  font-weight: 550;
+}
+
+.receipt-card i {
+  width: 100%;
+  height: 8px;
+  margin-top: 17px;
+  display: block;
+  border-radius: 999px;
+  background: #e4dfd3;
+}
+
+.receipt-card i:nth-of-type(2) {
+  width: 72%;
+}
+.receipt-card i:nth-of-type(3) {
+  width: 45%;
+}
+.receipt-one {
+  top: 55px;
+  left: 8px;
+}
+.receipt-two {
+  top: 170px;
+  right: 0;
+}
+.receipt-three {
+  top: 430px;
+  left: 145px;
+}
+
+.problem-question {
+  position: absolute;
+  z-index: 8;
+  top: 560px;
+  right: 15px;
+  padding: 20px 25px;
+  color: #fffdf8;
+  border-radius: 15px;
+  background: #d96b35;
+  box-shadow: 0 18px 42px rgba(217, 107, 53, 0.28);
+  font-size: 23px;
+  font-weight: 790;
+  transform: rotate(3deg);
+}
+
+.solution-reveal-frame {
+  padding-top: 190px;
+}
+
+.solution-word {
+  color: var(--ad-ink);
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 105px;
+  font-weight: 550;
+  letter-spacing: -0.035em;
+  line-height: 0.9;
+}
+
+.solution-reveal-frame > .ad-caption {
+  max-width: 900px;
+  margin: 28px 0 50px;
+}
+
+.steps-frame {
+  padding-top: 190px;
+}
+
+.steps-frame h2 {
+  margin-top: 28px;
+  font-size: 88px;
+}
+
+.solution-step-list {
+  margin-top: 90px;
+  display: grid;
+  gap: 34px;
+}
+
+.solution-step {
+  position: relative;
+  min-height: 146px;
+  padding: 34px 32px;
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fffdf8;
+  box-shadow: 0 16px 40px rgba(35, 51, 44, 0.09);
+}
+
+.solution-step span {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  color: #06473d;
+  border-radius: 16px;
+  background: #d5f4ea;
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 20px;
+}
+
+.solution-step strong {
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 34px;
+  font-weight: 550;
+}
+
+.solution-step i {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 5px;
+  background: #0f6b5b;
+  transform-origin: left center;
+}
+
+.illustration-note {
+  margin: 40px 0 0;
+  color: var(--ad-muted);
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 15px;
+}
+
+.logo-intro-scene {
+  color: #fffdf8;
+  background: #06473d;
+}
+
+.logo-intro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-intro .brand-lockup {
+  color: #fffdf8;
+}
+
+.logo-intro p {
+  margin: 42px 0 0;
+  color: #b9d8cc;
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.logo-orbit {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border: 2px solid rgba(103, 224, 188, 0.4);
+  border-radius: 50%;
+}
+
+.showcase-frame {
+  padding-top: 140px;
+}
+
+.showcase-copy {
+  position: relative;
+  z-index: 8;
+}
+
+.showcase-copy h2 {
+  max-width: 810px;
+  margin-top: 20px;
+  font-size: 72px;
+}
+
+.showcase-copy .ad-caption {
+  max-width: 810px;
+  margin-top: 18px;
+  font-size: 25px;
+}
+
+.showcase-product-wrap {
+  position: absolute;
+  top: 585px;
+  left: 78px;
+  right: 78px;
+  bottom: 220px;
+}
+
+.showcase-back-panel {
+  position: absolute;
+  top: -62px;
+  right: 34px;
+  left: 34px;
+  height: 140px;
+  padding: 22px 28px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-radius: 28px 28px 0 0;
+  color: #b9d8cc;
+  background: #17342e;
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.showcase-back-panel strong {
+  color: #fffdf8;
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 23px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.cta-sequence {
+  z-index: 60;
+}
+
+.cta-screen {
+  position: absolute;
+  inset: 0;
+  padding: 250px 78px 290px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  color: #17342e;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(153, 232, 211, 0.7), transparent 30%), #f4f1e9;
+}
+
+.cta-screen.is-dark {
+  color: #fffdf8;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(103, 224, 188, 0.18), transparent 29%), #06473d;
+}
+
+.cta-screen.is-dark .brand-lockup {
+  color: #fffdf8;
+}
+
+.cta-screen h2 {
+  max-width: 910px;
+  margin: 64px 0 24px;
+  color: currentColor;
+  font-family: "Zoption Newsreader", Georgia, serif;
+  font-size: 102px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 0.94;
+  text-wrap: balance;
+}
+
+.cta-screen > p {
+  max-width: 800px;
+  margin: 0;
+  color: #61716a;
+  font-size: 29px;
+  font-weight: 560;
+  line-height: 1.42;
+}
+
+.cta-screen.is-dark > p {
+  color: #b9d8cc;
+}
+
+.cta-button {
+  min-width: 520px;
+  min-height: 108px;
+  margin-top: 66px;
+  padding: 0 25px 0 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  color: #fff;
+  border-radius: 18px;
+  background: #06473d;
+  box-shadow: 0 22px 46px rgba(15, 107, 91, 0.27);
+  font-size: 29px;
+  font-weight: 780;
+  transform-origin: left center;
+}
+
+.cta-screen.is-dark .cta-button {
+  color: #06473d;
+  background: #f4f1e9;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.24);
+}
+
+.cta-button b {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #06473d;
+  background: #d5f4ea;
+  font-size: 34px;
+}
+
+.cta-screen.is-dark .cta-button b {
+  color: #fffdf8;
+  background: #0f6b5b;
+}
+
+.cta-url {
+  margin-top: 36px;
+  color: currentColor;
+  font-family: "Zoption Mono", ui-monospace, monospace;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.cta-screen small {
+  position: absolute;
+  bottom: 236px;
+  color: #66706a;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.cta-screen.is-dark small {
+  color: #b9d8cc;
+}
+
+.showcase-cta .cta-screen {
+  padding-top: 190px;
+}
+
+.showcase-cta .cta-screen h2 {
+  font-size: 88px;
+}
