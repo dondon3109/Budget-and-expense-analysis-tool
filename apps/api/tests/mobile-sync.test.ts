@@ -66,7 +66,10 @@ function d1FromSqlite(database: DatabaseSync, beforeBatch?: () => void): D1Datab
   return api as unknown as D1Database;
 }
 
-function createSyncEnvironment(): { env: Bindings; database: DatabaseSync } {
+function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync) => void): {
+  env: Bindings;
+  database: DatabaseSync;
+} {
   const database = new DatabaseSync(":memory:");
   databases.push(database);
   database.exec(`
@@ -133,6 +136,17 @@ function createSyncEnvironment(): { env: Bindings; database: DatabaseSync } {
       "utf8",
     ),
   );
+  beforeTransferMigration?.(database);
+  const transferMigration = readFileSync(
+    new URL("../../../db/migrations/0036_mobile_sync_atomic_transfers.sql", import.meta.url),
+    "utf8",
+  );
+  for (const statement of transferMigration
+    .split("--> statement-breakpoint")
+    .map((part) => part.trim())
+    .filter(Boolean)) {
+    database.exec(statement);
+  }
   return { env: { DB: d1FromSqlite(database) }, database };
 }
 
@@ -241,6 +255,98 @@ describe("mobile sync pull repository", () => {
       database
         .prepare("SELECT count(*) AS count FROM mobile_sync_state WHERE tenant_id = ?")
         .get("tenant-1"),
+    ).toEqual({ count: 0 });
+  });
+
+  it("does not misclassify an unpaired historical transfer as an atomic group", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    database
+      .prepare("INSERT INTO categories (id, tenant_id, name, kind, color) VALUES (?, ?, ?, ?, ?)")
+      .run("category-transfer", "tenant-1", "Transfer", "transfer", "#008877");
+    const cursor = Number(
+      database
+        .prepare("SELECT sequence FROM mobile_sync_state WHERE tenant_id = ?")
+        .get("tenant-1")!.sequence,
+    );
+    database
+      .prepare(
+        `INSERT INTO transactions (
+          id, tenant_id, account_id, category_id, date, description, amount_minor,
+          currency, kind, transfer_group_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        "legacy-transfer-leg",
+        "tenant-1",
+        "account-1",
+        "category-transfer",
+        "2026-08-14",
+        "Historical transfer",
+        -10_000,
+        "PHP",
+        "transfer",
+        "legacy-unpaired-group",
+      );
+
+    expect(
+      database
+        .prepare(
+          `SELECT count(*) AS count
+           FROM mobile_sync_change_groups groups
+           JOIN mobile_sync_changes changes
+             ON changes.tenant_id = groups.tenant_id AND changes.sequence = groups.sequence
+           WHERE changes.entity_id = ?`,
+        )
+        .get("legacy-transfer-leg"),
+    ).toEqual({ count: 0 });
+    const pulled = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: encodeMobileSyncCursor(cursor),
+      limit: 1,
+    });
+    expect(pulled.changes).toHaveLength(1);
+    expect(pulled.changes[0]).toMatchObject({
+      entityType: "transaction",
+      entityId: "legacy-transfer-leg",
+      payload: { transferGroupId: "legacy-unpaired-group" },
+    });
+  });
+
+  it("does not bootstrap an unbalanced historical pair as an atomic group", () => {
+    const { database } = createSyncEnvironment((databaseBeforeMigration) => {
+      databaseBeforeMigration
+        .prepare("INSERT INTO accounts (id, tenant_id, name, type) VALUES (?, ?, ?, ?)")
+        .run("account-3", "tenant-1", "Savings", "savings");
+      databaseBeforeMigration
+        .prepare("INSERT INTO categories (id, tenant_id, name, kind, color) VALUES (?, ?, ?, ?, ?)")
+        .run("category-transfer", "tenant-1", "Transfer", "transfer", "#008877");
+      const insert = databaseBeforeMigration.prepare(
+        `INSERT INTO transactions (
+          id, tenant_id, account_id, category_id, date, description, amount_minor,
+          currency, kind, transfer_group_id, transfer_fee_minor
+        ) VALUES (?, 'tenant-1', ?, 'category-transfer', '2026-08-14',
+          'Malformed historical transfer', ?, 'PHP', 'transfer', 'legacy-unbalanced-group', ?)`,
+      );
+      insert.run("legacy-transfer-out", "account-1", -10_000, 0);
+      insert.run("legacy-transfer-in", "account-3", 9_000, null);
+    });
+
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM transfer_groups WHERE id = ?")
+        .get("legacy-unbalanced-group"),
+    ).toEqual({ count: 0 });
+    expect(
+      database
+        .prepare(
+          `SELECT count(*) AS count
+           FROM mobile_sync_change_groups groups
+           JOIN mobile_sync_changes changes
+             ON changes.tenant_id = groups.tenant_id AND changes.sequence = groups.sequence
+           WHERE changes.entity_id IN (?, ?)`,
+        )
+        .get("legacy-transfer-out", "legacy-transfer-in"),
     ).toEqual({ count: 0 });
   });
 });
@@ -382,6 +488,206 @@ describe("mobile sync transaction push repository", () => {
         )
         .get("tenant-1", entityId),
     ).toEqual({ operation: "delete", row_revision: 2 });
+  });
+});
+
+describe("mobile sync atomic transfer repository", () => {
+  const clientId = "30000000-0000-4000-8000-000000000001";
+  const groupId = "30000000-0000-4000-8000-000000000002";
+  const fromId = "30000000-0000-4000-8000-000000000003";
+  const toId = "30000000-0000-4000-8000-000000000004";
+
+  function seedTransferReferences(database: DatabaseSync): void {
+    database
+      .prepare("INSERT INTO accounts (id, tenant_id, name, type) VALUES (?, ?, ?, ?)")
+      .run("account-savings", "tenant-1", "Savings", "savings");
+    database
+      .prepare("INSERT INTO categories (id, tenant_id, name, kind, color) VALUES (?, ?, ?, ?, ?)")
+      .run("category-transfer", "tenant-1", "Transfer", "transfer", "#008877");
+  }
+
+  function createTransfer() {
+    return {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "30000000-0000-4000-8000-000000000005",
+          idempotencyKey: "30000000-0000-4000-8000-000000000006",
+          entityType: "transfer" as const,
+          entityId: groupId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: {
+            fromTransactionId: fromId,
+            toTransactionId: toId,
+            transfer: {
+              kind: "transfer" as const,
+              date: "2026-08-14",
+              description: "Emergency fund",
+              amountMinor: 50_000,
+              transferFeeMinor: 500,
+              currency: "PHP" as const,
+              categoryId: "category-transfer",
+              fromAccountId: "account-1",
+              toAccountId: "account-savings",
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  it("creates, pages, updates, conflicts, and deletes both legs atomically", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    seedTransferReferences(database);
+    const beforeCreate = Number(
+      database
+        .prepare("SELECT sequence FROM mobile_sync_state WHERE tenant_id = ?")
+        .get("tenant-1")!.sequence,
+    );
+    const create = createTransfer();
+
+    const created = await repository.push(env, "tenant-1", create);
+    expect(await repository.push(env, "tenant-1", create)).toEqual(created);
+    expect(created.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+    expect(
+      database
+        .prepare(
+          `SELECT id, account_id, amount_minor, transfer_fee_minor, revision
+           FROM transactions WHERE transfer_group_id = ? ORDER BY amount_minor`,
+        )
+        .all(groupId),
+    ).toEqual([
+      {
+        id: fromId,
+        account_id: "account-1",
+        amount_minor: -50_000,
+        transfer_fee_minor: 500,
+        revision: 1,
+      },
+      {
+        id: toId,
+        account_id: "account-savings",
+        amount_minor: 49_500,
+        transfer_fee_minor: null,
+        revision: 1,
+      },
+    ]);
+
+    const createPull = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: encodeMobileSyncCursor(beforeCreate),
+      limit: 1,
+    });
+    expect(createPull.changes).toHaveLength(2);
+    expect(createPull.changes.map((change) => change.entityId)).toEqual([fromId, toId]);
+    await expect(
+      repository.pull(env, "tenant-1", {
+        protocolVersion: 1,
+        cursor: encodeMobileSyncCursor(beforeCreate + 1),
+        limit: 10,
+      }),
+    ).rejects.toMatchObject({ status: 409, code: "full_resync_required" });
+
+    const update = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "30000000-0000-4000-8000-000000000007",
+          idempotencyKey: "30000000-0000-4000-8000-000000000008",
+          entityType: "transfer" as const,
+          entityId: groupId,
+          operationType: "update" as const,
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: {
+            transfer: {
+              ...create.operations[0]!.payload.transfer,
+              description: "Emergency reserve",
+              amountMinor: 60_000,
+              transferFeeMinor: 0,
+            },
+          },
+        },
+      ],
+    };
+    expect((await repository.push(env, "tenant-1", update)).results[0]).toMatchObject({
+      status: "acknowledged",
+      revision: 2,
+    });
+    expect(
+      database
+        .prepare(
+          "SELECT description, amount_minor, revision FROM transactions WHERE transfer_group_id = ? ORDER BY amount_minor",
+        )
+        .all(groupId),
+    ).toEqual([
+      { description: "Emergency reserve", amount_minor: -60_000, revision: 2 },
+      { description: "Emergency reserve", amount_minor: 60_000, revision: 2 },
+    ]);
+
+    const stale = structuredClone(update);
+    stale.operations[0]!.operationId = "30000000-0000-4000-8000-000000000009";
+    stale.operations[0]!.idempotencyKey = "30000000-0000-4000-8000-000000000010";
+    const conflict = await repository.push(env, "tenant-1", stale);
+    expect(conflict.results[0]).toMatchObject({
+      status: "conflict",
+      code: "stale_revision",
+      serverRevision: 2,
+      serverPayload: {
+        id: groupId,
+        fromTransactionId: fromId,
+        toTransactionId: toId,
+        amountMinor: 60_000,
+      },
+    });
+
+    const removed = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "30000000-0000-4000-8000-000000000011",
+          idempotencyKey: "30000000-0000-4000-8000-000000000012",
+          entityType: "transfer",
+          entityId: groupId,
+          operationType: "delete",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    expect(removed.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM transactions WHERE transfer_group_id = ?")
+        .get(groupId),
+    ).toEqual({ count: 0 });
+    expect(
+      database.prepare("SELECT count(*) AS count FROM transfer_groups WHERE id = ?").get(groupId),
+    ).toEqual({ count: 0 });
+  });
+
+  it("rolls back a partial create when either client leg ID collides", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    seedTransferReferences(database);
+    const create = createTransfer();
+    create.operations[0]!.payload.toTransactionId = "transaction-1";
+
+    const result = await repository.push(env, "tenant-1", create);
+    expect(result.results[0]).toMatchObject({ status: "rejected", code: "invalid_operation" });
+    expect(
+      database.prepare("SELECT id FROM transactions WHERE id = ?").get(fromId),
+    ).toBeUndefined();
+    expect(
+      database.prepare("SELECT id FROM transfer_groups WHERE id = ?").get(groupId),
+    ).toBeUndefined();
   });
 });
 

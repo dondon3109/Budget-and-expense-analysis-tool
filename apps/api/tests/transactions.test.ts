@@ -87,6 +87,13 @@ function createSqliteEnvironment(): {
       tenant_id text NOT NULL,
       source text NOT NULL
     );
+    CREATE TABLE transfer_groups (
+      id text NOT NULL,
+      tenant_id text NOT NULL,
+      from_transaction_id text NOT NULL,
+      to_transaction_id text NOT NULL,
+      PRIMARY KEY (tenant_id, id)
+    );
   `);
 
   const d1 = {
@@ -152,6 +159,8 @@ function seedTransactions(database: DatabaseSync): void {
       ('transfer-out', 'tenant-1', 'cash-1', 'transfer-1', '2026-07-02', 'Savings top-up', -1000, 'PHP', 'transfer', NULL, 'transfer-group-1', 100, '2026-07-02 09:00:00'),
       ('transfer-in', 'tenant-1', 'savings-1', 'transfer-1', '2026-07-02', 'Savings top-up', 900, 'PHP', 'transfer', NULL, 'transfer-group-1', NULL, '2026-07-02 09:00:01'),
       ('other-tenant', 'tenant-2', 'cash-2', 'expense-2', '2026-07-04', 'Private', -999, 'PHP', 'expense', NULL, NULL, NULL, '2026-07-04 09:00:00');
+    INSERT INTO transfer_groups (id, tenant_id, from_transaction_id, to_transaction_id)
+    VALUES ('transfer-group-1', 'tenant-1', 'transfer-out', 'transfer-in');
   `);
 }
 

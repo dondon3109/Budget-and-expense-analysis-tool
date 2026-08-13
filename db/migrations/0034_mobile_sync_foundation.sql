@@ -127,7 +127,7 @@ SELECT
 	`tenant_id`,
 	row_number() OVER (
 		PARTITION BY `tenant_id`
-		ORDER BY `entity_order`, `entity_id`
+		ORDER BY `entity_order`, `atomic_order`, `entity_id`
 	),
 	`entity_type`,
 	`entity_id`,
@@ -136,11 +136,11 @@ SELECT
 	`payload_json`,
 	`server_updated_at`
 FROM (
-	SELECT 1 AS `entity_order`, 'account' AS `entity_type`, * FROM `mobile_sync_account_rows`
+	SELECT 1 AS `entity_order`, `entity_id` AS `atomic_order`, 'account' AS `entity_type`, * FROM `mobile_sync_account_rows`
 	UNION ALL
-	SELECT 2 AS `entity_order`, 'category' AS `entity_type`, * FROM `mobile_sync_category_rows`
+	SELECT 2 AS `entity_order`, `entity_id` AS `atomic_order`, 'category' AS `entity_type`, * FROM `mobile_sync_category_rows`
 	UNION ALL
-	SELECT 3 AS `entity_order`, 'transaction' AS `entity_type`, * FROM `mobile_sync_transaction_rows`
+	SELECT 3 AS `entity_order`, COALESCE(json_extract(`payload_json`, '$.transferGroupId'), `entity_id`) AS `atomic_order`, 'transaction' AS `entity_type`, * FROM `mobile_sync_transaction_rows`
 );
 --> statement-breakpoint
 INSERT INTO `mobile_sync_state` (`tenant_id`, `sequence`, `updated_at`)

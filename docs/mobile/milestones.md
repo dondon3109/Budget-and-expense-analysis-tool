@@ -171,8 +171,8 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   versions without allowing the following pull to overwrite them.
 - The native transaction stack supports create/edit entry, integer-minor-unit amount validation,
   active local account/category selection, durable-write-before-navigation, pending/failed/conflict
-  labels, and explicit deletion confirmation. Transfers remain deliberately unavailable until their
-  atomic protocol is implemented.
+  labels, and explicit deletion confirmation. The later atomic-transfer slice extends the same stack
+  without treating either transfer leg as an independent user operation.
 - Conflict review shows the preserved device and server financial versions. Choosing the server
   applies that validated snapshot locally; choosing the device creates a fresh idempotency key and
   revision-aware operation based on the preserved server revision. Both resolutions close the prior
@@ -217,18 +217,31 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   termination. Reconnect produced one authenticated push and pull; isolated D1 showed all three at
   revision 1 with three idempotency acknowledgements, and the native pending labels cleared only after
   the Worker response. No remote D1 or production service changed.
-- Sixteen mobile suites with 71 focused tests pass. Repository-wide ESLint/typecheck and all 148
-  Vitest files with 1,048 tests pass. Worker dry-run packaging is 1,418.75 KiB raw / 259.23 KiB gzip;
-  production-mode exports complete in 16.7 seconds for iOS (9.5 MiB total, 5.7 MB reported Hermes
-  bundle) and 16.8 seconds for Android (11 MiB total, 5.9 MB reported Hermes bundle). These are bundle
-  export measurements, not signed archive or installed-device size claims.
+- Atomic transfer protocol version 1 now represents a linked pair as one logical outbox operation.
+  D1 owns immutable group membership, guarded create/update/delete batches, revision-aware logical
+  snapshots, and pull boundaries that cannot split a pair. SQLCipher commits both local legs and the
+  outbox state together; the native form supports distinct source/destination accounts, optional fees,
+  net-received preview, linked editing/deletion, and explicit device/server conflict resolution.
+  Focused tests cover fee math, idempotent replay, second-leg collision rollback, limit-one pull,
+  cursor-inside-pair refusal, malformed legacy-pair isolation, stale conflicts, both-leg local
+  durability, and conflict resolution.
+- On iPhone 17 Pro Simulator, a synthetic ₱432.10 transfer with a ₱2.10 fee was saved while the
+  isolated Worker was stopped. Both encrypted legs and the single outbox operation survived a full
+  app-process termination. Reconnect acknowledged both rows at revision 1 and removed the pending
+  label only afterward. A native edit to ₱500 with a ₱5 fee converged both legs at revision 2; isolated
+  D1 showed one immutable group and balanced sender/receiver amounts. No remote D1, deployment, or
+  production service changed.
+- Sixteen mobile suites with 74 focused tests pass. Repository-wide ESLint/typecheck and all 148
+  Vitest files with 1,053 tests pass. A fresh local D1 applied all 37 migrations. Worker dry-run
+  packaging is 1,433.03 KiB raw / 261.14 KiB gzip; production-mode exports complete in 21.21 seconds
+  for iOS (9.5 MiB total, 5.7 MB reported Hermes bundle) and 18.34 seconds for Android (11 MiB total,
+  5.9 MB reported Hermes bundle). These are bundle export measurements, not signed archive or
+  installed-device size claims.
 
 ## Milestone 4 remaining gaps
 
-- Atomic transfer push is not implemented yet. Explicit conflict resolution is implemented for
-  accounts, categories, and non-transfer transactions; transfer conflicts remain future protocol work.
-- Transfer changes currently enter the internal change stream as their two atomic D1 legs. The mobile
-  apply layer must preserve the group as one logical transfer before financial screens consume it.
+- Atomic transfers now have automated local/D1 and full native iOS reconnect/process-restart proof.
+  Android runtime proof still requires a device or installed emulator/system image.
 - Tombstones are retained indefinitely in this first foundation. Cursor expiry, client acknowledgement,
   compaction, and beside-the-current-database full-resync switching remain required before release.
 - Migration performance has only been exercised on fresh/local SQLite data; production-scale migration

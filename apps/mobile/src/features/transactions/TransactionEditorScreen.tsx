@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { parseAmountToMinor } from "@zoption/shared";
 
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
@@ -37,10 +38,12 @@ import {
 const emptyForm: TransactionFormValues = {
   kind: "expense",
   accountId: "",
+  toAccountId: "",
   categoryId: "",
   date: localCalendarDate(),
   description: "",
   amount: "",
+  transferFee: "",
   currency: "PHP",
   notes: "",
 };
@@ -67,7 +70,7 @@ function KindSelector({
         className="flex-row"
         style={[styles.segmentGroup, { backgroundColor: theme.colors.canvasMuted }]}
       >
-        {(["expense", "income"] as const).map((kind) => {
+        {(["expense", "income", "transfer"] as const).map((kind) => {
           const selected = value === kind;
           return (
             <Pressable
@@ -88,7 +91,13 @@ function KindSelector({
               <MaterialCommunityIcons
                 accessibilityElementsHidden
                 color={selected ? theme.colors.brand : theme.colors.textMuted}
-                name={kind === "expense" ? "arrow-up-right" : "arrow-down-left"}
+                name={
+                  kind === "expense"
+                    ? "arrow-up-right"
+                    : kind === "income"
+                      ? "arrow-down-left"
+                      : "swap-horizontal"
+                }
                 size={19}
               />
               <Text
@@ -97,7 +106,7 @@ function KindSelector({
                   { color: selected ? theme.colors.text : theme.colors.textMuted },
                 ]}
               >
-                {kind === "expense" ? "Expense" : "Income"}
+                {kind === "expense" ? "Expense" : kind === "income" ? "Income" : "Transfer"}
               </Text>
             </Pressable>
           );
@@ -128,8 +137,10 @@ export function TransactionEditorScreen() {
     if (initializedFor.current === key) return;
     if (id && !formData.data.transaction) return;
     const existing = formData.data.transaction?.input;
+    const existingAccountId =
+      existing?.kind === "transfer" ? existing.fromAccountId : existing?.accountId;
     const account = existing
-      ? formData.data.accounts.find((item) => item.id === existing.accountId)
+      ? formData.data.accounts.find((item) => item.id === existingAccountId)
       : formData.data.accounts[0];
     const kind = existing?.kind ?? "expense";
     const category = existing
@@ -137,11 +148,14 @@ export function TransactionEditorScreen() {
       : formData.data.categories.find((item) => item.kind === kind);
     setValues({
       kind,
-      accountId: account?.id ?? existing?.accountId ?? "",
+      accountId: account?.id ?? existingAccountId ?? "",
+      toAccountId: existing?.kind === "transfer" ? existing.toAccountId : "",
       categoryId: category?.id ?? existing?.categoryId ?? "",
       date: existing?.date ?? localCalendarDate(),
       description: existing?.description ?? "",
       amount: existing ? formatMinorForInput(existing.amountMinor) : "",
+      transferFee:
+        existing?.kind === "transfer" ? formatMinorForInput(existing.transferFeeMinor ?? 0) : "",
       currency: existing?.currency ?? account?.currency ?? "PHP",
       notes: existing?.notes ?? "",
     });
@@ -151,15 +165,21 @@ export function TransactionEditorScreen() {
   const blockedState = formData.data?.transaction?.syncState;
   const mutationBlocked = blockedState === "failed" || blockedState === "conflicted";
   const categories = useMemo(
-    () => formData.data?.categories.filter((category) => category.kind === values.kind) ?? [],
+    () =>
+      formData.data?.categories.filter(
+        (category) =>
+          category.kind === values.kind && (values.kind !== "transfer" || !category.pending),
+      ) ?? [],
     [formData.data?.categories, values.kind],
   );
   const accountOptions =
-    formData.data?.accounts.map((account) => ({
-      id: account.id,
-      label: account.name,
-      detail: account.pending ? `${account.currency} · Pending setup` : account.currency,
-    })) ?? [];
+    formData.data?.accounts
+      .filter((account) => values.kind !== "transfer" || !account.pending)
+      .map((account) => ({
+        id: account.id,
+        label: account.name,
+        detail: account.pending ? `${account.currency} · Pending setup` : account.currency,
+      })) ?? [];
   const categoryOptions = categories.map((category) => ({
     id: category.id,
     label: category.name,
@@ -187,7 +207,9 @@ export function TransactionEditorScreen() {
     setSaving(true);
     setMessage(null);
     try {
-      if (id) {
+      if (id && parsed.input.kind === "transfer") {
+        await local.workspace.transactionMutations.updateTransfer(id, parsed.input);
+      } else if (id) {
         await local.workspace.transactionMutations.updateTransaction(id, {
           ...parsed.input,
           notes: parsed.input.notes ?? "",
@@ -228,7 +250,24 @@ export function TransactionEditorScreen() {
     }
   };
 
-  const title = editing ? "Edit transaction" : "New transaction";
+  const transfer = values.kind === "transfer";
+  const netReceived = useMemo(() => {
+    if (!transfer || !values.amount.trim()) return null;
+    try {
+      const amount = parseAmountToMinor(values.amount);
+      const fee = values.transferFee.trim() ? parseAmountToMinor(values.transferFee) : 0;
+      return fee < amount ? formatMinorForInput(amount - fee) : null;
+    } catch {
+      return null;
+    }
+  }, [transfer, values.amount, values.transferFee]);
+  const title = editing
+    ? transfer
+      ? "Edit transfer"
+      : "Edit transaction"
+    : transfer
+      ? "New transfer"
+      : "New transaction";
   if (formData.error) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.canvas }]}>
@@ -269,7 +308,7 @@ export function TransactionEditorScreen() {
     );
   }
 
-  const hasChoices = accountOptions.length > 0 && categoryOptions.length > 0;
+  const hasChoices = accountOptions.length >= (transfer ? 2 : 1) && categoryOptions.length > 0;
   return (
     <SafeAreaView
       edges={["bottom", "left", "right"]}
@@ -346,16 +385,33 @@ export function TransactionEditorScreen() {
 
           <KindSelector
             value={values.kind}
-            disabled={saving || mutationBlocked}
+            disabled={saving || mutationBlocked || editing}
             onChange={(kind) => {
               const firstCategory = formData.data?.categories.find(
-                (category) => category.kind === kind,
+                (category) => category.kind === kind && (kind !== "transfer" || !category.pending),
               );
-              setValues((current) => ({
-                ...current,
-                kind,
-                categoryId: firstCategory?.id ?? "",
-              }));
+              setValues((current) => {
+                const synchronizedAccounts =
+                  formData.data?.accounts.filter((account) => !account.pending) ?? [];
+                const fromAccount =
+                  kind === "transfer"
+                    ? (synchronizedAccounts.find((account) => account.id === current.accountId) ??
+                      synchronizedAccounts[0])
+                    : formData.data?.accounts.find((account) => account.id === current.accountId);
+                return {
+                  ...current,
+                  kind,
+                  accountId: fromAccount?.id ?? current.accountId,
+                  toAccountId:
+                    kind === "transfer"
+                      ? (synchronizedAccounts.find((account) => account.id !== fromAccount?.id)
+                          ?.id ?? "")
+                      : "",
+                  categoryId: firstCategory?.id ?? "",
+                  currency: fromAccount?.currency ?? current.currency,
+                  transferFee: kind === "transfer" ? current.transferFee : "",
+                };
+              });
               setErrors((current) => ({ ...current, categoryId: undefined }));
               setMessage(null);
             }}
@@ -365,7 +421,7 @@ export function TransactionEditorScreen() {
             autoCorrect
             editable={!saving && !mutationBlocked}
             error={errors.description}
-            label="Description"
+            label={transfer ? "Description (optional)" : "Description"}
             maxLength={240}
             onChangeText={(value) => updateValue("description", value)}
             placeholder="What was this for?"
@@ -387,10 +443,28 @@ export function TransactionEditorScreen() {
             }
             value={values.amount}
           />
+          {transfer ? (
+            <FormField
+              editable={!saving && !mutationBlocked}
+              error={errors.transferFee}
+              hint={netReceived ? `Receiver gets ${netReceived} ${values.currency}.` : undefined}
+              keyboardType="decimal-pad"
+              label="Transfer fee (optional)"
+              maxLength={18}
+              onChangeText={(value) => updateValue("transferFee", value)}
+              placeholder="0.00"
+              trailing={
+                <Text style={[typography.label, { color: theme.colors.textMuted }]}>
+                  {values.currency}
+                </Text>
+              }
+              value={values.transferFee}
+            />
+          ) : null}
           <SelectionField
             disabled={saving || mutationBlocked}
             error={errors.accountId}
-            label="Account"
+            label={transfer ? "From account" : "Account"}
             onSelect={(accountId) => {
               const account = formData.data?.accounts.find((item) => item.id === accountId);
               setValues((current) => ({
@@ -401,11 +475,23 @@ export function TransactionEditorScreen() {
               setErrors((current) => ({ ...current, accountId: undefined }));
               setMessage(null);
             }}
-            options={accountOptions}
-            placeholder="Choose an account"
-            sheetTitle="Choose account"
+            options={accountOptions.filter((option) => option.id !== values.toAccountId)}
+            placeholder={transfer ? "Choose source account" : "Choose an account"}
+            sheetTitle={transfer ? "Choose source account" : "Choose account"}
             value={values.accountId}
           />
+          {transfer ? (
+            <SelectionField
+              disabled={saving || mutationBlocked}
+              error={errors.toAccountId}
+              label="To account"
+              onSelect={(toAccountId) => updateValue("toAccountId", toAccountId)}
+              options={accountOptions.filter((option) => option.id !== values.accountId)}
+              placeholder="Choose destination account"
+              sheetTitle="Choose destination account"
+              value={values.toAccountId}
+            />
+          ) : null}
           <SelectionField
             disabled={saving || mutationBlocked}
             error={errors.categoryId}
@@ -452,21 +538,29 @@ export function TransactionEditorScreen() {
             </Text>
           ) : null}
           <Button
-            accessibilityLabel={editing ? "Save transaction changes" : "Save new transaction"}
+            accessibilityLabel={
+              editing
+                ? transfer
+                  ? "Save transfer changes"
+                  : "Save transaction changes"
+                : transfer
+                  ? "Save new transfer"
+                  : "Save new transaction"
+            }
             disabled={!hasChoices || mutationBlocked}
             loading={saving}
             onPress={() => void save()}
           >
-            {editing ? "Save changes" : "Save transaction"}
+            {editing ? "Save changes" : transfer ? "Save transfer" : "Save transaction"}
           </Button>
           {editing ? (
             <Button
-              accessibilityLabel="Delete transaction"
+              accessibilityLabel={transfer ? "Delete transfer" : "Delete transaction"}
               disabled={mutationBlocked}
               onPress={() => setConfirmDelete(true)}
               variant="quiet"
             >
-              Delete transaction
+              Delete {transfer ? "transfer" : "transaction"}
             </Button>
           ) : null}
         </ScrollView>
@@ -474,10 +568,10 @@ export function TransactionEditorScreen() {
       <ConfirmationDialog
         confirmLabel="Delete"
         destructive
-        message="This removes the transaction from this device. If it was already synchronized, Zoption queues the deletion for the server."
+        message={`This removes the ${transfer ? "transfer and both ledger entries" : "transaction"} from this device. If it was already synchronized, Zoption queues the deletion for the server.`}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => void remove()}
-        title="Delete transaction?"
+        title={`Delete ${transfer ? "transfer" : "transaction"}?`}
         visible={confirmDelete}
       />
     </SafeAreaView>

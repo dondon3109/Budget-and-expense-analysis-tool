@@ -4,10 +4,12 @@ describe("native transaction form", () => {
   const valid = {
     kind: "expense" as const,
     accountId: "account-1",
+    toAccountId: "",
     categoryId: "category-1",
     date: "2026-08-13",
     description: "Lunch",
     amount: "1,234.50",
+    transferFee: "",
     currency: "PHP" as const,
     notes: "",
   };
@@ -27,6 +29,36 @@ describe("native transaction form", () => {
       },
     });
     expect(formatMinorForInput(-123_450)).toBe("1234.50");
+  });
+
+  it("parses a fee-aware transfer and requires different accounts", () => {
+    const transfer = {
+      ...valid,
+      kind: "transfer" as const,
+      toAccountId: "account-2",
+      categoryId: "category-transfer",
+      description: "",
+      transferFee: "12.50",
+    };
+    expect(parseTransactionForm(transfer)).toEqual({
+      success: true,
+      input: {
+        kind: "transfer",
+        fromAccountId: "account-1",
+        toAccountId: "account-2",
+        categoryId: "category-transfer",
+        date: "2026-08-13",
+        description: "",
+        amountMinor: 123_450,
+        transferFeeMinor: 1_250,
+        currency: "PHP",
+        notes: undefined,
+      },
+    });
+    const sameAccount = parseTransactionForm({ ...transfer, toAccountId: "account-1" });
+    expect(sameAccount.success).toBe(false);
+    if (sameAccount.success) throw new Error("Expected invalid transfer accounts.");
+    expect(typeof sameAccount.errors.toAccountId).toBe("string");
   });
 
   it("rejects zero, excessive precision, and impossible calendar dates", () => {

@@ -8,6 +8,7 @@ import type {
   TransactionRecord,
   TransferFeeInsight,
 } from "./types";
+import type { TransferInput } from "./schemas";
 
 function clampRoundPercent(value: number): number {
   return Math.round(value * 10) / 10;
@@ -291,6 +292,33 @@ export interface TransferFeeActivityRow {
   currency: Currency;
   /** The fee attached to the sender leg, or null for a fee-free transfer. */
   transferFeeMinor: number | null;
+}
+
+export interface TransferLeg {
+  accountId: string;
+  amountMinor: number;
+  transferFeeMinor: number | null;
+  description: string;
+}
+
+/** Builds the balanced sender and receiver rows used by every Zoption client and the Worker. */
+export function buildTransferLegs(input: TransferInput): [TransferLeg, TransferLeg] {
+  const fee = input.transferFeeMinor ?? 0;
+  const description = input.description?.trim() || "Transfer";
+  return [
+    {
+      accountId: input.fromAccountId,
+      amountMinor: -input.amountMinor,
+      transferFeeMinor: fee > 0 ? fee : null,
+      description,
+    },
+    {
+      accountId: input.toAccountId,
+      amountMinor: input.amountMinor - fee,
+      transferFeeMinor: null,
+      description,
+    },
+  ];
 }
 
 export interface TransferFeeInsightInput {

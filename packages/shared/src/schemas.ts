@@ -460,25 +460,29 @@ const transactionBaseSchema = z
   })
   .strict();
 
+export const transferInputSchema = transactionBaseSchema
+  .extend({
+    kind: z.literal("transfer"),
+    description: z.string().trim().max(240).optional(),
+    transferFeeMinor: z.number().int().safe().min(0).optional(),
+    fromAccountId: resourceIdSchema,
+    toAccountId: resourceIdSchema,
+  })
+  .refine((value) => value.fromAccountId !== value.toAccountId, {
+    path: ["toAccountId"],
+    message: "Choose different accounts for a transfer.",
+  })
+  .refine((value) => (value.transferFeeMinor ?? 0) < value.amountMinor, {
+    path: ["transferFeeMinor"],
+    message: "The transfer fee must be less than the amount.",
+  });
+
+export type TransferInput = z.infer<typeof transferInputSchema>;
+
 export const transactionInputSchema = z.discriminatedUnion("kind", [
   transactionBaseSchema.extend({ kind: z.literal("income"), accountId: resourceIdSchema }),
   transactionBaseSchema.extend({ kind: z.literal("expense"), accountId: resourceIdSchema }),
-  transactionBaseSchema
-    .extend({
-      kind: z.literal("transfer"),
-      description: z.string().trim().max(240).optional(),
-      transferFeeMinor: z.number().int().safe().min(0).optional(),
-      fromAccountId: resourceIdSchema,
-      toAccountId: resourceIdSchema,
-    })
-    .refine((value) => value.fromAccountId !== value.toAccountId, {
-      path: ["toAccountId"],
-      message: "Choose different accounts for a transfer.",
-    })
-    .refine((value) => (value.transferFeeMinor ?? 0) < value.amountMinor, {
-      path: ["transferFeeMinor"],
-      message: "The transfer fee must be less than the amount.",
-    }),
+  transferInputSchema,
 ]);
 
 export type TransactionInput = z.infer<typeof transactionInputSchema>;

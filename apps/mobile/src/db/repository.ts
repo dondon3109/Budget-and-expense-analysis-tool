@@ -43,7 +43,7 @@ export interface LocalTransactionItem {
   syncState: "synced" | "pending" | "failed" | "conflicted";
 }
 
-type EditableTransactionInput = Extract<TransactionInput, { kind: "income" | "expense" }>;
+type EditableTransactionInput = TransactionInput;
 
 const localAccountOptionSchema = z.object({
   id: z.string(),
@@ -60,7 +60,7 @@ const localAccountOptionSchema = z.object({
 const localCategoryOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
-  kind: z.enum(["income", "expense"]),
+  kind: z.enum(["income", "expense", "transfer"]),
   color: z.string(),
   pending: z
     .number()
@@ -80,6 +80,8 @@ const editableTransactionRowSchema = z.object({
   currency: z.enum(["PHP", "USD"]),
   kind: z.enum(["income", "expense", "transfer"]),
   notes: z.string().nullable(),
+  transfer_group_id: z.string().nullable(),
+  transfer_fee_minor: z.number().int().safe().nullable(),
   deleted_at: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
@@ -328,13 +330,13 @@ export class LocalWorkspaceRepository {
                  AND operation_type = 'create' AND state = 'pending' AND attempt_count = 0
              )
            )
-           AND kind IN ('income', 'expense')
+           AND kind IN ('income', 'expense', 'transfer')
          ORDER BY kind, name COLLATE NOCASE, id`,
       ),
       id
         ? this.database.getFirstAsync(
             `SELECT id, account_id, category_id, date, description, amount_minor, currency,
-              kind, notes, deleted_at, sync_state
+              kind, notes, transfer_group_id, transfer_fee_minor, deleted_at, sync_state
              FROM transactions WHERE id = ?`,
             id,
           )
@@ -359,7 +361,70 @@ export class LocalWorkspaceRepository {
         unavailableReason: "This transaction is no longer available on this device.",
       };
     }
-    if (decoded.data.kind === "transfer" || !decoded.data.account_id) {
+    if (decoded.data.kind === "transfer") {
+      if (!decoded.data.transfer_group_id) {
+        return {
+          accounts: decodedAccounts,
+          categories: decodedCategories,
+          transaction: null,
+          unavailableReason: "This historical transfer is not linked to a complete transfer pair.",
+        };
+      }
+      const pair = z.array(editableTransactionRowSchema).parse(
+        await this.database.getAllAsync(
+          `SELECT id, account_id, category_id, date, description, amount_minor, currency,
+            kind, notes, transfer_group_id, transfer_fee_minor, deleted_at, sync_state
+           FROM transactions WHERE transfer_group_id = ? ORDER BY amount_minor, id`,
+          decoded.data.transfer_group_id,
+        ),
+      );
+      const from = pair.find((row) => row.amount_minor < 0);
+      const to = pair.find((row) => row.amount_minor > 0);
+      if (
+        pair.length !== 2 ||
+        !from ||
+        !to ||
+        !from.account_id ||
+        !to.account_id ||
+        to.amount_minor !== Math.abs(from.amount_minor) - (from.transfer_fee_minor ?? 0)
+      ) {
+        return {
+          accounts: decodedAccounts,
+          categories: decodedCategories,
+          transaction: null,
+          unavailableReason: "This transfer pair is incomplete and cannot be edited safely.",
+        };
+      }
+      return {
+        accounts: decodedAccounts,
+        categories: decodedCategories,
+        transaction: {
+          id: from.id,
+          input: {
+            kind: "transfer",
+            fromAccountId: from.account_id,
+            toAccountId: to.account_id,
+            categoryId: from.category_id,
+            date: from.date,
+            description: from.description,
+            amountMinor: Math.abs(from.amount_minor),
+            transferFeeMinor: from.transfer_fee_minor ?? 0,
+            currency: from.currency,
+            notes: from.notes ?? undefined,
+          },
+          syncState:
+            from.sync_state === "conflicted" || to.sync_state === "conflicted"
+              ? "conflicted"
+              : from.sync_state === "failed" || to.sync_state === "failed"
+                ? "failed"
+                : from.sync_state === "pending" || to.sync_state === "pending"
+                  ? "pending"
+                  : "synced",
+        },
+        unavailableReason: null,
+      };
+    }
+    if (!decoded.data.account_id) {
       return {
         accounts: decodedAccounts,
         categories: decodedCategories,

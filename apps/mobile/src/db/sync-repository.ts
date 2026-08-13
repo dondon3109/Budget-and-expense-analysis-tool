@@ -71,14 +71,21 @@ async function assertCanApply(
   if (tombstone && tombstone.server_revision >= change.revision) return false;
   if (entity && entity.server_revision > change.revision) return false;
   if (entity?.sync_state === "conflicted") {
+    const transferGroup =
+      change.entityType === "transaction"
+        ? await database.getFirstAsync<{ transfer_group_id: string | null }>(
+            "SELECT transfer_group_id FROM transactions WHERE id = ?",
+            change.entityId,
+          )
+        : null;
     const conflict = await database.getFirstAsync<ConflictStateRow>(
       `SELECT server_revision
        FROM sync_conflicts
        WHERE entity_type = ? AND entity_id = ? AND resolved_at IS NULL
        ORDER BY created_at DESC
        LIMIT 1`,
-      change.entityType,
-      change.entityId,
+      transferGroup?.transfer_group_id ? "transfer" : change.entityType,
+      transferGroup?.transfer_group_id ?? change.entityId,
     );
     if (conflict && conflict.server_revision >= change.revision) return false;
   }

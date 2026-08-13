@@ -5,21 +5,33 @@ import {
   type TransactionInput,
 } from "@zoption/shared";
 
-export type TransactionFormKind = "income" | "expense";
+export type TransactionFormKind = "income" | "expense" | "transfer";
 
 export interface TransactionFormValues {
   kind: TransactionFormKind;
   accountId: string;
+  toAccountId: string;
   categoryId: string;
   date: string;
   description: string;
   amount: string;
+  transferFee: string;
   currency: "PHP" | "USD";
   notes: string;
 }
 
 export type TransactionFormErrors = Partial<
-  Record<"accountId" | "categoryId" | "date" | "description" | "amount" | "notes", string>
+  Record<
+    | "accountId"
+    | "toAccountId"
+    | "categoryId"
+    | "date"
+    | "description"
+    | "amount"
+    | "transferFee"
+    | "notes",
+    string
+  >
 >;
 
 export function formatMinorForInput(amountMinor: number): string {
@@ -38,9 +50,7 @@ export function localCalendarDate(now = new Date()): string {
 
 export function parseTransactionForm(
   values: TransactionFormValues,
-):
-  | { success: true; input: Extract<TransactionInput, { kind: TransactionFormKind }> }
-  | { success: false; errors: TransactionFormErrors } {
+): { success: true; input: TransactionInput } | { success: false; errors: TransactionFormErrors } {
   let amountMinor: number;
   try {
     amountMinor = parseAmountToMinor(values.amount);
@@ -55,9 +65,31 @@ export function parseTransactionForm(
       },
     };
   }
+  let transferFeeMinor: number | undefined;
+  if (values.kind === "transfer" && values.transferFee.trim()) {
+    try {
+      transferFeeMinor = parseAmountToMinor(values.transferFee);
+    } catch (error) {
+      return {
+        success: false,
+        errors: {
+          transferFee:
+            error instanceof MoneyParseError
+              ? error.message
+              : "Enter a valid fee with no more than two decimal places.",
+        },
+      };
+    }
+  }
   const parsed = transactionInputSchema.safeParse({
     kind: values.kind,
-    accountId: values.accountId,
+    ...(values.kind === "transfer"
+      ? {
+          fromAccountId: values.accountId,
+          toAccountId: values.toAccountId,
+          transferFeeMinor,
+        }
+      : { accountId: values.accountId }),
     categoryId: values.categoryId,
     date: values.date,
     description: values.description,
@@ -65,7 +97,7 @@ export function parseTransactionForm(
     currency: values.currency,
     notes: values.notes || undefined,
   });
-  if (parsed.success && parsed.data.kind !== "transfer") {
+  if (parsed.success) {
     return { success: true, input: parsed.data };
   }
 
@@ -73,10 +105,26 @@ export function parseTransactionForm(
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       const field = issue.path[0];
-      const formField = field === "amountMinor" ? "amount" : field;
+      const formField =
+        field === "amountMinor"
+          ? "amount"
+          : field === "fromAccountId"
+            ? "accountId"
+            : field === "transferFeeMinor"
+              ? "transferFee"
+              : field;
       if (
         typeof formField === "string" &&
-        ["accountId", "categoryId", "date", "description", "amount", "notes"].includes(formField)
+        [
+          "accountId",
+          "toAccountId",
+          "categoryId",
+          "date",
+          "description",
+          "amount",
+          "transferFee",
+          "notes",
+        ].includes(formField)
       ) {
         errors[formField as keyof TransactionFormErrors] ??= issue.message;
       }

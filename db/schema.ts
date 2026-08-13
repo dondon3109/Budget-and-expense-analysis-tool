@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  foreignKey,
   index,
   integer,
   primaryKey,
@@ -229,6 +230,51 @@ export const mobileSyncChanges = sqliteTable(
       table.tenantId,
       table.entityType,
       table.entityId,
+    ),
+  ],
+);
+
+export const transferGroups = sqliteTable(
+  "transfer_groups",
+  {
+    id: text("id").notNull(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    fromTransactionId: text("from_transaction_id").notNull(),
+    toTransactionId: text("to_transaction_id").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tenantId, table.id] }),
+    uniqueIndex("transfer_groups_tenant_from_unique").on(table.tenantId, table.fromTransactionId),
+    uniqueIndex("transfer_groups_tenant_to_unique").on(table.tenantId, table.toTransactionId),
+    check(
+      "transfer_groups_distinct_legs_check",
+      sql`${table.fromTransactionId} != ${table.toTransactionId}`,
+    ),
+  ],
+);
+
+export const mobileSyncChangeGroups = sqliteTable(
+  "mobile_sync_change_groups",
+  {
+    tenantId: text("tenant_id").notNull(),
+    sequence: integer("sequence").notNull(),
+    atomicGroupId: text("atomic_group_id").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tenantId, table.sequence] }),
+    foreignKey({
+      columns: [table.tenantId, table.sequence],
+      foreignColumns: [mobileSyncChanges.tenantId, mobileSyncChanges.sequence],
+    }).onDelete("cascade"),
+    index("mobile_sync_change_groups_atomic_idx").on(
+      table.tenantId,
+      table.atomicGroupId,
+      table.sequence,
     ),
   ],
 );

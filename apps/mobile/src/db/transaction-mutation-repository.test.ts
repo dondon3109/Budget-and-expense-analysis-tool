@@ -18,12 +18,17 @@ class TestDatabase {
     this.native.exec(`
       INSERT INTO accounts (
         id, name, type, currency, archived, system, server_revision, sync_state
-      ) VALUES ('account-1', 'Wallet', 'cash', 'PHP', 0, 0, 1, 'synced');
+      ) VALUES
+        ('account-1', 'Wallet', 'cash', 'PHP', 0, 0, 1, 'synced'),
+        ('account-2', 'Savings', 'savings', 'PHP', 0, 0, 1, 'synced');
       INSERT INTO categories (
         id, name, kind, color, archived, system, origin, required_plan, locked,
         server_revision, sync_state
       ) VALUES (
         'category-1', 'Dining', 'expense', '#123456', 0, 0, 'custom', 'free', 0,
+        1, 'synced'
+      ), (
+        'category-transfer', 'Transfer', 'transfer', '#008877', 0, 1, 'system', 'free', 0,
         1, 'synced'
       );
     `);
@@ -714,6 +719,238 @@ describe("durable local transaction mutations", () => {
     expect(
       database.native.prepare("SELECT id FROM transactions WHERE id = ?").get(id),
     ).toBeUndefined();
+    expect(database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get()).toEqual({
+      count: 0,
+    });
+  });
+
+  it("persists, acknowledges, edits, and deletes both transfer legs as one outbox entity", async () => {
+    const mutations = repository(database);
+    const transfer = {
+      kind: "transfer" as const,
+      fromAccountId: "account-1",
+      toAccountId: "account-2",
+      categoryId: "category-transfer",
+      date: "2026-08-13",
+      description: "Emergency fund",
+      amountMinor: 50_000,
+      transferFeeMinor: 500,
+      currency: "PHP" as const,
+    };
+    const fromId = await mutations.createTransaction(transfer);
+    expect(
+      database.native
+        .prepare(
+          `SELECT account_id, amount_minor, transfer_fee_minor, sync_state
+           FROM transactions ORDER BY amount_minor`,
+        )
+        .all(),
+    ).toEqual([
+      {
+        account_id: "account-1",
+        amount_minor: -50_000,
+        transfer_fee_minor: 500,
+        sync_state: "pending",
+      },
+      {
+        account_id: "account-2",
+        amount_minor: 49_500,
+        transfer_fee_minor: null,
+        sync_state: "pending",
+      },
+    ]);
+    const create = (await mutations.getPushBatch())!;
+    expect(create.operations).toMatchObject([
+      {
+        entityType: "transfer",
+        operationType: "create",
+        payload: {
+          fromTransactionId: fromId,
+          transfer: { amountMinor: 50_000, transferFeeMinor: 500 },
+        },
+      },
+    ]);
+    await mutations.applyPushResponse(create, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: create.operations[0]!.operationId,
+          entityType: "transfer",
+          entityId: create.operations[0]!.entityId,
+          status: "acknowledged",
+          revision: 1,
+        },
+      ],
+    });
+    expect(
+      database.native
+        .prepare(
+          "SELECT server_revision, sync_state, count(*) AS count FROM transactions GROUP BY server_revision, sync_state",
+        )
+        .get(),
+    ).toEqual({ server_revision: 1, sync_state: "synced", count: 2 });
+
+    await mutations.updateTransfer(fromId, {
+      ...transfer,
+      description: "Emergency reserve",
+      amountMinor: 60_000,
+      transferFeeMinor: 0,
+    });
+    const update = (await mutations.getPushBatch())!;
+    expect(update.operations).toMatchObject([
+      {
+        entityType: "transfer",
+        operationType: "update",
+        baseRevision: 1,
+        payload: {
+          transfer: {
+            description: "Emergency reserve",
+            amountMinor: 60_000,
+            transferFeeMinor: 0,
+          },
+        },
+      },
+    ]);
+    await mutations.applyPushResponse(update, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: update.operations[0]!.operationId,
+          entityType: "transfer",
+          entityId: update.operations[0]!.entityId,
+          status: "acknowledged",
+          revision: 2,
+        },
+      ],
+    });
+
+    await mutations.deleteTransaction(fromId);
+    const deletion = (await mutations.getPushBatch())!;
+    expect(deletion.operations).toMatchObject([
+      { entityType: "transfer", operationType: "delete", baseRevision: 2 },
+    ]);
+    expect(
+      database.native
+        .prepare(
+          "SELECT deleted_at, sync_state, count(*) AS count FROM transactions GROUP BY deleted_at, sync_state",
+        )
+        .get(),
+    ).toEqual({
+      deleted_at: "2026-08-13T16:00:00.000Z",
+      sync_state: "pending",
+      count: 2,
+    });
+  });
+
+  it("preserves both transfer versions and applies an explicit server conflict choice", async () => {
+    const mutations = repository(database);
+    const original = {
+      kind: "transfer" as const,
+      fromAccountId: "account-1",
+      toAccountId: "account-2",
+      categoryId: "category-transfer",
+      date: "2026-08-13",
+      description: "Original transfer",
+      amountMinor: 40_000,
+      transferFeeMinor: 0,
+      currency: "PHP" as const,
+    };
+    const fromId = await mutations.createTransaction(original);
+    const create = (await mutations.getPushBatch())!;
+    const groupId = create.operations[0]!.entityId;
+    await mutations.applyPushResponse(create, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: create.operations[0]!.operationId,
+          entityType: "transfer",
+          entityId: groupId,
+          status: "acknowledged",
+          revision: 1,
+        },
+      ],
+    });
+    database.native
+      .prepare("UPDATE transactions SET server_updated_at = ? WHERE transfer_group_id = ?")
+      .run("2026-08-13 15:00:00", groupId);
+    await mutations.updateTransfer(fromId, {
+      ...original,
+      description: "My offline transfer",
+      amountMinor: 45_000,
+    });
+    const update = (await mutations.getPushBatch())!;
+    const createPayload = create.operations[0]!;
+    if (createPayload.entityType !== "transfer" || createPayload.operationType !== "create") {
+      throw new Error("Expected a transfer create.");
+    }
+    await mutations.applyPushResponse(update, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: update.operations[0]!.operationId,
+          entityType: "transfer",
+          entityId: groupId,
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 2,
+          serverUpdatedAt: "2026-08-13 15:30:00",
+          serverPayload: {
+            id: groupId,
+            fromTransactionId: createPayload.payload.fromTransactionId,
+            toTransactionId: createPayload.payload.toTransactionId,
+            fromAccountId: "account-1",
+            toAccountId: "account-2",
+            categoryId: "category-transfer",
+            date: "2026-08-13",
+            description: "Web transfer",
+            amountMinor: 50_000,
+            currency: "PHP",
+            notes: null,
+            transferFeeMinor: 500,
+            revision: 2,
+            updatedAt: "2026-08-13 15:30:00",
+          },
+        },
+      ],
+    });
+
+    await expect(mutations.getConflict(fromId)).resolves.toMatchObject({
+      entityId: fromId,
+      local: { input: { description: "My offline transfer", amountMinor: 45_000 } },
+      server: {
+        input: {
+          kind: "transfer",
+          description: "Web transfer",
+          amountMinor: 50_000,
+          transferFeeMinor: 500,
+        },
+      },
+      serverRevision: 2,
+    });
+    await mutations.resolveConflict(fromId, "keep_server");
+    expect(
+      database.native
+        .prepare(
+          `SELECT description, amount_minor, transfer_fee_minor, server_revision, sync_state
+           FROM transactions WHERE transfer_group_id = ? ORDER BY amount_minor`,
+        )
+        .all(groupId),
+    ).toEqual([
+      {
+        description: "Web transfer",
+        amount_minor: -50_000,
+        transfer_fee_minor: 500,
+        server_revision: 2,
+        sync_state: "synced",
+      },
+      {
+        description: "Web transfer",
+        amount_minor: 49_500,
+        transfer_fee_minor: null,
+        server_revision: 2,
+        sync_state: "synced",
+      },
+    ]);
     expect(database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get()).toEqual({
       count: 0,
     });

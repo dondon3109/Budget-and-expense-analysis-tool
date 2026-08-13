@@ -10,6 +10,7 @@ import {
 } from "@/db/local-workspace-state";
 import type { LocalTransactionConflictVersion } from "@/db/transaction-mutation-repository";
 import { useSyncState } from "@/sync/sync-state";
+import { formatMinorForInput } from "./transaction-form";
 import {
   Button,
   Card,
@@ -29,14 +30,17 @@ function VersionCard({
   title,
   version,
   accountName,
+  destinationAccountName,
   categoryName,
 }: {
   title: string;
   version: LocalTransactionConflictVersion | null;
   accountName?: string;
+  destinationAccountName?: string;
   categoryName?: string;
 }) {
   const theme = useZoptionTheme();
+  const transfer = version?.input.kind === "transfer" ? version.input : null;
   return (
     <Card accessibilityLabel={title}>
       <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
@@ -58,15 +62,22 @@ function VersionCard({
               }
               currency={version.input.currency}
               style={typography.headline}
-              tone={version.input.kind}
+              tone={version.input.kind === "transfer" ? "default" : version.input.kind}
             />
           </View>
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
             {version.input.date} · {categoryName ?? version.input.categoryId}
           </Text>
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-            {accountName ?? version.input.accountId}
+            {transfer
+              ? `${accountName ?? transfer.fromAccountId} → ${destinationAccountName ?? transfer.toAccountId}`
+              : (accountName ?? ("accountId" in version.input ? version.input.accountId : ""))}
           </Text>
+          {transfer && (transfer.transferFeeMinor ?? 0) > 0 ? (
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+              Fee: {formatMinorForInput(transfer.transferFeeMinor ?? 0)} {transfer.currency}
+            </Text>
+          ) : null}
           {version.input.notes ? (
             <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
               {version.input.notes}
@@ -157,14 +168,34 @@ export function TransactionConflictScreen() {
           <VersionCard
             title="On this device"
             version={state.conflict.local}
-            accountName={findAccount(state.conflict.local.input.accountId)}
+            accountName={findAccount(
+              state.conflict.local.input.kind === "transfer"
+                ? state.conflict.local.input.fromAccountId
+                : state.conflict.local.input.accountId,
+            )}
+            destinationAccountName={
+              state.conflict.local.input.kind === "transfer"
+                ? findAccount(state.conflict.local.input.toAccountId)
+                : undefined
+            }
             categoryName={findCategory(state.conflict.local.input.categoryId)}
           />
           <VersionCard
             title="On the server"
             version={state.conflict.server}
             accountName={
-              state.conflict.server ? findAccount(state.conflict.server.input.accountId) : undefined
+              state.conflict.server
+                ? findAccount(
+                    state.conflict.server.input.kind === "transfer"
+                      ? state.conflict.server.input.fromAccountId
+                      : state.conflict.server.input.accountId,
+                  )
+                : undefined
+            }
+            destinationAccountName={
+              state.conflict.server?.input.kind === "transfer"
+                ? findAccount(state.conflict.server.input.toAccountId)
+                : undefined
             }
             categoryName={
               state.conflict.server

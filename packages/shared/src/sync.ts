@@ -7,6 +7,7 @@ import {
   categoryUpdateSchema,
   isoDateSchema,
   resourceIdSchema,
+  transferInputSchema,
   transactionInputSchema,
   transactionUpdateSchema,
 } from "./schemas";
@@ -90,10 +91,42 @@ export const mobileSyncTransactionSnapshotSchema = z
   })
   .strict();
 
+export const mobileSyncTransferSnapshotSchema = z
+  .object({
+    id: resourceIdSchema,
+    fromTransactionId: resourceIdSchema,
+    toTransactionId: resourceIdSchema,
+    fromAccountId: resourceIdSchema,
+    toAccountId: resourceIdSchema,
+    categoryId: resourceIdSchema,
+    date: isoDateSchema,
+    description: z.string().max(240),
+    amountMinor: z.number().int().safe().positive(),
+    currency: z.enum(currencies),
+    notes: z.string().max(500).nullable(),
+    transferFeeMinor: z.number().int().safe().min(0),
+    revision: serverRevisionSchema,
+    updatedAt: serverTimestampSchema,
+  })
+  .strict()
+  .refine((value) => value.fromTransactionId !== value.toTransactionId, {
+    path: ["toTransactionId"],
+    message: "Transfer legs must use different IDs.",
+  })
+  .refine((value) => value.fromAccountId !== value.toAccountId, {
+    path: ["toAccountId"],
+    message: "Transfers require different accounts.",
+  })
+  .refine((value) => value.transferFeeMinor < value.amountMinor, {
+    path: ["transferFeeMinor"],
+    message: "The transfer fee must be less than the amount.",
+  });
+
 export const mobileSyncSnapshotSchema = z.union([
   mobileSyncAccountSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
+  mobileSyncTransferSnapshotSchema,
 ]);
 
 export const mobileSyncChangeSchema = z
@@ -159,8 +192,11 @@ const operationIdentityShape = {
   dependencyIds: z.array(uuidSchema).max(20).default([]),
 } as const;
 
-const createOperation = <T extends z.ZodType>(
-  entityType: "account" | "category" | "transaction",
+const createOperation = <
+  TEntity extends "account" | "category" | "transaction" | "transfer",
+  T extends z.ZodType,
+>(
+  entityType: TEntity,
   payload: T,
 ) =>
   z
@@ -173,8 +209,11 @@ const createOperation = <T extends z.ZodType>(
     })
     .strict();
 
-const updateOperation = <T extends z.ZodType>(
-  entityType: "account" | "category" | "transaction",
+const updateOperation = <
+  TEntity extends "account" | "category" | "transaction" | "transfer",
+  T extends z.ZodType,
+>(
+  entityType: TEntity,
   payload: T,
 ) =>
   z
@@ -187,7 +226,9 @@ const updateOperation = <T extends z.ZodType>(
     })
     .strict();
 
-const deleteOperation = (entityType: "account" | "category" | "transaction") =>
+const deleteOperation = <TEntity extends "account" | "category" | "transaction" | "transfer">(
+  entityType: TEntity,
+) =>
   z
     .object({
       ...operationIdentityShape,
@@ -209,6 +250,22 @@ export const mobileSyncPushOperationSchema = z
     createOperation("transaction", transactionInputSchema),
     updateOperation("transaction", transactionUpdateSchema),
     deleteOperation("transaction"),
+    createOperation(
+      "transfer",
+      z
+        .object({
+          fromTransactionId: uuidSchema,
+          toTransactionId: uuidSchema,
+          transfer: transferInputSchema,
+        })
+        .strict()
+        .refine((value) => value.fromTransactionId !== value.toTransactionId, {
+          path: ["toTransactionId"],
+          message: "Transfer legs must use different IDs.",
+        }),
+    ),
+    updateOperation("transfer", z.object({ transfer: transferInputSchema }).strict()),
+    deleteOperation("transfer"),
   ])
   .superRefine((operation, context) => {
     if (operation.dependencyIds.includes(operation.operationId)) {
@@ -288,7 +345,7 @@ export const mobileSyncPushRequestSchema = z
 
 const mobileSyncPushResultIdentitySchema = z.object({
   operationId: uuidSchema,
-  entityType: z.enum(mobileSyncEntityTypes).exclude(["transfer"]),
+  entityType: z.enum(mobileSyncEntityTypes),
   entityId: resourceIdSchema,
 });
 
@@ -342,7 +399,9 @@ export const mobileSyncPushResultSchema = z
         ? mobileSyncAccountSnapshotSchema
         : result.entityType === "category"
           ? mobileSyncCategorySnapshotSchema
-          : mobileSyncTransactionSnapshotSchema;
+          : result.entityType === "transaction"
+            ? mobileSyncTransactionSnapshotSchema
+            : mobileSyncTransferSnapshotSchema;
     if (!expectedSchema.safeParse(result.serverPayload).success) {
       context.addIssue({
         code: "custom",

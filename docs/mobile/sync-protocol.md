@@ -3,7 +3,8 @@
 Status: Milestone 4 implementation in progress. The isolated branch implements versioned contracts,
 D1 revision/change foundations, authenticated pull, and atomic encrypted mobile pull application for
 accounts, categories, transactions, and tombstones. The end-to-end push slice supports account and
-category create/update/archive plus non-transfer transaction create/update/delete, including local
+category create/update/archive, non-transfer transaction create/update/delete, and atomic transfer
+create/update/delete, including local
 composition, restart replay, acknowledgement, retry, conflict preservation, and atomic creation of
 new references with their dependent transaction. The current production API and D1 have not changed.
 
@@ -27,7 +28,10 @@ The Worker maintains tenant-scoped idempotency records keyed by `(tenant_id, cli
 The local implementation names these tables `mobile_sync_state`, `mobile_sync_changes`, and
 `mobile_sync_idempotency`. D1 triggers add existing web/API account, category, and transaction writes
 to the same change stream. Migration bootstrap changes are ordered by entity type and ID within each
-tenant so an existing workspace can start from cursor zero.
+tenant so an existing workspace can start from cursor zero. Migration
+`0036_mobile_sync_atomic_transfers.sql` adds immutable transfer-group membership and maps the two
+change sequences produced by each transfer revision into one atomic pull group. Existing valid
+linked pairs are bootstrapped into both structures.
 
 ## Client identifiers
 
@@ -59,6 +63,12 @@ New account and category creates may be selected immediately for a new transacti
 outbox row records the exact parent operation IDs, and a parent cannot be cancelled while that child
 exists. The batch selector treats the connected component as one unit: it neither splits the graph nor
 mixes it with unrelated operations.
+
+A transfer is represented locally by two transaction rows and exactly one `transfer` outbox entity.
+Create, full-command edit, delete, acknowledgement, failure, and conflict-state changes always touch
+both rows in the same SQLCipher transaction. Transfer commands initially require synchronized active
+accounts and a synchronized available transfer category; they do not join new-reference dependency
+graphs in protocol version 1.
 
 ## Push
 
@@ -92,8 +102,15 @@ and projected Free-plan limits are preflighted. Success executes every mutation 
 acknowledgement in one guarded D1 batch; any zero-row conditional mutation aborts and rolls back the
 whole graph. A preflight rejection persists one deterministic result set: the failing operation keeps
 its specific code and every otherwise-valid operation receives `dependency_failed`. Replaying the
-whole graph returns the stored results, while a partial replay or reused key fails closed. Atomic
-transfer commands remain unsupported until their paired-leg protocol is implemented.
+whole graph returns the stored results, while a partial replay or reused key fails closed.
+
+Atomic transfer commands use the transfer-group UUID as their logical entity ID and client-generated
+UUIDs for both ledger rows. The Worker validates both accounts, the transfer category, fee invariants,
+plan access, ownership, idempotency, and the common base revision before executing the group claim,
+both legs, and acknowledgement in one guarded D1 batch. Updates and deletes condition the second leg
+on the first leg's success; any missing or stale leg makes the final acknowledgement fail and D1 rolls
+back the whole batch. Conflicts return one validated logical transfer snapshot instead of selecting a
+leg as authoritative.
 
 The mobile coordinator drains up to 100 bounded operation batches before pull, refreshes an expired
 session once, and applies each response on the keyed database connection. Acknowledgements remove the
@@ -113,6 +130,11 @@ Protocol version 1 encodes the tenant-local integer sequence as a canonical opaq
 cursor. Pull is bounded to 200 changes and reads one extra row to report `hasMore` without claiming
 completion. The current implementation detects an ahead-of-server cursor; retention-based expiry and
 full-resync generation switching remain pending.
+
+Each transfer revision assigns the same atomic-group token to its two adjacent change rows. Pull never
+cuts that pair: a limit of one still returns both legs when the pair is first, while a pair that would
+overflow a non-empty page starts the next page. A cursor inside a pair or malformed group fails closed
+with `full_resync_required`. The shared response remains bounded to 200 changes.
 
 The mobile transport uses the fixed pull path, caps decoded response size, and validates the shared
 schema before persistence. Each page and its cursor commit on the keyed SQLCipher connection in one
@@ -136,7 +158,7 @@ the independent Worker identity assertion gates synchronization, not offline rea
 - A conflict record stores the local proposed command, the acknowledged base snapshot, and the current server snapshot. The visible entity stays explicitly conflicted until the user chooses a resolution.
 - Resolution is a new operation based on the current server revision. “Keep mine” is never an unversioned overwrite.
 
-The implemented transaction, account, and category reviews present the preserved device and server
+The implemented transaction, transfer, account, and category reviews present the preserved device and server
 versions. `keep_server` applies the validated server snapshot and closes the conflicted outbox row
 atomically. `keep_local` closes the old operation, creates a fresh idempotency key, and queues a full
 update using the preserved server revision as its base. If the server changed again first, that new

@@ -170,6 +170,8 @@ describe("encrypted local workspace repository", () => {
           currency: "PHP",
           kind: "expense",
           notes: "Team meal",
+          transfer_group_id: null,
+          transfer_fee_minor: null,
           deleted_at: null,
           sync_state: "pending",
         }),
@@ -215,20 +217,68 @@ describe("encrypted local workspace repository", () => {
     );
   });
 
-  it("refuses to expose a transfer through the non-atomic editor", async () => {
+  it("returns a linked transfer as one editable atomic command", async () => {
     const database = {
-      getAllAsync: jest.fn(() => Promise.resolve([])),
+      getAllAsync: jest
+        .fn()
+        .mockResolvedValueOnce([
+          { id: "account-1", name: "Wallet", currency: "PHP", pending: 0 },
+          { id: "account-2", name: "Savings", currency: "PHP", pending: 0 },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "category-transfer",
+            name: "Transfer",
+            kind: "transfer",
+            color: "#008877",
+            pending: 0,
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "transaction-1",
+            account_id: "account-1",
+            category_id: "category-transfer",
+            date: "2026-08-13",
+            description: "Transfer",
+            amount_minor: -25_000,
+            currency: "PHP",
+            kind: "transfer",
+            notes: null,
+            transfer_group_id: "group-1",
+            transfer_fee_minor: 100,
+            deleted_at: null,
+            sync_state: "synced",
+          },
+          {
+            id: "transaction-2",
+            account_id: "account-2",
+            category_id: "category-transfer",
+            date: "2026-08-13",
+            description: "Transfer",
+            amount_minor: 24_900,
+            currency: "PHP",
+            kind: "transfer",
+            notes: null,
+            transfer_group_id: "group-1",
+            transfer_fee_minor: null,
+            deleted_at: null,
+            sync_state: "synced",
+          },
+        ]),
       getFirstAsync: jest.fn(() =>
         Promise.resolve({
           id: "transaction-1",
           account_id: "account-1",
-          category_id: "category-1",
+          category_id: "category-transfer",
           date: "2026-08-13",
           description: "Transfer",
           amount_minor: -25_000,
           currency: "PHP",
           kind: "transfer",
           notes: null,
+          transfer_group_id: "group-1",
+          transfer_fee_minor: 100,
           deleted_at: null,
           sync_state: "synced",
         }),
@@ -238,7 +288,20 @@ describe("encrypted local workspace repository", () => {
     const result = await new LocalWorkspaceRepository(database as never).getTransactionFormData(
       "transaction-1",
     );
-    expect(result.transaction).toBeNull();
-    expect(result.unavailableReason).toContain("atomic offline transfer protocol");
+    expect(result).toMatchObject({
+      transaction: {
+        id: "transaction-1",
+        input: {
+          kind: "transfer",
+          fromAccountId: "account-1",
+          toAccountId: "account-2",
+          categoryId: "category-transfer",
+          amountMinor: 25_000,
+          transferFeeMinor: 100,
+        },
+        syncState: "synced",
+      },
+      unavailableReason: null,
+    });
   });
 });

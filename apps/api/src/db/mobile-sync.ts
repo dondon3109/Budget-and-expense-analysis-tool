@@ -1,12 +1,14 @@
 import {
   MOBILE_SYNC_PROTOCOL_VERSION,
   accountInputSchema,
+  buildTransferLegs,
   categoryInputSchema,
   mobileSyncAccountSnapshotSchema,
   mobileSyncPushResultSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncChangeSchema,
   mobileSyncTransactionSnapshotSchema,
+  mobileSyncTransferSnapshotSchema,
   normalizeSignedAmount,
   transactionInputSchema,
   type MobileSyncChange,
@@ -17,11 +19,10 @@ import {
   type MobileSyncPushResponse,
   type MobileSyncPushResult,
   type AccountInput,
-  type AccountUpdate,
   type CategoryInput,
-  type CategoryUpdate,
   type TransactionInput,
   type TransactionUpdate,
+  type TransferInput,
 } from "@zoption/shared";
 
 import { HttpError } from "../errors";
@@ -41,6 +42,7 @@ interface ChangeRow {
   operation: "upsert" | "delete";
   payloadJson: string | null;
   serverUpdatedAt: string;
+  atomicGroupId: string | null;
 }
 
 interface IdempotencyRow {
@@ -55,7 +57,8 @@ interface EntitySyncRow {
 type AccountSnapshot = ReturnType<typeof mobileSyncAccountSnapshotSchema.parse>;
 type CategorySnapshot = ReturnType<typeof mobileSyncCategorySnapshotSchema.parse>;
 type TransactionSnapshot = ReturnType<typeof mobileSyncTransactionSnapshotSchema.parse>;
-type EntitySnapshot = AccountSnapshot | CategorySnapshot | TransactionSnapshot;
+type TransferSnapshot = ReturnType<typeof mobileSyncTransferSnapshotSchema.parse>;
+type EntitySnapshot = AccountSnapshot | CategorySnapshot | TransactionSnapshot | TransferSnapshot;
 
 function withCategoryLock(snapshot: EntitySnapshot | null, hasPro: boolean): EntitySnapshot | null {
   const category = mobileSyncCategorySnapshotSchema.safeParse(snapshot);
@@ -131,6 +134,34 @@ function decodePayload(row: ChangeRow, hasPro: boolean): MobileSyncChange {
   }
 }
 
+function atomicPullPage(rows: ChangeRow[], limit: number): ChangeRow[] {
+  const page: ChangeRow[] = [];
+  for (let index = 0; index < rows.length;) {
+    if (page.length >= limit) break;
+    const row = rows[index]!;
+    if (!row.atomicGroupId) {
+      page.push(row);
+      index += 1;
+      continue;
+    }
+    let end = index + 1;
+    while (rows[end]?.atomicGroupId === row.atomicGroupId) end += 1;
+    const group = rows.slice(index, end);
+    if (group.length !== 2 || group.some((item) => item.entityType !== "transaction")) {
+      throw new HttpError(
+        409,
+        "full_resync_required",
+        "A transfer synchronization boundary is invalid. Start a safe full resynchronization.",
+        { reason: "invalid_atomic_transfer_boundary" },
+      );
+    }
+    if (page.length > 0 && page.length + group.length > limit) break;
+    page.push(...group);
+    index = end;
+  }
+  return page;
+}
+
 function serverTimestamp(): string {
   return new Date()
     .toISOString()
@@ -178,7 +209,9 @@ async function readEntitySnapshot(
       ? "mobile_sync_account_rows"
       : entityType === "category"
         ? "mobile_sync_category_rows"
-        : "mobile_sync_transaction_rows";
+        : entityType === "transaction"
+          ? "mobile_sync_transaction_rows"
+          : "mobile_sync_transfer_rows";
   const row = await env.DB.prepare(
     `SELECT payload_json AS payloadJson FROM ${view} WHERE tenant_id = ? AND entity_id = ?`,
   )
@@ -191,7 +224,9 @@ async function readEntitySnapshot(
       ? mobileSyncAccountSnapshotSchema.parse(payload)
       : entityType === "category"
         ? mobileSyncCategorySnapshotSchema.parse(payload)
-        : mobileSyncTransactionSnapshotSchema.parse(payload);
+        : entityType === "transaction"
+          ? mobileSyncTransactionSnapshotSchema.parse(payload)
+          : mobileSyncTransferSnapshotSchema.parse(payload);
   } catch {
     throw new Error("Stored mobile synchronization entity failed validation.");
   }
@@ -257,16 +292,13 @@ async function businessRejection(
   operation: MobileSyncPushOperation,
   current: EntitySnapshot | null,
 ): Promise<MobileSyncPushResult | null> {
-  if (operation.entityType === "transaction") return null;
+  if (operation.entityType === "transaction" || operation.entityType === "transfer") return null;
 
   const existing =
     operation.entityType === "account"
       ? current && mobileSyncAccountSnapshotSchema.parse(current)
       : current && mobileSyncCategorySnapshotSchema.parse(current);
-  const name =
-    operation.operationType === "delete"
-      ? null
-      : (operation.payload as AccountInput | AccountUpdate | CategoryInput | CategoryUpdate).name;
+  const name = operation.operationType === "delete" ? null : operation.payload.name;
   if (
     name &&
     (await hasNameConflict(
@@ -288,7 +320,7 @@ async function businessRejection(
     const changingProtectedAccountName =
       operation.entityType === "account" &&
       operation.operationType === "update" &&
-      (operation.payload as AccountUpdate).name !== existing.name;
+      operation.payload.name !== existing.name;
     if (
       operation.operationType === "delete" ||
       operation.entityType === "category" ||
@@ -307,7 +339,7 @@ async function businessRejection(
   const restoring =
     operation.operationType === "update" &&
     category?.archived === true &&
-    (operation.payload as CategoryUpdate).archived === false;
+    operation.payload.archived === false;
   if (operation.operationType !== "create" && !restoring) return null;
   if (await hasEffectiveProEntitlementRow(env, tenantId)) return null;
   if (category?.requiredPlan === "zoption_pro") {
@@ -361,12 +393,20 @@ function requiredIdempotencyInsert(
   operation: MobileSyncPushOperation,
   hash: string,
   result: MobileSyncPushResult,
+  expectedPreviousChanges = 1,
 ) {
   return env.DB.prepare(
     `INSERT INTO mobile_sync_idempotency (
       tenant_id, client_id, idempotency_key, request_hash, response_json
-    ) VALUES (?, ?, ?, CASE WHEN changes() = 1 THEN ? ELSE NULL END, ?)`,
-  ).bind(tenantId, clientId, operation.idempotencyKey, hash, JSON.stringify(result));
+    ) VALUES (?, ?, ?, CASE WHEN changes() = ? THEN ? ELSE NULL END, ?)`,
+  ).bind(
+    tenantId,
+    clientId,
+    operation.idempotencyKey,
+    expectedPreviousChanges,
+    hash,
+    JSON.stringify(result),
+  );
 }
 
 async function persistResult(
@@ -688,6 +728,9 @@ function createGraphMutation(
       FREE_CUSTOM_CATEGORY_LIMIT,
     );
   }
+  if (operation.entityType === "transfer") {
+    throw new Error("A transfer reached the dependency-graph mutation builder.");
+  }
   const transaction = transactionInputSchema.parse(operation.payload);
   if (transaction.kind === "transfer") {
     throw new Error("A transfer reached the non-transfer dependency graph.");
@@ -747,6 +790,7 @@ async function pushCreateDependencyGraph(
     operations.every(
       (operation) => operation.dependencyIds.length === 0 || operation.entityType === "transaction",
     ) &&
+    operations.every((operation) => operation.entityType !== "transfer") &&
     operations.every(
       (operation) =>
         operation.dependencyIds.length > 0 || referencedOperations.has(operation.operationId),
@@ -894,6 +938,267 @@ async function pushCreateDependencyGraph(
   }
 }
 
+type TransferOperation = Extract<MobileSyncPushOperation, { entityType: "transfer" }>;
+
+function transferValidationResult(
+  operation: TransferOperation,
+  error: HttpError,
+): MobileSyncPushResult {
+  const code =
+    error.code === "invalid_category" || error.code === "category_kind_mismatch"
+      ? "invalid_category"
+      : error.code === "invalid_account"
+        ? "invalid_account"
+        : error.code === "category_requires_pro"
+          ? "plan_limit"
+          : "invalid_operation";
+  return rejectedResult(operation, code, error.message);
+}
+
+async function pushTransferOperation(
+  env: Bindings,
+  tenantId: string,
+  clientId: string,
+  operation: TransferOperation,
+  hash: string,
+  readEntitlement: EntitlementReader,
+): Promise<MobileSyncPushResult> {
+  let current = await readEntitySnapshot(env, tenantId, "transfer", operation.entityId);
+  if (operation.operationType === "create" && current) {
+    return persistResult(
+      env,
+      tenantId,
+      clientId,
+      operation,
+      hash,
+      conflictResult(operation, "entity_exists", current),
+    );
+  }
+  if (operation.operationType !== "create" && !current) {
+    return persistResult(
+      env,
+      tenantId,
+      clientId,
+      operation,
+      hash,
+      conflictResult(operation, "entity_missing", null),
+    );
+  }
+  if (
+    operation.operationType !== "create" &&
+    current &&
+    current.revision !== operation.baseRevision
+  ) {
+    return persistResult(
+      env,
+      tenantId,
+      clientId,
+      operation,
+      hash,
+      conflictResult(operation, "stale_revision", current),
+    );
+  }
+
+  const existing = current ? mobileSyncTransferSnapshotSchema.parse(current) : null;
+  const transfer: TransferInput | null =
+    operation.operationType === "delete" ? null : operation.payload.transfer;
+  if (transfer) {
+    try {
+      await validateTransactionReferences(
+        env,
+        tenantId,
+        transfer,
+        existing?.categoryId,
+        readEntitlement,
+      );
+    } catch (error) {
+      if (!(error instanceof HttpError)) throw error;
+      return persistResult(
+        env,
+        tenantId,
+        clientId,
+        operation,
+        hash,
+        transferValidationResult(operation, error),
+      );
+    }
+  }
+
+  const revision = operation.operationType === "create" ? 1 : operation.baseRevision + 1;
+  const acknowledged = mobileSyncPushResultSchema.parse({
+    operationId: operation.operationId,
+    entityType: "transfer",
+    entityId: operation.entityId,
+    status: "acknowledged",
+    revision,
+  });
+  const timestamp = serverTimestamp();
+  const statements: D1PreparedStatement[] = [];
+  if (operation.operationType === "create") {
+    const payload = operation.payload;
+    const [fromLeg, toLeg] = buildTransferLegs(payload.transfer);
+    statements.push(
+      env.DB.prepare(
+        `INSERT INTO transfer_groups (id, tenant_id, from_transaction_id, to_transaction_id)
+         VALUES (?, ?, ?, ?)`,
+      ).bind(operation.entityId, tenantId, payload.fromTransactionId, payload.toTransactionId),
+      env.DB.prepare(
+        `INSERT INTO transactions (
+          id, tenant_id, account_id, category_id, date, description, amount_minor,
+          currency, kind, notes, transfer_group_id, transfer_fee_minor, source_kind,
+          revision, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, 'manual', 1, ?)`,
+      ).bind(
+        payload.fromTransactionId,
+        tenantId,
+        fromLeg.accountId,
+        payload.transfer.categoryId,
+        payload.transfer.date,
+        fromLeg.description,
+        fromLeg.amountMinor,
+        payload.transfer.currency,
+        payload.transfer.notes || null,
+        operation.entityId,
+        fromLeg.transferFeeMinor,
+        timestamp,
+      ),
+      env.DB.prepare(
+        `INSERT INTO transactions (
+          id, tenant_id, account_id, category_id, date, description, amount_minor,
+          currency, kind, notes, transfer_group_id, transfer_fee_minor, source_kind,
+          revision, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, 'manual', 1, ?)`,
+      ).bind(
+        payload.toTransactionId,
+        tenantId,
+        toLeg.accountId,
+        payload.transfer.categoryId,
+        payload.transfer.date,
+        toLeg.description,
+        toLeg.amountMinor,
+        payload.transfer.currency,
+        payload.transfer.notes || null,
+        operation.entityId,
+        toLeg.transferFeeMinor,
+        timestamp,
+      ),
+    );
+  } else if (operation.operationType === "update") {
+    const snapshot = existing!;
+    const [fromLeg, toLeg] = buildTransferLegs(operation.payload.transfer);
+    statements.push(
+      env.DB.prepare(
+        `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?,
+          amount_minor = ?, currency = ?, notes = ?, transfer_fee_minor = ?, revision = ?,
+          updated_at = ?
+         WHERE id = ? AND tenant_id = ? AND transfer_group_id = ? AND kind = 'transfer'
+           AND revision = ?`,
+      ).bind(
+        fromLeg.accountId,
+        operation.payload.transfer.categoryId,
+        operation.payload.transfer.date,
+        fromLeg.description,
+        fromLeg.amountMinor,
+        operation.payload.transfer.currency,
+        operation.payload.transfer.notes || null,
+        fromLeg.transferFeeMinor,
+        revision,
+        timestamp,
+        snapshot.fromTransactionId,
+        tenantId,
+        operation.entityId,
+        operation.baseRevision,
+      ),
+      env.DB.prepare(
+        `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?,
+          amount_minor = ?, currency = ?, notes = ?, transfer_fee_minor = ?, revision = ?,
+          updated_at = ?
+         WHERE id = ? AND tenant_id = ? AND transfer_group_id = ? AND kind = 'transfer'
+           AND revision = ? AND changes() = 1`,
+      ).bind(
+        toLeg.accountId,
+        operation.payload.transfer.categoryId,
+        operation.payload.transfer.date,
+        toLeg.description,
+        toLeg.amountMinor,
+        operation.payload.transfer.currency,
+        operation.payload.transfer.notes || null,
+        toLeg.transferFeeMinor,
+        revision,
+        timestamp,
+        snapshot.toTransactionId,
+        tenantId,
+        operation.entityId,
+        operation.baseRevision,
+      ),
+    );
+  } else {
+    const snapshot = existing!;
+    statements.push(
+      env.DB.prepare(
+        `DELETE FROM transactions
+         WHERE id = ? AND tenant_id = ? AND transfer_group_id = ? AND revision = ?`,
+      ).bind(snapshot.fromTransactionId, tenantId, operation.entityId, operation.baseRevision),
+      env.DB.prepare(
+        `DELETE FROM transactions
+         WHERE id = ? AND tenant_id = ? AND transfer_group_id = ? AND revision = ?
+           AND changes() = 1`,
+      ).bind(snapshot.toTransactionId, tenantId, operation.entityId, operation.baseRevision),
+      env.DB.prepare(
+        `DELETE FROM transfer_groups
+         WHERE tenant_id = ? AND id = ? AND from_transaction_id = ? AND to_transaction_id = ?
+           AND changes() = 1`,
+      ).bind(tenantId, operation.entityId, snapshot.fromTransactionId, snapshot.toTransactionId),
+    );
+  }
+  statements.push(
+    requiredIdempotencyInsert(env, tenantId, clientId, operation, hash, acknowledged),
+  );
+
+  try {
+    const batch = await env.DB.batch(statements);
+    if (Number(batch.at(-1)?.meta.changes ?? 0) === 1) return acknowledged;
+  } catch {
+    const replay = await readIdempotency(env, tenantId, clientId, operation.idempotencyKey);
+    if (replay) {
+      if (replay.requestHash !== hash) {
+        throw new HttpError(
+          409,
+          "idempotency_key_reused",
+          "This synchronization key was already used for another operation.",
+        );
+      }
+      return decodeStoredResult(replay);
+    }
+  }
+
+  current = await readEntitySnapshot(env, tenantId, "transfer", operation.entityId);
+  const concurrentCode =
+    operation.operationType === "create"
+      ? current
+        ? "entity_exists"
+        : null
+      : !current
+        ? "entity_missing"
+        : current.revision !== operation.baseRevision
+          ? "stale_revision"
+          : null;
+  return persistResult(
+    env,
+    tenantId,
+    clientId,
+    operation,
+    hash,
+    concurrentCode
+      ? conflictResult(operation, concurrentCode, current)
+      : rejectedResult(
+          operation,
+          "invalid_operation",
+          "The transfer could not be applied atomically.",
+        ),
+  );
+}
+
 export function createMobileSyncRepository(
   readEntitlement: EntitlementReader = hasProEntitlement,
 ): MobileSyncRepository {
@@ -917,23 +1222,43 @@ export function createMobileSyncRepository(
 
       const result = await env.DB.prepare(
         `SELECT
-          sequence,
-          entity_type AS entityType,
-          entity_id AS entityId,
-          row_revision AS rowRevision,
-          operation,
-          payload_json AS payloadJson,
-          server_updated_at AS serverUpdatedAt
-        FROM mobile_sync_changes
-        WHERE tenant_id = ? AND sequence > ?
-        ORDER BY sequence
+          changes.sequence,
+          changes.entity_type AS entityType,
+          changes.entity_id AS entityId,
+          changes.row_revision AS rowRevision,
+          changes.operation,
+          changes.payload_json AS payloadJson,
+          changes.server_updated_at AS serverUpdatedAt,
+          groups.atomic_group_id AS atomicGroupId
+        FROM mobile_sync_changes changes
+        LEFT JOIN mobile_sync_change_groups groups
+          ON groups.tenant_id = changes.tenant_id AND groups.sequence = changes.sequence
+        WHERE changes.tenant_id = ? AND changes.sequence > ?
+        ORDER BY changes.sequence
         LIMIT ?`,
       )
-        .bind(tenantId, cursorSequence, input.limit + 1)
+        .bind(tenantId, cursorSequence, input.limit + 2)
         .all<ChangeRow>();
 
-      const hasMore = result.results.length > input.limit;
-      const page = hasMore ? result.results.slice(0, input.limit) : result.results;
+      const first = result.results[0];
+      if (first?.atomicGroupId && cursorSequence > 0) {
+        const previous = await env.DB.prepare(
+          `SELECT atomic_group_id AS atomicGroupId
+           FROM mobile_sync_change_groups
+           WHERE tenant_id = ? AND sequence = ?`,
+        )
+          .bind(tenantId, cursorSequence)
+          .first<{ atomicGroupId: string }>();
+        if (previous?.atomicGroupId === first.atomicGroupId) {
+          throw new HttpError(
+            409,
+            "full_resync_required",
+            "This device cursor splits an atomic transfer. Start a safe full resynchronization.",
+            { reason: "cursor_inside_atomic_transfer" },
+          );
+        }
+      }
+      const page = atomicPullPage(result.results, input.limit);
       const hasPro = page.some((change) => change.entityType === "category")
         ? await readEntitlement(env, tenantId)
         : false;
@@ -944,7 +1269,7 @@ export function createMobileSyncRepository(
         protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
         changes,
         nextCursor: encodeMobileSyncCursor(nextSequence),
-        hasMore,
+        hasMore: nextSequence < currentSequence,
       };
     },
 
@@ -970,6 +1295,20 @@ export function createMobileSyncRepository(
             );
           }
           results.push(decodeStoredResult(stored));
+          continue;
+        }
+
+        if (operation.entityType === "transfer") {
+          results.push(
+            await pushTransferOperation(
+              env,
+              tenantId,
+              input.clientId,
+              operation,
+              hash,
+              readEntitlement,
+            ),
+          );
           continue;
         }
 
@@ -1059,14 +1398,14 @@ export function createMobileSyncRepository(
           currentTransaction = mobileSyncTransactionSnapshotSchema.parse(current);
         }
         if (operation.entityType === "transaction" && operation.operationType === "create") {
-          const candidate = operation.payload as TransactionInput;
+          const candidate = operation.payload;
           transaction = candidate.kind === "transfer" ? null : candidate;
         } else if (
           operation.entityType === "transaction" &&
           operation.operationType === "update" &&
           currentTransaction
         ) {
-          transaction = updateInput(operation.payload as TransactionUpdate, currentTransaction);
+          transaction = updateInput(operation.payload, currentTransaction);
         }
         if (operation.entityType === "transaction" && operation.operationType !== "delete") {
           if (!transaction) {
@@ -1080,7 +1419,7 @@ export function createMobileSyncRepository(
                 rejectedResult(
                   operation,
                   "unsupported_operation",
-                  "Transfers require the future atomic transfer synchronization command.",
+                  "Transfers require the atomic transfer synchronization command.",
                 ),
               ),
             );
@@ -1129,7 +1468,7 @@ export function createMobileSyncRepository(
         let mutation: D1PreparedStatement;
         if (operation.entityType === "account") {
           if (operation.operationType === "create") {
-            const payload = operation.payload as AccountInput;
+            const payload = operation.payload;
             mutation = env.DB.prepare(
               `INSERT INTO accounts (id, tenant_id, name, type, currency, revision, updated_at)
                SELECT ?, ?, ?, ?, 'PHP', 1, ?
@@ -1146,7 +1485,7 @@ export function createMobileSyncRepository(
               payload.name,
             );
           } else if (operation.operationType === "update") {
-            const payload = operation.payload as AccountUpdate;
+            const payload = operation.payload;
             const account = mobileSyncAccountSnapshotSchema.parse(current);
             mutation = env.DB.prepare(
               `UPDATE accounts SET name = ?, type = ?, updated_at = ?
@@ -1176,7 +1515,7 @@ export function createMobileSyncRepository(
           }
         } else if (operation.entityType === "category") {
           if (operation.operationType === "create") {
-            const payload = operation.payload as CategoryInput;
+            const payload = operation.payload;
             mutation = env.DB.prepare(
               `INSERT INTO categories (
                  id, tenant_id, name, kind, color, origin, required_plan, revision, updated_at
@@ -1211,7 +1550,7 @@ export function createMobileSyncRepository(
               FREE_CUSTOM_CATEGORY_LIMIT,
             );
           } else if (operation.operationType === "update") {
-            const payload = operation.payload as CategoryUpdate;
+            const payload = operation.payload;
             const category = mobileSyncCategorySnapshotSchema.parse(current);
             const restoring = category.archived && payload.archived === false;
             mutation = env.DB.prepare(

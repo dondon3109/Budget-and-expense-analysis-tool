@@ -152,6 +152,41 @@ describe("mobile sync boundary schemas", () => {
     ).toBe(false);
   });
 
+  it("accepts one logical atomic transfer command with client-generated leg IDs", () => {
+    expect(
+      mobileSyncPushRequestSchema.safeParse({
+        protocolVersion: 1,
+        clientId,
+        operations: [
+          {
+            operationId,
+            idempotencyKey,
+            entityType: "transfer",
+            entityId,
+            operationType: "create",
+            baseRevision: 0,
+            dependencyIds: [],
+            payload: {
+              fromTransactionId: "00000000-0000-4000-8000-000000000005",
+              toTransactionId: "00000000-0000-4000-8000-000000000006",
+              transfer: {
+                kind: "transfer",
+                date: "2026-08-13",
+                description: "Savings",
+                amountMinor: 10_000,
+                transferFeeMinor: 100,
+                currency: "PHP",
+                categoryId: "transfer",
+                fromAccountId: "wallet",
+                toAccountId: "savings",
+              },
+            },
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
   it("validates acknowledged server revisions", () => {
     expect(
       mobileSyncPushResponseSchema.safeParse({

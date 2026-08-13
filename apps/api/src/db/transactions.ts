@@ -1,4 +1,5 @@
 import {
+  buildTransferLegs,
   normalizeSignedAmount,
   transactionInputSchema,
   type Currency,
@@ -11,6 +12,8 @@ import {
   type TransactionPage,
   type TransactionUpdate,
 } from "@zoption/shared";
+
+export { buildTransferLegs } from "@zoption/shared";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -79,39 +82,6 @@ function normalizeRow(row: TransactionRow): TransactionListItem {
     toAccountName: linkedTransfer ? (row.toAccountName ?? "Unassigned") : null,
     legacyTransfer: row.kind === "transfer" && !linkedTransfer,
   };
-}
-
-export interface TransferLeg {
-  accountId: string;
-  amountMinor: number;
-  transferFeeMinor: number | null;
-  description: string;
-}
-
-/**
- * Resolves the two rows of a fee-charged transfer into what actually happens:
- * the sender's account loses the full amount, and the receiving account gains
- * the amount minus the fee. A blank description is stored as "Transfer".
- */
-export function buildTransferLegs(
-  input: Extract<TransactionInput, { kind: "transfer" }>,
-): [TransferLeg, TransferLeg] {
-  const fee = input.transferFeeMinor ?? 0;
-  const description = input.description?.trim() || "Transfer";
-  return [
-    {
-      accountId: input.fromAccountId,
-      amountMinor: -input.amountMinor,
-      transferFeeMinor: fee > 0 ? fee : null,
-      description,
-    },
-    {
-      accountId: input.toAccountId,
-      amountMinor: input.amountMinor - fee,
-      transferFeeMinor: null,
-      description,
-    },
-  ];
 }
 
 const LOGICAL_ROWS_SELECT = `SELECT
@@ -405,6 +375,10 @@ export const transactionRepository: TransactionRepository = {
       const toId = crypto.randomUUID();
       const [fromLeg, toLeg] = buildTransferLegs(input);
       await env.DB.batch([
+        env.DB.prepare(
+          `INSERT INTO transfer_groups (id, tenant_id, from_transaction_id, to_transaction_id)
+           VALUES (?, ?, ?, ?)`,
+        ).bind(groupId, tenantId, fromId, toId),
         insertStatement(env, {
           id: fromId,
           tenantId,
@@ -574,15 +548,21 @@ export const transactionRepository: TransactionRepository = {
       .bind(id, tenantId)
       .first<{ transferGroupId: string | null }>();
     if (!existing) throw new HttpError(404, "transaction_not_found", "Transaction not found.");
-    const statement = existing.transferGroupId
-      ? env.DB.prepare(
+    if (existing.transferGroupId) {
+      await env.DB.batch([
+        env.DB.prepare(
           "DELETE FROM transactions WHERE tenant_id = ? AND transfer_group_id = ?",
-        ).bind(tenantId, existing.transferGroupId)
-      : env.DB.prepare("DELETE FROM transactions WHERE tenant_id = ? AND id = ?").bind(
+        ).bind(tenantId, existing.transferGroupId),
+        env.DB.prepare("DELETE FROM transfer_groups WHERE tenant_id = ? AND id = ?").bind(
           tenantId,
-          id,
-        );
-    await statement.run();
+          existing.transferGroupId,
+        ),
+      ]);
+      return;
+    }
+    await env.DB.prepare("DELETE FROM transactions WHERE tenant_id = ? AND id = ?")
+      .bind(tenantId, id)
+      .run();
   },
 
   async export(env, tenantId, query) {
