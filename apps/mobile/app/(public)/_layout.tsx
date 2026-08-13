@@ -1,9 +1,12 @@
-import { Stack } from "expo-router";
+import { Redirect, Stack } from "expo-router";
 
+import { useSessionSnapshot } from "@/auth/session-state";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 export default function PublicLayout() {
   const theme = useZoptionTheme();
+  const session = useSessionSnapshot();
+  if (session.status === "signed-in") return <Redirect href="/(app)/(tabs)" />;
   return (
     <Stack
       screenOptions={{

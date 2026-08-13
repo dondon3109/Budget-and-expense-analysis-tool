@@ -6,7 +6,7 @@ Last updated: 2026-08-13.
 | ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | 0. Discovery and design              | Complete    | Verified repository/worktree baseline, parity matrix, architecture, sync protocol, threat model, shared compatibility review |
 | 1. Mobile foundation                 | Complete    | Native Android/iOS development builds, iOS runtime navigation/input, themes/components, focused tests                        |
-| 2. Authentication and shell          | Not started | Real Supabase identity opens the existing D1 workspace on both platforms                                                     |
+| 2. Authentication and shell          | In progress | Email/password session lifecycle works on iOS; social auth, Android runtime, and same-D1-workspace proof remain              |
 | 3. Encrypted local database          | Not started | SQLCipher/key/migration/reopen/failure proof                                                                                 |
 | 4. Transaction sync vertical slice   | Not started | Offline CRUD, restart recovery, idempotent reconnect, web/mobile conflicts, convergence                                      |
 | 5. Core budgeting                    | Not started | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
@@ -49,8 +49,30 @@ None. Milestones 0 and 1 exist only in the isolated worktree. They do not modify
 
 ## Milestone 1 known gaps
 
-- Authentication screens are deliberately non-functional placeholders until Milestone 2 connects secure Supabase sessions. No fake identity path is exposed.
 - SQLCipher is linked but no financial database, key lifecycle, migration, repository, or encryption-at-rest claim is made before Milestone 3.
 - Background-task packages are linked but no sync task is registered before the Milestone 4 protocol exists.
 - Android execution is unverified because this host has no connected device or installed emulator/system image. The APK build is valid compile/package proof, not runtime proof.
 - Debug artifact size and first-build duration are recorded only as setup evidence. Release performance and size budgets remain a Milestone 9 measurement.
+
+## Milestone 2 progress
+
+- Email/password sign-in now calls the existing Supabase project from the native app. The session
+  lifecycle uses PKCE, app-active token refresh, and a chunked SecureStore adapter with
+  `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`; no token is stored in Zustand or AsyncStorage.
+- Invalid credentials were submitted from an iPhone 17 Pro Simulator and received the expected
+  server rejection, rendered as the accessible `Email or password is incorrect.` error. This proves
+  the button, network request, loading state, and error path without using or exposing a real account.
+- Password-reset request, callback code exchange, and update-password routes are implemented. The
+  development callback is `zoption-dev://auth/callback`; end-to-end email-link proof still depends on
+  the external Supabase redirect allow-list.
+- Identity transitions clear temporary user-scoped UI state. Milestone 3 will attach encrypted
+  workspace close/remove behavior to the same boundary before financial records exist locally.
+- Focused tests cover validation and large/corrupt/remove cases for encrypted session persistence.
+
+## Milestone 2 remaining gaps
+
+- A successful real-account sign-in and authenticated Worker request have not been exercised because
+  no user credential was entered during automated verification.
+- Google social authentication and Sign in with Apple are not implemented yet. Provider dashboard,
+  Apple capability, universal/app links, and verified account-linking proof remain.
+- Android authentication runtime proof remains blocked by the host's missing emulator/device.

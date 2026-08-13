@@ -43,7 +43,21 @@ PATH=/opt/homebrew/opt/openjdk@17/bin:$PATH \
 
 The generated universal debug APK is intentionally large and is not a release-size measurement. Android runtime checks still require a connected device or installed emulator/system image.
 
-Copy `.env.example` to an ignored `.env.local` only when beginning authenticated integration. The application may contain the Supabase publishable key, never a secret/service-role key.
+Copy `.env.example` to an ignored `.env.local` for authenticated development, replace its
+placeholders with the same Supabase project URL and publishable key used by the website, and restart
+Metro. The mobile app must never contain a secret/service-role key.
+
+Email/password sign-in and password recovery use the native Supabase session flow. Sessions are
+persisted in encrypted, device-only SecureStore chunks rather than AsyncStorage. The callback URL
+for the development variant is `zoption-dev://auth/callback`; it must be present in the Supabase
+redirect allow-list before recovery links can return to the app.
+
+If Expo advertises a VPN address that the Simulator cannot reach, bind the development server to
+the Mac's active Wi-Fi address before starting Metro:
+
+```bash
+REACT_NATIVE_PACKAGER_HOSTNAME="$(ipconfig getifaddr en0)" pnpm --filter @zoption/mobile start
+```
 
 ## Variants
 
