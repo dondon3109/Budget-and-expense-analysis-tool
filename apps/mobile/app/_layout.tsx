@@ -8,6 +8,7 @@ import { Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { SessionProvider } from "@/auth/session-state";
+import { WorkerIdentityProvider } from "@/auth/worker-identity-state";
 import { configureConnectivity } from "@/config/connectivity";
 import { Button } from "@/ui/components";
 import { ZoptionThemeProvider, useZoptionTheme } from "@/ui/theme-provider";
@@ -38,9 +39,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
-        <ZoptionThemeProvider>
-          <RootNavigator />
-        </ZoptionThemeProvider>
+        <WorkerIdentityProvider>
+          <ZoptionThemeProvider>
+            <RootNavigator />
+          </ZoptionThemeProvider>
+        </WorkerIdentityProvider>
       </SessionProvider>
     </SafeAreaProvider>
   );

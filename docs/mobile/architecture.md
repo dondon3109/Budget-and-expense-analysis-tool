@@ -71,6 +71,8 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
 - API payloads and persisted rows are decoded with Zod before use.
 - Tokens, tenant identity, financial entities, outbox rows, and plan entitlement never enter Zustand or AsyncStorage.
 - Identity change closes the old database, clears in-memory repositories/query observers, and opens a subject-derived workspace only after the key is resolved.
+- Authenticated navigation opens only after `/api/app/me` confirms that the Worker-derived user and tenant match the immutable Supabase subject.
+- Startup migrations use the keyed connection's regular transaction. Expo's exclusive transaction helper creates another native connection and therefore cannot be used unless that connection is separately keyed.
 
 ## Development-build requirement
 

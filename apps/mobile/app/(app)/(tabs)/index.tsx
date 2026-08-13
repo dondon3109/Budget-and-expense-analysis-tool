@@ -5,8 +5,8 @@ export default function HomeScreen() {
   return (
     <Screen title="Home">
       <EmptyState
-        title="No local records yet"
-        description="Your encrypted workspace will appear here after the first authenticated sync."
+        title="Encrypted workspace ready"
+        description="Your identity is verified and local storage is protected. Existing records will appear after the first approved sync milestone."
       />
     </Screen>
   );

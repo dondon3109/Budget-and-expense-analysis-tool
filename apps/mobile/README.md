@@ -52,6 +52,16 @@ persisted in encrypted, device-only SecureStore chunks rather than AsyncStorage.
 for the development variant is `zoption-dev://auth/callback`; it must be present in the Supabase
 redirect allow-list before recovery links can return to the app.
 
+After Supabase authentication, the app verifies the immutable subject against the existing Worker
+before opening a subject-scoped SQLCipher database. The Worker derives the tenant; the mobile app does
+not send or authorize with a tenant ID. Local schema migrations and the identity assertion run before
+the authenticated financial shell receives the database.
+
+The development app exposes only the local schema version and encryption status, never the key. To
+verify encryption on a stopped Simulator build, locate the app container and confirm that ordinary
+`sqlite3` rejects the `Documents/SQLite/zoption-*.db` file. Do not retrieve or print SecureStore values.
+The iOS database-directory backup exclusion is still a documented Milestone 3 gap.
+
 If Expo advertises a VPN address that the Simulator cannot reach, bind the development server to
 the Mac's active Wi-Fi address before starting Metro:
 

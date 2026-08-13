@@ -39,12 +39,17 @@
 ## Key lifecycle
 
 1. Generate a cryptographically random database key on first workspace creation.
-2. Store only the key in SecureStore under a subject-scoped, environment-scoped alias.
+2. Store only the key in SecureStore under an opaque subject-derived alias scoped by the application bundle.
 3. Open SQLCipher and apply the key before any other statement.
 4. Never interpolate the key into logs or error messages. Use a narrowly reviewed database-open function.
 5. On deliberate local discard after safe sign-out/deletion, close the database, remove the database files, then remove the corresponding SecureStore key. If cleanup is interrupted, recovery detects and completes the same identity-scoped operation.
 
 Supabase session storage and the database-key record use separate aliases and deletion flows.
+
+The implemented iOS key accessibility is `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`, so the key does not
+migrate to another device. Android application backup is disabled. The iOS database directory still
+needs an explicit, fail-closed `isExcludedFromBackup` control before Milestone 3 exits; the encrypted
+file's successful unreadability check does not replace that control.
 
 ## Sign-out and deletion
 
@@ -60,8 +65,9 @@ Supabase session storage and the database-key record use separate aliases and de
 - Exercise two real Supabase identities and prove no local or server cross-tenant visibility.
 - Exercise expired tokens, identity switch, migration corruption, interrupted cleanup, and lost sync responses.
 
-## Known limitations at discovery
+## Known limitations
 
-- SQLCipher configuration is not proof of encrypted runtime behavior; Milestone 3 must provide file-level and reopen tests.
+- SQLCipher file-level encryption and process-reopen behavior are proven on iOS Simulator, but Android
+  runtime and iOS database backup-exclusion proofs remain.
 - iOS background execution is system scheduled and unavailable in Simulator; a physical-device test is required.
 - A fully compromised device can observe data while the user has unlocked and opened the app.

@@ -13,8 +13,10 @@ import {
 import { AppState, Platform } from "react-native";
 
 import { isSupabaseConfigured } from "@/config/public-config";
+import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { useSheetStore } from "@/stores/sheet-store";
 
+import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, supabase } from "./supabase-client";
 
 export type SessionStatus = "loading" | "signed-out" | "signed-in";
@@ -26,11 +28,17 @@ export interface SessionSnapshot {
 
 interface SessionContextValue extends SessionSnapshot {
   configured: boolean;
+  getAccessToken: (refresh: boolean) => Promise<string>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   exchangeCodeForSession: (code: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: (options?: SignOutOptions) => Promise<void>;
+}
+
+export interface SignOutOptions {
+  discardUnsyncedChanges?: boolean;
+  preserveLocalWorkspace?: boolean;
 }
 
 const signedOutSession: SessionSnapshot = { status: "signed-out", subject: null };
@@ -47,6 +55,7 @@ const unavailable = (): Promise<never> => {
 const SessionContext = createContext<SessionContextValue>({
   ...signedOutSession,
   configured: false,
+  getAccessToken: unavailable,
   signInWithPassword: unavailable,
   sendPasswordReset: unavailable,
   exchangeCodeForSession: unavailable,
@@ -126,6 +135,18 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (error) throw error;
   }, []);
 
+  const getAccessToken = useCallback(async (refresh: boolean) => {
+    const result = refresh
+      ? await getSupabaseClient().auth.refreshSession()
+      : await getSupabaseClient().auth.getSession();
+    if (result.error) throw result.error;
+    const session = result.data.session;
+    if (!session || !subjectRef.current || session.user.id !== subjectRef.current) {
+      throw new Error("Your session expired. Sign in again to open your workspace.");
+    }
+    return session.access_token;
+  }, []);
+
   const sendPasswordReset = useCallback(async (email: string) => {
     const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email.trim(), {
       redirectTo: recoveryCallbackUrl(),
@@ -143,16 +164,27 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (error) throw error;
   }, []);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (options: SignOutOptions = {}) => {
+    const subject = subjectRef.current;
+    if (subject && !options.preserveLocalWorkspace) {
+      const risk = await inspectLocalWorkspaceForSignOut(subject);
+      assertSignOutRiskAllowed(risk, options.discardUnsyncedChanges === true);
+    }
+
     const { error } = await getSupabaseClient().auth.signOut({ scope: "local" });
     if (error) throw error;
     clearUserScopedRuntimeState();
+
+    if (subject && !options.preserveLocalWorkspace) {
+      await discardLocalWorkspace(subject);
+    }
   }, []);
 
   const value = useMemo<SessionContextValue>(
     () => ({
       ...snapshot,
       configured: isSupabaseConfigured,
+      getAccessToken,
       signInWithPassword,
       sendPasswordReset,
       exchangeCodeForSession,
@@ -161,6 +193,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     }),
     [
       exchangeCodeForSession,
+      getAccessToken,
       sendPasswordReset,
       signInWithPassword,
       signOut,
