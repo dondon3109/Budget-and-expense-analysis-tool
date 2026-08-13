@@ -5,9 +5,17 @@ import type {
   TransactionListQuery,
 } from "@zoption/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Download, FolderCog, Plus, RefreshCw } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FolderCog,
+  Plus,
+  Receipt,
+  RefreshCw,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
@@ -301,6 +309,9 @@ export function TransactionsPage() {
             >
               <FolderCog size={17} /> Categories
             </button>
+            <Link className="button secondary" to="/app/import?mode=receipt">
+              <Receipt size={17} /> Scan receipt
+            </Link>
             <button className="button primary" type="button" onClick={openCreate}>
               <Plus size={17} /> Add transaction
             </button>
