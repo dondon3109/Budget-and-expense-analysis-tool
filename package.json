@@ -26,6 +26,7 @@
     "ads:render:feature": "pnpm --filter @zoption/ads render:feature",
     "ads:render:problem": "pnpm --filter @zoption/ads render:problem",
     "ads:render:showcase": "pnpm --filter @zoption/ads render:showcase",
+    "ads:render:combined": "pnpm --filter @zoption/ads render:combined",
     "ads:render:all": "pnpm --filter @zoption/ads render:all",
     "android:release": "./apps/android/scripts/build-release.sh",
     "android:stage:web": "node apps/android/scripts/stage-web-release.mjs",

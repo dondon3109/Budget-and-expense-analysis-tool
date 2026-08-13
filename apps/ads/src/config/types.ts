@@ -45,3 +45,10 @@ export type ProblemSolutionConfig = BaseAdConfig & {
 export type ProductShowcaseConfig = BaseAdConfig & {
   callouts: readonly [string, string, string];
 };
+
+export type CombinedStoryConfig = BaseAdConfig & {
+  chapters: readonly [string, string, string, string];
+  importSteps: readonly [string, string, string];
+  assistantPrompts: readonly [string, string, string];
+  voiceBenefits: readonly [string, string, string];
+};

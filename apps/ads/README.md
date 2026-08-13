@@ -5,14 +5,19 @@ files for TikTok and Instagram Reels. It does not call any paid media-generation
 
 ## Included compositions
 
-| Composition ID                | Length | Concept                                                      | Output                        |
-| ----------------------------- | -----: | ------------------------------------------------------------ | ----------------------------- |
-| `Zoption-Feature-Highlight`   |    13s | Hook, monthly overview, three feature callouts, CTA          | `out/feature-highlight.mp4`   |
-| `Zoption-Problem-To-Solution` |    15s | Scattered spending, Zoption reveal, three-step solution, CTA | `out/problem-to-solution.mp4` |
-| `Zoption-Product-Showcase`    |    12s | Logo intro, assistant/product reveal, feature callouts, CTA  | `out/product-showcase.mp4`    |
+| Composition ID                | Length | Concept                                                           | Output                               |
+| ----------------------------- | -----: | ----------------------------------------------------------------- | ------------------------------------ |
+| `Zoption-Complete-Story-60s`  |    60s | Import, dashboard, read-only AI assistant, voice mode, recap, CTA | `out/zoption-complete-story-60s.mp4` |
+| `Zoption-Feature-Highlight`   |    13s | Hook, monthly overview, three feature callouts, CTA               | `out/feature-highlight.mp4`          |
+| `Zoption-Problem-To-Solution` |    15s | Scattered spending, Zoption reveal, three-step solution, CTA      | `out/problem-to-solution.mp4`        |
+| `Zoption-Product-Showcase`    |    12s | Logo intro, assistant/product reveal, feature callouts, CTA       | `out/product-showcase.mp4`           |
 
-All three compositions use a 30fps timeline and keep important copy inside a social-safe frame so
+All compositions use a 30fps timeline and keep important copy inside a social-safe frame so
 platform controls are less likely to cover it. The templates are intentionally sound-off friendly.
+
+The 60-second composition combines the short-ad ideas into one continuous story. It adds dedicated
+CSV/Excel import scenes and devotes its central section to the read-only assistant and voice flow:
+recording, transcription, optional review, and a spoken reply.
 
 ## Preview in Remotion Studio
 
@@ -36,6 +41,7 @@ From the repository root:
 pnpm ads:render:feature
 pnpm ads:render:problem
 pnpm ads:render:showcase
+pnpm ads:render:combined
 pnpm ads:render:all
 ```
 
@@ -43,10 +49,11 @@ Rendered files are written to `apps/ads/out/`. That directory is intentionally i
 Remotion handles the H.264 encode locally. A system FFmpeg install is not required for the standard
 commands.
 
-To render three representative PNG frames instead of full videos:
+To render representative PNG frames instead of full videos:
 
 ```bash
 pnpm --filter @zoption/ads still:all
+pnpm --filter @zoption/ads still:combined
 ```
 
 ## Edit copy, colors, timing, and CTAs
@@ -86,7 +93,7 @@ If `asset.src` is omitted, the template uses the built-in product preview.
 apps/ads/
 ├── public/screenshots/       # Optional local product captures
 ├── src/components/           # Brand, layout, CTA, and product-preview primitives
-├── src/compositions/         # Three independent ad timelines
+├── src/compositions/         # Short ads and the 60-second combined timeline
 ├── src/config/               # Typed ad content and visual settings
 ├── src/Root.tsx              # Composition registration and dimensions
 ├── src/styles.css            # Shared 9:16 art direction

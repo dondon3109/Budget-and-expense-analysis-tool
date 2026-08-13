@@ -10,7 +10,7 @@ const chartBars = [34, 52, 43, 66, 59, 78, 68];
 type ProductPreviewProps = {
   asset: ProductAsset;
   compact?: boolean;
-  variant?: "dashboard" | "budget" | "assistant";
+  variant?: "dashboard" | "budget" | "assistant" | "import" | "voice";
   style?: CSSProperties;
 };
 
@@ -60,14 +60,20 @@ export function ProductPreview({
   );
 }
 
-function SyntheticProduct({ variant }: { variant: "dashboard" | "budget" | "assistant" }) {
+function SyntheticProduct({
+  variant,
+}: {
+  variant: "dashboard" | "budget" | "assistant" | "import" | "voice";
+}) {
   if (variant === "budget") return <BudgetView />;
   if (variant === "assistant") return <AssistantView />;
+  if (variant === "import") return <ImportView />;
+  if (variant === "voice") return <VoiceAssistantView />;
   return <DashboardView />;
 }
 
 function ProductSidebar({ active = "Overview" }: { active?: string }) {
-  const items = ["Overview", "Transactions", "Budgets", "Calendar", "Assistant"];
+  const items = ["Overview", "Transactions", "Import", "Budgets", "Calendar", "Assistant"];
   return (
     <aside className="product-sidebar">
       <div className="product-sidebar-brand">
@@ -361,6 +367,193 @@ function AssistantView() {
         </div>
         <div className="assistant-composer">
           Ask about your recorded finances <b>↑</b>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function ImportView() {
+  const frame = useCurrentFrame();
+  const file = easeOut(frame, 5, 18);
+  const mapping = easeOut(frame, 30, 20);
+  const preview = easeOut(frame, 62, 22);
+  const rows = [
+    { date: "Aug 04", description: "Neighborhood market", amount: "−₱1,240", status: "Ready" },
+    { date: "Aug 08", description: "Electric bill", amount: "−₱2,180", status: "Ready" },
+    { date: "Aug 09", description: "Coffee shop", amount: "−₱210", status: "Duplicate" },
+  ];
+
+  return (
+    <div className="synthetic-product import-product-view">
+      <ProductSidebar active="Import" />
+      <main className="import-preview-content">
+        <div className="product-heading-row">
+          <div>
+            <span className="product-eyebrow">IMPORT · 3 STEPS</span>
+            <h3>Import transactions</h3>
+            <p>Bring a CSV or Excel file, review the rows, then save approved records.</p>
+          </div>
+          <span className="month-chip">CSV · XLSX · XLS</span>
+        </div>
+        <div className="import-flow-preview">
+          <section
+            className="import-file-preview"
+            style={{ opacity: file, transform: `translateY(${18 * (1 - file)}px)` }}
+          >
+            <span className="import-step-number">1</span>
+            <div className="import-file-icon">⇧</div>
+            <strong>august-statement.xlsx</strong>
+            <small>Worksheet: Transactions · 48 data rows</small>
+            <b>File ready</b>
+          </section>
+          <section
+            className="import-mapping-preview"
+            style={{ opacity: mapping, transform: `translateY(${18 * (1 - mapping)}px)` }}
+          >
+            <div className="import-section-heading">
+              <span className="import-step-number">2</span>
+              <div>
+                <strong>Match your columns</strong>
+                <small>Auto-detected from the file</small>
+              </div>
+            </div>
+            <div className="mapping-preview-grid">
+              <span>
+                <small>Date</small>
+                <strong>Transaction Date</strong>
+              </span>
+              <span>
+                <small>Description</small>
+                <strong>Merchant</strong>
+              </span>
+              <span>
+                <small>Amount</small>
+                <strong>Signed Amount</strong>
+              </span>
+              <span>
+                <small>Category</small>
+                <strong>Category</strong>
+              </span>
+            </div>
+          </section>
+          <section
+            className="import-rows-preview"
+            style={{ opacity: preview, transform: `translateY(${20 * (1 - preview)}px)` }}
+          >
+            <div className="import-section-heading">
+              <span className="import-step-number">3</span>
+              <div>
+                <strong>Preview before saving</strong>
+                <small>Invalid and duplicate rows stay out</small>
+              </div>
+            </div>
+            <div className="import-count-preview">
+              <span>
+                <strong>47</strong>
+                <small>Ready</small>
+              </span>
+              <span>
+                <strong>0</strong>
+                <small>Invalid</small>
+              </span>
+              <span>
+                <strong>1</strong>
+                <small>Duplicate</small>
+              </span>
+            </div>
+            <div className="import-table-preview">
+              {rows.map((row) => (
+                <div
+                  key={row.description}
+                  className={row.status === "Duplicate" ? "is-duplicate" : ""}
+                >
+                  <span>{row.date}</span>
+                  <strong>{row.description}</strong>
+                  <b>{row.amount}</b>
+                  <i>{row.status}</i>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function VoiceAssistantView() {
+  const frame = useCurrentFrame();
+  const recording = frame < 88;
+  const transcribing = frame >= 88 && frame < 122;
+  const transcript = easeOut(frame, 106, 20);
+  const answer = easeOut(frame, 145, 24);
+  const wave = [0.45, 0.75, 0.38, 0.92, 0.58, 0.82, 0.32, 0.7, 0.5, 0.88, 0.4, 0.66];
+
+  return (
+    <div className="synthetic-product voice-product-view">
+      <ProductSidebar active="Assistant" />
+      <main className="voice-preview-content">
+        <div className="assistant-preview-top">
+          <div>
+            <span className="status-dot" /> <strong>Your assistant</strong> <small>Read only</small>
+          </div>
+          <span>Voice mode</span>
+        </div>
+        <div className="voice-settings-strip">
+          <span>
+            <small>After recording</small>
+            <strong>Review first</strong>
+          </span>
+          <span>
+            <small>Replies</small>
+            <strong>Spoken</strong>
+          </span>
+          <span>
+            <small>Voice</small>
+            <strong>Bright</strong>
+          </span>
+        </div>
+        <div className="voice-conversation-preview">
+          <section className={`voice-recorder-preview${recording ? " is-recording" : ""}`}>
+            <div className="voice-mic-disc">{recording ? "■" : transcribing ? "…" : "✓"}</div>
+            <div>
+              <span>
+                {recording ? "Listening…" : transcribing ? "Transcribing…" : "Transcript ready"}
+              </span>
+              <strong>
+                {recording ? "Ask about your recorded finances" : "Review before sending"}
+              </strong>
+            </div>
+            <div className="voice-wave" aria-hidden="true">
+              {wave.map((height, index) => {
+                const activity = recording
+                  ? 0.55 + Math.abs(Math.sin((frame + index * 5) / 7)) * 0.45
+                  : 0.18;
+                return <i key={index} style={{ height: `${height * activity * 52}px` }} />;
+              })}
+            </div>
+          </section>
+          <div
+            className="voice-transcript-bubble"
+            style={{ opacity: transcript, transform: `translateY(${18 * (1 - transcript)}px)` }}
+          >
+            <span>VOICE TRANSCRIPT</span>
+            <strong>“Am I still on track with my grocery budget?”</strong>
+            <small>Review or edit · Send</small>
+          </div>
+          <div
+            className="voice-answer-bubble"
+            style={{ opacity: answer, transform: `translateY(${22 * (1 - answer)}px)` }}
+          >
+            <div className="spoken-reply-icon">▶</div>
+            <div>
+              <span>SPOKEN REPLY · 0:09</span>
+              <strong>Yes. You have ₱1,760 remaining in groceries.</strong>
+              <p>You have used 72% of the category budget you set for August.</p>
+              <small>Illustrative answer · Based on recorded workspace data</small>
+            </div>
+          </div>
         </div>
       </main>
     </div>

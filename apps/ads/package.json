@@ -9,7 +9,9 @@
     "render:feature": "remotion render src/index.ts Zoption-Feature-Highlight out/feature-highlight.mp4 --codec=h264 --pixel-format=yuv420p",
     "render:problem": "remotion render src/index.ts Zoption-Problem-To-Solution out/problem-to-solution.mp4 --codec=h264 --pixel-format=yuv420p",
     "render:showcase": "remotion render src/index.ts Zoption-Product-Showcase out/product-showcase.mp4 --codec=h264 --pixel-format=yuv420p",
-    "render:all": "pnpm render:feature && pnpm render:problem && pnpm render:showcase",
+    "render:combined": "remotion render src/index.ts Zoption-Complete-Story-60s out/zoption-complete-story-60s.mp4 --codec=h264 --pixel-format=yuv420p",
+    "render:all": "pnpm render:feature && pnpm render:problem && pnpm render:showcase && pnpm render:combined",
+    "still:combined": "remotion still src/index.ts Zoption-Complete-Story-60s out/preview-combined.png --frame=1260",
     "still:all": "remotion still src/index.ts Zoption-Feature-Highlight out/preview-feature.png --frame=180 && remotion still src/index.ts Zoption-Problem-To-Solution out/preview-problem.png --frame=245 && remotion still src/index.ts Zoption-Product-Showcase out/preview-showcase.png --frame=180"
   },
   "dependencies": {

@@ -1,5 +1,6 @@
 import type {
   AdTheme,
+  CombinedStoryConfig,
   FeatureHighlightConfig,
   ProblemSolutionConfig,
   ProductShowcaseConfig,
@@ -61,5 +62,29 @@ export const productShowcaseConfig: ProductShowcaseConfig = {
     position: "center",
   },
   callouts: ["Monthly overview", "Budget visibility", "Read-only assistant"],
+  theme: zoptionTheme,
+};
+
+export const combinedStoryConfig: CombinedStoryConfig = {
+  durationSeconds: 60,
+  eyebrow: "FROM RECORDS TO REAL CLARITY",
+  headline: "Your money has a story. Zoption helps you understand it.",
+  subtext:
+    "Import transactions, follow your budget, and ask a read-only AI assistant by text or voice.",
+  cta: "Start with Zoption",
+  url: "zoption.site",
+  asset: {
+    alt: "Illustrative Zoption financial workspace",
+    fit: "cover",
+    position: "center",
+  },
+  chapters: ["Bring it together", "See the month", "Ask your assistant", "Use your voice"],
+  importSteps: ["Choose CSV or Excel", "Match and preview", "Import approved rows"],
+  assistantPrompts: [
+    "Where did most of my spending go?",
+    "Am I still on track with groceries?",
+    "Which recurring costs should I review?",
+  ],
+  voiceBenefits: ["Speak your question", "Review or send automatically", "Hear a spoken reply"],
   theme: zoptionTheme,
 };
