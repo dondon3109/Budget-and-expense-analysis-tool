@@ -127,6 +127,10 @@ describe("landing page", () => {
     expect(
       within(installation).getByText(/not distributed through Google Play/i),
     ).toBeInTheDocument();
+    expect(within(installation).getByText(/status bar is visible again/i)).toBeInTheDocument();
+    expect(
+      within(installation).getByText(/install this update over your current app/i),
+    ).toBeInTheDocument();
     expect(
       within(installation).getByRole("link", { name: "Download Android APK" }),
     ).toHaveAttribute("href", "/install");

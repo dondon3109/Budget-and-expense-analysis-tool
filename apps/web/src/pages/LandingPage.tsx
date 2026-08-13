@@ -432,7 +432,7 @@ export function LandingPage() {
             <p className="eyebrow">Official Android release</p>
             <h2 id="install-promo-title">Take Zoption to Android.</h2>
             <p>
-              Download the release-signed APK directly from zoption.site for a focused full-screen
+              Download the release-signed APK directly from zoption.site for a focused, standalone
               app connected to the same private workspace.
             </p>
             <ul className="install-promo-points">
@@ -476,6 +476,11 @@ export function LandingPage() {
                 Download Android APK <ArrowRight size={17} aria-hidden="true" />
               </Link>
             </div>
+            <p className="install-promo-update-note">
+              New in Zoption {ANDROID_RELEASE.versionName}: the Android status bar is visible again.
+              Already installed? Install this update over your current app — your workspace stays
+              signed in.
+            </p>
             <p className="install-promo-note">
               The APK is not distributed through Google Play. Zoption remains online-first, so
               authenticated financial operations require an internet connection.

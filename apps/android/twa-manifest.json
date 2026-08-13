@@ -3,7 +3,7 @@
   "host": "zoption.site",
   "name": "Zoption",
   "launcherName": "Zoption",
-  "display": "fullscreen",
+  "display": "standalone",
   "themeColor": "#06473D",
   "themeColorDark": "#000000",
   "navigationColor": "#000000",
@@ -20,8 +20,8 @@
     "path": "EXTERNAL_KEYSTORE_PATH_REQUIRED",
     "alias": "zoption-release"
   },
-  "appVersionName": "2.0.0",
-  "appVersionCode": 20000,
+  "appVersionName": "2.1.1",
+  "appVersionCode": 20101,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://zoption.site/manifest.webmanifest",
@@ -48,5 +48,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "2.0.0"
+  "appVersion": "2.1.1"
 }

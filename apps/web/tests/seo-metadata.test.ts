@@ -177,8 +177,8 @@ describe("public SEO metadata", () => {
     expect(application).toEqual([
       expect.objectContaining({
         operatingSystem: "Android 5.0 or newer (API 21+)",
-        softwareVersion: "2.0.0",
-        downloadUrl: `${SITE_ORIGIN}/downloads/zoption-android-2.0.0.apk`,
+        softwareVersion: "2.1.1",
+        downloadUrl: `${SITE_ORIGIN}/downloads/zoption-android-2.1.1.apk`,
         fileSize: "2104552 bytes",
       }),
     ]);

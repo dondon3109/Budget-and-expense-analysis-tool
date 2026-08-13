@@ -84,7 +84,7 @@ describe("Android release contract", () => {
     });
   });
 
-  it("defines the intended fullscreen, production-only TWA and verified app link", async () => {
+  it("defines the intended standalone, production-only TWA and verified app link", async () => {
     const twaManifest = await json<TwaManifest>(resolve(androidRoot, "twa-manifest.json"));
     const gradle = await text(resolve(androidRoot, "app/build.gradle"));
     const manifest = await text(resolve(androidRoot, "app/src/main/AndroidManifest.xml"));
@@ -93,7 +93,7 @@ describe("Android release contract", () => {
       packageId: ANDROID_RELEASE.packageId,
       host: "zoption.site",
       startUrl: "/app",
-      display: "fullscreen",
+      display: "standalone",
       orientation: "any",
       minSdkVersion: 21,
       fullScopeUrl: "https://zoption.site/",
@@ -106,6 +106,9 @@ describe("Android release contract", () => {
     expect(manifest).toContain('android:autoVerify="true"');
     expect(manifest).toContain('android:scheme="https"');
     expect(manifest).toContain('android:usesCleartextTraffic="false"');
+    expect(manifest).toContain("android.support.customtabs.trusted.DISPLAY_MODE");
+    expect(manifest).toContain('android:value="standalone"');
+    expect(manifest).not.toContain('android:value="immersive"');
     expect(manifest).not.toMatch(/POST_NOTIFICATIONS|CAMERA|RECORD_AUDIO|ACCESS_FINE_LOCATION/);
   });
 
@@ -128,7 +131,7 @@ describe("Android release contract", () => {
       downloadPath: `/downloads/${ANDROID_RELEASE.filename}`,
       checksumPath: `/downloads/${ANDROID_RELEASE.filename}.sha256`,
       sizeBytes: 2_104_552,
-      releaseDate: "2026-08-10",
+      releaseDate: "2026-08-13",
       targetApi: 36,
     });
     expect(ANDROID_RELEASE.sha256).toMatch(/^[a-f0-9]{64}$/);

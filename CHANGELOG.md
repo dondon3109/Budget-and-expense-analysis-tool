@@ -2,6 +2,12 @@
 
 All notable product changes are documented here.
 
+## 2.1.1 — 2026-08-13
+
+### Fixed
+
+- The Android app no longer opens in immersive fullscreen: the system status bar with the time, Wi-Fi, and battery indicators is visible again while the app keeps its standalone, chrome-free window.
+
 ## 2.1.0 — 2026-08-12
 
 ### Added

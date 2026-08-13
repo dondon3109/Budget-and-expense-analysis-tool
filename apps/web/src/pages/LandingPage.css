@@ -950,6 +950,14 @@
   line-height: 1.6;
 }
 
+.landing-page .install-promo-update-note {
+  margin-top: 14px;
+  color: var(--lp-accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
 /* Supported formats band */
 .formats-band {
   padding: 92px 24px 72px;

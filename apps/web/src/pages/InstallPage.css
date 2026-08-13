@@ -179,6 +179,23 @@
   color: var(--lp-accent-strong);
 }
 
+.apk-update-note {
+  grid-column: 9 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--lp-accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.apk-update-note svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--lp-accent-strong);
+}
+
 .apk-release-facts {
   grid-column: 1 / -1;
   margin: 24px 0 10px;
@@ -583,7 +600,8 @@
   }
 
   .apk-download-action,
-  .apk-store-note {
+  .apk-store-note,
+  .apk-update-note {
     grid-column: 8 / -1;
   }
 
@@ -642,6 +660,10 @@
 
   .apk-store-note {
     margin-top: 12px;
+  }
+
+  .apk-update-note {
+    margin-top: 10px;
   }
 
   .apk-release-facts {
