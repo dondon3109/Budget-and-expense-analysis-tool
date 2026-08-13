@@ -347,9 +347,10 @@ export function TransactionsPage() {
                 type="button"
                 onClick={() => void transactionsQuery.refetch()}
                 disabled={transactionsQuery.isFetching}
+                aria-label="Refresh transactions"
               >
                 <RefreshCw size={15} className={transactionsQuery.isFetching ? "spinning" : ""} />{" "}
-                Refresh
+                <span className="refresh-button-label">Refresh</span>
               </button>
               <span className="transaction-list-divider" aria-hidden="true" />
               <label className="transaction-sort-control">
