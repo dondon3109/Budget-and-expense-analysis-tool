@@ -36,7 +36,7 @@ export const currentRelease: ProductRelease = {
     {
       title: "A more capable, easier-to-reach Zoption",
       description:
-        "This release also adds Google and Facebook sign-in, in-product help and bug reporting, clearer Free-plan information, improved mobile navigation, and more accurate remaining-budget calculations.",
+        "This release also adds Google sign-in, in-product help and bug reporting, clearer Free-plan information, improved mobile navigation, and more accurate remaining-budget calculations.",
     },
   ],
 };

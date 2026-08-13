@@ -74,7 +74,7 @@ How Zoption works:
 - Goals & debt stores savings goals and debt-planning records. These are user-managed and are never changed by chat.
 - AI Assistant is a separate signed-in, consent-gated, read-only financial assistant. DeepSeek interprets questions, while Zoption's server calculates verified financial results through fixed read-only tools. It cannot create, edit, or delete financial records. Users can manage its conversations, names, preferences, and memory from the Assistant area.
 - Account Settings manages profile details, sign-in/security settings, theme, plan and billing, Help & contact, assistant data controls, and permanent account deletion.
-- Supabase manages sign-in and identity. A verified Google or Facebook identity with the same email can preserve the existing Zoption workspace.
+- Supabase manages sign-in and identity. A verified Google identity with the same email can preserve the existing Zoption workspace.
 - Zoption has a free plan and an optional Pro plan. Current limits and checkout details are shown inside Account Settings; direct people there rather than guessing when plan details may have changed.
 - The Android app is a signed APK downloaded from zoption.site/install and is not distributed through Google Play. It is online-first and opens the same private web workspace.
 - Help & contact in Account Settings provides the FAQ, Zoption Support chat, and email contact options. The support email is support@zoption.site.

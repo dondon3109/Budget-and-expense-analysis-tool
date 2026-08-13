@@ -45,7 +45,7 @@ interface AuthContextValue {
   exchangeCodeForSession: (code: string) => Promise<boolean>;
 }
 
-export type SocialAuthProvider = "google" | "facebook";
+export type SocialAuthProvider = "google";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -57,7 +57,6 @@ function callbackUrl(next?: string): string {
 
 const SOCIAL_SCOPES: Record<SocialAuthProvider, string> = {
   google: "openid email profile",
-  facebook: "email public_profile",
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {

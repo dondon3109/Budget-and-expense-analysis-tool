@@ -25,29 +25,11 @@ function GoogleMark() {
   );
 }
 
-function FacebookMark() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-      <path
-        fill="#1877f2"
-        d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.23.2 2.23.2v2.45h-1.26c-1.24 0-1.62.77-1.62 1.56V12h2.77l-.44 2.89h-2.33v6.99A10 10 0 0 0 22 12Z"
-      />
-      <path
-        fill="#fff"
-        d="m15.89 14.89.44-2.89h-2.77v-1.88c0-.79.38-1.56 1.62-1.56h1.26V6.11s-1.14-.2-2.23-.2c-2.28 0-3.77 1.39-3.77 3.89V12H7.9v2.89h2.54v6.99a10.1 10.1 0 0 0 3.12 0v-6.99h2.33Z"
-      />
-    </svg>
-  );
-}
-
 const PROVIDERS: Array<{
   id: SocialAuthProvider;
   label: string;
   mark: () => ReactElement;
-}> = [
-  { id: "google", label: "Continue with Google", mark: GoogleMark },
-  { id: "facebook", label: "Continue with Facebook", mark: FacebookMark },
-];
+}> = [{ id: "google", label: "Continue with Google", mark: GoogleMark }];
 
 export function SocialAuthButtons({
   busyProvider,
@@ -73,11 +55,7 @@ export function SocialAuthButtons({
             <span className="auth-provider-mark">
               <Mark />
             </span>
-            <span>
-              {busyProvider === id
-                ? `Connecting to ${id === "google" ? "Google" : "Facebook"}…`
-                : label}
-            </span>
+            <span>{busyProvider === id ? "Connecting to Google…" : label}</span>
           </button>
         ))}
       </div>

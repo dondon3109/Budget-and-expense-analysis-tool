@@ -75,12 +75,15 @@ describe("SignupPage", () => {
   it("offers provider signup through the same deduplicating social sign-in flow", async () => {
     renderSignup();
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue with Facebook" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
 
     await waitFor(() =>
-      expect(authState.signInWithSocial).toHaveBeenCalledWith("facebook", "/app?proCheckout=open"),
+      expect(authState.signInWithSocial).toHaveBeenCalledWith("google", "/app?proCheckout=open"),
     );
-    expect(screen.getByRole("button", { name: "Connecting to Facebook…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Connecting to Google…" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Continue with Facebook" }),
+    ).not.toBeInTheDocument();
     expect(authState.signUp).not.toHaveBeenCalled();
   });
 

@@ -8,15 +8,15 @@ The public landing page contains a static dashboard illustration only. It does n
 
 ## Authentication and tenancy
 
-1. **Supabase manages identity, D1 manages financial data.** Passwords, Google/Facebook identities, confirmation, password recovery, sessions, and token refresh stay in Supabase. The application does not store passwords, provider credentials, or access tokens in D1.
+1. **Supabase manages identity, D1 manages financial data.** Passwords, Google identities, confirmation, password recovery, sessions, and token refresh stay in Supabase. The application does not store passwords, provider credentials, or access tokens in D1.
 2. **Financial APIs fail closed.** `/api/app/*` requires a valid bearer token. Missing or invalid authentication returns `401` and never resolves a tenant.
 3. **Identity maps to an application tenant.** `user_tenants` maps the immutable Supabase user subject to one D1 tenant.
 4. **First access bootstraps structure, not financial history.** The first authenticated request creates the personal tenant, mapping, Everyday account, and starter categories. It creates no transactions or budgets.
 5. **Deletion tombstones block re-bootstrap.** A permanent account-deletion marker is checked before tenant resolution. It stays after the tenant is purged so a retained but unexpired JWT cannot create a replacement workspace; normal private requests for that identity return `410 account_deleted`.
 6. **Tenant scope is mandatory.** Repositories require a tenant ID in every method signature. Route handlers obtain it only from authenticated Hono context; ownership is never accepted from request input.
 7. **Browser caches are user-scoped.** Every TanStack Query key begins with `user:<id>`, and the cache is cancelled and cleared when the authenticated identity changes or signs out.
-8. **Verified-email identity linking prevents duplicate workspaces.** Google and Facebook request email access. Supabase automatically attaches an OAuth identity with the same verified email to the existing Auth user, preserving its immutable subject and D1 tenant. The browser never searches users by email or attempts client-side account merging.
-9. **Provider-only users can add a password.** A user created through Google or Facebook can create a password from Account Settings before using password-protected account deletion. Existing password users must verify their current password before changing it.
+8. **Verified-email identity linking prevents duplicate workspaces.** Google requests email access. Supabase automatically attaches an OAuth identity with the same verified email to the existing Auth user, preserving its immutable subject and D1 tenant. The browser never searches users by email or attempts client-side account merging.
+9. **Provider-only users can add a password.** A user created through Google can create a password from Account Settings before using password-protected account deletion. Existing password users must verify their current password before changing it.
 
 ## Other engineering decisions
 

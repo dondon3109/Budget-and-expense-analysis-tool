@@ -51,9 +51,6 @@ function SignupOperation() {
       <button type="button" onClick={() => void signInWithSocial("google", "/app/settings")}>
         Google sign-in
       </button>
-      <button type="button" onClick={() => void signInWithSocial("facebook", "//evil.test")}>
-        Facebook sign-in
-      </button>
     </>
   );
 }
@@ -113,18 +110,6 @@ describe("AuthProvider signup", () => {
       }),
     );
     expect(sessionStorage.getItem("zoption-social-auth-destination")).toBe("/app/settings");
-
-    fireEvent.click(screen.getByRole("button", { name: "Facebook sign-in" }));
-    await waitFor(() =>
-      expect(supabaseMocks.signInWithOAuth).toHaveBeenLastCalledWith({
-        provider: "facebook",
-        options: {
-          redirectTo: "http://localhost:3000/auth/callback",
-          scopes: "email public_profile",
-        },
-      }),
-    );
-    expect(sessionStorage.getItem("zoption-social-auth-destination")).toBeNull();
   });
 
   it("reports confirmation-required and immediate-session responses", async () => {

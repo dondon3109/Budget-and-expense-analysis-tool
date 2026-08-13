@@ -67,11 +67,13 @@ describe("LoginPage", () => {
     authState.signInWithSocial.mockReset().mockResolvedValue(undefined);
   });
 
-  it("offers Google and Facebook without creating a separate workspace", () => {
+  it("offers Google without creating a separate workspace", () => {
     renderLogin();
 
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue with Facebook" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Continue with Facebook" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(/same verified email keeps your existing Zoption workspace/i),
     ).toBeInTheDocument();
@@ -89,17 +91,16 @@ describe("LoginPage", () => {
       ),
     );
     expect(screen.getByRole("button", { name: "Connecting to Google…" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Continue with Facebook" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
   });
 
   it("falls back to the app destination for an unsafe social redirect", async () => {
     renderLogin("/login?redirectTo=%2F%2Fevil.test");
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue with Facebook" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
 
     await waitFor(() =>
-      expect(authState.signInWithSocial).toHaveBeenCalledWith("facebook", "/app?proCheckout=open"),
+      expect(authState.signInWithSocial).toHaveBeenCalledWith("google", "/app?proCheckout=open"),
     );
   });
 
@@ -107,13 +108,13 @@ describe("LoginPage", () => {
     authState.signInWithSocial.mockRejectedValueOnce(new Error("provider configuration detail"));
     renderLogin();
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue with Facebook" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Facebook sign-in could not be started. Check your connection and try again.",
+      "Google sign-in could not be started. Check your connection and try again.",
     );
     expect(screen.queryByText(/provider configuration detail/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue with Facebook" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
   });
 
   it("lets someone reveal their password before signing in", async () => {

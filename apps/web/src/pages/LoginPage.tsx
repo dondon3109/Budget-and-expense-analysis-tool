@@ -43,9 +43,7 @@ export function LoginPage() {
     try {
       await signInWithSocial(provider, safeRedirect(searchParams.get("redirectTo")));
     } catch {
-      setError(
-        `${provider === "google" ? "Google" : "Facebook"} sign-in could not be started. Check your connection and try again.`,
-      );
+      setError("Google sign-in could not be started. Check your connection and try again.");
       setBusyProvider(null);
     }
   }

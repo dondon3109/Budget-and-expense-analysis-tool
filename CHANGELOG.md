@@ -12,6 +12,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Facebook sign-in is temporarily unavailable while its external app publishing requirements remain incomplete; email/password and Google sign-in are unchanged.
 - Voice recordings now stop automatically after speech is followed by silence. Recordings with no detected speech end locally without being sent for transcription.
 - Automatic voice submission now waits for the transcription provider to return a completed transcript. Production defaults push-to-talk to automatic submission with spoken-and-text replies, while review-first can still be enforced by environment configuration.
 - Spoken assistant replies now remove markdown formatting, table separators, and raw URLs for more natural playback. Text and audio are revealed together, with the audio control inside its assistant message and a visible preparation state while synthesis is still running.

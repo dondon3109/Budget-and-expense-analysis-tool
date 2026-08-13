@@ -82,7 +82,7 @@ export function SignupPage() {
       setError(
         new AuthOperationError(
           "unknown",
-          `${provider === "google" ? "Google" : "Facebook"} sign-in could not be started. Check your connection and try again.`,
+          "Google sign-in could not be started. Check your connection and try again.",
         ),
       );
       setBusyProvider(null);
