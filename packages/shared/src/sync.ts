@@ -460,8 +460,11 @@ export const mobileSyncPushResultSchema = z
   ])
   .superRefine((result, context) => {
     if (result.status !== "conflict" || !result.serverPayload) return;
+    // A budget "entity_exists" conflict returns the existing budget's snapshot, whose
+    // id legitimately differs from the client-generated id of the rejected create.
+    const foreignIdAllowed = result.code === "entity_exists" && result.entityType === "budget";
     if (
-      result.serverPayload.id !== result.entityId ||
+      (!foreignIdAllowed && result.serverPayload.id !== result.entityId) ||
       result.serverPayload.revision !== result.serverRevision ||
       result.serverPayload.updatedAt !== result.serverUpdatedAt
     ) {
@@ -478,7 +481,9 @@ export const mobileSyncPushResultSchema = z
           ? mobileSyncCategorySnapshotSchema
           : result.entityType === "transaction"
             ? mobileSyncTransactionSnapshotSchema
-            : mobileSyncTransferSnapshotSchema;
+            : result.entityType === "budget"
+              ? mobileSyncBudgetSnapshotSchema
+              : mobileSyncTransferSnapshotSchema;
     if (!expectedSchema.safeParse(result.serverPayload).success) {
       context.addIssue({
         code: "custom",

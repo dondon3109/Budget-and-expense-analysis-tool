@@ -1,6 +1,7 @@
 import type { LocalBudgetMonthData } from "@/db/repository";
 
 export interface BudgetMonthRow {
+  id: string;
   categoryId: string;
   categoryName: string;
   categoryColor: string;
@@ -9,6 +10,7 @@ export interface BudgetMonthRow {
   remainingMinor: number;
   usedPercent: number;
   overBudget: boolean;
+  syncState: "synced" | "pending" | "failed" | "conflicted";
 }
 
 export interface BudgetMonthView {
@@ -29,6 +31,7 @@ export function buildBudgetMonthView(data: LocalBudgetMonthData): BudgetMonthVie
     .map((budget) => {
       const remainingMinor = budget.limitMinor - budget.spentMinor;
       return {
+        id: budget.id,
         categoryId: budget.categoryId,
         categoryName: budget.categoryName,
         categoryColor: budget.categoryColor,
@@ -38,6 +41,7 @@ export function buildBudgetMonthView(data: LocalBudgetMonthData): BudgetMonthVie
         usedPercent:
           budget.limitMinor === 0 ? 0 : roundPercent((budget.spentMinor / budget.limitMinor) * 100),
         overBudget: budget.spentMinor > budget.limitMinor,
+        syncState: budget.syncState,
       };
     });
   const totalLimitMinor = rows.reduce((sum, row) => sum + row.limitMinor, 0);

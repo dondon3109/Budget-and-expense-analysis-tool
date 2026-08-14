@@ -265,6 +265,112 @@ describe("durable local transaction mutations", () => {
     ).toEqual({ count: 0 });
   });
 
+  it("replaces a conflicting budget create with the preserved server budget", async () => {
+    const mutations = repository(database);
+    await mutations.setBudgetLimit("2026-08-01", "category-1", 50_000);
+    const request = (await mutations.getPushBatch())!;
+    const localBudgetId = request.operations[0]!.entityId;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "budget",
+          entityId: localBudgetId,
+          status: "conflict",
+          code: "entity_exists",
+          serverRevision: 4,
+          serverUpdatedAt: "2026-08-13 15:30:00",
+          serverPayload: {
+            id: "budget-server-1",
+            categoryId: "category-1",
+            month: "2026-08-01",
+            limitMinor: 75_000,
+            revision: 4,
+            updatedAt: "2026-08-13 15:30:00",
+          },
+        },
+      ],
+    });
+
+    await expect(mutations.getBudgetConflict(localBudgetId)).resolves.toMatchObject({
+      local: { month: "2026-08-01", categoryId: "category-1", limitMinor: 50_000 },
+      server: { month: "2026-08-01", categoryId: "category-1", limitMinor: 75_000 },
+      serverRevision: 4,
+    });
+
+    await mutations.resolveBudgetConflict(localBudgetId, "keep_server");
+    expect(
+      database.native
+        .prepare(
+          "SELECT id, category_id, month, limit_minor, server_revision, sync_state FROM budgets",
+        )
+        .get(),
+    ).toEqual({
+      id: "budget-server-1",
+      category_id: "category-1",
+      month: "2026-08-01",
+      limit_minor: 75_000,
+      server_revision: 4,
+      sync_state: "synced",
+    });
+    expect(
+      database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get(),
+    ).toEqual({ count: 0 });
+  });
+
+  it("re-queues a keep-mine budget edit against the latest server revision", async () => {
+    const mutations = repository(database);
+    database.native.exec(
+      `INSERT INTO budgets (
+        id, category_id, month, limit_minor, server_revision, server_updated_at, sync_state
+      ) VALUES ('budget-1', 'category-1', '2026-08-01', 50_000, 3, '2026-08-13 15:00:00', 'synced')`,
+    );
+    await mutations.setBudgetLimit("2026-08-01", "category-1", 80_000);
+    const request = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "budget",
+          entityId: "budget-1",
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 5,
+          serverUpdatedAt: "2026-08-13 16:00:00",
+          serverPayload: {
+            id: "budget-1",
+            categoryId: "category-1",
+            month: "2026-08-01",
+            limitMinor: 90_000,
+            revision: 5,
+            updatedAt: "2026-08-13 16:00:00",
+          },
+        },
+      ],
+    });
+
+    await mutations.resolveBudgetConflict("budget-1", "keep_local");
+    expect(
+      database.native
+        .prepare(
+          "SELECT limit_minor, server_revision, sync_state FROM budgets WHERE id = 'budget-1'",
+        )
+        .get(),
+    ).toEqual({ limit_minor: 80_000, server_revision: 5, sync_state: "pending" });
+
+    const batch = await mutations.getPushBatch();
+    expect(batch?.operations).toHaveLength(1);
+    expect(batch?.operations[0]).toMatchObject({
+      entityType: "budget",
+      entityId: "budget-1",
+      operationType: "update",
+      baseRevision: 5,
+      payload: { limitMinor: 80_000 },
+    });
+  });
+
   it("does not split one dependency graph into an undersized push batch", async () => {
     const mutations = repository(database);
     const accountId = await mutations.createAccount({ name: "Graph account", type: "cash" });

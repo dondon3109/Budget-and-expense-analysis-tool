@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
@@ -188,12 +189,14 @@ export function BudgetsScreen() {
               <BudgetRow
                 key={row.categoryId}
                 color={row.categoryColor}
+                id={row.id}
                 limitMinor={row.limitMinor}
                 name={row.categoryName}
                 onPress={() => openEdit(row.categoryId, row.limitMinor)}
                 overBudget={row.overBudget}
                 remainingMinor={row.remainingMinor}
                 spentMinor={row.spentMinor}
+                syncState={row.syncState}
                 usedPercent={row.usedPercent}
               />
             ))
@@ -315,72 +318,125 @@ function SummaryCard({
 
 function BudgetRow({
   color,
+  id,
   limitMinor,
   name,
   onPress,
   overBudget,
   remainingMinor,
   spentMinor,
+  syncState,
   usedPercent,
 }: {
   color: string;
+  id: string;
   limitMinor: number;
   name: string;
   onPress: () => void;
   overBudget: boolean;
   remainingMinor: number;
   spentMinor: number;
+  syncState: "synced" | "pending" | "failed" | "conflicted";
   usedPercent: number;
 }) {
   const theme = useZoptionTheme();
   return (
-    <Pressable
+    <View
+      accessible
       accessibilityLabel={`${name}, spent ${spentMinor}, limit ${limitMinor}`}
-      accessibilityRole="button"
-      accessibilityHint="Edit this budget"
-      onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.row,
         {
           backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-          opacity: pressed ? 0.7 : 1,
+          borderColor: syncState === "conflicted" ? theme.colors.warning : theme.colors.border,
         },
       ]}
     >
-      <View style={styles.rowHeader}>
-        <View style={[styles.dot, { backgroundColor: color }]} />
-        <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text, flex: 1 }]}>
-          {name}
-        </Text>
-        <MoneyValue amountMinor={remainingMinor} tone={overBudget ? "expense" : "income"} />
-      </View>
-      <View style={styles.rowMeta}>
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          <MoneyValue amountMinor={spentMinor} tone="expense" /> of{" "}
-          <MoneyValue amountMinor={limitMinor} />
-        </Text>
-        <Text
-          style={[
-            typography.caption,
-            { color: overBudget ? theme.colors.danger : theme.colors.textMuted },
-          ]}
-        >
-          {usedPercent}%
-        </Text>
-      </View>
-      <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
-        <View
-          style={[
-            styles.fill,
-            {
-              width: (`${Math.min(100, usedPercent)}%` as DimensionValue),
-              backgroundColor: overBudget ? theme.colors.danger : color,
-            },
-          ]}
-        />
-      </View>
-    </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityHint={syncState === "conflicted" ? "Review this budget conflict" : "Edit this budget"}
+        disabled={syncState === "conflicted" || syncState === "failed"}
+        onPress={onPress}
+        style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+      >
+        <View style={styles.rowHeader}>
+          <View style={[styles.dot, { backgroundColor: color }]} />
+          <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text, flex: 1 }]}>
+            {name}
+          </Text>
+          <MoneyValue amountMinor={remainingMinor} tone={overBudget ? "expense" : "income"} />
+        </View>
+        <View style={styles.rowMeta}>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            <MoneyValue amountMinor={spentMinor} tone="expense" /> of{" "}
+            <MoneyValue amountMinor={limitMinor} />
+          </Text>
+          <Text
+            style={[
+              typography.caption,
+              { color: overBudget ? theme.colors.danger : theme.colors.textMuted },
+            ]}
+          >
+            {usedPercent}%
+          </Text>
+        </View>
+        <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
+          <View
+            style={[
+              styles.fill,
+              {
+                width: (`${Math.min(100, usedPercent)}%` as DimensionValue),
+                backgroundColor: overBudget ? theme.colors.danger : color,
+              },
+            ]}
+          />
+        </View>
+      </Pressable>
+      {syncState === "conflicted" ? (
+        <View style={styles.stateRow}>
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.warning}
+            name="alert-circle-outline"
+            size={16}
+          />
+          <Text style={[typography.caption, { color: theme.colors.warning, flex: 1 }]}>
+            Conflict preserved
+          </Text>
+          <Button
+            accessibilityLabel={`Review conflict for ${name}`}
+            onPress={() =>
+              router.push({ pathname: "/(app)/budget-conflict", params: { id } })
+            }
+            variant="secondary"
+          >
+            Review
+          </Button>
+        </View>
+      ) : syncState === "failed" ? (
+        <View style={styles.stateRow}>
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.danger}
+            name="cloud-alert-outline"
+            size={16}
+          />
+          <Text style={[typography.caption, { color: theme.colors.danger }]}>
+            Sync needs repair
+          </Text>
+        </View>
+      ) : syncState === "pending" ? (
+        <View style={styles.stateRow}>
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.warning}
+            name="cloud-upload-outline"
+            size={16}
+          />
+          <Text style={[typography.caption, { color: theme.colors.warning }]}>Pending sync</Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -519,6 +575,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
+  },
+  stateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   fixedCategory: {
     flexDirection: "row",

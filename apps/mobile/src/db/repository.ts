@@ -112,19 +112,23 @@ export interface TransactionFormData {
 }
 
 const budgetMonthItemSchema = z.object({
+  id: z.string(),
   category_id: z.string(),
   category_name: z.string(),
   category_color: z.string(),
   limit_minor: z.number().int().safe(),
   spent_minor: z.number().int().safe(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
 
 export interface BudgetMonthItem {
+  id: string;
   categoryId: string;
   categoryName: string;
   categoryColor: string;
   limitMinor: number;
   spentMinor: number;
+  syncState: "synced" | "pending" | "failed" | "conflicted";
 }
 
 export interface LocalBudgetMonthData {
@@ -688,10 +692,12 @@ LIMIT ?`;
     const [budgetRows, categoryRows] = await Promise.all([
       this.database.getAllAsync(
         `SELECT
+          b.id,
           b.category_id,
           c.name AS category_name,
           c.color AS category_color,
           b.limit_minor,
+          b.sync_state,
           COALESCE(SUM(CASE WHEN t.kind = 'expense' THEN ABS(t.amount_minor) ELSE 0 END), 0)
             AS spent_minor
          FROM budgets b
@@ -717,11 +723,13 @@ LIMIT ?`;
         .array(budgetMonthItemSchema)
         .parse(budgetRows)
         .map((row) => ({
+          id: row.id,
           categoryId: row.category_id,
           categoryName: row.category_name,
           categoryColor: row.category_color,
           limitMinor: row.limit_minor,
           spentMinor: row.spent_minor,
+          syncState: row.sync_state,
         })),
       categories: z.array(localCategoryOptionSchema).parse(categoryRows),
     };

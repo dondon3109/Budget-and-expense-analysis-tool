@@ -430,11 +430,13 @@ describe("encrypted local workspace repository", () => {
         .fn()
         .mockResolvedValueOnce([
           {
+            id: "budget-1",
             category_id: "category-1",
             category_name: "Dining",
             category_color: "#123456",
             limit_minor: 50_000,
             spent_minor: 25_000,
+            sync_state: "synced",
           },
         ])
         .mockResolvedValueOnce([
@@ -460,11 +462,13 @@ describe("encrypted local workspace repository", () => {
     );
     expect(result.budgets).toEqual([
       {
+        id: "budget-1",
         categoryId: "category-1",
         categoryName: "Dining",
         categoryColor: "#123456",
         limitMinor: 50_000,
         spentMinor: 25_000,
+        syncState: "synced",
       },
     ]);
     expect(result.categories).toEqual([

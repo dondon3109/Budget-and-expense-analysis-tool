@@ -10,6 +10,7 @@ import {
   categoryInputSchema,
   categoryUpdateSchema,
   mobileSyncAccountSnapshotSchema,
+  mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncPushOperationSchema,
   mobileSyncPushRequestSchema,
@@ -197,6 +198,23 @@ export interface LocalReferenceConflict {
   createdAt: string;
 }
 
+export interface LocalBudgetConflictVersion {
+  month: string;
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  limitMinor: number;
+}
+
+export interface LocalBudgetConflict {
+  id: string;
+  entityId: string;
+  local: LocalBudgetConflictVersion;
+  server: LocalBudgetConflictVersion | null;
+  serverRevision: number;
+  createdAt: string;
+}
+
 export class LocalMutationError extends Error {
   constructor(
     message: string,
@@ -206,6 +224,7 @@ export class LocalMutationError extends Error {
       | "transaction_missing"
       | "account_missing"
       | "category_missing"
+      | "budget_missing"
       | "name_conflict"
       | "mutation_blocked"
       | "invalid_outbox",
@@ -635,6 +654,21 @@ export class LocalTransactionMutationRepository {
     return decoded.data;
   }
 
+  private async currentBudgetById(id: string) {
+    const decoded = budgetRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, category_id, month, limit_minor, server_revision, server_updated_at,
+          deleted_at, sync_state
+         FROM budgets WHERE id = ?`,
+        id,
+      ),
+    );
+    if (!decoded.success || decoded.data.deleted_at) {
+      throw new LocalMutationError("Budget not found on this device.", "budget_missing");
+    }
+    return decoded.data;
+  }
+
   private async assertUniqueName(
     entityType: "account" | "category",
     name: string,
@@ -787,7 +821,7 @@ export class LocalTransactionMutationRepository {
   }
 
   private async currentConflict(
-    entityType: "account" | "category" | "transaction" | "transfer",
+    entityType: "account" | "category" | "transaction" | "transfer" | "budget",
     entityId: string,
   ) {
     const decoded = conflictRowSchema.safeParse(
@@ -2233,6 +2267,208 @@ export class LocalTransactionMutationRepository {
         );
       });
     });
+  }
+
+  getBudgetConflict(entityId: string): Promise<LocalBudgetConflict | null> {
+    return this.writer.run(async () => {
+      const local = await this.currentBudgetById(entityId);
+      const row = await this.database.getFirstAsync(
+        `SELECT conflict_id, operation_id, base_json, local_json, server_json,
+          server_revision, created_at
+         FROM sync_conflicts
+         WHERE entity_type = 'budget' AND entity_id = ? AND resolved_at IS NULL
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        entityId,
+      );
+      if (!row) return null;
+      const conflict = conflictRowSchema.parse(row);
+      let serverValue: unknown;
+      try {
+        serverValue = JSON.parse(conflict.server_json) as unknown;
+      } catch {
+        throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+      }
+      const category = await this.currentCategory(local.category_id);
+      const serverSnapshot =
+        serverValue === null ? null : mobileSyncBudgetSnapshotSchema.parse(serverValue);
+      const serverCategory = serverSnapshot
+        ? await this.currentCategory(serverSnapshot.categoryId)
+        : null;
+      return {
+        id: conflict.conflict_id,
+        entityId,
+        local: {
+          month: local.month,
+          categoryId: local.category_id,
+          categoryName: category.name,
+          categoryColor: category.color,
+          limitMinor: local.limit_minor,
+        },
+        server: serverSnapshot
+          ? {
+              month: serverSnapshot.month,
+              categoryId: serverSnapshot.categoryId,
+              categoryName: serverCategory?.name ?? serverSnapshot.categoryId,
+              categoryColor: serverCategory?.color ?? "#888888",
+              limitMinor: serverSnapshot.limitMinor,
+            }
+          : null,
+        serverRevision: conflict.server_revision,
+        createdAt: conflict.created_at,
+      };
+    });
+  }
+
+  resolveBudgetConflict(
+    entityId: string,
+    resolution: "keep_local" | "keep_server",
+  ): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const local = await this.currentBudgetById(entityId);
+        const conflict = await this.currentConflict("budget", entityId);
+        const outbox = await this.currentOutbox("budget", entityId);
+        if (
+          !outbox ||
+          outbox.operation_id !== conflict.operation_id ||
+          outbox.state !== "conflicted"
+        ) {
+          throw new LocalMutationError(
+            "The preserved budget conflict changed before it could be resolved.",
+            "mutation_blocked",
+          );
+        }
+        let serverValue: unknown;
+        try {
+          serverValue = JSON.parse(conflict.server_json) as unknown;
+        } catch {
+          throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+        }
+        const serverSnapshot =
+          serverValue === null ? null : mobileSyncBudgetSnapshotSchema.parse(serverValue);
+
+        await this.database.runAsync(
+          `UPDATE sync_conflicts SET resolved_at = ?, resolution = ?, operation_id = NULL
+           WHERE conflict_id = ? AND resolved_at IS NULL`,
+          this.now().toISOString(),
+          resolution,
+          conflict.conflict_id,
+        );
+        await this.database.runAsync(
+          "DELETE FROM sync_outbox WHERE operation_id = ?",
+          outbox.operation_id,
+        );
+
+        if (resolution === "keep_server") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM budgets WHERE id = ?", entityId);
+            return;
+          }
+          if (serverSnapshot.id !== entityId) {
+            await this.database.runAsync("DELETE FROM budgets WHERE id = ?", entityId);
+          }
+          await this.upsertBudgetSnapshot(serverSnapshot, "synced");
+          return;
+        }
+
+        const localLimit = local.limit_minor;
+        if (!serverSnapshot) {
+          await this.database.runAsync(
+            "UPDATE budgets SET sync_state = 'pending' WHERE id = ?",
+            entityId,
+          );
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'budget', ?, 'create', 0, ?, '[]', '{}', ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            entityId,
+            JSON.stringify({
+              categoryId: local.category_id,
+              month: local.month,
+              limitMinor: localLimit,
+            }),
+            await this.nextSequence(),
+          );
+          return;
+        }
+
+        const targetId = serverSnapshot.id;
+        if (targetId !== entityId) {
+          await this.database.runAsync("DELETE FROM budgets WHERE id = ?", entityId);
+          await this.database.runAsync(
+            `INSERT INTO budgets (
+              id, category_id, month, limit_minor, server_revision, server_updated_at,
+              deleted_at, sync_state
+            ) VALUES (?, ?, ?, ?, ?, ?, NULL, 'pending')`,
+            targetId,
+            serverSnapshot.categoryId,
+            serverSnapshot.month,
+            localLimit,
+            serverSnapshot.revision,
+            serverSnapshot.updatedAt,
+          );
+        } else {
+          await this.database.runAsync(
+            `UPDATE budgets SET limit_minor = ?, server_revision = ?, server_updated_at = ?,
+              sync_state = 'pending' WHERE id = ?`,
+            localLimit,
+            serverSnapshot.revision,
+            serverSnapshot.updatedAt,
+            entityId,
+          );
+        }
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'budget', ?, 'update', ?, ?, '[]', ?, ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          targetId,
+          serverSnapshot.revision,
+          JSON.stringify({ limitMinor: localLimit }),
+          JSON.stringify(serverSnapshot),
+          await this.nextSequence(),
+        );
+      });
+    });
+  }
+
+  private async upsertBudgetSnapshot(
+    snapshot: {
+      id: string;
+      categoryId: string;
+      month: string;
+      limitMinor: number;
+      revision: number;
+      updatedAt: string | null;
+    },
+    syncState: "synced" | "pending",
+  ): Promise<void> {
+    await this.database.runAsync(
+      `INSERT INTO budgets (
+        id, category_id, month, limit_minor, server_revision, server_updated_at, deleted_at, sync_state
+      ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         category_id = excluded.category_id,
+         month = excluded.month,
+         limit_minor = excluded.limit_minor,
+         server_revision = excluded.server_revision,
+         server_updated_at = excluded.server_updated_at,
+         deleted_at = NULL,
+         sync_state = excluded.sync_state`,
+      snapshot.id,
+      snapshot.categoryId,
+      snapshot.month,
+      snapshot.limitMinor,
+      snapshot.revision,
+      snapshot.updatedAt,
+      syncState,
+    );
   }
 
   applyPushResponse(request: MobileSyncPushRequest, value: MobileSyncPushResponse): Promise<void> {

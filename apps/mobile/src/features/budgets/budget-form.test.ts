@@ -16,21 +16,22 @@ describe("parseBudgetForm", () => {
   });
 
   it("rejects negative and malformed amounts", () => {
-    expect(parseBudgetForm({ categoryId: "category-1", amount: "-10" })).toMatchObject({
-      success: false,
-      errors: { amount: expect.any(String) },
-    });
-    expect(parseBudgetForm({ categoryId: "category-1", amount: "abc" })).toMatchObject({
-      success: false,
-      errors: { amount: expect.any(String) },
-    });
+    const negative = parseBudgetForm({ categoryId: "category-1", amount: "-10" });
+    expect(negative.success).toBe(false);
+    if (negative.success) throw new Error("Expected a validation failure.");
+    expect(typeof negative.errors.amount).toBe("string");
+
+    const malformed = parseBudgetForm({ categoryId: "category-1", amount: "abc" });
+    expect(malformed.success).toBe(false);
+    if (malformed.success) throw new Error("Expected a validation failure.");
+    expect(typeof malformed.errors.amount).toBe("string");
   });
 
   it("requires an expense category", () => {
-    expect(parseBudgetForm({ categoryId: "", amount: "10" })).toMatchObject({
-      success: false,
-      errors: { categoryId: expect.any(String) },
-    });
+    const result = parseBudgetForm({ categoryId: "", amount: "10" });
+    expect(result.success).toBe(false);
+    if (result.success) throw new Error("Expected a validation failure.");
+    expect(typeof result.errors.categoryId).toBe("string");
   });
 });
 

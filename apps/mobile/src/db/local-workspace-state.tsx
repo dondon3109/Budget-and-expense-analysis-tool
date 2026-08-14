@@ -21,6 +21,7 @@ import type {
   TransactionKindFilter,
 } from "./repository";
 import type {
+  LocalBudgetConflict,
   LocalReferenceConflict,
   LocalTransactionConflict,
 } from "./transaction-mutation-repository";
@@ -236,6 +237,63 @@ export function useBudgetMonth(month: string): {
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { data, error, retry };
+}
+
+export function useBudgetConflict(id?: string): {
+  conflict: LocalBudgetConflict | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [conflict, setConflict] = useState<LocalBudgetConflict | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setConflict(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.transactionMutations
+        .getBudgetConflict(id)
+        .then((next) => {
+          if (active) {
+            setConflict(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The preserved budget conflict could not be read from encrypted storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["budgets", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { conflict, loading, error, retry };
 }
 
 export function useLocalTransactions(
