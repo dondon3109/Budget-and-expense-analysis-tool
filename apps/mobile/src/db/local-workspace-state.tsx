@@ -13,6 +13,7 @@ import { addDatabaseChangeListener } from "expo-sqlite";
 import { closeLocalWorkspace, openLocalWorkspace, type LocalWorkspace } from "./workspace";
 import type { LocalWorkspaceStats } from "./repository";
 import type {
+  LocalBudgetMonthData,
   LocalDashboardData,
   LocalReferenceData,
   LocalTransactionItem,
@@ -183,6 +184,55 @@ export function useDashboardData(): {
       subscription.remove();
     };
   }, [attempt, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { data, error, retry };
+}
+
+export function useBudgetMonth(month: string): {
+  data: LocalBudgetMonthData | null;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [data, setData] = useState<LocalBudgetMonthData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace) {
+      setData(null);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      void workspace.repository
+        .getBudgetMonth(month)
+        .then((next) => {
+          if (active) {
+            setData(next);
+            setError(null);
+          }
+        })
+        .catch(() => {
+          if (active) setError("Budgets could not be read from encrypted local storage.");
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["budgets", "categories", "transactions"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, month, workspace]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { data, error, retry };

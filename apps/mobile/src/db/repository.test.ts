@@ -423,4 +423,53 @@ describe("encrypted local workspace repository", () => {
       },
     ]);
   });
+
+  it("reads a month's budgets with spent totals and editable categories", async () => {
+    const database = {
+      getAllAsync: jest
+        .fn()
+        .mockResolvedValueOnce([
+          {
+            category_id: "category-1",
+            category_name: "Dining",
+            category_color: "#123456",
+            limit_minor: 50_000,
+            spent_minor: 25_000,
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "category-1",
+            name: "Dining",
+            kind: "expense",
+            color: "#123456",
+            pending: 0,
+          },
+          {
+            id: "category-2",
+            name: "Groceries",
+            kind: "expense",
+            color: "#0F766E",
+            pending: 0,
+          },
+        ]),
+    };
+
+    const result = await new LocalWorkspaceRepository(database as never).getBudgetMonth(
+      "2026-08-01",
+    );
+    expect(result.budgets).toEqual([
+      {
+        categoryId: "category-1",
+        categoryName: "Dining",
+        categoryColor: "#123456",
+        limitMinor: 50_000,
+        spentMinor: 25_000,
+      },
+    ]);
+    expect(result.categories).toEqual([
+      { id: "category-1", name: "Dining", kind: "expense", color: "#123456", pending: false },
+      { id: "category-2", name: "Groceries", kind: "expense", color: "#0F766E", pending: false },
+    ]);
+  });
 });

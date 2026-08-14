@@ -1,10 +1,11 @@
-import type {
-  AccountRecord,
-  BudgetRecord,
-  InterestSettings,
-  TransactionInput,
-  TransactionListItem,
-  TransactionRecord,
+import {
+  monthStartSchema,
+  type AccountRecord,
+  type BudgetRecord,
+  type InterestSettings,
+  type TransactionInput,
+  type TransactionListItem,
+  type TransactionRecord,
 } from "@zoption/shared";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { z } from "zod";
@@ -108,6 +109,27 @@ export interface TransactionFormData {
   categories: LocalCategoryOption[];
   transaction: EditableLocalTransaction | null;
   unavailableReason: string | null;
+}
+
+const budgetMonthItemSchema = z.object({
+  category_id: z.string(),
+  category_name: z.string(),
+  category_color: z.string(),
+  limit_minor: z.number().int().safe(),
+  spent_minor: z.number().int().safe(),
+});
+
+export interface BudgetMonthItem {
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  limitMinor: number;
+  spentMinor: number;
+}
+
+export interface LocalBudgetMonthData {
+  budgets: BudgetMonthItem[];
+  categories: LocalCategoryOption[];
 }
 
 const localAccountItemSchema = z.object({
@@ -658,6 +680,50 @@ LIMIT ?`;
           limitMinor: decoded.limit_minor,
         };
       }),
+    };
+  }
+
+  async getBudgetMonth(month: string): Promise<LocalBudgetMonthData> {
+    const monthStart = monthStartSchema.parse(month);
+    const [budgetRows, categoryRows] = await Promise.all([
+      this.database.getAllAsync(
+        `SELECT
+          b.category_id,
+          c.name AS category_name,
+          c.color AS category_color,
+          b.limit_minor,
+          COALESCE(SUM(CASE WHEN t.kind = 'expense' THEN ABS(t.amount_minor) ELSE 0 END), 0)
+            AS spent_minor
+         FROM budgets b
+         INNER JOIN categories c ON c.id = b.category_id AND c.deleted_at IS NULL
+         LEFT JOIN transactions t ON t.category_id = b.category_id AND t.deleted_at IS NULL
+           AND substr(t.date, 1, 7) = substr(?, 1, 7)
+         WHERE b.month = ? AND b.deleted_at IS NULL
+         GROUP BY b.category_id
+         ORDER BY c.name COLLATE NOCASE`,
+        monthStart,
+        monthStart,
+      ),
+      this.database.getAllAsync(
+        `SELECT id, name, kind, color,
+          CASE WHEN server_revision = 0 THEN 1 ELSE 0 END AS pending
+         FROM categories
+         WHERE deleted_at IS NULL AND archived = 0 AND locked = 0 AND kind = 'expense'
+         ORDER BY name COLLATE NOCASE, id`,
+      ),
+    ]);
+    return {
+      budgets: z
+        .array(budgetMonthItemSchema)
+        .parse(budgetRows)
+        .map((row) => ({
+          categoryId: row.category_id,
+          categoryName: row.category_name,
+          categoryColor: row.category_color,
+          limitMinor: row.limit_minor,
+          spentMinor: row.spent_minor,
+        })),
+      categories: z.array(localCategoryOptionSchema).parse(categoryRows),
     };
   }
 }
