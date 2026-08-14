@@ -1158,3 +1158,144 @@ describe("durable local transaction mutations", () => {
     });
   });
 });
+
+describe("durable local financial goal mutations", () => {
+  let database: TestDatabase;
+
+  beforeEach(() => {
+    database = new TestDatabase();
+  });
+
+  afterEach(() => database.close());
+
+  it("creates, updates, and deletes a goal offline", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createGoal({
+      name: "House Fund",
+      targetAmountMinor: 500_000,
+      currentAmountMinor: 0,
+      targetDate: "2027-12-31",
+      status: "active",
+    });
+    expect(
+      database.native
+        .prepare("SELECT name, server_revision, sync_state FROM financial_goals WHERE id = ?")
+        .get(id),
+    ).toEqual({ name: "House Fund", server_revision: 0, sync_state: "pending" });
+
+    await mutations.updateGoal(id, { currentAmountMinor: 120_000 });
+    expect(
+      database.native
+        .prepare("SELECT current_amount_minor, sync_state FROM financial_goals WHERE id = ?")
+        .get(id),
+    ).toEqual({ current_amount_minor: 120_000, sync_state: "pending" });
+
+    await mutations.deleteGoal(id);
+    expect(
+      database.native.prepare("SELECT id FROM financial_goals WHERE id = ?").get(id),
+    ).toBeUndefined();
+    expect(
+      database.native
+        .prepare("SELECT count(*) AS count FROM sync_outbox WHERE entity_id = ?")
+        .get(id),
+    ).toEqual({ count: 0 });
+  });
+
+  it("rejects a duplicate goal name locally", async () => {
+    const mutations = repository(database);
+    await mutations.createGoal({
+      name: "Emergency Fund",
+      targetAmountMinor: 100_000,
+      currentAmountMinor: 0,
+      targetDate: "2026-12-31",
+      status: "active",
+    });
+    await expect(
+      mutations.createGoal({
+        name: "EMERGENCY FUND",
+        targetAmountMinor: 200_000,
+        currentAmountMinor: 0,
+        targetDate: "2027-06-30",
+        status: "active",
+      }),
+    ).rejects.toMatchObject({ code: "name_conflict" });
+  });
+
+  it("rejects current savings above the target", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createGoal({
+      name: "Vacation",
+      targetAmountMinor: 100_000,
+      currentAmountMinor: 0,
+      targetDate: "2027-01-01",
+      status: "active",
+    });
+    await expect(
+      mutations.updateGoal(id, { currentAmountMinor: 200_000 }),
+    ).rejects.toMatchObject({ code: "mutation_blocked" });
+  });
+
+  it("preserves and resolves a stale goal update conflict", async () => {
+    const mutations = repository(database);
+    database.native.exec(`
+      INSERT INTO financial_goals (
+        id, name, target_amount_minor, current_amount_minor, target_date, status,
+        server_revision, server_updated_at, sync_state
+      ) VALUES (
+        'goal-server', 'Server Goal', 100000, 25000, '2026-12-31', 'active',
+        3, '2026-08-13 15:00:00', 'synced'
+      );
+    `);
+    await mutations.updateGoal("goal-server", { currentAmountMinor: 50_000 });
+    const request = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "goal",
+          entityId: "goal-server",
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 4,
+          serverUpdatedAt: "2026-08-13 16:00:00",
+          serverPayload: {
+            id: "goal-server",
+            name: "Server Goal",
+            targetAmountMinor: 100_000,
+            currentAmountMinor: 60_000,
+            targetDate: "2026-12-31",
+            status: "active",
+            revision: 4,
+            updatedAt: "2026-08-13 16:00:00",
+          },
+        },
+      ],
+    });
+
+    const conflict = await mutations.getGoalConflict("goal-server");
+    expect(conflict).toMatchObject({
+      entityId: "goal-server",
+      local: { currentAmountMinor: 50_000 },
+      server: { currentAmountMinor: 60_000 },
+    });
+
+    await mutations.resolveGoalConflict("goal-server", "keep_local");
+    expect(
+      database.native
+        .prepare(
+          "SELECT current_amount_minor, server_revision, sync_state FROM financial_goals WHERE id = 'goal-server'",
+        )
+        .get(),
+    ).toEqual({ current_amount_minor: 50_000, server_revision: 4, sync_state: "pending" });
+
+    const batch = await mutations.getPushBatch();
+    expect(batch?.operations).toHaveLength(1);
+    expect(batch?.operations[0]).toMatchObject({
+      entityType: "goal",
+      entityId: "goal-server",
+      operationType: "update",
+      baseRevision: 4,
+    });
+  });
+});

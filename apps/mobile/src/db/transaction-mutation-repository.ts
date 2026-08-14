@@ -9,9 +9,12 @@ import {
   buildTransferLegs,
   categoryInputSchema,
   categoryUpdateSchema,
+  financialGoalInputSchema,
+  financialGoalUpdateSchema,
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
+  mobileSyncGoalSnapshotSchema,
   mobileSyncPushOperationSchema,
   mobileSyncPushRequestSchema,
   mobileSyncPushResponseSchema,
@@ -30,6 +33,9 @@ import {
   type AccountUpdate,
   type CategoryInput,
   type CategoryUpdate,
+  type FinancialGoalInput,
+  type FinancialGoalStatus,
+  type FinancialGoalUpdate,
   type TransactionInput,
   type TransactionUpdate,
   type TransferInput,
@@ -124,10 +130,22 @@ const budgetRowSchema = z.object({
   deleted_at: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
+const goalRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  target_amount_minor: z.number().int().safe(),
+  current_amount_minor: z.number().int().safe(),
+  target_date: z.string(),
+  status: z.enum(["active", "paused", "completed"]),
+  server_revision: z.number().int().nonnegative(),
+  server_updated_at: z.string().nullable(),
+  deleted_at: z.string().nullable(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
 const outboxRowSchema = z.object({
   operation_id: uuidSchema,
   idempotency_key: uuidSchema,
-  entity_type: z.enum(["account", "category", "transaction", "transfer", "budget"]),
+  entity_type: z.enum(["account", "category", "transaction", "transfer", "budget", "goal"]),
   entity_id: z.string(),
   operation_type: z.enum(["create", "update", "delete"]),
   base_revision: z.number().int().nonnegative().nullable(),
@@ -215,6 +233,23 @@ export interface LocalBudgetConflict {
   createdAt: string;
 }
 
+export interface LocalGoalConflictVersion {
+  name: string;
+  targetAmountMinor: number;
+  currentAmountMinor: number;
+  targetDate: string;
+  status: FinancialGoalStatus;
+}
+
+export interface LocalGoalConflict {
+  id: string;
+  entityId: string;
+  local: LocalGoalConflictVersion;
+  server: LocalGoalConflictVersion | null;
+  serverRevision: number;
+  createdAt: string;
+}
+
 export class LocalMutationError extends Error {
   constructor(
     message: string,
@@ -225,6 +260,7 @@ export class LocalMutationError extends Error {
       | "account_missing"
       | "category_missing"
       | "budget_missing"
+      | "goal_missing"
       | "name_conflict"
       | "mutation_blocked"
       | "invalid_outbox",
@@ -244,6 +280,8 @@ function syncEntityTable(entityType: MobileSyncPushOperation["entityType"]): str
       return "transactions";
     case "budget":
       return "budgets";
+    case "goal":
+      return "financial_goals";
     case "transfer":
       throw new LocalMutationError(
         "Transfers update two transaction rows and do not have a single entity table.",
@@ -290,6 +328,19 @@ function budgetSnapshot(row: z.infer<typeof budgetRowSchema>): Record<string, un
     categoryId: row.category_id,
     month: row.month,
     limitMinor: row.limit_minor,
+    revision: row.server_revision,
+    updatedAt: row.server_updated_at,
+  };
+}
+
+function goalSnapshot(row: z.infer<typeof goalRowSchema>): Record<string, unknown> {
+  return {
+    id: row.id,
+    name: row.name,
+    targetAmountMinor: row.target_amount_minor,
+    currentAmountMinor: row.current_amount_minor,
+    targetDate: row.target_date,
+    status: row.status,
     revision: row.server_revision,
     updatedAt: row.server_updated_at,
   };
@@ -669,12 +720,47 @@ export class LocalTransactionMutationRepository {
     return decoded.data;
   }
 
+  private async currentGoalById(id: string) {
+    const decoded = goalRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, name, target_amount_minor, current_amount_minor, target_date, status,
+          server_revision, server_updated_at, deleted_at, sync_state
+         FROM financial_goals WHERE id = ?`,
+        id,
+      ),
+    );
+    if (!decoded.success || decoded.data.deleted_at) {
+      throw new LocalMutationError("Goal not found on this device.", "goal_missing");
+    }
+    return decoded.data;
+  }
+
+  private async currentGoalRowById(id: string) {
+    const decoded = goalRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, name, target_amount_minor, current_amount_minor, target_date, status,
+          server_revision, server_updated_at, deleted_at, sync_state
+         FROM financial_goals WHERE id = ?`,
+        id,
+      ),
+    );
+    if (!decoded.success) {
+      throw new LocalMutationError("Goal not found on this device.", "goal_missing");
+    }
+    return decoded.data;
+  }
+
   private async assertUniqueName(
-    entityType: "account" | "category",
+    entityType: "account" | "category" | "goal",
     name: string,
     excludeId?: string,
   ): Promise<void> {
-    const table = entityType === "account" ? "accounts" : "categories";
+    const table =
+      entityType === "account"
+        ? "accounts"
+        : entityType === "category"
+          ? "categories"
+          : "financial_goals";
     const duplicate = await this.database.getFirstAsync<{ id: string }>(
       `SELECT id FROM ${table}
        WHERE deleted_at IS NULL AND lower(name) = lower(?)${excludeId ? " AND id != ?" : ""}
@@ -821,7 +907,7 @@ export class LocalTransactionMutationRepository {
   }
 
   private async currentConflict(
-    entityType: "account" | "category" | "transaction" | "transfer" | "budget",
+    entityType: "account" | "category" | "transaction" | "transfer" | "budget" | "goal",
     entityId: string,
   ) {
     const decoded = conflictRowSchema.safeParse(
@@ -1158,6 +1244,178 @@ export class LocalTransactionMutationRepository {
           entityId,
           JSON.stringify({ categoryId: category, month: monthValue, limitMinor: limit }),
           await this.nextSequence(),
+        );
+      });
+    });
+  }
+
+  createGoal(value: FinancialGoalInput): Promise<string> {
+    const input = financialGoalInputSchema.parse(value);
+    return this.writer.run(async () => {
+      let entityId = "";
+      await this.database.withTransactionAsync(async () => {
+        await this.assertUniqueName("goal", input.name);
+        await this.clientId();
+        entityId = uuidSchema.parse(this.randomUuid());
+        await this.database.runAsync(
+          `INSERT INTO financial_goals (
+            id, name, target_amount_minor, current_amount_minor, target_date, status,
+            server_revision, server_updated_at, deleted_at, sync_state
+          ) VALUES (?, ?, ?, ?, ?, ?, 0, NULL, NULL, 'pending')`,
+          entityId,
+          input.name,
+          input.targetAmountMinor,
+          input.currentAmountMinor,
+          input.targetDate,
+          input.status,
+        );
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'goal', ?, 'create', 0, ?, '[]', '{}', ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          entityId,
+          JSON.stringify({
+            name: input.name,
+            targetAmountMinor: input.targetAmountMinor,
+            currentAmountMinor: input.currentAmountMinor,
+            targetDate: input.targetDate,
+            status: input.status,
+          }),
+          await this.nextSequence(),
+        );
+      });
+      return entityId;
+    });
+  }
+
+  updateGoal(id: string, value: FinancialGoalUpdate): Promise<void> {
+    const update = financialGoalUpdateSchema.parse(value);
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentGoalById(id);
+        if (current.sync_state === "failed" || current.sync_state === "conflicted") {
+          throw new LocalMutationError(
+            "Resolve this goal's synchronization state before editing it.",
+            "mutation_blocked",
+          );
+        }
+        const outbox = await this.currentOutbox("goal", id);
+        if (outbox?.operation_type === "delete") {
+          throw new LocalMutationError(
+            "This goal is already waiting to be deleted.",
+            "mutation_blocked",
+          );
+        }
+        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+          throw new LocalMutationError(
+            "Wait for the current synchronization attempt before editing this goal.",
+            "mutation_blocked",
+          );
+        }
+        const merged = {
+          name: update.name ?? current.name,
+          targetAmountMinor: update.targetAmountMinor ?? current.target_amount_minor,
+          currentAmountMinor: update.currentAmountMinor ?? current.current_amount_minor,
+          targetDate: update.targetDate ?? current.target_date,
+          status: update.status ?? current.status,
+        };
+        if (merged.currentAmountMinor > merged.targetAmountMinor) {
+          throw new LocalMutationError(
+            "Current savings cannot exceed the target amount.",
+            "mutation_blocked",
+          );
+        }
+        if (update.name) await this.assertUniqueName("goal", update.name, id);
+        if (outbox) {
+          await this.database.runAsync(
+            `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
+              next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
+            JSON.stringify(merged),
+            outbox.operation_id,
+          );
+        } else {
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'goal', ?, 'update', ?, ?, '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            id,
+            current.server_revision,
+            JSON.stringify(merged),
+            JSON.stringify(goalSnapshot(current)),
+            await this.nextSequence(),
+          );
+        }
+        await this.database.runAsync(
+          `UPDATE financial_goals SET
+            name = ?, target_amount_minor = ?, current_amount_minor = ?, target_date = ?,
+            status = ?, sync_state = 'pending' WHERE id = ?`,
+          merged.name,
+          merged.targetAmountMinor,
+          merged.currentAmountMinor,
+          merged.targetDate,
+          merged.status,
+          id,
+        );
+      });
+    });
+  }
+
+  deleteGoal(id: string): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentGoalById(id);
+        if (current.sync_state === "failed" || current.sync_state === "conflicted") {
+          throw new LocalMutationError(
+            "Resolve this goal's synchronization state before deleting it.",
+            "mutation_blocked",
+          );
+        }
+        const outbox = await this.currentOutbox("goal", id);
+        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+          throw new LocalMutationError(
+            "Wait for the current synchronization attempt before deleting this goal.",
+            "mutation_blocked",
+          );
+        }
+        if (current.server_revision === 0 && outbox?.operation_type === "create") {
+          await this.database.runAsync(
+            "DELETE FROM sync_outbox WHERE operation_id = ?",
+            outbox.operation_id,
+          );
+          await this.database.runAsync("DELETE FROM financial_goals WHERE id = ?", id);
+          return;
+        }
+        if (outbox) {
+          await this.database.runAsync(
+            `UPDATE sync_outbox SET operation_type = 'delete', payload_json = '{}',
+              state = 'pending', attempt_count = 0, next_attempt_at = NULL,
+              last_error_code = NULL WHERE operation_id = ?`,
+            outbox.operation_id,
+          );
+        } else {
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'goal', ?, 'delete', ?, '{}', '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            id,
+            current.server_revision,
+            JSON.stringify(goalSnapshot(current)),
+            await this.nextSequence(),
+          );
+        }
+        await this.database.runAsync(
+          "UPDATE financial_goals SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
+          this.now().toISOString(),
+          id,
         );
       });
     });
@@ -2465,6 +2723,217 @@ export class LocalTransactionMutationRepository {
       snapshot.categoryId,
       snapshot.month,
       snapshot.limitMinor,
+      snapshot.revision,
+      snapshot.updatedAt,
+      syncState,
+    );
+  }
+
+  getGoalConflict(entityId: string): Promise<LocalGoalConflict | null> {
+    return this.writer.run(async () => {
+      const local = await this.currentGoalRowById(entityId);
+      const row = await this.database.getFirstAsync(
+        `SELECT conflict_id, operation_id, base_json, local_json, server_json,
+          server_revision, created_at
+         FROM sync_conflicts
+         WHERE entity_type = 'goal' AND entity_id = ? AND resolved_at IS NULL
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        entityId,
+      );
+      if (!row) return null;
+      const conflict = conflictRowSchema.parse(row);
+      let serverValue: unknown;
+      try {
+        serverValue = JSON.parse(conflict.server_json) as unknown;
+      } catch {
+        throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+      }
+      const serverSnapshot =
+        serverValue === null ? null : mobileSyncGoalSnapshotSchema.parse(serverValue);
+      return {
+        id: conflict.conflict_id,
+        entityId,
+        local: {
+          name: local.name,
+          targetAmountMinor: local.target_amount_minor,
+          currentAmountMinor: local.current_amount_minor,
+          targetDate: local.target_date,
+          status: local.status,
+        },
+        server: serverSnapshot
+          ? {
+              name: serverSnapshot.name,
+              targetAmountMinor: serverSnapshot.targetAmountMinor,
+              currentAmountMinor: serverSnapshot.currentAmountMinor,
+              targetDate: serverSnapshot.targetDate,
+              status: serverSnapshot.status,
+            }
+          : null,
+        serverRevision: conflict.server_revision,
+        createdAt: conflict.created_at,
+      };
+    });
+  }
+
+  resolveGoalConflict(
+    entityId: string,
+    resolution: "keep_local" | "keep_server",
+  ): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const local = await this.currentGoalRowById(entityId);
+        const conflict = await this.currentConflict("goal", entityId);
+        const outbox = await this.currentOutbox("goal", entityId);
+        if (
+          !outbox ||
+          outbox.operation_id !== conflict.operation_id ||
+          outbox.state !== "conflicted"
+        ) {
+          throw new LocalMutationError(
+            "The preserved goal conflict changed before it could be resolved.",
+            "mutation_blocked",
+          );
+        }
+        let serverValue: unknown;
+        try {
+          serverValue = JSON.parse(conflict.server_json) as unknown;
+        } catch {
+          throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+        }
+        const serverSnapshot =
+          serverValue === null ? null : mobileSyncGoalSnapshotSchema.parse(serverValue);
+
+        await this.database.runAsync(
+          `UPDATE sync_conflicts SET resolved_at = ?, resolution = ?, operation_id = NULL
+           WHERE conflict_id = ? AND resolved_at IS NULL`,
+          this.now().toISOString(),
+          resolution,
+          conflict.conflict_id,
+        );
+        await this.database.runAsync(
+          "DELETE FROM sync_outbox WHERE operation_id = ?",
+          outbox.operation_id,
+        );
+
+        if (resolution === "keep_server") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM financial_goals WHERE id = ?", entityId);
+            return;
+          }
+          await this.upsertGoalSnapshot(serverSnapshot, "synced");
+          return;
+        }
+
+        const operationType = outbox.operation_type;
+        if (operationType === "delete") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM financial_goals WHERE id = ?", entityId);
+            return;
+          }
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'goal', ?, 'delete', ?, '{}', '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            entityId,
+            serverSnapshot.revision,
+            JSON.stringify(serverSnapshot),
+            await this.nextSequence(),
+          );
+          await this.database.runAsync(
+            "UPDATE financial_goals SET sync_state = 'pending' WHERE id = ?",
+            entityId,
+          );
+          return;
+        }
+
+        const localInput = {
+          name: local.name,
+          targetAmountMinor: local.target_amount_minor,
+          currentAmountMinor: local.current_amount_minor,
+          targetDate: local.target_date,
+          status: local.status,
+        };
+        if (!serverSnapshot) {
+          await this.database.runAsync(
+            `UPDATE financial_goals SET server_revision = 0, server_updated_at = NULL,
+              sync_state = 'pending' WHERE id = ?`,
+            entityId,
+          );
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'goal', ?, 'create', 0, ?, '[]', '{}', ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            entityId,
+            JSON.stringify(localInput),
+            await this.nextSequence(),
+          );
+          return;
+        }
+        await this.database.runAsync(
+          `UPDATE financial_goals SET server_revision = ?, server_updated_at = ?,
+            sync_state = 'pending' WHERE id = ?`,
+          serverSnapshot.revision,
+          serverSnapshot.updatedAt,
+          entityId,
+        );
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'goal', ?, 'update', ?, ?, '[]', ?, ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          entityId,
+          serverSnapshot.revision,
+          JSON.stringify(localInput),
+          JSON.stringify(serverSnapshot),
+          await this.nextSequence(),
+        );
+      });
+    });
+  }
+
+  private async upsertGoalSnapshot(
+    snapshot: {
+      id: string;
+      name: string;
+      targetAmountMinor: number;
+      currentAmountMinor: number;
+      targetDate: string;
+      status: FinancialGoalStatus;
+      revision: number;
+      updatedAt: string | null;
+    },
+    syncState: "synced" | "pending",
+  ): Promise<void> {
+    await this.database.runAsync(
+      `INSERT INTO financial_goals (
+        id, name, target_amount_minor, current_amount_minor, target_date, status,
+        server_revision, server_updated_at, deleted_at, sync_state
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         name = excluded.name,
+         target_amount_minor = excluded.target_amount_minor,
+         current_amount_minor = excluded.current_amount_minor,
+         target_date = excluded.target_date,
+         status = excluded.status,
+         server_revision = excluded.server_revision,
+         server_updated_at = excluded.server_updated_at,
+         deleted_at = NULL,
+         sync_state = excluded.sync_state`,
+      snapshot.id,
+      snapshot.name,
+      snapshot.targetAmountMinor,
+      snapshot.currentAmountMinor,
+      snapshot.targetDate,
+      snapshot.status,
       snapshot.revision,
       snapshot.updatedAt,
       syncState,

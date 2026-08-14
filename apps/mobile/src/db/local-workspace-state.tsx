@@ -15,6 +15,7 @@ import type { LocalWorkspaceStats } from "./repository";
 import type {
   LocalBudgetMonthData,
   LocalDashboardData,
+  LocalGoalItem,
   LocalReferenceData,
   LocalTransactionItem,
   TransactionFormData,
@@ -22,6 +23,7 @@ import type {
 } from "./repository";
 import type {
   LocalBudgetConflict,
+  LocalGoalConflict,
   LocalReferenceConflict,
   LocalTransactionConflict,
 } from "./transaction-mutation-repository";
@@ -239,6 +241,120 @@ export function useBudgetMonth(month: string): {
   return { data, error, retry };
 }
 
+export function useGoals(): {
+  goals: LocalGoalItem[];
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [goals, setGoals] = useState<LocalGoalItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace) {
+      setGoals([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getGoals()
+        .then((next) => {
+          if (active) {
+            setGoals(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("Goals could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["financial_goals", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { goals, loading, error, retry };
+}
+
+export function useGoal(id?: string): {
+  goal: LocalGoalItem | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [goal, setGoal] = useState<LocalGoalItem | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setGoal(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getGoal(id)
+        .then((next) => {
+          if (active) {
+            setGoal(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The goal could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["financial_goals", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { goal, loading, error, retry };
+}
+
 export function useBudgetConflict(id?: string): {
   conflict: LocalBudgetConflict | null;
   loading: boolean;
@@ -282,6 +398,63 @@ export function useBudgetConflict(id?: string): {
       if (
         event.databaseFilePath.endsWith(workspace.databaseName) &&
         ["budgets", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { conflict, loading, error, retry };
+}
+
+export function useGoalConflict(id?: string): {
+  conflict: LocalGoalConflict | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [conflict, setConflict] = useState<LocalGoalConflict | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setConflict(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.transactionMutations
+        .getGoalConflict(id)
+        .then((next) => {
+          if (active) {
+            setConflict(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The preserved goal conflict could not be read from encrypted storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["financial_goals", "sync_outbox", "sync_conflicts"].includes(event.tableName)
       ) {
         refresh();
       }

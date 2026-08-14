@@ -2,6 +2,7 @@ import {
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
+  mobileSyncGoalSnapshotSchema,
   mobileSyncPullResponseSchema,
   mobileSyncTransactionSnapshotSchema,
   type MobileSyncChange,
@@ -53,6 +54,8 @@ function entityTable(entityType: MobileSyncChange["entityType"]): string {
       return "transactions";
     case "budget":
       return "budgets";
+    case "goal":
+      return "financial_goals";
   }
 }
 
@@ -244,6 +247,37 @@ async function applyBudget(database: SQLiteDatabase, change: MobileSyncChange): 
   );
 }
 
+async function applyGoal(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
+  if (change.entityType !== "goal" || !change.payload) {
+    throw new Error("invalid_goal_change");
+  }
+  const goal = mobileSyncGoalSnapshotSchema.parse(change.payload);
+  await database.runAsync(
+    `INSERT INTO financial_goals (
+      id, name, target_amount_minor, current_amount_minor, target_date, status,
+      server_revision, server_updated_at, deleted_at, sync_state
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      target_amount_minor = excluded.target_amount_minor,
+      current_amount_minor = excluded.current_amount_minor,
+      target_date = excluded.target_date,
+      status = excluded.status,
+      server_revision = excluded.server_revision,
+      server_updated_at = excluded.server_updated_at,
+      deleted_at = NULL,
+      sync_state = 'synced'`,
+    goal.id,
+    goal.name,
+    goal.targetAmountMinor,
+    goal.currentAmountMinor,
+    goal.targetDate,
+    goal.status,
+    change.revision,
+    change.serverUpdatedAt,
+  );
+}
+
 async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
   await database.runAsync(
     `INSERT INTO sync_tombstones (
@@ -291,6 +325,9 @@ async function applyChange(database: SQLiteDatabase, change: MobileSyncChange): 
       return;
     case "budget":
       await applyBudget(database, change);
+      return;
+    case "goal":
+      await applyGoal(database, change);
   }
 }
 
@@ -313,6 +350,9 @@ export async function applySnapshotChange(
       return;
     case "budget":
       await applyBudget(database, change);
+      return;
+    case "goal":
+      await applyGoal(database, change);
   }
 }
 

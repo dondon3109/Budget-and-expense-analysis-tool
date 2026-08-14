@@ -33,6 +33,12 @@ describe("local SQLCipher migrations", () => {
     expect(statements.some((statement) => statement.includes("budgets_month_category_unique"))).toBe(
       true,
     );
+    expect(statements.some((statement) => statement.includes("CREATE TABLE financial_goals"))).toBe(
+      true,
+    );
+    expect(statements.some((statement) => statement.includes("financial_goals_status_idx"))).toBe(
+      true,
+    );
     expect(statements.some((statement) => statement.includes("server_acknowledged_cursor"))).toBe(
       true,
     );

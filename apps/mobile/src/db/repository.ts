@@ -136,6 +136,26 @@ export interface LocalBudgetMonthData {
   categories: LocalCategoryOption[];
 }
 
+const goalItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  target_amount_minor: z.number().int().safe(),
+  current_amount_minor: z.number().int().safe(),
+  target_date: z.string(),
+  status: z.enum(["active", "paused", "completed"]),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
+
+export interface LocalGoalItem {
+  id: string;
+  name: string;
+  targetAmountMinor: number;
+  currentAmountMinor: number;
+  targetDate: string;
+  status: "active" | "paused" | "completed";
+  syncState: "synced" | "pending" | "failed" | "conflicted";
+}
+
 const localAccountItemSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -732,6 +752,49 @@ LIMIT ?`;
           syncState: row.sync_state,
         })),
       categories: z.array(localCategoryOptionSchema).parse(categoryRows),
+    };
+  }
+
+  async getGoals(): Promise<LocalGoalItem[]> {
+    const rows = await this.database.getAllAsync(
+      `SELECT id, name, target_amount_minor, current_amount_minor, target_date, status, sync_state
+       FROM financial_goals
+       WHERE deleted_at IS NULL
+       ORDER BY
+         CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END,
+         target_date, name COLLATE NOCASE`,
+    );
+    return z
+      .array(goalItemSchema)
+      .parse(rows)
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        targetAmountMinor: row.target_amount_minor,
+        currentAmountMinor: row.current_amount_minor,
+        targetDate: row.target_date,
+        status: row.status,
+        syncState: row.sync_state,
+      }));
+  }
+
+  async getGoal(id: string): Promise<LocalGoalItem | null> {
+    const row = await this.database.getFirstAsync(
+      `SELECT id, name, target_amount_minor, current_amount_minor, target_date, status, sync_state
+       FROM financial_goals
+       WHERE id = ? AND deleted_at IS NULL`,
+      id,
+    );
+    if (!row) return null;
+    const decoded = goalItemSchema.parse(row);
+    return {
+      id: decoded.id,
+      name: decoded.name,
+      targetAmountMinor: decoded.target_amount_minor,
+      currentAmountMinor: decoded.current_amount_minor,
+      targetDate: decoded.target_date,
+      status: decoded.status,
+      syncState: decoded.sync_state,
     };
   }
 }

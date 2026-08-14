@@ -180,6 +180,73 @@ describe("atomic encrypted pull application", () => {
     });
   });
 
+  it("applies a financial goal upsert and deletion tombstone", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, bootstrapPage);
+
+    await repository.applyPullPage("v1.3", {
+      protocolVersion: 1,
+      nextCursor: "v1.4",
+      hasMore: false,
+      changes: [
+        {
+          entityType: "goal",
+          entityId: "goal-1",
+          revision: 1,
+          operation: "upsert",
+          serverUpdatedAt: timestamp,
+          payload: {
+            id: "goal-1",
+            name: "Emergency Fund",
+            targetAmountMinor: 100_000,
+            currentAmountMinor: 25_000,
+            targetDate: "2026-12-31",
+            status: "active",
+            revision: 1,
+            updatedAt: timestamp,
+          },
+        },
+      ],
+    });
+
+    expect(
+      database.native
+        .prepare(
+          "SELECT name, target_amount_minor, current_amount_minor, status, server_revision, sync_state FROM financial_goals",
+        )
+        .get(),
+    ).toEqual({
+      name: "Emergency Fund",
+      target_amount_minor: 100_000,
+      current_amount_minor: 25_000,
+      status: "active",
+      server_revision: 1,
+      sync_state: "synced",
+    });
+
+    await repository.applyPullPage("v1.4", {
+      protocolVersion: 1,
+      nextCursor: "v1.5",
+      hasMore: false,
+      changes: [
+        {
+          entityType: "goal",
+          entityId: "goal-1",
+          revision: 2,
+          operation: "delete",
+          serverUpdatedAt: timestamp,
+          payload: null,
+        },
+      ],
+    });
+
+    expect(
+      database.native
+        .prepare("SELECT server_revision, sync_state, deleted_at FROM financial_goals WHERE id = 'goal-1'")
+        .get(),
+    ).toEqual({ server_revision: 2, sync_state: "synced", deleted_at: timestamp });
+  });
+
   it("records a server acknowledgement only for the currently committed cursor", async () => {
     const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
     await repository.applyPullPage(null, bootstrapPage);

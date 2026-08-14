@@ -53,6 +53,13 @@ export default function MoreScreen() {
           >
             Accounts & categories
           </Button>
+          <Button
+            accessibilityHint="Opens savings goals"
+            variant="secondary"
+            onPress={() => router.push("/(app)/goals")}
+          >
+            Savings goals
+          </Button>
         </View>
       </Card>
       <Card accessibilityLabel="Local data protection status">
