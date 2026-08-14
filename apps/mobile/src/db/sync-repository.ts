@@ -1,5 +1,6 @@
 import {
   mobileSyncAccountSnapshotSchema,
+  mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncPullResponseSchema,
   mobileSyncTransactionSnapshotSchema,
@@ -50,6 +51,8 @@ function entityTable(entityType: MobileSyncChange["entityType"]): string {
       return "categories";
     case "transaction":
       return "transactions";
+    case "budget":
+      return "budgets";
   }
 }
 
@@ -215,6 +218,32 @@ async function applyTransaction(database: SQLiteDatabase, change: MobileSyncChan
   );
 }
 
+async function applyBudget(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
+  if (change.entityType !== "budget" || !change.payload) {
+    throw new Error("invalid_budget_change");
+  }
+  const budget = mobileSyncBudgetSnapshotSchema.parse(change.payload);
+  await database.runAsync(
+    `INSERT INTO budgets (
+      id, category_id, month, limit_minor, server_revision, server_updated_at, deleted_at, sync_state
+    ) VALUES (?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ON CONFLICT(id) DO UPDATE SET
+      category_id = excluded.category_id,
+      month = excluded.month,
+      limit_minor = excluded.limit_minor,
+      server_revision = excluded.server_revision,
+      server_updated_at = excluded.server_updated_at,
+      deleted_at = NULL,
+      sync_state = 'synced'`,
+    budget.id,
+    budget.categoryId,
+    budget.month,
+    budget.limitMinor,
+    change.revision,
+    change.serverUpdatedAt,
+  );
+}
+
 async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
   await database.runAsync(
     `INSERT INTO sync_tombstones (
@@ -259,6 +288,9 @@ async function applyChange(database: SQLiteDatabase, change: MobileSyncChange): 
       return;
     case "transaction":
       await applyTransaction(database, change);
+      return;
+    case "budget":
+      await applyBudget(database, change);
   }
 }
 
@@ -278,6 +310,9 @@ export async function applySnapshotChange(
       return;
     case "transaction":
       await applyTransaction(database, change);
+      return;
+    case "budget":
+      await applyBudget(database, change);
   }
 }
 

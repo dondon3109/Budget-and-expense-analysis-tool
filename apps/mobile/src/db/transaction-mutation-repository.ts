@@ -211,6 +211,8 @@ function syncEntityTable(entityType: MobileSyncPushOperation["entityType"]): str
       return "categories";
     case "transaction":
       return "transactions";
+    case "budget":
+      return "budgets";
     case "transfer":
       throw new LocalMutationError(
         "Transfers update two transaction rows and do not have a single entity table.",

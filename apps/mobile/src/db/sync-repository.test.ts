@@ -140,6 +140,46 @@ describe("atomic encrypted pull application", () => {
     ).toEqual({ description: "Lunch", server_revision: 1, sync_state: "synced" });
   });
 
+  it("applies a budget upsert into the monthly budgets table", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, bootstrapPage);
+
+    await repository.applyPullPage("v1.3", {
+      protocolVersion: 1,
+      nextCursor: "v1.4",
+      hasMore: false,
+      changes: [
+        {
+          entityType: "budget",
+          entityId: "budget-1",
+          revision: 1,
+          operation: "upsert",
+          serverUpdatedAt: timestamp,
+          payload: {
+            id: "budget-1",
+            categoryId: "category-1",
+            month: "2026-08-01",
+            limitMinor: 50_000,
+            revision: 1,
+            updatedAt: timestamp,
+          },
+        },
+      ],
+    });
+
+    expect(
+      database.native
+        .prepare("SELECT category_id, month, limit_minor, server_revision, sync_state FROM budgets")
+        .get(),
+    ).toEqual({
+      category_id: "category-1",
+      month: "2026-08-01",
+      limit_minor: 50_000,
+      server_revision: 1,
+      sync_state: "synced",
+    });
+  });
+
   it("records a server acknowledgement only for the currently committed cursor", async () => {
     const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
     await repository.applyPullPage(null, bootstrapPage);

@@ -368,6 +368,15 @@ describe("encrypted local workspace repository", () => {
             balance_php_minor: 12_000,
             balance_usd_minor: 0,
           },
+        ])
+        .mockResolvedValueOnce([
+          {
+            category_id: "category-1",
+            category_name: "Dining",
+            category_color: "#123456",
+            month: "2026-08-01",
+            limit_minor: 50_000,
+          },
         ]),
     };
 
@@ -404,6 +413,14 @@ describe("encrypted local workspace repository", () => {
         },
       },
     ]);
-    expect(result.budgets).toEqual([]);
+    expect(result.budgets).toEqual([
+      {
+        categoryId: "category-1",
+        categoryName: "Dining",
+        categoryColor: "#123456",
+        month: "2026-08-01",
+        limitMinor: 50_000,
+      },
+    ]);
   });
 });

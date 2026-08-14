@@ -190,6 +190,14 @@ const dashboardAccountRowSchema = z.object({
   balance_usd_minor: z.number().int().safe(),
 });
 
+const budgetRowSchema = z.object({
+  category_id: z.string(),
+  category_name: z.string(),
+  category_color: z.string(),
+  month: z.string(),
+  limit_minor: z.number().int().safe(),
+});
+
 const interestSettingsSchema = z.object({
   enabled: z.boolean(),
   annualRateBasisPoints: z.number().int().min(0).max(1_000_000).nullable(),
@@ -593,6 +601,19 @@ LIMIT ?`;
       ORDER BY a.archived, a.name COLLATE NOCASE
     `);
 
+    const budgetRows = await this.database.getAllAsync(`
+      SELECT
+        b.category_id,
+        c.name AS category_name,
+        c.color AS category_color,
+        b.month,
+        b.limit_minor
+      FROM budgets b
+      INNER JOIN categories c ON c.id = b.category_id AND c.deleted_at IS NULL
+      WHERE b.deleted_at IS NULL
+      ORDER BY b.month, c.name COLLATE NOCASE
+    `);
+
     return {
       transactions: transactionRows.map((row) => {
         const decoded = dashboardTransactionRowSchema.parse(row);
@@ -627,8 +648,16 @@ LIMIT ?`;
           interest: decodeInterest(decoded.interest_json),
         };
       }),
-      // Budget sync arrives with the budget editor in a later Milestone 5 step.
-      budgets: [],
+      budgets: budgetRows.map((row) => {
+        const decoded = budgetRowSchema.parse(row);
+        return {
+          categoryId: decoded.category_id,
+          categoryName: decoded.category_name,
+          categoryColor: decoded.category_color,
+          month: decoded.month,
+          limitMinor: decoded.limit_minor,
+        };
+      }),
     };
   }
 }

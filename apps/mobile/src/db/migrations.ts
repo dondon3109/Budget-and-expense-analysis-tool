@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 4;
+export const LOCAL_SCHEMA_VERSION = 5;
 
 export const migrations: readonly Migration[] = [
   {
@@ -162,6 +162,24 @@ export const migrations: readonly Migration[] = [
     sql: `
       ALTER TABLE sync_metadata ADD COLUMN server_acknowledged_cursor TEXT;
       ALTER TABLE sync_metadata ADD COLUMN retention_floor_cursor TEXT;
+    `,
+  },
+  {
+    version: 5,
+    name: "monthly_budgets",
+    sql: `
+      CREATE TABLE budgets (
+        id TEXT PRIMARY KEY NOT NULL,
+        category_id TEXT NOT NULL REFERENCES categories(id),
+        month TEXT NOT NULL,
+        limit_minor INTEGER NOT NULL CHECK (limit_minor >= 0),
+        server_revision INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0),
+        server_updated_at TEXT,
+        deleted_at TEXT,
+        sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted'))
+      );
+
+      CREATE UNIQUE INDEX budgets_month_category_unique ON budgets(month, category_id);
     `,
   },
 ] as const;
