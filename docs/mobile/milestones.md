@@ -276,5 +276,22 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
 - The Transactions tab now has a search field and All/Income/Expense/Transfer filter chips with distinct
   empty states. useLocalTransactions accepts search and kind and re-queries on change.
 - Eighteen mobile suites with 97 focused tests pass; typecheck and lint are clean.
-- Remaining Milestone 5 work: monthly budgets (local schema + sync protocol + editor), Pro-gated
-  monthly/six-month cash-flow views, and on-device runtime proof of the dashboard rendering.
+- Monthly budgets are now a full vertical slice. D1 migration `0038_mobile_sync_budgets.sql` adds
+  budget revisions, a `mobile_sync_budget_rows` view, change-log triggers, and an upsert-only
+  (month, category) budget model that mirrors the web product's no-delete semantics. The Worker push
+  slice validates active expense categories and returns the existing budget snapshot for a duplicate
+  (month, category) create.
+- The mobile budget repository mirrors the Worker semantics: active expense category only, unique
+  (month, category), no delete, and update changes only the limit. Offline create/update queue through
+  the encrypted outbox; `getBudgetMonth` computes per-category spent totals with the same
+  expense-only aggregation as the dashboard.
+- The Budgets tab renders a month navigator, summary totals, per-category progress bars, and a
+  touch-safe editor sheet. Budget conflicts are preserved (never silently overwritten): a duplicate
+  create surfaces the existing server budget, a stale update surfaces the current server revision, and
+  a dedicated review screen offers "keep this device limit" (re-queued against the server revision) or
+  "use server limit" (snapshot applied locally). Pending/failed/conflicted rows are labeled honestly.
+- Twenty mobile suites with 111 focused tests pass; shared (98) and API mobile-sync (34) tests pass;
+  typecheck, lint, and a standalone iOS Hermes export bundle all succeed.
+- Remaining Milestone 5 work: Pro-gated monthly/six-month cash-flow views (entitlement is
+  server-authoritative and not yet surfaced to the client) and on-device runtime proof of the
+  dashboard/budgets rendering.
