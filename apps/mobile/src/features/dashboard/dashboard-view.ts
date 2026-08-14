@@ -23,7 +23,11 @@ function monthPeriod(anchorDate: string): { from: string; to: string } {
   return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, "0")}` };
 }
 
-export function buildDashboardView(data: LocalDashboardData, anchorDate: string): DashboardView {
+export function buildDashboardView(
+  data: LocalDashboardData,
+  anchorDate: string,
+  cashflowView: CashflowTrend["view"] = "weekly",
+): DashboardView {
   const accountBalances = summarizeAccountBalances(data.accounts);
   return {
     summary: buildDashboardSummary(
@@ -32,7 +36,7 @@ export function buildDashboardView(data: LocalDashboardData, anchorDate: string)
       monthPeriod(anchorDate),
       accountBalances,
     ),
-    cashflow: buildCashflowTrend(data.transactions, "weekly", anchorDate),
+    cashflow: buildCashflowTrend(data.transactions, cashflowView, anchorDate),
     accountBalances,
   };
 }

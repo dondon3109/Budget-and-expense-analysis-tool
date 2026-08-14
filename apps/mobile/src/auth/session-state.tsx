@@ -16,6 +16,7 @@ import { isSupabaseConfigured } from "@/config/public-config";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { useSheetStore } from "@/stores/sheet-store";
 
+import { clearPlanCache } from "./plan-state";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, supabase } from "./supabase-client";
 
@@ -71,6 +72,7 @@ function clearUserScopedRuntimeState(): void {
   // Durable financial caches arrive in Milestone 3. Every identity transition
   // enters through this boundary so those repositories can be cleared here.
   useSheetStore.getState().close();
+  clearPlanCache();
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {

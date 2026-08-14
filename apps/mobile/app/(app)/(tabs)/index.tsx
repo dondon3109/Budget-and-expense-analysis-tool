@@ -1,6 +1,8 @@
-import { useMemo } from "react";
-import { StyleSheet, Text, View, type DimensionValue } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useMemo, useState } from "react";
+import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
+import { usePlan } from "@/auth/plan-state";
 import { useDashboardData } from "@/db/local-workspace-state";
 import { buildDashboardView, localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
@@ -144,15 +146,88 @@ function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
   );
 }
 
-function CashflowCard({ cashflow }: { cashflow: CashflowTrend }) {
+const CASHFLOW_VIEWS: {
+  value: CashflowTrend["view"];
+  label: string;
+  title: string;
+  proOnly: boolean;
+}[] = [
+  { value: "weekly", label: "7 days", title: "Cash flow · last 7 days", proOnly: false },
+  { value: "monthly", label: "Month", title: "Cash flow · this month", proOnly: true },
+  { value: "sixMonth", label: "6 months", title: "Cash flow · last 6 months", proOnly: true },
+];
+
+function CashflowCard({
+  cashflow,
+  isPro,
+  onSelectView,
+  selectedView,
+}: {
+  cashflow: CashflowTrend;
+  isPro: boolean;
+  onSelectView: (view: CashflowTrend["view"]) => void;
+  selectedView: CashflowTrend["view"];
+}) {
   const theme = useZoptionTheme();
   const max = cashflow.points.reduce(
     (largest, point) => Math.max(largest, point.incomeMinor, point.expenseMinor),
     0,
   );
+  const title = CASHFLOW_VIEWS.find((option) => option.value === selectedView)?.title ?? "Cash flow";
   return (
-    <Card accessibilityLabel="Cash flow, last seven days">
-      <SectionLabel>Cash flow · last 7 days</SectionLabel>
+    <Card accessibilityLabel={title}>
+      <SectionLabel>{title}</SectionLabel>
+      <View accessibilityRole="tablist" style={styles.segmented}>
+        {CASHFLOW_VIEWS.map((option) => {
+          const locked = option.proOnly && !isPro;
+          const selected = option.value === selectedView;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="tab"
+              accessibilityState={{ selected, disabled: locked }}
+              accessibilityLabel={option.label + (locked ? ", requires Pro" : "")}
+              disabled={locked}
+              onPress={() => onSelectView(option.value)}
+              style={[
+                styles.segment,
+                {
+                  backgroundColor: selected ? theme.colors.brand : theme.colors.surface,
+                  borderColor: selected ? theme.colors.brand : theme.colors.border,
+                },
+              ]}
+            >
+              {locked ? (
+                <MaterialCommunityIcons
+                  accessibilityElementsHidden
+                  color={theme.colors.textMuted}
+                  name="lock-outline"
+                  size={14}
+                />
+              ) : null}
+              <Text
+                style={[
+                  typography.caption,
+                  {
+                    color: selected
+                      ? theme.colors.onBrand
+                      : locked
+                        ? theme.colors.textMuted
+                        : theme.colors.text,
+                  },
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {!isPro ? (
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+          Month and 6-month cash flow are Pro features.
+        </Text>
+      ) : null}
       <View style={{ gap: spacing.sm }}>
         {cashflow.points.map((point) => {
           const net = point.incomeMinor - point.expenseMinor;
@@ -160,7 +235,8 @@ function CashflowCard({ cashflow }: { cashflow: CashflowTrend }) {
             max <= 0
               ? 0
               : Math.round((Math.max(point.incomeMinor, point.expenseMinor) / max) * 100);
-          const label = point.date.slice(5);
+          const label =
+            cashflow.granularity === "month" ? point.date.slice(0, 7) : point.date.slice(5);
           return (
             <View
               key={point.date}
@@ -203,11 +279,17 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
 export default function HomeScreen() {
   const dashboard = useDashboardData();
   const sync = useSyncState();
+  const planState = usePlan();
+  const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
   const view = useMemo(
-    () => (dashboard.data ? buildDashboardView(dashboard.data, localIsoDate(new Date())) : null),
-    [dashboard.data],
+    () =>
+      dashboard.data
+        ? buildDashboardView(dashboard.data, localIsoDate(new Date()), cashflowView)
+        : null,
+    [dashboard.data, cashflowView],
   );
   const hasTransactions = Boolean(view && view.summary.monthlyTrend.length > 0);
+  const isPro = planState.plan === "zoption_pro";
 
   return (
     <Screen action={<SyncStatus state={visibleSyncState(sync.status)} />} title="Home">
@@ -232,7 +314,12 @@ export default function HomeScreen() {
           <BalanceCard summary={view.summary} />
           <MonthSummaryCard summary={view.summary} />
           <SpendingByCategory summary={view.summary} />
-          <CashflowCard cashflow={view.cashflow} />
+          <CashflowCard
+            cashflow={view.cashflow}
+            isPro={isPro}
+            onSelectView={setCashflowView}
+            selectedView={cashflowView}
+          />
           <BudgetCard summary={view.summary} />
         </View>
       ) : (
@@ -267,6 +354,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+  },
+  segmented: {
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  segment: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xxs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.round,
+    borderWidth: 1,
   },
   dot: {
     width: 12,

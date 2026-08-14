@@ -71,6 +71,23 @@ describe("buildDashboardView", () => {
     expect(day).toMatchObject({ incomeMinor: 50_000, expenseMinor: 0 });
   });
 
+  it("builds a daily cash flow for the full anchor month", () => {
+    const view = buildDashboardView(data(), "2026-08-14", "monthly");
+    expect(view.cashflow.view).toBe("monthly");
+    expect(view.cashflow.granularity).toBe("day");
+    expect(view.cashflow.range).toEqual({ from: "2026-08-01", to: "2026-08-31" });
+    expect(view.cashflow.points).toHaveLength(31);
+  });
+
+  it("builds a month-bucketed six-month cash flow", () => {
+    const view = buildDashboardView(data(), "2026-08-14", "sixMonth");
+    expect(view.cashflow.view).toBe("sixMonth");
+    expect(view.cashflow.granularity).toBe("month");
+    expect(view.cashflow.points).toHaveLength(6);
+    const august = view.cashflow.points.find((point) => point.date === "2026-08-01");
+    expect(august).toMatchObject({ incomeMinor: 50_000, expenseMinor: 20_000 });
+  });
+
   it("scopes the summary period to the anchor month", () => {
     const view = buildDashboardView(
       data({ transactions: [income, { ...expense, date: "2026-07-15" }] }),
