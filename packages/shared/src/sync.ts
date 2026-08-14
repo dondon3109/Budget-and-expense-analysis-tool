@@ -17,12 +17,13 @@ import {
   categoryOrigins,
   categoryRequiredPlans,
   currencies,
+  financialGoalStatuses,
   interestFrequencies,
   transactionKinds,
 } from "./types";
 
 export const MOBILE_SYNC_PROTOCOL_VERSION = 1 as const;
-export const mobileSyncEntityTypes = ["account", "category", "transaction", "transfer", "budget"] as const;
+export const mobileSyncEntityTypes = ["account", "category", "transaction", "transfer", "budget", "goal"] as const;
 export const mobileSyncOperationTypes = ["create", "update", "delete"] as const;
 
 const uuidSchema = z.string().uuid();
@@ -139,12 +140,26 @@ export const mobileSyncBudgetSnapshotSchema = z
   })
   .strict();
 
+export const mobileSyncGoalSnapshotSchema = z
+  .object({
+    id: resourceIdSchema,
+    name: z.string().min(1).max(80),
+    targetAmountMinor: z.number().int().safe().min(1).max(900_000_000_000_000),
+    currentAmountMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    targetDate: isoDateSchema,
+    status: z.enum(financialGoalStatuses),
+    revision: serverRevisionSchema,
+    updatedAt: serverTimestampSchema,
+  })
+  .strict();
+
 export const mobileSyncSnapshotSchema = z.union([
   mobileSyncAccountSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
+  mobileSyncGoalSnapshotSchema,
 ]);
 
 export const mobileSyncChangeSchema = z
@@ -177,7 +192,9 @@ export const mobileSyncChangeSchema = z
             ? mobileSyncCategorySnapshotSchema
             : change.entityType === "budget"
               ? mobileSyncBudgetSnapshotSchema
-              : mobileSyncTransactionSnapshotSchema;
+              : change.entityType === "goal"
+                ? mobileSyncGoalSnapshotSchema
+                : mobileSyncTransactionSnapshotSchema;
       if (!expectedSchema.safeParse(change.payload).success) {
         context.addIssue({
           code: "custom",
@@ -254,7 +271,7 @@ const operationIdentityShape = {
 } as const;
 
 const createOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget",
+  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget" | "goal",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -271,7 +288,7 @@ const createOperation = <
     .strict();
 
 const updateOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget",
+  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget" | "goal",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -287,7 +304,9 @@ const updateOperation = <
     })
     .strict();
 
-const deleteOperation = <TEntity extends "account" | "category" | "transaction" | "transfer">(
+const deleteOperation = <
+  TEntity extends "account" | "category" | "transaction" | "transfer" | "goal",
+>(
   entityType: TEntity,
 ) =>
   z
@@ -314,6 +333,31 @@ const mobileSyncBudgetUpdateSchema = z
   })
   .strict();
 
+const mobileSyncGoalInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    targetAmountMinor: z.number().int().safe().min(1).max(900_000_000_000_000),
+    currentAmountMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    targetDate: isoDateSchema,
+    status: z.enum(financialGoalStatuses),
+  })
+  .strict()
+  .refine((value) => value.currentAmountMinor <= value.targetAmountMinor, {
+    message: "Current savings cannot exceed the target amount.",
+    path: ["currentAmountMinor"],
+  });
+
+const mobileSyncGoalUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    targetAmountMinor: z.number().int().safe().min(1).max(900_000_000_000_000).optional(),
+    currentAmountMinor: z.number().int().safe().min(0).max(900_000_000_000_000).optional(),
+    targetDate: isoDateSchema.optional(),
+    status: z.enum(financialGoalStatuses).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
+
 export const mobileSyncPushOperationSchema = z
   .union([
     createOperation("account", accountInputSchema),
@@ -327,6 +371,9 @@ export const mobileSyncPushOperationSchema = z
     deleteOperation("transaction"),
     createOperation("budget", mobileSyncBudgetInputSchema),
     updateOperation("budget", mobileSyncBudgetUpdateSchema),
+    createOperation("goal", mobileSyncGoalInputSchema),
+    updateOperation("goal", mobileSyncGoalUpdateSchema),
+    deleteOperation("goal"),
     createOperation(
       "transfer",
       z
@@ -483,7 +530,9 @@ export const mobileSyncPushResultSchema = z
             ? mobileSyncTransactionSnapshotSchema
             : result.entityType === "budget"
               ? mobileSyncBudgetSnapshotSchema
-              : mobileSyncTransferSnapshotSchema;
+              : result.entityType === "goal"
+                ? mobileSyncGoalSnapshotSchema
+                : mobileSyncTransferSnapshotSchema;
     if (!expectedSchema.safeParse(result.serverPayload).success) {
       context.addIssue({
         code: "custom",

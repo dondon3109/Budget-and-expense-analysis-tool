@@ -117,6 +117,18 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
       updated_at text NOT NULL DEFAULT (datetime('now')),
       UNIQUE (tenant_id, month, category_id)
     );
+    CREATE TABLE financial_goals (
+      id text PRIMARY KEY NOT NULL,
+      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name text NOT NULL,
+      target_amount_minor integer NOT NULL,
+      current_amount_minor integer NOT NULL DEFAULT 0,
+      target_date text NOT NULL,
+      status text NOT NULL DEFAULT 'active',
+      created_at text NOT NULL DEFAULT (datetime('now')),
+      updated_at text NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (tenant_id, name)
+    );
   `);
   database.exec(`
     INSERT INTO tenants (id, kind, name) VALUES
@@ -134,6 +146,10 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
       ('transaction-2', 'tenant-2', 'account-2', 'category-2', '2026-08-13', 'Private', -99900, 'PHP', 'expense');
     INSERT INTO budgets (id, tenant_id, category_id, month, limit_minor) VALUES
       ('budget-1', 'tenant-1', 'category-1', '2026-08-01', 50000);
+    INSERT INTO financial_goals (
+      id, tenant_id, name, target_amount_minor, current_amount_minor, target_date, status
+    ) VALUES
+      ('goal-1', 'tenant-1', 'Emergency Fund', 100000, 25000, '2026-12-31', 'active');
   `);
   const migration = readFileSync(
     new URL("../../../db/migrations/0034_mobile_sync_foundation.sql", import.meta.url),
@@ -177,6 +193,15 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
     "utf8",
   );
   for (const statement of budgetMigration
+    .split("--> statement-breakpoint")
+    .map((part) => part.trim())
+    .filter(Boolean)) {
+    database.exec(statement);
+  }
+  for (const statement of readFileSync(
+    new URL("../../../db/migrations/0039_mobile_sync_goals.sql", import.meta.url),
+    "utf8",
+  )
     .split("--> statement-breakpoint")
     .map((part) => part.trim())
     .filter(Boolean)) {
@@ -279,10 +304,10 @@ describe("mobile sync full snapshot", () => {
       limit: 2,
     });
     expect(first).toMatchObject({
-      snapshotCursor: "s1.4",
+      snapshotCursor: "s1.5",
       nextOffset: 2,
       hasMore: true,
-      resumeCursor: "v1.4",
+      resumeCursor: "v1.5",
     });
     expect(first.changes.map((change) => change.entityId)).toEqual(["account-1", "category-1"]);
 
@@ -296,8 +321,8 @@ describe("mobile sync full snapshot", () => {
       offset: first.nextOffset,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextOffset: 4, hasMore: false, resumeCursor: "v1.4" });
-    expect(second.changes.map((change) => change.entityId)).toEqual(["budget-1", "transaction-1"]);
+    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.5" });
+    expect(second.changes.map((change) => change.entityId)).toEqual(["budget-1", "goal-1"]);
     expect(JSON.stringify(second)).not.toContain("account-after-snapshot");
   });
 
@@ -478,8 +503,16 @@ describe("mobile sync pull repository", () => {
       cursor: first.nextCursor,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextCursor: "v1.4", hasMore: false });
+    expect(second).toMatchObject({ nextCursor: "v1.4", hasMore: true });
     expect(second.changes.map((change) => change.entityId)).toEqual(["transaction-1", "budget-1"]);
+
+    const third = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: second.nextCursor,
+      limit: 2,
+    });
+    expect(third).toMatchObject({ hasMore: false });
+    expect(third.changes.map((change) => change.entityId)).toEqual(["goal-1"]);
   });
 
   it("captures web updates and deletion tombstones without device timestamps", async () => {
@@ -503,6 +536,13 @@ describe("mobile sync pull repository", () => {
         payload: { categoryId: "category-1", month: "2026-08-01", limitMinor: 50000 },
       },
       {
+        entityType: "goal",
+        entityId: "goal-1",
+        revision: 1,
+        operation: "upsert",
+        payload: { name: "Emergency Fund", targetAmountMinor: 100000, currentAmountMinor: 25000 },
+      },
+      {
         entityType: "account",
         entityId: "account-1",
         revision: 2,
@@ -517,7 +557,7 @@ describe("mobile sync pull repository", () => {
         payload: null,
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.6");
+    expect(pulled.nextCursor).toBe("v1.7");
   });
 
   it("requires a safe full resync when a cursor is ahead of server state", async () => {
@@ -1726,6 +1766,182 @@ describe("mobile sync budget push repository", () => {
       code: "stale_revision",
       serverRevision: 2,
       serverPayload: { id: "budget-1", limitMinor: 90_000 },
+    });
+  });
+});
+
+describe("mobile sync financial goal push repository", () => {
+  const clientId = "30000000-0000-4000-8000-000000000001";
+
+  it("creates, updates, and deletes a goal idempotently", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const entityId = "30000000-0000-4000-8000-000000000002";
+    const create = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "30000000-0000-4000-8000-000000000003",
+          idempotencyKey: "30000000-0000-4000-8000-000000000004",
+          entityType: "goal" as const,
+          entityId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: {
+            name: "House Fund",
+            targetAmountMinor: 500_000,
+            currentAmountMinor: 0,
+            targetDate: "2027-12-31",
+            status: "active",
+          },
+        },
+      ],
+    };
+
+    const first = await repository.push(env, "tenant-1", create);
+    expect(await repository.push(env, "tenant-1", create)).toEqual(first);
+    expect(first.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+
+    const updated = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "30000000-0000-4000-8000-000000000005",
+          idempotencyKey: "30000000-0000-4000-8000-000000000006",
+          entityType: "goal",
+          entityId,
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { currentAmountMinor: 120_000 },
+        },
+      ],
+    });
+    expect(updated.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+    expect(
+      database
+        .prepare(
+          "SELECT current_amount_minor AS currentAmountMinor, revision FROM financial_goals WHERE id = ?",
+        )
+        .get(entityId),
+    ).toEqual({ currentAmountMinor: 120_000, revision: 2 });
+
+    const removed = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "30000000-0000-4000-8000-000000000007",
+          idempotencyKey: "30000000-0000-4000-8000-000000000008",
+          entityType: "goal",
+          entityId,
+          operationType: "delete",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    expect(removed.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
+    expect(
+      database.prepare("SELECT 1 AS found FROM financial_goals WHERE id = ?").get(entityId),
+    ).toBeUndefined();
+    expect(
+      database
+        .prepare(
+          "SELECT entity_type AS entityType, operation FROM mobile_sync_changes WHERE entity_id = ? ORDER BY sequence DESC LIMIT 1",
+        )
+        .get(entityId),
+    ).toEqual({ entityType: "goal", operation: "delete" });
+  });
+
+  it("rejects a duplicate goal name", async () => {
+    const { env } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const duplicate = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "30000000-0000-4000-8000-000000000009",
+          idempotencyKey: "30000000-0000-4000-8000-00000000000a",
+          entityType: "goal",
+          entityId: "30000000-0000-4000-8000-00000000000b",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: {
+            name: "Emergency Fund",
+            targetAmountMinor: 200_000,
+            currentAmountMinor: 0,
+            targetDate: "2027-06-30",
+            status: "active",
+          },
+        },
+      ],
+    });
+    expect(duplicate.results[0]).toMatchObject({
+      status: "rejected",
+      code: "invalid_operation",
+    });
+  });
+
+  it("rejects an update whose current savings exceed the target", async () => {
+    const { env } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const rejected = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "30000000-0000-4000-8000-00000000000c",
+          idempotencyKey: "30000000-0000-4000-8000-00000000000d",
+          entityType: "goal",
+          entityId: "goal-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { currentAmountMinor: 200_000 },
+        },
+      ],
+    });
+    expect(rejected.results[0]).toMatchObject({
+      status: "rejected",
+      code: "invalid_operation",
+    });
+  });
+
+  it("returns a stale revision conflict for an out-of-date goal update", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    database
+      .prepare("UPDATE financial_goals SET current_amount_minor = ? WHERE id = ?")
+      .run(50_000, "goal-1");
+
+    const stale = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "30000000-0000-4000-8000-00000000000e",
+          idempotencyKey: "30000000-0000-4000-8000-00000000000f",
+          entityType: "goal",
+          entityId: "goal-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { currentAmountMinor: 60_000 },
+        },
+      ],
+    });
+    expect(stale.results[0]).toMatchObject({
+      status: "conflict",
+      code: "stale_revision",
+      serverRevision: 2,
+      serverPayload: { id: "goal-1", currentAmountMinor: 50_000 },
     });
   });
 });
