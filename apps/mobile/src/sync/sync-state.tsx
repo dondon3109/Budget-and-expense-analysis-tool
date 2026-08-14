@@ -20,6 +20,7 @@ import {
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
 import { LocalSyncApplyError } from "@/db/sync-repository";
+import { recoverLocalWorkspace } from "@/db/workspace";
 
 export type ForegroundSyncStatus =
   "waiting" | "syncing" | "synced" | "failed" | "full-resync-required";
@@ -144,7 +145,7 @@ export function SyncProvider({
   unavailableMessage = null,
   onUnavailableRetry,
 }: SyncProviderProps) {
-  const { workspace } = useLocalWorkspace();
+  const { workspace, reopen } = useLocalWorkspace();
   const session = useSessionSnapshot();
   const netInfo = useNetInfo();
   const reachable = netInfo.isInternetReachable ?? netInfo.isConnected;
@@ -328,11 +329,21 @@ export function SyncProvider({
           return;
         }
         if (error instanceof MobileSyncTransportError && error.code === "full_resync_required") {
-          setSnapshot({
-            status: "full-resync-required",
-            message:
-              "This local copy needs recovery before it can accept more server changes. Existing local data was preserved.",
-          });
+          try {
+            if (!session.subject) {
+              throw new Error("Sign in again to recover this workspace.", { cause: error });
+            }
+            const recoveryToken = await session.getAccessToken(true);
+            await recoverLocalWorkspace(session.subject, recoveryToken);
+            reopen();
+            setSnapshot({ status: "waiting", message: null });
+          } catch {
+            setSnapshot({
+              status: "full-resync-required",
+              message:
+                "This local copy needs recovery before it can accept more server changes. Existing local data was preserved.",
+            });
+          }
           return;
         }
         if (
@@ -363,7 +374,7 @@ export function SyncProvider({
       controller.abort();
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [attempt, enabled, reachable, session, unavailableMessage, workspace]);
+  }, [attempt, enabled, reachable, reopen, session, unavailableMessage, workspace]);
 
   const retry = useCallback(() => {
     if (!enabled) {

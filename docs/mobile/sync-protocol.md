@@ -137,8 +137,11 @@ Snapshot pages contain each entity's latest live version in dependency order, pr
 pairs, and return the incremental cursor from which normal pull resumes. Daily compaction expires
 inactive clients after the documented 90-day offline window and removes only old changes that every
 active client acknowledged; it pauses while a snapshot session is active and retains each latest live
-row. The mobile beside-the-current-database generation builder, verification, and atomic switch remain
-pending, so the app continues to surface `full-resync-required` without deleting its readable copy.
+row. The mobile client now streams those pages into a new encrypted generation built beside the current
+database, applies each validated change on the keyed SQLCipher connection, records the resumed incremental
+cursor, verifies referential and transfer-pair integrity plus subject/client identity, then atomically
+switches the generation pointer and removes only the superseded copy. A failed or partial build is deleted
+and never clears the readable local database first.
 
 Each transfer revision assigns the same atomic-group token to its two adjacent change rows. Pull never
 cuts that pair: a limit of one still returns both legs when the pair is first, while a pair that would

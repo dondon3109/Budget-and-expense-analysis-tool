@@ -1,4 +1,4 @@
-import { acknowledgeMobileSync, pullMobileSync, pushMobileSync } from "./mobile-sync";
+import { acknowledgeMobileSync, pullMobileSync, pushMobileSync, snapshotMobileSync } from "./mobile-sync";
 
 const accountChange = {
   entityType: "account",
@@ -246,5 +246,62 @@ describe("fixed mobile synchronization transport", () => {
     await expect(
       pullMobileSync({ accessToken: "token", cursor: null, fetchImpl: oversized }),
     ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("streams a full snapshot only to the fixed Worker route", async () => {
+    const fetchImpl = jest.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            protocolVersion: 1,
+            snapshotCursor: "s1.5",
+            changes: [accountChange],
+            nextOffset: 1,
+            hasMore: false,
+            resumeCursor: "v1.5",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    await expect(
+      snapshotMobileSync({
+        accessToken: "token",
+        clientId: "00000000-0000-4000-8000-000000000001",
+        snapshotCursor: null,
+        fetchImpl,
+      }),
+    ).resolves.toMatchObject({ snapshotCursor: "s1.5", resumeCursor: "v1.5" });
+    const request = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(request[0].pathname).toBe("/api/app/sync/snapshot");
+    expect(request[1].method).toBe("POST");
+    expect(new Headers(request[1].headers).get("Authorization")).toBe("Bearer token");
+    expect(request[1].body).toBe(
+      JSON.stringify({
+        protocolVersion: 1,
+        clientId: "00000000-0000-4000-8000-000000000001",
+        snapshotCursor: null,
+        offset: 0,
+        limit: 200,
+      }),
+    );
+    expect(request[1].body).not.toContain("tenant");
+  });
+
+  it("recognizes an expired full snapshot session", async () => {
+    const fetchImpl = jest.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: "full_resync_required" }), { status: 409 }),
+      ),
+    );
+    await expect(
+      snapshotMobileSync({
+        accessToken: "token",
+        clientId: "00000000-0000-4000-8000-000000000001",
+        snapshotCursor: "s1.1",
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({ code: "full_resync_required" });
   });
 });

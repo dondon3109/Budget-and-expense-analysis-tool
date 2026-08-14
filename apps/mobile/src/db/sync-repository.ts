@@ -262,6 +262,25 @@ async function applyChange(database: SQLiteDatabase, change: MobileSyncChange): 
   }
 }
 
+export async function applySnapshotChange(
+  database: SQLiteDatabase,
+  change: MobileSyncChange,
+): Promise<void> {
+  if (change.operation !== "upsert" || !change.payload) {
+    throw new Error("A full snapshot must contain only live upserts.");
+  }
+  switch (change.entityType) {
+    case "account":
+      await applyAccount(database, change);
+      return;
+    case "category":
+      await applyCategory(database, change);
+      return;
+    case "transaction":
+      await applyTransaction(database, change);
+  }
+}
+
 export class LocalSyncRepository {
   constructor(
     private readonly database: SQLiteDatabase,

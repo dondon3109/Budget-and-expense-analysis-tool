@@ -25,6 +25,7 @@ interface LocalWorkspaceSnapshot {
   workspace: LocalWorkspace | null;
   message: string | null;
   retry: () => void;
+  reopen: () => void;
 }
 
 const LocalWorkspaceContext = createContext<LocalWorkspaceSnapshot | null>(null);
@@ -34,7 +35,7 @@ export function LocalWorkspaceProvider({
   children,
 }: PropsWithChildren<{ subject: string }>) {
   const [attempt, setAttempt] = useState(0);
-  const [snapshot, setSnapshot] = useState<Omit<LocalWorkspaceSnapshot, "retry">>({
+  const [snapshot, setSnapshot] = useState<Omit<LocalWorkspaceSnapshot, "retry" | "reopen">>({
     status: "opening",
     workspace: null,
     message: null,
@@ -71,7 +72,8 @@ export function LocalWorkspaceProvider({
   }, [attempt, subject]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  const value = useMemo(() => ({ ...snapshot, retry }), [retry, snapshot]);
+  const reopen = useCallback(() => setAttempt((value) => value + 1), []);
+  const value = useMemo(() => ({ ...snapshot, retry, reopen }), [reopen, retry, snapshot]);
   return <LocalWorkspaceContext.Provider value={value}>{children}</LocalWorkspaceContext.Provider>;
 }
 

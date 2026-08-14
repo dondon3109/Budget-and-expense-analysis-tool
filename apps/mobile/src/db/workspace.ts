@@ -1,12 +1,26 @@
 import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 
-import { getOrCreateWorkspaceKey, removeWorkspaceKey, workspaceAlias } from "./key-store";
+import { snapshotMobileSync } from "@/api/mobile-sync";
+import {
+  getOrCreateWorkspaceKey,
+  getWorkspaceGeneration,
+  removeWorkspaceGeneration,
+  removeWorkspaceKey,
+  setWorkspaceGeneration,
+  workspaceAlias,
+} from "./key-store";
 import { ensureLocalDataBackupProtection } from "./local-data-security";
 import { applyLocalMigrations, asMigrationDatabase } from "./migrations";
 import { LocalWorkspaceRepository, type LocalWorkspaceStats } from "./repository";
-import { LocalSyncRepository } from "./sync-repository";
+import { applySnapshotChange, LocalSyncRepository } from "./sync-repository";
 import { LocalDatabaseWriter } from "./database-writer";
 import { LocalTransactionMutationRepository } from "./transaction-mutation-repository";
+import {
+  collectSnapshotPages,
+  databaseNameForGeneration,
+  verifySnapshotGeneration,
+  type SnapshotPageFetcher,
+} from "./workspace-generation";
 
 interface CipherVersionRow {
   cipher_version?: string;
@@ -34,15 +48,12 @@ export interface LocalWorkspace {
   syncRepository: LocalSyncRepository;
   transactionMutations: LocalTransactionMutationRepository;
   schemaVersion: number;
+  generation: number;
 }
 
 export interface LocalWorkspaceSignOutRisk {
   unsyncedOperationCount: number;
   unresolvedConflictCount: number;
-}
-
-function databaseName(alias: string): string {
-  return `zoption-${alias.slice(0, 32)}.db`;
 }
 
 async function configureEncryptedDatabase(database: SQLiteDatabase, key: string): Promise<void> {
@@ -84,7 +95,12 @@ async function assertWorkspaceSubject(database: SQLiteDatabase, subject: string)
   }
 }
 
-let current: { subject: string; alias: string; workspace: LocalWorkspace } | null = null;
+let current: {
+  subject: string;
+  alias: string;
+  generation: number;
+  workspace: LocalWorkspace;
+} | null = null;
 let operation = Promise.resolve();
 
 function serialize<T>(task: () => Promise<T>): Promise<T> {
@@ -96,49 +112,135 @@ function serialize<T>(task: () => Promise<T>): Promise<T> {
   return next;
 }
 
+async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
+  if (current?.subject === subject) return current.workspace;
+  if (current) {
+    await current.workspace.database.closeAsync();
+    current = null;
+  }
+
+  const alias = await workspaceAlias(subject);
+  const generation = await getWorkspaceGeneration(alias);
+  const name = databaseNameForGeneration(alias, generation);
+  const key = await getOrCreateWorkspaceKey(alias);
+  await ensureLocalDataBackupProtection();
+  const database = await openDatabaseAsync(name, {
+    enableChangeListener: true,
+    useNewConnection: true,
+  });
+  try {
+    await configureEncryptedDatabase(database, key);
+    let schemaVersion: number;
+    try {
+      schemaVersion = await applyLocalMigrations(asMigrationDatabase(database));
+      await assertWorkspaceSubject(database, subject);
+    } catch (error) {
+      throw new LocalWorkspaceError(
+        `The encrypted workspace migration did not complete. Zoption preserved it for recovery.${developmentDetail(error)}`,
+        { cause: error },
+      );
+    }
+    const writer = new LocalDatabaseWriter();
+    const workspace = {
+      database,
+      databaseName: name,
+      repository: new LocalWorkspaceRepository(database),
+      syncRepository: new LocalSyncRepository(database, writer),
+      transactionMutations: new LocalTransactionMutationRepository(database, writer),
+      schemaVersion,
+      generation,
+    };
+    current = { subject, alias, generation, workspace };
+    return workspace;
+  } catch (error) {
+    await database.closeAsync().catch(() => undefined);
+    throw error;
+  }
+}
+
 export function openLocalWorkspace(subject: string): Promise<LocalWorkspace> {
+  return serialize(() => openWorkspaceInternal(subject));
+}
+
+async function buildSnapshotGeneration({
+  databaseName: name,
+  key,
+  subject,
+  clientId,
+  fetchPage,
+}: {
+  databaseName: string;
+  key: string;
+  subject: string;
+  clientId: string;
+  fetchPage: SnapshotPageFetcher;
+}): Promise<void> {
+  const database = await openDatabaseAsync(name, { useNewConnection: true });
+  try {
+    await configureEncryptedDatabase(database, key);
+    await applyLocalMigrations(asMigrationDatabase(database));
+    await database.runAsync(
+      "INSERT INTO workspace_metadata (key, value) VALUES ('supabase_subject', ?)",
+      subject,
+    );
+    await database.runAsync(
+      "INSERT INTO workspace_metadata (key, value) VALUES ('mobile_client_id', ?)",
+      clientId,
+    );
+    const collected = await collectSnapshotPages(fetchPage);
+    for (const change of collected.changes) {
+      await applySnapshotChange(database, change);
+    }
+    await database.runAsync(
+      "UPDATE sync_metadata SET server_cursor = ? WHERE singleton = 1",
+      collected.resumeCursor,
+    );
+    await verifySnapshotGeneration(database, subject, clientId, collected.resumeCursor);
+  } catch (error) {
+    await database.closeAsync().catch(() => undefined);
+    await deleteDatabaseAsync(name).catch(() => undefined);
+    throw error;
+  }
+  await database.closeAsync();
+}
+
+export function recoverLocalWorkspace(
+  subject: string,
+  accessToken: string,
+  fetchPage?: SnapshotPageFetcher,
+): Promise<void> {
   return serialize(async () => {
-    if (current?.subject === subject) return current.workspace;
-    if (current) {
+    const alias = await workspaceAlias(subject);
+    const key = await getOrCreateWorkspaceKey(alias);
+    const currentGeneration = await getWorkspaceGeneration(alias);
+    const nextGeneration = currentGeneration + 1;
+    const name = databaseNameForGeneration(alias, nextGeneration);
+
+    const workspace =
+      current?.subject === subject ? current.workspace : await openWorkspaceInternal(subject);
+    const clientId = await workspace.transactionMutations.clientId();
+
+    const pageFetcher: SnapshotPageFetcher =
+      fetchPage ??
+      ((snapshotCursor, offset) =>
+        snapshotMobileSync({ accessToken, clientId, snapshotCursor, offset }));
+
+    await buildSnapshotGeneration({
+      databaseName: name,
+      key,
+      subject,
+      clientId,
+      fetchPage: pageFetcher,
+    });
+
+    await setWorkspaceGeneration(alias, nextGeneration);
+    if (current?.subject === subject) {
       await current.workspace.database.closeAsync();
       current = null;
     }
-
-    const alias = await workspaceAlias(subject);
-    const name = databaseName(alias);
-    const key = await getOrCreateWorkspaceKey(alias);
-    await ensureLocalDataBackupProtection();
-    const database = await openDatabaseAsync(name, {
-      enableChangeListener: true,
-      useNewConnection: true,
-    });
-    try {
-      await configureEncryptedDatabase(database, key);
-      let schemaVersion: number;
-      try {
-        schemaVersion = await applyLocalMigrations(asMigrationDatabase(database));
-        await assertWorkspaceSubject(database, subject);
-      } catch (error) {
-        throw new LocalWorkspaceError(
-          `The encrypted workspace migration did not complete. Zoption preserved it for recovery.${developmentDetail(error)}`,
-          { cause: error },
-        );
-      }
-      const writer = new LocalDatabaseWriter();
-      const workspace = {
-        database,
-        databaseName: name,
-        repository: new LocalWorkspaceRepository(database),
-        syncRepository: new LocalSyncRepository(database, writer),
-        transactionMutations: new LocalTransactionMutationRepository(database, writer),
-        schemaVersion,
-      };
-      current = { subject, alias, workspace };
-      return workspace;
-    } catch (error) {
-      await database.closeAsync().catch(() => undefined);
-      throw error;
-    }
+    await deleteDatabaseAsync(databaseNameForGeneration(alias, currentGeneration)).catch(
+      () => undefined,
+    );
   });
 }
 
@@ -164,7 +266,8 @@ export function closeLocalWorkspace(subject?: string): Promise<void> {
 export function discardLocalWorkspace(subject: string): Promise<void> {
   return serialize(async () => {
     const alias = await workspaceAlias(subject);
-    const name = databaseName(alias);
+    const generation = await getWorkspaceGeneration(alias);
+    const name = databaseNameForGeneration(alias, generation);
     if (current?.subject === subject) {
       await current.workspace.database.closeAsync();
       current = null;
@@ -173,5 +276,6 @@ export function discardLocalWorkspace(subject: string): Promise<void> {
       if (!(error instanceof Error) || !/not found|no such file/i.test(error.message)) throw error;
     });
     await removeWorkspaceKey(alias);
+    await removeWorkspaceGeneration(alias);
   });
 }

@@ -47,3 +47,30 @@ export async function getOrCreateWorkspaceKey(alias: string): Promise<string> {
 export async function removeWorkspaceKey(alias: string): Promise<void> {
   await SecureStore.deleteItemAsync(workspaceKeyAlias(alias), keyOptions);
 }
+
+export function workspaceGenerationAlias(alias: string): string {
+  return `zoption.workspace-generation.v1.${alias.slice(0, 32)}`;
+}
+
+export async function getWorkspaceGeneration(alias: string): Promise<number> {
+  const stored = await SecureStore.getItemAsync(workspaceGenerationAlias(alias), keyOptions);
+  if (!stored) return 1;
+  const generation = Number.parseInt(stored, 10);
+  if (!Number.isSafeInteger(generation) || generation < 1) {
+    throw new LocalKeyError(
+      "The protected workspace generation is invalid. Zoption preserved the local database for recovery.",
+    );
+  }
+  return generation;
+}
+
+export async function setWorkspaceGeneration(alias: string, generation: number): Promise<void> {
+  if (!Number.isSafeInteger(generation) || generation < 1) {
+    throw new LocalKeyError("Choose a valid workspace generation.");
+  }
+  await SecureStore.setItemAsync(workspaceGenerationAlias(alias), String(generation), keyOptions);
+}
+
+export async function removeWorkspaceGeneration(alias: string): Promise<void> {
+  await SecureStore.deleteItemAsync(workspaceGenerationAlias(alias), keyOptions);
+}

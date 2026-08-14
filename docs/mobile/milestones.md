@@ -237,6 +237,13 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   for iOS (9.5 MiB total, 5.7 MB reported Hermes bundle) and 18.34 seconds for Android (11 MiB total,
   5.9 MB reported Hermes bundle). These are bundle export measurements, not signed archive or
   installed-device size claims.
+- The mobile full-resync path now streams the Worker's fixed-sequence snapshot into a new encrypted
+  generation beside the current database, applies validated account/category/transaction upserts on the
+  keyed SQLCipher connection, records the resumed incremental cursor, verifies referential and
+  transfer-pair integrity plus subject/client identity and the absence of retained outbox work, then
+  atomically switches the generation pointer before deleting the superseded copy. The full-resync
+  coordinator path performs this recovery and reopens the encrypted workspace. Transport and
+  generation-builder/verification logic are covered by focused Jest suites (17 suites, 91 tests).
 
 ## Milestone 4 remaining gaps
 
@@ -245,7 +252,9 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
 - Tenant-scoped client acknowledgement, a 90-day cursor-retention floor, resumable fixed-sequence
   server snapshots, and guarded daily change/tombstone compaction are implemented and focused-tested.
   The mobile beside-the-current-database snapshot builder, verification, and atomic generation switch
-  remain required before release; current recovery continues preserving and displaying the old copy.
+  are implemented and unit-tested; the encrypted generation switch still needs an on-device iOS/Android
+  runtime proof (the host lacks an Android emulator/device, and the iOS simulator path awaits the next
+  development build) before release.
 - Migration performance has only been exercised on fresh/local SQLite data; production-scale migration
   timing and rollback rehearsal are pending and no D1 migration has been deployed.
 - `apps/mobile` intentionally targets Android and iOS. A combined Expo export that also requests web
