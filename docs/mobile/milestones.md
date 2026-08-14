@@ -297,6 +297,12 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   and opened as `site.zoption.ios.dev`, Metro bundled 2073 modules in ~2.7s, and no runtime error or
   redbox appeared. This re-verifies the on-device build path after the budget work; an authenticated
   dashboard/budgets interaction run remains the next on-device proof.
-- Remaining Milestone 5 work: Pro-gated monthly/six-month cash-flow views (entitlement is
-  server-authoritative and not yet surfaced to the client) and on-device runtime proof of the
-  dashboard/budgets rendering.
+- Pro-gated cash-flow views are implemented. `readPlan` decodes the server-authoritative plan from
+  the billing summary; `usePlan` caches it in memory keyed by the immutable subject and clears it on
+  every identity transition (never persisted, never in Zustand). The Home tab adds a 7-day / Month /
+  6-month selector; Month and 6-month are locked behind Pro and an unknown or unreachable plan always
+  fails closed to the Free 7-day view. The server still enforces the Pro gate on its own cash-flow
+  trend route.
+- Remaining Milestone 5 work: an authenticated on-device interaction run of the dashboard/budgets
+  rendering (the iOS build/launch path is proven; signed-in rendering with real records is not yet
+  re-exercised after the latest screens). Android runtime proof remains a host gap.
