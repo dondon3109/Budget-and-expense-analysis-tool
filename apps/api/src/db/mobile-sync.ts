@@ -5,6 +5,7 @@ import {
   categoryInputSchema,
   mobileSyncAcknowledgeResponseSchema,
   mobileSyncAccountSnapshotSchema,
+  mobileSyncBudgetSnapshotSchema,
   mobileSyncPushResultSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncChangeSchema,
@@ -42,7 +43,7 @@ import { validateTransactionReferences } from "./transactions";
 
 interface ChangeRow {
   sequence: number;
-  entityType: "account" | "category" | "transaction";
+  entityType: "account" | "category" | "transaction" | "budget";
   entityId: string;
   rowRevision: number;
   operation: "upsert" | "delete";
@@ -75,7 +76,13 @@ type AccountSnapshot = ReturnType<typeof mobileSyncAccountSnapshotSchema.parse>;
 type CategorySnapshot = ReturnType<typeof mobileSyncCategorySnapshotSchema.parse>;
 type TransactionSnapshot = ReturnType<typeof mobileSyncTransactionSnapshotSchema.parse>;
 type TransferSnapshot = ReturnType<typeof mobileSyncTransferSnapshotSchema.parse>;
-type EntitySnapshot = AccountSnapshot | CategorySnapshot | TransactionSnapshot | TransferSnapshot;
+type BudgetSnapshot = ReturnType<typeof mobileSyncBudgetSnapshotSchema.parse>;
+type EntitySnapshot =
+  | AccountSnapshot
+  | CategorySnapshot
+  | TransactionSnapshot
+  | TransferSnapshot
+  | BudgetSnapshot;
 
 function withCategoryLock(snapshot: EntitySnapshot | null, hasPro: boolean): EntitySnapshot | null {
   const category = mobileSyncCategorySnapshotSchema.safeParse(snapshot);
@@ -349,7 +356,9 @@ async function readEntitySnapshot(
         ? "mobile_sync_category_rows"
         : entityType === "transaction"
           ? "mobile_sync_transaction_rows"
-          : "mobile_sync_transfer_rows";
+          : entityType === "budget"
+            ? "mobile_sync_budget_rows"
+            : "mobile_sync_transfer_rows";
   const row = await env.DB.prepare(
     `SELECT payload_json AS payloadJson FROM ${view} WHERE tenant_id = ? AND entity_id = ?`,
   )
@@ -364,7 +373,9 @@ async function readEntitySnapshot(
         ? mobileSyncCategorySnapshotSchema.parse(payload)
         : entityType === "transaction"
           ? mobileSyncTransactionSnapshotSchema.parse(payload)
-          : mobileSyncTransferSnapshotSchema.parse(payload);
+          : entityType === "budget"
+            ? mobileSyncBudgetSnapshotSchema.parse(payload)
+            : mobileSyncTransferSnapshotSchema.parse(payload);
   } catch {
     throw new Error("Stored mobile synchronization entity failed validation.");
   }
@@ -405,6 +416,44 @@ async function hasNameConflict(
   return Boolean(row);
 }
 
+async function readBudgetByMonthCategory(
+  env: Bindings,
+  tenantId: string,
+  month: string,
+  categoryId: string,
+): Promise<BudgetSnapshot | null> {
+  const row = await env.DB.prepare(
+    `SELECT payload_json AS payloadJson
+     FROM mobile_sync_budget_rows
+     WHERE tenant_id = ? AND json_extract(payload_json, '$.month') = ?
+       AND json_extract(payload_json, '$.categoryId') = ?
+     LIMIT 1`,
+  )
+    .bind(tenantId, month, categoryId)
+    .first<EntitySyncRow>();
+  if (!row) return null;
+  try {
+    return mobileSyncBudgetSnapshotSchema.parse(JSON.parse(row.payloadJson) as unknown);
+  } catch {
+    throw new Error("Stored mobile synchronization entity failed validation.");
+  }
+}
+
+async function validateBudgetCategory(
+  env: Bindings,
+  tenantId: string,
+  categoryId: string,
+): Promise<boolean> {
+  const row = await env.DB.prepare(
+    `SELECT id FROM categories
+     WHERE tenant_id = ? AND id = ? AND kind = 'expense' AND archived = 0
+     LIMIT 1`,
+  )
+    .bind(tenantId, categoryId)
+    .first<{ id: string }>();
+  return Boolean(row);
+}
+
 async function hasEffectiveProEntitlementRow(env: Bindings, tenantId: string): Promise<boolean> {
   const row = await env.DB.prepare(
     "SELECT 1 AS entitled FROM effective_pro_entitlements WHERE tenant_id = ? LIMIT 1",
@@ -430,7 +479,13 @@ async function businessRejection(
   operation: MobileSyncPushOperation,
   current: EntitySnapshot | null,
 ): Promise<MobileSyncPushResult | null> {
-  if (operation.entityType === "transaction" || operation.entityType === "transfer") return null;
+  if (
+    operation.entityType === "transaction" ||
+    operation.entityType === "transfer" ||
+    operation.entityType === "budget"
+  ) {
+    return null;
+  }
 
   const existing =
     operation.entityType === "account"
@@ -1715,6 +1770,42 @@ export function createMobileSyncRepository(
           continue;
         }
 
+        if (operation.entityType === "budget" && operation.operationType === "create") {
+          const payload = operation.payload;
+          if (!(await validateBudgetCategory(env, tenantId, payload.categoryId))) {
+            results.push(
+              await persistResult(
+                env,
+                tenantId,
+                input.clientId,
+                operation,
+                hash,
+                rejectedResult(operation, "invalid_category", "Choose an active expense category."),
+              ),
+            );
+            continue;
+          }
+          const existing = await readBudgetByMonthCategory(
+            env,
+            tenantId,
+            payload.month,
+            payload.categoryId,
+          );
+          if (existing && existing.id !== operation.entityId) {
+            results.push(
+              await persistResult(
+                env,
+                tenantId,
+                input.clientId,
+                operation,
+                hash,
+                conflictResult(operation, "entity_exists", existing),
+              ),
+            );
+            continue;
+          }
+        }
+
         const timestamp = serverTimestamp();
         let transaction: NonTransferTransactionInput | null = null;
         let currentTransaction: TransactionSnapshot | null = null;
@@ -1918,6 +2009,39 @@ export function createMobileSyncRepository(
                WHERE id = ? AND tenant_id = ? AND revision = ? AND system_key IS NULL`,
             ).bind(timestamp, operation.entityId, tenantId, operation.baseRevision);
           }
+        } else if (operation.entityType === "budget") {
+          if (operation.operationType === "create") {
+            const payload = operation.payload;
+            mutation = env.DB.prepare(
+              `INSERT INTO budgets (id, tenant_id, category_id, month, limit_minor, revision, updated_at)
+               SELECT ?, ?, ?, ?, ?, 1, ?
+               WHERE NOT EXISTS (
+                 SELECT 1 FROM budgets WHERE tenant_id = ? AND month = ? AND category_id = ?
+               )`,
+            ).bind(
+              operation.entityId,
+              tenantId,
+              payload.categoryId,
+              payload.month,
+              payload.limitMinor,
+              timestamp,
+              tenantId,
+              payload.month,
+              payload.categoryId,
+            );
+          } else {
+            const payload = operation.payload;
+            mutation = env.DB.prepare(
+              `UPDATE budgets SET limit_minor = ?, updated_at = ?
+               WHERE id = ? AND tenant_id = ? AND revision = ?`,
+            ).bind(
+              payload.limitMinor,
+              timestamp,
+              operation.entityId,
+              tenantId,
+              operation.baseRevision,
+            );
+          }
         } else {
           mutation =
             operation.operationType === "create" && transaction
@@ -2013,6 +2137,31 @@ export function createMobileSyncRepository(
               : concurrent.revision !== operation.baseRevision
                 ? "stale_revision"
                 : null;
+        if (
+          operation.entityType === "budget" &&
+          operation.operationType === "create" &&
+          !concurrentCode
+        ) {
+          const raced = await readBudgetByMonthCategory(
+            env,
+            tenantId,
+            operation.payload.month,
+            operation.payload.categoryId,
+          );
+          if (raced) {
+            results.push(
+              await persistResult(
+                env,
+                tenantId,
+                input.clientId,
+                operation,
+                hash,
+                conflictResult(operation, "entity_exists", raced),
+              ),
+            );
+            continue;
+          }
+        }
         const racedRejection = concurrentCode
           ? null
           : await businessRejection(env, tenantId, operation, concurrent);

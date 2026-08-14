@@ -107,6 +107,16 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
       subscription_id text, created_at text NOT NULL DEFAULT (datetime('now')),
       updated_at text NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE budgets (
+      id text PRIMARY KEY NOT NULL,
+      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      category_id text NOT NULL REFERENCES categories(id),
+      month text NOT NULL,
+      limit_minor integer NOT NULL,
+      created_at text NOT NULL DEFAULT (datetime('now')),
+      updated_at text NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (tenant_id, month, category_id)
+    );
   `);
   database.exec(`
     INSERT INTO tenants (id, kind, name) VALUES
@@ -122,6 +132,8 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
     ) VALUES
       ('transaction-1', 'tenant-1', 'account-1', 'category-1', '2026-08-13', 'Lunch', -25000, 'PHP', 'expense'),
       ('transaction-2', 'tenant-2', 'account-2', 'category-2', '2026-08-13', 'Private', -99900, 'PHP', 'expense');
+    INSERT INTO budgets (id, tenant_id, category_id, month, limit_minor) VALUES
+      ('budget-1', 'tenant-1', 'category-1', '2026-08-01', 50000);
   `);
   const migration = readFileSync(
     new URL("../../../db/migrations/0034_mobile_sync_foundation.sql", import.meta.url),
@@ -155,6 +167,16 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
     "utf8",
   );
   for (const statement of acknowledgementMigration
+    .split("--> statement-breakpoint")
+    .map((part) => part.trim())
+    .filter(Boolean)) {
+    database.exec(statement);
+  }
+  const budgetMigration = readFileSync(
+    new URL("../../../db/migrations/0038_mobile_sync_budgets.sql", import.meta.url),
+    "utf8",
+  );
+  for (const statement of budgetMigration
     .split("--> statement-breakpoint")
     .map((part) => part.trim())
     .filter(Boolean)) {
@@ -257,10 +279,10 @@ describe("mobile sync full snapshot", () => {
       limit: 2,
     });
     expect(first).toMatchObject({
-      snapshotCursor: "s1.3",
+      snapshotCursor: "s1.4",
       nextOffset: 2,
       hasMore: true,
-      resumeCursor: "v1.3",
+      resumeCursor: "v1.4",
     });
     expect(first.changes.map((change) => change.entityId)).toEqual(["account-1", "category-1"]);
 
@@ -274,8 +296,8 @@ describe("mobile sync full snapshot", () => {
       offset: first.nextOffset,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextOffset: 3, hasMore: false, resumeCursor: "v1.3" });
-    expect(second.changes.map((change) => change.entityId)).toEqual(["transaction-1"]);
+    expect(second).toMatchObject({ nextOffset: 4, hasMore: false, resumeCursor: "v1.4" });
+    expect(second.changes.map((change) => change.entityId)).toEqual(["budget-1", "transaction-1"]);
     expect(JSON.stringify(second)).not.toContain("account-after-snapshot");
   });
 
@@ -456,8 +478,8 @@ describe("mobile sync pull repository", () => {
       cursor: first.nextCursor,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextCursor: "v1.3", hasMore: false });
-    expect(second.changes.map((change) => change.entityId)).toEqual(["transaction-1"]);
+    expect(second).toMatchObject({ nextCursor: "v1.4", hasMore: false });
+    expect(second.changes.map((change) => change.entityId)).toEqual(["transaction-1", "budget-1"]);
   });
 
   it("captures web updates and deletion tombstones without device timestamps", async () => {
@@ -474,6 +496,13 @@ describe("mobile sync pull repository", () => {
     });
     expect(pulled.changes).toMatchObject([
       {
+        entityType: "budget",
+        entityId: "budget-1",
+        revision: 1,
+        operation: "upsert",
+        payload: { categoryId: "category-1", month: "2026-08-01", limitMinor: 50000 },
+      },
+      {
         entityType: "account",
         entityId: "account-1",
         revision: 2,
@@ -488,7 +517,7 @@ describe("mobile sync pull repository", () => {
         payload: null,
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.5");
+    expect(pulled.nextCursor).toBe("v1.6");
   });
 
   it("requires a safe full resync when a cursor is ahead of server state", async () => {
@@ -1551,6 +1580,152 @@ describe("mobile sync account and category push repository", () => {
       code: "stale_revision",
       serverRevision: 2,
       serverPayload: { color: "#ABCDEF", requiredPlan: "zoption_pro", locked: true },
+    });
+  });
+});
+
+describe("mobile sync budget push repository", () => {
+  const clientId = "20000000-0000-4000-8000-000000000001";
+
+  it("creates and updates a month-scoped budget idempotently", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const entityId = "20000000-0000-4000-8000-000000000002";
+    const create = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "20000000-0000-4000-8000-000000000003",
+          idempotencyKey: "20000000-0000-4000-8000-000000000004",
+          entityType: "budget" as const,
+          entityId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: { categoryId: "category-1", month: "2026-09-01", limitMinor: 75_000 },
+        },
+      ],
+    };
+
+    const first = await repository.push(env, "tenant-1", create);
+    expect(await repository.push(env, "tenant-1", create)).toEqual(first);
+    expect(first.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+
+    const updated = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "20000000-0000-4000-8000-000000000005",
+          idempotencyKey: "20000000-0000-4000-8000-000000000006",
+          entityType: "budget",
+          entityId,
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { limitMinor: 80_000 },
+        },
+      ],
+    });
+    expect(updated.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+    expect(
+      database
+        .prepare("SELECT limit_minor AS limitMinor, revision FROM budgets WHERE id = ?")
+        .get(entityId),
+    ).toEqual({ limitMinor: 80_000, revision: 2 });
+    expect(
+      database
+        .prepare(
+          "SELECT entity_type AS entityType, operation FROM mobile_sync_changes WHERE entity_id = ? ORDER BY sequence DESC LIMIT 1",
+        )
+        .get(entityId),
+    ).toEqual({ entityType: "budget", operation: "upsert" });
+  });
+
+  it("rejects a duplicate month-category budget as an entity_exists conflict", async () => {
+    const { env } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const duplicate = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "20000000-0000-4000-8000-000000000007",
+          idempotencyKey: "20000000-0000-4000-8000-000000000008",
+          entityType: "budget",
+          entityId: "20000000-0000-4000-8000-000000000009",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { categoryId: "category-1", month: "2026-08-01", limitMinor: 60_000 },
+        },
+      ],
+    });
+    expect(duplicate.results[0]).toMatchObject({
+      status: "conflict",
+      code: "entity_exists",
+      serverPayload: {
+        id: "budget-1",
+        categoryId: "category-1",
+        month: "2026-08-01",
+        limitMinor: 50_000,
+        revision: 1,
+      },
+    });
+  });
+
+  it("rejects a budget for a category the tenant does not own", async () => {
+    const { env } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const rejected = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "20000000-0000-4000-8000-00000000000a",
+          idempotencyKey: "20000000-0000-4000-8000-00000000000b",
+          entityType: "budget",
+          entityId: "20000000-0000-4000-8000-00000000000c",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { categoryId: "category-2", month: "2026-09-01", limitMinor: 10_000 },
+        },
+      ],
+    });
+    expect(rejected.results[0]).toMatchObject({
+      status: "rejected",
+      code: "invalid_category",
+    });
+  });
+
+  it("returns a stale revision conflict for an out-of-date budget update", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    database.prepare("UPDATE budgets SET limit_minor = ? WHERE id = ?").run(90_000, "budget-1");
+
+    const stale = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "20000000-0000-4000-8000-00000000000d",
+          idempotencyKey: "20000000-0000-4000-8000-00000000000e",
+          entityType: "budget",
+          entityId: "budget-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { limitMinor: 95_000 },
+        },
+      ],
+    });
+    expect(stale.results[0]).toMatchObject({
+      status: "conflict",
+      code: "stale_revision",
+      serverRevision: 2,
+      serverPayload: { id: "budget-1", limitMinor: 90_000 },
     });
   });
 });

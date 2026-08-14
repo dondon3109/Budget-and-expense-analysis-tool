@@ -6,6 +6,7 @@ import {
   categoryInputSchema,
   categoryUpdateSchema,
   isoDateSchema,
+  monthStartSchema,
   resourceIdSchema,
   transferInputSchema,
   transactionInputSchema,
@@ -21,7 +22,7 @@ import {
 } from "./types";
 
 export const MOBILE_SYNC_PROTOCOL_VERSION = 1 as const;
-export const mobileSyncEntityTypes = ["account", "category", "transaction", "transfer"] as const;
+export const mobileSyncEntityTypes = ["account", "category", "transaction", "transfer", "budget"] as const;
 export const mobileSyncOperationTypes = ["create", "update", "delete"] as const;
 
 const uuidSchema = z.string().uuid();
@@ -127,11 +128,23 @@ export const mobileSyncTransferSnapshotSchema = z
     message: "The transfer fee must be less than the amount.",
   });
 
+export const mobileSyncBudgetSnapshotSchema = z
+  .object({
+    id: resourceIdSchema,
+    categoryId: resourceIdSchema,
+    month: monthStartSchema,
+    limitMinor: z.number().int().safe().min(0).max(1_000_000_000_00),
+    revision: serverRevisionSchema,
+    updatedAt: serverTimestampSchema,
+  })
+  .strict();
+
 export const mobileSyncSnapshotSchema = z.union([
   mobileSyncAccountSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
+  mobileSyncBudgetSnapshotSchema,
 ]);
 
 export const mobileSyncChangeSchema = z
@@ -162,7 +175,9 @@ export const mobileSyncChangeSchema = z
           ? mobileSyncAccountSnapshotSchema
           : change.entityType === "category"
             ? mobileSyncCategorySnapshotSchema
-            : mobileSyncTransactionSnapshotSchema;
+            : change.entityType === "budget"
+              ? mobileSyncBudgetSnapshotSchema
+              : mobileSyncTransactionSnapshotSchema;
       if (!expectedSchema.safeParse(change.payload).success) {
         context.addIssue({
           code: "custom",
@@ -239,7 +254,7 @@ const operationIdentityShape = {
 } as const;
 
 const createOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer",
+  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -256,7 +271,7 @@ const createOperation = <
     .strict();
 
 const updateOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer",
+  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -285,6 +300,20 @@ const deleteOperation = <TEntity extends "account" | "category" | "transaction" 
     })
     .strict();
 
+const mobileSyncBudgetInputSchema = z
+  .object({
+    categoryId: resourceIdSchema,
+    month: monthStartSchema,
+    limitMinor: z.number().int().safe().min(0).max(1_000_000_000_00),
+  })
+  .strict();
+
+const mobileSyncBudgetUpdateSchema = z
+  .object({
+    limitMinor: z.number().int().safe().min(0).max(1_000_000_000_00),
+  })
+  .strict();
+
 export const mobileSyncPushOperationSchema = z
   .union([
     createOperation("account", accountInputSchema),
@@ -296,6 +325,8 @@ export const mobileSyncPushOperationSchema = z
     createOperation("transaction", transactionInputSchema),
     updateOperation("transaction", transactionUpdateSchema),
     deleteOperation("transaction"),
+    createOperation("budget", mobileSyncBudgetInputSchema),
+    updateOperation("budget", mobileSyncBudgetUpdateSchema),
     createOperation(
       "transfer",
       z
