@@ -9,7 +9,7 @@ Last updated: 2026-08-14.
 | 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS; social auth and Android runtime remain                      |
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
 | 4. Transaction sync vertical slice   | In progress | Account/category/transaction offline push, restart durability, and explicit conflict recovery proven on iOS                  |
-| 5. Core budgeting                    | Not started | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
+| 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
 | 6. Planning and recurring money      | Not started | Subscriptions/calendar/goals/debts/transfers/interest with plan boundaries                                                   |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
 | 8. Online-only capabilities          | Not started | Assistant/voice/billing/support/account management with online/consent boundaries                                            |
@@ -260,3 +260,21 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
 - `apps/mobile` intentionally targets Android and iOS. A combined Expo export that also requests web
   fails because the pnpm-installed Expo SQLite package does not contain its optional web WASM asset;
   the required standalone iOS and Android exports pass, and responsive web remains owned by `apps/web`.
+
+## Milestone 5 progress
+
+- The Home tab is now a local-first dashboard rendered entirely from the encrypted ledger. It shows
+  overall and per-account balances (computed with the Worker transfer-leg exclusion rule), the
+  current-month money-in/out/net/savings-rate summary, spending by category with accessible text+bar
+  alternatives, a seven-day weekly cash-flow view, and an empty budget card pending budget sync.
+- LocalWorkspaceRepository.getDashboardData maps transactions, accounts (with ledger-computed
+  balanceMinor / balancesByCurrency matching the apps/api accountSelection SQL), and empty budgets; it
+  reuses shared summarizeAccountBalances, buildDashboardSummary, and buildCashflowTrend.
+- LocalWorkspaceRepository.queryTransactions adds parameterized local search (literal substring via
+  instr/lower, no wildcard injection) and a kind filter, reusing the shared transfer-leg projection.
+  listTransactions now delegates to it.
+- The Transactions tab now has a search field and All/Income/Expense/Transfer filter chips with distinct
+  empty states. useLocalTransactions accepts search and kind and re-queries on change.
+- Eighteen mobile suites with 97 focused tests pass; typecheck and lint are clean.
+- Remaining Milestone 5 work: monthly budgets (local schema + sync protocol + editor), Pro-gated
+  monthly/six-month cash-flow views, and on-device runtime proof of the dashboard rendering.
