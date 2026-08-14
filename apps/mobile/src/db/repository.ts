@@ -1,4 +1,11 @@
-import type { TransactionInput, TransactionListItem } from "@zoption/shared";
+import type {
+  AccountRecord,
+  BudgetRecord,
+  InterestSettings,
+  TransactionInput,
+  TransactionListItem,
+  TransactionRecord,
+} from "@zoption/shared";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { z } from "zod";
 
@@ -150,6 +157,54 @@ export interface LocalCategoryItem {
 export interface LocalReferenceData {
   accounts: LocalAccountItem[];
   categories: LocalCategoryItem[];
+}
+
+export interface LocalDashboardData {
+  transactions: TransactionRecord[];
+  accounts: AccountRecord[];
+  budgets: BudgetRecord[];
+}
+
+const dashboardTransactionRowSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  description: z.string(),
+  amount_minor: z.number().int().safe(),
+  currency: z.enum(["PHP", "USD"]),
+  kind: z.enum(["income", "expense", "transfer"]),
+  category_id: z.string(),
+  category_name: z.string(),
+  category_color: z.string(),
+  account_name: z.string(),
+});
+
+const dashboardAccountRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(["cash", "checking", "savings", "credit", "other"]),
+  currency: z.enum(["PHP", "USD"]),
+  archived: z.number().int().min(0).max(1),
+  system: z.number().int().min(0).max(1),
+  interest_json: z.string().nullable(),
+  balance_php_minor: z.number().int().safe(),
+  balance_usd_minor: z.number().int().safe(),
+});
+
+const interestSettingsSchema = z.object({
+  enabled: z.boolean(),
+  annualRateBasisPoints: z.number().int().min(0).max(1_000_000).nullable(),
+  frequency: z.enum(["daily", "monthly", "yearly"]).nullable(),
+  payDay: z.number().int().min(1).max(31).nullable(),
+});
+
+function decodeInterest(json: string | null): InterestSettings {
+  if (!json) return { enabled: false, annualRateBasisPoints: null, frequency: null, payDay: null };
+  try {
+    return interestSettingsSchema.parse(JSON.parse(json) as unknown);
+  } catch {
+    // Interest is a display-only enrichment; a corrupt field must not hide balances.
+    return { enabled: false, annualRateBasisPoints: null, frequency: null, payDay: null };
+  }
 }
 
 export class LocalWorkspaceRepository {
@@ -451,6 +506,89 @@ export class LocalWorkspaceRepository {
         syncState: decoded.data.sync_state,
       },
       unavailableReason: null,
+    };
+  }
+
+  async getDashboardData(): Promise<LocalDashboardData> {
+    const transactionRows = await this.database.getAllAsync(`
+      SELECT
+        t.id,
+        t.date,
+        t.description,
+        t.amount_minor,
+        t.currency,
+        t.kind,
+        t.category_id,
+        c.name AS category_name,
+        c.color AS category_color,
+        COALESCE(a.name, 'Unassigned') AS account_name
+      FROM transactions t
+      INNER JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
+      LEFT JOIN accounts a ON a.id = t.account_id AND a.deleted_at IS NULL
+      WHERE t.deleted_at IS NULL
+      ORDER BY t.date, t.id
+    `);
+
+    const accountRows = await this.database.getAllAsync(`
+      SELECT
+        a.id,
+        a.name,
+        a.type,
+        a.currency,
+        a.archived,
+        a.system,
+        a.interest_json,
+        COALESCE(SUM(CASE
+          WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = 'PHP'
+          THEN t.amount_minor ELSE 0
+        END), 0) AS balance_php_minor,
+        COALESCE(SUM(CASE
+          WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = 'USD'
+          THEN t.amount_minor ELSE 0
+        END), 0) AS balance_usd_minor
+      FROM accounts a
+      LEFT JOIN transactions t ON t.account_id = a.id AND t.deleted_at IS NULL
+      WHERE a.deleted_at IS NULL
+      GROUP BY a.id
+      ORDER BY a.archived, a.name COLLATE NOCASE
+    `);
+
+    return {
+      transactions: transactionRows.map((row) => {
+        const decoded = dashboardTransactionRowSchema.parse(row);
+        return {
+          id: decoded.id,
+          date: decoded.date,
+          description: decoded.description,
+          amountMinor: decoded.amount_minor,
+          currency: decoded.currency,
+          kind: decoded.kind,
+          categoryId: decoded.category_id,
+          categoryName: decoded.category_name,
+          categoryColor: decoded.category_color,
+          accountName: decoded.account_name,
+        };
+      }),
+      accounts: accountRows.map((row) => {
+        const decoded = dashboardAccountRowSchema.parse(row);
+        const balancesByCurrency = {
+          PHP: decoded.balance_php_minor,
+          USD: decoded.balance_usd_minor,
+        };
+        return {
+          id: decoded.id,
+          name: decoded.name,
+          type: decoded.type,
+          currency: decoded.currency,
+          balanceMinor: balancesByCurrency[decoded.currency],
+          balancesByCurrency,
+          archived: decoded.archived === 1,
+          system: decoded.system === 1,
+          interest: decodeInterest(decoded.interest_json),
+        };
+      }),
+      // Budget sync arrives with the budget editor in a later Milestone 5 step.
+      budgets: [],
     };
   }
 }

@@ -12,7 +12,12 @@ import { addDatabaseChangeListener } from "expo-sqlite";
 
 import { closeLocalWorkspace, openLocalWorkspace, type LocalWorkspace } from "./workspace";
 import type { LocalWorkspaceStats } from "./repository";
-import type { LocalReferenceData, LocalTransactionItem, TransactionFormData } from "./repository";
+import type {
+  LocalDashboardData,
+  LocalReferenceData,
+  LocalTransactionItem,
+  TransactionFormData,
+} from "./repository";
 import type {
   LocalReferenceConflict,
   LocalTransactionConflict,
@@ -131,6 +136,55 @@ export function useLocalWorkspaceStats(): {
   }, [workspace]);
 
   return { stats, error };
+}
+
+export function useDashboardData(): {
+  data: LocalDashboardData | null;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [data, setData] = useState<LocalDashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace) {
+      setData(null);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      void workspace.repository
+        .getDashboardData()
+        .then((next) => {
+          if (active) {
+            setData(next);
+            setError(null);
+          }
+        })
+        .catch(() => {
+          if (active) setError("Dashboard data could not be read from encrypted local storage.");
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["accounts", "categories", "transactions"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { data, error, retry };
 }
 
 export function useLocalTransactions(): {

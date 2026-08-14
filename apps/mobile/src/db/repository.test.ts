@@ -304,4 +304,78 @@ describe("encrypted local workspace repository", () => {
       unavailableReason: null,
     });
   });
+
+  it("builds dashboard rows with ledger balances and interest", async () => {
+    const database = {
+      getAllAsync: jest
+        .fn()
+        .mockResolvedValueOnce([
+          {
+            id: "transaction-1",
+            date: "2026-08-10",
+            description: "Lunch",
+            amount_minor: -25_000,
+            currency: "PHP",
+            kind: "expense",
+            category_id: "category-1",
+            category_name: "Dining",
+            category_color: "#123456",
+            account_name: "Wallet",
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "account-1",
+            name: "Wallet",
+            type: "cash",
+            currency: "PHP",
+            archived: 0,
+            system: 0,
+            interest_json: JSON.stringify({
+              enabled: true,
+              annualRateBasisPoints: 500,
+              frequency: "monthly",
+              payDay: 15,
+            }),
+            balance_php_minor: 12_000,
+            balance_usd_minor: 0,
+          },
+        ]),
+    };
+
+    const result = await new LocalWorkspaceRepository(database as never).getDashboardData();
+    expect(result.transactions).toEqual([
+      {
+        id: "transaction-1",
+        date: "2026-08-10",
+        description: "Lunch",
+        amountMinor: -25_000,
+        currency: "PHP",
+        kind: "expense",
+        categoryId: "category-1",
+        categoryName: "Dining",
+        categoryColor: "#123456",
+        accountName: "Wallet",
+      },
+    ]);
+    expect(result.accounts).toEqual([
+      {
+        id: "account-1",
+        name: "Wallet",
+        type: "cash",
+        currency: "PHP",
+        balanceMinor: 12_000,
+        balancesByCurrency: { PHP: 12_000, USD: 0 },
+        archived: false,
+        system: false,
+        interest: {
+          enabled: true,
+          annualRateBasisPoints: 500,
+          frequency: "monthly",
+          payDay: 15,
+        },
+      },
+    ]);
+    expect(result.budgets).toEqual([]);
+  });
 });
