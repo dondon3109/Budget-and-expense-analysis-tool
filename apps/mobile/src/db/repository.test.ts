@@ -85,6 +85,34 @@ describe("encrypted local workspace repository", () => {
     ]);
   });
 
+  it("builds parameterized search and filter queries", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([]);
+    const repository = new LocalWorkspaceRepository({ getAllAsync } as never);
+
+    await repository.queryTransactions({
+      search: "coffee",
+      kind: "expense",
+      accountId: "account-1",
+      limit: 25,
+    });
+
+    const [sql, ...params] = getAllAsync.mock.calls[0] as [string, ...Array<string | number>];
+    expect(sql).toContain("transaction_row.kind = ?");
+    expect(sql).toContain("transaction_row.account_id = ?");
+    expect(sql).toContain("instr(lower(transaction_row.description), lower(?))");
+    expect(sql).toContain("instr(lower(category.name), lower(?))");
+    expect(params).toEqual(["expense", "account-1", "coffee", "coffee", 25]);
+
+    await repository.queryTransactions({});
+    const [plainSql, ...plainParams] = getAllAsync.mock.calls[1] as [
+      string,
+      ...Array<string | number>,
+    ];
+    expect(plainSql).not.toContain("instr(lower");
+    expect(plainSql).not.toContain("transaction_row.kind = ?");
+    expect(plainParams).toEqual([100]);
+  });
+
   it("decodes native account and category setup rows without financial state in memory stores", async () => {
     const database = {
       getAllAsync: jest

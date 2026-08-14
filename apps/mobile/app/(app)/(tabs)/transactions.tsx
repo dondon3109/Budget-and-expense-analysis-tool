@@ -1,8 +1,18 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { useDeferredValue, useState } from "react";
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { useLocalTransactions } from "@/db/local-workspace-state";
+import { transactionKindFilters, type TransactionKindFilter } from "@/db/repository";
 import { useSyncState } from "@/sync/sync-state";
 import {
   EmptyState,
@@ -13,8 +23,15 @@ import {
   TransactionRow,
 } from "@/ui/components";
 import { Screen } from "@/ui/screen";
-import { spacing, touchTarget } from "@/ui/tokens";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
+
+const kindLabels: Record<TransactionKindFilter, string> = {
+  all: "All",
+  income: "Income",
+  expense: "Expense",
+  transfer: "Transfer",
+};
 
 function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
   if (status === "syncing") return "syncing" as const;
@@ -24,9 +41,14 @@ function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
 }
 
 export default function TransactionsScreen() {
-  const local = useLocalTransactions();
+  const [search, setSearch] = useState("");
+  const [kind, setKind] = useState<TransactionKindFilter>("all");
+  const deferredSearch = useDeferredValue(search);
+  const local = useLocalTransactions(deferredSearch, kind);
   const sync = useSyncState();
   const theme = useZoptionTheme();
+  const filtering = search.trim().length > 0 || kind !== "all";
+
   return (
     <Screen
       action={
@@ -60,6 +82,76 @@ export default function TransactionsScreen() {
       {sync.message && sync.status !== "waiting" ? (
         <ErrorState message={sync.message} onRetry={sync.retry} title="Sync paused" />
       ) : null}
+      <View style={styles.filters}>
+        <View
+          style={[
+            styles.searchBox,
+            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+          ]}
+        >
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.textMuted}
+            name="magnify"
+            size={20}
+          />
+          <TextInput
+            accessibilityLabel="Search transactions"
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setSearch}
+            placeholder="Search description or category"
+            placeholderTextColor={theme.colors.textMuted}
+            style={[styles.searchInput, { color: theme.colors.text }]}
+            value={search}
+          />
+          {search.length > 0 ? (
+            <Pressable
+              accessibilityLabel="Clear search"
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => setSearch("")}
+            >
+              <MaterialCommunityIcons
+                accessibilityElementsHidden
+                color={theme.colors.textMuted}
+                name="close-circle"
+                size={20}
+              />
+            </Pressable>
+          ) : null}
+        </View>
+        <View accessibilityLabel="Filter by type" style={styles.chips}>
+          {transactionKindFilters.map((filter) => {
+            const selected = filter === kind;
+            return (
+              <Pressable
+                key={filter}
+                accessibilityLabel={kindLabels[filter]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => setKind(filter)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: selected ? theme.colors.brand : theme.colors.surfaceRaised,
+                    borderColor: selected ? theme.colors.brand : theme.colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    typography.label,
+                    { color: selected ? theme.colors.onBrand : theme.colors.text },
+                  ]}
+                >
+                  {kindLabels[filter]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
       {local.error ? (
         <ErrorState message={local.error} onRetry={local.retry} title="Local data unavailable" />
       ) : local.items === null ? (
@@ -77,10 +169,12 @@ export default function TransactionsScreen() {
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <EmptyState
-              title={
-                sync.status === "syncing" ? "Checking for transactions…" : "No transactions yet"
+              title={filtering ? "No matching transactions" : "No transactions yet"}
+              description={
+                filtering
+                  ? "Try a different search or filter."
+                  : "Pull down to check for records. Synchronized records are read from encrypted local storage."
               }
-              description="Pull down to check for records. Synchronized records are read from encrypted local storage."
             />
           }
           refreshControl={
@@ -110,5 +204,34 @@ const styles = StyleSheet.create({
     minHeight: touchTarget,
     minWidth: touchTarget,
     borderRadius: touchTarget / 2,
+  },
+  filters: {
+    gap: spacing.xs,
+  },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    minHeight: touchTarget,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    minHeight: touchTarget,
+    fontSize: 16,
+  },
+  chips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  chip: {
+    minHeight: touchTarget,
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.round,
+    borderWidth: 1,
   },
 });

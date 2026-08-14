@@ -17,6 +17,7 @@ import type {
   LocalReferenceData,
   LocalTransactionItem,
   TransactionFormData,
+  TransactionKindFilter,
 } from "./repository";
 import type {
   LocalReferenceConflict,
@@ -187,7 +188,10 @@ export function useDashboardData(): {
   return { data, error, retry };
 }
 
-export function useLocalTransactions(): {
+export function useLocalTransactions(
+  search = "",
+  kind: TransactionKindFilter = "all",
+): {
   items: LocalTransactionItem[] | null;
   error: string | null;
   retry: () => void;
@@ -206,7 +210,7 @@ export function useLocalTransactions(): {
     let active = true;
     const refresh = (): void => {
       void workspace.repository
-        .listTransactions()
+        .queryTransactions({ search, kind })
         .then((next) => {
           if (active) {
             setItems(next);
@@ -230,7 +234,7 @@ export function useLocalTransactions(): {
       active = false;
       subscription.remove();
     };
-  }, [attempt, workspace]);
+  }, [attempt, workspace, search, kind]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { items, error, retry };

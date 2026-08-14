@@ -207,6 +207,75 @@ function decodeInterest(json: string | null): InterestSettings {
   }
 }
 
+export const transactionKindFilters = ["all", "income", "expense", "transfer"] as const;
+export type TransactionKindFilter = (typeof transactionKindFilters)[number];
+
+export interface TransactionQuery {
+  search?: string;
+  kind?: TransactionKindFilter;
+  accountId?: string;
+  limit?: number;
+}
+
+const transactionListSelect = `SELECT
+  transaction_row.id,
+  transaction_row.date,
+  transaction_row.description,
+  transaction_row.amount_minor,
+  transaction_row.currency,
+  transaction_row.kind,
+  transaction_row.category_id,
+  category.name AS category_name,
+  category.color AS category_color,
+  transaction_row.account_id,
+  account.name AS account_name,
+  transaction_row.notes,
+  transaction_row.transfer_group_id,
+  transaction_row.transfer_fee_minor,
+  peer.account_id AS to_account_id,
+  destination.name AS to_account_name,
+  transaction_row.sync_state
+FROM transactions transaction_row
+INNER JOIN categories category
+  ON category.id = transaction_row.category_id AND category.deleted_at IS NULL
+LEFT JOIN accounts account
+  ON account.id = transaction_row.account_id AND account.deleted_at IS NULL
+LEFT JOIN transactions peer
+  ON peer.transfer_group_id = transaction_row.transfer_group_id
+  AND peer.id != transaction_row.id
+  AND peer.amount_minor > 0
+  AND peer.deleted_at IS NULL
+LEFT JOIN accounts destination
+  ON destination.id = peer.account_id AND destination.deleted_at IS NULL`;
+
+function mapTransactionRows(rows: unknown[]): LocalTransactionItem[] {
+  return z.array(localTransactionRowSchema).parse(rows).map((row) => {
+    const linkedTransfer = row.kind === "transfer" && row.transfer_group_id !== null;
+    const transaction: TransactionListItem = {
+      id: row.id,
+      date: row.date,
+      description: row.description,
+      amountMinor: linkedTransfer ? Math.abs(row.amount_minor) : row.amount_minor,
+      currency: row.currency,
+      kind: row.kind,
+      categoryId: row.category_id,
+      categoryName: row.category_name,
+      categoryColor: row.category_color,
+      accountId: row.account_id,
+      accountName: row.account_name ?? "Unassigned",
+      notes: row.notes,
+      transferGroupId: row.transfer_group_id,
+      fromAccountId: linkedTransfer ? row.account_id : null,
+      fromAccountName: linkedTransfer ? (row.account_name ?? "Unassigned") : null,
+      toAccountId: linkedTransfer ? row.to_account_id : null,
+      toAccountName: linkedTransfer ? (row.to_account_name ?? "Unassigned") : null,
+      transferFeeMinor: row.transfer_fee_minor,
+      legacyTransfer: row.kind === "transfer" && !linkedTransfer,
+    };
+    return { transaction, syncState: row.sync_state };
+  });
+}
+
 export class LocalWorkspaceRepository {
   constructor(private readonly database: SQLiteDatabase) {}
 
@@ -237,77 +306,48 @@ export class LocalWorkspaceRepository {
   }
 
   async listTransactions(limit = 100): Promise<LocalTransactionItem[]> {
+    return this.queryTransactions({ limit });
+  }
+
+  async queryTransactions(query: TransactionQuery = {}): Promise<LocalTransactionItem[]> {
+    const limit = query.limit ?? 100;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) {
       throw new Error("Choose a transaction page size from 1 to 200.");
     }
-    const rows = z.array(localTransactionRowSchema).parse(
-      await this.database.getAllAsync(
-        `SELECT
-          transaction_row.id,
-          transaction_row.date,
-          transaction_row.description,
-          transaction_row.amount_minor,
-          transaction_row.currency,
-          transaction_row.kind,
-          transaction_row.category_id,
-          category.name AS category_name,
-          category.color AS category_color,
-          transaction_row.account_id,
-          account.name AS account_name,
-          transaction_row.notes,
-          transaction_row.transfer_group_id,
-          transaction_row.transfer_fee_minor,
-          peer.account_id AS to_account_id,
-          destination.name AS to_account_name,
-          transaction_row.sync_state
-        FROM transactions transaction_row
-        INNER JOIN categories category
-          ON category.id = transaction_row.category_id AND category.deleted_at IS NULL
-        LEFT JOIN accounts account
-          ON account.id = transaction_row.account_id AND account.deleted_at IS NULL
-        LEFT JOIN transactions peer
-          ON peer.transfer_group_id = transaction_row.transfer_group_id
-          AND peer.id != transaction_row.id
-          AND peer.amount_minor > 0
-          AND peer.deleted_at IS NULL
-        LEFT JOIN accounts destination
-          ON destination.id = peer.account_id AND destination.deleted_at IS NULL
-        WHERE transaction_row.deleted_at IS NULL
-          AND (
-            transaction_row.kind != 'transfer'
-            OR transaction_row.transfer_group_id IS NULL
-            OR transaction_row.amount_minor < 0
-          )
-        ORDER BY transaction_row.date DESC, transaction_row.id DESC
-        LIMIT ?`,
-        limit,
-      ),
-    );
-    return rows.map((row) => {
-      const linkedTransfer = row.kind === "transfer" && row.transfer_group_id !== null;
-      const transaction: TransactionListItem = {
-        id: row.id,
-        date: row.date,
-        description: row.description,
-        amountMinor: linkedTransfer ? Math.abs(row.amount_minor) : row.amount_minor,
-        currency: row.currency,
-        kind: row.kind,
-        categoryId: row.category_id,
-        categoryName: row.category_name,
-        categoryColor: row.category_color,
-        accountId: row.account_id,
-        accountName: row.account_name ?? "Unassigned",
-        notes: row.notes,
-        transferGroupId: row.transfer_group_id,
-        fromAccountId: linkedTransfer ? row.account_id : null,
-        fromAccountName: linkedTransfer ? (row.account_name ?? "Unassigned") : null,
-        toAccountId: linkedTransfer ? row.to_account_id : null,
-        toAccountName: linkedTransfer ? (row.to_account_name ?? "Unassigned") : null,
-        transferFeeMinor: row.transfer_fee_minor,
-        legacyTransfer: row.kind === "transfer" && !linkedTransfer,
-      };
-      return { transaction, syncState: row.sync_state };
-    });
+    const conditions: string[] = [
+      "transaction_row.deleted_at IS NULL",
+      "(" +
+        "transaction_row.kind != 'transfer'" +
+        " OR transaction_row.transfer_group_id IS NULL" +
+        " OR transaction_row.amount_minor < 0" +
+        ")",
+    ];
+    const params: Array<string | number> = [];
+
+    if (query.kind && query.kind !== "all") {
+      conditions.push("transaction_row.kind = ?");
+      params.push(query.kind);
+    }
+    if (query.accountId) {
+      conditions.push("transaction_row.account_id = ?");
+      params.push(query.accountId);
+    }
+    const search = query.search ? query.search.trim() : "";
+    if (search) {
+      conditions.push(
+        "(instr(lower(transaction_row.description), lower(?)) > 0" +
+          " OR instr(lower(category.name), lower(?)) > 0)",
+      );
+      params.push(search, search);
+    }
+
+    params.push(limit);
+    const where = conditions.join(" AND ");
+    const sql = `${transactionListSelect}
+WHERE ${where}
+ORDER BY transaction_row.date DESC, transaction_row.id DESC
+LIMIT ?`;
+    return mapTransactionRows(await this.database.getAllAsync(sql, ...params));
   }
 
   async getReferenceData(): Promise<LocalReferenceData> {
