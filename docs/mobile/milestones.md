@@ -292,6 +292,11 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   "use server limit" (snapshot applied locally). Pending/failed/conflicted rows are labeled honestly.
 - Twenty mobile suites with 111 focused tests pass; shared (98) and API mobile-sync (34) tests pass;
   typecheck, lint, and a standalone iOS Hermes export bundle all succeed.
+- The current code (including the budget conflict screen and the fixed shared push-response schema)
+  builds and launches natively on an iPhone 17 Pro simulator: xcodebuild succeeded, the app installed
+  and opened as `site.zoption.ios.dev`, Metro bundled 2073 modules in ~2.7s, and no runtime error or
+  redbox appeared. This re-verifies the on-device build path after the budget work; an authenticated
+  dashboard/budgets interaction run remains the next on-device proof.
 - Remaining Milestone 5 work: Pro-gated monthly/six-month cash-flow views (entitlement is
   server-authoritative and not yet surfaced to the client) and on-device runtime proof of the
   dashboard/budgets rendering.
