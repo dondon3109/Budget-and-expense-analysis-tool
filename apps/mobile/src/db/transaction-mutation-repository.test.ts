@@ -196,6 +196,75 @@ describe("durable local transaction mutations", () => {
     });
   });
 
+  it("queues an offline budget create and update with the correct payloads", async () => {
+    const mutations = repository(database);
+
+    await mutations.setBudgetLimit("2026-08-01", "category-1", 50_000);
+    expect(
+      database.native
+        .prepare("SELECT category_id, month, limit_minor, server_revision, sync_state FROM budgets")
+        .get(),
+    ).toEqual({
+      category_id: "category-1",
+      month: "2026-08-01",
+      limit_minor: 50_000,
+      server_revision: 0,
+      sync_state: "pending",
+    });
+
+    let batch = await mutations.getPushBatch();
+    expect(batch?.operations).toHaveLength(1);
+    expect(batch?.operations[0]).toMatchObject({
+      entityType: "budget",
+      operationType: "create",
+      baseRevision: 0,
+      payload: { categoryId: "category-1", month: "2026-08-01", limitMinor: 50_000 },
+    });
+
+    if (!batch) throw new Error("Expected a push batch.");
+    await mutations.applyPushResponse(batch, {
+      protocolVersion: 1,
+      results: batch.operations.map((operation) => ({
+        operationId: operation.operationId,
+        entityType: operation.entityType,
+        entityId: operation.entityId,
+        status: "acknowledged" as const,
+        revision: 1,
+      })),
+    });
+    expect(
+      database.native
+        .prepare("SELECT server_revision, sync_state FROM budgets WHERE category_id = ?")
+        .get("category-1"),
+    ).toEqual({ server_revision: 1, sync_state: "synced" });
+
+    await mutations.setBudgetLimit("2026-08-01", "category-1", 80_000);
+    batch = await mutations.getPushBatch();
+    expect(batch?.operations).toHaveLength(1);
+    expect(batch?.operations[0]).toMatchObject({
+      entityType: "budget",
+      operationType: "update",
+      baseRevision: 1,
+      payload: { limitMinor: 80_000 },
+    });
+  });
+
+  it("rejects a budget for a non-expense category and a zero-limit create", async () => {
+    const mutations = repository(database);
+
+    await expect(
+      mutations.setBudgetLimit("2026-08-01", "category-transfer", 50_000),
+    ).rejects.toMatchObject({ code: "invalid_reference" });
+
+    await mutations.setBudgetLimit("2026-08-01", "category-1", 0);
+    expect(
+      database.native.prepare("SELECT count(*) AS count FROM budgets").get(),
+    ).toEqual({ count: 0 });
+    expect(
+      database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get(),
+    ).toEqual({ count: 0 });
+  });
+
   it("does not split one dependency graph into an undersized push batch", async () => {
     const mutations = repository(database);
     const accountId = await mutations.createAccount({ name: "Graph account", type: "cash" });

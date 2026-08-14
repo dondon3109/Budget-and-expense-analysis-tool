@@ -16,7 +16,9 @@ import {
   mobileSyncPushResponseSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
+  monthStartSchema,
   normalizeSignedAmount,
+  resourceIdSchema,
   transactionInputSchema,
   transactionUpdateSchema,
   transferInputSchema,
@@ -111,10 +113,20 @@ const categoryRowSchema = z.object({
   deleted_at: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
+const budgetRowSchema = z.object({
+  id: z.string(),
+  category_id: z.string(),
+  month: z.string(),
+  limit_minor: z.number().int().safe(),
+  server_revision: z.number().int().nonnegative(),
+  server_updated_at: z.string().nullable(),
+  deleted_at: z.string().nullable(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
 const outboxRowSchema = z.object({
   operation_id: uuidSchema,
   idempotency_key: uuidSchema,
-  entity_type: z.enum(["account", "category", "transaction", "transfer"]),
+  entity_type: z.enum(["account", "category", "transaction", "transfer", "budget"]),
   entity_id: z.string(),
   operation_type: z.enum(["create", "update", "delete"]),
   base_revision: z.number().int().nonnegative().nullable(),
@@ -248,6 +260,17 @@ function categorySnapshot(row: z.infer<typeof categoryRowSchema>): Record<string
     origin: row.origin,
     requiredPlan: row.required_plan,
     locked: row.locked === 1,
+    revision: row.server_revision,
+    updatedAt: row.server_updated_at,
+  };
+}
+
+function budgetSnapshot(row: z.infer<typeof budgetRowSchema>): Record<string, unknown> {
+  return {
+    id: row.id,
+    categoryId: row.category_id,
+    month: row.month,
+    limitMinor: row.limit_minor,
     revision: row.server_revision,
     updatedAt: row.server_updated_at,
   };
@@ -595,6 +618,20 @@ export class LocalTransactionMutationRepository {
     if (!decoded.success || decoded.data.deleted_at) {
       throw new LocalMutationError("Category not found on this device.", "category_missing");
     }
+    return decoded.data;
+  }
+
+  private async currentBudget(month: string, categoryId: string) {
+    const decoded = budgetRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, category_id, month, limit_minor, server_revision, server_updated_at,
+          deleted_at, sync_state
+         FROM budgets WHERE month = ? AND category_id = ? AND deleted_at IS NULL`,
+        month,
+        categoryId,
+      ),
+    );
+    if (!decoded.success) return null;
     return decoded.data;
   }
 
@@ -1002,6 +1039,94 @@ export class LocalTransactionMutationRepository {
 
   archiveCategory(id: string): Promise<void> {
     return this.archiveReferenceEntity("category", id);
+  }
+
+  setBudgetLimit(month: string, categoryId: string, limitMinor: number): Promise<void> {
+    const monthValue = monthStartSchema.parse(month);
+    const category = resourceIdSchema.parse(categoryId);
+    const limit = z
+      .number()
+      .int()
+      .safe()
+      .min(0)
+      .max(1_000_000_000_00)
+      .parse(limitMinor);
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        await this.clientId();
+        const categoryRow = await this.currentCategory(category);
+        if (categoryRow.kind !== "expense" || categoryRow.archived === 1) {
+          throw new LocalMutationError("Choose an active expense category.", "invalid_reference");
+        }
+        const existing = await this.currentBudget(monthValue, category);
+        if (existing) {
+          if (existing.sync_state === "failed" || existing.sync_state === "conflicted") {
+            throw new LocalMutationError(
+              "Resolve this budget's synchronization state before editing it.",
+              "mutation_blocked",
+            );
+          }
+          const outbox = await this.currentOutbox("budget", existing.id);
+          if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+            throw new LocalMutationError(
+              "Wait for the current synchronization attempt before editing this budget.",
+              "mutation_blocked",
+            );
+          }
+          const payload = { limitMinor: limit };
+          if (outbox) {
+            await this.database.runAsync(
+              `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
+                next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
+              JSON.stringify(payload),
+              outbox.operation_id,
+            );
+          } else {
+            await this.database.runAsync(
+              `INSERT INTO sync_outbox (
+                operation_id, idempotency_key, entity_type, entity_id, operation_type,
+                base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+              ) VALUES (?, ?, 'budget', ?, 'update', ?, ?, '[]', ?, ?)`,
+              uuidSchema.parse(this.randomUuid()),
+              uuidSchema.parse(this.randomUuid()),
+              existing.id,
+              existing.server_revision,
+              JSON.stringify(payload),
+              JSON.stringify(budgetSnapshot(existing)),
+              await this.nextSequence(),
+            );
+          }
+          await this.database.runAsync(
+            "UPDATE budgets SET limit_minor = ?, sync_state = 'pending' WHERE id = ?",
+            limit,
+            existing.id,
+          );
+          return;
+        }
+        if (limit === 0) return;
+        const entityId = uuidSchema.parse(this.randomUuid());
+        await this.database.runAsync(
+          `INSERT INTO budgets (
+            id, category_id, month, limit_minor, server_revision, server_updated_at, deleted_at, sync_state
+          ) VALUES (?, ?, ?, ?, 0, NULL, NULL, 'pending')`,
+          entityId,
+          category,
+          monthValue,
+          limit,
+        );
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'budget', ?, 'create', 0, ?, '[]', '{}', ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          entityId,
+          JSON.stringify({ categoryId: category, month: monthValue, limitMinor: limit }),
+          await this.nextSequence(),
+        );
+      });
+    });
   }
 
   private archiveReferenceEntity(entityType: "account" | "category", id: string): Promise<void> {
