@@ -10,7 +10,7 @@ Last updated: 2026-08-14.
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
 | 4. Transaction sync vertical slice   | In progress | Account/category/transaction offline push, restart durability, and explicit conflict recovery proven on iOS                  |
 | 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
-| 6. Planning and recurring money      | Not started | Subscriptions/calendar/goals/debts/transfers/interest with plan boundaries                                                   |
+| 6. Planning and recurring money      | In progress | Financial-goals vertical slice proven (migration, pull, offline CRUD, conflicts); subscriptions/calendar/debts/interest remain |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
 | 8. Online-only capabilities          | Not started | Assistant/voice/billing/support/account management with online/consent boundaries                                            |
 | 9. Hardening and release preparation | Not started | Accessibility, performance, resilience, signed-test authorization, upgrade/rollback documents                                |
@@ -306,3 +306,35 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
 - Remaining Milestone 5 work: an authenticated on-device interaction run of the dashboard/budgets
   rendering (the iOS build/launch path is proven; signed-in rendering with real records is not yet
   re-exercised after the latest screens). Android runtime proof remains a host gap.
+
+## Milestone 6 progress
+
+- Financial goals are now a full vertical slice. D1 migration `0039_mobile_sync_goals.sql` adds a
+  `revision` column to `financial_goals`, rebuilds the mobile change log to include `'goal'` in the
+  entity-type check (copy-then-rename to preserve triggers), creates a `mobile_sync_goal_rows` view,
+  bootstraps existing goals with deterministic per-tenant revisions, and adds insert/update/delete
+  triggers whose delete emits a `OLD.revision + 1` tombstone guarded by tenant existence.
+- The Worker push slice validates goals through the shared `mobileSyncGoalInputSchema` (name 1–80
+  trimmed characters, `targetAmountMinor` 1..9e14, `currentAmountMinor` 0..9e14, ISO target date,
+  status, and current<=target) and `mobileSyncGoalUpdateSchema` (all optional, at least one). A create
+  with a duplicate name is a durable `invalid_operation` rejection (mirroring web 409
+  `financial_goal_exists`, not the budget-style `entity_exists`); an update with a stale revision is
+  a `stale_revision` conflict; a missing goal is `entity_missing`. Name uniqueness is enforced
+  case-insensitively on the sync boundary, which is deliberately stricter than the web product's
+  case-sensitive index and fails closed.
+- Local schema version 7 adds `financial_goals` and rebuilds the outbox, conflict, and tombstone
+  entity-type checks to include `'goal'`. Pull applies goal upserts and deletion tombstones into the
+  table; the push layer sends goal create/update/delete through the encrypted outbox.
+- Offline goal mutations mirror Worker semantics: create returns a client UUID, enforces local
+  case-insensitive name uniqueness and current<=target, updates send full merged values, and delete
+  soft-deletes a synced row (or cancels an unpushed create). Conflicts are preserved and resolved
+  without device-clock arbitration: keep-local re-queues against the preserved server revision and
+  keep-server applies the validated server snapshot (or removes the row when the server deleted it).
+- The Goals screen lists active/paused/completed goals with progress bars and honest pending/failed/
+  conflict labels; a goal editor provides name, target, saved-so-far, target date, and status fields; a
+  conflict screen shows device and server versions with explicit resolution. A `Savings goals` entry
+  on the More tab reaches the stack, and the three routes are registered with native headers.
+- Twenty-two mobile suites with 130 focused tests pass; typecheck and lint are clean, and a standalone
+  iOS Hermes export succeeds. No remote D1, deployment, or production service was changed.
+- Remaining Milestone 6 work: subscriptions (with their linked charge-transaction atomic group),
+  calendar events, debts, and savings-interest modeling. Android runtime proof remains a host gap.
