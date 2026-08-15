@@ -14,7 +14,9 @@ import {
   debtUpdateSchema,
   financialGoalInputSchema,
   financialGoalUpdateSchema,
+  interestUpdateSchema,
   mobileSyncAccountSnapshotSchema,
+  mobileSyncAccountUpdateSchema,
   mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncEventSnapshotSchema,
@@ -38,6 +40,7 @@ import {
   type MobileSyncPushOperation,
   type MobileSyncPushResponse,
   type AccountInput,
+  type AccountInterestUpdate,
   type AccountUpdate,
   type CalendarEventInput,
   type CategoryInput,
@@ -521,6 +524,36 @@ function eventSnapshot(row: z.infer<typeof eventRowSchema>): Record<string, unkn
     revision: row.server_revision,
     updatedAt: row.server_updated_at,
   };
+}
+
+const interestLocalSchema = z.object({
+  enabled: z.boolean(),
+  annualRateBasisPoints: z.number().int().min(0).max(1_000_000).nullable(),
+  frequency: z.enum(["daily", "monthly", "yearly"]).nullable(),
+  payDay: z.number().int().min(1).max(31).nullable(),
+});
+
+function localInterestInput(json: string | null): AccountInterestUpdate | null {
+  if (!json) return null;
+  try {
+    const parsed = interestLocalSchema.parse(JSON.parse(json) as unknown);
+    if (!parsed.enabled) {
+      return {
+        enabled: false,
+        annualRateBasisPoints: 0,
+        frequency: parsed.frequency ?? "monthly",
+        payDay: parsed.payDay ?? 15,
+      };
+    }
+    return {
+      enabled: true,
+      annualRateBasisPoints: parsed.annualRateBasisPoints ?? 0,
+      frequency: parsed.frequency ?? "monthly",
+      payDay: parsed.payDay ?? null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function accountConflictVersion(
@@ -1312,10 +1345,16 @@ export class LocalTransactionMutationRepository {
             "mutation_blocked",
           );
         }
-        const next: AccountInput = {
+        const pending = outbox
+          ? mobileSyncAccountUpdateSchema.safeParse(JSON.parse(outbox.payload_json) as unknown)
+          : null;
+        const next: AccountInput & { interest?: AccountInterestUpdate } = {
           name: update.name,
           type: update.type ?? current.type,
         };
+        if (pending?.success && pending.data.interest !== undefined) {
+          next.interest = pending.data.interest;
+        }
         if (outbox) {
           await this.database.runAsync(
             `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
@@ -1342,6 +1381,75 @@ export class LocalTransactionMutationRepository {
           "UPDATE accounts SET name = ?, type = ?, sync_state = 'pending' WHERE id = ?",
           next.name,
           next.type,
+          id,
+        );
+      });
+    });
+  }
+
+  updateAccountInterest(id: string, value: AccountInterestUpdate): Promise<void> {
+    const interest = interestUpdateSchema.parse(value);
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentAccount(id);
+        if (current.sync_state === "failed" || current.sync_state === "conflicted") {
+          throw new LocalMutationError(
+            "Resolve this account's synchronization state before editing it.",
+            "mutation_blocked",
+          );
+        }
+        if (current.type !== "savings") {
+          throw new LocalMutationError("Only savings accounts earn interest.", "mutation_blocked");
+        }
+        const outbox = await this.currentOutbox("account", id);
+        if (outbox?.operation_type === "delete") {
+          throw new LocalMutationError(
+            "This account is already waiting to be archived.",
+            "mutation_blocked",
+          );
+        }
+        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+          throw new LocalMutationError(
+            "Wait for the current synchronization attempt before editing this account.",
+            "mutation_blocked",
+          );
+        }
+        const next = outbox
+          ? {
+              ...mobileSyncAccountUpdateSchema.parse(JSON.parse(outbox.payload_json) as unknown),
+              interest,
+            }
+          : { name: current.name, type: current.type, interest };
+        if (outbox) {
+          await this.database.runAsync(
+            `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
+              next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
+            JSON.stringify(next),
+            outbox.operation_id,
+          );
+        } else {
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'account', ?, 'update', ?, ?, '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            id,
+            current.server_revision,
+            JSON.stringify(next),
+            JSON.stringify(accountSnapshot(current)),
+            await this.nextSequence(),
+          );
+        }
+        await this.database.runAsync(
+          "UPDATE accounts SET interest_json = ?, sync_state = 'pending' WHERE id = ?",
+          JSON.stringify({
+            enabled: interest.enabled,
+            annualRateBasisPoints: interest.enabled ? interest.annualRateBasisPoints : null,
+            frequency: interest.enabled ? interest.frequency : null,
+            payDay: interest.enabled ? interest.payDay : null,
+          }),
           id,
         );
       });
@@ -3099,13 +3207,29 @@ export class LocalTransactionMutationRepository {
           return;
         }
         const operationType = locallyArchived ? "delete" : serverSnapshot ? "update" : "create";
+        const accountLocal =
+          entityType === "account" ? (current as z.infer<typeof accountRowSchema>) : null;
+        const accountInterest =
+          accountLocal && accountServer
+            ? localInterestInput(accountLocal.interest_json)
+            : null;
+        const interestChanged =
+          accountInterest !== null &&
+          accountServer !== null &&
+          (accountInterest.enabled !== accountServer.interest.enabled ||
+            (accountInterest.enabled &&
+              (accountInterest.annualRateBasisPoints !==
+                accountServer.interest.annualRateBasisPoints ||
+                accountInterest.frequency !== accountServer.interest.frequency ||
+                accountInterest.payDay !== accountServer.interest.payDay)));
         const payload =
           operationType === "delete"
             ? {}
             : entityType === "account"
               ? {
-                  name: (current as z.infer<typeof accountRowSchema>).name,
-                  type: (current as z.infer<typeof accountRowSchema>).type,
+                  name: accountLocal?.name ?? accountServer?.name ?? "",
+                  type: accountLocal?.type ?? accountServer?.type ?? "cash",
+                  ...(interestChanged ? { interest: accountInterest } : {}),
                 }
               : operationType === "create"
                 ? {

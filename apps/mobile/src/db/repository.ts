@@ -211,6 +211,13 @@ const calendarSubscriptionItemSchema = z.object({
   next_billing_date: z.string(),
 });
 
+const accountModelingRowSchema = z.object({
+  interest_json: z.string().nullable(),
+  currency: z.enum(["PHP", "USD"]),
+  balance_php_minor: z.number().int().safe(),
+  balance_usd_minor: z.number().int().safe(),
+});
+
 const eventItemSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -229,6 +236,12 @@ export interface LocalEventItem {
   endTime: string | null;
   notes: string | null;
   syncState: "synced" | "pending" | "failed" | "conflicted";
+}
+
+export interface LocalAccountModeling {
+  currency: "PHP" | "USD";
+  balanceMinor: number;
+  interest: InterestSettings;
 }
 
 export interface LocalCalendarDay {
@@ -946,6 +959,38 @@ LIMIT ?`;
       endTime: decoded.end_time,
       notes: decoded.notes,
       syncState: decoded.sync_state,
+    };
+  }
+
+  async getAccountModeling(id: string): Promise<LocalAccountModeling | null> {
+    const row = await this.database.getFirstAsync(
+      `SELECT
+         a.interest_json,
+         a.currency,
+         COALESCE(SUM(CASE
+           WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = 'PHP'
+           THEN t.amount_minor ELSE 0
+         END), 0) AS balance_php_minor,
+         COALESCE(SUM(CASE
+           WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = 'USD'
+           THEN t.amount_minor ELSE 0
+         END), 0) AS balance_usd_minor
+       FROM accounts a
+       LEFT JOIN transactions t ON t.account_id = a.id AND t.deleted_at IS NULL
+       WHERE a.id = ? AND a.deleted_at IS NULL
+       GROUP BY a.id`,
+      id,
+    );
+    if (!row) return null;
+    const decoded = accountModelingRowSchema.parse(row);
+    const balancesByCurrency = {
+      PHP: decoded.balance_php_minor,
+      USD: decoded.balance_usd_minor,
+    };
+    return {
+      currency: decoded.currency,
+      balanceMinor: balancesByCurrency[decoded.currency],
+      interest: decodeInterest(decoded.interest_json),
     };
   }
 

@@ -1597,6 +1597,206 @@ describe("durable local subscription mutations", () => {
     ).toEqual({ name: "Server Sub", amount_minor: 9_900, server_revision: 4, sync_state: "synced" });
   });
 });
+describe("durable local savings-interest mutations", () => {
+  let database: TestDatabase;
+
+  beforeEach(() => {
+    database = new TestDatabase();
+  });
+
+  afterEach(() => database.close());
+
+  it("queues offline interest settings and coalesces them with account edits", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createAccount({ name: "Goal fund", type: "savings" });
+    await mutations.updateAccountInterest(id, {
+      enabled: true,
+      annualRateBasisPoints: 500,
+      frequency: "monthly",
+      payDay: 15,
+    });
+    expect(
+      database.native
+        .prepare("SELECT interest_json, sync_state FROM accounts WHERE id = ?")
+        .get(id),
+    ).toEqual({
+      interest_json: JSON.stringify({
+        enabled: true,
+        annualRateBasisPoints: 500,
+        frequency: "monthly",
+        payDay: 15,
+      }),
+      sync_state: "pending",
+    });
+
+    await mutations.updateAccount(id, { name: "Renamed fund", type: "savings" });
+    const batch = (await mutations.getPushBatch())!;
+    const create = batch.operations.find((operation) => operation.entityType === "account");
+    expect(create?.operationType).toBe("create");
+    expect(create?.payload).toMatchObject({
+      name: "Renamed fund",
+      type: "savings",
+      interest: {
+        enabled: true,
+        annualRateBasisPoints: 500,
+        frequency: "monthly",
+        payDay: 15,
+      },
+    });
+  });
+
+  it("rejects interest settings on non-savings accounts", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createAccount({ name: "Cash purse", type: "cash" });
+    await expect(
+      mutations.updateAccountInterest(id, {
+        enabled: true,
+        annualRateBasisPoints: 500,
+        frequency: "monthly",
+        payDay: 15,
+      }),
+    ).rejects.toMatchObject({ code: "mutation_blocked" });
+    expect(
+      database.native.prepare("SELECT interest_json FROM accounts WHERE id = ?").get(id),
+    ).toEqual({
+      interest_json: JSON.stringify({
+        enabled: false,
+        annualRateBasisPoints: null,
+        frequency: null,
+        payDay: null,
+      }),
+    });
+  });
+
+  it("applies acknowledged interest settings from the server snapshot", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createAccount({ name: "Goal fund", type: "savings" });
+    const createBatch = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(createBatch, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: createBatch.operations[0]!.operationId,
+          entityType: "account",
+          entityId: id,
+          status: "acknowledged",
+          revision: 1,
+        },
+      ],
+    });
+
+    await mutations.updateAccountInterest(id, {
+      enabled: true,
+      annualRateBasisPoints: 500,
+      frequency: "monthly",
+      payDay: 15,
+    });
+    const updateBatch = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(updateBatch, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: updateBatch.operations[0]!.operationId,
+          entityType: "account",
+          entityId: id,
+          status: "acknowledged",
+          revision: 2,
+        },
+      ],
+    });
+    expect(
+      database.native
+        .prepare(
+          "SELECT interest_json, server_revision, sync_state FROM accounts WHERE id = ?",
+        )
+        .get(id),
+    ).toEqual({
+      interest_json: JSON.stringify({
+        enabled: true,
+        annualRateBasisPoints: 500,
+        frequency: "monthly",
+        payDay: 15,
+      }),
+      server_revision: 2,
+      sync_state: "synced",
+    });
+  });
+
+  it("preserves pending interest settings when a conflict is resolved locally", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createAccount({ name: "Goal fund", type: "savings" });
+    const createBatch = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(createBatch, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: createBatch.operations[0]!.operationId,
+          entityType: "account",
+          entityId: id,
+          status: "acknowledged",
+          revision: 1,
+        },
+      ],
+    });
+
+    await mutations.updateAccountInterest(id, {
+      enabled: true,
+      annualRateBasisPoints: 500,
+      frequency: "monthly",
+      payDay: 15,
+    });
+    const updateBatch = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(updateBatch, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: updateBatch.operations[0]!.operationId,
+          entityType: "account",
+          entityId: id,
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 2,
+          serverUpdatedAt: "2026-08-13 16:00:00",
+          serverPayload: {
+            id,
+            name: "Goal fund",
+            type: "savings",
+            currency: "PHP",
+            archived: false,
+            system: false,
+            interest: {
+              enabled: false,
+              annualRateBasisPoints: null,
+              frequency: null,
+              payDay: null,
+            },
+            revision: 2,
+            updatedAt: "2026-08-13 16:00:00",
+          },
+        },
+      ],
+    });
+
+    const conflict = await mutations.getReferenceConflict("account", id);
+    expect(conflict).not.toBeNull();
+
+    await mutations.resolveReferenceConflict("account", id, "keep_local");
+    const requeued = (await mutations.getPushBatch())!;
+    const update = requeued.operations.find((operation) => operation.entityType === "account");
+    expect(update?.operationType).toBe("update");
+    expect(update?.payload).toMatchObject({
+      name: "Goal fund",
+      type: "savings",
+      interest: {
+        enabled: true,
+        annualRateBasisPoints: 500,
+        frequency: "monthly",
+        payDay: 15,
+      },
+    });
+  });
+});
+
 describe("durable local calendar event mutations", () => {
   let database: TestDatabase;
 

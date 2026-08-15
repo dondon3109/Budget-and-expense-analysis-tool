@@ -15,6 +15,7 @@ import type { LocalWorkspaceStats } from "./repository";
 import type {
   LocalBudgetMonthData,
   LocalDashboardData,
+  LocalAccountModeling,
   LocalCalendarMonth,
   LocalDebtItem,
   LocalEventItem,
@@ -991,6 +992,63 @@ export function useEventConflict(id?: string): {
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { conflict, loading, error, retry };
+}
+
+export function useAccountModeling(id?: string): {
+  modeling: LocalAccountModeling | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [modeling, setModeling] = useState<LocalAccountModeling | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setModeling(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getAccountModeling(id)
+        .then((next) => {
+          if (active) {
+            setModeling(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The account modeling data could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const listener = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["accounts", "transactions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      listener.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { modeling, loading, error, retry };
 }
 
 export function useCalendarMonth(month: string): {
