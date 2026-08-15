@@ -1299,3 +1299,145 @@ describe("durable local financial goal mutations", () => {
     });
   });
 });
+describe("durable local debt mutations", () => {
+  let database: TestDatabase;
+
+  beforeEach(() => {
+    database = new TestDatabase();
+  });
+
+  afterEach(() => database.close());
+
+  it("creates, updates, and deletes a debt offline", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createDebt({
+      name: "Car Loan",
+      type: "auto_loan",
+      balanceMinor: 500_000,
+      aprBasisPoints: 850,
+      minimumPaymentMinor: 12_000,
+      balanceAsOf: "2026-08-14",
+      status: "active",
+    });
+    expect(
+      database.native
+        .prepare("SELECT name, balance_minor, server_revision, sync_state FROM debts WHERE id = ?")
+        .get(id),
+    ).toEqual({ name: "Car Loan", balance_minor: 500_000, server_revision: 0, sync_state: "pending" });
+
+    await mutations.updateDebt(id, { balanceMinor: 450_000, aprBasisPoints: 800 });
+    expect(
+      database.native
+        .prepare("SELECT balance_minor, apr_basis_points, sync_state FROM debts WHERE id = ?")
+        .get(id),
+    ).toEqual({ balance_minor: 450_000, apr_basis_points: 800, sync_state: "pending" });
+
+    await mutations.deleteDebt(id);
+    expect(
+      database.native.prepare("SELECT id FROM debts WHERE id = ?").get(id),
+    ).toBeUndefined();
+    expect(
+      database.native
+        .prepare("SELECT count(*) AS count FROM sync_outbox WHERE entity_id = ?")
+        .get(id),
+    ).toEqual({ count: 0 });
+  });
+
+  it("rejects a duplicate debt name locally", async () => {
+    const mutations = repository(database);
+    await mutations.createDebt({
+      name: "Mortgage",
+      type: "mortgage",
+      balanceMinor: 2_000_000,
+      aprBasisPoints: 600,
+      minimumPaymentMinor: 25_000,
+      balanceAsOf: "2026-08-14",
+      status: "active",
+    });
+    await expect(
+      mutations.createDebt({
+        name: "MORTGAGE",
+        type: "mortgage",
+        balanceMinor: 1_000_000,
+        aprBasisPoints: 600,
+        minimumPaymentMinor: 20_000,
+        balanceAsOf: "2026-08-14",
+        status: "active",
+      }),
+    ).rejects.toMatchObject({ code: "name_conflict" });
+  });
+
+  it("allows paying a debt down to zero via update", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createDebt({
+      name: "Credit Card",
+      type: "credit_card",
+      balanceMinor: 80_000,
+      aprBasisPoints: 2_400,
+      minimumPaymentMinor: 2_000,
+      balanceAsOf: "2026-08-14",
+      status: "active",
+    });
+    await mutations.updateDebt(id, { balanceMinor: 0, status: "paid" });
+    expect(
+      database.native
+        .prepare("SELECT balance_minor, status FROM debts WHERE id = ?")
+        .get(id),
+    ).toEqual({ balance_minor: 0, status: "paid" });
+  });
+
+  it("preserves and resolves a stale debt update conflict", async () => {
+    const mutations = repository(database);
+    database.native.exec(
+      "INSERT INTO debts (id, name, type, balance_minor, apr_basis_points, minimum_payment_minor, " +
+      "balance_as_of, status, server_revision, server_updated_at, sync_state) VALUES (" +
+      "'debt-server', 'Server Loan', 'personal_loan', 100000, 1200, 5000, " +
+      "'2026-08-14', 'active', 3, '2026-08-13 15:00:00', 'synced');",
+    );
+    await mutations.updateDebt("debt-server", { balanceMinor: 80_000 });
+    const request = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "debt",
+          entityId: "debt-server",
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 4,
+          serverUpdatedAt: "2026-08-13 16:00:00",
+          serverPayload: {
+            id: "debt-server",
+            name: "Server Loan",
+            type: "personal_loan",
+            balanceMinor: 100_000,
+            aprBasisPoints: 1_200,
+            minimumPaymentMinor: 5_000,
+            balanceAsOf: "2026-08-14",
+            status: "active",
+            revision: 4,
+            updatedAt: "2026-08-13 16:00:00",
+          },
+        },
+      ],
+    });
+
+    const conflict = await mutations.getDebtConflict("debt-server");
+    expect(conflict).toMatchObject({
+      entityId: "debt-server",
+      local: { balanceMinor: 80_000 },
+      server: { balanceMinor: 100_000 },
+    });
+
+    await mutations.resolveDebtConflict("debt-server", "keep_server");
+    expect(
+      database.native
+        .prepare(
+          "SELECT balance_minor, server_revision, sync_state FROM debts WHERE id = 'debt-server'",
+        )
+        .get(),
+    ).toEqual({ balance_minor: 100_000, server_revision: 4, sync_state: "synced" });
+  });
+});
+

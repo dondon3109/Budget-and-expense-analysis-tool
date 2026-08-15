@@ -2,6 +2,7 @@ import {
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
+  mobileSyncDebtSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncPullResponseSchema,
   mobileSyncTransactionSnapshotSchema,
@@ -56,6 +57,8 @@ function entityTable(entityType: MobileSyncChange["entityType"]): string {
       return "budgets";
     case "goal":
       return "financial_goals";
+    case "debt":
+      return "debts";
   }
 }
 
@@ -278,6 +281,41 @@ async function applyGoal(database: SQLiteDatabase, change: MobileSyncChange): Pr
   );
 }
 
+async function applyDebt(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
+  if (change.entityType !== "debt" || !change.payload) {
+    throw new Error("invalid_debt_change");
+  }
+  const debt = mobileSyncDebtSnapshotSchema.parse(change.payload);
+  await database.runAsync(
+    `INSERT INTO debts (
+      id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
+      balance_as_of, status, server_revision, server_updated_at, deleted_at, sync_state
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      type = excluded.type,
+      balance_minor = excluded.balance_minor,
+      apr_basis_points = excluded.apr_basis_points,
+      minimum_payment_minor = excluded.minimum_payment_minor,
+      balance_as_of = excluded.balance_as_of,
+      status = excluded.status,
+      server_revision = excluded.server_revision,
+      server_updated_at = excluded.server_updated_at,
+      deleted_at = NULL,
+      sync_state = 'synced'`,
+    debt.id,
+    debt.name,
+    debt.type,
+    debt.balanceMinor,
+    debt.aprBasisPoints,
+    debt.minimumPaymentMinor,
+    debt.balanceAsOf,
+    debt.status,
+    change.revision,
+    change.serverUpdatedAt,
+  );
+}
+
 async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
   await database.runAsync(
     `INSERT INTO sync_tombstones (
@@ -328,6 +366,9 @@ async function applyChange(database: SQLiteDatabase, change: MobileSyncChange): 
       return;
     case "goal":
       await applyGoal(database, change);
+      return;
+    case "debt":
+      await applyDebt(database, change);
   }
 }
 
@@ -353,6 +394,9 @@ export async function applySnapshotChange(
       return;
     case "goal":
       await applyGoal(database, change);
+      return;
+    case "debt":
+      await applyDebt(database, change);
   }
 }
 

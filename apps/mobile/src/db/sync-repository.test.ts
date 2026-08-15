@@ -246,6 +246,78 @@ describe("atomic encrypted pull application", () => {
         .get(),
     ).toEqual({ server_revision: 2, sync_state: "synced", deleted_at: timestamp });
   });
+  it("applies a debt upsert and deletion tombstone", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, bootstrapPage);
+
+    await repository.applyPullPage("v1.3", {
+      protocolVersion: 1,
+      nextCursor: "v1.4",
+      hasMore: false,
+      changes: [
+        {
+          entityType: "debt",
+          entityId: "debt-1",
+          revision: 1,
+          operation: "upsert",
+          serverUpdatedAt: timestamp,
+          payload: {
+            id: "debt-1",
+            name: "Car Loan",
+            type: "auto_loan",
+            balanceMinor: 500_000,
+            aprBasisPoints: 850,
+            minimumPaymentMinor: 12_000,
+            balanceAsOf: "2026-08-14",
+            status: "active",
+            revision: 1,
+            updatedAt: timestamp,
+          },
+        },
+      ],
+    });
+
+    expect(
+      database.native
+        .prepare(
+          "SELECT name, type, balance_minor, apr_basis_points, minimum_payment_minor, balance_as_of, status, server_revision, sync_state FROM debts",
+        )
+        .get(),
+    ).toEqual({
+      name: "Car Loan",
+      type: "auto_loan",
+      balance_minor: 500_000,
+      apr_basis_points: 850,
+      minimum_payment_minor: 12_000,
+      balance_as_of: "2026-08-14",
+      status: "active",
+      server_revision: 1,
+      sync_state: "synced",
+    });
+
+    await repository.applyPullPage("v1.4", {
+      protocolVersion: 1,
+      nextCursor: "v1.5",
+      hasMore: false,
+      changes: [
+        {
+          entityType: "debt",
+          entityId: "debt-1",
+          revision: 2,
+          operation: "delete",
+          serverUpdatedAt: timestamp,
+          payload: null,
+        },
+      ],
+    });
+
+    expect(
+      database.native
+        .prepare("SELECT server_revision, sync_state, deleted_at FROM debts WHERE id = 'debt-1'")
+        .get(),
+    ).toEqual({ server_revision: 2, sync_state: "synced", deleted_at: timestamp });
+  });
+
 
   it("records a server acknowledgement only for the currently committed cursor", async () => {
     const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);

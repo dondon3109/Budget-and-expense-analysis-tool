@@ -15,6 +15,7 @@ import type { LocalWorkspaceStats } from "./repository";
 import type {
   LocalBudgetMonthData,
   LocalDashboardData,
+  LocalDebtItem,
   LocalGoalItem,
   LocalReferenceData,
   LocalTransactionItem,
@@ -23,6 +24,7 @@ import type {
 } from "./repository";
 import type {
   LocalBudgetConflict,
+  LocalDebtConflict,
   LocalGoalConflict,
   LocalReferenceConflict,
   LocalTransactionConflict,
@@ -455,6 +457,177 @@ export function useGoalConflict(id?: string): {
       if (
         event.databaseFilePath.endsWith(workspace.databaseName) &&
         ["financial_goals", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { conflict, loading, error, retry };
+}
+
+export function useDebts(): {
+  debts: LocalDebtItem[];
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [debts, setDebts] = useState<LocalDebtItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace) {
+      setDebts([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getDebts()
+        .then((next) => {
+          if (active) {
+            setDebts(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("Debts could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["debts", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { debts, loading, error, retry };
+}
+
+export function useDebt(id?: string): {
+  debt: LocalDebtItem | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [debt, setDebt] = useState<LocalDebtItem | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setDebt(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getDebt(id)
+        .then((next) => {
+          if (active) {
+            setDebt(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The debt could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["debts", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { debt, loading, error, retry };
+}
+
+export function useDebtConflict(id?: string): {
+  conflict: LocalDebtConflict | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [conflict, setConflict] = useState<LocalDebtConflict | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setConflict(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.transactionMutations
+        .getDebtConflict(id)
+        .then((next) => {
+          if (active) {
+            setConflict(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The preserved debt conflict could not be read from encrypted storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["debts", "sync_outbox", "sync_conflicts"].includes(event.tableName)
       ) {
         refresh();
       }

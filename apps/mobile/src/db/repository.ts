@@ -156,6 +156,30 @@ export interface LocalGoalItem {
   syncState: "synced" | "pending" | "failed" | "conflicted";
 }
 
+const debtItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(["credit_card", "personal_loan", "auto_loan", "mortgage", "other"]),
+  balance_minor: z.number().int().safe(),
+  apr_basis_points: z.number().int(),
+  minimum_payment_minor: z.number().int().safe(),
+  balance_as_of: z.string(),
+  status: z.enum(["active", "paid"]),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
+
+export interface LocalDebtItem {
+  id: string;
+  name: string;
+  type: "credit_card" | "personal_loan" | "auto_loan" | "mortgage" | "other";
+  balanceMinor: number;
+  aprBasisPoints: number;
+  minimumPaymentMinor: number;
+  balanceAsOf: string;
+  status: "active" | "paid";
+  syncState: "synced" | "pending" | "failed" | "conflicted";
+}
+
 const localAccountItemSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -793,6 +817,55 @@ LIMIT ?`;
       targetAmountMinor: decoded.target_amount_minor,
       currentAmountMinor: decoded.current_amount_minor,
       targetDate: decoded.target_date,
+      status: decoded.status,
+      syncState: decoded.sync_state,
+    };
+  }
+
+  async getDebts(): Promise<LocalDebtItem[]> {
+    const rows = await this.database.getAllAsync(
+      `SELECT id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
+        balance_as_of, status, sync_state
+       FROM debts
+       WHERE deleted_at IS NULL
+       ORDER BY
+         CASE status WHEN 'active' THEN 0 ELSE 1 END,
+         balance_minor DESC, name COLLATE NOCASE`,
+    );
+    return z
+      .array(debtItemSchema)
+      .parse(rows)
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        type: row.type,
+        balanceMinor: row.balance_minor,
+        aprBasisPoints: row.apr_basis_points,
+        minimumPaymentMinor: row.minimum_payment_minor,
+        balanceAsOf: row.balance_as_of,
+        status: row.status,
+        syncState: row.sync_state,
+      }));
+  }
+
+  async getDebt(id: string): Promise<LocalDebtItem | null> {
+    const row = await this.database.getFirstAsync(
+      `SELECT id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
+        balance_as_of, status, sync_state
+       FROM debts
+       WHERE id = ? AND deleted_at IS NULL`,
+      id,
+    );
+    if (!row) return null;
+    const decoded = debtItemSchema.parse(row);
+    return {
+      id: decoded.id,
+      name: decoded.name,
+      type: decoded.type,
+      balanceMinor: decoded.balance_minor,
+      aprBasisPoints: decoded.apr_basis_points,
+      minimumPaymentMinor: decoded.minimum_payment_minor,
+      balanceAsOf: decoded.balance_as_of,
       status: decoded.status,
       syncState: decoded.sync_state,
     };

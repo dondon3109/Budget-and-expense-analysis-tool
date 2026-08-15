@@ -60,6 +60,13 @@ export default function MoreScreen() {
           >
             Savings goals
           </Button>
+          <Button
+            accessibilityHint="Opens debt payoff planning"
+            variant="secondary"
+            onPress={() => router.push("/(app)/debts")}
+          >
+            Debts
+          </Button>
         </View>
       </Card>
       <Card accessibilityLabel="Local data protection status">

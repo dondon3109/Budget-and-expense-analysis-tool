@@ -39,6 +39,8 @@ describe("local SQLCipher migrations", () => {
     expect(statements.some((statement) => statement.includes("financial_goals_status_idx"))).toBe(
       true,
     );
+    expect(statements.some((statement) => statement.includes("CREATE TABLE debts"))).toBe(true);
+    expect(statements.some((statement) => statement.includes("debts_status_idx"))).toBe(true);
     expect(statements.some((statement) => statement.includes("server_acknowledged_cursor"))).toBe(
       true,
     );

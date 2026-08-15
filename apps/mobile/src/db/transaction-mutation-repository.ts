@@ -9,11 +9,14 @@ import {
   buildTransferLegs,
   categoryInputSchema,
   categoryUpdateSchema,
+  debtInputSchema,
+  debtUpdateSchema,
   financialGoalInputSchema,
   financialGoalUpdateSchema,
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
+  mobileSyncDebtSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncPushOperationSchema,
   mobileSyncPushRequestSchema,
@@ -33,6 +36,10 @@ import {
   type AccountUpdate,
   type CategoryInput,
   type CategoryUpdate,
+  type DebtInput,
+  type DebtStatus,
+  type DebtType,
+  type DebtUpdate,
   type FinancialGoalInput,
   type FinancialGoalStatus,
   type FinancialGoalUpdate,
@@ -142,10 +149,24 @@ const goalRowSchema = z.object({
   deleted_at: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
+const debtRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(["credit_card", "personal_loan", "auto_loan", "mortgage", "other"]),
+  balance_minor: z.number().int().safe(),
+  apr_basis_points: z.number().int(),
+  minimum_payment_minor: z.number().int().safe(),
+  balance_as_of: z.string(),
+  status: z.enum(["active", "paid"]),
+  server_revision: z.number().int().nonnegative(),
+  server_updated_at: z.string().nullable(),
+  deleted_at: z.string().nullable(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
 const outboxRowSchema = z.object({
   operation_id: uuidSchema,
   idempotency_key: uuidSchema,
-  entity_type: z.enum(["account", "category", "transaction", "transfer", "budget", "goal"]),
+  entity_type: z.enum(["account", "category", "transaction", "transfer", "budget", "goal", "debt"]),
   entity_id: z.string(),
   operation_type: z.enum(["create", "update", "delete"]),
   base_revision: z.number().int().nonnegative().nullable(),
@@ -250,6 +271,25 @@ export interface LocalGoalConflict {
   createdAt: string;
 }
 
+export interface LocalDebtConflictVersion {
+  name: string;
+  type: DebtType;
+  balanceMinor: number;
+  aprBasisPoints: number;
+  minimumPaymentMinor: number;
+  balanceAsOf: string;
+  status: DebtStatus;
+}
+
+export interface LocalDebtConflict {
+  id: string;
+  entityId: string;
+  local: LocalDebtConflictVersion;
+  server: LocalDebtConflictVersion | null;
+  serverRevision: number;
+  createdAt: string;
+}
+
 export class LocalMutationError extends Error {
   constructor(
     message: string,
@@ -261,6 +301,7 @@ export class LocalMutationError extends Error {
       | "category_missing"
       | "budget_missing"
       | "goal_missing"
+      | "debt_missing"
       | "name_conflict"
       | "mutation_blocked"
       | "invalid_outbox",
@@ -282,6 +323,8 @@ function syncEntityTable(entityType: MobileSyncPushOperation["entityType"]): str
       return "budgets";
     case "goal":
       return "financial_goals";
+    case "debt":
+      return "debts";
     case "transfer":
       throw new LocalMutationError(
         "Transfers update two transaction rows and do not have a single entity table.",
@@ -340,6 +383,21 @@ function goalSnapshot(row: z.infer<typeof goalRowSchema>): Record<string, unknow
     targetAmountMinor: row.target_amount_minor,
     currentAmountMinor: row.current_amount_minor,
     targetDate: row.target_date,
+    status: row.status,
+    revision: row.server_revision,
+    updatedAt: row.server_updated_at,
+  };
+}
+
+function debtSnapshot(row: z.infer<typeof debtRowSchema>): Record<string, unknown> {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    balanceMinor: row.balance_minor,
+    aprBasisPoints: row.apr_basis_points,
+    minimumPaymentMinor: row.minimum_payment_minor,
+    balanceAsOf: row.balance_as_of,
     status: row.status,
     revision: row.server_revision,
     updatedAt: row.server_updated_at,
@@ -750,8 +808,38 @@ export class LocalTransactionMutationRepository {
     return decoded.data;
   }
 
+  private async currentDebtById(id: string) {
+    const decoded = debtRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
+          balance_as_of, status, server_revision, server_updated_at, deleted_at, sync_state
+         FROM debts WHERE id = ?`,
+        id,
+      ),
+    );
+    if (!decoded.success || decoded.data.deleted_at) {
+      throw new LocalMutationError("Debt not found on this device.", "debt_missing");
+    }
+    return decoded.data;
+  }
+
+  private async currentDebtRowById(id: string) {
+    const decoded = debtRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
+          balance_as_of, status, server_revision, server_updated_at, deleted_at, sync_state
+         FROM debts WHERE id = ?`,
+        id,
+      ),
+    );
+    if (!decoded.success) {
+      throw new LocalMutationError("Debt not found on this device.", "debt_missing");
+    }
+    return decoded.data;
+  }
+
   private async assertUniqueName(
-    entityType: "account" | "category" | "goal",
+    entityType: "account" | "category" | "goal" | "debt",
     name: string,
     excludeId?: string,
   ): Promise<void> {
@@ -760,7 +848,9 @@ export class LocalTransactionMutationRepository {
         ? "accounts"
         : entityType === "category"
           ? "categories"
-          : "financial_goals";
+          : entityType === "goal"
+            ? "financial_goals"
+            : "debts";
     const duplicate = await this.database.getFirstAsync<{ id: string }>(
       `SELECT id FROM ${table}
        WHERE deleted_at IS NULL AND lower(name) = lower(?)${excludeId ? " AND id != ?" : ""}
@@ -907,7 +997,7 @@ export class LocalTransactionMutationRepository {
   }
 
   private async currentConflict(
-    entityType: "account" | "category" | "transaction" | "transfer" | "budget" | "goal",
+    entityType: "account" | "category" | "transaction" | "transfer" | "budget" | "goal" | "debt",
     entityId: string,
   ) {
     const decoded = conflictRowSchema.safeParse(
@@ -1414,6 +1504,181 @@ export class LocalTransactionMutationRepository {
         }
         await this.database.runAsync(
           "UPDATE financial_goals SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
+          this.now().toISOString(),
+          id,
+        );
+      });
+    });
+  }
+
+  createDebt(value: DebtInput): Promise<string> {
+    const input = debtInputSchema.parse(value);
+    return this.writer.run(async () => {
+      let entityId = "";
+      await this.database.withTransactionAsync(async () => {
+        await this.assertUniqueName("debt", input.name);
+        await this.clientId();
+        entityId = uuidSchema.parse(this.randomUuid());
+        await this.database.runAsync(
+          `INSERT INTO debts (
+            id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
+            balance_as_of, status, server_revision, server_updated_at, deleted_at, sync_state
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, 'pending')`,
+          entityId,
+          input.name,
+          input.type,
+          input.balanceMinor,
+          input.aprBasisPoints,
+          input.minimumPaymentMinor,
+          input.balanceAsOf,
+          input.status,
+        );
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'debt', ?, 'create', 0, ?, '[]', '{}', ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          entityId,
+          JSON.stringify({
+            name: input.name,
+            type: input.type,
+            balanceMinor: input.balanceMinor,
+            aprBasisPoints: input.aprBasisPoints,
+            minimumPaymentMinor: input.minimumPaymentMinor,
+            balanceAsOf: input.balanceAsOf,
+            status: input.status,
+          }),
+          await this.nextSequence(),
+        );
+      });
+      return entityId;
+    });
+  }
+
+  updateDebt(id: string, value: DebtUpdate): Promise<void> {
+    const update = debtUpdateSchema.parse(value);
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentDebtById(id);
+        if (current.sync_state === "failed" || current.sync_state === "conflicted") {
+          throw new LocalMutationError(
+            "Resolve this debt's synchronization state before editing it.",
+            "mutation_blocked",
+          );
+        }
+        const outbox = await this.currentOutbox("debt", id);
+        if (outbox?.operation_type === "delete") {
+          throw new LocalMutationError(
+            "This debt is already waiting to be deleted.",
+            "mutation_blocked",
+          );
+        }
+        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+          throw new LocalMutationError(
+            "Wait for the current synchronization attempt before editing this debt.",
+            "mutation_blocked",
+          );
+        }
+        const merged = {
+          name: update.name ?? current.name,
+          type: update.type ?? current.type,
+          balanceMinor: update.balanceMinor ?? current.balance_minor,
+          aprBasisPoints: update.aprBasisPoints ?? current.apr_basis_points,
+          minimumPaymentMinor: update.minimumPaymentMinor ?? current.minimum_payment_minor,
+          balanceAsOf: update.balanceAsOf ?? current.balance_as_of,
+          status: update.status ?? current.status,
+        };
+        if (update.name) await this.assertUniqueName("debt", update.name, id);
+        if (outbox) {
+          await this.database.runAsync(
+            `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
+              next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
+            JSON.stringify(merged),
+            outbox.operation_id,
+          );
+        } else {
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'debt', ?, 'update', ?, ?, '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            id,
+            current.server_revision,
+            JSON.stringify(merged),
+            JSON.stringify(debtSnapshot(current)),
+            await this.nextSequence(),
+          );
+        }
+        await this.database.runAsync(
+          `UPDATE debts SET
+            name = ?, type = ?, balance_minor = ?, apr_basis_points = ?,
+            minimum_payment_minor = ?, balance_as_of = ?, status = ?, sync_state = 'pending'
+           WHERE id = ?`,
+          merged.name,
+          merged.type,
+          merged.balanceMinor,
+          merged.aprBasisPoints,
+          merged.minimumPaymentMinor,
+          merged.balanceAsOf,
+          merged.status,
+          id,
+        );
+      });
+    });
+  }
+
+  deleteDebt(id: string): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentDebtById(id);
+        if (current.sync_state === "failed" || current.sync_state === "conflicted") {
+          throw new LocalMutationError(
+            "Resolve this debt's synchronization state before deleting it.",
+            "mutation_blocked",
+          );
+        }
+        const outbox = await this.currentOutbox("debt", id);
+        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+          throw new LocalMutationError(
+            "Wait for the current synchronization attempt before deleting this debt.",
+            "mutation_blocked",
+          );
+        }
+        if (current.server_revision === 0 && outbox?.operation_type === "create") {
+          await this.database.runAsync(
+            "DELETE FROM sync_outbox WHERE operation_id = ?",
+            outbox.operation_id,
+          );
+          await this.database.runAsync("DELETE FROM debts WHERE id = ?", id);
+          return;
+        }
+        if (outbox) {
+          await this.database.runAsync(
+            `UPDATE sync_outbox SET operation_type = 'delete', payload_json = '{}',
+              state = 'pending', attempt_count = 0, next_attempt_at = NULL,
+              last_error_code = NULL WHERE operation_id = ?`,
+            outbox.operation_id,
+          );
+        } else {
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'debt', ?, 'delete', ?, '{}', '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            id,
+            current.server_revision,
+            JSON.stringify(debtSnapshot(current)),
+            await this.nextSequence(),
+          );
+        }
+        await this.database.runAsync(
+          "UPDATE debts SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
           this.now().toISOString(),
           id,
         );
@@ -2933,6 +3198,229 @@ export class LocalTransactionMutationRepository {
       snapshot.targetAmountMinor,
       snapshot.currentAmountMinor,
       snapshot.targetDate,
+      snapshot.status,
+      snapshot.revision,
+      snapshot.updatedAt,
+      syncState,
+    );
+  }
+
+  getDebtConflict(entityId: string): Promise<LocalDebtConflict | null> {
+    return this.writer.run(async () => {
+      const local = await this.currentDebtRowById(entityId);
+      const row = await this.database.getFirstAsync(
+        `SELECT conflict_id, operation_id, base_json, local_json, server_json,
+          server_revision, created_at
+         FROM sync_conflicts
+         WHERE entity_type = 'debt' AND entity_id = ? AND resolved_at IS NULL
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        entityId,
+      );
+      if (!row) return null;
+      const conflict = conflictRowSchema.parse(row);
+      let serverValue: unknown;
+      try {
+        serverValue = JSON.parse(conflict.server_json) as unknown;
+      } catch {
+        throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+      }
+      const serverSnapshot =
+        serverValue === null ? null : mobileSyncDebtSnapshotSchema.parse(serverValue);
+      return {
+        id: conflict.conflict_id,
+        entityId,
+        local: {
+          name: local.name,
+          type: local.type,
+          balanceMinor: local.balance_minor,
+          aprBasisPoints: local.apr_basis_points,
+          minimumPaymentMinor: local.minimum_payment_minor,
+          balanceAsOf: local.balance_as_of,
+          status: local.status,
+        },
+        server: serverSnapshot
+          ? {
+              name: serverSnapshot.name,
+              type: serverSnapshot.type,
+              balanceMinor: serverSnapshot.balanceMinor,
+              aprBasisPoints: serverSnapshot.aprBasisPoints,
+              minimumPaymentMinor: serverSnapshot.minimumPaymentMinor,
+              balanceAsOf: serverSnapshot.balanceAsOf,
+              status: serverSnapshot.status,
+            }
+          : null,
+        serverRevision: conflict.server_revision,
+        createdAt: conflict.created_at,
+      };
+    });
+  }
+
+  resolveDebtConflict(
+    entityId: string,
+    resolution: "keep_local" | "keep_server",
+  ): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const local = await this.currentDebtRowById(entityId);
+        const conflict = await this.currentConflict("debt", entityId);
+        const outbox = await this.currentOutbox("debt", entityId);
+        if (
+          !outbox ||
+          outbox.operation_id !== conflict.operation_id ||
+          outbox.state !== "conflicted"
+        ) {
+          throw new LocalMutationError(
+            "The preserved debt conflict changed before it could be resolved.",
+            "mutation_blocked",
+          );
+        }
+        let serverValue: unknown;
+        try {
+          serverValue = JSON.parse(conflict.server_json) as unknown;
+        } catch {
+          throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+        }
+        const serverSnapshot =
+          serverValue === null ? null : mobileSyncDebtSnapshotSchema.parse(serverValue);
+
+        await this.database.runAsync(
+          `UPDATE sync_conflicts SET resolved_at = ?, resolution = ?, operation_id = NULL
+           WHERE conflict_id = ? AND resolved_at IS NULL`,
+          this.now().toISOString(),
+          resolution,
+          conflict.conflict_id,
+        );
+        await this.database.runAsync(
+          "DELETE FROM sync_outbox WHERE operation_id = ?",
+          outbox.operation_id,
+        );
+
+        if (resolution === "keep_server") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM debts WHERE id = ?", entityId);
+            return;
+          }
+          await this.upsertDebtSnapshot(serverSnapshot, "synced");
+          return;
+        }
+
+        const operationType = outbox.operation_type;
+        if (operationType === "delete") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM debts WHERE id = ?", entityId);
+            return;
+          }
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'debt', ?, 'delete', ?, '{}', '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            entityId,
+            serverSnapshot.revision,
+            JSON.stringify(serverSnapshot),
+            await this.nextSequence(),
+          );
+          await this.database.runAsync(
+            "UPDATE debts SET sync_state = 'pending' WHERE id = ?",
+            entityId,
+          );
+          return;
+        }
+
+        const localInput = {
+          name: local.name,
+          type: local.type,
+          balanceMinor: local.balance_minor,
+          aprBasisPoints: local.apr_basis_points,
+          minimumPaymentMinor: local.minimum_payment_minor,
+          balanceAsOf: local.balance_as_of,
+          status: local.status,
+        };
+        if (!serverSnapshot) {
+          await this.database.runAsync(
+            `UPDATE debts SET server_revision = 0, server_updated_at = NULL,
+              sync_state = 'pending' WHERE id = ?`,
+            entityId,
+          );
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'debt', ?, 'create', 0, ?, '[]', '{}', ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            entityId,
+            JSON.stringify(localInput),
+            await this.nextSequence(),
+          );
+          return;
+        }
+        await this.database.runAsync(
+          `UPDATE debts SET server_revision = ?, server_updated_at = ?,
+            sync_state = 'pending' WHERE id = ?`,
+          serverSnapshot.revision,
+          serverSnapshot.updatedAt,
+          entityId,
+        );
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'debt', ?, 'update', ?, ?, '[]', ?, ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          entityId,
+          serverSnapshot.revision,
+          JSON.stringify(localInput),
+          JSON.stringify(serverSnapshot),
+          await this.nextSequence(),
+        );
+      });
+    });
+  }
+
+  private async upsertDebtSnapshot(
+    snapshot: {
+      id: string;
+      name: string;
+      type: DebtType;
+      balanceMinor: number;
+      aprBasisPoints: number;
+      minimumPaymentMinor: number;
+      balanceAsOf: string;
+      status: DebtStatus;
+      revision: number;
+      updatedAt: string | null;
+    },
+    syncState: "synced" | "pending",
+  ): Promise<void> {
+    await this.database.runAsync(
+      `INSERT INTO debts (
+        id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
+        balance_as_of, status, server_revision, server_updated_at, deleted_at, sync_state
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         name = excluded.name,
+         type = excluded.type,
+         balance_minor = excluded.balance_minor,
+         apr_basis_points = excluded.apr_basis_points,
+         minimum_payment_minor = excluded.minimum_payment_minor,
+         balance_as_of = excluded.balance_as_of,
+         status = excluded.status,
+         server_revision = excluded.server_revision,
+         server_updated_at = excluded.server_updated_at,
+         deleted_at = NULL,
+         sync_state = excluded.sync_state`,
+      snapshot.id,
+      snapshot.name,
+      snapshot.type,
+      snapshot.balanceMinor,
+      snapshot.aprBasisPoints,
+      snapshot.minimumPaymentMinor,
+      snapshot.balanceAsOf,
       snapshot.status,
       snapshot.revision,
       snapshot.updatedAt,
