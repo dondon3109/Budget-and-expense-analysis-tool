@@ -750,3 +750,13 @@ background-task scheduling on real hardware.
   `finally`, so a dismissed/cancelled session re-enables the button instead
   of leaving it stuck (regression test added; lint, typecheck, 255 tests
   green).
+- **Cross-platform staging (both platforms at the credential gate)**: the
+  same flow was driven on the Android emulator — Chrome Custom Tab opens the
+  authorize URL, the session stays open, the account email was typed and
+  Google's password screen was reached. iOS and Android now both sit at
+  Google's password step for `trading.leonard3109@gmail.com` awaiting the
+  owner's manual login. (Android note: the dev-client intercepts cold-start
+  deep links with its launcher, so callback-URL delivery on Android will be
+  re-verified with a preview/release build; a transient react-native-screens
+  Fabric init redbox on the emulator recovered on relaunch and did not
+  reproduce.)
