@@ -13,3 +13,7 @@ web-build/
 
 expo-env.d.ts
 # @end expo-cli
+
+# Local public configuration (never committed)
+.env.local
+.env.*.local
