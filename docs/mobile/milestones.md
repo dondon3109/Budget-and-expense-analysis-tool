@@ -10,7 +10,7 @@ Last updated: 2026-08-14.
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
 | 4. Transaction sync vertical slice   | In progress | Account/category/transaction offline push, restart durability, and explicit conflict recovery proven on iOS                  |
 | 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
-| 6. Planning and recurring money      | In progress | Goals, debts, subscriptions, and calendar vertical slices proven (migration, pull, offline CRUD, conflicts); interest remains |
+| 6. Planning and recurring money      | Complete   | Goals, debts (avalanche/snowball), subscriptions, calendar, fee-aware transfers, and savings-interest modeling proven with tests |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
 | 8. Online-only capabilities          | Not started | Assistant/voice/billing/support/account management with online/consent boundaries                                            |
 | 9. Hardening and release preparation | Not started | Accessibility, performance, resilience, signed-test authorization, upgrade/rollback documents                                |
@@ -422,5 +422,26 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   tests, and 25 mobile suites with 169 tests all pass; typecheck and lint are clean across
   api, shared, and mobile, and a standalone iOS Hermes export succeeds. No remote D1,
   deployment, or production service was changed.
-- Remaining Milestone 6 work: savings-interest modeling. Android runtime proof remains a host
-  gap.
+- Savings-interest modeling closes Milestone 6. The pure interest functions (Manila credit day,
+  month-length clamping, floored amount, next-credit projection) moved into `packages/shared`
+  so the Worker cron and the mobile modeler can never disagree; the API keeps its import path
+  as a re-export and all 563 API/shared tests stay green.
+- Mobile account create and update payloads may carry `interest` (the shared
+  `mobileSyncAccountCreateSchema`/`mobileSyncAccountUpdateSchema`), and the push repository
+  applies it atomically with the name/type mutation in one statement so the change log emits a
+  single revision. The server enforces the web rules: savings type only and effective Pro for
+  enabling, as durable `invalid_operation` and `plan_limit` rejections; a name-less update
+  now merges the preserved name instead of failing.
+- On device, savings accounts expose an Automatic interest card in the account editor: enabled
+  state, annual rate, frequency, and pay day queue through the encrypted outbox and coalesce
+  with pending creates and edits, so configure-then-sync works offline. The card projects the
+  next credit date and amount from the locally derived balance using the shared formulas and
+  states that only the server writes interest transactions. Conflicts resolved locally keep
+  pending interest settings.
+- Validation for this slice: 49 mobile-sync API tests (interest push gates, atomic columns,
+  snapshot delivery, create-with-interest, cross-tenant plan enforcement), 115 shared tests,
+  173 mobile tests across 25 suites, clean typecheck and lint everywhere, and a standalone iOS
+  Hermes export succeeds. No remote D1, deployment, or production service was changed.
+- Milestone 6 is complete. Remaining gaps are unchanged: M5 authenticated on-device dashboard
+  run, M2 social sign-in runtime proof, M3/M4 runtime proofs, Android runtime (no emulator on
+  this host), and M7-M9.
