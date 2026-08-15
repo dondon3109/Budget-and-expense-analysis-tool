@@ -168,6 +168,32 @@ const debtItemSchema = z.object({
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
 
+const subscriptionItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  amount_minor: z.number().int().safe(),
+  currency: z.string(),
+  billing_cycle: z.enum(["monthly", "yearly"]),
+  next_billing_date: z.string(),
+  status: z.enum(["active", "canceled"]),
+  category_id: z.string().nullable(),
+  account_id: z.string().nullable(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
+
+export interface LocalSubscriptionItem {
+  id: string;
+  name: string;
+  amountMinor: number;
+  currency: string;
+  billingCycle: "monthly" | "yearly";
+  nextBillingDate: string;
+  status: "active" | "canceled";
+  categoryId: string | null;
+  accountId: string | null;
+  syncState: "synced" | "pending" | "failed" | "conflicted";
+}
+
 export interface LocalDebtItem {
   id: string;
   name: string;
@@ -846,6 +872,57 @@ LIMIT ?`;
         status: row.status,
         syncState: row.sync_state,
       }));
+  }
+
+  async getSubscriptions(): Promise<LocalSubscriptionItem[]> {
+    const rows = await this.database.getAllAsync(
+      `SELECT id, name, amount_minor, currency, billing_cycle, next_billing_date, status,
+        category_id, account_id, sync_state
+       FROM subscriptions
+       WHERE deleted_at IS NULL
+       ORDER BY
+         CASE status WHEN 'active' THEN 0 ELSE 1 END,
+         amount_minor DESC, name COLLATE NOCASE`,
+    );
+    return z
+      .array(subscriptionItemSchema)
+      .parse(rows)
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        amountMinor: row.amount_minor,
+        currency: row.currency,
+        billingCycle: row.billing_cycle,
+        nextBillingDate: row.next_billing_date,
+        status: row.status,
+        categoryId: row.category_id,
+        accountId: row.account_id,
+        syncState: row.sync_state,
+      }));
+  }
+
+  async getSubscription(id: string): Promise<LocalSubscriptionItem | null> {
+    const row = await this.database.getFirstAsync(
+      `SELECT id, name, amount_minor, currency, billing_cycle, next_billing_date, status,
+        category_id, account_id, sync_state
+       FROM subscriptions
+       WHERE id = ? AND deleted_at IS NULL`,
+      id,
+    );
+    if (!row) return null;
+    const decoded = subscriptionItemSchema.parse(row);
+    return {
+      id: decoded.id,
+      name: decoded.name,
+      amountMinor: decoded.amount_minor,
+      currency: decoded.currency,
+      billingCycle: decoded.billing_cycle,
+      nextBillingDate: decoded.next_billing_date,
+      status: decoded.status,
+      categoryId: decoded.category_id,
+      accountId: decoded.account_id,
+      syncState: decoded.sync_state,
+    };
   }
 
   async getDebt(id: string): Promise<LocalDebtItem | null> {

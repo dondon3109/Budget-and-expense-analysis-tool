@@ -153,6 +153,31 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
             sheetGrabberVisible: Platform.OS === "ios",
           }}
         />
+        <Stack.Screen
+          name="subscriptions"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+          }}
+        />
+        <Stack.Screen
+          name="subscription"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Subscriptions",
+            presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            sheetGrabberVisible: Platform.OS === "ios",
+          }}
+        />
+        <Stack.Screen
+          name="subscription-conflict"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Subscriptions",
+            presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            sheetGrabberVisible: Platform.OS === "ios",
+          }}
+        />
       </Stack>
     </SyncProvider>
   );

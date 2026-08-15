@@ -317,6 +317,78 @@ describe("atomic encrypted pull application", () => {
         .get(),
     ).toEqual({ server_revision: 2, sync_state: "synced", deleted_at: timestamp });
   });
+  it("applies a subscription upsert and deletion tombstone", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, bootstrapPage);
+
+    await repository.applyPullPage("v1.3", {
+      protocolVersion: 1,
+      nextCursor: "v1.4",
+      hasMore: false,
+      changes: [
+        {
+          entityType: "subscription",
+          entityId: "subscription-1",
+          revision: 1,
+          operation: "upsert",
+          serverUpdatedAt: timestamp,
+          payload: {
+            id: "subscription-1",
+            name: "Netflix",
+            amountMinor: 54_900,
+            currency: "PHP",
+            billingCycle: "monthly",
+            nextBillingDate: "2026-09-01",
+            status: "active",
+            categoryId: "category-1",
+            accountId: "account-1",
+            revision: 1,
+            updatedAt: timestamp,
+          },
+        },
+      ],
+    });
+
+    expect(
+      database.native
+        .prepare(
+          "SELECT name, amount_minor, billing_cycle, next_billing_date, status, category_id, account_id, server_revision, sync_state FROM subscriptions",
+        )
+        .get(),
+    ).toEqual({
+      name: "Netflix",
+      amount_minor: 54_900,
+      billing_cycle: "monthly",
+      next_billing_date: "2026-09-01",
+      status: "active",
+      category_id: "category-1",
+      account_id: "account-1",
+      server_revision: 1,
+      sync_state: "synced",
+    });
+
+    await repository.applyPullPage("v1.4", {
+      protocolVersion: 1,
+      nextCursor: "v1.5",
+      hasMore: false,
+      changes: [
+        {
+          entityType: "subscription",
+          entityId: "subscription-1",
+          revision: 2,
+          operation: "delete",
+          serverUpdatedAt: timestamp,
+          payload: null,
+        },
+      ],
+    });
+
+    expect(
+      database.native
+        .prepare("SELECT server_revision, sync_state, deleted_at FROM subscriptions WHERE id = 'subscription-1'")
+        .get(),
+    ).toEqual({ server_revision: 2, sync_state: "synced", deleted_at: timestamp });
+  });
 
 
   it("records a server acknowledgement only for the currently committed cursor", async () => {

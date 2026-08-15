@@ -19,6 +19,8 @@ import {
   mobileSyncDebtSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncPushOperationSchema,
+  mobileSyncSubscriptionSnapshotSchema,
+  mobileSyncSubscriptionUpdateSchema,
   mobileSyncPushRequestSchema,
   mobileSyncPushResponseSchema,
   mobileSyncTransactionSnapshotSchema,
@@ -26,6 +28,7 @@ import {
   monthStartSchema,
   normalizeSignedAmount,
   resourceIdSchema,
+  subscriptionInputSchema,
   transactionInputSchema,
   transactionUpdateSchema,
   transferInputSchema,
@@ -41,6 +44,9 @@ import {
   type DebtType,
   type DebtUpdate,
   type FinancialGoalInput,
+  type SubscriptionBillingCycle,
+  type SubscriptionInput,
+  type SubscriptionStatus,
   type FinancialGoalStatus,
   type FinancialGoalUpdate,
   type TransactionInput,
@@ -149,6 +155,21 @@ const goalRowSchema = z.object({
   deleted_at: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
+const subscriptionRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  amount_minor: z.number().int().safe(),
+  currency: z.string(),
+  billing_cycle: z.enum(["monthly", "yearly"]),
+  next_billing_date: z.string(),
+  status: z.enum(["active", "canceled"]),
+  category_id: z.string().nullable(),
+  account_id: z.string().nullable(),
+  server_revision: z.number().int().nonnegative(),
+  server_updated_at: z.string().nullable(),
+  deleted_at: z.string().nullable(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
 const debtRowSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -166,7 +187,16 @@ const debtRowSchema = z.object({
 const outboxRowSchema = z.object({
   operation_id: uuidSchema,
   idempotency_key: uuidSchema,
-  entity_type: z.enum(["account", "category", "transaction", "transfer", "budget", "goal", "debt"]),
+  entity_type: z.enum([
+    "account",
+    "category",
+    "transaction",
+    "transfer",
+    "budget",
+    "goal",
+    "debt",
+    "subscription",
+  ]),
   entity_id: z.string(),
   operation_type: z.enum(["create", "update", "delete"]),
   base_revision: z.number().int().nonnegative().nullable(),
@@ -281,6 +311,25 @@ export interface LocalDebtConflictVersion {
   status: DebtStatus;
 }
 
+export interface LocalSubscriptionConflictVersion {
+  name: string;
+  amountMinor: number;
+  billingCycle: SubscriptionBillingCycle;
+  nextBillingDate: string;
+  status: SubscriptionStatus;
+  categoryId: string | null;
+  accountId: string | null;
+}
+
+export interface LocalSubscriptionConflict {
+  id: string;
+  entityId: string;
+  local: LocalSubscriptionConflictVersion;
+  server: LocalSubscriptionConflictVersion | null;
+  serverRevision: number;
+  createdAt: string;
+}
+
 export interface LocalDebtConflict {
   id: string;
   entityId: string;
@@ -302,6 +351,7 @@ export class LocalMutationError extends Error {
       | "budget_missing"
       | "goal_missing"
       | "debt_missing"
+      | "subscription_missing"
       | "name_conflict"
       | "mutation_blocked"
       | "invalid_outbox",
@@ -325,6 +375,8 @@ function syncEntityTable(entityType: MobileSyncPushOperation["entityType"]): str
       return "financial_goals";
     case "debt":
       return "debts";
+    case "subscription":
+      return "subscriptions";
     case "transfer":
       throw new LocalMutationError(
         "Transfers update two transaction rows and do not have a single entity table.",
@@ -399,6 +451,24 @@ function debtSnapshot(row: z.infer<typeof debtRowSchema>): Record<string, unknow
     minimumPaymentMinor: row.minimum_payment_minor,
     balanceAsOf: row.balance_as_of,
     status: row.status,
+    revision: row.server_revision,
+    updatedAt: row.server_updated_at,
+  };
+}
+
+function subscriptionSnapshot(
+  row: z.infer<typeof subscriptionRowSchema>,
+): Record<string, unknown> {
+  return {
+    id: row.id,
+    name: row.name,
+    amountMinor: row.amount_minor,
+    currency: row.currency,
+    billingCycle: row.billing_cycle,
+    nextBillingDate: row.next_billing_date,
+    status: row.status,
+    categoryId: row.category_id,
+    accountId: row.account_id,
     revision: row.server_revision,
     updatedAt: row.server_updated_at,
   };
@@ -838,6 +908,72 @@ export class LocalTransactionMutationRepository {
     return decoded.data;
   }
 
+  private async currentSubscriptionById(id: string) {
+    const decoded = subscriptionRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, name, amount_minor, currency, billing_cycle, next_billing_date, status,
+          category_id, account_id, server_revision, server_updated_at, deleted_at, sync_state
+         FROM subscriptions WHERE id = ?`,
+        id,
+      ),
+    );
+    if (!decoded.success || decoded.data.deleted_at) {
+      throw new LocalMutationError(
+        "Subscription not found on this device.",
+        "subscription_missing",
+      );
+    }
+    return decoded.data;
+  }
+
+  private async currentSubscriptionRowById(id: string) {
+    const decoded = subscriptionRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, name, amount_minor, currency, billing_cycle, next_billing_date, status,
+          category_id, account_id, server_revision, server_updated_at, deleted_at, sync_state
+         FROM subscriptions WHERE id = ?`,
+        id,
+      ),
+    );
+    if (!decoded.success) {
+      throw new LocalMutationError(
+        "Subscription not found on this device.",
+        "subscription_missing",
+      );
+    }
+    return decoded.data;
+  }
+
+  private async validateSubscriptionReferences(input: SubscriptionInput): Promise<void> {
+    const [category, account] = await Promise.all([
+      this.database.getFirstAsync<{ kind: string; archived: number; locked: number }>(
+        `SELECT kind, archived, locked FROM categories WHERE id = ? LIMIT 1`,
+        input.categoryId,
+      ),
+      this.database.getFirstAsync<{ archived: number }>(
+        "SELECT archived FROM accounts WHERE id = ? LIMIT 1",
+        input.accountId,
+      ),
+    ]);
+    if (
+      !category ||
+      category.kind !== "expense" ||
+      category.archived === 1 ||
+      category.locked === 1
+    ) {
+      throw new LocalMutationError(
+        "Choose an available expense category for this subscription.",
+        "invalid_reference",
+      );
+    }
+    if (!account || account.archived === 1) {
+      throw new LocalMutationError(
+        "Choose an active account for this subscription.",
+        "invalid_reference",
+      );
+    }
+  }
+
   private async assertUniqueName(
     entityType: "account" | "category" | "goal" | "debt",
     name: string,
@@ -997,7 +1133,15 @@ export class LocalTransactionMutationRepository {
   }
 
   private async currentConflict(
-    entityType: "account" | "category" | "transaction" | "transfer" | "budget" | "goal" | "debt",
+    entityType:
+      | "account"
+      | "category"
+      | "transaction"
+      | "transfer"
+      | "budget"
+      | "goal"
+      | "debt"
+      | "subscription",
     entityId: string,
   ) {
     const decoded = conflictRowSchema.safeParse(
@@ -1679,6 +1823,182 @@ export class LocalTransactionMutationRepository {
         }
         await this.database.runAsync(
           "UPDATE debts SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
+          this.now().toISOString(),
+          id,
+        );
+      });
+    });
+  }
+
+  createSubscription(value: SubscriptionInput): Promise<string> {
+    const input = subscriptionInputSchema.parse(value);
+    return this.writer.run(async () => {
+      let entityId = "";
+      await this.database.withTransactionAsync(async () => {
+        await this.validateSubscriptionReferences(input);
+        await this.clientId();
+        entityId = uuidSchema.parse(this.randomUuid());
+        await this.database.runAsync(
+          `INSERT INTO subscriptions (
+            id, name, amount_minor, currency, billing_cycle, next_billing_date, status,
+            category_id, account_id, server_revision, server_updated_at, deleted_at, sync_state
+          ) VALUES (?, ?, ?, 'PHP', ?, ?, 'active', ?, ?, 0, NULL, NULL, 'pending')`,
+          entityId,
+          input.name,
+          input.amountMinor,
+          input.billingCycle,
+          input.nextBillingDate,
+          input.categoryId,
+          input.accountId,
+        );
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'subscription', ?, 'create', 0, ?, '[]', '{}', ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          entityId,
+          JSON.stringify({
+            name: input.name,
+            amountMinor: input.amountMinor,
+            billingCycle: input.billingCycle,
+            nextBillingDate: input.nextBillingDate,
+            categoryId: input.categoryId,
+            accountId: input.accountId,
+          }),
+          await this.nextSequence(),
+        );
+      });
+      return entityId;
+    });
+  }
+
+  updateSubscription(
+    id: string,
+    value: SubscriptionInput & { status?: SubscriptionStatus },
+  ): Promise<void> {
+    const update = mobileSyncSubscriptionUpdateSchema.parse(value);
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentSubscriptionById(id);
+        if (current.sync_state === "failed" || current.sync_state === "conflicted") {
+          throw new LocalMutationError(
+            "Resolve this subscription's synchronization state before editing it.",
+            "mutation_blocked",
+          );
+        }
+        const outbox = await this.currentOutbox("subscription", id);
+        if (outbox?.operation_type === "delete") {
+          throw new LocalMutationError(
+            "This subscription is already waiting to be deleted.",
+            "mutation_blocked",
+          );
+        }
+        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+          throw new LocalMutationError(
+            "Wait for the current synchronization attempt before editing this subscription.",
+            "mutation_blocked",
+          );
+        }
+        const merged = {
+          name: update.name ?? current.name,
+          amountMinor: update.amountMinor ?? current.amount_minor,
+          billingCycle: update.billingCycle ?? current.billing_cycle,
+          nextBillingDate: update.nextBillingDate ?? current.next_billing_date,
+          categoryId: update.categoryId ?? current.category_id,
+          accountId: update.accountId ?? current.account_id,
+          status: update.status ?? current.status,
+        };
+        await this.validateSubscriptionReferences(merged);
+        if (outbox) {
+          await this.database.runAsync(
+            `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
+              next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
+            JSON.stringify(merged),
+            outbox.operation_id,
+          );
+        } else {
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'subscription', ?, 'update', ?, ?, '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            id,
+            current.server_revision,
+            JSON.stringify(merged),
+            JSON.stringify(subscriptionSnapshot(current)),
+            await this.nextSequence(),
+          );
+        }
+        await this.database.runAsync(
+          `UPDATE subscriptions SET
+            name = ?, amount_minor = ?, billing_cycle = ?, next_billing_date = ?,
+            status = ?, category_id = ?, account_id = ?, sync_state = 'pending'
+           WHERE id = ?`,
+          merged.name,
+          merged.amountMinor,
+          merged.billingCycle,
+          merged.nextBillingDate,
+          merged.status,
+          merged.categoryId,
+          merged.accountId,
+          id,
+        );
+      });
+    });
+  }
+
+  deleteSubscription(id: string): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentSubscriptionById(id);
+        if (current.sync_state === "failed" || current.sync_state === "conflicted") {
+          throw new LocalMutationError(
+            "Resolve this subscription's synchronization state before deleting it.",
+            "mutation_blocked",
+          );
+        }
+        const outbox = await this.currentOutbox("subscription", id);
+        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+          throw new LocalMutationError(
+            "Wait for the current synchronization attempt before deleting this subscription.",
+            "mutation_blocked",
+          );
+        }
+        if (current.server_revision === 0 && outbox?.operation_type === "create") {
+          await this.database.runAsync(
+            "DELETE FROM sync_outbox WHERE operation_id = ?",
+            outbox.operation_id,
+          );
+          await this.database.runAsync("DELETE FROM subscriptions WHERE id = ?", id);
+          return;
+        }
+        if (outbox) {
+          await this.database.runAsync(
+            `UPDATE sync_outbox SET operation_type = 'delete', payload_json = '{}',
+              state = 'pending', attempt_count = 0, next_attempt_at = NULL,
+              last_error_code = NULL WHERE operation_id = ?`,
+            outbox.operation_id,
+          );
+        } else {
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'subscription', ?, 'delete', ?, '{}', '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            id,
+            current.server_revision,
+            JSON.stringify(subscriptionSnapshot(current)),
+            await this.nextSequence(),
+          );
+        }
+        await this.database.runAsync(
+          "UPDATE subscriptions SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
           this.now().toISOString(),
           id,
         );
@@ -3426,6 +3746,232 @@ export class LocalTransactionMutationRepository {
       snapshot.updatedAt,
       syncState,
     );
+  }
+
+  private async upsertSubscriptionSnapshot(
+    snapshot: {
+      id: string;
+      name: string;
+      amountMinor: number;
+      currency: string;
+      billingCycle: SubscriptionBillingCycle;
+      nextBillingDate: string;
+      status: SubscriptionStatus;
+      categoryId: string | null;
+      accountId: string | null;
+      revision: number;
+      updatedAt: string | null;
+    },
+    syncState: "synced" | "pending",
+  ): Promise<void> {
+    await this.database.runAsync(
+      `INSERT INTO subscriptions (
+        id, name, amount_minor, currency, billing_cycle, next_billing_date, status,
+        category_id, account_id, server_revision, server_updated_at, deleted_at, sync_state
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         name = excluded.name,
+         amount_minor = excluded.amount_minor,
+         currency = excluded.currency,
+         billing_cycle = excluded.billing_cycle,
+         next_billing_date = excluded.next_billing_date,
+         status = excluded.status,
+         category_id = excluded.category_id,
+         account_id = excluded.account_id,
+         server_revision = excluded.server_revision,
+         server_updated_at = excluded.server_updated_at,
+         deleted_at = NULL,
+         sync_state = excluded.sync_state`,
+      snapshot.id,
+      snapshot.name,
+      snapshot.amountMinor,
+      snapshot.currency,
+      snapshot.billingCycle,
+      snapshot.nextBillingDate,
+      snapshot.status,
+      snapshot.categoryId,
+      snapshot.accountId,
+      snapshot.revision,
+      snapshot.updatedAt,
+      syncState,
+    );
+  }
+
+  getSubscriptionConflict(entityId: string): Promise<LocalSubscriptionConflict | null> {
+    return this.writer.run(async () => {
+      const local = await this.currentSubscriptionRowById(entityId);
+      const row = await this.database.getFirstAsync(
+        `SELECT conflict_id, operation_id, base_json, local_json, server_json,
+          server_revision, created_at
+         FROM sync_conflicts
+         WHERE entity_type = 'subscription' AND entity_id = ? AND resolved_at IS NULL
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        entityId,
+      );
+      if (!row) return null;
+      const conflict = conflictRowSchema.parse(row);
+      let serverValue: unknown;
+      try {
+        serverValue = JSON.parse(conflict.server_json) as unknown;
+      } catch {
+        throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+      }
+      const serverSnapshot =
+        serverValue === null ? null : mobileSyncSubscriptionSnapshotSchema.parse(serverValue);
+      return {
+        id: conflict.conflict_id,
+        entityId,
+        local: {
+          name: local.name,
+          amountMinor: local.amount_minor,
+          billingCycle: local.billing_cycle,
+          nextBillingDate: local.next_billing_date,
+          status: local.status,
+          categoryId: local.category_id,
+          accountId: local.account_id,
+        },
+        server: serverSnapshot
+          ? {
+              name: serverSnapshot.name,
+              amountMinor: serverSnapshot.amountMinor,
+              billingCycle: serverSnapshot.billingCycle,
+              nextBillingDate: serverSnapshot.nextBillingDate,
+              status: serverSnapshot.status,
+              categoryId: serverSnapshot.categoryId,
+              accountId: serverSnapshot.accountId,
+            }
+          : null,
+        serverRevision: conflict.server_revision,
+        createdAt: conflict.created_at,
+      };
+    });
+  }
+
+  resolveSubscriptionConflict(
+    entityId: string,
+    resolution: "keep_local" | "keep_server",
+  ): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const local = await this.currentSubscriptionRowById(entityId);
+        const conflict = await this.currentConflict("subscription", entityId);
+        const outbox = await this.currentOutbox("subscription", entityId);
+        if (
+          !outbox ||
+          outbox.operation_id !== conflict.operation_id ||
+          outbox.state !== "conflicted"
+        ) {
+          throw new LocalMutationError(
+            "The preserved subscription conflict changed before it could be resolved.",
+            "mutation_blocked",
+          );
+        }
+        let serverValue: unknown;
+        try {
+          serverValue = JSON.parse(conflict.server_json) as unknown;
+        } catch {
+          throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+        }
+        const serverSnapshot =
+          serverValue === null ? null : mobileSyncSubscriptionSnapshotSchema.parse(serverValue);
+
+        await this.database.runAsync(
+          `UPDATE sync_conflicts SET resolved_at = ?, resolution = ?, operation_id = NULL
+           WHERE conflict_id = ? AND resolved_at IS NULL`,
+          this.now().toISOString(),
+          resolution,
+          conflict.conflict_id,
+        );
+        await this.database.runAsync(
+          "DELETE FROM sync_outbox WHERE operation_id = ?",
+          outbox.operation_id,
+        );
+
+        if (resolution === "keep_server") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM subscriptions WHERE id = ?", entityId);
+            return;
+          }
+          await this.upsertSubscriptionSnapshot(serverSnapshot, "synced");
+          return;
+        }
+
+        const operationType = outbox.operation_type;
+        if (operationType === "delete") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM subscriptions WHERE id = ?", entityId);
+            return;
+          }
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'subscription', ?, 'delete', ?, '{}', '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            entityId,
+            serverSnapshot.revision,
+            JSON.stringify(serverSnapshot),
+            await this.nextSequence(),
+          );
+          await this.database.runAsync(
+            "UPDATE subscriptions SET sync_state = 'pending' WHERE id = ?",
+            entityId,
+          );
+          return;
+        }
+
+        const localInput = {
+          name: local.name,
+          amountMinor: local.amount_minor,
+          billingCycle: local.billing_cycle,
+          nextBillingDate: local.next_billing_date,
+          categoryId: local.category_id,
+          accountId: local.account_id,
+          status: local.status,
+        };
+        if (!serverSnapshot) {
+          await this.database.runAsync(
+            `UPDATE subscriptions SET server_revision = 0, server_updated_at = NULL,
+              sync_state = 'pending' WHERE id = ?`,
+            entityId,
+          );
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'subscription', ?, 'create', 0, ?, '[]', '{}', ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            entityId,
+            JSON.stringify(localInput),
+            await this.nextSequence(),
+          );
+          return;
+        }
+        await this.database.runAsync(
+          `UPDATE subscriptions SET server_revision = ?, server_updated_at = ?,
+            sync_state = 'pending' WHERE id = ?`,
+          serverSnapshot.revision,
+          serverSnapshot.updatedAt,
+          entityId,
+        );
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'subscription', ?, 'update', ?, ?, '[]', ?, ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          entityId,
+          serverSnapshot.revision,
+          JSON.stringify(localInput),
+          JSON.stringify(serverSnapshot),
+          await this.nextSequence(),
+        );
+      });
+    });
   }
 
   applyPushResponse(request: MobileSyncPushRequest, value: MobileSyncPushResponse): Promise<void> {

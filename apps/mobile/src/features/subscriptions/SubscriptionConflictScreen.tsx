@@ -1,0 +1,197 @@
+import { Stack, router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useLocalReferenceData, useLocalWorkspace, useSubscriptionConflict } from "@/db/local-workspace-state";
+import type { LocalSubscriptionConflictVersion } from "@/db/transaction-mutation-repository";
+import { useSyncState } from "@/sync/sync-state";
+import {
+  Button,
+  Card,
+  ConfirmationDialog,
+  ErrorState,
+  MoneyValue,
+  Skeleton,
+} from "@/ui/components";
+import { spacing, typography } from "@/ui/tokens";
+import { useZoptionTheme } from "@/ui/theme-provider";
+import { billingCycleLabels } from "./subscription-form";
+
+function singleParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function VersionCard({
+  title,
+  version,
+}: {
+  title: string;
+  version: LocalSubscriptionConflictVersion | null;
+}) {
+  const theme = useZoptionTheme();
+  const reference = useLocalReferenceData();
+  const categoryName =
+    version?.categoryId
+      ? (reference.data?.categories.find((category) => category.id === version.categoryId)?.name ??
+        "Unknown category")
+      : "No category";
+  const accountName =
+    version?.accountId
+      ? (reference.data?.accounts.find((account) => account.id === version.accountId)?.name ??
+        "Unknown account")
+      : "No account";
+  return (
+    <Card accessibilityLabel={title}>
+      <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
+        {title}
+      </Text>
+      {!version ? (
+        <Text style={[typography.body, { color: theme.colors.textMuted }]}>No subscription</Text>
+      ) : (
+        <>
+          <Text style={[typography.body, { color: theme.colors.text }]}>{version.name}</Text>
+          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+            {billingCycleLabels[version.billingCycle]} · next {version.nextBillingDate} ·{" "}
+            {version.status === "canceled" ? "canceled" : "active"}
+          </Text>
+          <View style={styles.amountRow}>
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>Charge</Text>
+            <MoneyValue amountMinor={version.amountMinor} />
+          </View>
+          <View style={styles.amountRow}>
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>Account</Text>
+            <Text style={[typography.callout, { color: theme.colors.text }]}>{accountName}</Text>
+          </View>
+          <View style={styles.amountRow}>
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>Category</Text>
+            <Text style={[typography.callout, { color: theme.colors.text }]}>{categoryName}</Text>
+          </View>
+        </>
+      )}
+    </Card>
+  );
+}
+
+export function SubscriptionConflictScreen() {
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = singleParam(params.id);
+  const local = useLocalWorkspace();
+  const sync = useSyncState();
+  const state = useSubscriptionConflict(id);
+  const theme = useZoptionTheme();
+  const [choice, setChoice] = useState<"keep_local" | "keep_server" | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const resolve = async (): Promise<void> => {
+    if (!choice || !id || !local.workspace || resolving) return;
+    setResolving(true);
+    setMessage(null);
+    try {
+      await local.workspace.transactionMutations.resolveSubscriptionConflict(id, choice);
+      setChoice(null);
+      router.back();
+      sync.retry();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The preserved subscription conflict could not be resolved safely.",
+      );
+      setChoice(null);
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  return (
+    <SafeAreaView
+      edges={["bottom", "left", "right"]}
+      style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
+    >
+      <Stack.Screen options={{ title: "Review subscription conflict" }} />
+      {state.error ? (
+        <View style={styles.centered}>
+          <ErrorState title="Conflict unavailable" message={state.error} onRetry={state.retry} />
+        </View>
+      ) : state.loading ? (
+        <View accessibilityLabel="Loading conflict" style={styles.centered}>
+          <Skeleton height={128} />
+        </View>
+      ) : !state.conflict ? (
+        <View style={styles.centered}>
+          <ErrorState
+            title="Conflict already resolved"
+            message="There is no unresolved conflict for this subscription."
+          />
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.content}
+          contentInsetAdjustmentBehavior="automatic"
+        >
+          <View style={styles.intro}>
+            <Text
+              accessibilityRole="header"
+              style={[typography.title, { color: theme.colors.text }]}
+            >
+              Choose the subscription to keep
+            </Text>
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+              Zoption preserved both versions. No device timestamp decides this choice.
+            </Text>
+          </View>
+          <VersionCard title="On this device" version={state.conflict.local} />
+          <VersionCard title="On the server" version={state.conflict.server} />
+          {message ? (
+            <Text
+              accessibilityRole="alert"
+              style={[typography.callout, { color: theme.colors.danger }]}
+            >
+              {message}
+            </Text>
+          ) : null}
+          <Button disabled={resolving} onPress={() => setChoice("keep_local")}>
+            Keep this device subscription
+          </Button>
+          <Button disabled={resolving} onPress={() => setChoice("keep_server")} variant="secondary">
+            Use server subscription
+          </Button>
+        </ScrollView>
+      )}
+      <ConfirmationDialog
+        confirmLabel={choice === "keep_local" ? "Keep mine" : "Use server"}
+        message={
+          choice === "keep_local"
+            ? "Zoption will create a new operation based on the latest server revision. It may conflict again if the server changes first."
+            : "Zoption will discard this device's proposed subscription and replace it with the preserved server subscription."
+        }
+        onCancel={() => setChoice(null)}
+        onConfirm={() => void resolve()}
+        title={choice === "keep_local" ? "Keep this device subscription?" : "Use server subscription?"}
+        visible={choice !== null}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  centered: { flex: 1, justifyContent: "center", padding: spacing.md },
+  content: {
+    width: "100%",
+    maxWidth: 760,
+    alignSelf: "center",
+    gap: spacing.lg,
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  intro: { gap: spacing.xs },
+  amountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+});

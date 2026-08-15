@@ -4,6 +4,7 @@ import {
   mobileSyncCategorySnapshotSchema,
   mobileSyncDebtSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
+  mobileSyncSubscriptionSnapshotSchema,
   mobileSyncPullResponseSchema,
   mobileSyncTransactionSnapshotSchema,
   type MobileSyncChange,
@@ -59,6 +60,8 @@ function entityTable(entityType: MobileSyncChange["entityType"]): string {
       return "financial_goals";
     case "debt":
       return "debts";
+    case "subscription":
+      return "subscriptions";
   }
 }
 
@@ -316,6 +319,43 @@ async function applyDebt(database: SQLiteDatabase, change: MobileSyncChange): Pr
   );
 }
 
+async function applySubscription(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
+  if (change.entityType !== "subscription" || !change.payload) {
+    throw new Error("invalid_subscription_change");
+  }
+  const subscription = mobileSyncSubscriptionSnapshotSchema.parse(change.payload);
+  await database.runAsync(
+    `INSERT INTO subscriptions (
+      id, name, amount_minor, currency, billing_cycle, next_billing_date, status,
+      category_id, account_id, server_revision, server_updated_at, deleted_at, sync_state
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      amount_minor = excluded.amount_minor,
+      currency = excluded.currency,
+      billing_cycle = excluded.billing_cycle,
+      next_billing_date = excluded.next_billing_date,
+      status = excluded.status,
+      category_id = excluded.category_id,
+      account_id = excluded.account_id,
+      server_revision = excluded.server_revision,
+      server_updated_at = excluded.server_updated_at,
+      deleted_at = NULL,
+      sync_state = 'synced'`,
+    subscription.id,
+    subscription.name,
+    subscription.amountMinor,
+    subscription.currency,
+    subscription.billingCycle,
+    subscription.nextBillingDate,
+    subscription.status,
+    subscription.categoryId,
+    subscription.accountId,
+    change.revision,
+    change.serverUpdatedAt,
+  );
+}
+
 async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
   await database.runAsync(
     `INSERT INTO sync_tombstones (
@@ -369,6 +409,9 @@ async function applyChange(database: SQLiteDatabase, change: MobileSyncChange): 
       return;
     case "debt":
       await applyDebt(database, change);
+      return;
+    case "subscription":
+      await applySubscription(database, change);
   }
 }
 
@@ -397,6 +440,9 @@ export async function applySnapshotChange(
       return;
     case "debt":
       await applyDebt(database, change);
+      return;
+    case "subscription":
+      await applySubscription(database, change);
   }
 }
 

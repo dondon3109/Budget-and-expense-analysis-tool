@@ -1440,4 +1440,161 @@ describe("durable local debt mutations", () => {
     ).toEqual({ balance_minor: 100_000, server_revision: 4, sync_state: "synced" });
   });
 });
+describe("durable local subscription mutations", () => {
+  let database: TestDatabase;
+
+  beforeEach(() => {
+    database = new TestDatabase();
+  });
+
+  afterEach(() => database.close());
+
+  it("creates, updates, cancels, and deletes a subscription offline", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createSubscription({
+      name: "Netflix",
+      amountMinor: 54_900,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-09-01",
+      categoryId: "category-1",
+      accountId: "account-1",
+    });
+    expect(
+      database.native
+        .prepare(
+          "SELECT name, amount_minor, status, server_revision, sync_state FROM subscriptions WHERE id = ?",
+        )
+        .get(id),
+    ).toEqual({
+      name: "Netflix",
+      amount_minor: 54_900,
+      status: "active",
+      server_revision: 0,
+      sync_state: "pending",
+    });
+
+    await mutations.updateSubscription(id, {
+      name: "Netflix Premium",
+      amountMinor: 74_900,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-09-01",
+      categoryId: "category-1",
+      accountId: "account-1",
+    });
+    expect(
+      database.native
+        .prepare("SELECT name, amount_minor, sync_state FROM subscriptions WHERE id = ?")
+        .get(id),
+    ).toEqual({ name: "Netflix Premium", amount_minor: 74_900, sync_state: "pending" });
+
+    await mutations.updateSubscription(id, {
+      name: "Netflix Premium",
+      amountMinor: 74_900,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-09-01",
+      categoryId: "category-1",
+      accountId: "account-1",
+      status: "canceled",
+    });
+    expect(
+      database.native.prepare("SELECT status FROM subscriptions WHERE id = ?").get(id),
+    ).toEqual({ status: "canceled" });
+
+    await mutations.deleteSubscription(id);
+    expect(
+      database.native.prepare("SELECT id FROM subscriptions WHERE id = ?").get(id),
+    ).toBeUndefined();
+    expect(
+      database.native
+        .prepare("SELECT count(*) AS count FROM sync_outbox WHERE entity_id = ?")
+        .get(id),
+    ).toEqual({ count: 0 });
+  });
+
+  it("rejects a subscription without an expense category or active account", async () => {
+    const mutations = repository(database);
+    await expect(
+      mutations.createSubscription({
+        name: "Transfer Billed",
+        amountMinor: 10_000,
+        billingCycle: "monthly",
+        nextBillingDate: "2026-09-01",
+        categoryId: "category-transfer",
+        accountId: "account-1",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_reference" });
+    await expect(
+      mutations.createSubscription({
+        name: "Missing Account",
+        amountMinor: 10_000,
+        billingCycle: "monthly",
+        nextBillingDate: "2026-09-01",
+        categoryId: "category-1",
+        accountId: "account-missing",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_reference" });
+  });
+
+  it("preserves and resolves a stale subscription update conflict", async () => {
+    const mutations = repository(database);
+    database.native.exec(
+      "INSERT INTO subscriptions (id, name, amount_minor, currency, billing_cycle, next_billing_date, " +
+      "status, category_id, account_id, server_revision, server_updated_at, sync_state) VALUES (" +
+      "'subscription-server', 'Server Sub', 9900, 'PHP', 'monthly', '2026-09-01', 'active', " +
+      "'category-1', 'account-1', 3, '2026-08-13 15:00:00', 'synced');",
+    );
+    await mutations.updateSubscription("subscription-server", {
+      name: "Device Sub",
+      amountMinor: 12_900,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-09-01",
+      categoryId: "category-1",
+      accountId: "account-1",
+    });
+    const request = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "subscription",
+          entityId: "subscription-server",
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 4,
+          serverUpdatedAt: "2026-08-13 16:00:00",
+          serverPayload: {
+            id: "subscription-server",
+            name: "Server Sub",
+            amountMinor: 9_900,
+            currency: "PHP",
+            billingCycle: "monthly",
+            nextBillingDate: "2026-09-01",
+            status: "active",
+            categoryId: "category-1",
+            accountId: "account-1",
+            revision: 4,
+            updatedAt: "2026-08-13 16:00:00",
+          },
+        },
+      ],
+    });
+
+    const conflict = await mutations.getSubscriptionConflict("subscription-server");
+    expect(conflict).toMatchObject({
+      entityId: "subscription-server",
+      local: { name: "Device Sub", amountMinor: 12_900 },
+      server: { name: "Server Sub", amountMinor: 9_900 },
+    });
+
+    await mutations.resolveSubscriptionConflict("subscription-server", "keep_server");
+    expect(
+      database.native
+        .prepare(
+          "SELECT name, amount_minor, server_revision, sync_state FROM subscriptions WHERE id = 'subscription-server'",
+        )
+        .get(),
+    ).toEqual({ name: "Server Sub", amount_minor: 9_900, server_revision: 4, sync_state: "synced" });
+  });
+});
 

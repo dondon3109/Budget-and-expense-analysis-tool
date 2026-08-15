@@ -425,7 +425,7 @@ const mobileSyncGoalUpdateSchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
 
-const mobileSyncSubscriptionUpdateSchema = subscriptionInputSchema
+export const mobileSyncSubscriptionUpdateSchema = subscriptionInputSchema
   .extend({ status: z.enum(subscriptionStatuses).optional() })
   .strict();
 

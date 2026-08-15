@@ -67,6 +67,13 @@ export default function MoreScreen() {
           >
             Debts
           </Button>
+          <Button
+            accessibilityHint="Opens subscription tracking"
+            variant="secondary"
+            onPress={() => router.push("/(app)/subscriptions")}
+          >
+            Subscriptions
+          </Button>
         </View>
       </Card>
       <Card accessibilityLabel="Local data protection status">

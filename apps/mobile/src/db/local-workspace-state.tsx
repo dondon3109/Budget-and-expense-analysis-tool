@@ -16,6 +16,7 @@ import type {
   LocalBudgetMonthData,
   LocalDashboardData,
   LocalDebtItem,
+  LocalSubscriptionItem,
   LocalGoalItem,
   LocalReferenceData,
   LocalTransactionItem,
@@ -25,6 +26,7 @@ import type {
 import type {
   LocalBudgetConflict,
   LocalDebtConflict,
+  LocalSubscriptionConflict,
   LocalGoalConflict,
   LocalReferenceConflict,
   LocalTransactionConflict,
@@ -635,6 +637,179 @@ export function useDebtConflict(id?: string): {
     return () => {
       active = false;
       subscription.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { conflict, loading, error, retry };
+}
+
+export function useSubscriptions(): {
+  subscriptions: LocalSubscriptionItem[];
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [subscriptions, setSubscriptions] = useState<LocalSubscriptionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace) {
+      setSubscriptions([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getSubscriptions()
+        .then((next) => {
+          if (active) {
+            setSubscriptions(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("Subscriptions could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const listener = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["subscriptions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      listener.remove();
+    };
+  }, [attempt, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { subscriptions, loading, error, retry };
+}
+
+export function useSubscription(id?: string): {
+  subscription: LocalSubscriptionItem | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [subscription, setSubscription] = useState<LocalSubscriptionItem | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setSubscription(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getSubscription(id)
+        .then((next) => {
+          if (active) {
+            setSubscription(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The subscription could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const listener = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["subscriptions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      listener.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { subscription, loading, error, retry };
+}
+
+export function useSubscriptionConflict(id?: string): {
+  conflict: LocalSubscriptionConflict | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [conflict, setConflict] = useState<LocalSubscriptionConflict | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setConflict(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.transactionMutations
+        .getSubscriptionConflict(id)
+        .then((next) => {
+          if (active) {
+            setConflict(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError(
+              "The preserved subscription conflict could not be read from encrypted storage.",
+            );
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const listener = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["subscriptions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      listener.remove();
     };
   }, [attempt, id, workspace]);
 
