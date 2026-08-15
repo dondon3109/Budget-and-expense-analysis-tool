@@ -1279,6 +1279,148 @@ describe("mobile sync account and category push repository", () => {
     ).toEqual({ operation: "upsert" });
   });
 
+  it("updates automatic-interest settings atomically with account updates", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(async (bindings, tenantId) =>
+      Boolean(
+        await bindings.DB.prepare(
+          "SELECT 1 AS entitled FROM effective_pro_entitlements WHERE tenant_id = ?",
+        )
+          .bind(tenantId)
+          .first(),
+      ),
+    );
+    const interest = {
+      enabled: true,
+      annualRateBasisPoints: 500,
+      frequency: "monthly" as const,
+      payDay: 15,
+    };
+
+    const notSavings = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-0000000000a1",
+          idempotencyKey: "10000000-0000-4000-8000-0000000000a2",
+          entityType: "account",
+          entityId: "account-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { interest },
+        },
+      ],
+    });
+    expect(notSavings.results[0]).toMatchObject({
+      status: "rejected",
+      code: "invalid_operation",
+    });
+    expect(
+      database.prepare("SELECT interest_enabled FROM accounts WHERE id = 'account-1'").get(),
+    ).toEqual({ interest_enabled: 0 });
+
+    const freeAttempt = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-0000000000a3",
+          idempotencyKey: "10000000-0000-4000-8000-0000000000a4",
+          entityType: "account",
+          entityId: "account-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { type: "savings", interest },
+        },
+      ],
+    });
+    expect(freeAttempt.results[0]).toMatchObject({ status: "rejected", code: "plan_limit" });
+    expect(
+      database.prepare("SELECT type, interest_enabled FROM accounts WHERE id = 'account-1'").get(),
+    ).toEqual({ type: "cash", interest_enabled: 0 });
+
+    database
+      .prepare("INSERT INTO effective_pro_entitlements (tenant_id) VALUES (?)")
+      .run("tenant-1");
+    const pro = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-0000000000a5",
+          idempotencyKey: "10000000-0000-4000-8000-0000000000a6",
+          entityType: "account",
+          entityId: "account-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { type: "savings", interest },
+        },
+      ],
+    });
+    expect(pro.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+    expect(
+      database
+        .prepare(
+          "SELECT type, interest_enabled, annual_rate_basis_points, interest_frequency, interest_pay_day FROM accounts WHERE id = 'account-1'",
+        )
+        .get(),
+    ).toEqual({
+      type: "savings",
+      interest_enabled: 1,
+      annual_rate_basis_points: 500,
+      interest_frequency: "monthly",
+      interest_pay_day: 15,
+    });
+
+    const pulled = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: "v1.8",
+      limit: 20,
+    });
+    const accountChange = pulled.changes.find(
+      (change) => change.entityType === "account" && change.entityId === "account-1",
+    );
+    expect(accountChange?.payload).toMatchObject({
+      type: "savings",
+      interest: { enabled: true, annualRateBasisPoints: 500, frequency: "monthly", payDay: 15 },
+    });
+
+    const disabled = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-0000000000a7",
+          idempotencyKey: "10000000-0000-4000-8000-0000000000a8",
+          entityType: "account",
+          entityId: "account-1",
+          operationType: "update",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: {
+            interest: {
+              enabled: false,
+              annualRateBasisPoints: 0,
+              frequency: "monthly",
+              payDay: 15,
+            },
+          },
+        },
+      ],
+    });
+    expect(disabled.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
+    expect(
+      database
+        .prepare("SELECT interest_enabled, annual_rate_basis_points FROM accounts WHERE id = 'account-1'")
+        .get(),
+    ).toEqual({ interest_enabled: 0, annual_rate_basis_points: 0 });
+  });
+
+
   it("protects account names, system rows, revisions, and tenant ownership", async () => {
     const { env, database } = createSyncEnvironment();
     const repository = createMobileSyncRepository(vi.fn(async () => false));

@@ -5,6 +5,7 @@ import {
   calendarEventInputSchema,
   calendarEventUpdateSchema,
   categoryInputSchema,
+  interestUpdateSchema,
   mobileSyncAcknowledgeResponseSchema,
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
@@ -664,6 +665,28 @@ async function businessRejection(
         "invalid_operation",
         `This permanent ${operation.entityType} cannot be changed that way.`,
       );
+    }
+  }
+
+  if (operation.entityType === "account" && operation.operationType === "update") {
+    const account = existing as AccountSnapshot | null;
+    if (operation.payload.interest !== undefined) {
+      const interest = interestUpdateSchema.parse(operation.payload.interest);
+      const mergedType = operation.payload.type ?? account?.type;
+      if (mergedType !== "savings") {
+        return rejectedResult(
+          operation,
+          "invalid_operation",
+          "Only savings accounts earn interest.",
+        );
+      }
+      if (interest.enabled && !(await hasEffectiveProEntitlementRow(env, tenantId))) {
+        return rejectedResult(
+          operation,
+          "plan_limit",
+          "Automatic interest is a Zoption Pro feature.",
+        );
+      }
     }
   }
 
@@ -2110,26 +2133,44 @@ export function createMobileSyncRepository(
           } else if (operation.operationType === "update") {
             const payload = operation.payload;
             const account = mobileSyncAccountSnapshotSchema.parse(current);
+            const mergedName = payload.name ?? account.name;
+            const interest = payload.interest;
+            const interestColumns =
+              interest !== undefined
+                ? ", interest_enabled = ?, annual_rate_basis_points = ?, interest_frequency = ?, interest_pay_day = ?"
+                : "";
+            const binds: unknown[] = [
+              mergedName,
+              payload.type ?? account.type,
+              timestamp,
+            ];
+            if (interest !== undefined) {
+              interestUpdateSchema.parse(interest);
+              binds.push(
+                interest.enabled ? 1 : 0,
+                interest.annualRateBasisPoints,
+                interest.frequency,
+                interest.payDay,
+              );
+            }
+            binds.push(
+              operation.entityId,
+              tenantId,
+              operation.baseRevision,
+              mergedName,
+              tenantId,
+              mergedName,
+              operation.entityId,
+            );
             mutation = env.DB.prepare(
-              `UPDATE accounts SET name = ?, type = ?, updated_at = ?
+              `UPDATE accounts SET name = ?, type = ?, updated_at = ?${interestColumns}
                WHERE id = ? AND tenant_id = ? AND revision = ?
                  AND (system_key IS NULL OR name = ?)
                  AND NOT EXISTS (
                    SELECT 1 FROM accounts AS other
                    WHERE other.tenant_id = ? AND lower(other.name) = lower(?) AND other.id != ?
                  )`,
-            ).bind(
-              payload.name,
-              payload.type ?? account.type,
-              timestamp,
-              operation.entityId,
-              tenantId,
-              operation.baseRevision,
-              payload.name,
-              tenantId,
-              payload.name,
-              operation.entityId,
-            );
+            ).bind(...binds);
           } else {
             mutation = env.DB.prepare(
               `UPDATE accounts SET archived = 1, updated_at = ?

@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   accountInputSchema,
   accountUpdateSchema,
+  interestUpdateSchema,
   calendarEventInputSchema,
   calendarEventUpdateSchema,
   categoryInputSchema,
@@ -50,6 +51,15 @@ export const mobileSyncSnapshotCursorSchema = z
   .string()
   .regex(/^s1\.[0-9a-z]+$/)
   .max(40);
+
+/**
+ * Mobile account updates may also adjust automatic-interest settings, matching the
+ * web’s separate interest endpoint as one atomic account mutation. The server
+ * enforces the savings-type and Pro rules when the payload carries `interest`.
+ */
+export const mobileSyncAccountUpdateSchema = accountUpdateSchema
+  .extend({ interest: interestUpdateSchema.optional() })
+  .strict();
 
 export const mobileSyncAccountSnapshotSchema = z
   .object({
@@ -459,7 +469,7 @@ export const mobileSyncSubscriptionUpdateSchema = subscriptionInputSchema
 export const mobileSyncPushOperationSchema = z
   .union([
     createOperation("account", accountInputSchema),
-    updateOperation("account", accountUpdateSchema),
+    updateOperation("account", mobileSyncAccountUpdateSchema),
     deleteOperation("account"),
     createOperation("category", categoryInputSchema),
     updateOperation("category", categoryUpdateSchema),

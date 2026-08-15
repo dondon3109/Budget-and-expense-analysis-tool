@@ -2,6 +2,7 @@ export * from "./calculations";
 export * from "./csv";
 export * from "./fingerprint";
 export * from "./importDate";
+export * from "./interest";
 export * from "./money";
 export * from "./planning";
 export * from "./schemas";
