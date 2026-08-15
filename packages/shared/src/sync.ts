@@ -57,6 +57,10 @@ export const mobileSyncSnapshotCursorSchema = z
  * web’s separate interest endpoint as one atomic account mutation. The server
  * enforces the savings-type and Pro rules when the payload carries `interest`.
  */
+export const mobileSyncAccountCreateSchema = accountInputSchema
+  .extend({ interest: interestUpdateSchema.optional() })
+  .strict();
+
 export const mobileSyncAccountUpdateSchema = accountUpdateSchema
   .extend({ interest: interestUpdateSchema.optional() })
   .strict();
@@ -468,7 +472,7 @@ export const mobileSyncSubscriptionUpdateSchema = subscriptionInputSchema
 
 export const mobileSyncPushOperationSchema = z
   .union([
-    createOperation("account", accountInputSchema),
+    createOperation("account", mobileSyncAccountCreateSchema),
     updateOperation("account", mobileSyncAccountUpdateSchema),
     deleteOperation("account"),
     createOperation("category", categoryInputSchema),

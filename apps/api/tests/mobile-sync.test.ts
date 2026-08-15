@@ -1309,7 +1309,7 @@ describe("mobile sync account and category push repository", () => {
           operationType: "update",
           baseRevision: 1,
           dependencyIds: [],
-          payload: { interest },
+          payload: { name: "Wallet", interest },
         },
       ],
     });
@@ -1333,7 +1333,7 @@ describe("mobile sync account and category push repository", () => {
           operationType: "update",
           baseRevision: 1,
           dependencyIds: [],
-          payload: { type: "savings", interest },
+          payload: { name: "Wallet", type: "savings", interest },
         },
       ],
     });
@@ -1357,7 +1357,7 @@ describe("mobile sync account and category push repository", () => {
           operationType: "update",
           baseRevision: 1,
           dependencyIds: [],
-          payload: { type: "savings", interest },
+          payload: { name: "Wallet", type: "savings", interest },
         },
       ],
     });
@@ -1402,6 +1402,7 @@ describe("mobile sync account and category push repository", () => {
           baseRevision: 2,
           dependencyIds: [],
           payload: {
+            name: "Wallet",
             interest: {
               enabled: false,
               annualRateBasisPoints: 0,
@@ -1418,6 +1419,60 @@ describe("mobile sync account and category push repository", () => {
         .prepare("SELECT interest_enabled, annual_rate_basis_points FROM accounts WHERE id = 'account-1'")
         .get(),
     ).toEqual({ interest_enabled: 0, annual_rate_basis_points: 0 });
+
+    const createdId = "10000000-0000-4000-8000-0000000000ab";
+    const created = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-0000000000ac",
+          idempotencyKey: "10000000-0000-4000-8000-0000000000ad",
+          entityType: "account",
+          entityId: createdId,
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { name: "Goal fund", type: "savings", interest },
+        },
+      ],
+    });
+    expect(created.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+    expect(
+      database
+        .prepare(
+          "SELECT interest_enabled, annual_rate_basis_points, interest_frequency, interest_pay_day FROM accounts WHERE id = ?",
+        )
+        .get(createdId),
+    ).toEqual({
+      interest_enabled: 1,
+      annual_rate_basis_points: 500,
+      interest_frequency: "monthly",
+      interest_pay_day: 15,
+    });
+
+    const createFreeAttempt = await repository.push(env, "tenant-2", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-0000000000ae",
+          idempotencyKey: "10000000-0000-4000-8000-0000000000af",
+          entityType: "account",
+          entityId: "10000000-0000-4000-8000-0000000000b0",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { name: "Free savings", type: "savings", interest },
+        },
+      ],
+    });
+    expect(createFreeAttempt.results[0]).toMatchObject({ status: "rejected", code: "plan_limit" });
+    expect(
+      database
+        .prepare("SELECT id FROM accounts WHERE id = '10000000-0000-4000-8000-0000000000b0'")
+        .get(),
+    ).toBeUndefined();
   });
 
 

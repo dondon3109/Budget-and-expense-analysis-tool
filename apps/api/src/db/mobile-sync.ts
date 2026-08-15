@@ -668,7 +668,7 @@ async function businessRejection(
     }
   }
 
-  if (operation.entityType === "account" && operation.operationType === "update") {
+  if (operation.entityType === "account" && operation.operationType !== "delete") {
     const account = existing as AccountSnapshot | null;
     if (operation.payload.interest !== undefined) {
       const interest = interestUpdateSchema.parse(operation.payload.interest);
@@ -1031,22 +1031,42 @@ function createGraphMutation(
   timestamp: string,
 ): D1PreparedStatement {
   if (operation.entityType === "account") {
-    const payload = accountInputSchema.parse(operation.payload);
-    return env.DB.prepare(
-      `INSERT INTO accounts (id, tenant_id, name, type, currency, revision, updated_at)
-       SELECT ?, ?, ?, ?, 'PHP', 1, ?
+    const payload = accountInputSchema.parse({
+      name: operation.payload.name,
+      type: operation.payload.type,
+    });
+    const interest =
+      operation.payload.interest !== undefined
+        ? interestUpdateSchema.parse(operation.payload.interest)
+        : null;
+    const columns = interest
+      ? ", interest_enabled, annual_rate_basis_points, interest_frequency, interest_pay_day"
+      : "";
+    const values = interest ? ", ?, ?, ?, ?" : "";
+    const statement = env.DB.prepare(
+      `INSERT INTO accounts (id, tenant_id, name, type, currency, revision, updated_at${columns})
+       SELECT ?, ?, ?, ?, 'PHP', 1, ?${values}
        WHERE NOT EXISTS (
          SELECT 1 FROM accounts WHERE tenant_id = ? AND lower(name) = lower(?)
        )`,
-    ).bind(
+    );
+    const binds: unknown[] = [
       operation.entityId,
       tenantId,
       payload.name,
       payload.type,
       timestamp,
-      tenantId,
-      payload.name,
-    );
+    ];
+    if (interest) {
+      binds.push(
+        interest.enabled ? 1 : 0,
+        interest.annualRateBasisPoints,
+        interest.frequency,
+        interest.payDay,
+      );
+    }
+    binds.push(tenantId, payload.name);
+    return statement.bind(...binds);
   }
   if (operation.entityType === "category") {
     const payload = categoryInputSchema.parse(operation.payload);
@@ -2115,21 +2135,37 @@ export function createMobileSyncRepository(
         if (operation.entityType === "account") {
           if (operation.operationType === "create") {
             const payload = operation.payload;
-            mutation = env.DB.prepare(
-              `INSERT INTO accounts (id, tenant_id, name, type, currency, revision, updated_at)
-               SELECT ?, ?, ?, ?, 'PHP', 1, ?
-               WHERE NOT EXISTS (
-                 SELECT 1 FROM accounts WHERE tenant_id = ? AND lower(name) = lower(?)
-               )`,
-            ).bind(
+            const interest = payload.interest;
+            const interestColumns =
+              interest !== undefined
+                ? ", interest_enabled, annual_rate_basis_points, interest_frequency, interest_pay_day"
+                : "";
+            const binds: unknown[] = [
               operation.entityId,
               tenantId,
               payload.name,
               payload.type,
               timestamp,
-              tenantId,
-              payload.name,
-            );
+            ];
+            if (interest !== undefined) {
+              interestUpdateSchema.parse(interest);
+              binds.push(
+                interest.enabled ? 1 : 0,
+                interest.annualRateBasisPoints,
+                interest.frequency,
+                interest.payDay,
+              );
+            }
+            binds.push(tenantId, payload.name);
+            mutation = env.DB.prepare(
+              `INSERT INTO accounts (id, tenant_id, name, type, currency, revision, updated_at${interestColumns})
+               SELECT ?, ?, ?, ?, 'PHP', 1, ?${
+                 interest !== undefined ? ", ?, ?, ?, ?" : ""
+               }
+               WHERE NOT EXISTS (
+                 SELECT 1 FROM accounts WHERE tenant_id = ? AND lower(name) = lower(?)
+               )`,
+            ).bind(...binds);
           } else if (operation.operationType === "update") {
             const payload = operation.payload;
             const account = mobileSyncAccountSnapshotSchema.parse(current);
