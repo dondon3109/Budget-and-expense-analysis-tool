@@ -32,6 +32,7 @@ interface SessionContextValue extends SessionSnapshot {
   configured: boolean;
   getAccessToken: (refresh: boolean) => Promise<string>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   exchangeCodeForSession: (code: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
@@ -59,6 +60,7 @@ const SessionContext = createContext<SessionContextValue>({
   configured: false,
   getAccessToken: unavailable,
   signInWithPassword: unavailable,
+  signInWithGoogle: unavailable,
   sendPasswordReset: unavailable,
   exchangeCodeForSession: unavailable,
   updatePassword: unavailable,
@@ -168,6 +170,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (error) throw error;
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    // Opens the system browser; the OAuth callback deep-links back to
+    // /auth/callback, where the existing PKCE code exchange completes.
+    const { error } = await getSupabaseClient().auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: Linking.createURL("/auth/callback"),
+        skipBrowserRedirect: false,
+      },
+    });
+    if (error) throw error;
+  }, []);
+
   const signOut = useCallback(async (options: SignOutOptions = {}) => {
     const subject = subjectRef.current;
     if (subject && !options.preserveLocalWorkspace) {
@@ -190,6 +205,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       configured: isSupabaseConfigured,
       getAccessToken,
       signInWithPassword,
+      signInWithGoogle,
       sendPasswordReset,
       exchangeCodeForSession,
       updatePassword,
@@ -198,6 +214,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     [
       exchangeCodeForSession,
       getAccessToken,
+      signInWithGoogle,
       sendPasswordReset,
       signInWithPassword,
       signOut,

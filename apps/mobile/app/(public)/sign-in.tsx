@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Text, View, type TextInput } from "react-native";
+import { StyleSheet, Text, View, type TextInput } from "react-native";
 
 import { authErrorMessage, emailSchema } from "@/auth/auth-validation";
 import { useSessionSnapshot } from "@/auth/session-state";
@@ -11,17 +11,30 @@ import { typography } from "@/ui/tokens";
 
 export default function SignInScreen() {
   const theme = useZoptionTheme();
-  const { configured, signInWithPassword, status } = useSessionSnapshot();
+  const { configured, signInWithGoogle, signInWithPassword, status } = useSessionSnapshot();
   const passwordRef = useRef<TextInput>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string>();
   const [formError, setFormError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   useEffect(() => {
     if (status === "signed-in") router.replace("/(app)/(tabs)");
   }, [status]);
+
+  async function handleGoogleSignIn(): Promise<void> {
+    if (!configured || googleBusy) return;
+    setGoogleBusy(true);
+    setFormError(undefined);
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      setFormError(authErrorMessage(error, "Zoption could not start Google sign-in."));
+      setGoogleBusy(false);
+    }
+  }
 
   async function submit(): Promise<void> {
     if (busy || !configured) return;
@@ -115,7 +128,29 @@ export default function SignInScreen() {
         >
           Forgot password?
         </Button>
+        <View
+          accessibilityLabel="Social sign-in options"
+          style={styles.dividerRow}
+        >
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>or</Text>
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+        </View>
+        <Button
+          accessibilityHint="Opens Google in the system browser and links the same Zoption identity"
+          disabled={!configured || googleBusy}
+          loading={googleBusy}
+          variant="secondary"
+          onPress={() => void handleGoogleSignIn()}
+        >
+          Continue with Google
+        </Button>
       </View>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  divider: { flex: 1, height: StyleSheet.hairlineWidth },
+});
