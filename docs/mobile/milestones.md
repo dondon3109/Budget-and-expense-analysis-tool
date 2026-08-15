@@ -729,3 +729,16 @@ background-task scheduling on real hardware.
   then returned to zero records. No cross-tenant data appeared on the device
   in either direction — the immutable Supabase subject derives a separate
   workspace per identity, exactly as required.
+- **OAuth runtime walk (simulator)**: the full chain up to Google's credential
+  gate was exercised end-to-end on the iOS simulator — "Continue with Google"
+  → the iOS auth-session consent dialog ("ZoptionDev" wants to use the
+  Supabase host) → Google's sign-in page → the account email → the password
+  step. The flow reaches Google correctly; the temporary OAUTH_DIAG
+  diagnostics used while driving it were removed and the working tree
+  matches the committed state (lint, typecheck, 254 tests green).
+- **Awaiting the owner's manual Google login**: both stored test-account
+  passwords were rejected by Google even with the exact 15-character value
+  verified on-screen in the field (reveal toggle), so Google's risk/credential
+  gate — not the app — is the remaining blocker. The final identity-linking
+  check (same Supabase subject opens the same D1 workspace) completes the
+  moment the owner signs in on the simulator or provides current credentials.
