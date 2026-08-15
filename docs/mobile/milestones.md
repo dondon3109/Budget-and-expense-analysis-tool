@@ -515,3 +515,62 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   transcription/speech need the Worker's voice providers configured; both are verified up to
   the transport layer by schema-tested mocks and the native build. Voice recording on the
   simulator depends on host microphone routing.
+
+## Milestone 9 progress
+
+- **Background synchronization task**: `expo-background-task` was previously an unused
+  dependency. A guarded task now registers at launch (idempotent, platform-minimum 15-minute
+  interval) and runs the mounted sync engine's retry only when a runner exists and NetInfo
+  hints reachability; the Worker's actual response still decides success. When the app was
+  terminated there is no React tree, so the task deliberately declines (no-op success) rather
+  than half-synchronizing without the encrypted workspace and session. Nine focused tests cover
+  the guard truth table, runner execution, failure reporting, and registration idempotence.
+  Platform scheduling itself cannot run on the simulator and stays a device-time verification.
+- **Corrupted local data fails safe**: a classifier turns SQLITE_CORRUPT/NOTADB/malformed-file
+  open failures into recovery copy ("damaged … safely replaced next sign-in") and never
+  surfaces raw native error text (which could contain paths or key material). The workspace
+  gate displays it with a retry action; three tests cover the classification.
+- **Tenant switching**: the identity-transition boundary now also resets the device-local
+  assistant voice options (versioned, Zod-validated, SecureStore-backed store), closing sheets
+  and clearing the plan cache as before; five tests assert no cross-account UI preference
+  leakage.
+- **Accessibility**: six new interaction tests for the assistant surfaces (consent heading and
+  accept action, disabled identity save, separately-labeled thread rows and delete controls,
+  spoken-reply labels, honest failed-answer copy, actionable plan-limit banner) join the
+  existing Button/TransactionRow/MoneyValue accessibility tests.
+- **Permission review**: found and fixed a real release blocker — the pre-audio-era generated
+  projects lacked `NSMicrophoneUsageDescription` (iOS would crash on mic access) and
+  `RECORD_AUDIO` (Android). The config now declares the mic usage string and the expo-audio
+  plugin; re-prebuild verified both manifests. Remaining Android permissions are INTERNET,
+  scoped storage reads (maxSdk 32), audio playback/record, VIBRATE, and the dev-client debug
+  overlay (development builds only).
+- **Package audit**: `expo-symbols` and `expo-system-ui` were genuinely unused and removed;
+  removing them exposed a pnpm hoisting trap where the Babel JSX transform plugin stopped
+  resolving for Gradle bundle builds — the plugin pair is now pinned in mobile devDependencies
+  and the Android release bundle task succeeds. depcheck's remaining flags are documented
+  false positives (dev-client, splash plugin, css-interop, worklets, xlsx, CLI tooling).
+- **Log and secret audit**: zero `console.*` calls in mobile source; a history scan found no
+  tokens, service-role keys or live credentials (only test-fixture placeholders). Flagged for
+  production review: the web repo tracks `apps/web/.env.production` with the (public)
+  `VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN`.
+- **Release builds**: iOS Release configuration compiled (96 MB Release .app vs 135 MB debug),
+  installed and ran on the iPhone 17 Pro simulator with zero error/fault log lines. Android
+  `assembleRelease` succeeded (bundle + native compile); the APK was discarded immediately
+  and nothing was distributed, per the signed-artifact authorization rule.
+- **Performance baselines** (simulator, dev build unless noted): Hermes bytecode bundle
+  7.0 MB; cold launch to process up ~1.5 s; first window activity ~1.2 s later; dev-build
+  process-set RSS ~0.7 GB. These are baselines — release-build device numbers (cold start to
+  first financial screen, list scroll, query latency, sync batch, APK/AAB and archive sizes)
+  remain for hardware testing and are budgeted in `release-plan.md`.
+- **Documents**: new `build-instructions.md`, `known-limitations.md`, and
+  `release-plan.md` (TWA upgrade path, iOS distribution requirements, signing authorization
+  rules, rollback plan, performance budget table).
+
+Milestone 9 closes every host-verifiable hardening item. What remains is explicitly
+externally gated: an Android device/emulator for Android runtime and low-end performance
+testing, an approved test account for authenticated device runs (M2 social auth, M5
+authenticated flow, M7 imports end-to-end, M8 online surfaces), destructive M3/M4 runtime
+proofs on hardware, background-task device-time scheduling, and Apple/Google configuration
+approvals (Sign in with Apple, bundle registration, signing). None of these can be produced
+honestly from this host, and none have been faked: each is tracked in
+`known-limitations.md` with its exact evidence boundary.
