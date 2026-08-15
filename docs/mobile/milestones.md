@@ -676,3 +676,20 @@ and the picker opens correctly).
 The remaining verification items are now only: Google OAuth and Sign in with
 Apple runtime, release-build device performance numbers on real hardware, and
 background-task device-time scheduling.
+
+## Cross-platform convergence (two live mobile clients)
+
+With the iPhone simulator and the Android 15 emulator both signed in to the
+same production account, the full multi-client matrix was exercised:
+
+- **Android → iOS**: a transaction created on Android ("Cross-platform test",
+  -₱40.00) synced to the server and appeared on iOS after its next sync.
+- **iOS → Android**: editing the amount on iOS (-₱45.00) synced to the server
+  and appeared on Android after its next sync.
+- **iOS → Android deletion**: deleting the record on iOS pushed a tombstone
+  that Android pulled, converging both clients to zero records.
+- The server was verified at 0 transactions afterwards — no test residue.
+
+This demonstrates web↔mobile and mobile↔mobile convergence on production with
+no silent overwrites, completing the multi-device requirement with two real
+native clients plus the website.
