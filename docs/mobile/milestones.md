@@ -574,3 +574,26 @@ proofs on hardware, background-task device-time scheduling, and Apple/Google con
 approvals (Sign in with Apple, bundle registration, signing). None of these can be produced
 honestly from this host, and none have been faked: each is tracked in
 `known-limitations.md` with its exact evidence boundary.
+
+## Production deployment and web/mobile convergence (approved)
+
+With explicit approval, the mobile-sync backend was deployed to production:
+
+- **D1 migrations 0034–0042 applied** to `budget-expense-production` (revision/delete
+  columns, sync state/change/idempotency tables, and append-only AFTER triggers on the
+  existing account/category/transaction tables — additive; the web write path is unchanged).
+- **Worker deployed** (`budget-expense-api-production` on `api.zoption.site`). Verified:
+  `POST /api/app/sync/pull` returns 200 with protocolVersion/changes/nextCursor; `/me`,
+  `/billing` and the website remain healthy.
+- **End-to-end convergence proven on-device with the production account**: a web-API-created
+  test transaction (Bank, Food & dining, -₱25.00) pulled to the iPhone simulator and rendered
+  in the dashboard (Balance -₱25.00, account balances) and the Transactions tab; deleting it
+  via the web API produced a tombstone that the next sync removed from the device
+  ("No transactions yet", status "Up to date"). No residue remains in the account.
+- The dashboard now renders real money in/out and account balances from the encrypted local
+  database after a server-acknowledged sync — closing the M5 authenticated-run gap for the
+  read path on iOS.
+
+Remaining: offline-mutation push and conflict recovery still need their on-device runtime
+proof (unit/API-tested), Google OAuth and Sign in with Apple runtime, Android runtime, and
+the assistant-send hardware-keyboard investigation.

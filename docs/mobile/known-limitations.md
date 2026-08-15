@@ -17,10 +17,10 @@ device run on this machine.
   navigation, SQLCipher, background task, voice — has been exercised on
   Android. Low-end Android performance testing (M9) is therefore pending
   device access.
-- **Sync pull requires a production Worker deployment.** The mobile-sync routes
-  (`/api/app/sync/*`) and their D1 migrations exist only in this worktree; production returns
-  404, so financial data cannot yet converge on-device. Deployment needs explicit approval.
-  Until then, the financial screens show their honest empty/failed states.
+- **Deployed (2026-08-16, approved):** Worker + D1 migrations 0034–0042 are live in
+  production and web→mobile pull/delete convergence was verified on-device with the
+  production account. Offline-mutation push and conflict recovery runtime proofs are still
+  pending on-device (they are unit/API-tested).
 - **No Android device**, and a few flows remain unverified even on iOS:
   screens that need a real signed-in workspace (assistant turns, support chat,
   billing checkout, account deletion, imports end-to-end) are verified up to
