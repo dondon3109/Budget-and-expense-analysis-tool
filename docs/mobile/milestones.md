@@ -10,7 +10,7 @@ Last updated: 2026-08-14.
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
 | 4. Transaction sync vertical slice   | In progress | Account/category/transaction offline push, restart durability, and explicit conflict recovery proven on iOS                  |
 | 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
-| 6. Planning and recurring money      | In progress | Goals and debts vertical slices proven (migration, pull, offline CRUD, conflicts); subscriptions/calendar/interest remain |
+| 6. Planning and recurring money      | In progress | Goals, debts, and subscriptions vertical slices proven (migration, pull, offline CRUD, conflicts); calendar/interest remain |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
 | 8. Online-only capabilities          | Not started | Assistant/voice/billing/support/account management with online/consent boundaries                                            |
 | 9. Hardening and release preparation | Not started | Accessibility, performance, resilience, signed-test authorization, upgrade/rollback documents                                |
@@ -362,5 +362,37 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   stack, and the three routes are registered with native headers.
 - Twenty-three mobile suites with 144 focused tests pass; typecheck and lint are clean, and a standalone
   iOS Hermes export succeeds. No remote D1, deployment, or production service was changed.
-- Remaining Milestone 6 work: subscriptions (with their linked charge-transaction atomic group),
-  calendar events, and savings-interest modeling. Android runtime proof remains a host gap.
+- Subscriptions complete the recurring-money part of Milestone 6. D1 migration
+  `0041_mobile_sync_subscriptions.sql` adds a `revision` column to `subscriptions`, widens the
+  change-log entity-type check to include `'subscription'`, creates a `mobile_sync_subscription_rows`
+  view, bootstraps existing subscriptions, and adds insert/update/delete triggers. A subscription and
+  its linked charge transaction share a constant `'subscription:<id>'` atomic group id, so web batches
+  and mobile pushes both emit consecutive, group-locked change rows; pull accepts mixed
+  {subscription, transaction} pairs and the snapshot endpoint nulls a group id when its partner row is
+  absent (e.g. a canceled subscription whose charge was deleted).
+- The Worker push slice creates/updates/cancels/reactivates/removes subscriptions and derives the linked
+  charge (negative expense, date = next billing date, description = name). Validation mirrors the web
+  repository: active expense category (`invalid_subscription_category`), Pro entitlement
+  (`category_requires_pro`), and active owned account (`invalid_account`). Status transitions delete
+  or re-insert the charge; deleting a subscription tombstones both rows. The idempotency row now lands
+  directly after the mutation so charge statements cannot mask the mutation result.
+- Local schema version 9 adds `subscriptions` and rebuilds the outbox, conflict, and tombstone
+  entity-type checks to include `'subscription'`. Pull applies subscription upserts and deletion
+  tombstones; the push layer sends subscription create/update/delete through the encrypted outbox with
+  full-input payloads (including the optional status transition).
+- Offline subscription mutations mirror Worker semantics: create validates a local active expense
+  category and active account and returns a client UUID; updates send merged values and may cancel or
+  reactivate; delete soft-deletes a synced row (or cancels an unpushed create). Conflicts are preserved
+  and resolved without device-clock arbitration, exactly like goals and debts.
+- The Subscriptions screen shows active/canceled subscriptions with cycle, next billing date, status, and
+  honest pending/failed/conflict labels, plus a monthly-cost summary that reuses the shared
+  `monthlySubscriptionCost` model. An editor provides name, amount, cycle, next billing date, category,
+  account, and status fields; a conflict screen shows device and server versions with explicit
+  resolution. A `Subscriptions` entry on the More tab reaches the stack, and the three routes are
+  registered with native headers.
+- Validation totals for this slice: 444 API tests (including 46 mobile-sync tests), 98 shared tests,
+  and 24 mobile suites with 156 tests all pass; typecheck and lint are clean across api, shared, and
+  mobile, and a standalone iOS Hermes export succeeds. No remote D1, deployment, or production service
+  was changed.
+- Remaining Milestone 6 work: calendar events and savings-interest modeling. Android runtime proof
+  remains a host gap.
