@@ -10,7 +10,7 @@ Last updated: 2026-08-14.
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
 | 4. Transaction sync vertical slice   | In progress | Account/category/transaction offline push, restart durability, and explicit conflict recovery proven on iOS                  |
 | 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
-| 6. Planning and recurring money      | In progress | Goals, debts, and subscriptions vertical slices proven (migration, pull, offline CRUD, conflicts); calendar/interest remain |
+| 6. Planning and recurring money      | In progress | Goals, debts, subscriptions, and calendar vertical slices proven (migration, pull, offline CRUD, conflicts); interest remains |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
 | 8. Online-only capabilities          | Not started | Assistant/voice/billing/support/account management with online/consent boundaries                                            |
 | 9. Hardening and release preparation | Not started | Accessibility, performance, resilience, signed-test authorization, upgrade/rollback documents                                |
@@ -394,5 +394,33 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   and 24 mobile suites with 156 tests all pass; typecheck and lint are clean across api, shared, and
   mobile, and a standalone iOS Hermes export succeeds. No remote D1, deployment, or production service
   was changed.
-- Remaining Milestone 6 work: calendar events and savings-interest modeling. Android runtime proof
-  remains a host gap.
+- Calendar events complete the recurring-money part of Milestone 6. D1 migration
+  `0042_mobile_sync_calendar_events.sql` adds a `revision` column to `calendar_events`,
+  widens the change-log entity-type check to include `'event'`, creates a
+  `mobile_sync_event_rows` view, bootstraps existing events with deterministic per-tenant
+  revisions, and adds insert/update/delete triggers whose delete emits a tombstone guarded by
+  tenant existence. All 21 existing entity triggers (including the debts and subscriptions
+  triggers) are dropped and recreated verbatim around the rebuilt change log.
+- The Worker push slice creates/updates/deletes calendar events. Updates merge against the
+  preserved server snapshot and re-validate the merged times with the shared input schema, so
+  an end time without a start time or an inverted window is a durable `invalid_operation`
+  rejection; a stale update is `stale_revision`; a missing event is `entity_missing`.
+  Snapshot and pull delivery validate event rows through the same schema chain.
+- Local schema version 10 adds `calendar_events` and rebuilds the outbox, conflict, and
+  tombstone entity-type checks to include `'event'`. Pull applies event upserts and deletion
+  tombstones; the push layer sends event create/update/delete through the encrypted outbox
+  with full-input payloads, and local time validation mirrors the server's merged rules.
+- Offline event mutations create a client UUID, update through merged values, and delete
+  soft-deletes a synced row (or cancels an unpushed create). Conflicts are preserved and
+  resolved without device-clock arbitration, exactly like goals, debts, and subscriptions.
+- The Calendar screen combines user events, subscription billing days, and transactions into
+  one month agenda with honest pending/failed/conflict labels; an event editor provides
+  title, date, optional times, and notes; a conflict screen shows device and server versions
+  with explicit resolution. A `Calendar` entry on the More tab reaches the stack, and the
+  three routes are registered with native headers.
+- Validation totals for this slice: 447 API tests (including 48 mobile-sync tests), 98 shared
+  tests, and 25 mobile suites with 169 tests all pass; typecheck and lint are clean across
+  api, shared, and mobile, and a standalone iOS Hermes export succeeds. No remote D1,
+  deployment, or production service was changed.
+- Remaining Milestone 6 work: savings-interest modeling. Android runtime proof remains a host
+  gap.
