@@ -32,6 +32,7 @@ export default function SignInScreen() {
       await signInWithGoogle();
     } catch (error) {
       setFormError(authErrorMessage(error, "Zoption could not start Google sign-in."));
+    } finally {
       setGoogleBusy(false);
     }
   }

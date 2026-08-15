@@ -178,6 +178,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
     // exchange completes. The redirect uses the variant's own scheme
     // (zoption-dev, zoption-preview or zoption) so the callback reaches the
     // app directly instead of the dev-client's proxy scheme.
+    //
+    // The session is ephemeral on purpose: on iOS 26 the cookie-sharing
+    // SafariViewService variant was observed being invalidated seconds after
+    // presentation, and an ephemeral session also keeps the sign-in browser
+    // isolated from the user's personal Safari browsing.
     const configuredScheme = Constants.expoConfig?.scheme;
     const scheme = Array.isArray(configuredScheme)
       ? (configuredScheme[0] ?? "zoption")
@@ -191,7 +196,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
     });
     if (error) throw error;
     if (!data?.url) throw new Error("Google sign-in could not start.");
-    await WebBrowser.openAuthSessionAsync(data.url, scheme + "://auth/callback");
+    await WebBrowser.openAuthSessionAsync(data.url, scheme + "://auth/callback", {
+      preferEphemeralSession: true,
+    });
   }, []);
 
   const signOut = useCallback(async (options: SignOutOptions = {}) => {

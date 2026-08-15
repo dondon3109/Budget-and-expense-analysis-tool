@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import SignInScreen from "../../../app/(public)/sign-in";
 
@@ -38,5 +38,22 @@ describe("sign-in screen social options", () => {
     const button = screen.getByRole("button", { name: "Continue with Google" });
     await fireEvent.press(button);
     expect(await screen.findByText("provider unreachable")).toBeTruthy();
+  });
+
+  it("re-enables the Google button after the browser session resolves", async () => {
+    let resolveGoogle: (value: undefined) => void = () => undefined;
+    mockSignInWithGoogle.mockImplementationOnce(
+      () =>
+        new Promise<undefined>((resolve) => {
+          resolveGoogle = resolve;
+        }),
+    );
+    await render(<SignInScreen />);
+    const button = screen.getByRole("button", { name: "Continue with Google" });
+    await fireEvent.press(button);
+    expect(button).toBeDisabled();
+    resolveGoogle(undefined);
+    await waitFor(() => expect(button).not.toBeDisabled());
+    expect(screen.queryByText(/Google sign-in/)).toBeNull();
   });
 });
