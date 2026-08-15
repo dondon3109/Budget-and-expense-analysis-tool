@@ -44,6 +44,23 @@ Development builds include `expo-dev-client`. The native projects are
 generated from `app.config.ts`; after changing config plugins run
 `npx expo prebuild --clean` (or `--no-install` to skip pod install).
 
+## Android emulator (available on this host)
+
+An Android 15 emulator is installed on this machine:
+
+```bash
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+"$ANDROID_HOME/emulator/emulator" -avd zoption-api35 -no-snapshot -no-audio -gpu swiftshader_indirect &
+adb wait-for-device
+```
+
+Notes: the AVD uses a 6G userdata partition to fit the disk; the system image
+and emulator live under `/opt/homebrew/share/android-commandlinetools` and are
+symlinked into the SDK. The device uses software rendering (slow but
+functional). The expo dev-client's floating menu bubble can overlap the
+transaction header button — drag it away if taps open the dev menu.
+
 ## Compile-mode proofs
 
 ```bash

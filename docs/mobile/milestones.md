@@ -5,7 +5,7 @@ Last updated: 2026-08-16.
 | Milestone                            | Status      | Exit evidence                                                                                                                |
 | ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | 0. Discovery and design              | Complete    | Verified repository/worktree baseline, parity matrix, architecture, sync protocol, threat model, shared compatibility review |
-| 1. Mobile foundation                 | Complete    | Native Android/iOS development builds, iOS runtime navigation/input, themes/components, focused tests                        |
+| 1. Mobile foundation                 | Complete    | Native Android/iOS development builds and runtime navigation/input on both platforms (Android 15 emulator, iPhone 17 Pro sim) |
 | 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS; social auth and Android runtime remain                      |
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
 | 4. Transaction sync vertical slice   | Complete   | Create/edit/delete + offline durability, restart recovery, push/pull, and explicit multi-client conflict resolution proven against production on iOS |
@@ -639,3 +639,20 @@ document picker with a seeded CSV visible under On My iPhone; the iOS 26
 picker did not accept synthesized single-tap selection, so file selection
 remains to be proven (the parsing/preview/commit transports are unit-tested
 and the picker opens correctly).
+
+## Android runtime verification (Android 15 emulator)
+
+- Set up an Android 15 (API 35) emulator on this host (previously none
+  existed: no device or emulator binary). Installed the emulator + system
+  image, created an AVD with a resized userdata partition to fit the
+  available disk, and booted it with software rendering.
+- Built and installed the development variant (`site.zoption.android.dev`)
+  via `expo run:android` and drove the UI with adb/uiautomator.
+- **Verified on Android**: the welcome screen renders; email/password sign-in
+  against production Supabase works; the encrypted local workspace (SQLCipher
+  on Android) is created; sync pulls and reports "Up to date"; a transaction
+  created on-device ("Android verification entry", -₱50.00) pushed to the
+  production server (confirmed via API, total 1) and the server-side deletion
+  tombstone pulled back so the device converged to zero records.
+- The emulator remains available for future Android testing (see
+  `build-instructions.md`).
