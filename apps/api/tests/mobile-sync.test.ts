@@ -143,6 +143,20 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
       updated_at text NOT NULL DEFAULT (datetime('now')),
       UNIQUE (tenant_id, name)
     );
+    CREATE TABLE subscriptions (
+      id text PRIMARY KEY NOT NULL,
+      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      account_id text,
+      category_id text NOT NULL,
+      name text NOT NULL,
+      amount_minor integer NOT NULL,
+      currency text NOT NULL DEFAULT 'PHP',
+      billing_cycle text NOT NULL,
+      next_billing_date text NOT NULL,
+      status text NOT NULL DEFAULT 'active',
+      created_at text NOT NULL DEFAULT (datetime('now')),
+      updated_at text NOT NULL DEFAULT (datetime('now'))
+    );
   `);
   database.exec(`
     INSERT INTO tenants (id, kind, name) VALUES
@@ -168,6 +182,10 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
       id, tenant_id, name, type, balance_minor, apr_basis_points, minimum_payment_minor, balance_as_of, status
     ) VALUES
       ('debt-1', 'tenant-1', 'Car Loan', 'auto_loan', 500000, 850, 12000, '2026-08-14', 'active');
+    INSERT INTO subscriptions (
+      id, tenant_id, account_id, category_id, name, amount_minor, billing_cycle, next_billing_date, status
+    ) VALUES
+      ('subscription-1', 'tenant-1', 'account-1', 'category-1', 'Netflix', 54900, 'monthly', '2026-09-01', 'canceled');
   `);
   const migration = readFileSync(
     new URL("../../../db/migrations/0034_mobile_sync_foundation.sql", import.meta.url),
@@ -227,6 +245,15 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
   }
   for (const statement of readFileSync(
     new URL("../../../db/migrations/0040_mobile_sync_debts.sql", import.meta.url),
+    "utf8",
+  )
+    .split("--> statement-breakpoint")
+    .map((part) => part.trim())
+    .filter(Boolean)) {
+    database.exec(statement);
+  }
+  for (const statement of readFileSync(
+    new URL("../../../db/migrations/0041_mobile_sync_subscriptions.sql", import.meta.url),
     "utf8",
   )
     .split("--> statement-breakpoint")
@@ -331,10 +358,10 @@ describe("mobile sync full snapshot", () => {
       limit: 2,
     });
     expect(first).toMatchObject({
-      snapshotCursor: "s1.6",
+      snapshotCursor: "s1.7",
       nextOffset: 2,
       hasMore: true,
-      resumeCursor: "v1.6",
+      resumeCursor: "v1.7",
     });
     expect(first.changes.map((change) => change.entityId)).toEqual(["account-1", "category-1"]);
 
@@ -348,7 +375,7 @@ describe("mobile sync full snapshot", () => {
       offset: first.nextOffset,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.6" });
+    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.7" });
     expect(second.changes.map((change) => change.entityId)).toEqual(["budget-1", "debt-1"]);
     expect(JSON.stringify(second)).not.toContain("account-after-snapshot");
   });
@@ -538,8 +565,15 @@ describe("mobile sync pull repository", () => {
       cursor: second.nextCursor,
       limit: 2,
     });
-    expect(third).toMatchObject({ hasMore: false });
+    expect(third).toMatchObject({ hasMore: true });
     expect(third.changes.map((change) => change.entityId)).toEqual(["goal-1", "debt-1"]);
+    const fourth = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: third.nextCursor,
+      limit: 2,
+    });
+    expect(fourth).toMatchObject({ hasMore: false });
+    expect(fourth.changes.map((change) => change.entityId)).toEqual(["subscription-1"]);
   });
 
   it("captures web updates and deletion tombstones without device timestamps", async () => {
@@ -577,6 +611,13 @@ describe("mobile sync pull repository", () => {
         payload: { name: "Car Loan", type: "auto_loan", balanceMinor: 500000 },
       },
       {
+        entityType: "subscription",
+        entityId: "subscription-1",
+        revision: 1,
+        operation: "upsert",
+        payload: { name: "Netflix", status: "canceled", billingCycle: "monthly" },
+      },
+      {
         entityType: "account",
         entityId: "account-1",
         revision: 2,
@@ -591,7 +632,55 @@ describe("mobile sync pull repository", () => {
         payload: null,
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.8");
+    expect(pulled.nextCursor).toBe("v1.9");
+  });
+
+
+  it("delivers a web-created subscription and its linked charge as adjacent group rows", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    database.exec(
+      "BEGIN;" +
+      "INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, billing_cycle, next_billing_date, status) VALUES ('web-sub', 'tenant-1', 'account-1', 'category-1', 'Spotify', 19900, 'monthly', '2026-09-05', 'active');" +
+      "INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, kind, subscription_id) VALUES ('web-charge', 'tenant-1', 'account-1', 'category-1', '2026-09-05', 'Spotify', -19900, 'expense', 'web-sub');" +
+      "COMMIT;",
+    );
+
+    const pulled = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: "v1.7",
+      limit: 10,
+    });
+    expect(pulled.changes).toMatchObject([
+      {
+        entityType: "subscription",
+        entityId: "web-sub",
+        revision: 1,
+        operation: "upsert",
+        payload: { name: "Spotify", status: "active", amountMinor: 19900 } as object,
+      },
+      {
+        entityType: "transaction",
+        entityId: "web-charge",
+        revision: 1,
+        operation: "upsert",
+        payload: { description: "Spotify", amountMinor: -19900 } as object,
+      },
+    ]);
+    expect(pulled.nextCursor).toBe("v1.9");
+    expect(pulled.hasMore).toBe(false);
+
+    const snapshot = await repository.snapshot(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId: "00000000-0000-4000-8000-000000000003",
+      snapshotCursor: null,
+      offset: 0,
+      limit: 100,
+    });
+    expect(snapshot.hasMore).toBe(false);
+    const ids = snapshot.changes.map((change) => change.entityId);
+    expect(ids).toContain("web-sub");
+    expect(ids).toContain("web-charge");
   });
 
   it("requires a safe full resync when a cursor is ahead of server state", async () => {
@@ -2125,6 +2214,294 @@ describe("mobile sync debt push repository", () => {
       code: "stale_revision",
       serverRevision: 2,
       serverPayload: { id: "debt-1", balanceMinor: 450_000 },
+    });
+  });
+});
+describe("mobile sync subscription push repository", () => {
+  const clientId = "50000000-0000-4000-8000-000000000001";
+
+  function insertFreeCategory(database: DatabaseSync): void {
+    database.prepare(
+      "INSERT INTO categories (id, tenant_id, name, kind, color, required_plan) VALUES (?, ?, ?, ?, ?, ?)",
+    ).run("category-sub", "tenant-1", "Utilities", "expense", "#333333", "free");
+  }
+
+  it("creates, updates, cancels, reactivates, and removes a subscription idempotently", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    insertFreeCategory(database);
+    const entityId = "50000000-0000-4000-8000-000000000002";
+    const create = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "50000000-0000-4000-8000-000000000003",
+          idempotencyKey: "50000000-0000-4000-8000-000000000004",
+          entityType: "subscription" as const,
+          entityId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: {
+            name: "Netflix",
+            amountMinor: 54_900,
+            billingCycle: "monthly" as const,
+            nextBillingDate: "2026-09-01",
+            categoryId: "category-sub",
+            accountId: "account-1",
+          },
+        },
+      ],
+    };
+
+    const first = await repository.push(env, "tenant-1", create);
+    expect(await repository.push(env, "tenant-1", create)).toEqual(first);
+    expect(first.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+    expect(
+      database
+        .prepare("SELECT name, status, revision FROM subscriptions WHERE id = ?")
+        .get(entityId),
+    ).toEqual({ name: "Netflix", status: "active", revision: 1 });
+    const charge = database
+      .prepare(
+        "SELECT id, amount_minor AS amountMinor, date, subscription_id AS subscriptionId FROM transactions WHERE subscription_id = ?",
+      )
+      .get(entityId) as { id: string; amountMinor: number; date: string; subscriptionId: string };
+    expect(charge).toMatchObject({
+      amountMinor: -54_900,
+      date: "2026-09-01",
+      subscriptionId: entityId,
+    });
+    const groups = database
+      .prepare(
+        "SELECT atomic_group_id AS atomicGroupId, sequence FROM mobile_sync_change_groups WHERE tenant_id = ? ORDER BY sequence DESC LIMIT 2",
+      )
+      .all("tenant-1") as Array<{ atomicGroupId: string; sequence: number }>;
+    expect(groups).toHaveLength(2);
+    expect(groups[0]!.atomicGroupId).toBe(groups[1]!.atomicGroupId);
+    expect(groups[0]!.sequence).toBe(groups[1]!.sequence + 1);
+
+    const updated = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "50000000-0000-4000-8000-000000000005",
+          idempotencyKey: "50000000-0000-4000-8000-000000000006",
+          entityType: "subscription",
+          entityId,
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: {
+            name: "Netflix Premium",
+            amountMinor: 74_900,
+            billingCycle: "monthly",
+            nextBillingDate: "2026-09-01",
+            categoryId: "category-sub",
+            accountId: "account-1",
+          },
+        },
+      ],
+    });
+    expect(updated.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+    expect(
+      database
+        .prepare(
+          "SELECT amount_minor AS amountMinor, description FROM transactions WHERE subscription_id = ?",
+        )
+        .get(entityId),
+    ).toEqual({ amountMinor: -74_900, description: "Netflix Premium" });
+
+    const canceled = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "50000000-0000-4000-8000-000000000007",
+          idempotencyKey: "50000000-0000-4000-8000-000000000008",
+          entityType: "subscription",
+          entityId,
+          operationType: "update",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: {
+            name: "Netflix Premium",
+            amountMinor: 74_900,
+            billingCycle: "monthly",
+            nextBillingDate: "2026-09-01",
+            categoryId: "category-sub",
+            accountId: "account-1",
+            status: "canceled" as const,
+          },
+        },
+      ],
+    });
+    expect(canceled.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
+        .get(entityId),
+    ).toEqual({ count: 0 });
+
+    const reactivated = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "50000000-0000-4000-8000-000000000009",
+          idempotencyKey: "50000000-0000-4000-8000-00000000000a",
+          entityType: "subscription",
+          entityId,
+          operationType: "update",
+          baseRevision: 3,
+          dependencyIds: [],
+          payload: {
+            name: "Netflix Premium",
+            amountMinor: 74_900,
+            billingCycle: "monthly",
+            nextBillingDate: "2026-09-01",
+            categoryId: "category-sub",
+            accountId: "account-1",
+            status: "active" as const,
+          },
+        },
+      ],
+    });
+    expect(reactivated.results[0]).toMatchObject({ status: "acknowledged", revision: 4 });
+    const reactivatedCharge = database
+      .prepare(
+        "SELECT count(*) AS count FROM transactions WHERE subscription_id = ?",
+      )
+      .get(entityId);
+    expect(reactivatedCharge).toEqual({ count: 1 });
+
+    const removed = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "50000000-0000-4000-8000-00000000000b",
+          idempotencyKey: "50000000-0000-4000-8000-00000000000c",
+          entityType: "subscription",
+          entityId,
+          operationType: "delete",
+          baseRevision: 4,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    expect(removed.results[0]).toMatchObject({ status: "acknowledged", revision: 5 });
+    expect(
+      database.prepare("SELECT 1 AS found FROM subscriptions WHERE id = ?").get(entityId),
+    ).toBeUndefined();
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
+        .get(entityId),
+    ).toEqual({ count: 0 });
+    expect(
+      database
+        .prepare(
+          "SELECT entity_type AS entityType, operation FROM mobile_sync_changes WHERE entity_id = ? ORDER BY sequence DESC LIMIT 1",
+        )
+        .get(entityId),
+    ).toEqual({ entityType: "subscription", operation: "delete" });
+  });
+
+  it("rejects a Pro category and an unowned account", async () => {
+    const { env } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const proCategory = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "50000000-0000-4000-8000-00000000000d",
+          idempotencyKey: "50000000-0000-4000-8000-00000000000e",
+          entityType: "subscription",
+          entityId: "50000000-0000-4000-8000-00000000000f",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: {
+            name: "Pro Tool",
+            amountMinor: 100_000,
+            billingCycle: "monthly",
+            nextBillingDate: "2026-09-01",
+            categoryId: "category-1",
+            accountId: "account-1",
+          },
+        },
+      ],
+    });
+    expect(proCategory.results[0]).toMatchObject({ status: "rejected", code: "plan_limit" });
+
+    const foreignAccount = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "50000000-0000-4000-8000-000000000010",
+          idempotencyKey: "50000000-0000-4000-8000-000000000011",
+          entityType: "subscription",
+          entityId: "50000000-0000-4000-8000-000000000012",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: {
+            name: "Private Tool",
+            amountMinor: 100_000,
+            billingCycle: "monthly",
+            nextBillingDate: "2026-09-01",
+            categoryId: "category-2",
+            accountId: "account-2",
+          },
+        },
+      ],
+    });
+    expect(foreignAccount.results[0]).toMatchObject({
+      status: "rejected",
+      code: "invalid_category",
+    });
+  });
+
+  it("returns a stale revision conflict for an out-of-date subscription update", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    insertFreeCategory(database);
+    database.prepare("UPDATE subscriptions SET name = ? WHERE id = ?").run("Server Name", "subscription-1");
+
+    const stale = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "50000000-0000-4000-8000-000000000013",
+          idempotencyKey: "50000000-0000-4000-8000-000000000014",
+          entityType: "subscription",
+          entityId: "subscription-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: {
+            name: "Device Name",
+            amountMinor: 54_900,
+            billingCycle: "monthly",
+            nextBillingDate: "2026-09-01",
+            categoryId: "category-sub",
+            accountId: "account-1",
+          },
+        },
+      ],
+    });
+    expect(stale.results[0]).toMatchObject({
+      status: "conflict",
+      code: "stale_revision",
+      serverRevision: 2,
+      serverPayload: { id: "subscription-1", name: "Server Name", status: "canceled" },
     });
   });
 });

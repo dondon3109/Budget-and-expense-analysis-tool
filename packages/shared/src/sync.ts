@@ -10,6 +10,7 @@ import {
   isoDateSchema,
   monthStartSchema,
   resourceIdSchema,
+  subscriptionInputSchema,
   transferInputSchema,
   transactionInputSchema,
   transactionUpdateSchema,
@@ -23,11 +24,13 @@ import {
   debtTypes,
   financialGoalStatuses,
   interestFrequencies,
+  subscriptionBillingCycles,
+  subscriptionStatuses,
   transactionKinds,
 } from "./types";
 
 export const MOBILE_SYNC_PROTOCOL_VERSION = 1 as const;
-export const mobileSyncEntityTypes = ["account", "category", "transaction", "transfer", "budget", "goal", "debt"] as const;
+export const mobileSyncEntityTypes = ["account", "category", "transaction", "transfer", "budget", "goal", "debt", "subscription"] as const;
 export const mobileSyncOperationTypes = ["create", "update", "delete"] as const;
 
 const uuidSchema = z.string().uuid();
@@ -172,6 +175,22 @@ export const mobileSyncDebtSnapshotSchema = z
   })
   .strict();
 
+export const mobileSyncSubscriptionSnapshotSchema = z
+  .object({
+    id: resourceIdSchema,
+    name: z.string().min(1).max(120),
+    amountMinor: z.number().int().safe().min(1).max(1_000_000_000_00),
+    currency: z.enum(currencies),
+    billingCycle: z.enum(subscriptionBillingCycles),
+    nextBillingDate: isoDateSchema,
+    status: z.enum(subscriptionStatuses),
+    categoryId: resourceIdSchema,
+    accountId: resourceIdSchema.nullable(),
+    revision: serverRevisionSchema,
+    updatedAt: serverTimestampSchema,
+  })
+  .strict();
+
 export const mobileSyncSnapshotSchema = z.union([
   mobileSyncAccountSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
@@ -180,6 +199,7 @@ export const mobileSyncSnapshotSchema = z.union([
   mobileSyncBudgetSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncDebtSnapshotSchema,
+  mobileSyncSubscriptionSnapshotSchema,
 ]);
 
 export const mobileSyncChangeSchema = z
@@ -216,7 +236,9 @@ export const mobileSyncChangeSchema = z
                 ? mobileSyncGoalSnapshotSchema
                 : change.entityType === "debt"
                   ? mobileSyncDebtSnapshotSchema
-                  : mobileSyncTransactionSnapshotSchema;
+                  : change.entityType === "subscription"
+                    ? mobileSyncSubscriptionSnapshotSchema
+                    : mobileSyncTransactionSnapshotSchema;
       if (!expectedSchema.safeParse(change.payload).success) {
         context.addIssue({
           code: "custom",
@@ -293,7 +315,15 @@ const operationIdentityShape = {
 } as const;
 
 const createOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget" | "goal" | "debt",
+  TEntity extends
+    | "account"
+    | "category"
+    | "transaction"
+    | "transfer"
+    | "budget"
+    | "goal"
+    | "debt"
+    | "subscription",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -310,7 +340,15 @@ const createOperation = <
     .strict();
 
 const updateOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget" | "goal" | "debt",
+  TEntity extends
+    | "account"
+    | "category"
+    | "transaction"
+    | "transfer"
+    | "budget"
+    | "goal"
+    | "debt"
+    | "subscription",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -327,7 +365,14 @@ const updateOperation = <
     .strict();
 
 const deleteOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer" | "goal" | "debt",
+  TEntity extends
+    | "account"
+    | "category"
+    | "transaction"
+    | "transfer"
+    | "goal"
+    | "debt"
+    | "subscription",
 >(
   entityType: TEntity,
 ) =>
@@ -380,6 +425,10 @@ const mobileSyncGoalUpdateSchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
 
+const mobileSyncSubscriptionUpdateSchema = subscriptionInputSchema
+  .extend({ status: z.enum(subscriptionStatuses).optional() })
+  .strict();
+
 export const mobileSyncPushOperationSchema = z
   .union([
     createOperation("account", accountInputSchema),
@@ -399,6 +448,9 @@ export const mobileSyncPushOperationSchema = z
     createOperation("debt", debtInputSchema),
     updateOperation("debt", debtUpdateSchema),
     deleteOperation("debt"),
+    createOperation("subscription", subscriptionInputSchema),
+    updateOperation("subscription", mobileSyncSubscriptionUpdateSchema),
+    deleteOperation("subscription"),
     createOperation(
       "transfer",
       z
@@ -559,7 +611,9 @@ export const mobileSyncPushResultSchema = z
                 ? mobileSyncGoalSnapshotSchema
                 : result.entityType === "debt"
                   ? mobileSyncDebtSnapshotSchema
-                  : mobileSyncTransferSnapshotSchema;
+                  : result.entityType === "subscription"
+                    ? mobileSyncSubscriptionSnapshotSchema
+                    : mobileSyncTransferSnapshotSchema;
     if (!expectedSchema.safeParse(result.serverPayload).success) {
       context.addIssue({
         code: "custom",

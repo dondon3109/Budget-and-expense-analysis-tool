@@ -10,6 +10,7 @@ import {
   mobileSyncCategorySnapshotSchema,
   mobileSyncChangeSchema,
   mobileSyncDebtSnapshotSchema,
+  mobileSyncSubscriptionSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
@@ -45,7 +46,7 @@ import { validateTransactionReferences } from "./transactions";
 
 interface ChangeRow {
   sequence: number;
-  entityType: "account" | "category" | "transaction" | "budget" | "goal" | "debt";
+  entityType: "account" | "category" | "transaction" | "budget" | "goal" | "debt" | "subscription";
   entityId: string;
   rowRevision: number;
   operation: "upsert" | "delete";
@@ -81,6 +82,7 @@ type TransferSnapshot = ReturnType<typeof mobileSyncTransferSnapshotSchema.parse
 type BudgetSnapshot = ReturnType<typeof mobileSyncBudgetSnapshotSchema.parse>;
 type GoalSnapshot = ReturnType<typeof mobileSyncGoalSnapshotSchema.parse>;
 type DebtSnapshot = ReturnType<typeof mobileSyncDebtSnapshotSchema.parse>;
+type SubscriptionSnapshot = ReturnType<typeof mobileSyncSubscriptionSnapshotSchema.parse>;
 type EntitySnapshot =
   | AccountSnapshot
   | CategorySnapshot
@@ -88,7 +90,8 @@ type EntitySnapshot =
   | TransferSnapshot
   | BudgetSnapshot
   | GoalSnapshot
-  | DebtSnapshot;
+  | DebtSnapshot
+  | SubscriptionSnapshot;
 
 function withCategoryLock(snapshot: EntitySnapshot | null, hasPro: boolean): EntitySnapshot | null {
   const category = mobileSyncCategorySnapshotSchema.safeParse(snapshot);
@@ -207,12 +210,16 @@ function atomicPullPage(rows: ChangeRow[], limit: number): ChangeRow[] {
     let end = index + 1;
     while (rows[end]?.atomicGroupId === row.atomicGroupId) end += 1;
     const group = rows.slice(index, end);
-    if (group.length !== 2 || group.some((item) => item.entityType !== "transaction")) {
+    const kinds = group.map((item) => item.entityType);
+    const validTransfer = group.length === 2 && kinds.every((kind) => kind === "transaction");
+    const validSubscription =
+      group.length === 2 && kinds.includes("subscription") && kinds.includes("transaction");
+    if (!validTransfer && !validSubscription) {
       throw new HttpError(
         409,
         "full_resync_required",
-        "A transfer synchronization boundary is invalid. Start a safe full resynchronization.",
-        { reason: "invalid_atomic_transfer_boundary" },
+        "An atomic synchronization boundary is invalid. Start a safe full resynchronization.",
+        { reason: "invalid_atomic_group_boundary" },
       );
     }
     if (page.length > 0 && page.length + group.length > limit) break;
@@ -368,7 +375,9 @@ async function readEntitySnapshot(
               ? "mobile_sync_goal_rows"
               : entityType === "debt"
                 ? "mobile_sync_debt_rows"
-                : "mobile_sync_transfer_rows";
+                : entityType === "subscription"
+                  ? "mobile_sync_subscription_rows"
+                  : "mobile_sync_transfer_rows";
   const row = await env.DB.prepare(
     `SELECT payload_json AS payloadJson FROM ${view} WHERE tenant_id = ? AND entity_id = ?`,
   )
@@ -389,7 +398,9 @@ async function readEntitySnapshot(
               ? mobileSyncGoalSnapshotSchema.parse(payload)
               : entityType === "debt"
                 ? mobileSyncDebtSnapshotSchema.parse(payload)
-                : mobileSyncTransferSnapshotSchema.parse(payload);
+                : entityType === "subscription"
+                  ? mobileSyncSubscriptionSnapshotSchema.parse(payload)
+                  : mobileSyncTransferSnapshotSchema.parse(payload);
   } catch {
     throw new Error("Stored mobile synchronization entity failed validation.");
   }
@@ -475,6 +486,46 @@ async function validateBudgetCategory(
   return Boolean(row);
 }
 
+async function validateSubscriptionReferences(
+  env: Bindings,
+  tenantId: string,
+  categoryId: string,
+  accountId: string,
+  readEntitlement: EntitlementReader,
+): Promise<void> {
+  const category = await env.DB.prepare(
+    `SELECT kind, archived, required_plan AS requiredPlan
+     FROM categories WHERE tenant_id = ? AND id = ? LIMIT 1`,
+  )
+    .bind(tenantId, categoryId)
+    .first<{ kind: string; archived: number; requiredPlan: string }>();
+  if (!category || category.archived === 1 || category.kind !== "expense") {
+    throw new HttpError(
+      400,
+      "invalid_subscription_category",
+      "Choose an active expense category.",
+    );
+  }
+  if (
+    category.requiredPlan !== "free" &&
+    !(await readEntitlement(env, tenantId))
+  ) {
+    throw new HttpError(
+      403,
+      "category_requires_pro",
+      "This category requires an active Zoption Pro subscription.",
+    );
+  }
+  const account = await env.DB.prepare(
+    "SELECT id FROM accounts WHERE tenant_id = ? AND id = ? AND archived = 0 LIMIT 1",
+  )
+    .bind(tenantId, accountId)
+    .first<{ id: string }>();
+  if (!account) {
+    throw new HttpError(400, "invalid_account", "Choose an active account.");
+  }
+}
+
 async function hasEffectiveProEntitlementRow(env: Bindings, tenantId: string): Promise<boolean> {
   const row = await env.DB.prepare(
     "SELECT 1 AS entitled FROM effective_pro_entitlements WHERE tenant_id = ? LIMIT 1",
@@ -503,7 +554,8 @@ async function businessRejection(
   if (
     operation.entityType === "transaction" ||
     operation.entityType === "transfer" ||
-    operation.entityType === "budget"
+    operation.entityType === "budget" ||
+    operation.entityType === "subscription"
   ) {
     return null;
   }
@@ -1535,15 +1587,23 @@ export function createMobileSyncRepository(
           LEFT JOIN mobile_sync_change_groups groups
             ON groups.tenant_id = changes.tenant_id AND groups.sequence = changes.sequence
           WHERE changes.tenant_id = ? AND changes.sequence <= ?
+        ), grouped AS (
+          SELECT ranked.*, (
+            SELECT COUNT(*) FROM ranked partner
+            WHERE partner.atomicGroupId = ranked.atomicGroupId
+              AND partner.entityRank = 1 AND partner.operation = 'upsert'
+          ) AS groupSize
+          FROM ranked
         ), ordered AS (
           SELECT sequence, entityType, entityId, rowRevision, operation, payloadJson,
-            serverUpdatedAt, atomicGroupId,
+            serverUpdatedAt,
+            CASE WHEN groupSize = 2 THEN atomicGroupId ELSE NULL END AS atomicGroupId,
             ROW_NUMBER() OVER (
               ORDER BY CASE entityType
                 WHEN 'account' THEN 1 WHEN 'category' THEN 2 ELSE 3 END,
                 COALESCE(atomicGroupId, entityId), entityId
             ) - 1 AS snapshotPosition
-          FROM ranked WHERE entityRank = 1 AND operation = 'upsert'
+          FROM grouped WHERE entityRank = 1 AND operation = 'upsert'
         )
         SELECT sequence, entityType, entityId, rowRevision, operation, payloadJson,
           serverUpdatedAt, atomicGroupId
@@ -1881,6 +1941,40 @@ export function createMobileSyncRepository(
           }
         }
 
+        if (operation.entityType === "subscription" && operation.operationType !== "delete") {
+          const payload = operation.payload;
+          try {
+            await validateSubscriptionReferences(
+              env,
+              tenantId,
+              payload.categoryId,
+              payload.accountId,
+              readEntitlement,
+            );
+          } catch (error) {
+            if (!(error instanceof HttpError)) throw error;
+            const code =
+              error.code === "invalid_subscription_category"
+                ? "invalid_category"
+                : error.code === "invalid_account"
+                  ? "invalid_account"
+                  : error.code === "category_requires_pro"
+                    ? "plan_limit"
+                    : "invalid_operation";
+            results.push(
+              await persistResult(
+                env,
+                tenantId,
+                input.clientId,
+                operation,
+                hash,
+                rejectedResult(operation, code, error.message),
+              ),
+            );
+            continue;
+          }
+        }
+
         const timestamp = serverTimestamp();
         let transaction: NonTransferTransactionInput | null = null;
         let currentTransaction: TransactionSnapshot | null = null;
@@ -1956,6 +2050,7 @@ export function createMobileSyncRepository(
           revision,
         });
         let mutation: D1PreparedStatement;
+        const extraStatements: D1PreparedStatement[] = [];
         if (operation.entityType === "account") {
           if (operation.operationType === "create") {
             const payload = operation.payload;
@@ -2231,6 +2326,131 @@ export function createMobileSyncRepository(
               `DELETE FROM debts WHERE id = ? AND tenant_id = ? AND revision = ?`,
             ).bind(operation.entityId, tenantId, operation.baseRevision);
           }
+        } else if (operation.entityType === "subscription") {
+          if (operation.operationType === "create") {
+            const payload = operation.payload;
+            mutation = env.DB.prepare(
+              `INSERT INTO subscriptions (
+                 id, tenant_id, account_id, category_id, name, amount_minor, currency,
+                 billing_cycle, next_billing_date, status, revision, updated_at
+               ) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, 'active', 1, ?)`,
+            ).bind(
+              operation.entityId,
+              tenantId,
+              payload.accountId,
+              payload.categoryId,
+              payload.name,
+              payload.amountMinor,
+              payload.billingCycle,
+              payload.nextBillingDate,
+              timestamp,
+            );
+            extraStatements.push(
+              env.DB.prepare(
+                `INSERT INTO transactions (
+                   id, tenant_id, account_id, category_id, date, description, amount_minor,
+                   currency, kind, source_kind, subscription_id, revision, updated_at
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PHP', 'expense', 'manual', ?, 1, ?)`,
+              ).bind(
+                crypto.randomUUID(),
+                tenantId,
+                payload.accountId,
+                payload.categoryId,
+                payload.nextBillingDate,
+                payload.name,
+                normalizeSignedAmount(payload.amountMinor, "expense"),
+                operation.entityId,
+                timestamp,
+              ),
+            );
+          } else if (operation.operationType === "update") {
+            const payload = operation.payload;
+            const sub = mobileSyncSubscriptionSnapshotSchema.parse(current);
+            const merged = {
+              name: payload.name ?? sub.name,
+              amountMinor: payload.amountMinor ?? sub.amountMinor,
+              billingCycle: payload.billingCycle ?? sub.billingCycle,
+              nextBillingDate: payload.nextBillingDate ?? sub.nextBillingDate,
+              accountId: payload.accountId ?? sub.accountId,
+              categoryId: payload.categoryId ?? sub.categoryId,
+              status: payload.status ?? sub.status,
+            };
+            mutation = env.DB.prepare(
+              `UPDATE subscriptions SET
+                 name = ?, amount_minor = ?, billing_cycle = ?, next_billing_date = ?,
+                 account_id = ?, category_id = ?, status = ?, updated_at = ?
+               WHERE id = ? AND tenant_id = ? AND revision = ?`,
+            ).bind(
+              merged.name,
+              merged.amountMinor,
+              merged.billingCycle,
+              merged.nextBillingDate,
+              merged.accountId,
+              merged.categoryId,
+              merged.status,
+              timestamp,
+              operation.entityId,
+              tenantId,
+              operation.baseRevision,
+            );
+            if (sub.status === "active" && merged.status === "canceled") {
+              extraStatements.push(
+                env.DB.prepare(
+                  "DELETE FROM transactions WHERE tenant_id = ? AND subscription_id = ?",
+                ).bind(tenantId, operation.entityId),
+              );
+            } else if (merged.status === "active" && merged.accountId) {
+              extraStatements.push(
+                env.DB.prepare(
+                  `UPDATE transactions SET
+                     account_id = ?, category_id = ?, date = ?, description = ?,
+                     amount_minor = ?, currency = 'PHP', kind = 'expense', updated_at = datetime('now')
+                   WHERE tenant_id = ? AND subscription_id = ?`,
+                ).bind(
+                  merged.accountId,
+                  merged.categoryId,
+                  merged.nextBillingDate,
+                  merged.name,
+                  normalizeSignedAmount(merged.amountMinor, "expense"),
+                  tenantId,
+                  operation.entityId,
+                ),
+              );
+              extraStatements.push(
+                env.DB.prepare(
+                  `INSERT INTO transactions (
+                     id, tenant_id, account_id, category_id, date, description, amount_minor,
+                     currency, kind, source_kind, subscription_id, revision, updated_at
+                   )
+                   SELECT ?, ?, ?, ?, ?, ?, ?, 'PHP', 'expense', 'manual', ?, 1, ?
+                   WHERE NOT EXISTS (
+                     SELECT 1 FROM transactions WHERE tenant_id = ? AND subscription_id = ?
+                   )`,
+                ).bind(
+                  crypto.randomUUID(),
+                  tenantId,
+                  merged.accountId,
+                  merged.categoryId,
+                  merged.nextBillingDate,
+                  merged.name,
+                  normalizeSignedAmount(merged.amountMinor, "expense"),
+                  operation.entityId,
+                  timestamp,
+                  tenantId,
+                  operation.entityId,
+                ),
+              );
+            }
+          } else {
+            mutation = env.DB.prepare(
+              "DELETE FROM subscriptions WHERE id = ? AND tenant_id = ? AND revision = ?",
+            ).bind(operation.entityId, tenantId, operation.baseRevision);
+            extraStatements.push(
+              env.DB.prepare(
+                "DELETE FROM transactions WHERE tenant_id = ? AND subscription_id = ?",
+              ).bind(tenantId, operation.entityId),
+            );
+          }
         } else {
           mutation =
             operation.operationType === "create" && transaction
@@ -2282,6 +2502,7 @@ export function createMobileSyncRepository(
           const batch = await env.DB.batch([
             mutation,
             idempotencyInsert(env, tenantId, input.clientId, operation, hash, acknowledged, true),
+            ...extraStatements,
           ]);
           if (Number(batch[1]?.meta.changes ?? 0) === 1) {
             results.push(acknowledged);

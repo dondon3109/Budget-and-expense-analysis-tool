@@ -15,7 +15,10 @@ vi.mock("../src/app", () => ({ createApp: () => ({ fetch: vi.fn() }) }));
 vi.mock("../src/readiness", () => ({ validateRequiredApiBindings }));
 vi.mock("../src/billing/scheduled-reconciliation", () => ({ reconcileDuePayPalCheckouts }));
 vi.mock("../src/db/assistant", () => ({ assistantRepository: { cleanupExpired } }));
-vi.mock("../src/db/billing", () => ({ billingRepository }));
+vi.mock("../src/db/billing", () => ({
+  billingRepository,
+  hasProEntitlement: vi.fn(async () => false),
+}));
 vi.mock("../src/interest/scheduled-credit", () => ({ creditDueInterest }));
 vi.mock("../src/account-deletion", () => ({
   createAccountDeletionService: () => ({ reconcile: reconcileAccountDeletions }),
@@ -29,7 +32,20 @@ vi.mock("../src/support/bug-reports", () => ({
 
 import worker from "../src/index";
 
-const environment = {} as Bindings;
+const environment = {
+  DB: {
+    prepare: () => ({
+      bind: () => ({
+        first: async () => null,
+        all: async () => ({ results: [] }),
+        raw: async () => [],
+        run: async () => ({ meta: { changes: 0 } }),
+      }),
+    }),
+    batch: async (statements: unknown[]) =>
+      statements.map(() => ({ meta: { changes: 0 } })),
+  },
+} as unknown as Bindings;
 
 function controller(cron: string): ScheduledController {
   return { cron, scheduledTime: 0, noRetry: vi.fn() };
