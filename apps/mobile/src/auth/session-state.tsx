@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import type { Session } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
 import {
@@ -172,11 +173,18 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   const signInWithGoogle = useCallback(async () => {
     // Opens the system browser; the OAuth callback deep-links back to
-    // /auth/callback, where the existing PKCE code exchange completes.
+    // /auth/callback, where the existing PKCE code exchange completes. The
+    // redirect uses the variant's own scheme (zoption-dev, zoption-preview or
+    // zoption) so the callback reaches the app directly instead of the
+    // dev-client's proxy scheme.
+    const configuredScheme = Constants.expoConfig?.scheme;
+    const scheme = Array.isArray(configuredScheme)
+      ? (configuredScheme[0] ?? "zoption")
+      : (configuredScheme ?? "zoption");
     const { error } = await getSupabaseClient().auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: Linking.createURL("/auth/callback"),
+        redirectTo: scheme + "://auth/callback",
         skipBrowserRedirect: false,
       },
     });
