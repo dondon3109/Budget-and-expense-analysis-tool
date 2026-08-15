@@ -19,6 +19,7 @@ import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/wor
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
 
+import { parseOAuthCallbackUrl } from "./oauth-callback";
 import { clearPlanCache } from "./plan-state";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, supabase } from "./supabase-client";
@@ -173,9 +174,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    // Opens the system browser via expo-web-browser's auth session; the OAuth
-    // callback deep-links back to /auth/callback, where the existing PKCE code
-    // exchange completes. The redirect uses the variant's own scheme
+    // Opens the system browser via expo-web-browser's auth session; when the
+    // provider redirects to the app's callback scheme the session resolves
+    // with the callback URL, and the PKCE code in it is exchanged here
+    // (skipBrowserRedirect means supabase-js will not do this itself).
+    // The /auth/callback route remains for browser-based links such as
+    // password recovery. The redirect uses the variant's own scheme
     // (zoption-dev, zoption-preview or zoption) so the callback reaches the
     // app directly instead of the dev-client's proxy scheme.
     //
@@ -196,9 +200,20 @@ export function SessionProvider({ children }: PropsWithChildren) {
     });
     if (error) throw error;
     if (!data?.url) throw new Error("Google sign-in could not start.");
-    await WebBrowser.openAuthSessionAsync(data.url, scheme + "://auth/callback", {
+    const result = await WebBrowser.openAuthSessionAsync(data.url, scheme + "://auth/callback", {
       preferEphemeralSession: true,
     });
+    if (result.type !== "success" || !result.url) {
+      // The user dismissed the browser sheet without signing in.
+      return;
+    }
+    const callback = parseOAuthCallbackUrl(result.url);
+    if (!callback) return;
+    if ("error" in callback) throw new Error(callback.error);
+    const { error: exchangeError } = await getSupabaseClient().auth.exchangeCodeForSession(
+      callback.code,
+    );
+    if (exchangeError) throw exchangeError;
   }, []);
 
   const signOut = useCallback(async (options: SignOutOptions = {}) => {
