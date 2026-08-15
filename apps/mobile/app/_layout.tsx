@@ -10,6 +10,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SessionProvider } from "@/auth/session-state";
 import { WorkerIdentityProvider } from "@/auth/worker-identity-state";
 import { configureConnectivity } from "@/config/connectivity";
+import { registerBackgroundSyncTask } from "@/sync/background-sync-task";
 import { Button } from "@/ui/components";
 import { ZoptionThemeProvider, useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
@@ -35,7 +36,13 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  useEffect(() => configureConnectivity(), []);
+  useEffect(() => {
+    configureConnectivity();
+    void registerBackgroundSyncTask().catch(() => {
+      // Background sync is a best-effort convenience; registration failure must
+      // never affect foreground behavior.
+    });
+  }, []);
   return (
     <SafeAreaProvider>
       <SessionProvider>

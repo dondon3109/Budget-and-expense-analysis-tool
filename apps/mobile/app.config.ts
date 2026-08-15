@@ -47,6 +47,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       usesAppleSignIn: false,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: true,
+        NSMicrophoneUsageDescription:
+          "Zoption records your questions only when you choose voice input. Recordings are sent to Zoption for transcription and are not stored.",
       },
     },
     android: {
@@ -67,6 +69,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
       ["expo-sqlite", { useSQLCipher: true }],
       ["expo-secure-store", { configureAndroidBackup: true }],
+      ["expo-audio", { microphonePermission: "Zoption records your questions only when you choose voice input. Recordings are sent to Zoption for transcription and are not stored." }],
     ],
     experiments: {
       typedRoutes: true,

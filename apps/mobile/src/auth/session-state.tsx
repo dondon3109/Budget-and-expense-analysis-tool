@@ -14,6 +14,7 @@ import { AppState, Platform } from "react-native";
 
 import { isSupabaseConfigured } from "@/config/public-config";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
+import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
 
 import { clearPlanCache } from "./plan-state";
@@ -68,10 +69,11 @@ function recoveryCallbackUrl(): string {
   return Linking.createURL("/auth/callback", { queryParams: { next: "update-password" } });
 }
 
-function clearUserScopedRuntimeState(): void {
+export function clearUserScopedRuntimeState(): void {
   // Durable financial caches arrive in Milestone 3. Every identity transition
   // enters through this boundary so those repositories can be cleared here.
   useSheetStore.getState().close();
+  useAssistantVoiceOptionsStore.getState().ensureSubject(null);
   clearPlanCache();
 }
 

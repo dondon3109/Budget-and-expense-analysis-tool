@@ -10,7 +10,7 @@ import {
 } from "react";
 import { addDatabaseChangeListener } from "expo-sqlite";
 
-import { closeLocalWorkspace, openLocalWorkspace, type LocalWorkspace } from "./workspace";
+import { closeLocalWorkspace, describeWorkspaceOpenFailure, openLocalWorkspace, type LocalWorkspace } from "./workspace";
 import type { LocalWorkspaceStats } from "./repository";
 import type {
   LocalBudgetMonthData,
@@ -75,10 +75,7 @@ export function LocalWorkspaceProvider({
           setSnapshot({
             status: "error",
             workspace: null,
-            message:
-              error instanceof Error
-                ? error.message
-                : "The encrypted local workspace could not be opened.",
+            message: describeWorkspaceOpenFailure(error),
           });
         }
       });

@@ -28,6 +28,18 @@ const persistedVoiceEnvelopeSchema = z
   })
   .strict();
 
+export type PersistedAssistantVoiceOptions = z.infer<
+  typeof persistedVoiceEnvelopeSchema
+>["state"];
+
+/** Validates rehydrated device-local voice options; malformed state fails closed to defaults. */
+export function parsePersistedAssistantVoiceOptions(
+  value: unknown,
+): PersistedAssistantVoiceOptions | null {
+  const parsed = persistedVoiceEnvelopeSchema.safeParse({ state: value, version: 1 });
+  return parsed.success ? parsed.data.state : null;
+}
+
 export const assistantSpeechVoiceOptions: {
   id: AssistantSpeechVoice;
   label: string;
@@ -82,13 +94,8 @@ export const useAssistantVoiceOptionsStore = create<AssistantVoiceOptionsState>(
         autoSend,
       }),
       merge: (persisted, current) => {
-        const result = persistedVoiceEnvelopeSchema.safeParse({
-          state: persisted,
-          version: 1,
-        });
-        return result.success
-          ? { ...current, ...result.data.state }
-          : { ...current, ...defaults };
+        const result = parsePersistedAssistantVoiceOptions(persisted);
+        return result ? { ...current, ...result } : { ...current, ...defaults };
       },
       skipHydration: true,
     },

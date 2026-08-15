@@ -162,6 +162,24 @@ export function openLocalWorkspace(subject: string): Promise<LocalWorkspace> {
   return serialize(() => openWorkspaceInternal(subject));
 }
 
+const CORRUPT_DATABASE_PATTERN =
+  /SQLITE_CORRUPT|SQLITE_NOTADB|file is not a database|malformed database|database disk image is malformed/iu;
+
+/**
+ * Turns a native open failure into safe user copy. Corrupted or non-database
+ * files get the recovery guidance instead of a raw SQLite message, and raw
+ * error text is never surfaced verbatim (it can contain paths or key material).
+ */
+export function describeWorkspaceOpenFailure(error: unknown): string {
+  if (error instanceof Error && CORRUPT_DATABASE_PATTERN.test(error.message)) {
+    return (
+      "The encrypted local data on this device is damaged. It can be safely replaced " +
+      "the next time you sign in; records already synchronized remain in your Zoption workspace."
+    );
+  }
+  return "The encrypted local workspace could not be opened on this device.";
+}
+
 async function buildSnapshotGeneration({
   databaseName: name,
   key,

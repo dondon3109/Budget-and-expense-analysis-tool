@@ -1,3 +1,4 @@
+import { setBackgroundSyncRunner } from "./background-sync-task";
 import { useNetInfo } from "@react-native-community/netinfo";
 import type { MobileSyncPushRequest } from "@zoption/shared";
 import {
@@ -375,6 +376,21 @@ export function SyncProvider({
       if (retryTimer) clearTimeout(retryTimer);
     };
   }, [attempt, enabled, reachable, reopen, session, unavailableMessage, workspace]);
+
+  // The background sync task can only reuse the mounted engine. When the app
+  // is terminated there is no React tree, the runner stays null, and the task
+  // declines instead of half-synchronizing without the workspace and session.
+  useEffect(() => {
+    if (!workspace || session.status !== "signed-in" || !enabled) {
+      setBackgroundSyncRunner(null);
+      return;
+    }
+    setBackgroundSyncRunner(() => {
+      setAttempt((value) => value + 1);
+      return Promise.resolve();
+    });
+    return () => setBackgroundSyncRunner(null);
+  }, [enabled, session.status, workspace]);
 
   const retry = useCallback(() => {
     if (!enabled) {

@@ -33,8 +33,6 @@
     "expo-splash-screen": "57.0.6",
     "expo-sqlite": "57.0.1",
     "expo-status-bar": "57.0.1",
-    "expo-symbols": "57.0.2",
-    "expo-system-ui": "57.0.2",
     "expo-task-manager": "57.0.9",
     "expo-web-browser": "57.0.2",
     "nativewind": "4.2.6",
@@ -54,6 +52,8 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@babel/plugin-transform-react-jsx": "7.29.7",
+    "@babel/plugin-transform-react-jsx-development": "7.29.7",
     "@testing-library/react-native": "14.0.1",
     "@types/jest": "29.5.14",
     "@types/react": "19.2.4",
