@@ -6,12 +6,22 @@ device run on this machine.
 
 ## Host and runtime gaps
 
+- **Partial close (2026-08-16):** email/password sign-in, session
+  persistence across relaunch, Worker identity/tenant derivation, encrypted workspace open,
+  live billing summary, assistant consent/identity/threads, and the support/account/import
+  screens were all verified on-device with the production test account. The remaining
+  authenticated gaps below still stand.
+
 - **No Android device or emulator on this host.** Android release/debug builds
   compile (see milestone evidence), but no Android runtime behavior — touch,
   navigation, SQLCipher, background task, voice — has been exercised on
   Android. Low-end Android performance testing (M9) is therefore pending
   device access.
-- **No test account on this host.** The M5 authenticated-run gap remains:
+- **Sync pull requires a production Worker deployment.** The mobile-sync routes
+  (`/api/app/sync/*`) and their D1 migrations exist only in this worktree; production returns
+  404, so financial data cannot yet converge on-device. Deployment needs explicit approval.
+  Until then, the financial screens show their honest empty/failed states.
+- **No Android device**, and a few flows remain unverified even on iOS:
   screens that need a real signed-in workspace (assistant turns, support chat,
   billing checkout, account deletion, imports end-to-end) are verified up to
   the transport layer with schema-tested mocks and a booting dev build, not a
