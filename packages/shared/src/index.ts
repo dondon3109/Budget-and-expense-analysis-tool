@@ -9,3 +9,6 @@ export * from "./schemas";
 export * from "./subscriptions";
 export * from "./sync";
 export * from "./types";
+
+export * from "./workbook";
+export * from "./importPresets";
