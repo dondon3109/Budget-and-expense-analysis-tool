@@ -845,3 +845,38 @@ export const importCommitSchema = z
       });
     }
   });
+export const importPreviewRowSchema = z
+  .object({
+    rowNumber: z.number().int().min(1),
+    status: z.enum(["ready", "invalid", "duplicate"]),
+    date: isoDateSchema.optional(),
+    description: z.string().optional(),
+    amountMinor: z.number().int().optional(),
+    kind: z.enum(transactionKinds).optional(),
+    categoryId: resourceIdSchema.optional(),
+    categoryName: z.string().optional(),
+    categoryIsUncategorized: z.boolean().optional(),
+    errors: z.array(z.string().max(240)).max(20),
+  })
+  .strict();
+
+export const importPreviewResponseSchema = z
+  .object({
+    token: z.string().uuid(),
+    expiresAt: z.iso.datetime(),
+    fileName: z.string().min(1).max(180),
+    rowCount: z.number().int().min(0).max(10_000),
+    acceptedCount: z.number().int().min(0).max(10_000),
+    rejectedCount: z.number().int().min(0).max(10_000),
+    duplicateCount: z.number().int().min(0).max(10_000),
+    rows: z.array(importPreviewRowSchema).max(10_000),
+  })
+  .strict();
+
+export const importCommitResultSchema = z
+  .object({
+    importId: z.string().uuid(),
+    importedCount: z.number().int().min(0).max(10_000),
+    rejectedCount: z.number().int().min(0).max(10_000),
+  })
+  .strict();

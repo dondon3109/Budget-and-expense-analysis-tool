@@ -203,6 +203,13 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
             sheetGrabberVisible: Platform.OS === "ios",
           }}
         />
+        <Stack.Screen
+          name="import"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+          }}
+        />
       </Stack>
     </SyncProvider>
   );

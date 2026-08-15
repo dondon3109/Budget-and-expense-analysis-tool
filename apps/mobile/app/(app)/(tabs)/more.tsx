@@ -54,6 +54,13 @@ export default function MoreScreen() {
             Accounts & categories
           </Button>
           <Button
+            accessibilityHint="Opens the preview-first transaction importer"
+            variant="secondary"
+            onPress={() => router.push("/(app)/import")}
+          >
+            Import transactions
+          </Button>
+          <Button
             accessibilityHint="Opens savings goals"
             variant="secondary"
             onPress={() => router.push("/(app)/goals")}
