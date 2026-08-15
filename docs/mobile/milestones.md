@@ -1,6 +1,6 @@
 # Native mobile milestone status
 
-Last updated: 2026-08-14.
+Last updated: 2026-08-15.
 
 | Milestone                            | Status      | Exit evidence                                                                                                                |
 | ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -11,8 +11,8 @@ Last updated: 2026-08-14.
 | 4. Transaction sync vertical slice   | In progress | Account/category/transaction offline push, restart durability, and explicit conflict recovery proven on iOS                  |
 | 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
 | 6. Planning and recurring money      | Complete   | Goals, debts (avalanche/snowball), subscriptions, calendar, fee-aware transfers, and savings-interest modeling proven with tests |
-| 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
-| 8. Online-only capabilities          | Not started | Assistant/voice/billing/support/account management with online/consent boundaries                                            |
+| 7. Imports                           | Complete   | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
+| 8. Online-only capabilities          | Complete   | Assistant/voice/billing/support/account management with online/consent boundaries; 40 new mobile tests, iOS dev build proof  |
 | 9. Hardening and release preparation | Not started | Accessibility, performance, resilience, signed-test authorization, upgrade/rollback documents                                |
 
 ## Milestone 0 verified baseline
@@ -475,3 +475,43 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   still depends on the M5 authenticated-run gap (no test account on this host). Offline imports
   are intentionally unsupported: imports are online-only by design so duplicate prevention and
   atomic commit stay server-authoritative.
+
+## Milestone 8 progress
+
+- Online-only surfaces land behind the existing Worker routes; nothing financial runs from
+  stale local cache. New shared response schemas validate every assistant, billing, support
+  and deletion payload before the client displays it.
+- AI Financial Assistant: the native screen mirrors the web consent gate (consent version,
+  retention copy), then identity setup (assistant name, preferred name), a conversation list
+  and chat composer with the same 2,000-character and clientRequestId contracts, pending/
+  failed states, per-thread delete, clear-all with confirmation, and a settings sheet with
+  response detail, coaching style, memory (debt strategy, remembered facts, clear memory)
+  and retention copy. Plan-limit rejections surface an upgrade banner linking to Plan and
+  billing instead of pretending the question failed.
+- Assistant voice: expo-audio records m4a clips (60-second cap), which are transcribed by the
+  Worker via Cloudflare Whisper; spoken replies from Fish Audio stream back as MP3 and play
+  through expo-audio. Voice consent stays server-owned; reply mode, voice, and auto-send are
+  device-local UI options stored in a versioned, Zod-validated SecureStore-backed Zustand
+  store that resets when the identity changes. reviewRequired environments force the
+  review-before-send mode, matching the web.
+- Billing: a native Plan and billing screen renders the server summary (plan, status,
+  entitlement, usages, allowances) with the web's copy semantics; checkout posts the interval
+  to the Worker, opens PayPal in the system browser, then polls reconciliation so Pro access
+  is only shown after server confirmation. Cancel renewal uses the web's dialog copy and the
+  Worker's non-cancelable conflict surfaces honestly.
+- Support and account: support chat (pageContext "app") carries the provider disclosure,
+  review-first bug-report drafts submit with native diagnostics (route, release version,
+  viewport, platform) and list under My reports; account deletion requires typing DELETE and
+  the current password, warns permanence, and clears the encrypted local workspace only after
+  the Worker confirms deletion (deleted or cleanup_pending).
+- Validation: 40 new mobile tests (transport schemas and error mapping, assistant form and
+  consent gating, voice-option hygiene, billing copy, support history trimming and bug-draft
+  validation, deletion payload), mobile suite now 229 tests across 34 suites, shared+API
+  suite still 579 across 62 files, web typecheck and 493 tests green, iOS Hermes export
+  succeeds, and a fresh iOS dev build with expo-audio 57.0.3, expo-web-browser 57.0.2 and
+  expo-constants 57.0.11 compiled, installed, and running on the iPhone 17 Pro simulator.
+- Remaining M8 caveat: end-to-end assistant/support/billing calls need a real signed-in
+  workspace (same M5 authenticated-run gap — no test account on this host), and
+  transcription/speech need the Worker's voice providers configured; both are verified up to
+  the transport layer by schema-tested mocks and the native build. Voice recording on the
+  simulator depends on host microphone routing.
