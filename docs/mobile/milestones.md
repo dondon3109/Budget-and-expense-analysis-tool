@@ -10,7 +10,7 @@ Last updated: 2026-08-14.
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
 | 4. Transaction sync vertical slice   | In progress | Account/category/transaction offline push, restart durability, and explicit conflict recovery proven on iOS                  |
 | 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
-| 6. Planning and recurring money      | In progress | Financial-goals vertical slice proven (migration, pull, offline CRUD, conflicts); subscriptions/calendar/debts/interest remain |
+| 6. Planning and recurring money      | In progress | Goals and debts vertical slices proven (migration, pull, offline CRUD, conflicts); subscriptions/calendar/interest remain |
 | 7. Imports                           | Not started | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
 | 8. Online-only capabilities          | Not started | Assistant/voice/billing/support/account management with online/consent boundaries                                            |
 | 9. Hardening and release preparation | Not started | Accessibility, performance, resilience, signed-test authorization, upgrade/rollback documents                                |
@@ -336,5 +336,31 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   on the More tab reaches the stack, and the three routes are registered with native headers.
 - Twenty-two mobile suites with 130 focused tests pass; typecheck and lint are clean, and a standalone
   iOS Hermes export succeeds. No remote D1, deployment, or production service was changed.
+- Debts are now the second Milestone 6 vertical slice. D1 migration `0040_mobile_sync_debts.sql` adds a
+  `revision` column to `debts`, rebuilds the mobile change log to include `'debt'` in the entity-type
+  check, creates a `mobile_sync_debt_rows` view, bootstraps existing debts with deterministic
+  per-tenant revisions, and adds insert/update/delete triggers whose delete emits a
+  `OLD.revision + 1` tombstone guarded by tenant existence.
+- The Worker push slice validates debts through the shared `debtInputSchema` (name 1–80 trimmed
+  characters, `balanceMinor` 1..9e14, APR 0..100%, `minimumPaymentMinor` 0..9e14, ISO
+  balance-as-of date, status) and `debtUpdateSchema` (all optional, at least one, balance may reach
+  zero to pay off). A create with a duplicate name is a durable `invalid_operation` rejection; a stale
+  update is `stale_revision`; a missing debt is `entity_missing`. Name uniqueness is case-insensitive
+  on the sync boundary, deliberately stricter than the web product's case-sensitive index.
+- Local schema version 8 adds `debts` and rebuilds the outbox, conflict, and tombstone entity-type
+  checks to include `'debt'`. Pull applies debt upserts and deletion tombstones; the push layer sends
+  debt create/update/delete through the encrypted outbox.
+- Offline debt mutations mirror Worker semantics: create returns a client UUID and enforces local
+  case-insensitive name uniqueness; updates send full merged values including a zero-balance payoff;
+  delete soft-deletes a synced row (or cancels an unpushed create). Conflicts are preserved and resolved
+  without device-clock arbitration, exactly like goals.
+- The Debts screen lists active/paid debts with type, APR, minimum payment, and honest pending/failed/
+  conflict labels, plus an avalanche/snowball payoff planner that reuses the shared
+  `calculateDebtPayoff` model with an optional extra monthly payment. A debt editor provides name,
+  type, balance, APR, minimum payment, balance-as-of date, and status fields; a conflict screen shows
+  device and server versions with explicit resolution. A `Debts` entry on the More tab reaches the
+  stack, and the three routes are registered with native headers.
+- Twenty-three mobile suites with 144 focused tests pass; typecheck and lint are clean, and a standalone
+  iOS Hermes export succeeds. No remote D1, deployment, or production service was changed.
 - Remaining Milestone 6 work: subscriptions (with their linked charge-transaction atomic group),
-  calendar events, debts, and savings-interest modeling. Android runtime proof remains a host gap.
+  calendar events, and savings-interest modeling. Android runtime proof remains a host gap.
