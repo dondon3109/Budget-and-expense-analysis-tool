@@ -693,3 +693,23 @@ same production account, the full multi-client matrix was exercised:
 This demonstrates web↔mobile and mobile↔mobile convergence on production with
 no silent overwrites, completing the multi-device requirement with two real
 native clients plus the website.
+
+## Background-task runtime evidence (Android emulator)
+
+- The `zoption-background-sync` WorkManager job is registered on Android at
+  runtime (dumpsys jobscheduler: HIGH priority, network-gated, exponential
+  backoff policy) and force-run via the scheduler without errors. The guarded
+  handler executed and declined safely — the UI state stayed intact and no
+  crash occurred, matching the documented design (a headless or terminated
+  context has no mounted engine, so the task reports a no-op success rather
+  than half-synchronizing).
+- OS-level scheduling windows, idle-batching, and interruption timing remain
+  device-time behavior and cannot be exercised on the emulator; the guard and
+  runner logic are covered by nine focused unit tests.
+
+At this point every host-verifiable milestone item is complete. The only
+remaining items require external resources: social-auth runtime (Google
+credentials / Apple configuration), account-deletion runtime (would destroy
+the production account — requires an explicit user decision), tenant-switch
+runtime (requires a second verified account), and release-build performance /
+background-task scheduling on real hardware.
