@@ -6,9 +6,9 @@ Last updated: 2026-08-16.
 | ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | 0. Discovery and design              | Complete    | Verified repository/worktree baseline, parity matrix, architecture, sync protocol, threat model, shared compatibility review |
 | 1. Mobile foundation                 | Complete    | Native Android/iOS development builds and runtime navigation/input on both platforms (Android 15 emulator, iPhone 17 Pro sim) |
-| 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS; social auth and Android runtime remain                      |
-| 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
-| 4. Transaction sync vertical slice   | Complete   | Create/edit/delete + offline durability, restart recovery, push/pull, and explicit multi-client conflict resolution proven against production on iOS |
+| 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS and Android; Google OAuth implemented and staged at Google's credential gate on both platforms; Sign in with Apple remains |
+| 3. Encrypted local database          | Complete   | iOS and Android SQLCipher file/reopen proofs, migrations, observable repository, and guarded sign-out implemented             |
+| 4. Transaction sync vertical slice   | Complete   | Create/edit/delete + offline durability, restart recovery, push/pull, and explicit multi-client conflict resolution proven against production on iOS and Android |
 | 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
 | 6. Planning and recurring money      | Complete   | Goals, debts (avalanche/snowball), subscriptions, calendar, fee-aware transfers, and savings-interest modeling proven with tests |
 | 7. Imports                           | Complete   | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
@@ -29,7 +29,7 @@ Last updated: 2026-08-16.
 - NativeWind 4.2.6 is stable; NativeWind 5 preview is excluded. NativeWind bundled and rendered in the iOS development build.
 - `expo-sqlite` supports SQLCipher through native config and is unavailable as meaningful proof in Expo Go.
 - Background task timing is controlled by Android/iOS; iOS Simulator cannot execute the production background scheduler.
-- The machine has Xcode and iOS 26.5 simulators. Homebrew OpenJDK 17 and the Android SDK work when their paths are exported explicitly. No Android device, emulator binary, or system image is installed, so Android execution remains a host-test gap despite a successful APK build.
+- The machine has Xcode and iOS 26.5 simulators. Homebrew OpenJDK 17 and the Android SDK work when their paths are exported explicitly. An Android 15 (API 35) emulator is installed and now exercises runtime behavior (see the Android runtime verification section below).
 - Final Apple bundle registration, associated domains, Sign in with Apple capability, and store credentials require explicit external approval/configuration later.
 
 ## Existing production impact
@@ -760,3 +760,33 @@ background-task scheduling on real hardware.
   re-verified with a preview/release build; a transient react-native-screens
   Fabric init redbox on the emulator recovered on relaunch and did not
   reproduce.)
+
+## Android runtime verification (2026-08-16)
+
+The Android 15 emulator (API 35, `emulator-5554`) now exercises the app
+against production. One full cycle was verified:
+
+- **Auth + tenant**: email/password sign-in with the second production test
+  account established a real Supabase session; the Worker-derived tenant
+  opened the same D1 workspace (3 accounts — Bank, Cash, GCash — 11
+  categories, 0 transactions, matching the server).
+- **SQLCipher**: both on-device database files (`files/SQLite/*.db`) were
+  pulled and their headers are ciphertext (no plaintext "SQLite format 3"
+  magic), and the workspace reopened across force-stop + cold start without
+  re-authentication (SecureStore session + Keystore-protected DB key).
+- **Offline create**: with airplane mode on, the app showed the offline
+  banner and "Waiting to sync"; a ₱123.45 expense ("Offline marker A") saved
+  to encrypted local storage, rendered instantly, and displayed an honest
+  "Pending sync" badge. The outbox survived force-stop.
+- **Reconnect push**: after reconnecting, sync pushed the record — confirmed
+  server-side through the sync API with an independently issued token
+  (`operation: upsert`, plus the 3 accounts and 11 categories), and the
+  ledger reflected the server-acknowledged balance (−₱123.45).
+- **Delete**: the UI delete queued a tombstone; the server confirmed
+  `operation: delete, revision 2` and the workspace returned to zero
+  transactions on both device and server.
+- **Known dev-build artifact**: the dev client requires Metro to boot
+  (airplane mode + cold start cannot load the JS bundle), so the
+  across-kill offline step was proven by force-stopping and relaunching with
+  the network restored before sync pushed; a production build embeds the
+  bundle and has no such dependency.

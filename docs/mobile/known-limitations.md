@@ -12,19 +12,24 @@ device run on this machine.
   screens were all verified on-device with the production test account. The remaining
   authenticated gaps below still stand.
 
-- **No Android device or emulator on this host.** Android release/debug builds
-  compile (see milestone evidence), but no Android runtime behavior — touch,
-  navigation, SQLCipher, background task, voice — has been exercised on
-  Android. Low-end Android performance testing (M9) is therefore pending
-  device access.
+- **Android runtime (2026-08-16, emulator):** an Android 15 emulator
+  (API 35) now exercises the app. Verified against production: email/password
+  sign-in, tenant derivation (same 3-account workspace as the server), SQLCipher
+  (both on-device database headers are ciphertext), kill-and-reopen without
+  re-login, offline banner + offline create with an honest "Pending sync" state,
+  outbox survival across force-stop, reconnect push (server confirmed the
+  record via the sync API), and delete with tombstone (server confirmed
+  rev 2 delete; workspace returned to zero records). Remaining Android-only
+  items: voice, background-task device-time scheduling, and low-end device
+  performance measurements.
 - **Deployed (2026-08-16, approved):** Worker + D1 migrations 0034–0042 are live in
   production and web→mobile pull/delete convergence was verified on-device with the
   production account. Offline create, restart durability, reconnect push, and mobile-initiated
   delete, offline edit, and explicit multi-client conflict resolution are now all
   proven on-device against production (2026-08-16), and the assistant chat turns
   are verified too. Remaining: Google OAuth and Sign in with Apple runtime,
-  Android runtime (no device/emulator), release-build device performance
-  numbers, and background-task device-time scheduling.
+  release-build device performance numbers, and background-task device-time
+  scheduling.
 - **No Android device**, and a few flows remain unverified even on iOS:
   Google OAuth, Sign in with Apple, the support-chat turn, and on-device import file
   selection (the iOS 26 document picker ignored synthesized single taps; parsing,
