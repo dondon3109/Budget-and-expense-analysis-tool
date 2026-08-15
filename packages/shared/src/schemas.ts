@@ -880,3 +880,197 @@ export const importCommitResultSchema = z
     rejectedCount: z.number().int().min(0).max(10_000),
   })
   .strict();
+
+// Assistant (online-only, read-only, server-grounded) response contracts shared
+// by the mobile client so network payloads are validated before display.
+
+export const assistantPreferencesResponseSchema = z
+  .object({
+    consentedAt: z.iso.datetime().nullable(),
+    consentVersion: z.number().int().min(0),
+    retentionDays: z.number().int().min(0),
+    assistantName: z.string().nullable(),
+    userPreferredName: z.string().nullable(),
+    responseDetail: z.enum(["concise", "standard"]),
+    coachingStyle: z.enum(["gentle", "direct"]),
+  })
+  .strict();
+
+export const assistantMemoryPreferencesResponseSchema = z
+  .object({
+    debtStrategy: z.enum(["avalanche", "snowball"]).nullable(),
+    responseDetail: z.enum(["concise", "standard"]),
+    coachingStyle: z.enum(["gentle", "direct"]),
+  })
+  .strict();
+
+export const assistantMemoryItemSchema = z
+  .object({
+    id: z.string().min(1).max(180),
+    kind: z.enum(["preference", "fact", "summary"]),
+    key: z.string().max(240),
+    value: z.string().max(20_000),
+    source: z.enum(["user_stated", "deterministic", "model_assisted"]),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+
+export const assistantThreadSchema = z
+  .object({
+    id: z.string().uuid(),
+    title: z.string().min(1).max(240),
+    lastMessageAt: z.iso.datetime(),
+    createdAt: z.iso.datetime(),
+  })
+  .strict();
+
+export const assistantMessageSchema = z
+  .object({
+    id: z.string().uuid(),
+    threadId: z.string().uuid(),
+    role: z.enum(["user", "assistant"]),
+    content: z.string().max(200_000),
+    status: z.enum(["pending", "completed", "failed"]),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+    createdAt: z.iso.datetime(),
+  })
+  .strict();
+
+export const assistantThreadPageSchema = z
+  .object({
+    items: z.array(assistantThreadSchema).max(100),
+    nextCursor: z.iso.datetime().nullable(),
+  })
+  .strict();
+
+export const assistantMessagePageSchema = z
+  .object({
+    items: z.array(assistantMessageSchema).max(100),
+    nextCursor: z.iso.datetime().nullable(),
+  })
+  .strict();
+
+export const assistantTurnResultSchema = z
+  .object({
+    thread: assistantThreadSchema,
+    userMessage: assistantMessageSchema,
+    assistantMessage: assistantMessageSchema,
+  })
+  .strict();
+
+export const assistantVoicePreferencesResponseSchema = z
+  .object({
+    enabled: z.boolean(),
+    speechAvailable: z.boolean(),
+    reviewRequired: z.boolean(),
+    consentedAt: z.iso.datetime().nullable(),
+    consentVersion: z.number().int().min(0),
+    transcriptionModel: z.literal("@cf/openai/whisper-large-v3-turbo"),
+    ttsModel: z.literal("s2.1-pro-free"),
+  })
+  .strict();
+
+export const assistantVoiceTranscriptionResponseSchema = z
+  .object({
+    text: z.string().max(20_000),
+    durationSeconds: z.number().min(0),
+    languageCode: z.string().optional(),
+  })
+  .strict();
+
+// Billing, support, bug-report and account-deletion response contracts shared
+// by the mobile client for the online-only surfaces (milestone 8).
+
+export const billingUsageSchema = z
+  .object({
+    feature: z.enum(["assistant_question", "file_import"]),
+    used: z.number().int().min(0),
+    limit: z.number().int().min(0),
+    periodKind: z.enum(["calendar_month", "anchored_14_day"]),
+    periodStartedAt: z.iso.datetime().nullable(),
+    resetsAt: z.iso.datetime().nullable(),
+  })
+  .strict();
+
+export const billingResourceAllowanceSchema = z
+  .object({
+    resource: z.enum(["custom_category"]),
+    used: z.number().int().min(0),
+    limit: z.number().int().min(0).nullable(),
+  })
+  .strict();
+
+export const billingSummaryResponseSchema = z
+  .object({
+    plan: z.enum(["free", "zoption_pro"]),
+    entitlementSource: z.enum(["paypal", "platform_admin", "sponsored"]).nullable(),
+    provider: z.enum(["paypal"]).nullable(),
+    status: z
+      .enum(["active", "trialing", "past_due", "paused", "canceled"])
+      .nullable(),
+    interval: z.enum(["month", "year"]).nullable(),
+    currentPeriodEndsAt: z.iso.datetime().nullable(),
+    scheduledChangeAt: z.iso.datetime().nullable(),
+    cancelAtPeriodEnd: z.boolean(),
+    pendingCheckout: z
+      .object({
+        provider: z.enum(["paypal"]),
+        interval: z.enum(["month", "year"]),
+        createdAt: z.iso.datetime(),
+        expiresAt: z.iso.datetime(),
+      })
+      .strict()
+      .nullable(),
+    canCheckout: z.boolean(),
+    canManageBilling: z.boolean(),
+    canManageSponsoredSeats: z.boolean(),
+    nonTerminalSubscriptionCount: z.number().int().min(0),
+    usages: z.array(billingUsageSchema).max(10),
+    allowances: z.array(billingResourceAllowanceSchema).max(10),
+  })
+  .strict();
+
+export const billingCheckoutResponseSchema = z
+  .object({ approvalUrl: z.string().url() })
+  .strict();
+
+export const billingCancelResponseSchema = z
+  .object({ cancellationRequested: z.literal(true) })
+  .strict();
+
+export const billingReconciliationResponseSchema = z
+  .object({
+    outcome: z.enum(["confirmed", "pending", "review_required", "closed", "none"]),
+    summary: billingSummaryResponseSchema,
+  })
+  .strict();
+
+export const supportChatResponseSchema = z
+  .object({
+    message: z.string().max(20_000),
+    bugReportDraft: bugReportDraftSchema.optional(),
+  })
+  .strict();
+
+export const bugReportResponseSchema = z
+  .object({
+    id: z.string().uuid(),
+    reference: z.string().min(1).max(60),
+    title: z.string().min(1).max(120),
+    category: z.enum(bugReportCategories),
+    actualBehavior: z.string().min(1).max(2_000),
+    expectedBehavior: z.string().min(1).max(2_000),
+    stepsToReproduce: z.string().min(1).max(2_000),
+    frequency: z.enum(bugReportFrequencies),
+    pageContext: z.enum(bugReportPageContexts),
+    diagnostics: bugReportDiagnosticsSchema,
+    status: z.enum(bugReportStatuses),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+
+export const accountDeletionResponseSchema = z
+  .object({ status: z.enum(["deleted", "cleanup_pending"]) })
+  .strict();
