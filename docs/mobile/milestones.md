@@ -790,3 +790,27 @@ against production. One full cycle was verified:
   across-kill offline step was proven by force-stopping and relaunching with
   the network restored before sync pushed; a production build embeds the
   bundle and has no such dependency.
+
+## Milestone 9 progress (host-verifiable evidence, 2026-08-16)
+
+- **Log and secret audit**: zero `console.*` statements exist anywhere in the
+  mobile app source (`app/`, `src/`); no secret-like strings (service-role,
+  private keys, embedded tokens); no access/refresh-token logging; no
+  analytics or crash-reporting SDKs in the dependency tree. Financial records
+  and tokens cannot leak through app logs.
+- **Android permission audit** (dev build): INTERNET, ACCESS_NETWORK_STATE /
+  ACCESS_WIFI_STATE (NetInfo), RECORD_AUDIO + FOREGROUND_SERVICE_MEDIA_PLAYBACK
+  + MODIFY_AUDIO_SETTINGS (voice assistant; audio permission not granted until
+  used), RECEIVE_BOOT_COMPLETED (background sync scheduling), USE_BIOMETRIC
+  (SecureStore). No location, camera, contacts, or storage permissions. The
+  dev-client-only SYSTEM_ALERT_WINDOW / CHANGE_WIFI_MULTICAST_STATE entries are
+  expected to disappear from the preview build (to be confirmed from its
+  manifest).
+- **Accessibility audit (Android emulator)**: all 10 clickable nodes on the
+  transactions screen expose labels ("Add transaction", "Search transactions",
+  filter chips, and the four tab-bar destinations); zero unlabeled interactive
+  nodes.
+- **Preview variant build (in progress)**: a local release build of the
+  `site.zoption.android.preview` variant (embedded bundle, `zoption-preview`
+  scheme) is being produced to verify Android deep-link callback delivery and
+  to measure a non-dev cold start on the emulator.
