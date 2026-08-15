@@ -157,6 +157,17 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
       created_at text NOT NULL DEFAULT (datetime('now')),
       updated_at text NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE calendar_events (
+      id text PRIMARY KEY NOT NULL,
+      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      title text NOT NULL,
+      date text NOT NULL,
+      start_time text,
+      end_time text,
+      notes text,
+      created_at text NOT NULL DEFAULT (datetime('now')),
+      updated_at text NOT NULL DEFAULT (datetime('now'))
+    );
   `);
   database.exec(`
     INSERT INTO tenants (id, kind, name) VALUES
@@ -186,6 +197,8 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
       id, tenant_id, account_id, category_id, name, amount_minor, billing_cycle, next_billing_date, status
     ) VALUES
       ('subscription-1', 'tenant-1', 'account-1', 'category-1', 'Netflix', 54900, 'monthly', '2026-09-01', 'canceled');
+    INSERT INTO calendar_events (id, tenant_id, title, date, start_time, end_time, notes) VALUES
+      ('event-1', 'tenant-1', 'Birthday dinner', '2026-08-20', '18:00', '20:00', 'With family');
   `);
   const migration = readFileSync(
     new URL("../../../db/migrations/0034_mobile_sync_foundation.sql", import.meta.url),
@@ -254,6 +267,15 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
   }
   for (const statement of readFileSync(
     new URL("../../../db/migrations/0041_mobile_sync_subscriptions.sql", import.meta.url),
+    "utf8",
+  )
+    .split("--> statement-breakpoint")
+    .map((part) => part.trim())
+    .filter(Boolean)) {
+    database.exec(statement);
+  }
+  for (const statement of readFileSync(
+    new URL("../../../db/migrations/0042_mobile_sync_calendar_events.sql", import.meta.url),
     "utf8",
   )
     .split("--> statement-breakpoint")
@@ -358,10 +380,10 @@ describe("mobile sync full snapshot", () => {
       limit: 2,
     });
     expect(first).toMatchObject({
-      snapshotCursor: "s1.7",
+      snapshotCursor: "s1.8",
       nextOffset: 2,
       hasMore: true,
-      resumeCursor: "v1.7",
+      resumeCursor: "v1.8",
     });
     expect(first.changes.map((change) => change.entityId)).toEqual(["account-1", "category-1"]);
 
@@ -375,7 +397,7 @@ describe("mobile sync full snapshot", () => {
       offset: first.nextOffset,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.7" });
+    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.8" });
     expect(second.changes.map((change) => change.entityId)).toEqual(["budget-1", "debt-1"]);
     expect(JSON.stringify(second)).not.toContain("account-after-snapshot");
   });
@@ -573,7 +595,7 @@ describe("mobile sync pull repository", () => {
       limit: 2,
     });
     expect(fourth).toMatchObject({ hasMore: false });
-    expect(fourth.changes.map((change) => change.entityId)).toEqual(["subscription-1"]);
+    expect(fourth.changes.map((change) => change.entityId)).toEqual(["subscription-1", "event-1"]);
   });
 
   it("captures web updates and deletion tombstones without device timestamps", async () => {
@@ -618,6 +640,13 @@ describe("mobile sync pull repository", () => {
         payload: { name: "Netflix", status: "canceled", billingCycle: "monthly" },
       },
       {
+        entityType: "event",
+        entityId: "event-1",
+        revision: 1,
+        operation: "upsert",
+        payload: { title: "Birthday dinner", date: "2026-08-20", startTime: "18:00" },
+      },
+      {
         entityType: "account",
         entityId: "account-1",
         revision: 2,
@@ -632,7 +661,7 @@ describe("mobile sync pull repository", () => {
         payload: null,
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.9");
+    expect(pulled.nextCursor).toBe("v1.a");
   });
 
 
@@ -648,7 +677,7 @@ describe("mobile sync pull repository", () => {
 
     const pulled = await repository.pull(env, "tenant-1", {
       protocolVersion: 1,
-      cursor: "v1.7",
+      cursor: "v1.8",
       limit: 10,
     });
     expect(pulled.changes).toMatchObject([
@@ -667,7 +696,7 @@ describe("mobile sync pull repository", () => {
         payload: { description: "Spotify", amountMinor: -19900 } as object,
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.9");
+    expect(pulled.nextCursor).toBe("v1.a");
     expect(pulled.hasMore).toBe(false);
 
     const snapshot = await repository.snapshot(env, "tenant-1", {
@@ -2502,6 +2531,174 @@ describe("mobile sync subscription push repository", () => {
       code: "stale_revision",
       serverRevision: 2,
       serverPayload: { id: "subscription-1", name: "Server Name", status: "canceled" },
+    });
+  });
+});
+
+describe("mobile sync event push repository", () => {
+  const clientId = "60000000-0000-4000-8000-000000000001";
+
+  it("creates, updates, and deletes a calendar event idempotently", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const entityId = "60000000-0000-4000-8000-000000000002";
+    const create = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "60000000-0000-4000-8000-000000000003",
+          idempotencyKey: "60000000-0000-4000-8000-000000000004",
+          entityType: "event" as const,
+          entityId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: {
+            title: "Payday planning",
+            date: "2026-08-30",
+            startTime: "09:00",
+            endTime: "10:00",
+            notes: "Plan August allocations",
+          },
+        },
+      ],
+    };
+
+    const first = await repository.push(env, "tenant-1", create);
+    expect(await repository.push(env, "tenant-1", create)).toEqual(first);
+    expect(first.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+    expect(
+      database
+        .prepare("SELECT title, date, start_time AS startTime, revision FROM calendar_events WHERE id = ?")
+        .get(entityId),
+    ).toEqual({ title: "Payday planning", date: "2026-08-30", startTime: "09:00", revision: 1 });
+
+    const updated = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "60000000-0000-4000-8000-000000000005",
+          idempotencyKey: "60000000-0000-4000-8000-000000000006",
+          entityType: "event",
+          entityId,
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { title: "Payday review", startTime: null, endTime: null },
+        },
+      ],
+    });
+    expect(updated.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+    expect(
+      database
+        .prepare("SELECT title, start_time AS startTime, revision FROM calendar_events WHERE id = ?")
+        .get(entityId),
+    ).toEqual({ title: "Payday review", startTime: null, revision: 2 });
+
+    const removed = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "60000000-0000-4000-8000-000000000007",
+          idempotencyKey: "60000000-0000-4000-8000-000000000008",
+          entityType: "event",
+          entityId,
+          operationType: "delete",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    expect(removed.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
+    expect(
+      database.prepare("SELECT 1 AS found FROM calendar_events WHERE id = ?").get(entityId),
+    ).toBeUndefined();
+    expect(
+      database
+        .prepare(
+          "SELECT entity_type AS entityType, operation FROM mobile_sync_changes WHERE entity_id = ? ORDER BY sequence DESC LIMIT 1",
+        )
+        .get(entityId),
+    ).toEqual({ entityType: "event", operation: "delete" });
+  });
+
+  it("rejects an update whose merged times are invalid", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+
+    const badEnd = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "60000000-0000-4000-8000-000000000009",
+          idempotencyKey: "60000000-0000-4000-8000-00000000000a",
+          entityType: "event",
+          entityId: "event-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { startTime: null, endTime: "21:00" },
+        },
+      ],
+    });
+    expect(badEnd.results[0]).toMatchObject({ status: "rejected", code: "invalid_operation" });
+    expect(
+      database.prepare("SELECT revision FROM calendar_events WHERE id = ?").get("event-1"),
+    ).toEqual({ revision: 1 });
+
+    const badOrder = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "60000000-0000-4000-8000-00000000000b",
+          idempotencyKey: "60000000-0000-4000-8000-00000000000c",
+          entityType: "event",
+          entityId: "event-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { startTime: "21:00", endTime: "20:00" },
+        },
+      ],
+    });
+    expect(badOrder.results[0]).toMatchObject({ status: "rejected", code: "invalid_operation" });
+    expect(
+      database.prepare("SELECT revision FROM calendar_events WHERE id = ?").get("event-1"),
+    ).toEqual({ revision: 1 });
+  });
+
+  it("returns a stale revision conflict for an out-of-date event update", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    database.prepare("UPDATE calendar_events SET title = ? WHERE id = ?").run("Anniversary", "event-1");
+
+    const stale = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "60000000-0000-4000-8000-00000000000d",
+          idempotencyKey: "60000000-0000-4000-8000-00000000000e",
+          entityType: "event",
+          entityId: "event-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { title: "Dinner" },
+        },
+      ],
+    });
+    expect(stale.results[0]).toMatchObject({
+      status: "conflict",
+      code: "stale_revision",
+      serverRevision: 2,
+      serverPayload: { id: "event-1", title: "Anniversary" },
     });
   });
 });

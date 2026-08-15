@@ -2,10 +2,13 @@ import {
   MOBILE_SYNC_PROTOCOL_VERSION,
   accountInputSchema,
   buildTransferLegs,
+  calendarEventInputSchema,
+  calendarEventUpdateSchema,
   categoryInputSchema,
   mobileSyncAcknowledgeResponseSchema,
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
+  mobileSyncEventSnapshotSchema,
   mobileSyncPushResultSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncChangeSchema,
@@ -46,7 +49,7 @@ import { validateTransactionReferences } from "./transactions";
 
 interface ChangeRow {
   sequence: number;
-  entityType: "account" | "category" | "transaction" | "budget" | "goal" | "debt" | "subscription";
+  entityType: "account" | "category" | "transaction" | "budget" | "goal" | "debt" | "subscription" | "event";
   entityId: string;
   rowRevision: number;
   operation: "upsert" | "delete";
@@ -83,6 +86,7 @@ type BudgetSnapshot = ReturnType<typeof mobileSyncBudgetSnapshotSchema.parse>;
 type GoalSnapshot = ReturnType<typeof mobileSyncGoalSnapshotSchema.parse>;
 type DebtSnapshot = ReturnType<typeof mobileSyncDebtSnapshotSchema.parse>;
 type SubscriptionSnapshot = ReturnType<typeof mobileSyncSubscriptionSnapshotSchema.parse>;
+type EventSnapshot = ReturnType<typeof mobileSyncEventSnapshotSchema.parse>;
 type EntitySnapshot =
   | AccountSnapshot
   | CategorySnapshot
@@ -91,7 +95,8 @@ type EntitySnapshot =
   | BudgetSnapshot
   | GoalSnapshot
   | DebtSnapshot
-  | SubscriptionSnapshot;
+  | SubscriptionSnapshot
+  | EventSnapshot;
 
 function withCategoryLock(snapshot: EntitySnapshot | null, hasPro: boolean): EntitySnapshot | null {
   const category = mobileSyncCategorySnapshotSchema.safeParse(snapshot);
@@ -377,7 +382,9 @@ async function readEntitySnapshot(
                 ? "mobile_sync_debt_rows"
                 : entityType === "subscription"
                   ? "mobile_sync_subscription_rows"
-                  : "mobile_sync_transfer_rows";
+                  : entityType === "event"
+                    ? "mobile_sync_event_rows"
+                    : "mobile_sync_transfer_rows";
   const row = await env.DB.prepare(
     `SELECT payload_json AS payloadJson FROM ${view} WHERE tenant_id = ? AND entity_id = ?`,
   )
@@ -400,7 +407,9 @@ async function readEntitySnapshot(
                 ? mobileSyncDebtSnapshotSchema.parse(payload)
                 : entityType === "subscription"
                   ? mobileSyncSubscriptionSnapshotSchema.parse(payload)
-                  : mobileSyncTransferSnapshotSchema.parse(payload);
+                  : entityType === "event"
+                    ? mobileSyncEventSnapshotSchema.parse(payload)
+                    : mobileSyncTransferSnapshotSchema.parse(payload);
   } catch {
     throw new Error("Stored mobile synchronization entity failed validation.");
   }
@@ -590,6 +599,10 @@ async function businessRejection(
         );
       }
     }
+    return null;
+  }
+
+  if (operation.entityType === "event") {
     return null;
   }
 
@@ -1975,6 +1988,31 @@ export function createMobileSyncRepository(
           }
         }
 
+        if (operation.entityType === "event" && operation.operationType === "update" && current) {
+          const payload = operation.payload;
+          const event = mobileSyncEventSnapshotSchema.parse(current);
+          const merged = calendarEventInputSchema.safeParse({
+            title: payload.title ?? event.title,
+            date: payload.date ?? event.date,
+            startTime: payload.startTime === undefined ? event.startTime : payload.startTime,
+            endTime: payload.endTime === undefined ? event.endTime : payload.endTime,
+            notes: payload.notes === undefined ? event.notes : payload.notes,
+          });
+          if (!merged.success) {
+            results.push(
+              await persistResult(
+                env,
+                tenantId,
+                input.clientId,
+                operation,
+                hash,
+                rejectedResult(operation, "invalid_operation", "Check the event fields."),
+              ),
+            );
+            continue;
+          }
+        }
+
         const timestamp = serverTimestamp();
         let transaction: NonTransferTransactionInput | null = null;
         let currentTransaction: TransactionSnapshot | null = null;
@@ -2450,6 +2488,46 @@ export function createMobileSyncRepository(
                 "DELETE FROM transactions WHERE tenant_id = ? AND subscription_id = ?",
               ).bind(tenantId, operation.entityId),
             );
+          }
+        } else if (operation.entityType === "event") {
+          if (operation.operationType === "create") {
+            const payload = operation.payload;
+            mutation = env.DB.prepare(
+              `INSERT INTO calendar_events (
+                 id, tenant_id, title, date, start_time, end_time, notes, revision, updated_at
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+            ).bind(
+              operation.entityId,
+              tenantId,
+              payload.title,
+              payload.date,
+              payload.startTime ?? null,
+              payload.endTime ?? null,
+              payload.notes ?? null,
+              timestamp,
+            );
+          } else if (operation.operationType === "update") {
+            const payload = operation.payload;
+            const event = mobileSyncEventSnapshotSchema.parse(current);
+            mutation = env.DB.prepare(
+              `UPDATE calendar_events SET
+                 title = ?, date = ?, start_time = ?, end_time = ?, notes = ?, updated_at = ?
+               WHERE id = ? AND tenant_id = ? AND revision = ?`,
+            ).bind(
+              payload.title ?? event.title,
+              payload.date ?? event.date,
+              payload.startTime === undefined ? event.startTime : payload.startTime,
+              payload.endTime === undefined ? event.endTime : payload.endTime,
+              payload.notes === undefined ? event.notes : payload.notes,
+              timestamp,
+              operation.entityId,
+              tenantId,
+              operation.baseRevision,
+            );
+          } else {
+            mutation = env.DB.prepare(
+              "DELETE FROM calendar_events WHERE id = ? AND tenant_id = ? AND revision = ?",
+            ).bind(operation.entityId, tenantId, operation.baseRevision);
           }
         } else {
           mutation =
