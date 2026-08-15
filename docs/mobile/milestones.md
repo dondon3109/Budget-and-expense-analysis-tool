@@ -444,4 +444,34 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   Hermes export succeeds. No remote D1, deployment, or production service was changed.
 - Milestone 6 is complete. Remaining gaps are unchanged: M5 authenticated on-device dashboard
   run, M2 social sign-in runtime proof, M3/M4 runtime proofs, Android runtime (no emulator on
-  this host), and M7-M9.
+  this host), and M8-M9.
+
+## Milestone 7 progress
+
+- The web's security-capped workbook conversion (5 MB file cap, zip-metadata validation,
+  100k-cell and 10k-row caps, formula last-value semantics, canonical CSV serialization) moved
+  into `packages/shared` as the single implementation both platforms use; the web keeps its
+  local import paths through thin re-exports and stays byte-for-byte identical. Bank presets
+  (BPI, BDO, MariBank, BoA, JPMorgan) and preset detection also moved to shared.
+- The mobile flow preserves the web contract end to end: a native document picker for
+  CSV/XLSX/XLS with byte caps checked before reading, shared header inspection with suggested
+  and alternative header rows, bank-preset or manual column mapping (date, description, amount
+  or debit+credit, type, category), and a fallback date when the file has none. Server-side
+  preview then shows ready, duplicate, and invalid rows with each row's errors; a bottom sheet
+  applies per-row category and type overrides; explicit confirmation posts the commit with the
+  overrides, and the next synchronization converges the imported transactions on device.
+  Nothing touches the workspace before confirmation.
+- The transport validates every response with new shared response schemas and maps 401/402/429/
+  preview-expiry/monthly-limit rejections to honest errors; a fresh access token is retried once
+  on session expiry. Server row and byte caps are mirrored (500 rows, 1 MB CSV) so no hidden
+  rows can be imported unseen.
+- Validation for this slice: 16 new shared tests (workbook conversion and preset resolution),
+  16 new mobile tests (form rules and transport mapping), full shared+API suite at 579 tests
+  across 62 files, mobile at 189 tests across 27 suites, clean typecheck and lint everywhere,
+  web typecheck and all 493 web tests green, and a fresh iOS dev build with
+  expo-document-picker 57.0.1 and expo-file-system 57.0.4 compiled, installed, and running on
+  the iPhone 17 Pro simulator with no crashes.
+- Remaining M7 caveat: the picker-to-commit path on a device with a real signed-in workspace
+  still depends on the M5 authenticated-run gap (no test account on this host). Offline imports
+  are intentionally unsupported: imports are online-only by design so duplicate prevention and
+  atomic commit stay server-authoritative.
