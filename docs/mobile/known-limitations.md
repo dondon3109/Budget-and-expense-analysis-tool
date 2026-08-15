@@ -26,7 +26,9 @@ device run on this machine.
   Android runtime (no device/emulator), release-build device performance
   numbers, and background-task device-time scheduling.
 - **No Android device**, and a few flows remain unverified even on iOS:
-  Google OAuth, Sign in with Apple, and the support-chat turn (screens that need a
+  Google OAuth, Sign in with Apple, the support-chat turn, and on-device import file
+  selection (the iOS 26 document picker ignored synthesized single taps; parsing,
+  preview and commit transports are unit-tested) (screens that need a
   billing checkout, account deletion, imports end-to-end) are verified up to
   the transport layer with schema-tested mocks and a booting dev build, not a
   live session. Multi-device and web/mobile convergence remain unit/API-tested

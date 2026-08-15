@@ -624,3 +624,18 @@ conflict resolution) has complete production runtime proof on iOS. The
 remaining verification items are now only: Google OAuth and Sign in with
 Apple runtime, Android runtime (no device), and release-build device
 performance numbers.
+
+## Sign-out safety and workspace lifecycle (production proof)
+
+- Signing out from the More screen with a production account showed the
+  risk-aware confirmation, cleared the session, discarded the encrypted local
+  workspace, and redirected to the public sign-in screen (route guard).
+- Signing back in re-created the workspace (schema v10), pulled from the
+  server, and converged to "Up to date" with the account's records — no
+  cross-user residue and no data loss in either direction.
+
+Also exercised this round: the on-device import flow reached the native
+document picker with a seeded CSV visible under On My iPhone; the iOS 26
+picker did not accept synthesized single-tap selection, so file selection
+remains to be proven (the parsing/preview/commit transports are unit-tested
+and the picker opens correctly).
