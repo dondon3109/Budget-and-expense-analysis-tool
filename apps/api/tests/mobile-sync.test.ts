@@ -129,6 +129,20 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
       updated_at text NOT NULL DEFAULT (datetime('now')),
       UNIQUE (tenant_id, name)
     );
+    CREATE TABLE debts (
+      id text PRIMARY KEY NOT NULL,
+      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name text NOT NULL,
+      type text NOT NULL,
+      balance_minor integer NOT NULL,
+      apr_basis_points integer NOT NULL,
+      minimum_payment_minor integer NOT NULL,
+      balance_as_of text NOT NULL,
+      status text NOT NULL DEFAULT 'active',
+      created_at text NOT NULL DEFAULT (datetime('now')),
+      updated_at text NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (tenant_id, name)
+    );
   `);
   database.exec(`
     INSERT INTO tenants (id, kind, name) VALUES
@@ -150,6 +164,10 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
       id, tenant_id, name, target_amount_minor, current_amount_minor, target_date, status
     ) VALUES
       ('goal-1', 'tenant-1', 'Emergency Fund', 100000, 25000, '2026-12-31', 'active');
+    INSERT INTO debts (
+      id, tenant_id, name, type, balance_minor, apr_basis_points, minimum_payment_minor, balance_as_of, status
+    ) VALUES
+      ('debt-1', 'tenant-1', 'Car Loan', 'auto_loan', 500000, 850, 12000, '2026-08-14', 'active');
   `);
   const migration = readFileSync(
     new URL("../../../db/migrations/0034_mobile_sync_foundation.sql", import.meta.url),
@@ -200,6 +218,15 @@ function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync
   }
   for (const statement of readFileSync(
     new URL("../../../db/migrations/0039_mobile_sync_goals.sql", import.meta.url),
+    "utf8",
+  )
+    .split("--> statement-breakpoint")
+    .map((part) => part.trim())
+    .filter(Boolean)) {
+    database.exec(statement);
+  }
+  for (const statement of readFileSync(
+    new URL("../../../db/migrations/0040_mobile_sync_debts.sql", import.meta.url),
     "utf8",
   )
     .split("--> statement-breakpoint")
@@ -304,10 +331,10 @@ describe("mobile sync full snapshot", () => {
       limit: 2,
     });
     expect(first).toMatchObject({
-      snapshotCursor: "s1.5",
+      snapshotCursor: "s1.6",
       nextOffset: 2,
       hasMore: true,
-      resumeCursor: "v1.5",
+      resumeCursor: "v1.6",
     });
     expect(first.changes.map((change) => change.entityId)).toEqual(["account-1", "category-1"]);
 
@@ -321,8 +348,8 @@ describe("mobile sync full snapshot", () => {
       offset: first.nextOffset,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.5" });
-    expect(second.changes.map((change) => change.entityId)).toEqual(["budget-1", "goal-1"]);
+    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.6" });
+    expect(second.changes.map((change) => change.entityId)).toEqual(["budget-1", "debt-1"]);
     expect(JSON.stringify(second)).not.toContain("account-after-snapshot");
   });
 
@@ -512,7 +539,7 @@ describe("mobile sync pull repository", () => {
       limit: 2,
     });
     expect(third).toMatchObject({ hasMore: false });
-    expect(third.changes.map((change) => change.entityId)).toEqual(["goal-1"]);
+    expect(third.changes.map((change) => change.entityId)).toEqual(["goal-1", "debt-1"]);
   });
 
   it("captures web updates and deletion tombstones without device timestamps", async () => {
@@ -543,6 +570,13 @@ describe("mobile sync pull repository", () => {
         payload: { name: "Emergency Fund", targetAmountMinor: 100000, currentAmountMinor: 25000 },
       },
       {
+        entityType: "debt",
+        entityId: "debt-1",
+        revision: 1,
+        operation: "upsert",
+        payload: { name: "Car Loan", type: "auto_loan", balanceMinor: 500000 },
+      },
+      {
         entityType: "account",
         entityId: "account-1",
         revision: 2,
@@ -557,7 +591,7 @@ describe("mobile sync pull repository", () => {
         payload: null,
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.7");
+    expect(pulled.nextCursor).toBe("v1.8");
   });
 
   it("requires a safe full resync when a cursor is ahead of server state", async () => {
@@ -1794,7 +1828,7 @@ describe("mobile sync financial goal push repository", () => {
             targetAmountMinor: 500_000,
             currentAmountMinor: 0,
             targetDate: "2027-12-31",
-            status: "active",
+            status: "active" as const,
           },
         },
       ],
@@ -1942,6 +1976,155 @@ describe("mobile sync financial goal push repository", () => {
       code: "stale_revision",
       serverRevision: 2,
       serverPayload: { id: "goal-1", currentAmountMinor: 50_000 },
+    });
+  });
+});
+
+describe("mobile sync debt push repository", () => {
+  const clientId = "40000000-0000-4000-8000-000000000001";
+
+  it("creates, updates, and deletes a debt idempotently", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const entityId = "40000000-0000-4000-8000-000000000002";
+    const create = {
+      protocolVersion: 1 as const,
+      clientId,
+      operations: [
+        {
+          operationId: "40000000-0000-4000-8000-000000000003",
+          idempotencyKey: "40000000-0000-4000-8000-000000000004",
+          entityType: "debt" as const,
+          entityId,
+          operationType: "create" as const,
+          baseRevision: 0 as const,
+          dependencyIds: [],
+          payload: {
+            name: "Personal Loan",
+            type: "personal_loan" as const,
+            balanceMinor: 250_000,
+            aprBasisPoints: 1_200,
+            minimumPaymentMinor: 8_000,
+            balanceAsOf: "2026-08-14",
+            status: "active" as const,
+          },
+        },
+      ],
+    };
+
+    const first = await repository.push(env, "tenant-1", create);
+    expect(await repository.push(env, "tenant-1", create)).toEqual(first);
+    expect(first.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
+
+    const updated = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "40000000-0000-4000-8000-000000000005",
+          idempotencyKey: "40000000-0000-4000-8000-000000000006",
+          entityType: "debt",
+          entityId,
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { balanceMinor: 200_000 },
+        },
+      ],
+    });
+    expect(updated.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
+    expect(
+      database
+        .prepare("SELECT balance_minor AS balanceMinor, revision FROM debts WHERE id = ?")
+        .get(entityId),
+    ).toEqual({ balanceMinor: 200_000, revision: 2 });
+
+    const removed = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "40000000-0000-4000-8000-000000000007",
+          idempotencyKey: "40000000-0000-4000-8000-000000000008",
+          entityType: "debt",
+          entityId,
+          operationType: "delete",
+          baseRevision: 2,
+          dependencyIds: [],
+          payload: {},
+        },
+      ],
+    });
+    expect(removed.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
+    expect(database.prepare("SELECT 1 AS found FROM debts WHERE id = ?").get(entityId)).toBeUndefined();
+    expect(
+      database
+        .prepare(
+          "SELECT entity_type AS entityType, operation FROM mobile_sync_changes WHERE entity_id = ? ORDER BY sequence DESC LIMIT 1",
+        )
+        .get(entityId),
+    ).toEqual({ entityType: "debt", operation: "delete" });
+  });
+
+  it("rejects a duplicate debt name case-insensitively", async () => {
+    const { env } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const duplicate = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "40000000-0000-4000-8000-000000000009",
+          idempotencyKey: "40000000-0000-4000-8000-00000000000a",
+          entityType: "debt",
+          entityId: "40000000-0000-4000-8000-00000000000b",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: {
+            name: "CAR LOAN",
+            type: "auto_loan",
+            balanceMinor: 100_000,
+            aprBasisPoints: 0,
+            minimumPaymentMinor: 0,
+            balanceAsOf: "2026-08-14",
+            status: "active",
+          },
+        },
+      ],
+    });
+    expect(duplicate.results[0]).toMatchObject({
+      status: "rejected",
+      code: "invalid_operation",
+    });
+  });
+
+  it("returns a stale revision conflict for an out-of-date debt update", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    database.prepare("UPDATE debts SET balance_minor = ? WHERE id = ?").run(450_000, "debt-1");
+
+    const stale = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          operationId: "40000000-0000-4000-8000-00000000000c",
+          idempotencyKey: "40000000-0000-4000-8000-00000000000d",
+          entityType: "debt",
+          entityId: "debt-1",
+          operationType: "update",
+          baseRevision: 1,
+          dependencyIds: [],
+          payload: { balanceMinor: 420_000 },
+        },
+      ],
+    });
+    expect(stale.results[0]).toMatchObject({
+      status: "conflict",
+      code: "stale_revision",
+      serverRevision: 2,
+      serverPayload: { id: "debt-1", balanceMinor: 450_000 },
     });
   });
 });

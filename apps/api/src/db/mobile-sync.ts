@@ -9,6 +9,7 @@ import {
   mobileSyncPushResultSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncChangeSchema,
+  mobileSyncDebtSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
@@ -44,7 +45,7 @@ import { validateTransactionReferences } from "./transactions";
 
 interface ChangeRow {
   sequence: number;
-  entityType: "account" | "category" | "transaction" | "budget" | "goal";
+  entityType: "account" | "category" | "transaction" | "budget" | "goal" | "debt";
   entityId: string;
   rowRevision: number;
   operation: "upsert" | "delete";
@@ -79,13 +80,15 @@ type TransactionSnapshot = ReturnType<typeof mobileSyncTransactionSnapshotSchema
 type TransferSnapshot = ReturnType<typeof mobileSyncTransferSnapshotSchema.parse>;
 type BudgetSnapshot = ReturnType<typeof mobileSyncBudgetSnapshotSchema.parse>;
 type GoalSnapshot = ReturnType<typeof mobileSyncGoalSnapshotSchema.parse>;
+type DebtSnapshot = ReturnType<typeof mobileSyncDebtSnapshotSchema.parse>;
 type EntitySnapshot =
   | AccountSnapshot
   | CategorySnapshot
   | TransactionSnapshot
   | TransferSnapshot
   | BudgetSnapshot
-  | GoalSnapshot;
+  | GoalSnapshot
+  | DebtSnapshot;
 
 function withCategoryLock(snapshot: EntitySnapshot | null, hasPro: boolean): EntitySnapshot | null {
   const category = mobileSyncCategorySnapshotSchema.safeParse(snapshot);
@@ -363,7 +366,9 @@ async function readEntitySnapshot(
             ? "mobile_sync_budget_rows"
             : entityType === "goal"
               ? "mobile_sync_goal_rows"
-              : "mobile_sync_transfer_rows";
+              : entityType === "debt"
+                ? "mobile_sync_debt_rows"
+                : "mobile_sync_transfer_rows";
   const row = await env.DB.prepare(
     `SELECT payload_json AS payloadJson FROM ${view} WHERE tenant_id = ? AND entity_id = ?`,
   )
@@ -382,7 +387,9 @@ async function readEntitySnapshot(
             ? mobileSyncBudgetSnapshotSchema.parse(payload)
             : entityType === "goal"
               ? mobileSyncGoalSnapshotSchema.parse(payload)
-              : mobileSyncTransferSnapshotSchema.parse(payload);
+              : entityType === "debt"
+                ? mobileSyncDebtSnapshotSchema.parse(payload)
+                : mobileSyncTransferSnapshotSchema.parse(payload);
   } catch {
     throw new Error("Stored mobile synchronization entity failed validation.");
   }
@@ -408,12 +415,18 @@ function conflictResult(
 async function hasNameConflict(
   env: Bindings,
   tenantId: string,
-  entityType: "account" | "category" | "goal",
+  entityType: "account" | "category" | "goal" | "debt",
   name: string,
   excludeId?: string,
 ): Promise<boolean> {
   const table =
-    entityType === "account" ? "accounts" : entityType === "category" ? "categories" : "financial_goals";
+    entityType === "account"
+      ? "accounts"
+      : entityType === "category"
+        ? "categories"
+        : entityType === "goal"
+          ? "financial_goals"
+          : "debts";
   const row = await env.DB.prepare(
     `SELECT id FROM ${table}
      WHERE tenant_id = ? AND lower(name) = lower(?)${excludeId ? " AND id != ?" : ""}
@@ -524,6 +537,27 @@ async function businessRejection(
           "Current savings cannot exceed the target amount.",
         );
       }
+    }
+    return null;
+  }
+
+  if (operation.entityType === "debt") {
+    const name = operation.operationType === "delete" ? null : operation.payload.name;
+    if (
+      name &&
+      (await hasNameConflict(
+        env,
+        tenantId,
+        "debt",
+        name,
+        operation.operationType === "create" ? undefined : operation.entityId,
+      ))
+    ) {
+      return rejectedResult(
+        operation,
+        "invalid_operation",
+        "A debt with that name already exists.",
+      );
     }
     return null;
   }
@@ -2136,6 +2170,65 @@ export function createMobileSyncRepository(
           } else {
             mutation = env.DB.prepare(
               `DELETE FROM financial_goals WHERE id = ? AND tenant_id = ? AND revision = ?`,
+            ).bind(operation.entityId, tenantId, operation.baseRevision);
+          }
+        } else if (operation.entityType === "debt") {
+          if (operation.operationType === "create") {
+            const payload = operation.payload;
+            mutation = env.DB.prepare(
+              `INSERT INTO debts (
+                 id, tenant_id, name, type, balance_minor, apr_basis_points,
+                 minimum_payment_minor, balance_as_of, status, revision, updated_at
+               )
+               SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?
+               WHERE NOT EXISTS (
+                 SELECT 1 FROM debts WHERE tenant_id = ? AND lower(name) = lower(?)
+               )`,
+            ).bind(
+              operation.entityId,
+              tenantId,
+              payload.name,
+              payload.type,
+              payload.balanceMinor,
+              payload.aprBasisPoints,
+              payload.minimumPaymentMinor,
+              payload.balanceAsOf,
+              payload.status,
+              timestamp,
+              tenantId,
+              payload.name,
+            );
+          } else if (operation.operationType === "update") {
+            const payload = operation.payload;
+            const debt = mobileSyncDebtSnapshotSchema.parse(current);
+            mutation = env.DB.prepare(
+              `UPDATE debts SET
+                 name = ?, type = ?, balance_minor = ?, apr_basis_points = ?,
+                 minimum_payment_minor = ?, balance_as_of = ?, status = ?, updated_at = ?
+               WHERE id = ? AND tenant_id = ? AND revision = ?
+                 AND NOT EXISTS (
+                   SELECT 1 FROM debts AS other
+                   WHERE other.tenant_id = ? AND lower(other.name) = lower(?) AND other.id != ?
+                 )`,
+            ).bind(
+              payload.name ?? debt.name,
+              payload.type ?? debt.type,
+              payload.balanceMinor ?? debt.balanceMinor,
+              payload.aprBasisPoints ?? debt.aprBasisPoints,
+              payload.minimumPaymentMinor ?? debt.minimumPaymentMinor,
+              payload.balanceAsOf ?? debt.balanceAsOf,
+              payload.status ?? debt.status,
+              timestamp,
+              operation.entityId,
+              tenantId,
+              operation.baseRevision,
+              tenantId,
+              payload.name ?? debt.name,
+              operation.entityId,
+            );
+          } else {
+            mutation = env.DB.prepare(
+              `DELETE FROM debts WHERE id = ? AND tenant_id = ? AND revision = ?`,
             ).bind(operation.entityId, tenantId, operation.baseRevision);
           }
         } else {

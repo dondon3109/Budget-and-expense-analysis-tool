@@ -5,6 +5,8 @@ import {
   accountUpdateSchema,
   categoryInputSchema,
   categoryUpdateSchema,
+  debtInputSchema,
+  debtUpdateSchema,
   isoDateSchema,
   monthStartSchema,
   resourceIdSchema,
@@ -17,13 +19,15 @@ import {
   categoryOrigins,
   categoryRequiredPlans,
   currencies,
+  debtStatuses,
+  debtTypes,
   financialGoalStatuses,
   interestFrequencies,
   transactionKinds,
 } from "./types";
 
 export const MOBILE_SYNC_PROTOCOL_VERSION = 1 as const;
-export const mobileSyncEntityTypes = ["account", "category", "transaction", "transfer", "budget", "goal"] as const;
+export const mobileSyncEntityTypes = ["account", "category", "transaction", "transfer", "budget", "goal", "debt"] as const;
 export const mobileSyncOperationTypes = ["create", "update", "delete"] as const;
 
 const uuidSchema = z.string().uuid();
@@ -153,6 +157,21 @@ export const mobileSyncGoalSnapshotSchema = z
   })
   .strict();
 
+export const mobileSyncDebtSnapshotSchema = z
+  .object({
+    id: resourceIdSchema,
+    name: z.string().min(1).max(80),
+    type: z.enum(debtTypes),
+    balanceMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    aprBasisPoints: z.number().int().min(0).max(10_000),
+    minimumPaymentMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    balanceAsOf: isoDateSchema,
+    status: z.enum(debtStatuses),
+    revision: serverRevisionSchema,
+    updatedAt: serverTimestampSchema,
+  })
+  .strict();
+
 export const mobileSyncSnapshotSchema = z.union([
   mobileSyncAccountSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
@@ -160,6 +179,7 @@ export const mobileSyncSnapshotSchema = z.union([
   mobileSyncTransferSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
+  mobileSyncDebtSnapshotSchema,
 ]);
 
 export const mobileSyncChangeSchema = z
@@ -194,7 +214,9 @@ export const mobileSyncChangeSchema = z
               ? mobileSyncBudgetSnapshotSchema
               : change.entityType === "goal"
                 ? mobileSyncGoalSnapshotSchema
-                : mobileSyncTransactionSnapshotSchema;
+                : change.entityType === "debt"
+                  ? mobileSyncDebtSnapshotSchema
+                  : mobileSyncTransactionSnapshotSchema;
       if (!expectedSchema.safeParse(change.payload).success) {
         context.addIssue({
           code: "custom",
@@ -271,7 +293,7 @@ const operationIdentityShape = {
 } as const;
 
 const createOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget" | "goal",
+  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget" | "goal" | "debt",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -288,7 +310,7 @@ const createOperation = <
     .strict();
 
 const updateOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget" | "goal",
+  TEntity extends "account" | "category" | "transaction" | "transfer" | "budget" | "goal" | "debt",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -305,7 +327,7 @@ const updateOperation = <
     .strict();
 
 const deleteOperation = <
-  TEntity extends "account" | "category" | "transaction" | "transfer" | "goal",
+  TEntity extends "account" | "category" | "transaction" | "transfer" | "goal" | "debt",
 >(
   entityType: TEntity,
 ) =>
@@ -374,6 +396,9 @@ export const mobileSyncPushOperationSchema = z
     createOperation("goal", mobileSyncGoalInputSchema),
     updateOperation("goal", mobileSyncGoalUpdateSchema),
     deleteOperation("goal"),
+    createOperation("debt", debtInputSchema),
+    updateOperation("debt", debtUpdateSchema),
+    deleteOperation("debt"),
     createOperation(
       "transfer",
       z
@@ -532,7 +557,9 @@ export const mobileSyncPushResultSchema = z
               ? mobileSyncBudgetSnapshotSchema
               : result.entityType === "goal"
                 ? mobileSyncGoalSnapshotSchema
-                : mobileSyncTransferSnapshotSchema;
+                : result.entityType === "debt"
+                  ? mobileSyncDebtSnapshotSchema
+                  : mobileSyncTransferSnapshotSchema;
     if (!expectedSchema.safeParse(result.serverPayload).success) {
       context.addIssue({
         code: "custom",
