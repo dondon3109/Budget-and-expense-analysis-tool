@@ -597,3 +597,30 @@ With explicit approval, the mobile-sync backend was deployed to production:
 Remaining: offline-mutation push and conflict recovery still need their on-device runtime
 proof (unit/API-tested), Google OAuth and Sign in with Apple runtime, Android runtime, and
 the assistant-send hardware-keyboard investigation.
+
+## Offline edit and multi-client conflict resolution (production proof)
+
+- **Offline edit**: with the API blocked, a synced transaction was edited
+  on-device ("Mobile edited while offline") and saved — the row rendered the
+  edit immediately and queued the update in the encrypted outbox with its
+  original base revision.
+- **Concurrent web edit**: the same record was edited on the server while the
+  device was offline (revision bumped).
+- **Conflict detection**: on reconnect the device push was rejected on the
+  revision mismatch; the web version pulled; and the row surfaced
+  "Conflict needs review" with sync blocked ("Some saved changes need review
+  before synchronization can finish"). No silent overwrite.
+- **Explicit resolution UI**: the review screen presented both versions side
+  by side ("On this device" vs "On the server", "Zoption preserved both
+  versions. No device timestamp decides this choice."), required a deliberate
+  choice, confirmed the discard consequence, and converged to "Up to date"
+  after "Use server version" was chosen.
+- Test data was deleted afterwards; both clients are back to zero records and
+  `/etc/hosts` is restored.
+
+With this, the M4 vertical slice (offline create/edit/delete, outbox
+durability, restart recovery, push/pull convergence, tombstones, and explicit
+conflict resolution) has complete production runtime proof on iOS. The
+remaining verification items are now only: Google OAuth and Sign in with
+Apple runtime, Android runtime (no device), and release-build device
+performance numbers.
