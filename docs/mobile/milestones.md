@@ -713,3 +713,19 @@ credentials / Apple configuration), account-deletion runtime (would destroy
 the production account — requires an explicit user decision), tenant-switch
 runtime (requires a second verified account), and release-build performance /
 background-task scheduling on real hardware.
+
+## Google OAuth implementation and tenant isolation (second account)
+
+- **Google OAuth implemented**: the sign-in screen now offers "Continue with
+  Google" — the system-browser OAuth flow redirects to the existing
+  `/auth/callback` route, which exchanges the PKCE code and lands on the
+  authenticated tabs. The Supabase redirect URL
+  `zoption-dev://auth/callback` was added to the project by the owner.
+  Two focused component tests cover the action and its failure copy.
+- **Tenant isolation runtime proof** (second production account provided by
+  the owner): with a marker transaction on account A, signing out and in as
+  account B showed an empty workspace on-device and on the server (marker
+  absent); switching back to account A restored the marker. Both accounts
+  then returned to zero records. No cross-tenant data appeared on the device
+  in either direction — the immutable Supabase subject derives a separate
+  workspace per identity, exactly as required.
