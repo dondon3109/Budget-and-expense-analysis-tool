@@ -656,3 +656,23 @@ and the picker opens correctly).
   tombstone pulled back so the device converged to zero records.
 - The emulator remains available for future Android testing (see
   `build-instructions.md`).
+
+## Android offline and import-preview runtime proofs (Android 15 emulator)
+
+- **Offline create**: airplane mode (all radios off) flipped the app to the
+  honest offline state ("You're offline", "Waiting to sync"). A transaction
+  created on-device while offline rendered immediately with a **Pending sync**
+  badge and persisted to the Android SQLCipher workspace + outbox. After
+  connectivity returned, the sync pushed the operation and the production
+  server confirmed it (total 1, -₱30.00); the cleanup delete tombstone then
+  converged the device back to zero records.
+- **Import preview**: a CSV pushed to the emulator's Downloads folder was
+  selected through the native Android document picker; the app read the file,
+  detected the header row (Row 1: Date • Description • Amount), resolved the
+  preset mapping, and rendered the server-side preview
+  ("2 ready • 0 duplicate • 0 invalid", per-row amounts and statuses) —
+  nothing committed, and the preview expired without residue.
+
+The remaining verification items are now only: Google OAuth and Sign in with
+Apple runtime, release-build device performance numbers on real hardware, and
+background-task device-time scheduling.
