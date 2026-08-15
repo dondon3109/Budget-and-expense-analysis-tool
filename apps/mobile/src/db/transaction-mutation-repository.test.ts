@@ -1597,4 +1597,135 @@ describe("durable local subscription mutations", () => {
     ).toEqual({ name: "Server Sub", amount_minor: 9_900, server_revision: 4, sync_state: "synced" });
   });
 });
+describe("durable local calendar event mutations", () => {
+  let database: TestDatabase;
+
+  beforeEach(() => {
+    database = new TestDatabase();
+  });
+
+  afterEach(() => database.close());
+
+  it("creates, updates, and deletes an event offline", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createEvent({
+      title: "Birthday dinner",
+      date: "2026-08-20",
+      startTime: "18:00",
+      endTime: "20:00",
+      notes: "With family",
+    });
+    expect(
+      database.native
+        .prepare(
+          "SELECT title, date, start_time, server_revision, sync_state FROM calendar_events WHERE id = ?",
+        )
+        .get(id),
+    ).toEqual({
+      title: "Birthday dinner",
+      date: "2026-08-20",
+      start_time: "18:00",
+      server_revision: 0,
+      sync_state: "pending",
+    });
+
+    await mutations.updateEvent(id, {
+      title: "Birthday dinner",
+      date: "2026-08-21",
+      startTime: null,
+      endTime: null,
+      notes: null,
+    });
+    expect(
+      database.native
+        .prepare("SELECT date, start_time, end_time, sync_state FROM calendar_events WHERE id = ?")
+        .get(id),
+    ).toEqual({ date: "2026-08-21", start_time: null, end_time: null, sync_state: "pending" });
+
+    await mutations.deleteEvent(id);
+    expect(
+      database.native.prepare("SELECT id FROM calendar_events WHERE id = ?").get(id),
+    ).toBeUndefined();
+    expect(
+      database.native
+        .prepare("SELECT count(*) AS count FROM sync_outbox WHERE entity_id = ?")
+        .get(id),
+    ).toEqual({ count: 0 });
+  });
+
+  it("rejects an inverted time window locally", async () => {
+    const mutations = repository(database);
+    expect(() =>
+      mutations.createEvent({
+        title: "Bad window",
+        date: "2026-08-20",
+        startTime: "21:00",
+        endTime: "20:00",
+        notes: null,
+      }),
+    ).toThrow();
+    expect(
+      database.native.prepare("SELECT count(*) AS count FROM calendar_events").get(),
+    ).toEqual({ count: 0 });
+  });
+
+  it("preserves and resolves a stale event update conflict", async () => {
+    const mutations = repository(database);
+    database.native.exec(
+      "INSERT INTO calendar_events (id, title, date, start_time, end_time, notes, " +
+        "server_revision, server_updated_at, sync_state) VALUES (" +
+        "'event-server', 'Server Event', '2026-08-20', '18:00', '20:00', NULL, " +
+        "3, '2026-08-13 15:00:00', 'synced');",
+    );
+    await mutations.updateEvent("event-server", {
+      title: "Device Event",
+      date: "2026-08-20",
+      startTime: "18:00",
+      endTime: "20:00",
+      notes: null,
+    });
+    const request = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(request, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "event",
+          entityId: "event-server",
+          status: "conflict",
+          code: "stale_revision",
+          serverRevision: 4,
+          serverUpdatedAt: "2026-08-13 16:00:00",
+          serverPayload: {
+            id: "event-server",
+            title: "Server Event",
+            date: "2026-08-20",
+            startTime: "18:00",
+            endTime: "20:00",
+            notes: null,
+            revision: 4,
+            updatedAt: "2026-08-13 16:00:00",
+          },
+        },
+      ],
+    });
+
+    const conflict = await mutations.getEventConflict("event-server");
+    expect(conflict).toMatchObject({
+      entityId: "event-server",
+      local: { title: "Device Event" },
+      server: { title: "Server Event" },
+    });
+
+    await mutations.resolveEventConflict("event-server", "keep_server");
+    expect(
+      database.native
+        .prepare(
+          "SELECT title, server_revision, sync_state FROM calendar_events WHERE id = 'event-server'",
+        )
+        .get(),
+    ).toEqual({ title: "Server Event", server_revision: 4, sync_state: "synced" });
+  });
+});
+
 

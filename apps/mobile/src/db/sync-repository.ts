@@ -3,6 +3,7 @@ import {
   mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncDebtSnapshotSchema,
+  mobileSyncEventSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncSubscriptionSnapshotSchema,
   mobileSyncPullResponseSchema,
@@ -62,6 +63,8 @@ function entityTable(entityType: MobileSyncChange["entityType"]): string {
       return "debts";
     case "subscription":
       return "subscriptions";
+    case "event":
+      return "calendar_events";
   }
 }
 
@@ -356,6 +359,37 @@ async function applySubscription(database: SQLiteDatabase, change: MobileSyncCha
   );
 }
 
+async function applyEvent(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
+  if (change.entityType !== "event" || !change.payload) {
+    throw new Error("invalid_event_change");
+  }
+  const event = mobileSyncEventSnapshotSchema.parse(change.payload);
+  await database.runAsync(
+    `INSERT INTO calendar_events (
+      id, title, date, start_time, end_time, notes,
+      server_revision, server_updated_at, deleted_at, sync_state
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      date = excluded.date,
+      start_time = excluded.start_time,
+      end_time = excluded.end_time,
+      notes = excluded.notes,
+      server_revision = excluded.server_revision,
+      server_updated_at = excluded.server_updated_at,
+      deleted_at = NULL,
+      sync_state = 'synced'`,
+    event.id,
+    event.title,
+    event.date,
+    event.startTime,
+    event.endTime,
+    event.notes,
+    change.revision,
+    change.serverUpdatedAt,
+  );
+}
+
 async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
   await database.runAsync(
     `INSERT INTO sync_tombstones (
@@ -412,6 +446,10 @@ async function applyChange(database: SQLiteDatabase, change: MobileSyncChange): 
       return;
     case "subscription":
       await applySubscription(database, change);
+      return;
+    case "event":
+      await applyEvent(database, change);
+      return;
   }
 }
 
@@ -443,6 +481,10 @@ export async function applySnapshotChange(
       return;
     case "subscription":
       await applySubscription(database, change);
+      return;
+    case "event":
+      await applyEvent(database, change);
+      return;
   }
 }
 

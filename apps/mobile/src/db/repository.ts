@@ -1,5 +1,6 @@
 import {
   monthStartSchema,
+  subscriptionBillingDateForMonth,
   type AccountRecord,
   type BudgetRecord,
   type InterestSettings,
@@ -192,6 +193,63 @@ export interface LocalSubscriptionItem {
   categoryId: string | null;
   accountId: string | null;
   syncState: "synced" | "pending" | "failed" | "conflicted";
+}
+
+const calendarTransactionItemSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  description: z.string(),
+  amount_minor: z.number().int().safe(),
+  kind: z.enum(["income", "expense", "transfer"]),
+});
+
+const calendarSubscriptionItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  amount_minor: z.number().int().safe(),
+  billing_cycle: z.enum(["monthly", "yearly"]),
+  next_billing_date: z.string(),
+});
+
+const eventItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  date: z.string(),
+  start_time: z.string().nullable(),
+  end_time: z.string().nullable(),
+  notes: z.string().nullable(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
+
+export interface LocalEventItem {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  notes: string | null;
+  syncState: "synced" | "pending" | "failed" | "conflicted";
+}
+
+export interface LocalCalendarDay {
+  date: string;
+  transactions: {
+    id: string;
+    description: string;
+    amountMinor: number;
+    kind: "income" | "expense" | "transfer";
+  }[];
+  subscriptionBills: {
+    id: string;
+    name: string;
+    amountMinor: number;
+  }[];
+  events: LocalEventItem[];
+}
+
+export interface LocalCalendarMonth {
+  month: string;
+  days: LocalCalendarDay[];
 }
 
 export interface LocalDebtItem {
@@ -846,6 +904,122 @@ LIMIT ?`;
       status: decoded.status,
       syncState: decoded.sync_state,
     };
+  }
+
+  async getCalendarEvents(month: string): Promise<LocalEventItem[]> {
+    const rows = await this.database.getAllAsync(
+      `SELECT id, title, date, start_time, end_time, notes, sync_state
+       FROM calendar_events
+       WHERE deleted_at IS NULL AND date >= ? AND date < ?
+       ORDER BY date, start_time, title COLLATE NOCASE`,
+      month,
+      this.nextMonthStart(month),
+    );
+    return z
+      .array(eventItemSchema)
+      .parse(rows)
+      .map((row) => ({
+        id: row.id,
+        title: row.title,
+        date: row.date,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        notes: row.notes,
+        syncState: row.sync_state,
+      }));
+  }
+
+  async getCalendarEvent(id: string): Promise<LocalEventItem | null> {
+    const row = await this.database.getFirstAsync(
+      `SELECT id, title, date, start_time, end_time, notes, sync_state
+       FROM calendar_events
+       WHERE id = ? AND deleted_at IS NULL`,
+      id,
+    );
+    if (!row) return null;
+    const decoded = eventItemSchema.parse(row);
+    return {
+      id: decoded.id,
+      title: decoded.title,
+      date: decoded.date,
+      startTime: decoded.start_time,
+      endTime: decoded.end_time,
+      notes: decoded.notes,
+      syncState: decoded.sync_state,
+    };
+  }
+
+  async getCalendarMonth(month: string): Promise<LocalCalendarMonth> {
+    const monthStart = monthStartSchema.parse(month);
+    const monthEnd = this.nextMonthStart(monthStart);
+    const [transactionRows, subscriptionRows, eventItems] = await Promise.all([
+      this.database.getAllAsync(
+        `SELECT id, date, description, amount_minor, kind
+         FROM transactions
+         WHERE deleted_at IS NULL AND date >= ? AND date < ?
+           AND (transfer_group_id IS NULL OR id = (
+             SELECT MIN(t2.id) FROM transactions t2
+             WHERE t2.transfer_group_id = transactions.transfer_group_id AND t2.deleted_at IS NULL
+           ))
+         ORDER BY date, id`,
+        monthStart,
+        monthEnd,
+      ),
+      this.database.getAllAsync(
+        `SELECT id, name, amount_minor, billing_cycle, next_billing_date
+         FROM subscriptions
+         WHERE deleted_at IS NULL AND status = 'active'`,
+      ),
+      this.getCalendarEvents(monthStart),
+    ]);
+
+    const dayMap = new Map<string, LocalCalendarDay>();
+    const dayFor = (date: string): LocalCalendarDay => {
+      let day = dayMap.get(date);
+      if (!day) {
+        day = { date, transactions: [], subscriptionBills: [], events: [] };
+        dayMap.set(date, day);
+      }
+      return day;
+    };
+
+    for (const row of transactionRows) {
+      const decoded = calendarTransactionItemSchema.parse(row);
+      dayFor(decoded.date).transactions.push({
+        id: decoded.id,
+        description: decoded.description,
+        amountMinor: decoded.amount_minor,
+        kind: decoded.kind,
+      });
+    }
+    for (const row of subscriptionRows) {
+      const decoded = calendarSubscriptionItemSchema.parse(row);
+      const billingDate = subscriptionBillingDateForMonth(
+        decoded.next_billing_date,
+        decoded.billing_cycle,
+        monthStart,
+      );
+      if (billingDate && billingDate >= monthStart && billingDate < monthEnd) {
+        dayFor(billingDate).subscriptionBills.push({
+          id: decoded.id,
+          name: decoded.name,
+          amountMinor: decoded.amount_minor,
+        });
+      }
+    }
+    for (const event of eventItems) dayFor(event.date).events.push(event);
+
+    const days = [...dayMap.values()].sort((a, b) => a.date.localeCompare(b.date));
+    for (const day of days) {
+      day.transactions.sort((a, b) => a.id.localeCompare(b.id));
+    }
+    return { month: monthStart, days };
+  }
+
+  private nextMonthStart(month: string): string {
+    const date = new Date(`${month}T00:00:00Z`);
+    date.setUTCMonth(date.getUTCMonth() + 1);
+    return date.toISOString().slice(0, 10);
   }
 
   async getDebts(): Promise<LocalDebtItem[]> {

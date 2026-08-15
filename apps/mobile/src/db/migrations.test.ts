@@ -44,10 +44,14 @@ describe("local SQLCipher migrations", () => {
     expect(statements.some((statement) => statement.includes("CREATE TABLE subscriptions"))).toBe(
       true,
     );
+    expect(statements.some((statement) => statement.includes("CREATE TABLE calendar_events"))).toBe(
+      true,
+    );
     expect(statements.some((statement) => statement.includes("subscriptions_status_idx"))).toBe(
       true,
     );
     expect(statements.some((statement) => statement.includes("'subscription'"))).toBe(true);
+    expect(statements.some((statement) => statement.includes("'event'"))).toBe(true);
     expect(statements.some((statement) => statement.includes("server_acknowledged_cursor"))).toBe(
       true,
     );

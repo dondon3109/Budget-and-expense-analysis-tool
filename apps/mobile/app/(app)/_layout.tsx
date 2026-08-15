@@ -178,6 +178,31 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
             sheetGrabberVisible: Platform.OS === "ios",
           }}
         />
+        <Stack.Screen
+          name="calendar"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+          }}
+        />
+        <Stack.Screen
+          name="event"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Calendar",
+            presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            sheetGrabberVisible: Platform.OS === "ios",
+          }}
+        />
+        <Stack.Screen
+          name="event-conflict"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Calendar",
+            presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            sheetGrabberVisible: Platform.OS === "ios",
+          }}
+        />
       </Stack>
     </SyncProvider>
   );

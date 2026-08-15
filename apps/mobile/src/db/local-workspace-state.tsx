@@ -15,7 +15,9 @@ import type { LocalWorkspaceStats } from "./repository";
 import type {
   LocalBudgetMonthData,
   LocalDashboardData,
+  LocalCalendarMonth,
   LocalDebtItem,
+  LocalEventItem,
   LocalSubscriptionItem,
   LocalGoalItem,
   LocalReferenceData,
@@ -26,6 +28,7 @@ import type {
 import type {
   LocalBudgetConflict,
   LocalDebtConflict,
+  LocalEventConflict,
   LocalSubscriptionConflict,
   LocalGoalConflict,
   LocalReferenceConflict,
@@ -815,6 +818,242 @@ export function useSubscriptionConflict(id?: string): {
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { conflict, loading, error, retry };
+}
+
+export function useCalendarEvents(month: string): {
+  events: LocalEventItem[];
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [events, setEvents] = useState<LocalEventItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace) {
+      setEvents([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getCalendarEvents(month)
+        .then((next) => {
+          if (active) {
+            setEvents(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("Calendar events could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const listener = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["calendar_events", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      listener.remove();
+    };
+  }, [attempt, month, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { events, loading, error, retry };
+}
+
+export function useCalendarEvent(id?: string): {
+  event: LocalEventItem | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [event, setEvent] = useState<LocalEventItem | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setEvent(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getCalendarEvent(id)
+        .then((next) => {
+          if (active) {
+            setEvent(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The calendar event could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const listener = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["calendar_events", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      listener.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { event, loading, error, retry };
+}
+
+export function useEventConflict(id?: string): {
+  conflict: LocalEventConflict | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [conflict, setConflict] = useState<LocalEventConflict | null>(null);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace || !id) {
+      setConflict(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.transactionMutations
+        .getEventConflict(id)
+        .then((next) => {
+          if (active) {
+            setConflict(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError(
+              "The preserved calendar event conflict could not be read from encrypted storage.",
+            );
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const listener = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        ["calendar_events", "sync_outbox", "sync_conflicts"].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      listener.remove();
+    };
+  }, [attempt, id, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { conflict, loading, error, retry };
+}
+
+export function useCalendarMonth(month: string): {
+  month: LocalCalendarMonth | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const [attempt, setAttempt] = useState(0);
+  const [data, setData] = useState<LocalCalendarMonth | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspace) {
+      setData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    let active = true;
+    const refresh = (): void => {
+      setLoading(true);
+      void workspace.repository
+        .getCalendarMonth(month)
+        .then((next) => {
+          if (active) {
+            setData(next);
+            setError(null);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("The calendar could not be read from encrypted local storage.");
+            setLoading(false);
+          }
+        });
+    };
+    refresh();
+    const listener = addDatabaseChangeListener((event) => {
+      if (
+        event.databaseFilePath.endsWith(workspace.databaseName) &&
+        [
+          "calendar_events",
+          "subscriptions",
+          "transactions",
+          "sync_outbox",
+          "sync_conflicts",
+        ].includes(event.tableName)
+      ) {
+        refresh();
+      }
+    });
+    return () => {
+      active = false;
+      listener.remove();
+    };
+  }, [attempt, month, workspace]);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  return { month: data, loading, error, retry };
 }
 
 export function useLocalTransactions(

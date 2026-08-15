@@ -7,6 +7,7 @@ import {
   accountInputSchema,
   accountUpdateSchema,
   buildTransferLegs,
+  calendarEventInputSchema,
   categoryInputSchema,
   categoryUpdateSchema,
   debtInputSchema,
@@ -16,6 +17,7 @@ import {
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
+  mobileSyncEventSnapshotSchema,
   mobileSyncDebtSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncPushOperationSchema,
@@ -37,6 +39,7 @@ import {
   type MobileSyncPushResponse,
   type AccountInput,
   type AccountUpdate,
+  type CalendarEventInput,
   type CategoryInput,
   type CategoryUpdate,
   type DebtInput,
@@ -170,6 +173,18 @@ const subscriptionRowSchema = z.object({
   deleted_at: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
+const eventRowSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  date: z.string(),
+  start_time: z.string().nullable(),
+  end_time: z.string().nullable(),
+  notes: z.string().nullable(),
+  server_revision: z.number().int().nonnegative(),
+  server_updated_at: z.string().nullable(),
+  deleted_at: z.string().nullable(),
+  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
 const debtRowSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -196,6 +211,7 @@ const outboxRowSchema = z.object({
     "goal",
     "debt",
     "subscription",
+    "event",
   ]),
   entity_id: z.string(),
   operation_type: z.enum(["create", "update", "delete"]),
@@ -330,6 +346,23 @@ export interface LocalSubscriptionConflict {
   createdAt: string;
 }
 
+export interface LocalEventConflictVersion {
+  title: string;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  notes: string | null;
+}
+
+export interface LocalEventConflict {
+  id: string;
+  entityId: string;
+  local: LocalEventConflictVersion;
+  server: LocalEventConflictVersion | null;
+  serverRevision: number;
+  createdAt: string;
+}
+
 export interface LocalDebtConflict {
   id: string;
   entityId: string;
@@ -352,6 +385,7 @@ export class LocalMutationError extends Error {
       | "goal_missing"
       | "debt_missing"
       | "subscription_missing"
+      | "event_missing"
       | "name_conflict"
       | "mutation_blocked"
       | "invalid_outbox",
@@ -377,6 +411,8 @@ function syncEntityTable(entityType: MobileSyncPushOperation["entityType"]): str
       return "debts";
     case "subscription":
       return "subscriptions";
+    case "event":
+      return "calendar_events";
     case "transfer":
       throw new LocalMutationError(
         "Transfers update two transaction rows and do not have a single entity table.",
@@ -469,6 +505,19 @@ function subscriptionSnapshot(
     status: row.status,
     categoryId: row.category_id,
     accountId: row.account_id,
+    revision: row.server_revision,
+    updatedAt: row.server_updated_at,
+  };
+}
+
+function eventSnapshot(row: z.infer<typeof eventRowSchema>): Record<string, unknown> {
+  return {
+    id: row.id,
+    title: row.title,
+    date: row.date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    notes: row.notes,
     revision: row.server_revision,
     updatedAt: row.server_updated_at,
   };
@@ -944,6 +993,36 @@ export class LocalTransactionMutationRepository {
     return decoded.data;
   }
 
+  private async currentEventById(id: string) {
+    const decoded = eventRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, title, date, start_time, end_time, notes,
+          server_revision, server_updated_at, deleted_at, sync_state
+         FROM calendar_events WHERE id = ?`,
+        id,
+      ),
+    );
+    if (!decoded.success || decoded.data.deleted_at) {
+      throw new LocalMutationError("Event not found on this device.", "event_missing");
+    }
+    return decoded.data;
+  }
+
+  private async currentEventRowById(id: string) {
+    const decoded = eventRowSchema.safeParse(
+      await this.database.getFirstAsync(
+        `SELECT id, title, date, start_time, end_time, notes,
+          server_revision, server_updated_at, deleted_at, sync_state
+         FROM calendar_events WHERE id = ?`,
+        id,
+      ),
+    );
+    if (!decoded.success) {
+      throw new LocalMutationError("Event not found on this device.", "event_missing");
+    }
+    return decoded.data;
+  }
+
   private async validateSubscriptionReferences(input: SubscriptionInput): Promise<void> {
     const [category, account] = await Promise.all([
       this.database.getFirstAsync<{ kind: string; archived: number; locked: number }>(
@@ -1141,7 +1220,8 @@ export class LocalTransactionMutationRepository {
       | "budget"
       | "goal"
       | "debt"
-      | "subscription",
+      | "subscription"
+      | "event",
     entityId: string,
   ) {
     const decoded = conflictRowSchema.safeParse(
@@ -1999,6 +2079,170 @@ export class LocalTransactionMutationRepository {
         }
         await this.database.runAsync(
           "UPDATE subscriptions SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
+          this.now().toISOString(),
+          id,
+        );
+      });
+    });
+  }
+
+  createEvent(value: CalendarEventInput): Promise<string> {
+    const input = calendarEventInputSchema.parse(value);
+    return this.writer.run(async () => {
+      let entityId = "";
+      await this.database.withTransactionAsync(async () => {
+        await this.clientId();
+        entityId = uuidSchema.parse(this.randomUuid());
+        await this.database.runAsync(
+          `INSERT INTO calendar_events (
+            id, title, date, start_time, end_time, notes,
+            server_revision, server_updated_at, deleted_at, sync_state
+          ) VALUES (?, ?, ?, ?, ?, ?, 0, NULL, NULL, 'pending')`,
+          entityId,
+          input.title,
+          input.date,
+          input.startTime ?? null,
+          input.endTime ?? null,
+          input.notes ?? null,
+        );
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'event', ?, 'create', 0, ?, '[]', '{}', ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          entityId,
+          JSON.stringify({
+            title: input.title,
+            date: input.date,
+            startTime: input.startTime ?? null,
+            endTime: input.endTime ?? null,
+            notes: input.notes ?? null,
+          }),
+          await this.nextSequence(),
+        );
+      });
+      return entityId;
+    });
+  }
+
+  updateEvent(id: string, value: CalendarEventInput): Promise<void> {
+    const update = calendarEventInputSchema.parse(value);
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentEventById(id);
+        if (current.sync_state === "failed" || current.sync_state === "conflicted") {
+          throw new LocalMutationError(
+            "Resolve this event's synchronization state before editing it.",
+            "mutation_blocked",
+          );
+        }
+        const outbox = await this.currentOutbox("event", id);
+        if (outbox?.operation_type === "delete") {
+          throw new LocalMutationError(
+            "This event is already waiting to be deleted.",
+            "mutation_blocked",
+          );
+        }
+        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+          throw new LocalMutationError(
+            "Wait for the current synchronization attempt before editing this event.",
+            "mutation_blocked",
+          );
+        }
+        const merged = {
+          title: update.title,
+          date: update.date,
+          startTime: update.startTime ?? null,
+          endTime: update.endTime ?? null,
+          notes: update.notes ?? null,
+        };
+        if (outbox) {
+          await this.database.runAsync(
+            `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
+              next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
+            JSON.stringify(merged),
+            outbox.operation_id,
+          );
+        } else {
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'event', ?, 'update', ?, ?, '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            id,
+            current.server_revision,
+            JSON.stringify(merged),
+            JSON.stringify(eventSnapshot(current)),
+            await this.nextSequence(),
+          );
+        }
+        await this.database.runAsync(
+          `UPDATE calendar_events SET
+            title = ?, date = ?, start_time = ?, end_time = ?, notes = ?, sync_state = 'pending'
+           WHERE id = ?`,
+          merged.title,
+          merged.date,
+          merged.startTime,
+          merged.endTime,
+          merged.notes,
+          id,
+        );
+      });
+    });
+  }
+
+  deleteEvent(id: string): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentEventById(id);
+        if (current.sync_state === "failed" || current.sync_state === "conflicted") {
+          throw new LocalMutationError(
+            "Resolve this event's synchronization state before deleting it.",
+            "mutation_blocked",
+          );
+        }
+        const outbox = await this.currentOutbox("event", id);
+        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
+          throw new LocalMutationError(
+            "Wait for the current synchronization attempt before deleting this event.",
+            "mutation_blocked",
+          );
+        }
+        if (current.server_revision === 0 && outbox?.operation_type === "create") {
+          await this.database.runAsync(
+            "DELETE FROM sync_outbox WHERE operation_id = ?",
+            outbox.operation_id,
+          );
+          await this.database.runAsync("DELETE FROM calendar_events WHERE id = ?", id);
+          return;
+        }
+        if (outbox) {
+          await this.database.runAsync(
+            `UPDATE sync_outbox SET operation_type = 'delete', payload_json = '{}',
+              state = 'pending', attempt_count = 0, next_attempt_at = NULL,
+              last_error_code = NULL WHERE operation_id = ?`,
+            outbox.operation_id,
+          );
+        } else {
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'event', ?, 'delete', ?, '{}', '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            id,
+            current.server_revision,
+            JSON.stringify(eventSnapshot(current)),
+            await this.nextSequence(),
+          );
+        }
+        await this.database.runAsync(
+          "UPDATE calendar_events SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
           this.now().toISOString(),
           id,
         );
@@ -3962,6 +4206,217 @@ export class LocalTransactionMutationRepository {
             operation_id, idempotency_key, entity_type, entity_id, operation_type,
             base_revision, payload_json, dependency_ids_json, base_json, created_sequence
           ) VALUES (?, ?, 'subscription', ?, 'update', ?, ?, '[]', ?, ?)`,
+          uuidSchema.parse(this.randomUuid()),
+          uuidSchema.parse(this.randomUuid()),
+          entityId,
+          serverSnapshot.revision,
+          JSON.stringify(localInput),
+          JSON.stringify(serverSnapshot),
+          await this.nextSequence(),
+        );
+      });
+    });
+  }
+
+  private async upsertEventSnapshot(
+    snapshot: {
+      id: string;
+      title: string;
+      date: string;
+      startTime: string | null;
+      endTime: string | null;
+      notes: string | null;
+      revision: number;
+      updatedAt: string | null;
+    },
+    syncState: "synced" | "pending",
+  ): Promise<void> {
+    await this.database.runAsync(
+      `INSERT INTO calendar_events (
+        id, title, date, start_time, end_time, notes,
+        server_revision, server_updated_at, deleted_at, sync_state
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         title = excluded.title,
+         date = excluded.date,
+         start_time = excluded.start_time,
+         end_time = excluded.end_time,
+         notes = excluded.notes,
+         server_revision = excluded.server_revision,
+         server_updated_at = excluded.server_updated_at,
+         deleted_at = NULL,
+         sync_state = excluded.sync_state`,
+      snapshot.id,
+      snapshot.title,
+      snapshot.date,
+      snapshot.startTime,
+      snapshot.endTime,
+      snapshot.notes,
+      snapshot.revision,
+      snapshot.updatedAt,
+      syncState,
+    );
+  }
+
+  getEventConflict(entityId: string): Promise<LocalEventConflict | null> {
+    return this.writer.run(async () => {
+      const local = await this.currentEventRowById(entityId);
+      const row = await this.database.getFirstAsync(
+        `SELECT conflict_id, operation_id, base_json, local_json, server_json,
+          server_revision, created_at
+         FROM sync_conflicts
+         WHERE entity_type = 'event' AND entity_id = ? AND resolved_at IS NULL
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        entityId,
+      );
+      if (!row) return null;
+      const conflict = conflictRowSchema.parse(row);
+      let serverValue: unknown;
+      try {
+        serverValue = JSON.parse(conflict.server_json) as unknown;
+      } catch {
+        throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+      }
+      const serverSnapshot =
+        serverValue === null ? null : mobileSyncEventSnapshotSchema.parse(serverValue);
+      return {
+        id: conflict.conflict_id,
+        entityId,
+        local: {
+          title: local.title,
+          date: local.date,
+          startTime: local.start_time,
+          endTime: local.end_time,
+          notes: local.notes,
+        },
+        server: serverSnapshot
+          ? {
+              title: serverSnapshot.title,
+              date: serverSnapshot.date,
+              startTime: serverSnapshot.startTime,
+              endTime: serverSnapshot.endTime,
+              notes: serverSnapshot.notes,
+            }
+          : null,
+        serverRevision: conflict.server_revision,
+        createdAt: conflict.created_at,
+      };
+    });
+  }
+
+  resolveEventConflict(
+    entityId: string,
+    resolution: "keep_local" | "keep_server",
+  ): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const local = await this.currentEventRowById(entityId);
+        const conflict = await this.currentConflict("event", entityId);
+        const outbox = await this.currentOutbox("event", entityId);
+        if (
+          !outbox ||
+          outbox.operation_id !== conflict.operation_id ||
+          outbox.state !== "conflicted"
+        ) {
+          throw new LocalMutationError(
+            "The preserved event conflict changed before it could be resolved.",
+            "mutation_blocked",
+          );
+        }
+        let serverValue: unknown;
+        try {
+          serverValue = JSON.parse(conflict.server_json) as unknown;
+        } catch {
+          throw new LocalMutationError("The preserved conflict is invalid.", "invalid_outbox");
+        }
+        const serverSnapshot =
+          serverValue === null ? null : mobileSyncEventSnapshotSchema.parse(serverValue);
+
+        await this.database.runAsync(
+          `UPDATE sync_conflicts SET resolved_at = ?, resolution = ?, operation_id = NULL
+           WHERE conflict_id = ? AND resolved_at IS NULL`,
+          this.now().toISOString(),
+          resolution,
+          conflict.conflict_id,
+        );
+        await this.database.runAsync(
+          "DELETE FROM sync_outbox WHERE operation_id = ?",
+          outbox.operation_id,
+        );
+
+        if (resolution === "keep_server") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM calendar_events WHERE id = ?", entityId);
+            return;
+          }
+          await this.upsertEventSnapshot(serverSnapshot, "synced");
+          return;
+        }
+
+        const operationType = outbox.operation_type;
+        if (operationType === "delete") {
+          if (!serverSnapshot) {
+            await this.database.runAsync("DELETE FROM calendar_events WHERE id = ?", entityId);
+            return;
+          }
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'event', ?, 'delete', ?, '{}', '[]', ?, ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            entityId,
+            serverSnapshot.revision,
+            JSON.stringify(serverSnapshot),
+            await this.nextSequence(),
+          );
+          await this.database.runAsync(
+            "UPDATE calendar_events SET sync_state = 'pending' WHERE id = ?",
+            entityId,
+          );
+          return;
+        }
+
+        const localInput = {
+          title: local.title,
+          date: local.date,
+          startTime: local.start_time,
+          endTime: local.end_time,
+          notes: local.notes,
+        };
+        if (!serverSnapshot) {
+          await this.database.runAsync(
+            `UPDATE calendar_events SET server_revision = 0, server_updated_at = NULL,
+              sync_state = 'pending' WHERE id = ?`,
+            entityId,
+          );
+          await this.database.runAsync(
+            `INSERT INTO sync_outbox (
+              operation_id, idempotency_key, entity_type, entity_id, operation_type,
+              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+            ) VALUES (?, ?, 'event', ?, 'create', 0, ?, '[]', '{}', ?)`,
+            uuidSchema.parse(this.randomUuid()),
+            uuidSchema.parse(this.randomUuid()),
+            entityId,
+            JSON.stringify(localInput),
+            await this.nextSequence(),
+          );
+          return;
+        }
+        await this.database.runAsync(
+          `UPDATE calendar_events SET server_revision = ?, server_updated_at = ?,
+            sync_state = 'pending' WHERE id = ?`,
+          serverSnapshot.revision,
+          serverSnapshot.updatedAt,
+          entityId,
+        );
+        await this.database.runAsync(
+          `INSERT INTO sync_outbox (
+            operation_id, idempotency_key, entity_type, entity_id, operation_type,
+            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+          ) VALUES (?, ?, 'event', ?, 'update', ?, ?, '[]', ?, ?)`,
           uuidSchema.parse(this.randomUuid()),
           uuidSchema.parse(this.randomUuid()),
           entityId,

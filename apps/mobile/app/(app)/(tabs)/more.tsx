@@ -74,6 +74,13 @@ export default function MoreScreen() {
           >
             Subscriptions
           </Button>
+          <Button
+            accessibilityHint="Opens the combined agenda calendar"
+            variant="secondary"
+            onPress={() => router.push("/(app)/calendar")}
+          >
+            Calendar
+          </Button>
         </View>
       </Card>
       <Card accessibilityLabel="Local data protection status">
