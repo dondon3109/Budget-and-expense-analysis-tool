@@ -8,7 +8,7 @@ Last updated: 2026-08-16.
 | 1. Mobile foundation                 | Complete    | Native Android/iOS development builds, iOS runtime navigation/input, themes/components, focused tests                        |
 | 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS; social auth and Android runtime remain                      |
 | 3. Encrypted local database          | In progress | iOS SQLCipher file/reopen proof, migrations, observable repository, and guarded sign-out implemented                         |
-| 4. Transaction sync vertical slice   | In progress | Account/category/transaction offline push, restart durability, and explicit conflict recovery proven on iOS                  |
+| 4. Transaction sync vertical slice   | Complete   | Create/edit/delete + offline durability, restart recovery, push/pull, and explicit multi-client conflict resolution proven against production on iOS |
 | 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
 | 6. Planning and recurring money      | Complete   | Goals, debts (avalanche/snowball), subscriptions, calendar, fee-aware transfers, and savings-interest modeling proven with tests |
 | 7. Imports                           | Complete   | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |

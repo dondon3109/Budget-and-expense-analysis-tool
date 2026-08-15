@@ -20,12 +20,13 @@ device run on this machine.
 - **Deployed (2026-08-16, approved):** Worker + D1 migrations 0034–0042 are live in
   production and web→mobile pull/delete convergence was verified on-device with the
   production account. Offline create, restart durability, reconnect push, and mobile-initiated
-  delete are now proven on-device against production (2026-08-16). Remaining:
-  offline EDIT runtime proof, multi-device conflict runtime proof, Google OAuth and Sign in with Apple runtime, and Android runtime. The
-  assistant chat (turns, grounded tool calls, answer validation, thread
-  cleanup) is verified on-device against production (2026-08-16).
+  delete, offline edit, and explicit multi-client conflict resolution are now all
+  proven on-device against production (2026-08-16), and the assistant chat turns
+  are verified too. Remaining: Google OAuth and Sign in with Apple runtime,
+  Android runtime (no device/emulator), release-build device performance
+  numbers, and background-task device-time scheduling.
 - **No Android device**, and a few flows remain unverified even on iOS:
-  screens that need a real signed-in workspace (assistant turns, support chat,
+  Google OAuth, Sign in with Apple, and the support-chat turn (screens that need a
   billing checkout, account deletion, imports end-to-end) are verified up to
   the transport layer with schema-tested mocks and a booting dev build, not a
   live session. Multi-device and web/mobile convergence remain unit/API-tested
