@@ -45,3 +45,4 @@ minimumReleaseAgeExclude:
   - remotion@4.0.509
   - zustand@5.0.15
   - expo-file-system@57.0.4
+  - expo-constants@57.0.11

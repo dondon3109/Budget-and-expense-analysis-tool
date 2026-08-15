@@ -210,6 +210,28 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
             headerBackTitle: "More",
           }}
         />
+        <Stack.Screen name="assistant" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="plan-billing"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+          }}
+        />
+        <Stack.Screen
+          name="support"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+          }}
+        />
+        <Stack.Screen
+          name="account"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+          }}
+        />
       </Stack>
     </SyncProvider>
   );

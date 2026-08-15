@@ -90,6 +90,42 @@ export default function MoreScreen() {
           </Button>
         </View>
       </Card>
+      <Card accessibilityLabel="Online capabilities">
+        <View className="gap-3">
+          <Text style={[typography.headline, { color: theme.colors.text }]}>Online</Text>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+            Assistant, billing, support and account tools always talk to the Zoption server.
+          </Text>
+          <Button
+            accessibilityHint="Opens the consent-gated AI Financial Assistant"
+            variant="secondary"
+            onPress={() => router.push("/(app)/assistant")}
+          >
+            AI Assistant
+          </Button>
+          <Button
+            accessibilityHint="Opens plan usage and PayPal billing"
+            variant="secondary"
+            onPress={() => router.push("/(app)/plan-billing")}
+          >
+            Plan and billing
+          </Button>
+          <Button
+            accessibilityHint="Opens support chat and bug reports"
+            variant="secondary"
+            onPress={() => router.push("/(app)/support")}
+          >
+            Help and support
+          </Button>
+          <Button
+            accessibilityHint="Opens account management and permanent deletion"
+            variant="secondary"
+            onPress={() => router.push("/(app)/account")}
+          >
+            Account
+          </Button>
+        </View>
+      </Card>
       <Card accessibilityLabel="Local data protection status">
         <View className="gap-1">
           <Text style={[typography.headline, { color: theme.colors.text }]}>Local data</Text>
