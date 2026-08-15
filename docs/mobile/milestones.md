@@ -742,3 +742,11 @@ background-task scheduling on real hardware.
   gate — not the app — is the remaining blocker. The final identity-linking
   check (same Supabase subject opens the same D1 workspace) completes the
   moment the owner signs in on the simulator or provides current credentials.
+- **iOS 26 auth-session hardening** (two fixes, both host-verified): (1) the
+  cookie-sharing SafariViewService presentation was observed being
+  invalidated seconds after opening, so the Google auth session now uses
+  `preferEphemeralSession` — the session stays open and sign-in browsing is
+  isolated from personal Safari cookies; (2) `googleBusy` is cleared in a
+  `finally`, so a dismissed/cancelled session re-enables the button instead
+  of leaving it stuck (regression test added; lint, typecheck, 255 tests
+  green).
