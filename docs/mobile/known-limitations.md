@@ -21,10 +21,9 @@ device run on this machine.
   production and web→mobile pull/delete convergence was verified on-device with the
   production account. Offline create, restart durability, reconnect push, and mobile-initiated
   delete are now proven on-device against production (2026-08-16). Remaining:
-  offline EDIT runtime proof, multi-device conflict runtime proof, the assistant
-  composer send-button behavior under hardware-keyboard input (investigation
-  pending; software-keyboard typing is the normal path), Google OAuth and Sign
-  in with Apple runtime, and Android runtime.
+  offline EDIT runtime proof, multi-device conflict runtime proof, Google OAuth and Sign in with Apple runtime, and Android runtime. The
+  assistant chat (turns, grounded tool calls, answer validation, thread
+  cleanup) is verified on-device against production (2026-08-16).
 - **No Android device**, and a few flows remain unverified even on iOS:
   screens that need a real signed-in workspace (assistant turns, support chat,
   billing checkout, account deletion, imports end-to-end) are verified up to
