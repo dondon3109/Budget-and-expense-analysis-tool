@@ -1,4 +1,5 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
+import { withAndroidManifest, type ConfigPlugin } from "expo/config-plugins";
 
 const variants = {
   development: {
@@ -27,6 +28,28 @@ function resolveVariant(value: string | undefined): AppVariant {
   if (value === "preview" || value === "production") return value;
   return "development";
 }
+
+/**
+ * The dev client needs SYSTEM_ALERT_WINDOW for its debug overlay. The
+ * permission must not ship in preview/production builds, so strip it from
+ * the generated manifest for every non-development variant.
+ */
+const withDevClientPermissionCleanup: ConfigPlugin = (config) => {
+  const variant = resolveVariant(process.env.APP_VARIANT);
+  if (variant === "development") {
+    return config;
+  }
+  return withAndroidManifest(config, (cfg) => {
+    const manifest = cfg.modResults.manifest;
+    const permissions = manifest["uses-permission"];
+    if (permissions) {
+      manifest["uses-permission"] = permissions.filter(
+        (permission) => permission.$["android:name"] !== "android.permission.SYSTEM_ALERT_WINDOW",
+      );
+    }
+    return cfg;
+  });
+};
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const appVariant = resolveVariant(process.env.APP_VARIANT);
@@ -69,7 +92,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
       ["expo-sqlite", { useSQLCipher: true }],
       ["expo-secure-store", { configureAndroidBackup: true }],
-      ["expo-audio", { microphonePermission: "Zoption records your questions only when you choose voice input. Recordings are sent to Zoption for transcription and are not stored." }],
+      [
+        "expo-audio",
+        {
+          microphonePermission:
+            "Zoption records your questions only when you choose voice input. Recordings are sent to Zoption for transcription and are not stored.",
+        },
+      ],
+      // Function plugins are supported at runtime; the ExpoConfig plugin
+      // element type just does not model them.
+      withDevClientPermissionCleanup as unknown as [string, unknown],
     ],
     experiments: {
       typedRoutes: true,
