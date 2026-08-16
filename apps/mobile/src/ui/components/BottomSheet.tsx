@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react";
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -47,7 +47,15 @@ export function BottomSheet({ visible, title, onDismiss, children }: BottomSheet
               <Text style={[typography.label, { color: theme.colors.brand }]}>Done</Text>
             </Pressable>
           </View>
-          {children}
+          <ScrollView
+            bounces={false}
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+            style={styles.scroll}
+          >
+            {children}
+          </ScrollView>
         </SafeAreaView>
       </View>
     </Modal>
@@ -62,6 +70,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radii.sheet,
     padding: spacing.lg,
     gap: spacing.lg,
+  },
+  scroll: {
+    // Shrink to the sheet's maxHeight so long content scrolls instead of
+    // overflowing off-screen.
+    flexShrink: 1,
+  },
+  content: {
+    paddingBottom: spacing.md,
   },
   close: {
     minWidth: touchTarget,

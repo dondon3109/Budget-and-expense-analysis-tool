@@ -213,7 +213,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
     const { error: exchangeError } = await getSupabaseClient().auth.exchangeCodeForSession(
       callback.code,
     );
-    if (exchangeError) throw exchangeError;
+    if (exchangeError) {
+      // On Android the router's deep-link callback route may exchange the
+      // same code first; the server then reports an invalid flow state here.
+      // A session existing afterwards means the sign-in actually succeeded.
+      const { data: currentSession } = await getSupabaseClient().auth.getSession();
+      if (!currentSession.session) throw exchangeError;
+    }
   }, []);
 
   const signOut = useCallback(async (options: SignOutOptions = {}) => {

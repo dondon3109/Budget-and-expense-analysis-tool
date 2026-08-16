@@ -51,6 +51,22 @@ const withDevClientPermissionCleanup: ConfigPlugin = (config) => {
   });
 };
 
+/**
+ * The RN 0.86 template enables OnBackInvokedCallback by default, and with it
+ * the system finished the activity instead of popping the native stack -
+ * the back button closed the app from any pushed screen. Remove the
+ * attribute for every variant so back handling falls to the legacy path
+ * that react-native-screens pops correctly.
+ */
+const withLegacyBackHandling: ConfigPlugin = (config) =>
+  withAndroidManifest(config, (cfg) => {
+    const application = cfg.modResults.manifest.application?.[0];
+    if (application?.$) {
+      delete application.$["android:enableOnBackInvokedCallback"];
+    }
+    return cfg;
+  });
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const appVariant = resolveVariant(process.env.APP_VARIANT);
   const variant = variants[appVariant];
@@ -77,7 +93,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       package: variant.androidPackage,
       allowBackup: false,
-      predictiveBackGestureEnabled: true,
+      // Predictive back is disabled: with enableOnBackInvokedCallback the
+      // system finished the activity instead of popping the native stack,
+      // closing the app whenever the user pressed back from a pushed screen.
+      predictiveBackGestureEnabled: false,
     },
     plugins: [
       "expo-router",
@@ -102,6 +121,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // Function plugins are supported at runtime; the ExpoConfig plugin
       // element type just does not model them.
       withDevClientPermissionCleanup as unknown as [string, unknown],
+      withLegacyBackHandling as unknown as [string, unknown],
     ],
     experiments: {
       typedRoutes: true,
