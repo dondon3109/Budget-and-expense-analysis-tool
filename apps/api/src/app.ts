@@ -85,6 +85,7 @@ const WRITE_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 const JSON_METHODS = new Set(["POST", "PATCH", "PUT"]);
 const DEFAULT_JSON_BODY_LIMIT = 64 * 1024;
 const IMPORT_PREVIEW_BODY_LIMIT = 3 * 1024 * 1024;
+const RECEIPT_SCAN_BODY_LIMIT = 4 * 1024 * 1024;
 const ASSISTANT_VOICE_BODY_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
 const PAYPAL_WEBHOOK_BODY_LIMIT = 128 * 1024;
 const PAYPAL_WEBHOOK_RATE_LIMIT = {
@@ -369,7 +370,9 @@ export function createApp(options: AppOptions = {}) {
     const maxSize =
       context.req.method === "POST" && context.req.path === "/api/app/imports/preview"
         ? IMPORT_PREVIEW_BODY_LIMIT
-        : DEFAULT_JSON_BODY_LIMIT;
+        : context.req.method === "POST" && context.req.path === "/api/app/imports/receipt-scan"
+          ? RECEIPT_SCAN_BODY_LIMIT
+          : DEFAULT_JSON_BODY_LIMIT;
     const limitBody = bodyLimit({
       maxSize,
       onError: (limitedContext) =>

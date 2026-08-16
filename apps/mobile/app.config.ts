@@ -15,7 +15,7 @@ const variants = {
     scheme: "zoption-preview",
   },
   production: {
-    name: "Zoption",
+    name: "Zoption Beta",
     androidPackage: "site.zoption.android",
     iosBundleIdentifier: "site.zoption.ios",
     scheme: "zoption",
@@ -110,6 +110,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       ["expo-sqlite", { useSQLCipher: true }],
+      [
+        "expo-image-picker",
+        {
+          cameraPermission:
+            "Zoption uses the camera to scan receipts into expense transactions.",
+        },
+      ],
       ["expo-secure-store", { configureAndroidBackup: true }],
       [
         "expo-audio",

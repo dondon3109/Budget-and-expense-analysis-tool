@@ -1217,6 +1217,71 @@ describe("API foundation", () => {
     });
   });
 
+  it("scans a receipt through the Workers AI vision model", async () => {
+    const ai = {
+      run: vi.fn().mockResolvedValue({
+        response: JSON.stringify({
+          merchant: "Jollibee",
+          date: "2026-08-16",
+          amountMinor: 25000,
+          currency: "PHP",
+        }),
+      }),
+    };
+    const app = createTestApp({ imports: createImportStore() });
+    const response = await app.request(
+      "/api/app/imports/receipt-scan",
+      {
+        method: "POST",
+        headers: privateHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          imageBase64: "a".repeat(64),
+          mimeType: "image/jpeg",
+        }),
+      },
+      { AI: ai } as unknown as Bindings,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      merchant: "Jollibee",
+      date: "2026-08-16",
+      amountMinor: 25000,
+      currency: "PHP",
+    });
+    expect(ai.run).toHaveBeenCalledWith(
+      "@cf/meta/llama-3.2-11b-vision-instruct",
+      expect.objectContaining({ prompt: expect.stringContaining("receipt") }),
+    );
+  });
+
+  it("reports the receipt scanner as unavailable when the AI binding is missing", async () => {
+    const app = createTestApp({ imports: createImportStore() });
+    const response = await app.request("/api/app/imports/receipt-scan", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ imageBase64: "a".repeat(64), mimeType: "image/jpeg" }),
+    });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({ error: "provider_unavailable" });
+  });
+
+  it("rejects unsupported receipt image types", async () => {
+    const app = createTestApp({ imports: createImportStore() });
+    const response = await app.request(
+      "/api/app/imports/receipt-scan",
+      {
+        method: "POST",
+        headers: privateHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ imageBase64: "a".repeat(64), mimeType: "application/pdf" }),
+      },
+      { AI: { run: vi.fn() } } as unknown as Bindings,
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("rate-limits bulk export reads before querying transactions", async () => {
     const transactions = createTransactionStore();
     const rateLimiter: RateLimiter = {

@@ -221,6 +221,13 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
             headerBackTitle: "More",
           }}
         />
+        <Stack.Screen
+          name="receipt-scan"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Transactions",
+          }}
+        />
         <Stack.Screen name="assistant" options={{ headerShown: false }} />
         <Stack.Screen
           name="plan-billing"

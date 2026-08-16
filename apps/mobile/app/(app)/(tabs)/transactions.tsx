@@ -55,6 +55,26 @@ export default function TransactionsScreen() {
         <View className="flex-row items-center gap-2">
           <SyncStatus state={visibleSyncState(sync.status)} />
           <Pressable
+            accessibilityLabel="Scan receipt"
+            accessibilityHint="Takes a photo of a receipt and reads the merchant, date and total"
+            accessibilityRole="button"
+            onPress={() => router.push("/(app)/receipt-scan")}
+            style={({ pressed }) => [
+              styles.scan,
+              {
+                backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surfaceRaised,
+                borderColor: theme.colors.brand,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color={theme.colors.brand}
+              name="line-scan"
+              size={22}
+            />
+          </Pressable>
+          <Pressable
             accessibilityLabel="Add transaction"
             accessibilityHint="Opens the new transaction form"
             accessibilityRole="button"
@@ -201,6 +221,15 @@ export default function TransactionsScreen() {
 }
 
 const styles = StyleSheet.create({
+  scan: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+  },
   add: {
     alignItems: "center",
     justifyContent: "center",

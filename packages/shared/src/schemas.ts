@@ -845,6 +845,27 @@ export const importCommitSchema = z
       });
     }
   });
+
+export const receiptScanRequestSchema = z
+  .object({
+    imageBase64: z.string().min(20).max(6_000_000),
+    mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  })
+  .strict();
+
+export type ReceiptScanRequest = z.infer<typeof receiptScanRequestSchema>;
+
+export const receiptScanResponseSchema = z
+  .object({
+    merchant: z.string().trim().max(140).nullable(),
+    date: isoDateSchema.nullable(),
+    amountMinor: z.number().int().min(0).max(1_000_000_000).nullable(),
+    currency: z.string().trim().max(8).nullable(),
+  })
+  .strict();
+
+export type ReceiptScanResponse = z.infer<typeof receiptScanResponseSchema>;
+
 export const importPreviewRowSchema = z
   .object({
     rowNumber: z.number().int().min(1),
