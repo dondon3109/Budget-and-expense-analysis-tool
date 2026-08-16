@@ -566,7 +566,11 @@ export function AssistantScreen() {
                 <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
               </Pressable>
             ) : null}
-            <Text accessibilityRole="header" style={[typography.display, { color: theme.colors.text }]} numberOfLines={1}>
+            <Text
+              accessibilityRole="header"
+              numberOfLines={1}
+              style={[typography.display, styles.headerTitle, { color: theme.colors.text }]}
+            >
               {view === "chat" ? "New conversation" : "AI Assistant"}
             </Text>
           </View>
@@ -960,6 +964,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   iconButton: { padding: spacing.xs },
+  headerTitle: { flexShrink: 1 },
   listContent: { padding: spacing.md, paddingBottom: spacing.xl },
   newChat: { marginBottom: spacing.md, alignSelf: "stretch" },
   chat: { flex: 1 },

@@ -229,6 +229,12 @@ function CashflowCard({
         </Text>
       ) : null}
       <View style={{ gap: spacing.sm }}>
+        {cashflow.points.length === 0 ? (
+          <EmptyState
+            title="No cash flow yet"
+            description="Income and expense activity will chart here as you record transactions."
+          />
+        ) : null}
         {cashflow.points.map((point) => {
           const net = point.incomeMinor - point.expenseMinor;
           const percent =

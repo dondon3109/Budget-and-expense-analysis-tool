@@ -46,6 +46,54 @@ export function grantAssistantVoiceConsent(
 
 export const assistantSpeechVoices = ["default", "bright", "energetic"] as const;
 
+const VOICE_REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * Runs fetch with a hard timeout so a stalled provider request (for example
+ * while the Worker voice providers are being configured) fails with a clear
+ * error instead of leaving the recorder spinner running forever.
+ */
+async function fetchWithTimeout(
+  fetchImpl: typeof fetch,
+  input: string,
+  init: RequestInit,
+): Promise<Response> {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, VOICE_REQUEST_TIMEOUT_MS);
+  const externalSignal = init.signal;
+  const forwardAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", forwardAbort, { once: true });
+  }
+  try {
+    return await fetchImpl(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      if (timedOut) {
+        throw new ApiTransportError(
+          "Voice mode is taking too long. The provider may not be ready yet - try again shortly.",
+          "network",
+          0,
+        );
+      }
+      throw error;
+    }
+    throw new ApiTransportError(
+      "Zoption could not be reached. Connect to the internet and retry.",
+      "network",
+      0,
+    );
+  } finally {
+    clearTimeout(timeout);
+    externalSignal?.removeEventListener("abort", forwardAbort);
+  }
+}
+
 export function isAssistantSpeechVoice(value: string): value is AssistantSpeechVoice {
   return assistantSpeechVoiceSchema.safeParse(value).success;
 }
@@ -69,22 +117,15 @@ export async function transcribeVoice(
   const accessToken = api.accessToken;
   let response: Response;
   try {
-    response = await (api.fetchImpl ?? fetch)(
-      publicConfig.apiUrl + "/api/app/assistant/voice/transcriptions",
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form,
-        signal: api.signal,
-      },
-    );
+    response = await fetchWithTimeout(api.fetchImpl ?? fetch, publicConfig.apiUrl + "/api/app/assistant/voice/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: form,
+      signal: api.signal,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
-    throw new ApiTransportError(
-      "Zoption could not be reached. Connect to the internet and retry.",
-      "network",
-      0,
-    );
+    throw error;
   }
   if (!response.ok) {
     
@@ -101,25 +142,18 @@ export async function synthesizeAssistantSpeech(
   const accessToken = api.accessToken;
   let response: Response;
   try {
-    response = await (api.fetchImpl ?? fetch)(
-      publicConfig.apiUrl + "/api/app/assistant/voice/speech",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ messageId, voice }),
-        signal: api.signal,
+    response = await fetchWithTimeout(api.fetchImpl ?? fetch, publicConfig.apiUrl + "/api/app/assistant/voice/speech", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
       },
-    );
+      body: JSON.stringify({ messageId, voice }),
+      signal: api.signal,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
-    throw new ApiTransportError(
-      "Zoption could not be reached. Connect to the internet and retry.",
-      "network",
-      0,
-    );
+    throw error;
   }
   if (!response.ok) {
 
