@@ -25,18 +25,25 @@ const candidateSchema = z
   .strict();
 
 const completionSchema = z.object({
-  response: z.string().max(MAX_RESPONSE_CHARACTERS),
+  // Newer Workers AI responses put the model output in "response"; for the
+  // vision model this is either prose containing JSON or a parsed object
+  // when the model complies with a strict-JSON prompt.
+  response: z.union([
+    z.string().max(MAX_RESPONSE_CHARACTERS),
+    z.record(z.string(), z.unknown()),
+  ]),
 });
 
 const EXTRACTION_PROMPT = [
-  "Read this receipt photo and return a single JSON object with these fields only:",
+  "Read this receipt photo.",
+  "Respond with ONLY a JSON object, nothing else, starting with { and ending with }.",
+  "Fields:",
   "- merchant: the store or vendor name",
-  "- date: the receipt date as YYYY-MM-DD (empty string if no date is visible)",
-  "- amountMinor: the total amount in centavos as an integer (28500 means 285.00 PHP)",
+  "- date: the receipt date as YYYY-MM-DD",
+  "- amountMinor: the total amount in centavos as an integer (for example 353.00 PHP is 35300)",
   '- kind: exactly one of "expense", "income", or "transfer"',
-  "- categoryName: one short category label such as Food, Transport, Utilities (empty string if unclear)",
+  "- categoryName: one short category label such as Food, Transport, Utilities",
   "- rawText: the readable text from the receipt, up to a few lines",
-  "Return strict JSON without markdown, comments, or extra text.",
 ].join("\n");
 
 function timeoutMs(env: Bindings): number {
@@ -65,6 +72,31 @@ function providerStatus(error: unknown): number | undefined {
   return undefined;
 }
 
+function firstJsonBlock(text: string): string | undefined {
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < text.length; index++) {
+    const character = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') inString = true;
+    else if (character === "{") {
+      if (depth === 0) start = index;
+      depth++;
+    } else if (character === "}") {
+      depth--;
+      if (depth === 0 && start >= 0) return text.slice(start, index + 1);
+    }
+  }
+  return undefined;
+}
+
 function parseCandidate(text: string): ReceiptVisionCandidate | undefined {
   const stripped = text
     .trim()
@@ -75,7 +107,13 @@ function parseCandidate(text: string): ReceiptVisionCandidate | undefined {
   try {
     parsed = JSON.parse(stripped);
   } catch {
-    return undefined;
+    const block = firstJsonBlock(stripped);
+    if (!block) return undefined;
+    try {
+      parsed = JSON.parse(block);
+    } catch {
+      return undefined;
+    }
   }
   const candidate = candidateSchema.safeParse(parsed);
   if (!candidate.success) return undefined;
@@ -98,12 +136,17 @@ export const cloudflareVisionProvider: ReceiptVisionProvider = {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs(env));
     try {
+      const mediaType = image.type.split(";", 1)[0]?.toLowerCase() || "image/jpeg";
+      const dataUrl =
+        "data:" + mediaType + ";base64," + encodeBase64(await image.arrayBuffer());
       const result = await env.AI.run(
         env.RECEIPT_VISION_MODEL?.trim() || DEFAULT_RECEIPT_VISION_MODEL,
         {
-          image: [encodeBase64(await image.arrayBuffer())],
+          // The model input schema accepts a single data-URL string for the
+          // image; an array of data URLs is rejected by the Workers AI API.
+          image: dataUrl,
           prompt: EXTRACTION_PROMPT,
-          max_tokens: 512,
+          max_tokens: 1024,
         },
         { signal: controller.signal },
       );
@@ -111,7 +154,11 @@ export const cloudflareVisionProvider: ReceiptVisionProvider = {
       if (!parsed.success) {
         throw new ReceiptVisionProviderError("cloudflare_workers_ai", "invalid_response");
       }
-      const candidate = parseCandidate(parsed.data.response);
+      const responseText =
+        typeof parsed.data.response === "string"
+          ? parsed.data.response
+          : JSON.stringify(parsed.data.response);
+      const candidate = parseCandidate(responseText);
       if (!candidate) {
         throw new ReceiptVisionProviderError("cloudflare_workers_ai", "invalid_response");
       }

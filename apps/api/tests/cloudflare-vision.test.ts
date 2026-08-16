@@ -43,10 +43,8 @@ describe("Cloudflare vision provider", () => {
       { signal: unknown },
     ];
     expect(call[0]).toBe(DEFAULT_RECEIPT_VISION_MODEL);
-    expect(call[1]).toMatchObject({
-      image: [expect.any(String)],
-      max_tokens: 512,
-    });
+    expect(call[1]).toMatchObject({ max_tokens: 1024 });
+    expect(String(call[1].image)).toMatch(/^data:image\/jpeg;base64,/);
     expect(String(call[1].prompt)).toContain("merchant");
     expect(call[2].signal).toBeInstanceOf(AbortSignal);
     expect(result).toEqual({
@@ -63,6 +61,46 @@ describe("Cloudflare vision provider", () => {
     await expect(
       cloudflareVisionProvider.extract({ DB: {} as D1Database }, receiptImage()),
     ).rejects.toMatchObject({ provider: "cloudflare_workers_ai", kind: "configuration" });
+  });
+
+  it("extracts a candidate when the model returns the JSON object directly", async () => {
+    const run = vi.fn(async () => ({
+      response: {
+        merchant: "Jollibee",
+        date: "2026-08-16",
+        amountMinor: 35300,
+        kind: "expense",
+        categoryName: "Food",
+        rawText: "JOLLIBEE TOTAL 353.00",
+      },
+    }));
+
+    const result = await cloudflareVisionProvider.extract(environment(run), receiptImage());
+
+    expect(result).toEqual({
+      merchant: "Jollibee",
+      date: "2026-08-16",
+      amountMinor: 35300,
+      kind: "expense",
+      categoryName: "Food",
+      rawText: "JOLLIBEE TOTAL 353.00",
+    });
+  });
+
+  it("recovers the JSON candidate from prose around it", async () => {
+    const run = vi.fn(async () => ({
+      response:
+        "Here is the receipt information:\n" +
+        JSON.stringify({ merchant: "Jollibee", amountMinor: 28500 }) +
+        "\nI hope that helps.",
+    }));
+
+    const result = await cloudflareVisionProvider.extract(environment(run), receiptImage());
+
+    expect(result).toEqual({
+      merchant: "Jollibee",
+      amountMinor: 28500,
+    });
   });
 
   it("rejects a response without a usable JSON candidate", async () => {

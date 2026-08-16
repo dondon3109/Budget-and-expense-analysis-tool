@@ -6,6 +6,8 @@ import {
   type ReceiptPreferences,
 } from "@zoption/shared";
 
+import { File } from "expo-file-system";
+
 import { publicConfig } from "@/config/public-config";
 
 import { ApiTransportError, apiRequest, mapApiError } from "./authenticated";
@@ -56,11 +58,11 @@ export async function extractReceipt(
   image: ReceiptImage,
 ): Promise<ReceiptDraft> {
   const form = new FormData();
-  form.append("image", {
-    uri: image.uri,
-    name: image.fileName,
-    type: image.mimeType,
-  } as unknown as Blob);
+  // Expo SDK 57's Winter fetch does not support RN's proprietary { uri }
+  // FormData parts - it throws "Unsupported FormDataPart implementation".
+  // Append an expo-file-system File instead; the Winter runtime converts it
+  // through its bytes() contract and carries name/type into the part headers.
+  form.append("image", new File(image.uri) as unknown as Blob, image.fileName);
   const fetchImpl = api.fetchImpl ?? fetch;
   let timedOut = false;
   const timeout = setTimeout(() => {
@@ -78,7 +80,7 @@ export async function extractReceipt(
       headers: { Authorization: "Bearer " + api.accessToken },
       body: form,
     });
-  } catch (error) {
+  } catch {
     if (timedOut) {
       throw new ApiTransportError(
         "Reading the receipt is taking too long. Try again with a clearer photo.",
