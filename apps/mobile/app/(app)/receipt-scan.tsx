@@ -195,7 +195,9 @@ export default function ReceiptScanScreen() {
       setMessage(
         error instanceof ApiTransportError
           ? error.message
-          : "The receipt could not be scanned. Try again with a clearer photo.",
+          : error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : "The receipt could not be scanned. Try again with a clearer photo.",
       );
     } finally {
       if (mounted.current) setScanning(false);

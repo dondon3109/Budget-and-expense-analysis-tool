@@ -58,7 +58,7 @@ export default function WelcomeScreen() {
       <View className="w-full gap-3">
         <Button onPress={() => router.push("/(public)/sign-in")}>Sign in</Button>
         <Text style={[typography.caption, { color: theme.colors.textMuted, textAlign: "center" }]}>
-          The website and current Android app remain available while native development continues.
+          The Zoption website stays available too - your account works in both.
         </Text>
       </View>
     </Screen>

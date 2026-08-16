@@ -47,51 +47,6 @@ export function grantReceiptConsent(api: ReceiptApi): Promise<ReceiptPreferences
 }
 
 /**
- * Runs the extraction fetch with a hard timeout so a stalled vision request
- * fails with a clear message instead of leaving the scanner spinner running.
- */
-async function fetchWithTimeout(
-  fetchImpl: typeof fetch,
-  input: string,
-  init: RequestInit,
-): Promise<Response> {
-  const controller = new AbortController();
-  let timedOut = false;
-  const timeout = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, RECEIPT_EXTRACT_TIMEOUT_MS);
-  const externalSignal = init.signal;
-  const forwardAbort = () => controller.abort();
-  if (externalSignal) {
-    if (externalSignal.aborted) controller.abort();
-    else externalSignal.addEventListener("abort", forwardAbort, { once: true });
-  }
-  try {
-    return await fetchImpl(input, { ...init, signal: controller.signal });
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      if (timedOut) {
-        throw new ApiTransportError(
-          "Reading the receipt is taking too long. Try again with a clearer photo.",
-          "network",
-          0,
-        );
-      }
-      throw error;
-    }
-    throw new ApiTransportError(
-      "Zoption could not be reached. Connect to the internet and retry.",
-      "network",
-      0,
-    );
-  } finally {
-    clearTimeout(timeout);
-    externalSignal?.removeEventListener("abort", forwardAbort);
-  }
-}
-
-/**
  * Sends a receipt photo to the Worker, where Cloudflare Workers AI reads the
  * merchant, date, total, kind and a suggested category. The photo is processed
  * in-flight only and is never stored.
@@ -106,21 +61,38 @@ export async function extractReceipt(
     name: image.fileName,
     type: image.mimeType,
   } as unknown as Blob);
+  const fetchImpl = api.fetchImpl ?? fetch;
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+  }, RECEIPT_EXTRACT_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetchWithTimeout(
-      api.fetchImpl ?? fetch,
-      publicConfig.apiUrl + "/api/app/receipts/extract",
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${api.accessToken}` },
-        body: form,
-        signal: api.signal,
-      },
-    );
+    // NOTE: intentionally no AbortSignal here. On Android, RN's fetch rejects
+    // a FormData upload locally with "Network request failed" before any
+    // socket activity when a JS AbortController signal is attached. The
+    // server's provider timeout bounds the work; the local timer only fails
+    // the UI promise when no response arrives in time.
+    response = await fetchImpl(publicConfig.apiUrl + "/api/app/receipts/extract", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + api.accessToken },
+      body: form,
+    });
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") throw error;
-    throw error;
+    if (timedOut) {
+      throw new ApiTransportError(
+        "Reading the receipt is taking too long. Try again with a clearer photo.",
+        "network",
+        0,
+      );
+    }
+    throw new ApiTransportError(
+      "Zoption could not be reached. Connect to the internet and retry.",
+      "network",
+      0,
+    );
+  } finally {
+    clearTimeout(timeout);
   }
   if (!response.ok) {
     throw mapApiError(

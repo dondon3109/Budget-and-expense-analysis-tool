@@ -1,6 +1,8 @@
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import release from "../src/releases/androidRelease.json" with { type: "json" };
+
 function assert(condition, message) {
   if (!condition) throw new Error(`Prerender verification failed: ${message}`);
 }
@@ -220,8 +222,8 @@ export function assertPublicStructuredDataGraph(
         typeof application.softwareVersion === "string" &&
         /^\d+\.\d+\.\d+$/.test(application.softwareVersion) &&
         typeof application.downloadUrl === "string" &&
-        application.downloadUrl.startsWith(`${siteOrigin}/downloads/zoption-android-`) &&
-        application.downloadUrl.endsWith(".apk") &&
+        application.downloadUrl === release.downloadPath &&
+        application.downloadUrl.endsWith(`/${release.filename}`) &&
         typeof application.fileSize === "string" &&
         /^\d+ bytes$/.test(application.fileSize),
       "/install SoftwareApplication must match the maintained Android release.",
