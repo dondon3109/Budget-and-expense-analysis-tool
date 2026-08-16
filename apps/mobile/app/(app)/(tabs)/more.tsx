@@ -1,6 +1,7 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
@@ -40,6 +41,38 @@ export default function MoreScreen() {
       title="More"
       description="Appearance is device-local and never contains financial records."
     >
+      <Card
+        accessibilityLabel="AI Financial Assistant"
+        style={[
+          styles.assistantCard,
+          { backgroundColor: theme.colors.brandSoft, borderColor: theme.colors.brand },
+        ]}
+      >
+        <View className="flex-row items-center gap-3">
+          <View style={[styles.assistantIcon, { backgroundColor: theme.colors.brand }]}>
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color={theme.colors.onBrand}
+              name="robot-happy-outline"
+              size={24}
+            />
+          </View>
+          <View className="flex-1 gap-1">
+            <Text style={[typography.headline, { color: theme.colors.text }]}>
+              AI Financial Assistant
+            </Text>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Read-only answers grounded in your records.
+            </Text>
+          </View>
+        </View>
+        <Button
+          accessibilityHint="Opens the consent-gated AI Financial Assistant"
+          onPress={() => router.push("/(app)/assistant")}
+        >
+          Open AI Assistant
+        </Button>
+      </Card>
       <Card accessibilityLabel="Financial setup">
         <View className="gap-3">
           <Text style={[typography.headline, { color: theme.colors.text }]}>Money setup</Text>
@@ -94,15 +127,8 @@ export default function MoreScreen() {
         <View className="gap-3">
           <Text style={[typography.headline, { color: theme.colors.text }]}>Online</Text>
           <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-            Assistant, billing, support and account tools always talk to the Zoption server.
+            Billing, support and account tools always talk to the Zoption server.
           </Text>
-          <Button
-            accessibilityHint="Opens the consent-gated AI Financial Assistant"
-            variant="secondary"
-            onPress={() => router.push("/(app)/assistant")}
-          >
-            AI Assistant
-          </Button>
           <Button
             accessibilityHint="Opens plan usage and PayPal billing"
             variant="secondary"
@@ -180,3 +206,16 @@ export default function MoreScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  assistantCard: {
+    borderWidth: 1.5,
+  },
+  assistantIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
