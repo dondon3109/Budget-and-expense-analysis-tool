@@ -814,3 +814,29 @@ against production. One full cycle was verified:
   `site.zoption.android.preview` variant (embedded bundle, `zoption-preview`
   scheme) is being produced to verify Android deep-link callback delivery and
   to measure a non-dev cold start on the emulator.
+
+## Android release-build verification (2026-08-16)
+
+- **Release APK built locally** (`assembleRelease`, 20m20s first build,
+  35s incremental) and installed on the Android 15 emulator. It runs the
+  embedded bundle with no Metro dependency and keeps the debug keystore
+  signature (local artifact only — no publishing occurred).
+- **Release-only bug found and fixed**: the public configuration read
+  process.env through a dynamic `source[key]` access, which the Expo
+  bundler cannot inline; the release APK therefore reported "Authentication
+  is not configured". The config now reads static
+  `process.env.EXPO_PUBLIC_*` members (inlined in release builds) with
+  parsing kept unit-testable (+3 tests). Rebuilt release verified: sign-in
+  screen shows no configuration error and Google OAuth opens.
+- **Cold start (release, emulator)**: 1658 ms TotalTime, COLD launch state.
+  Emulator measurement, not a real-device number.
+- **Deep-link callback delivery on Android proven**: opening
+  `zoption-dev://auth/callback?code=test-code` while the app was running
+  delivered the intent to the top-most instance and routed to the
+  /auth/callback screen ("Finishing sign in").
+- **Google OAuth completion fix**: the auth-session callback URL was being
+  discarded, so a completed Google login never exchanged its PKCE code
+  (this is the "nothing happened after the password" symptom). The code is
+  now parsed (helper + 6 tests) and exchanged, and the release build with
+  the fix is staged on the emulator at Google's password step awaiting the
+  owner's manual login.
