@@ -58,7 +58,18 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
           : null
       }
     >
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          // Pushed screens show a native header; theme it to match the app
+          // instead of the platform default color scheme.
+          headerStyle: { backgroundColor: theme.colors.canvas },
+          headerTintColor: theme.colors.text,
+          headerTitleStyle: { color: theme.colors.text },
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: theme.colors.canvas },
+        }}
+      >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="money-setup"

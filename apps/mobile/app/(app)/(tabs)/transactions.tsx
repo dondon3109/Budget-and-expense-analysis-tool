@@ -65,6 +65,7 @@ export default function TransactionsScreen() {
                 // The stronger pressed tone is used at rest so the button
                 // stands out clearly on the canvas; pressing eases it back.
                 backgroundColor: pressed ? theme.colors.brand : theme.colors.brandPressed,
+                borderColor: pressed ? theme.colors.brandSoft : theme.colors.brand,
               },
             ]}
           >
@@ -203,11 +204,13 @@ const styles = StyleSheet.create({
   add: {
     alignItems: "center",
     justifyContent: "center",
-    minHeight: touchTarget + 4,
-    minWidth: touchTarget + 4,
-    borderRadius: (touchTarget + 4) / 2,
-    // Lift the button off the header so it reads clearly against the
-    // canvas regardless of theme.
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    paddingHorizontal: spacing.sm,
+    // A contained, boxed button: rounded corners, a visible ring, and a
+    // shadow so it reads clearly against the canvas in any theme.
+    borderRadius: radii.md,
+    borderWidth: 1.5,
     shadowColor: "#000000",
     shadowOpacity: 0.22,
     shadowRadius: 6,

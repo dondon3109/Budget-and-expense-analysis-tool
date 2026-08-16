@@ -30,12 +30,26 @@ export function SyncStatus({ state, count }: { state: SyncState; count?: number 
       style={styles.container}
     >
       <View accessibilityElementsHidden style={[styles.dot, { backgroundColor: color }]} />
-      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>{label}</Text>
+      <Text
+        numberOfLines={1}
+        style={[typography.caption, styles.label, { color: theme.colors.textMuted }]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { minHeight: 28, paddingHorizontal: spacing.xs, borderRadius: radii.round },
+  container: {
+    minHeight: 28,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radii.round,
+    // The pill yields to the screen title when the row is tight; its text
+    // ellipsizes instead of squeezing the heading.
+    flexShrink: 1,
+    minWidth: 0,
+  },
   dot: { width: 8, height: 8, borderRadius: radii.round },
+  label: { flexShrink: 1 },
 });
