@@ -11,12 +11,22 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 13, 2026",
+  releasedOn: "August 14, 2026",
   changes: [
     {
-      title: "Android status bar restored",
+      title: "Turn a receipt photo into a transaction draft",
       description:
-        "The installed Android app no longer opens in immersive fullscreen. The system status bar with the time, Wi-Fi, and battery indicators is visible again while Zoption keeps its standalone, chrome-free window. Already using the app? Download the updated APK from the Install page and install it over your current version — your signed-in workspace is preserved.",
+        "Choose Scan receipt from Transactions or the dashboard, then take a photo or upload a JPEG, PNG, or WebP image. Zoption drafts the merchant, date, amount, transaction type, and category for you.",
+    },
+    {
+      title: "Review every field before saving",
+      description:
+        "Correct the AI-drafted details, continue to the familiar import preview, and check duplicate warnings before you confirm. Nothing is added to your workspace until you explicitly commit the reviewed transaction.",
+    },
+    {
+      title: "Receipt photos are never stored",
+      description:
+        "Receipt scanning stays off until you accept its separate one-time notice. The selected photo is processed only to draft the entry and is discarded immediately after extraction; only the transaction you approve is saved.",
     },
   ],
 };
@@ -28,6 +38,17 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.1.1",
+    releasedOn: "August 13, 2026",
+    changes: [
+      {
+        title: "Android status bar restored",
+        description:
+          "The installed Android app no longer opens in immersive fullscreen. The system status bar with the time, Wi-Fi, and battery indicators is visible again while Zoption keeps its standalone, chrome-free window. Already using the app? Download the updated APK from the Install page and install it over your current version — your signed-in workspace is preserved.",
+      },
+    ],
+  },
   {
     version: "2.1.0",
     releasedOn: "August 12, 2026",

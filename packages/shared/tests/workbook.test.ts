@@ -24,7 +24,7 @@ function workbookBuffer(): ArrayBuffer {
   const notes = xlsx.utils.aoa_to_sheet([["note"], ["hello"]]);
   xlsx.utils.book_append_sheet(workbook, notes, "Notes");
   const output = xlsx.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
-  return output.slice(0) as ArrayBuffer;
+  return output.slice(0);
 }
 
 describe("workbook conversion shared module", () => {
@@ -81,7 +81,7 @@ describe("workbook conversion shared module", () => {
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, xlsx.utils.aoa_to_sheet([[]]), "Blank");
     const output = xlsx.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
-    expect(() => convertWorksheet(output.slice(0) as ArrayBuffer, "Blank")).toThrow(
+    expect(() => convertWorksheet(output.slice(0), "Blank")).toThrow(
       new WorkbookImportError("The selected worksheet is empty."),
     );
   });

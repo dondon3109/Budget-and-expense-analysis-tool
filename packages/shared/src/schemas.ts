@@ -273,6 +273,40 @@ export type AssistantPreferenceUpdate = z.infer<typeof assistantPreferenceUpdate
 
 export const assistantVoiceConsentUpdateSchema = z.object({ consented: z.literal(true) }).strict();
 
+export const receiptConsentUpdateSchema = z.object({ consented: z.literal(true) }).strict();
+
+export type ReceiptConsentUpdate = z.infer<typeof receiptConsentUpdateSchema>;
+
+export const receiptPreferencesResponseSchema = z
+  .object({
+    enabled: z.boolean(),
+    consentedAt: z.iso.datetime().nullable(),
+    consentVersion: z.number().int().min(0),
+    visionModel: z.string().min(1).max(200),
+  })
+  .strict();
+
+export const receiptDraftSchema = z
+  .object({
+    merchant: z.string().trim().min(1).max(240),
+    date: isoDateSchema,
+    amountMinor: z.number().int(),
+    currency: z.literal("PHP"),
+    kind: z.enum(transactionKinds),
+    categoryName: z.string().trim().min(1).max(80).optional(),
+    rawText: z.string().max(6_000),
+  })
+  .strict()
+  .superRefine((draft, context) => {
+    if (draft.amountMinor === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["amountMinor"],
+        message: "Amount cannot be zero.",
+      });
+    }
+  });
+
 export const assistantSpeechVoiceSchema = z.enum(assistantSpeechVoices);
 
 export const assistantVoiceSpeechInputSchema = z
@@ -845,26 +879,6 @@ export const importCommitSchema = z
       });
     }
   });
-
-export const receiptScanRequestSchema = z
-  .object({
-    imageBase64: z.string().min(20).max(6_000_000),
-    mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
-  })
-  .strict();
-
-export type ReceiptScanRequest = z.infer<typeof receiptScanRequestSchema>;
-
-export const receiptScanResponseSchema = z
-  .object({
-    merchant: z.string().trim().max(140).nullable(),
-    date: isoDateSchema.nullable(),
-    amountMinor: z.number().int().min(0).max(1_000_000_000).nullable(),
-    currency: z.string().trim().max(8).nullable(),
-  })
-  .strict();
-
-export type ReceiptScanResponse = z.infer<typeof receiptScanResponseSchema>;
 
 export const importPreviewRowSchema = z
   .object({

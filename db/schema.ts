@@ -550,6 +550,20 @@ export const assistantPreferences = sqliteTable("assistant_preferences", {
     .default(sql`(datetime('now'))`),
 });
 
+export const receiptPreferences = sqliteTable("receipt_preferences", {
+  tenantId: text("tenant_id")
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  consentedAt: text("consented_at"),
+  consentVersion: integer("consent_version").notNull().default(0),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const assistantMemories = sqliteTable(
   "assistant_memories",
   {

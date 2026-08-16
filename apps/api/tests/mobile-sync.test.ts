@@ -686,14 +686,14 @@ describe("mobile sync pull repository", () => {
         entityId: "web-sub",
         revision: 1,
         operation: "upsert",
-        payload: { name: "Spotify", status: "active", amountMinor: 19900 } as object,
+        payload: { name: "Spotify", status: "active", amountMinor: 19900 },
       },
       {
         entityType: "transaction",
         entityId: "web-charge",
         revision: 1,
         operation: "upsert",
-        payload: { description: "Spotify", amountMinor: -19900 } as object,
+        payload: { description: "Spotify", amountMinor: -19900 },
       },
     ]);
     expect(pulled.nextCursor).toBe("v1.a");

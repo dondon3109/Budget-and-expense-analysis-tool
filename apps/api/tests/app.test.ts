@@ -26,6 +26,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AccountDeletionService } from "../src/account-deletion";
 import type { AssistantService, AssistantTurnExecution } from "../src/assistant/service";
 import type { AssistantVoiceService } from "../src/assistant/voice-service";
+import type { ReceiptService } from "../src/receipts/service";
 import { createApp, type AppOptions } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
 import type { AccountRepository } from "../src/db/accounts";
@@ -689,6 +690,82 @@ describe("API foundation", () => {
     expect(preview).toHaveBeenCalledWith(undefined, "energetic");
   });
 
+  it("returns authenticated receipt preferences", async () => {
+    const receiptService = {
+      getPreferences: vi.fn(async () => ({
+        enabled: true,
+        consentedAt: null,
+        consentVersion: 0,
+        visionModel: "@cf/meta/llama-3.2-11b-vision-instruct",
+      })),
+    } as unknown as ReceiptService;
+    const app = createTestApp({ receiptService });
+    const response = await app.request("/api/app/receipts/preferences", {
+      headers: AUTHORIZATION,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ enabled: true, consentVersion: 0 });
+    expect(receiptService.getPreferences).toHaveBeenCalledWith(undefined, TENANT_ID);
+  });
+
+  it("rejects an invalid receipt consent update", async () => {
+    const grantConsent = vi.fn();
+    const receiptService = { grantConsent } as unknown as ReceiptService;
+    const app = createTestApp({ receiptService });
+    const response = await app.request("/api/app/receipts/preferences", {
+      method: "PATCH",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ consented: false }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(grantConsent).not.toHaveBeenCalled();
+  });
+
+  it("accepts a bounded multipart photo on the authenticated receipt route", async () => {
+    const extract = vi.fn(async () => ({
+      merchant: "Jollibee",
+      date: "2026-08-13",
+      amountMinor: -28500,
+      currency: "PHP",
+      kind: "expense",
+      categoryName: "Food & dining",
+      rawText: "JOLLIBEE 285.00",
+    }));
+    const receiptService = { extract } as unknown as ReceiptService;
+    const app = createTestApp({ receiptService });
+    const form = new FormData();
+    form.set("image", new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" }));
+
+    const response = await app.request("/api/app/receipts/extract", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: form,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      merchant: "Jollibee",
+      amountMinor: -28500,
+    });
+    expect(extract).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
+  });
+
+  it("rejects JSON on the multipart receipt extraction route", async () => {
+    const extract = vi.fn();
+    const receiptService = { extract } as unknown as ReceiptService;
+    const app = createTestApp({ receiptService });
+    const response = await app.request("/api/app/receipts/extract", {
+      method: "POST",
+      headers: privateHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ image: "not-a-photo" }),
+    });
+
+    expect(response.status).toBe(415);
+    expect(extract).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["new thread", "/api/app/assistant/threads", 201],
     [
@@ -1215,71 +1292,6 @@ describe("API foundation", () => {
       limit: 20,
       windowSeconds: 900,
     });
-  });
-
-  it("scans a receipt through the Workers AI vision model", async () => {
-    const ai = {
-      run: vi.fn().mockResolvedValue({
-        response: JSON.stringify({
-          merchant: "Jollibee",
-          date: "2026-08-16",
-          amountMinor: 25000,
-          currency: "PHP",
-        }),
-      }),
-    };
-    const app = createTestApp({ imports: createImportStore() });
-    const response = await app.request(
-      "/api/app/imports/receipt-scan",
-      {
-        method: "POST",
-        headers: privateHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          imageBase64: "a".repeat(64),
-          mimeType: "image/jpeg",
-        }),
-      },
-      { AI: ai } as unknown as Bindings,
-    );
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      merchant: "Jollibee",
-      date: "2026-08-16",
-      amountMinor: 25000,
-      currency: "PHP",
-    });
-    expect(ai.run).toHaveBeenCalledWith(
-      "@cf/meta/llama-3.2-11b-vision-instruct",
-      expect.objectContaining({ prompt: expect.stringContaining("receipt") }),
-    );
-  });
-
-  it("reports the receipt scanner as unavailable when the AI binding is missing", async () => {
-    const app = createTestApp({ imports: createImportStore() });
-    const response = await app.request("/api/app/imports/receipt-scan", {
-      method: "POST",
-      headers: privateHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ imageBase64: "a".repeat(64), mimeType: "image/jpeg" }),
-    });
-
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({ error: "provider_unavailable" });
-  });
-
-  it("rejects unsupported receipt image types", async () => {
-    const app = createTestApp({ imports: createImportStore() });
-    const response = await app.request(
-      "/api/app/imports/receipt-scan",
-      {
-        method: "POST",
-        headers: privateHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ imageBase64: "a".repeat(64), mimeType: "application/pdf" }),
-      },
-      { AI: { run: vi.fn() } } as unknown as Bindings,
-    );
-
-    expect(response.status).toBe(400);
   });
 
   it("rate-limits bulk export reads before querying transactions", async () => {

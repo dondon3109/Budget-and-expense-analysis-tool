@@ -28,6 +28,7 @@ The implementation includes:
 - Empty first-use onboarding; transactions and budgets begin blank.
 - Transaction CRUD, category management, filters, pagination, and CSV export.
 - Preview-first CSV/XLS/XLSX selection or drag-and-drop import with header detection, BPI/BDO/MariBank/Bank of America/JPMorgan presets, signed or Debit/Credit amounts, U.S. slash dates, bulk categorization, duplicate prevention, and atomic commit.
+- Separately consented photo receipt entry that drafts merchant, date, amount, and category from a receipt photo, never stores the image, and confirms through the same import preview and duplicate detection before saving.
 - Editable monthly budgets, category spending, six-month trends, savings rate, and recurring-expense insights.
 - Account balances calculated from recorded transaction ledgers, with explicit disclosure that they are not live bank balances and have no opening-balance snapshot.
 - A Goals & debt planning ledger with tenant-owned savings goals, debt inputs, deterministic target-date contributions, and avalanche/snowball projections.

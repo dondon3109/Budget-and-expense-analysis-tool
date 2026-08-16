@@ -3,7 +3,6 @@ import {
   accountInputSchema,
   buildTransferLegs,
   calendarEventInputSchema,
-  calendarEventUpdateSchema,
   categoryInputSchema,
   interestUpdateSchema,
   mobileSyncAcknowledgeResponseSchema,

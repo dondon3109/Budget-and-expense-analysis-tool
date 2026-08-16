@@ -2,6 +2,19 @@
 
 All notable product changes are documented here.
 
+## Unreleased
+
+## 2.2.0 — 2026-08-14
+
+### Added
+
+- Added photo receipt entry to the Import page, with quick links from Dashboard and Transactions: snap or upload a receipt, review the AI-drafted merchant, date, amount, type, and category, then confirm the entry on the same import preview screen with the existing duplicate detection and commit path.
+- Receipt scanning requires its own one-time consent and processes photos in-flight only — images are never stored, retained, or used for anything else.
+
+### Fixed
+
+- Centered the remaining Google sign-in button after Facebook sign-in was removed.
+
 ## 2.1.1 — 2026-08-13
 
 ### Fixed

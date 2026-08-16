@@ -596,6 +596,25 @@ export interface AssistantVoiceTranscription {
   languageCode?: string;
 }
 
+export const CURRENT_RECEIPT_CONSENT_VERSION = 1;
+
+export interface ReceiptPreferences {
+  enabled: boolean;
+  consentedAt: string | null;
+  consentVersion: number;
+  visionModel: string;
+}
+
+export interface ReceiptDraft {
+  merchant: string;
+  date: string;
+  amountMinor: number;
+  currency: "PHP";
+  kind: TransactionKind;
+  categoryName?: string;
+  rawText: string;
+}
+
 export interface AssistantThread {
   id: string;
   title: string;

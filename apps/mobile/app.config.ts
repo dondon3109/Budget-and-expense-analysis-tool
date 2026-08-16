@@ -92,6 +92,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: variant.androidPackage,
+      // Keep above the retired TWA's 20101 so a sideloaded Beta upgrade never
+      // looks like a downgrade for the shared site.zoption.android package.
+      versionCode: 20200,
       allowBackup: false,
       // Predictive back is disabled: with enableOnBackInvokedCallback the
       // system finished the activity instead of popping the native stack,

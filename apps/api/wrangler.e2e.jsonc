@@ -19,6 +19,7 @@
     "SUPABASE_JWT_AUDIENCE": "authenticated",
     "WEB_APP_URL": "http://localhost:5173",
     "ASSISTANT_ENABLED": "false",
+    "RECEIPT_ENTRY_ENABLED": "false",
     "PAYPAL_ENVIRONMENT": "sandbox",
   },
 }
