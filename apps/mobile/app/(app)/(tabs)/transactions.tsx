@@ -62,18 +62,18 @@ export default function TransactionsScreen() {
             style={({ pressed }) => [
               styles.add,
               {
-                // The stronger pressed tone is used at rest so the button
-                // stands out clearly on the canvas; pressing eases it back.
-                backgroundColor: pressed ? theme.colors.brand : theme.colors.brandPressed,
-                borderColor: pressed ? theme.colors.brandSoft : theme.colors.brand,
+                // A clearly outlined surface box so the button is obvious
+                // in every theme; pressing fills it with the soft brand tint.
+                backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surfaceRaised,
+                borderColor: theme.colors.brand,
               },
             ]}
           >
             <MaterialCommunityIcons
               accessibilityElementsHidden
-              color={theme.colors.onBrand}
+              color={theme.colors.brand}
               name="plus"
-              size={24}
+              size={26}
             />
           </Pressable>
         </View>
