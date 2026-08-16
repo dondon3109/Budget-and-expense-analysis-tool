@@ -6,14 +6,14 @@ Last updated: 2026-08-16.
 | ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | 0. Discovery and design              | Complete    | Verified repository/worktree baseline, parity matrix, architecture, sync protocol, threat model, shared compatibility review |
 | 1. Mobile foundation                 | Complete    | Native Android/iOS development builds and runtime navigation/input on both platforms (Android 15 emulator, iPhone 17 Pro sim) |
-| 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS and Android; Google OAuth implemented and staged at Google's credential gate on both platforms; Sign in with Apple remains |
+| 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS and Android; Google OAuth runtime-proven end-to-end on Android (identity preserved); Sign in with Apple remains |
 | 3. Encrypted local database          | Complete   | iOS and Android SQLCipher file/reopen proofs, migrations, observable repository, and guarded sign-out implemented             |
 | 4. Transaction sync vertical slice   | Complete   | Create/edit/delete + offline durability, restart recovery, push/pull, and explicit multi-client conflict resolution proven against production on iOS and Android |
-| 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity                                                          |
-| 6. Planning and recurring money      | Complete   | Goals, debts (avalanche/snowball), subscriptions, calendar, fee-aware transfers, and savings-interest modeling proven with tests |
+| 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity; Android runtime passes complete                          |
+| 6. Planning and recurring money      | Complete   | Goals, debts (avalanche/snowball), subscriptions, calendar, fee-aware transfers, and savings-interest modeling proven with tests and Android runtime passes |
 | 7. Imports                           | Complete   | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
 | 8. Online-only capabilities          | Complete   | Assistant/voice/billing/support/account management with online/consent boundaries; 40 new mobile tests, iOS dev build proof  |
-| 9. Hardening and release preparation | Not started | Accessibility, performance, resilience, signed-test authorization, upgrade/rollback documents                                |
+| 9. Hardening and release preparation | In progress | Accessibility, permissions, log/secret audits, release/preview builds, deep links, cold start, memory, and Android background-task execution verified; device-only items remain |
 
 ## Milestone 0 verified baseline
 
