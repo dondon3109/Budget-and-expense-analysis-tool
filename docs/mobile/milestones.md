@@ -873,3 +873,16 @@ against production. One full cycle was verified:
   bundle and restarting Chrome produced the correct fresh flow; the Supabase
   redirect allowlist already contains zoption-dev://auth/callback (owner
   confirmed).
+
+## Android finalization checks (2026-08-16)
+
+- Background sync task: registered as a WorkManager SystemJobService job
+  (15-minute minimum latency, connectivity-constrained) and force-run via
+  the OS job scheduler - the worker executed, re-enqueued for the next
+  window, and returned SUCCESS. This closes the Android background-task
+  runtime proof (the iOS simulator still cannot run the OS scheduler).
+- Memory (release build, authenticated, emulator): 181 MB TOTAL PSS /
+  311 MB TOTAL RSS.
+- Remaining screens render under the Google session: Goals, Debts,
+  Subscriptions, Calendar (August 2026 view), Budgets - each with correct
+  empty states and add actions.
