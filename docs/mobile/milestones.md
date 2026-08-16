@@ -840,3 +840,18 @@ against production. One full cycle was verified:
   now parsed (helper + 6 tests) and exchanged, and the release build with
   the fix is staged on the emulator at Google's password step awaiting the
   owner's manual login.
+
+## Preview variant built and verified (2026-08-16)
+
+- A true preview build was produced: npx expo prebuild with
+  APP_VARIANT=preview regenerated the native project as
+  site.zoption.android.preview with the zoption-preview scheme, and
+  assembleRelease (17m08s) produced the release APK.
+- The permission-cleanup plugin verified in a real build: the preview
+  release manifest no longer declares SYSTEM_ALERT_WINDOW (debug manifests
+  keep it for the dev-client overlay), confirming the production permission
+  surface is clean.
+- Google OAuth runtime reached Google 2-Step Verification: the owner
+  password was accepted and Google is awaiting the owner phone prompt
+  (tap Yes on the realme 8 notification) - the final human step before the
+  identity-linking evidence is recorded.
