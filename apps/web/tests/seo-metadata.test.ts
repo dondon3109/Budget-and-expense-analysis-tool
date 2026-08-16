@@ -10,6 +10,8 @@ import {
   SITE_ORIGIN,
 } from "../src/seo/siteMetadata";
 
+import { ANDROID_RELEASE } from "../src/releases/androidRelease";
+
 type SchemaNode = Record<string, unknown>;
 
 function structuredDataFor(path: keyof typeof PUBLIC_ROUTE_METADATA) {
@@ -168,18 +170,18 @@ describe("public SEO metadata", () => {
     expect(isEligiblePublicUrl("/missing")).toBe(false);
   });
 
-  it("publishes accurate metadata for the official website-hosted Android APK", () => {
+  it("publishes accurate metadata for the official Android beta download", () => {
     const metadata = PUBLIC_ROUTE_METADATA["/install"];
-    expect(metadata.title).toBe("Download Zoption Android APK — Official Release");
+    expect(metadata.title).toBe("Download Zoption Beta for Android — Official APK");
     expect(metadata.canonical).toBe(`${SITE_ORIGIN}/install`);
-    expect(metadata.description).toMatch(/release-signed|APK|zoption\.site/i);
+    expect(metadata.description).toMatch(/Zoption Beta|APK|Zoption website/i);
     const application = nodesByType(structuredDataFor("/install")["@graph"], "SoftwareApplication");
     expect(application).toEqual([
       expect.objectContaining({
-        operatingSystem: "Android 5.0 or newer (API 21+)",
-        softwareVersion: "2.1.1",
-        downloadUrl: `${SITE_ORIGIN}/downloads/zoption-android-2.1.1.apk`,
-        fileSize: "2104552 bytes",
+        operatingSystem: ANDROID_RELEASE.minimumAndroid,
+        softwareVersion: ANDROID_RELEASE.versionName,
+        downloadUrl: ANDROID_RELEASE.downloadPath,
+        fileSize: `${ANDROID_RELEASE.sizeBytes} bytes`,
       }),
     ]);
     expect(JSON.stringify(metadata)).not.toMatch(/Play Store|App Store/i);

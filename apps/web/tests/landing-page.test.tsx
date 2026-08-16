@@ -118,18 +118,17 @@ describe("landing page", () => {
     ).toBeInTheDocument();
   });
 
-  it("promotes only the official Android APK without promising offline behavior", () => {
+  it("promotes the official Android beta with its offline-first promise", () => {
     renderLanding();
 
-    const installation = screen.getByRole("region", { name: "Take Zoption to Android." });
-    expect(within(installation).getAllByText(/same private workspace/i).length).toBeGreaterThan(0);
-    expect(within(installation).getByText(/online-first/i)).toBeInTheDocument();
+    const installation = screen.getByRole("region", { name: "Take Zoption Beta to Android." });
+    expect(within(installation).getAllByText(/same account and workspace/i).length).toBeGreaterThan(0);
+    expect(within(installation).getByText(/offline-first entry/i)).toBeInTheDocument();
     expect(
       within(installation).getByText(/not distributed through Google Play/i),
     ).toBeInTheDocument();
-    expect(within(installation).getByText(/status bar is visible again/i)).toBeInTheDocument();
     expect(
-      within(installation).getByText(/install this update over your current app/i),
+      within(installation).getByText(/uninstall it first/i),
     ).toBeInTheDocument();
     expect(
       within(installation).getByRole("link", { name: "Download Android APK" }),

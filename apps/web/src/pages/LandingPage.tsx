@@ -429,18 +429,18 @@ export function LandingPage() {
 
         <section className="install-promo" id="install" aria-labelledby="install-promo-title">
           <div className="install-promo-copy">
-            <p className="eyebrow">Official Android release</p>
-            <h2 id="install-promo-title">Take Zoption to Android.</h2>
+            <p className="eyebrow">Official Android beta</p>
+            <h2 id="install-promo-title">Take Zoption Beta to Android.</h2>
             <p>
-              Download the release-signed APK directly from zoption.site for a focused, standalone
-              app connected to the same private workspace.
+              Download the Zoption Beta APK from zoption.site: the new native app with your
+              workspace on the device, offline-first entry, and camera receipt scanning.
             </p>
             <ul className="install-promo-points">
               <li>
-                <Check size={16} aria-hidden="true" /> Same account and every current feature
+                <Check size={16} aria-hidden="true" /> Same account and workspace
               </li>
               <li>
-                <Check size={16} aria-hidden="true" /> Signed and hosted only by zoption.site
+                <Check size={16} aria-hidden="true" /> Receipt scanning with your approval
               </li>
               <li>
                 <Check size={16} aria-hidden="true" /> No Google Play listing required
@@ -452,8 +452,8 @@ export function LandingPage() {
             <div className="install-promo-release-heading">
               <BrandMark className="install-promo-mark" />
               <div>
-                <p>Ready to download</p>
-                <h3>Zoption {ANDROID_RELEASE.versionName}</h3>
+                <p>Beta ready to download</p>
+                <h3>Zoption Beta</h3>
               </div>
               <span>APK</span>
             </div>
@@ -468,7 +468,7 @@ export function LandingPage() {
               </div>
               <div>
                 <dt>Source</dt>
-                <dd>zoption.site only</dd>
+                <dd>Official Zoption release</dd>
               </div>
             </dl>
             <div className="install-promo-actions">
@@ -477,9 +477,8 @@ export function LandingPage() {
               </Link>
             </div>
             <p className="install-promo-update-note">
-              New in Zoption {ANDROID_RELEASE.versionName}: the Android status bar is visible again.
-              Already installed? Install this update over your current app — your workspace stays
-              signed in.
+              New in Zoption Beta: snap a receipt and Zoption drafts the expense for you. The beta
+              replaces the older Zoption app — uninstall it first, then install the beta.
             </p>
             <p className="install-promo-note">
               The APK is not distributed through Google Play. Zoption remains online-first, so

@@ -49,8 +49,8 @@ function DownloadPanel() {
       <div className="apk-card-heading">
         <BrandMark className="apk-app-icon" />
         <div>
-          <p>Official Android release</p>
-          <h2 id="apk-download-title">Zoption {ANDROID_RELEASE.versionName}</h2>
+          <p>Official Android beta</p>
+          <h2 id="apk-download-title">Zoption Beta</h2>
         </div>
         <span className="apk-format-badge">APK</span>
       </div>
@@ -64,13 +64,14 @@ function DownloadPanel() {
       </a>
 
       <p className="apk-store-note">
-        <ShieldCheck size={16} aria-hidden="true" /> Signed by Zoption and distributed only from
-        zoption.site — not through Google Play.
+        <ShieldCheck size={16} aria-hidden="true" /> Signed by Zoption and linked only from
+        zoption.site — not distributed through Google Play.
       </p>
 
       <p className="apk-update-note">
-        <RefreshCw size={16} aria-hidden="true" /> Already installed? This update restores the
-        system status bar — install it over your current app and your workspace stays signed in.
+        <RefreshCw size={16} aria-hidden="true" /> New in this beta: scan a receipt with your
+        camera and Zoption drafts the expense for you. The older Zoption app must be uninstalled
+        before installing the beta — it uses a different signing identity.
       </p>
 
       <dl className="apk-release-facts">
@@ -163,22 +164,22 @@ export function InstallPage() {
         <section className="install-hero" aria-labelledby="install-heading">
           <div className="install-hero-copy">
             <p className="hero-eyebrow">
-              <Smartphone size={15} aria-hidden="true" /> Android release from zoption.site
+              <Smartphone size={15} aria-hidden="true" /> Android beta from zoption.site
             </p>
-            <h1 id="install-heading">Download Zoption for Android.</h1>
+            <h1 id="install-heading">Download Zoption Beta for Android.</h1>
           </div>
           <div className="install-hero-summary">
             <p className="install-hero-lead">
-              Get the release-signed Zoption APK directly from the official website. It opens the
-              same private, online-first workspace in a focused, standalone Android app with the
-              system status bar visible.
+              Get the official Zoption Beta APK from the Zoption website. It is the new native
+              Android app: your workspace lives on the device, entries work offline, and a photo
+              of a receipt drafts the expense for you.
             </p>
             <ul className="install-benefits" aria-label="Android app benefits">
               <li>
                 <Check size={17} aria-hidden="true" /> The same Zoption account and workspace
               </li>
               <li>
-                <Check size={17} aria-hidden="true" /> Verified connection to zoption.site
+                <Check size={17} aria-hidden="true" /> Offline-first entries that sync later
               </li>
               <li>
                 <Check size={17} aria-hidden="true" /> No Google Play account or listing
@@ -214,7 +215,8 @@ export function InstallPage() {
                 <h3>Download from this page</h3>
                 <p>
                   Tap “Download Android APK.” Only trust a file whose address begins with
-                  <code>https://zoption.site/downloads/</code>.
+                  <code>https://github.com/dondon3109/Budget-and-expense-analysis-tool/releases/download/</code>
+                  and ends in <code>{ANDROID_RELEASE.filename}</code>.
                 </p>
               </div>
             </li>
@@ -285,17 +287,18 @@ export function InstallPage() {
               </p>
             </details>
             <details>
-              <summary>An update will not install</summary>
+              <summary>Installation reports a conflict or signature mismatch</summary>
               <p>
-                Download the newer APK from zoption.site. Do not uninstall if Android reports a
-                signature mismatch; stop and contact Zoption support instead.
+                The beta replaces the older Zoption website app and uses a different signing
+                identity. Uninstall the old Zoption app first (your data stays with your account),
+                then install the beta and sign in again.
               </p>
             </details>
             <details>
-              <summary>The app opens with browser controls</summary>
+              <summary>The app will not open or crashes on launch</summary>
               <p>
-                Confirm you are online and update Chrome. Domain verification can require a short
-                retry after first installation.
+                Delete the downloaded file, download it again from this page, and reinstall. If it
+                still fails, contact Zoption support from the website.
               </p>
             </details>
             <details>
@@ -327,11 +330,11 @@ export function InstallPage() {
             <article>
               <Wifi size={22} aria-hidden="true" />
               <div>
-                <h3>Online-first by design</h3>
+                <h3>Offline-first with a connected sync</h3>
                 <p>
-                  Sign-in, financial records, imports, assistant requests, billing, and account
-                  changes require an internet connection. A previously loaded shell may appear
-                  offline, but financial operations do not work offline.
+                  Your workspace is stored encrypted on the device, so you can record transactions,
+                  budgets, and goals without a connection and sync them later. Sign-in, the
+                  assistant, and receipt scanning still need the internet.
                 </p>
               </div>
             </article>
@@ -349,8 +352,8 @@ export function InstallPage() {
         </section>
 
         <section className="install-next-actions" aria-labelledby="install-next-title">
-          <h2 id="install-next-title">Your account works in the APK and the browser.</h2>
-          <p>Download the Android release, or continue with Zoption on the web.</p>
+          <h2 id="install-next-title">Your account works in the beta and the browser.</h2>
+          <p>Download the Android beta, or continue with Zoption on the web.</p>
           <div>
             <a className="button primary" href={ANDROID_RELEASE.downloadPath} download>
               <Download size={18} aria-hidden="true" /> Download APK

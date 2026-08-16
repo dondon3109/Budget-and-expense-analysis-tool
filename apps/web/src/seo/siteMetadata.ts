@@ -219,9 +219,9 @@ function installPageStructuredData(): StructuredDataGraph {
     {
       "@type": "WebPage",
       "@id": `${url}#webpage`,
-      name: "Download Zoption for Android",
+      name: "Download Zoption Beta for Android",
       description:
-        "Download the official release-signed Zoption Android APK directly from zoption.site.",
+        "Download the official Zoption Beta Android APK from the Zoption website.",
       url,
       dateModified: ANDROID_RELEASE.releaseDate,
       inLanguage: "en",
@@ -231,15 +231,17 @@ function installPageStructuredData(): StructuredDataGraph {
     {
       "@type": "SoftwareApplication",
       "@id": applicationId,
-      name: "Zoption for Android",
+      name: "Zoption Beta for Android",
       applicationCategory: "FinanceApplication",
       operatingSystem: ANDROID_RELEASE.minimumAndroid,
       softwareVersion: ANDROID_RELEASE.versionName,
       datePublished: ANDROID_RELEASE.releaseDate,
-      downloadUrl: `${SITE_ORIGIN}${ANDROID_RELEASE.downloadPath}`,
+      downloadUrl: ANDROID_RELEASE.downloadPath.startsWith("http")
+        ? ANDROID_RELEASE.downloadPath
+        : `${SITE_ORIGIN}${ANDROID_RELEASE.downloadPath}`,
       fileSize: `${ANDROID_RELEASE.sizeBytes} bytes`,
       description:
-        "A release-signed Android Trusted Web Activity for the private Zoption budgeting workspace.",
+        "The native Zoption Beta Android app with offline-first budgeting and camera receipt scanning, for the private Zoption workspace.",
       url,
     },
   );
@@ -331,9 +333,9 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
     },
   },
   "/install": {
-    title: "Download Zoption Android APK — Official Release",
+    title: "Download Zoption Beta for Android — Official APK",
     description:
-      "Download the official release-signed Zoption Android APK directly from zoption.site, with version, file size, checksum, and safe installation steps.",
+      "Download the official Zoption Beta Android APK from the Zoption website, with version, file size, checksum, and safe installation steps.",
     canonical: `${SITE_ORIGIN}/install`,
     robots: "index,follow",
     structuredData: installPageStructuredData(),

@@ -1,16 +1,16 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "2.1.1",
-  "versionCode": 20101,
-  "filename": "zoption-android-2.1.1.apk",
-  "downloadPath": "/downloads/zoption-android-2.1.1.apk",
-  "checksumPath": "/downloads/zoption-android-2.1.1.apk.sha256",
-  "sha256": "aa0995af8cca8462fed27e783161e19cf6a149657c7b69e43f352ddd789e0804",
-  "sizeBytes": 2104552,
-  "sizeLabel": "2,104,552 bytes (2.01 MiB)",
-  "releaseDate": "2026-08-13",
-  "releaseDateLabel": "August 13, 2026",
-  "minimumAndroid": "Android 5.0 or newer (API 21+)",
+  "versionName": "0.1.0",
+  "versionCode": 20200,
+  "filename": "zoption-beta-0.1.0.apk",
+  "downloadPath": "https://github.com/dondon3109/Budget-and-expense-analysis-tool/releases/download/android-beta-0.1.0/zoption-beta-0.1.0.apk",
+  "checksumPath": "https://github.com/dondon3109/Budget-and-expense-analysis-tool/releases/download/android-beta-0.1.0/zoption-beta-0.1.0.apk.sha256",
+  "sha256": "cfd172e7a06874d8967dfc9de88977a069197ded90980cb97e982ab58597dc8f",
+  "sizeBytes": 132700308,
+  "sizeLabel": "132,700,308 bytes (126.55 MiB)",
+  "releaseDate": "2026-08-16",
+  "releaseDateLabel": "August 16, 2026",
+  "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
-  "certificateSha256": "6C:71:2E:0E:7D:72:31:43:71:79:86:1B:64:B5:50:05:19:33:D5:A5:74:35:79:13:40:BE:78:38:D7:2D:D9:53"
+  "certificateSha256": "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C"
 }

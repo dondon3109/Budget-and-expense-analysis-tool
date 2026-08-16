@@ -33,5 +33,8 @@ apps/android/local.properties
 apps/android/*.apk
 apps/android/*.aab
 apps/android/*.idsig
+*.apk
+*.aab
+*.idsig
 apps/web/public/downloads/
 apps/ads/out/

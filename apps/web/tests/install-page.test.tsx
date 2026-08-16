@@ -60,7 +60,7 @@ describe("Android APK download page", () => {
     renderInstallPage();
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Download Zoption for Android." }),
+      screen.getByRole("heading", { level: 1, name: "Download Zoption Beta for Android." }),
     ).toBeInTheDocument();
     const primaryDownload = screen.getByRole("link", { name: "Download Android APK" });
     expect(primaryDownload).toHaveAttribute("href", ANDROID_RELEASE.downloadPath);
@@ -68,12 +68,12 @@ describe("Android APK download page", () => {
     expect(screen.getByText(ANDROID_RELEASE.sizeLabel)).toBeInTheDocument();
     expect(screen.getByText(ANDROID_RELEASE.releaseDateLabel)).toBeInTheDocument();
     expect(screen.getByText(ANDROID_RELEASE.sha256)).toBeInTheDocument();
-    expect(screen.getByText(/not through Google Play/i)).toBeInTheDocument();
+    expect(screen.getByText(/not distributed through Google Play/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Already installed\? This update restores the system status bar/i),
+      screen.getByText(/must be uninstalled before installing the beta/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/Do not disable Play Protect/i)).toBeInTheDocument();
-    expect(screen.getByText(/online-first by design/i)).toBeInTheDocument();
+    expect(screen.getByText(/offline-first with a connected sync/i)).toBeInTheDocument();
     expect(screen.getAllByText(/same Zoption account/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Read the privacy policy" })).toHaveAttribute(
       "href",
