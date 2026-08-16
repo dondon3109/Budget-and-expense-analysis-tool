@@ -855,3 +855,21 @@ against production. One full cycle was verified:
   password was accepted and Google is awaiting the owner phone prompt
   (tap Yes on the realme 8 notification) - the final human step before the
   identity-linking evidence is recorded.
+
+## Google OAuth runtime proof on Android (2026-08-16) — COMPLETE
+
+- The full social sign-in chain ran on the Android release build: Continue
+  with Google -> Chrome Custom Tab -> Supabase authorize -> Google (owner
+  completed 2-Step Verification on their phone) -> callback
+  zoption-dev://auth/callback -> the app showed "Finishing sign in" and
+  landed on the authenticated Home tab.
+- Identity preservation verified: the Google-authenticated session derived
+  the same D1 workspace as the email/password session - exactly 3 accounts
+  (Bank/Checking, Cash, GCash) and 0 transactions, status "Up to date".
+- Debugging note: earlier attempts bounced to zoption.site because a stale
+  Chrome CustomTabActivity reused a flow started by an earlier APK whose
+  bundle carried the preview scheme (redirect zoption-preview://auth/callback
+  is not allowlisted in Supabase). Rebuilding the dev package with the dev
+  bundle and restarting Chrome produced the correct fresh flow; the Supabase
+  redirect allowlist already contains zoption-dev://auth/callback (owner
+  confirmed).
