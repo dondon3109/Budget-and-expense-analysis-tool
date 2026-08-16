@@ -203,22 +203,31 @@ export function SessionProvider({ children }: PropsWithChildren) {
     const result = await WebBrowser.openAuthSessionAsync(data.url, scheme + "://auth/callback", {
       preferEphemeralSession: true,
     });
-    if (result.type !== "success" || !result.url) {
+    if (result.type !== "success") {
       // The user dismissed the browser sheet without signing in.
-      return;
+      throw new Error("Google sign-in was not completed (browser result: " + result.type + ").");
+    }
+    if (!result.url) {
+      throw new Error("Google sign-in returned no callback URL.");
     }
     const callback = parseOAuthCallbackUrl(result.url);
-    if (!callback) return;
+    if (!callback) {
+      throw new Error("Google callback URL could not be parsed: " + result.url.slice(0, 200));
+    }
     if ("error" in callback) throw new Error(callback.error);
     const { error: exchangeError } = await getSupabaseClient().auth.exchangeCodeForSession(
       callback.code,
     );
     if (exchangeError) {
-      // On Android the router's deep-link callback route may exchange the
-      // same code first; the server then reports an invalid flow state here.
-      // A session existing afterwards means the sign-in actually succeeded.
+      // On Android the router's deep-link callback route may exchange the same
+      // code first; a session existing afterwards means the sign-in succeeded.
       const { data: currentSession } = await getSupabaseClient().auth.getSession();
-      if (!currentSession.session) throw exchangeError;
+      if (!currentSession.session) {
+        throw new Error(
+          "Google code exchange failed: " +
+            JSON.stringify({ name: exchangeError.name, message: exchangeError.message, code: exchangeError.code }),
+        );
+      }
     }
   }, []);
 

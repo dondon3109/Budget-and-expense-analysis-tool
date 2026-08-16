@@ -75,6 +75,23 @@ REACT_NATIVE_PACKAGER_HOSTNAME="$(ipconfig getifaddr en0)" pnpm --filter @zoptio
 
 - Development: `site.zoption.android.dev` / `site.zoption.ios.dev`
 - Preview: `site.zoption.android.preview` / `site.zoption.ios.preview`
-- Proposed production: `site.zoption.android` / `site.zoption.ios`
+- Production (Zoption Beta): `site.zoption.android` / `site.zoption.ios`
 
-The production Android identifier is reserved for the eventual approved upgrade. No signing, store registration, submission, or production replacement is performed by these commands.
+### Building the Beta APK
+
+`APP_VARIANT` selects the variant's app name, scheme, and deep-link callback. It must be set for
+**both** steps, or the embedded Expo config silently falls back to the development variant (the
+native manifest and the JS `Constants.expoConfig` would disagree, and OAuth callbacks would use
+the wrong `zoption-dev://` scheme):
+
+```bash
+cd apps/mobile
+APP_VARIANT=production npx expo prebuild --platform android --no-install
+cd android
+APP_VARIANT=production ANDROID_HOME="$HOME/Library/Android/sdk" \
+  JAVA_HOME="$(/usr/libexec/java_home -v 17 2>/dev/null || echo /opt/homebrew/opt/openjdk@17)" \
+  ./gradlew assembleRelease
+```
+
+The Beta APK is signed with the debug certificate and is sideloaded from the Zoption website; it
+is not distributed through Google Play and does not replace the retired TWA signing identity.
