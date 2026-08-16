@@ -200,9 +200,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
     });
     if (error) throw error;
     if (!data?.url) throw new Error("Google sign-in could not start.");
-    const result = await WebBrowser.openAuthSessionAsync(data.url, scheme + "://auth/callback", {
-      preferEphemeralSession: true,
-    });
+    // @supabase/auth-js 2.112.3's module build fails to forward
+    // skipBrowserRedirect into the authorize URL, so add the parameter
+    // ourselves: it tells the Auth server to 302 the PKCE code straight to
+    // the app scheme instead of serving its browser verify page.
+    const authorizeUrl = new URL(data.url);
+    authorizeUrl.searchParams.set("skip_http_redirect", "true");
+    const result = await WebBrowser.openAuthSessionAsync(
+      authorizeUrl.toString(),
+      scheme + "://auth/callback",
+      {
+        preferEphemeralSession: true,
+      },
+    );
     if (result.type !== "success") {
       // The user dismissed the browser sheet without signing in.
       throw new Error("Google sign-in was not completed (browser result: " + result.type + ").");
