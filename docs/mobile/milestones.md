@@ -886,3 +886,13 @@ against production. One full cycle was verified:
 - Remaining screens render under the Google session: Goals, Debts,
   Subscriptions, Calendar (August 2026 view), Budgets - each with correct
   empty states and add actions.
+
+## Preview APK delivered for owner device testing (2026-08-16)
+
+- A standalone preview release APK (site.zoption.android.preview, embedded
+  bundle, debug-signed local test artifact) was built at the owner request
+  and copied to ~/Desktop/Zoption-Preview-0.1.0.apk for sideloading onto a
+  physical device. Smoke-tested on the emulator (launches to the welcome
+  screen). Google sign-in on this variant uses the zoption-preview:// scheme,
+  which must be added to the Supabase redirect allowlist for social sign-in
+  on the preview build.
