@@ -134,6 +134,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // element type just does not model them.
       withDevClientPermissionCleanup as unknown as [string, unknown],
       withLegacyBackHandling as unknown as [string, unknown],
+      // Local config plugin: rewrites android/app/build.gradle after every
+      // prebuild so release builds sign with the permanent Zoption key
+      // (gitignored keystore.properties or CI env vars) instead of the
+      // debug keystore. See apps/mobile/plugins/with-android-release-signing.js.
+      "./plugins/with-android-release-signing",
     ],
     experiments: {
       typedRoutes: true,
