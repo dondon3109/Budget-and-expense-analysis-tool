@@ -94,7 +94,7 @@ test("Android download page renders as a public deep link with exact release gui
   await page.goto("/install");
 
   await expect(page).toHaveURL(/\/install$/);
-  await expect(page.getByRole("heading", { name: "Download Zoption for Android." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Download Zoption Beta for Android." })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Four steps from download to app icon." }),
   ).toBeVisible();
@@ -103,7 +103,7 @@ test("Android download page renders as a public deep link with exact release gui
     ANDROID_RELEASE.downloadPath,
   );
   await expect(page.getByText(/does not receive bank credentials/i)).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Online-first by design" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Offline-first with a connected sync" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Read the privacy policy" })).toHaveAttribute(
     "href",
     "/privacy-policy",
@@ -113,7 +113,7 @@ test("Android download page renders as a public deep link with exact release gui
   await expect(page).toHaveURL(/\/privacy-policy$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/install$/);
-  await expect(page.getByRole("heading", { name: "Download Zoption for Android." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Download Zoption Beta for Android." })).toBeVisible();
 });
 
 test("private pages redirect signed-out users to login", async ({ page }) => {
