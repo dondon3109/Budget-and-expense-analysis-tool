@@ -80,7 +80,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: variant.name,
     slug: "zoption-mobile",
     version: "0.1.0",
-    icon: "../android/store_icon.png",
+    icon: "./assets/zoption-icon.png",
     scheme: variant.scheme,
     userInterfaceStyle: "automatic",
     runtimeVersion: { policy: "appVersion" },
@@ -109,7 +109,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         "expo-splash-screen",
         {
           backgroundColor: "#06473d",
-          image: "../android/store_icon.png",
+          image: "./assets/zoption-icon.png",
           imageWidth: 180,
           dark: { backgroundColor: "#0f1115" },
         },
