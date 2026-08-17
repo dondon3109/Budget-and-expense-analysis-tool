@@ -27,17 +27,17 @@ describe("Android release contract", () => {
     const appConfig = await text(resolve(mobileRoot, "app.config.ts"));
 
     expect(ANDROID_RELEASE.versionName).toBe(mobilePackage.version);
-    expect(ANDROID_RELEASE.versionCode).toBe(20200);
+    expect(ANDROID_RELEASE.versionCode).toBe(20201);
     expect(ANDROID_RELEASE.packageId).toBe("site.zoption.android");
     expect(ANDROID_RELEASE.filename).toBe(`zoption-beta-${mobilePackage.version}.apk`);
     expect(appConfig).toContain('name: "Zoption Beta"');
     expect(appConfig).toContain('androidPackage: "site.zoption.android"');
-    expect(appConfig).toContain("versionCode: 20200");
+    expect(appConfig).toContain("versionCode: 20201");
   });
 
   it("hosts the beta artifact on the public GitHub release behind the website link", () => {
     const base =
-      "https://github.com/dondon3109/Budget-and-expense-analysis-tool/releases/download/android-beta-0.1.0";
+      "https://github.com/dondon3109/Budget-and-expense-analysis-tool/releases/download/android-beta-0.1.1";
     expect(ANDROID_RELEASE.downloadPath).toBe(`${base}/${ANDROID_RELEASE.filename}`);
     expect(ANDROID_RELEASE.checksumPath).toBe(
       `${base}/${ANDROID_RELEASE.filename}.sha256`,
@@ -54,8 +54,8 @@ describe("Android release contract", () => {
   it("records exact immutable artifact metadata for integrity checks", () => {
     expect(ANDROID_RELEASE).toMatchObject({
       packageId: "site.zoption.android",
-      versionName: "0.1.0",
-      versionCode: 20200,
+      versionName: "0.1.1",
+      versionCode: 20201,
       targetApi: 36,
     });
     expect(ANDROID_RELEASE.sha256).toMatch(/^[a-f0-9]{64}$/);
