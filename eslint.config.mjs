@@ -31,7 +31,12 @@ export default tseslint.config(
   },
   {
     ...tseslint.configs.disableTypeChecked,
-    files: ["**/scripts/**/*.mjs", "apps/mobile/*.cjs", "apps/web/public/**/*.js"],
+    files: [
+      "**/scripts/**/*.mjs",
+      "apps/mobile/*.cjs",
+      "apps/web/public/**/*.js",
+      "release.config.mjs",
+    ],
     languageOptions: {
       ...tseslint.configs.disableTypeChecked.languageOptions,
       globals: {

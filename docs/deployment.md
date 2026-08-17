@@ -207,6 +207,50 @@ The publishable key is intended for browser use. It does not grant access to D1;
 
 Public canonical URLs do not use trailing slashes. The three legal trailing-slash variants permanently redirect to their canonical path. Public pages accept only standard UTM and ad-click identifiers (`utm_*`, `gclid`, `dclid`, `fbclid`, `msclkid`) as indexable query strings; their canonical remains query-free. Any other query parameter and any authentication/error URL state is noindex. Update a public route's manually maintained sitemap `lastModified` value only when its user-visible content changes materially; the same value feeds legal-page structured-data `dateModified`.
 
+## Automated production release
+
+CI validates every pull request and push to `main`. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main`, rejects stale CI results, and asks semantic-release whether the unreleased Conventional Commits require a release. A non-releasing change stops without touching production.
+
+For a release-producing commit, the workflow uses one version and commit SHA throughout this sequence:
+
+1. Validate the tracked production Wrangler configuration and perform a Worker dry run.
+2. Create or resume a GitHub production deployment record for duplicate protection.
+3. Apply pending production D1 migrations. Wrangler captures the documented backup automatically in non-interactive CI.
+4. Deploy the production Worker, tagged with the selected semantic version.
+5. Build Pages with that same version, deploy the output with the exact Git SHA, wait until the custom domain serves its versioned deployment marker, and run the non-mutating production smoke gate.
+6. Mark the GitHub deployment successful, then let semantic-release create the matching `v*` tag and GitHub Release.
+
+If semantic-release publication fails after a successful Cloudflare deployment, rerunning the failed workflow reuses the successful GitHub deployment record and does not deploy Worker or Pages again. Semantic-release is also idempotent once the tag exists.
+
+Version selection remains:
+
+- `fix:` creates a patch release.
+- `feat:` creates a minor release.
+- `feat!:` or a `BREAKING CHANGE:` footer creates a major release.
+- Documentation, tests, chores, refactors, CI, build, style, performance, and unknown commit types do not release.
+
+Before enabling the workflow for the first time, create the missing one-time baseline tag on the existing `2.2.1` release commit and push only that tag:
+
+```bash
+git tag -a v2.2.1 203ef8c -m "Release 2.2.1"
+git push origin v2.2.1
+```
+
+The workflow only requires that a valid prior `vMAJOR.MINOR.PATCH` tag is reachable from the release commit. This protects the one-time migration without permanently embedding `2.2.1` in the workflow; it does not compare future releases with `package.json` or require agents to edit versions.
+
+### One-time operator setup
+
+Do these outside the repository before enabling `Production Release`; the workflow deliberately does not change external settings:
+
+1. In Cloudflare Workers Builds for `budget-expense-api-production`, disable the production Git-connected deployment from `main`. Remote verification on 2026-08-17 showed that it deployed `203ef8c` even though GitHub CI failed. Keep it disabled to prevent a duplicate Worker deployment racing GitHub Actions.
+2. Stop routine manual production Worker and Pages deployments. The commands below are retained only for emergency recovery when the Actions workflow is disabled.
+3. Add the GitHub Actions secret `CLOUDFLARE_API_TOKEN` with only the account permissions needed for Workers Scripts, Pages, and D1 production deployment. Existing Worker runtime secrets stay in Cloudflare and are neither copied to nor exposed by GitHub Actions.
+4. Add the GitHub Actions variable `CLOUDFLARE_ACCOUNT_ID`.
+5. After completing steps 1-4, add `CLOUDFLARE_PRODUCTION_GIT_DEPLOY_DISABLED=true`. The workflow refuses to deploy without this explicit operator acknowledgement.
+6. Allow the workflow's `GITHUB_TOKEN` to write contents and deployments, protect `main`, and require `verify` before merge. No repository protection was configured when this flow was implemented.
+
+The Pages build derives its public Supabase URL and publishable key from the existing tracked production Wrangler configuration. Do not add service-role keys, provider API keys, or other Worker runtime secrets to GitHub.
+
 ## Preview release
 
 Create a D1 Time Travel recovery point before applying migrations that remove retired data, then apply migrations and deploy the Worker. The tracked Preview environment overrides the root cron list to omit daily interest crediting: Preview keeps billing reconciliation and daily maintenance, while Production retains all three schedules. This also keeps the current Cloudflare account within its account-wide Cron Trigger quota.
@@ -264,7 +308,9 @@ Before publishing the legal routes, business and legal reviewers must resolve ev
 
 ## Production release
 
-After the preview migration and authenticated checks pass, create a production D1 recovery point, apply migrations, and deploy the Worker. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site`, `www.zoption.site`, and the transitional Pages origin.
+After Preview and authenticated checks pass, merge a release-producing Conventional Commit into protected `main`. The successful push `CI` run automatically starts `Production Release`; operators should monitor that workflow rather than run Wrangler locally. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site` and `www.zoption.site`.
+
+The following commands are emergency recovery references only. Disable or wait for the Actions deployment before running them; never use them concurrently with `Production Release` or while Cloudflare's old Git deployment is enabled.
 
 ```bash
 node scripts/validate-deployment-config.mjs
@@ -274,7 +320,7 @@ pnpm exec wrangler deploy --config wrangler.deploy.jsonc --env production
 cd ../..
 ```
 
-Build and deploy the frontend with production Supabase values. `VITE_API_URL` defaults to `https://api.zoption.site` for production builds, but it may be supplied explicitly by the Pages build environment. Set `ZOPTION_DEPLOY_ENV=production` in the production Pages project. The web build rejects Cloudflare Pages builds without this explicit environment value so a preview project cannot accidentally publish indexable pages.
+For an emergency Pages recovery, build and deploy the frontend with production Supabase values. `VITE_API_URL` defaults to `https://api.zoption.site`. Set `ZOPTION_DEPLOY_ENV=production`; the web build rejects Cloudflare Pages builds without this explicit environment value so a preview project cannot accidentally publish indexable pages.
 
 ```bash
 VITE_SUPABASE_URL=https://PRODUCTION_PROJECT_REF.supabase.co \
@@ -291,6 +337,8 @@ pnpm smoke:production
 ```
 
 Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. The deployed output pre-renders `/`, `/terms-of-service`, `/privacy-policy`, and `/cookie-policy`; it also publishes `/sitemap.xml`, `/robots.txt`, `/llms.txt`, and a branded `404.html`. The committed `_redirects` file routes only authentication and private application paths to the `spa.html` shell, sends legacy application paths through permanent redirects, and leaves unknown public paths as HTTP 404 responses. Confirm the consent banner makes no Analytics or Marketing requests before opt-in, Google Analytics 4 and Cloudflare Web Analytics load only after Analytics opt-in, and withdrawal removes both in-page integrations. In DevTools, verify `beacon.min.js` loads from `static.cloudflareinsights.com`, SPA navigation sends requests to `/cdn-cgi/rum`, and the Cloudflare dashboard receives data after its normal processing delay. The retired `/demo` route should return HTTP 404.
+
+The normal workflow publishes semantic release metadata automatically only after both Cloudflare deployments and smoke verification succeed. Do not create a release tag manually after automation is enabled.
 
 ## Rollback
 

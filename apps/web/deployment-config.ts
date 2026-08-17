@@ -24,6 +24,16 @@ export interface ResolvedDeploymentConfig {
   cloudflareAnalyticsEnabled: boolean;
 }
 
+const stableVersionPattern = /^\d+\.\d+\.\d+$/;
+
+export function resolveAppVersion(packageVersion: string, releaseVersion?: string): string {
+  const version = releaseVersion?.trim() || packageVersion.trim();
+  if (!stableVersionPattern.test(version)) {
+    throw new Error("The application version must use major.minor.patch format.");
+  }
+  return version;
+}
+
 export function resolveDeployEnvironment(env: Record<string, string>): DeployEnvironment {
   const deployEnvironment = env.ZOPTION_DEPLOY_ENV;
   if (!deployEnvironment) {

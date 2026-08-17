@@ -5,6 +5,7 @@ import {
   addAssistantVoiceMicrophonePermission,
   createContentSecurityPolicy,
   isSupabasePublishableKey,
+  resolveAppVersion,
   validateDeploymentConfigForBuild,
   verifyContentSecurityPolicy,
 } from "../deployment-config";
@@ -14,6 +15,17 @@ const previewApiUrl = "https://budget-expense-api-preview.dondon3109.workers.dev
 const supabaseUrl = "https://project-ref.supabase.co";
 const publishableKey = "sb_publishable_public-test-key";
 const cloudflareAnalyticsToken = "0123456789abcdef0123456789abcdef";
+
+describe("application release version", () => {
+  it("uses the semantic-release version when supplied", () => {
+    expect(resolveAppVersion("2.2.1", "2.3.0")).toBe("2.3.0");
+  });
+
+  it("falls back to the package baseline and rejects invalid versions", () => {
+    expect(resolveAppVersion("2.2.1")).toBe("2.2.1");
+    expect(() => resolveAppVersion("2.2.1", "next")).toThrow("major.minor.patch");
+  });
+});
 
 function validInput(deployEnvironment: "production" | "preview" | "staging" = "production") {
   const apiUrl = deployEnvironment === "production" ? productionApiUrl : previewApiUrl;

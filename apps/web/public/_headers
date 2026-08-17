@@ -38,5 +38,9 @@
 /pwa/cache-policy.js
   Cache-Control: no-cache
 
+/release.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: no-store
+
 /manifest.webmanifest
   Cache-Control: public, max-age=3600

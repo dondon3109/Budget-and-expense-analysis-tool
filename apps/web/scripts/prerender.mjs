@@ -129,6 +129,8 @@ async function readDeploymentManifest(deployEnvironment) {
     typeof payload !== "object" ||
     payload === null ||
     payload.deployEnvironment !== deployEnvironment ||
+    typeof payload.appVersion !== "string" ||
+    !/^\d+\.\d+\.\d+$/.test(payload.appVersion) ||
     typeof payload.apiOrigin !== "string" ||
     typeof payload.supabaseOrigin !== "string" ||
     typeof payload.contentSecurityPolicy !== "string"

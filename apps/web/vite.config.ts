@@ -11,6 +11,7 @@ import {
   addAssistantVoiceMicrophonePermission,
   createContentSecurityPolicy,
   resolveDeployEnvironment,
+  resolveAppVersion,
   validateDeploymentConfigForBuild,
   verifyContentSecurityPolicy,
   type ResolvedDeploymentConfig,
@@ -23,7 +24,7 @@ if (typeof rootPackage.version !== "string" || !rootPackage.version.trim()) {
   throw new Error("The root package.json must provide a valid version.");
 }
 
-const appVersion = rootPackage.version;
+const appVersion = resolveAppVersion(rootPackage.version, process.env.ZOPTION_RELEASE_VERSION);
 
 function deploymentHeadersPlugin(deploymentConfig: ResolvedDeploymentConfig): Plugin {
   let outputDirectory = "";
@@ -48,7 +49,11 @@ function deploymentHeadersPlugin(deploymentConfig: ResolvedDeploymentConfig): Pl
       writeFileSync(headersPath, headers);
       writeFileSync(
         resolve(outputDirectory, ".zoption-deployment.json"),
-        `${JSON.stringify({ ...deploymentConfig, contentSecurityPolicy }, null, 2)}\n`,
+        `${JSON.stringify({ ...deploymentConfig, appVersion, contentSecurityPolicy }, null, 2)}\n`,
+      );
+      writeFileSync(
+        resolve(outputDirectory, "release.json"),
+        `${JSON.stringify({ appVersion }, null, 2)}\n`,
       );
     },
   };
