@@ -34,7 +34,7 @@ describe("assistant accessibility-critical interactions", () => {
     expect(save).toBeDisabled();
   });
 
-  it("labels thread rows and their delete control separately", async () => {
+  it("opens a conversation on tap and keeps delete off the default row", async () => {
     const onOpen = jest.fn();
     const onDelete = jest.fn();
     await render(
@@ -48,9 +48,39 @@ describe("assistant accessibility-critical interactions", () => {
     const row = screen.getByRole("button", { name: /Conversation Where does my money go/ });
     await fireEvent.press(row);
     expect(onOpen).toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Delete conversation Where does my money go?" }),
+    ).toBeNull();
+  });
+
+  it("deletes only after a long press or an explicit manage-mode action", async () => {
+    const onOpen = jest.fn();
+    const onDelete = jest.fn();
+    const { rerender } = await render(
+      <AssistantThreadRow
+        title="Where does my money go?"
+        lastMessageAt="2026-05-01T08:00:00.000Z"
+        onOpen={onOpen}
+        onDelete={onDelete}
+      />,
+    );
+    const row = screen.getByRole("button", { name: /Conversation Where does my money go/ });
+    await fireEvent(row, "longPress");
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onOpen).not.toHaveBeenCalled();
+
+    await rerender(
+      <AssistantThreadRow
+        title="Where does my money go?"
+        lastMessageAt="2026-05-01T08:00:00.000Z"
+        managing
+        onOpen={onOpen}
+        onDelete={onDelete}
+      />,
+    );
     const del = screen.getByRole("button", { name: "Delete conversation Where does my money go?" });
     await fireEvent.press(del);
-    expect(onDelete).toHaveBeenCalled();
+    expect(onDelete).toHaveBeenCalledTimes(2);
   });
 
   it("offers spoken replies only when a listener exists", async () => {

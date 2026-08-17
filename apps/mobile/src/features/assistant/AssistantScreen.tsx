@@ -117,6 +117,7 @@ export function AssistantScreen() {
   } | null>(null);
   const [confirmClearChats, setConfirmClearChats] = useState(false);
   const [pendingDeleteThread, setPendingDeleteThread] = useState<string | null>(null);
+  const [managingThreads, setManagingThreads] = useState(false);
 
   const listRef = useRef<FlatList<AssistantWireMessage>>(null);
   const mounted = useRef(true);
@@ -229,8 +230,18 @@ export function AssistantScreen() {
     setMessages([]);
     setLimitBanner(null);
     setInlineError(null);
+    setManagingThreads(false);
     setView("chat");
   }, []);
+
+  const handleVoiceError = useCallback((error: ApiTransportError) => {
+    setVoiceError({ message: error.message });
+  }, []);
+
+  const spokenReplies = useSpokenReplies({
+    getAccessToken: session.getAccessToken,
+    onError: handleVoiceError,
+  });
 
   const handleSend = useCallback(
     async (text?: string) => {
@@ -297,16 +308,13 @@ export function AssistantScreen() {
       activeThreadId,
       draft,
       sending,
+      spokenReplies,
       voiceOptions.replyMode,
       voiceOptions.voice,
       voicePreferences,
       withToken,
     ],
   );
-
-  const handleVoiceError = useCallback((error: ApiTransportError) => {
-    setVoiceError({ message: error.message });
-  }, []);
 
   const recorder = useAssistantRecorder({
     getAccessToken: session.getAccessToken,
@@ -318,11 +326,6 @@ export function AssistantScreen() {
         setDraft((previous) => (previous ? previous + " " + text : text));
       }
     },
-    onError: handleVoiceError,
-  });
-
-  const spokenReplies = useSpokenReplies({
-    getAccessToken: session.getAccessToken,
     onError: handleVoiceError,
   });
 
@@ -508,6 +511,7 @@ export function AssistantScreen() {
       );
       if (!mounted.current) return;
       setVoicePreferences(updated);
+      void recorder.startRecording();
     } catch (error) {
       setVoiceError({
         message:
@@ -516,7 +520,7 @@ export function AssistantScreen() {
     } finally {
       if (mounted.current) setBusyAction(null);
     }
-  }, [withToken]);
+  }, [recorder, withToken]);
 
   const draftValid = validateAssistantMessage(draft) === null;
   const showConsent = preferences !== null && requiresAssistantConsent(preferences);
@@ -616,6 +620,20 @@ export function AssistantScreen() {
             </Text>
           ) : null}
         </View>
+        {view === "threads" && threads.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              managingThreads ? "Done managing conversations" : "Manage conversations"
+            }
+            onPress={() => setManagingThreads((current) => !current)}
+            style={styles.iconButton}
+          >
+            <Text style={[typography.label, { color: theme.colors.brand }]}>
+              {managingThreads ? "Done" : "Select"}
+            </Text>
+          </Pressable>
+        ) : null}
         {settingsAction}
       </View>
 
@@ -649,7 +667,9 @@ export function AssistantScreen() {
             <AssistantThreadRow
               title={item.title}
               lastMessageAt={item.lastMessageAt}
+              managing={managingThreads}
               onOpen={() => {
+                if (managingThreads) return;
                 setView("chat");
                 void openThread(item.id);
               }}
@@ -660,6 +680,13 @@ export function AssistantScreen() {
           ListHeaderComponent={
             <View style={styles.newChat}>
               <Button onPress={startNewChat}>New conversation</Button>
+              {threads.length > 0 ? (
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                  {managingThreads
+                    ? "Delete only the conversations you mean to remove."
+                    : "Open a conversation, or press Select / press and hold to delete one."}
+                </Text>
+              ) : null}
             </View>
           }
           ListEmptyComponent={
@@ -763,11 +790,12 @@ export function AssistantScreen() {
                 { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
               ]}
             >
-              {voicePreferences?.enabled === true && voicePreferences.consentedAt !== null ? (
+              {voicePreferences?.enabled === true ? (
                 <VoiceRecordButton
                   phase={recorder.phase}
                   onPress={() => {
                     if (recorder.phase === "recording") void recorder.stopAndTranscribe();
+                    else if (voicePreferences.consentedAt === null) void enableVoice();
                     else if (recorder.phase === "idle") void recorder.startRecording();
                   }}
                 />

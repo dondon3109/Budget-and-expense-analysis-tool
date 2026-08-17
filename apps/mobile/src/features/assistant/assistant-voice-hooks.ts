@@ -1,5 +1,11 @@
 import { File, Paths } from "expo-file-system";
-import { AudioModule, RecordingPresets, useAudioPlayer, useAudioRecorder } from "expo-audio";
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioRecorder,
+} from "expo-audio";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -9,14 +15,30 @@ import {
   type AssistantSpeechVoice,
 } from "@/api/assistant-voice";
 
-const MAX_RECORDING_SECONDS = 60;
+import {
+  MAX_RECORDING_SECONDS,
+  armAssistantRecorder,
+  playbackAudioMode,
+} from "./assistant-voice-session";
 
 export type RecordingPhase = "idle" | "requesting" | "recording" | "transcribing";
+
+async function restorePlaybackAudioMode(): Promise<void> {
+  try {
+    await setAudioModeAsync(playbackAudioMode);
+  } catch {
+    // Restoring the session must never hide a recording or transcription error.
+  }
+}
 
 /**
  * Records voice through expo-audio and transcribes it through the Worker
  * (Cloudflare Whisper). The recording never touches device storage beyond the
  * temporary recorder file, and it is sent exactly once, to the Worker only.
+ *
+ * expo-audio requires an explicit prepare + recording audio session before
+ * record(); calling record on an unprepared recorder is a no-op on Android
+ * and throws on iOS, which is why the composer microphone appeared dead.
  */
 export function useAssistantRecorder({
   getAccessToken,
@@ -102,6 +124,7 @@ export function useAssistantRecorder({
           : new ApiTransportError("Voice input failed. Try again.", "network", 0),
       );
     } finally {
+      await restorePlaybackAudioMode();
       setPhaseBoth("idle");
     }
   }, [
@@ -132,11 +155,9 @@ export function useAssistantRecorder({
         setPhaseBoth("idle");
         return;
       }
+      await armAssistantRecorder(recorder, setAudioModeAsync);
       setPhaseBoth("recording");
       startElapsedTimer();
-      recorder.record({
-        forDuration: MAX_RECORDING_SECONDS,
-      });
       // A hard stop when the user keeps recording past the cap.
       clearRecordingTimeout();
       recordingTimeoutRef.current = setTimeout(() => {
@@ -148,6 +169,7 @@ export function useAssistantRecorder({
     } catch {
       stopElapsedTimer();
       clearRecordingTimeout();
+      await restorePlaybackAudioMode();
       onError(new ApiTransportError("Voice input could not start.", "network", 0));
       setPhaseBoth("idle");
     }
@@ -171,6 +193,7 @@ export function useAssistantRecorder({
     }
     stopElapsedTimer();
     clearRecordingTimeout();
+    await restorePlaybackAudioMode();
     setPhaseBoth("idle");
   }, [recorder, setPhaseBoth, stopElapsedTimer, clearRecordingTimeout]);
 
@@ -213,6 +236,7 @@ export function useSpokenReplies({
         return;
       }
       try {
+        await setAudioModeAsync(playbackAudioMode);
         const accessToken = await getAccessToken(false);
         const { bytes } = await synthesizeAssistantSpeech({ accessToken }, messageId, voice);
         const file = new File(Paths.cache, "assistant-speech.mp3");

@@ -766,6 +766,7 @@ describe("assistant UI", () => {
     const { queryClient } = renderPage();
 
     await screen.findByText(thread.title);
+    fireEvent.click(screen.getByRole("button", { name: "Manage chats" }));
     fireEvent.click(screen.getByRole("button", { name: `Delete ${thread.title}` }));
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 

@@ -1,6 +1,6 @@
 import type { CashflowTrend } from "@zoption/shared";
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { Dimensions, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Svg, { Circle, Line, Path, Text as SvgText } from "react-native-svg";
 
@@ -40,7 +40,9 @@ interface CashflowChartProps {
  */
 export function CashflowChart({ cashflow }: CashflowChartProps) {
   const theme = useZoptionTheme();
-  const [width, setWidth] = useState(0);
+  const [width, setWidth] = useState(() =>
+    Math.max(0, Dimensions.get("window").width - spacing.md * 4),
+  );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const points = cashflow.points;
@@ -179,12 +181,12 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
             {width > 0 ? (
               <>
                 <Path
-                  d={areaPathD(incomeD, geometry)}
+                  d={areaPathD(incomeD, geometry, points.length)}
                   fill={theme.colors.income}
                   fillOpacity={0.08}
                 />
                 <Path
-                  d={areaPathD(expenseD, geometry)}
+                  d={areaPathD(expenseD, geometry, points.length)}
                   fill={theme.colors.expense}
                   fillOpacity={0.07}
                 />

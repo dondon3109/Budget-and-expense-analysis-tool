@@ -278,7 +278,8 @@ main:has(.assistant-page) > .legal-footer,
   font-size: 10px;
 }
 
-/* Hover-reveal delete on each thread */
+/* Hover-reveal delete on each thread. Hidden buttons must not stay in the
+   hit target: opacity:0 alone still intercepts taps on phones. */
 .assistant-thread-delete {
   width: 29px;
   height: 29px;
@@ -289,17 +290,39 @@ main:has(.assistant-page) > .legal-footer,
   border-radius: 8px;
   background: transparent;
   opacity: 0;
-  transition: opacity 140ms ease;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 140ms ease,
+    visibility 140ms ease;
 }
 
-.assistant-thread-row:hover .assistant-thread-delete,
-.assistant-thread-row:focus-within .assistant-thread-delete {
+@media (hover: hover) and (pointer: fine) {
+  .assistant-thread-row:hover .assistant-thread-delete,
+  .assistant-thread-row:focus-within .assistant-thread-delete {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+
+.assistant-history.managing .assistant-thread-delete,
+.assistant-thread-row.is-confirming .assistant-thread-delete {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .assistant-thread-delete:hover {
   color: var(--danger);
   background: var(--danger-soft);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .assistant-thread-delete {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .assistant-delete-confirm {

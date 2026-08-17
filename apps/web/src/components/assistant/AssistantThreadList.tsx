@@ -48,6 +48,7 @@ export function AssistantThreadList({
 }: AssistantThreadListProps) {
   const [confirmThread, setConfirmThread] = useState<string>();
   const [confirmAll, setConfirmAll] = useState(false);
+  const [managing, setManaging] = useState(false);
 
   const groups = new Map<string, AssistantThread[]>();
   for (const thread of threads) {
@@ -58,7 +59,7 @@ export function AssistantThreadList({
   return (
     <aside
       id="assistant-chat-history"
-      className="assistant-history"
+      className={`assistant-history${managing ? " managing" : ""}`}
       aria-label="Assistant chat history"
     >
       <div className="assistant-history-heading">
@@ -68,6 +69,20 @@ export function AssistantThreadList({
             <h2 title={`Chats with ${assistantName}`}>Chats with {assistantName}</h2>
           </div>
           <div className="assistant-history-actions">
+            {threads.length > 0 ? (
+              <button
+                className="assistant-history-edit"
+                type="button"
+                onClick={() => {
+                  setConfirmThread(undefined);
+                  setManaging((current) => !current);
+                }}
+                aria-pressed={managing}
+                aria-label={managing ? "Done managing chats" : "Manage chats"}
+              >
+                {managing ? "Done" : "Select"}
+              </button>
+            ) : null}
             <button
               className="assistant-history-edit"
               type="button"
@@ -106,7 +121,9 @@ export function AssistantThreadList({
             <h3 className="assistant-thread-group-label">{group}</h3>
             {groupThreads.map((thread) => (
               <div
-                className={`assistant-thread-row ${thread.id === activeThreadId ? "current" : ""}`}
+                className={`assistant-thread-row ${thread.id === activeThreadId ? "current" : ""}${
+                  confirmThread === thread.id ? " is-confirming" : ""
+                }`}
                 key={thread.id}
               >
                 <button type="button" onClick={() => onSelect(thread.id)}>

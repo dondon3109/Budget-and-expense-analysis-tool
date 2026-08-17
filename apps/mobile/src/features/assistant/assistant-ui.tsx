@@ -202,11 +202,13 @@ export function AssistantMessageBubble({
 export function AssistantThreadRow({
   title,
   lastMessageAt,
+  managing = false,
   onOpen,
   onDelete,
 }: {
   title: string;
   lastMessageAt: string;
+  managing?: boolean;
   onOpen: () => void;
   onDelete: () => void;
 }) {
@@ -215,7 +217,16 @@ export function AssistantThreadRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={"Conversation " + title + ", " + formatThreadTime(lastMessageAt)}
+      accessibilityHint={managing ? undefined : "Opens the conversation. Press and hold to delete."}
+      accessibilityActions={
+        managing ? undefined : [{ name: "delete", label: "Delete conversation" }]
+      }
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === "delete") onDelete();
+      }}
       onPress={onOpen}
+      onLongPress={managing ? undefined : onDelete}
+      delayLongPress={450}
       style={({ pressed }) => [
         styles.threadRow,
         {
@@ -232,15 +243,17 @@ export function AssistantThreadRow({
           {formatThreadTime(lastMessageAt)}
         </Text>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={"Delete conversation " + title}
-        onPress={onDelete}
-        hitSlop={8}
-        style={styles.deleteButton}
-      >
-        <MaterialCommunityIcons name="trash-can-outline" size={20} color={theme.colors.textMuted} />
-      </Pressable>
+      {managing ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={"Delete conversation " + title}
+          onPress={onDelete}
+          hitSlop={4}
+          style={[styles.deleteButton, { backgroundColor: theme.colors.dangerSoft }]}
+        >
+          <Text style={[typography.label, { color: theme.colors.danger }]}>Delete</Text>
+        </Pressable>
+      ) : null}
     </Pressable>
   );
 }
@@ -368,7 +381,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  deleteButton: { padding: 4 },
+  deleteButton: {
+    minHeight: touchTarget,
+    minWidth: 76,
+    paddingHorizontal: spacing.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.sm,
+  },
   banner: {
     borderWidth: 1,
     borderRadius: radii.md,

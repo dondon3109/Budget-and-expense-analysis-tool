@@ -5,6 +5,7 @@ import { Stack, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { SessionProvider } from "@/auth/session-state";
@@ -44,15 +45,17 @@ export default function RootLayout() {
     });
   }, []);
   return (
-    <SafeAreaProvider>
-      <SessionProvider>
-        <WorkerIdentityProvider>
-          <ZoptionThemeProvider>
-            <RootNavigator />
-          </ZoptionThemeProvider>
-        </WorkerIdentityProvider>
-      </SessionProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <SessionProvider>
+          <WorkerIdentityProvider>
+            <ZoptionThemeProvider>
+              <RootNavigator />
+            </ZoptionThemeProvider>
+          </WorkerIdentityProvider>
+        </SessionProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
