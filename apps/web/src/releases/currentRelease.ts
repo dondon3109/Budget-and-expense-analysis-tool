@@ -11,22 +11,17 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 14, 2026",
+  releasedOn: "August 17, 2026",
   changes: [
     {
-      title: "Turn a receipt photo into a transaction draft",
+      title: "Cash flow chart built for your phone",
       description:
-        "Choose Scan receipt from Transactions or the dashboard, then take a photo or upload a JPEG, PNG, or WebP image. Zoption drafts the merchant, date, amount, transaction type, and category for you.",
+        "The Money in and out panel now draws the weekly, monthly, and six-month cash flow as a touch-first chart on phone screens. Tap any day or month to see the exact amounts, drag to scrub across the range, and tap again to dismiss. The installed Android app picks this up automatically on its next launch.",
     },
     {
-      title: "Review every field before saving",
+      title: "Recording now looks like recording",
       description:
-        "Correct the AI-drafted details, continue to the familiar import preview, and check duplicate warnings before you confirm. Nothing is added to your workspace until you explicitly commit the reviewed transaction.",
-    },
-    {
-      title: "Receipt photos are never stored",
-      description:
-        "Receipt scanning stays off until you accept its separate one-time notice. The selected photo is processed only to draft the entry and is discarded immediately after extraction; only the transaction you approve is saved.",
+        "The microphone button shows a pulsing red recording state with a running timer while you speak, and a separate spinner while your voice is being transcribed. Recording and loading are no longer easy to confuse.",
     },
   ],
 };
@@ -38,6 +33,27 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.2.0",
+    releasedOn: "August 14, 2026",
+    changes: [
+      {
+        title: "Turn a receipt photo into a transaction draft",
+        description:
+          "Choose Scan receipt from Transactions or the dashboard, then take a photo or upload a JPEG, PNG, or WebP image. Zoption drafts the merchant, date, amount, transaction type, and category for you.",
+      },
+      {
+        title: "Review every field before saving",
+        description:
+          "Correct the AI-drafted details, continue to the familiar import preview, and check duplicate warnings before you confirm. Nothing is added to your workspace until you explicitly commit the reviewed transaction.",
+      },
+      {
+        title: "Receipt photos are never stored",
+        description:
+          "Receipt scanning stays off until you accept its separate one-time notice. The selected photo is processed only to draft the entry and is discarded immediately after extraction; only the transaction you approve is saved.",
+      },
+    ],
+  },
   {
     version: "2.1.1",
     releasedOn: "August 13, 2026",

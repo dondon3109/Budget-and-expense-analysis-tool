@@ -4,6 +4,13 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.2.1 — 2026-08-17
+
+### Added
+
+- Mobile cash flow chart: the weekly, monthly, and six-month Money in and out views now render as a touch-first SVG chart on phone screens (tap to inspect values, drag to scrub, tap again to dismiss), while desktop keeps the existing charting stack.
+- Distinct voice recording states: the microphone button now shows a pulsing red recording state with a running timer, and a separate spinner while the recording is transcribed, so recording and loading are visually unambiguous.
+
 ## 2.2.0 — 2026-08-14
 
 ### Added
