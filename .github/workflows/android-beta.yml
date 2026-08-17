@@ -91,14 +91,19 @@ jobs:
           "$APKSIGNER" verify "$APK" || { echo "::error::apksigner verify rejected the APK signature."; exit 1; }
           "$APKSIGNER" verify --print-certs "$APK" > /tmp/zoption-apk-certs.txt
           cat /tmp/zoption-apk-certs.txt
-          grep -q "Signer #1 certificate SHA-256 digest: $EXPECTED_FINGERPRINT" /tmp/zoption-apk-certs.txt \
+          # The cert block format differs between build-tools releases: older
+          # apksigner prints "Signer #N certificate ...", newer prints
+          # "V2 Signer: certificate ...". Match the shared suffix instead.
+          grep -q "certificate SHA-256 digest: $EXPECTED_FINGERPRINT" /tmp/zoption-apk-certs.txt \
             || { echo "::error::Certificate SHA-256 digest does not match the permanent Zoption key."; exit 1; }
-          grep -q "Signer #1 certificate DN: $EXPECTED_DN" /tmp/zoption-apk-certs.txt \
+          grep -q "certificate DN: $EXPECTED_DN" /tmp/zoption-apk-certs.txt \
             || { echo "::error::Certificate DN does not match $EXPECTED_DN."; exit 1; }
-          if grep -q 'Signer #2 certificate DN' /tmp/zoption-apk-certs.txt; then
-            echo '::error::The APK has more than one signer.'; exit 1;
+          SIGNER_COUNT=$(grep -o "certificate SHA-256 digest: [0-9a-f]*" /tmp/zoption-apk-certs.txt | sort -u | wc -l | tr -d ' ')
+          if [ "$SIGNER_COUNT" != "1" ]; then
+            echo "::error::Expected exactly one signer, found $SIGNER_COUNT."; exit 1;
           fi
           "$AAPT" dump badging "$APK" > /tmp/zoption-apk-badging.txt
+          grep "^package: name=" /tmp/zoption-apk-badging.txt
           grep -q "package: name='site.zoption.android' versionCode='20201' versionName='0.1.1'" /tmp/zoption-apk-badging.txt \
             || { echo "::error::APK package identity or version does not match site.zoption.android / 20201 / 0.1.1."; exit 1; }
           echo "APK signing verified: $EXPECTED_FINGERPRINT"
