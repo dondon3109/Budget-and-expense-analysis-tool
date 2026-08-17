@@ -1,29 +1,32 @@
 import { useEffect, useState } from "react";
 
-import { ANDROID_RELEASE, type AndroidRelease } from "./androidRelease";
+import type { AndroidRelease } from "./androidRelease";
 import {
   ANDROID_LATEST_URL,
   parseRemoteAndroidRelease,
 } from "./androidReleaseMetadata";
 
+export type AndroidReleaseStatus = "loading" | "remote" | "unavailable";
+
 export interface AndroidReleaseSource {
-  release: AndroidRelease;
-  status: "remote" | "fallback";
+  release: AndroidRelease | null;
+  status: AndroidReleaseStatus;
 }
 
 const FETCH_TIMEOUT_MS = 8_000;
 
 /**
- * Loads the authoritative Android release metadata from R2. Starts on the
- * trusted build-time snapshot and upgrades to the remote object only when it
- * passes the strict untrusted-input validation; every failure (network,
- * malformed JSON, invalid shape, wrong host, bad checksum) keeps the
- * fallback so the page never renders unverified data and never crashes.
+ * Loads the authoritative Android release metadata from R2. The page only
+ * ever renders metadata that passed the strict untrusted-input validation;
+ * while the request is in flight the status is "loading", and every failure
+ * (network, timeout, malformed JSON, invalid shape, wrong host, bad
+ * checksum) ends in "unavailable" so the UI shows a safe download-
+ * unavailable state instead of any fallback artifact link.
  */
 export function useAndroidRelease(): AndroidReleaseSource {
   const [source, setSource] = useState<AndroidReleaseSource>({
-    release: ANDROID_RELEASE,
-    status: "fallback",
+    release: null,
+    status: "loading",
   });
 
   useEffect(() => {
@@ -37,14 +40,20 @@ export function useAndroidRelease(): AndroidReleaseSource {
           signal: controller.signal,
           cache: "no-store",
         });
-        if (!response.ok) return;
-        const release = parseRemoteAndroidRelease(await response.json());
-        if (release) {
-          setSource({ release, status: "remote" });
+        if (!response.ok) {
+          setSource({ release: null, status: "unavailable" });
+          return;
         }
+        const release = parseRemoteAndroidRelease(await response.json());
+        setSource(
+          release
+            ? { release, status: "remote" }
+            : { release: null, status: "unavailable" },
+        );
       } catch {
-        // Timeout, network failure, non-JSON body, or invalid metadata:
-        // keep the trusted fallback snapshot.
+        // Timeout, network failure, or non-JSON body: show the safe
+        // download-unavailable state. No fallback artifact is offered.
+        setSource({ release: null, status: "unavailable" });
       } finally {
         window.clearTimeout(timeout);
       }

@@ -4,11 +4,17 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { LandingPage } from "../src/pages/LandingPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
+
+beforeEach(() => {
+  // Default: the R2 metadata endpoint is unreachable, so the landing page
+  // must render the safe download-unavailable state without network access.
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network down")));
+});
 
 afterEach(() => {
   cleanup();
@@ -136,6 +142,21 @@ describe("landing page", () => {
     expect(screen.getByRole("navigation", { name: "Learn more" })).toContainElement(
       screen.getByRole("link", { name: "Android APK" }),
     );
+  });
+
+  it("shows a safe unavailable state instead of GitHub-hosted release facts when metadata is unreachable", async () => {
+    renderLanding();
+
+    const installation = screen.getByRole("region", { name: "Take Zoption Beta to Android." });
+    await waitFor(() =>
+      expect(
+        within(installation).getByText(/Android Beta download temporarily unavailable/i),
+      ).toBeInTheDocument(),
+    );
+    expect(within(installation).queryByText(/bytes \(/)).not.toBeInTheDocument();
+    expect(
+      within(installation).getByRole("link", { name: "Download Android APK" }),
+    ).toHaveAttribute("href", "/install");
   });
 
   it("shows customer-published reviews without manufacturing fallback testimonials", async () => {

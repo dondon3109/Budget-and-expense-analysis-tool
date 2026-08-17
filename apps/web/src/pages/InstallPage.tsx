@@ -19,23 +19,27 @@ import { Link } from "react-router-dom";
 import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
-import type { AndroidRelease } from "../releases/androidRelease";
-import { useAndroidRelease } from "../releases/useAndroidRelease";
+import {
+  useAndroidRelease,
+  type AndroidReleaseSource,
+} from "../releases/useAndroidRelease";
 import "./LandingPage.css";
 import "./InstallPage.css";
 
 type DeviceKind = "checking" | "android" | "other";
 type CopyState = "idle" | "copied" | "failed";
 
-function DownloadPanel({ release }: { release: AndroidRelease }) {
+function DownloadPanel({ source }: { source: AndroidReleaseSource }) {
   const [deviceKind, setDeviceKind] = useState<DeviceKind>("checking");
   const [copyState, setCopyState] = useState<CopyState>("idle");
+  const { release, status } = source;
 
   useEffect(() => {
     setDeviceKind(/Android/i.test(navigator.userAgent) ? "android" : "other");
   }, []);
 
   async function copyChecksum() {
+    if (!release) return;
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
       await navigator.clipboard.writeText(release.sha256);
@@ -56,33 +60,44 @@ function DownloadPanel({ release }: { release: AndroidRelease }) {
         <span className="apk-format-badge">APK</span>
       </div>
 
-      <a
-        className="button primary apk-download-action"
-        href={release.downloadPath}
-        download={release.filename}
-      >
-        <Download size={19} aria-hidden="true" /> Download Android APK
-      </a>
-
-      <p className="apk-store-note">
-        <ShieldCheck size={16} aria-hidden="true" /> Signed by Zoption and linked only from
-        zoption.site — not distributed through Google Play.
-      </p>
-
-      {release.reinstallRequired ? (
-        <p className="apk-update-note apk-reinstall-note">
-          <RefreshCw size={16} aria-hidden="true" /> This update changes the signing key. Uninstall
-          the previous Zoption Beta first, then install this version — future updates install over
-          it normally.
+      {status === "unavailable" ? (
+        <div className="apk-download-unavailable" role="alert">
+          <p>
+            <Info size={19} aria-hidden="true" /> Android Beta download temporarily unavailable.
+          </p>
+          <p className="apk-unavailable-detail">
+            The download information could not be loaded right now. Zoption is still available in
+            your browser — check back shortly to download the Beta.
+          </p>
+        </div>
+      ) : status === "loading" ? (
+        <p className="apk-download-status" role="status">
+          Loading the latest Beta download…
         </p>
-      ) : (
-        <p className="apk-update-note">
-          <RefreshCw size={16} aria-hidden="true" />{" "}
-          {release.notes && release.notes.length > 0
-            ? release.notes.join(" ")
-            : "New in this beta: scan a receipt with your camera and Zoption drafts the expense for you. The older Zoption app must be uninstalled before installing the beta — it uses a different signing identity."}
-        </p>
-      )}
+      ) : release ? (
+        <>
+          <a
+            className="button primary apk-download-action"
+            href={release.downloadPath}
+            download={release.filename}
+          >
+            <Download size={19} aria-hidden="true" /> Download Android APK
+          </a>
+
+          {release.reinstallRequired ? (
+            <p className="apk-update-note apk-reinstall-note">
+              <RefreshCw size={16} aria-hidden="true" /> This update changes the signing key.
+              Uninstall the previous Zoption Beta first, then install this version — future updates
+              install over it normally.
+            </p>
+          ) : (
+            <p className="apk-update-note">
+              <RefreshCw size={16} aria-hidden="true" />{" "}
+              {release.notes && release.notes.length > 0
+                ? release.notes.join(" ")
+                : "New in this beta: scan a receipt with your camera and Zoption drafts the expense for you. The older Zoption app must be uninstalled before installing the beta — it uses a different signing identity."}
+            </p>
+          )}
 
       <dl className="apk-release-facts">
         <div>
@@ -130,27 +145,35 @@ function DownloadPanel({ release }: { release: AndroidRelease }) {
         </a>
       )}
 
-      {deviceKind !== "checking" && (
-        <div className={`apk-device-note ${deviceKind === "android" ? "is-android" : ""}`}>
-          {deviceKind === "android" ? (
-            <Smartphone size={19} aria-hidden="true" />
-          ) : (
-            <Info size={19} aria-hidden="true" />
+          {deviceKind !== "checking" && (
+            <div className={`apk-device-note ${deviceKind === "android" ? "is-android" : ""}`}>
+              {deviceKind === "android" ? (
+                <Smartphone size={19} aria-hidden="true" />
+              ) : (
+                <Info size={19} aria-hidden="true" />
+              )}
+              <p>
+                {deviceKind === "android"
+                  ? "Android detected. Download the APK, then follow the installation steps below."
+                  : "This APK runs only on Android. You can download it here and transfer it to an Android device, or keep using Zoption in this browser."}
+              </p>
+            </div>
           )}
-          <p>
-            {deviceKind === "android"
-              ? "Android detected. Download the APK, then follow the installation steps below."
-              : "This APK runs only on Android. You can download it here and transfer it to an Android device, or keep using Zoption in this browser."}
-          </p>
-        </div>
-      )}
+        </>
+      ) : null}
+
+      <p className="apk-store-note">
+        <ShieldCheck size={16} aria-hidden="true" /> Signed by Zoption and linked only from
+        zoption.site — not distributed through Google Play.
+      </p>
     </section>
   );
 }
 
 export function InstallPage() {
-  const { release } = useAndroidRelease();
-  const trustedDownloadOrigin = new URL(release.downloadPath).origin;
+  const source = useAndroidRelease();
+  const { release } = source;
+  const trustedDownloadOrigin = release ? new URL(release.downloadPath).origin : null;
 
   return (
     <div className="landing-page install-page">
@@ -203,7 +226,7 @@ export function InstallPage() {
           </div>
 
           <div className="install-hero-action">
-            <DownloadPanel release={release} />
+            <DownloadPanel source={source} />
           </div>
         </section>
 
@@ -229,9 +252,18 @@ export function InstallPage() {
               <div>
                 <h3>Download from this page</h3>
                 <p>
-                  Tap “Download Android APK.” Only trust a file whose address begins with
-                  <code>{trustedDownloadOrigin}/</code>
-                  and ends in <code>{release.filename}</code>.
+                  {trustedDownloadOrigin && release ? (
+                    <>
+                      Tap “Download Android APK.” Only trust a file whose address begins with{" "}
+                      <code>{trustedDownloadOrigin}/</code> and ends in{" "}
+                      <code>{release.filename}</code>.
+                    </>
+                  ) : (
+                    <>
+                      When the download returns, only trust a file whose address matches the one
+                      shown on this page’s download button.
+                    </>
+                  )}
                 </p>
               </div>
             </li>
@@ -370,9 +402,11 @@ export function InstallPage() {
           <h2 id="install-next-title">Your account works in the beta and the browser.</h2>
           <p>Download the Android beta, or continue with Zoption on the web.</p>
           <div>
-            <a className="button primary" href={release.downloadPath} download>
-              <Download size={18} aria-hidden="true" /> Download APK
-            </a>
+            {release && (
+              <a className="button primary" href={release.downloadPath} download>
+                <Download size={18} aria-hidden="true" /> Download APK
+              </a>
+            )}
             <Link className="button secondary" to="/app">
               Open in browser
             </Link>

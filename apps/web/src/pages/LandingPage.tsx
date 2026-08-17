@@ -26,7 +26,8 @@ export function LandingPage() {
   const accountDeleted = searchParams.get("accountDeleted");
   const [reviews, setReviews] = useState<PublicCustomerReview[]>([]);
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
-  const { release: androidRelease } = useAndroidRelease();
+  const androidSource = useAndroidRelease();
+  const androidRelease = androidSource.release;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -453,25 +454,36 @@ export function LandingPage() {
             <div className="install-promo-release-heading">
               <BrandMark className="install-promo-mark" />
               <div>
-                <p>Beta ready to download</p>
+                <p>{androidRelease ? "Beta ready to download" : "Android Beta download"}</p>
                 <h3>Zoption Beta</h3>
               </div>
               <span>APK</span>
             </div>
-            <dl>
-              <div>
-                <dt>File size</dt>
-                <dd>{androidRelease.sizeLabel}</dd>
-              </div>
-              <div>
-                <dt>Requires</dt>
-                <dd>{androidRelease.minimumAndroid}</dd>
-              </div>
-              <div>
-                <dt>Source</dt>
-                <dd>Official Zoption release</dd>
-              </div>
-            </dl>
+            {androidRelease ? (
+              <dl>
+                <div>
+                  <dt>File size</dt>
+                  <dd>{androidRelease.sizeLabel}</dd>
+                </div>
+                <div>
+                  <dt>Requires</dt>
+                  <dd>{androidRelease.minimumAndroid}</dd>
+                </div>
+                <div>
+                  <dt>Source</dt>
+                  <dd>Official Zoption release</dd>
+                </div>
+              </dl>
+            ) : androidSource.status === "loading" ? (
+              <p className="install-promo-unavailable" role="status">
+                Loading the latest Beta download…
+              </p>
+            ) : (
+              <p className="install-promo-unavailable" role="alert">
+                Android Beta download temporarily unavailable. Check back soon — Zoption remains
+                available in your browser.
+              </p>
+            )}
             <div className="install-promo-actions">
               <Link className="button primary" to="/install">
                 Download Android APK <ArrowRight size={17} aria-hidden="true" />
