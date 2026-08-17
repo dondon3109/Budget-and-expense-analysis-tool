@@ -107,12 +107,7 @@ jobs:
           grep -q "package: name='site.zoption.android' versionCode='20201' versionName='0.1.1'" /tmp/zoption-apk-badging.txt \
             || { echo "::error::APK package identity or version does not match site.zoption.android / 20201 / 0.1.1."; exit 1; }
           echo "APK signing verified: $EXPECTED_FINGERPRINT"
-          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
 
-      # Build-only CI storage (7 days), not a release channel.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: zoption-beta-release-apk
-          path: ${{ env.APK_PATH }}
-          if-no-files-found: error
-          retention-days: 7
+      # Intentionally no artifact upload: the signed APK exists only on the
+      # ephemeral runner during build verification and is never retained by
+      # GitHub Actions.
