@@ -1,27 +1,19 @@
 # Mobile release and rollback plan
 
-Updated 2026-08-15. Status: planning document. No registration, signing,
-store submission or production replacement has occurred or is authorized by
-this document.
+Updated 2026-08-17. Status: current native Beta release plan. The website-linked
+Android Beta is the supported native mobile release; no app-store submission is
+part of this distribution channel.
 
-## Upgrade path from the existing Android TWA
+## Production Beta state
 
-1. **Parallel phase (current).** The signed TWA in `apps/android` remains
-   the production Android application. The Expo app compiles and is tested
-   only as development/preview builds with non-production identifiers.
-2. **Verification phase.** With an approved test account: run the Expo app on
-   Android and iOS devices, verify the same Supabase identity opens the same
-   D1 workspace as the website, exercise offline mutations and reconciliation,
-   and complete the pending runtime proofs in `known-limitations.md`.
-3. **Approval gate.** Only after explicit approval does the Expo Android app
-   become the replacement: create the release keystore, build a signed AAB
-   for `site.zoption.android`, and update the Play Store listing. The TWA
-   source stays in the repository until the replacement has shipped and been
-   rolled back-verified.
-4. **Rollback.** Rolling back the Play Store release reinstates the TWA; the
-   server-side data model is unchanged by the mobile client, so no D1 or
-   Supabase migration is needed in either direction. A downgraded client
-   keeps reading the same workspace because identity and data live server-side.
+1. The native app in `apps/mobile` is the only Android application maintained in
+   this repository. Its production variant uses `site.zoption.android` and the
+   `Zoption Beta` name.
+2. The Beta APK is linked from `https://zoption.site/install`, uses the shared
+   Supabase identity and Worker/D1 workspace, and keeps financial screens
+   available from encrypted local data between synchronizations.
+3. Development and preview builds use separate identifiers and configuration.
+   iOS remains a native build target but is not part of the public APK channel.
 
 ## iOS distribution requirements
 
@@ -43,8 +35,8 @@ this document.
 
 ## Release mechanics
 
-- Ship channels: Play internal testing → closed → production; TestFlight →
-  external testers → App Store.
+- Ship channel: website-linked Android APK. iOS distribution remains pending
+  the separate Apple approval and signing work below.
 - Versions: `version: 0.1.0` with `runtimeVersion: { policy: "appVersion" }`;
   each production release must build a matching embedded bundle so no
   over-the-air update bypasses review.
@@ -54,9 +46,9 @@ this document.
 
 ## Rollback plan
 
-- **App-level**: re-publish the previous Play/App Store build or reinstate the
-  TWA listing. No client data migration exists, so nothing needs reverting
-  on device.
+- **App-level**: replace the website-linked Beta artifact with a previously
+  verified native Beta artifact or temporarily direct users to the website.
+  Server-owned identity and data remain unchanged.
 - **Server-level**: the Worker changes introduced for mobile sync (revisions,
   tombstones, cursor) are additive; rolling them back requires the documented
   migration plan in `sync-protocol.md` and would precede any app rollback.

@@ -29,13 +29,17 @@ function resolveVariant(value: string | undefined): AppVariant {
   return "development";
 }
 
+function environmentValue(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
 /**
  * The dev client needs SYSTEM_ALERT_WINDOW for its debug overlay. The
  * permission must not ship in preview/production builds, so strip it from
  * the generated manifest for every non-development variant.
  */
 const withDevClientPermissionCleanup: ConfigPlugin = (config) => {
-  const variant = resolveVariant(process.env.APP_VARIANT);
+  const variant = resolveVariant(environmentValue(process.env.APP_VARIANT));
   if (variant === "development") {
     return config;
   }
@@ -68,7 +72,7 @@ const withLegacyBackHandling: ConfigPlugin = (config) =>
   });
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const appVariant = resolveVariant(process.env.APP_VARIANT);
+  const appVariant = resolveVariant(environmentValue(process.env.APP_VARIANT));
   const variant = variants[appVariant];
 
   return {
@@ -92,8 +96,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: variant.androidPackage,
-      // Keep above the retired TWA's 20101 so a sideloaded Beta upgrade never
-      // looks like a downgrade for the shared site.zoption.android package.
       versionCode: 20200,
       allowBackup: false,
       // Predictive back is disabled: with enableOnBackInvokedCallback the

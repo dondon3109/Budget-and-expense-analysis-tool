@@ -34,7 +34,7 @@ Last updated: 2026-08-16.
 
 ## Existing production impact
 
-None. All mobile, shared-contract, Worker, and migration work exists only in the isolated worktree. It does not modify the main checkout, production Worker or D1, Supabase project, Pages site, TWA, store records, or deployed artifacts.
+None. All mobile, shared-contract, Worker, and migration work exists only in the isolated worktree. It does not modify the main checkout, production Worker or D1, Supabase project, Pages site, store records, or deployed artifacts.
 
 ## Milestone 1 evidence
 
@@ -196,7 +196,7 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   remained pending after full process termination/relaunch. Reconnect acknowledged revision 1 in
   local D1. The same row was archived offline, survived another process restart, and reconnect
   acknowledged the existing product's archive-upsert behavior at revision 2. No remote D1,
-  deployment, production checkout, or Android TWA was changed. A reset isolated Worker cursor also
+  deployment or production checkout was changed. A reset isolated Worker cursor also
   remained visibly in full-resync recovery; the app did not clear the encrypted workspace to hide it.
 - On iPhone 17 Pro Simulator, a synthetic expense was saved while the isolated local Worker was down,
   rendered as pending, and survived full app-process termination. After reconnect, the same outbox
@@ -563,7 +563,7 @@ None. All mobile, shared-contract, Worker, and migration work exists only in the
   first financial screen, list scroll, query latency, sync batch, APK/AAB and archive sizes)
   remain for hardware testing and are budgeted in `release-plan.md`.
 - **Documents**: new `build-instructions.md`, `known-limitations.md`, and
-  `release-plan.md` (TWA upgrade path, iOS distribution requirements, signing authorization
+  `release-plan.md` (native release state, iOS distribution requirements, signing authorization
   rules, rollback plan, performance budget table).
 
 Milestone 9 closes every host-verifiable hardening item. What remains is explicitly

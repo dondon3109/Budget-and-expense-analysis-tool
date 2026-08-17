@@ -20,7 +20,7 @@ Philippine-peso-first budgeting with preview-first imports, privacy-conscious se
 
 ## Operating Context
 
-Users record transactions and transfers, review monthly budgets and trends, import CSV/XLS/XLSX exports, and plan recurring money, goals, and debt. Connectivity may be intermittent. The website remains available during the native rebuild, and the existing signed Android TWA remains the production Android application until an explicit replacement decision.
+Users record transactions and transfers, review monthly budgets and trends, import CSV/XLS/XLSX exports, and plan recurring money, goals, and debt. Connectivity may be intermittent. The website remains available alongside the native mobile client, while encrypted local data keeps the mobile workflow useful between syncs.
 
 ## Capabilities and Constraints
 
@@ -32,7 +32,7 @@ Users record transactions and transfers, review monthly budgets and trends, impo
 - Transfers are atomic logical operations and do not contribute to income or expense totals.
 - Free and Pro policy stays server-authoritative.
 - The AI Financial Assistant remains online-only, consent-gated, read-only, and server-grounded.
-- Development, preview, and production variants use separate native identifiers. No store registration, production signing, deployment, or replacement is authorized by this rebuild.
+- Development, preview, and production variants use separate native identifiers. The production Android variant is the website-linked Zoption Beta APK; no app-store listing is part of this release.
 
 ## Brand Commitments
 
@@ -45,7 +45,7 @@ Preserve the Zoption name, restrained green-led identity, integer-first financia
 - Server authorization and product rules: `apps/api/src`, `db/schema.ts`, and API tests.
 - Billing truth: `apps/web/src/components/billing/billingPlans.ts` plus Worker billing enforcement.
 - Incumbent visual tokens: `apps/web/src/styles/foundation.css`.
-- There are no approved mobile performance measurements, app-store records, mobile testimonials, or production native artifacts yet. Future work must not invent them.
+- The production Beta APK metadata is maintained in `apps/web/src/releases/androidRelease.json`. There are no approved app-store records or mobile testimonials; future work must not invent them.
 
 ## Product Principles
 

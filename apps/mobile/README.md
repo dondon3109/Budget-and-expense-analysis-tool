@@ -1,6 +1,6 @@
 # Zoption native mobile
 
-Expo SDK 57 development application for Android and iOS. This app is additive: it does not replace `apps/android` or change a production deployment.
+Expo SDK 57 native application for Android and iOS. The production Android variant is Zoption Beta, the supported native mobile client linked from the Zoption website.
 
 ## Requirements
 
@@ -93,5 +93,4 @@ APP_VARIANT=production ANDROID_HOME="$HOME/Library/Android/sdk" \
   ./gradlew assembleRelease
 ```
 
-The Beta APK is signed with the debug certificate and is sideloaded from the Zoption website; it
-is not distributed through Google Play and does not replace the retired TWA signing identity.
+The Beta APK is sideloaded from the Zoption website and is not distributed through Google Play.
