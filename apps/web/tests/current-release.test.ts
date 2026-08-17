@@ -38,16 +38,8 @@ describe("current release notes", () => {
     expect(notes).toMatch(/photo.+discarded immediately/i);
   });
 
-  it("keeps the Android status bar fix as 2.1.1 release history", () => {
-    const androidRelease = releaseHistory[2];
-    expect(androidRelease?.version).toBe("2.1.1");
-    expect(androidRelease?.changes.map((change) => change.title)).toEqual([
-      "Android status bar restored",
-    ]);
-  });
-
   it("keeps the assistant voice implementation as 2.1.0 release history", () => {
-    const voiceRelease = releaseHistory[3];
+    const voiceRelease = releaseHistory[2];
     expect(voiceRelease?.version).toBe("2.1.0");
     expect(voiceRelease?.changes.map((change) => change.title)).toEqual([
       "Talk naturally with your Financial Assistant",
