@@ -3,7 +3,7 @@ import {
   type AssistantSpeechVoice,
   type AssistantVoicePreferences,
 } from "@zoption/shared";
-import { Mic, Settings2, Square, Volume2, X } from "lucide-react";
+import { LoaderCircle, Mic, Settings2, Volume2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -125,6 +125,12 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Voice mode could not start.";
 }
 
+function formatElapsed(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
 export function AssistantVoiceControl({
   workspace,
   disabled,
@@ -135,6 +141,7 @@ export function AssistantVoiceControl({
   const streamRef = useRef<MediaStream | undefined>(undefined);
   const stopTimerRef = useRef<number | undefined>(undefined);
   const activityTimerRef = useRef<number | undefined>(undefined);
+  const elapsedTimerRef = useRef<number | undefined>(undefined);
   const audioContextRef = useRef<AudioContext | undefined>(undefined);
   const stopReasonRef = useRef<StopReason>("manual");
   const mountedRef = useRef(true);
@@ -150,6 +157,7 @@ export function AssistantVoiceControl({
   const [showOptions, setShowOptions] = useState(false);
   const [status, setStatus] = useState<"idle" | "recording" | "transcribing">("idle");
   const [message, setMessage] = useState<string>();
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [previewing, setPreviewing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewError, setPreviewError] = useState<string>();
@@ -176,6 +184,9 @@ export function AssistantVoiceControl({
     window.clearTimeout(stopTimerRef.current);
     window.clearInterval(activityTimerRef.current);
     activityTimerRef.current = undefined;
+    window.clearInterval(elapsedTimerRef.current);
+    elapsedTimerRef.current = undefined;
+    setElapsedSeconds(0);
     const audioContext = audioContextRef.current;
     audioContextRef.current = undefined;
     if (audioContext && audioContext.state !== "closed") void audioContext.close();
@@ -394,6 +405,11 @@ export function AssistantVoiceControl({
       });
       recorder.start(250);
       setStatus("recording");
+      setElapsedSeconds(0);
+      window.clearInterval(elapsedTimerRef.current);
+      elapsedTimerRef.current = window.setInterval(() => {
+        setElapsedSeconds((seconds) => seconds + 1);
+      }, 1000);
       stopReasonRef.current = "manual";
       stopTimerRef.current = window.setTimeout(() => stopRecording("limit"), MAX_RECORDING_MS);
       void monitorVoiceActivity(activeStream).catch(() => {
@@ -478,10 +494,18 @@ export function AssistantVoiceControl({
       </button>
       <button
         ref={microphoneButtonRef}
-        className={`assistant-voice-button ${status === "recording" ? "recording" : ""}`}
+        className={`assistant-voice-button ${status === "recording" ? "recording" : ""}${
+          status === "transcribing" ? "transcribing" : ""
+        }`}
         type="button"
         disabled={busy}
-        aria-label={status === "recording" ? "Stop voice recording" : "Start voice recording"}
+        aria-label={
+          status === "recording"
+            ? "Stop voice recording"
+            : status === "transcribing"
+              ? "Transcribing your voice recording"
+              : "Start voice recording"
+        }
         aria-pressed={status === "recording"}
         onClick={() => {
           if (status === "recording") stopRecording("manual");
@@ -496,7 +520,11 @@ export function AssistantVoiceControl({
           }
         }}
       >
-        {status === "recording" ? <Square size={16} /> : <Mic size={18} />}
+        {status === "transcribing" ? (
+          <LoaderCircle className="spinning" size={17} aria-hidden="true" />
+        ) : (
+          <Mic size={18} aria-hidden="true" />
+        )}
       </button>
       {showVoiceModelHint && (
         <aside className="assistant-voice-model-hint" aria-label="Voice model tip">
@@ -694,7 +722,7 @@ export function AssistantVoiceControl({
       {!disabled && !showNotice && (message || status !== "idle") && (
         <span className="assistant-voice-status" role="status" aria-live="polite">
           {status === "recording"
-            ? "Listening — I’ll stop after you finish speaking."
+            ? `Listening · ${formatElapsed(elapsedSeconds)} — I’ll stop after you finish speaking.`
             : status === "transcribing"
               ? "Transcribing…"
               : message}

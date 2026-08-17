@@ -409,7 +409,10 @@ describe("AssistantVoiceControl", () => {
     await act(async () => vi.advanceTimersByTimeAsync(1_500));
     await act(async () => Promise.resolve());
 
-    expect(screen.getByRole("button", { name: "Start voice recording" })).toBeInTheDocument();
+    const transcribing = screen.getByRole("button", {
+      name: "Transcribing your voice recording",
+    });
+    expect(transcribing).toBeDisabled();
     expect(apiMocks.transcribeAssistantVoice).toHaveBeenCalledOnce();
     expect(onTranscript).not.toHaveBeenCalled();
 
@@ -591,5 +594,86 @@ describe("AssistantVoiceControl", () => {
 
     expect(apiMocks.transcribeAssistantVoice).not.toHaveBeenCalled();
     expect(screen.getByRole("status")).toHaveTextContent("I didn’t hear anything");
+  });
+
+  it("keeps the microphone visible while recording and shows a running timer", async () => {
+    vi.useFakeTimers();
+    installRecordingMocks();
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      speechAvailable: true,
+      reviewRequired: false,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
+      ttsModel: "s2.1-pro-free",
+    });
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
+    await act(async () => Promise.resolve());
+
+    const recordingButton = screen.getByRole("button", { name: "Stop voice recording" });
+    expect(recordingButton).toHaveClass("recording");
+    expect(recordingButton.querySelector("svg")).not.toHaveClass("spinning");
+    expect(screen.getByRole("status")).toHaveTextContent("Listening · 0:00");
+
+    await act(async () => vi.advanceTimersByTimeAsync(2_000));
+    expect(screen.getByRole("status")).toHaveTextContent("Listening · 0:02");
+  });
+
+  it("shows an explicit loader while transcribing, distinct from recording", async () => {
+    installRecordingMocks();
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      speechAvailable: true,
+      reviewRequired: false,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
+      ttsModel: "s2.1-pro-free",
+    });
+    let finishTranscription!: (result: { text: string; durationSeconds: number }) => void;
+    apiMocks.transcribeAssistantVoice.mockReturnValue(
+      new Promise((resolve) => {
+        finishTranscription = resolve;
+      }),
+    );
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByRole("button", { name: "Stop voice recording" }));
+    await act(async () => Promise.resolve());
+
+    const transcribingButton = screen.getByRole("button", {
+      name: "Transcribing your voice recording",
+    });
+    expect(transcribingButton).toBeDisabled();
+    expect(transcribingButton).toHaveClass("transcribing");
+    expect(transcribingButton.querySelector("svg")).toHaveClass("spinning");
+    expect(screen.getByRole("status")).toHaveTextContent("Transcribing…");
+
+    await act(async () => {
+      finishTranscription({ text: "Hello", durationSeconds: 1 });
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("button", { name: "Start voice recording" })).toBeInTheDocument();
   });
 });

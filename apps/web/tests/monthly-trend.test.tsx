@@ -109,3 +109,84 @@ describe("MonthlyTrend", () => {
     expect(screen.queryByRole("button", { name: "Subscribe to Pro" })).not.toBeInTheDocument();
   });
 });
+const weeklyData = {
+  view: "weekly" as const,
+  granularity: "day" as const,
+  range: { from: "2026-07-21", to: "2026-07-27" },
+  points: [
+    { date: "2026-07-21", incomeMinor: 0, expenseMinor: 12_000 },
+    { date: "2026-07-22", incomeMinor: 40_000, expenseMinor: 3_000 },
+    { date: "2026-07-23", incomeMinor: 0, expenseMinor: 9_000 },
+    { date: "2026-07-24", incomeMinor: 25_000, expenseMinor: 15_000 },
+    { date: "2026-07-25", incomeMinor: 0, expenseMinor: 6_000 },
+    { date: "2026-07-26", incomeMinor: 0, expenseMinor: 8_000 },
+    { date: "2026-07-27", incomeMinor: 10_000, expenseMinor: 4_000 },
+  ],
+};
+
+function installNarrowViewport(matches: boolean) {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: query.includes("max-width") ? matches : false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+}
+
+describe("MonthlyTrend on narrow viewports", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    cleanup();
+  });
+
+  it("replaces the desktop chart with the touch-first SVG chart", () => {
+    installNarrowViewport(true);
+    const { container } = render(
+      <MonthlyTrend data={weeklyData} selectedView="weekly" onViewChange={vi.fn()} />,
+    );
+
+    expect(container.querySelector(".trend-chart")).toBeNull();
+    expect(container.querySelector(".trend-chart-mobile")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Money in and out chart" })).toBeInTheDocument();
+    expect(screen.getByText("₱10,000")).toBeInTheDocument();
+    expect(screen.getByText("21")).toBeInTheDocument();
+    expect(screen.getByText("27")).toBeInTheDocument();
+  });
+
+  it("reveals the selected day values on tap and dismisses them on a second tap", () => {
+    installNarrowViewport(true);
+    const { container } = render(
+      <MonthlyTrend data={weeklyData} selectedView="weekly" onViewChange={vi.fn()} />,
+    );
+    const chart = container.querySelector(".trend-chart-mobile svg")!;
+    const tap = { pointerId: 7, clientX: 200 };
+
+    fireEvent.pointerDown(chart, tap);
+    fireEvent.pointerUp(chart, tap);
+
+    const callout = container.querySelector(".trend-chart-callout");
+    expect(callout).toBeInTheDocument();
+    expect(callout).toHaveTextContent("July 24, 2026");
+    expect(callout).toHaveTextContent("Income");
+    expect(callout).toHaveTextContent("Expenses");
+    expect(callout).toHaveTextContent("₱250");
+
+    fireEvent.pointerDown(chart, tap);
+    fireEvent.pointerUp(chart, tap);
+    expect(container.querySelector(".trend-chart-callout")).toBeNull();
+  });
+
+  it("keeps the desktop recharts chart on wide viewports", () => {
+    installNarrowViewport(false);
+    const { container } = render(
+      <MonthlyTrend data={weeklyData} selectedView="weekly" onViewChange={vi.fn()} />,
+    );
+
+    expect(container.querySelector(".trend-chart-mobile")).toBeNull();
+    expect(container.querySelector(".trend-chart")).toBeInTheDocument();
+  });
+});

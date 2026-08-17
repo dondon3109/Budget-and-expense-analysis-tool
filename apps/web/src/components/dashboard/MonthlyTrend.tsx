@@ -8,13 +8,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { isBillingEnforcementError } from "../../lib/api";
-import { formatMoney, formatMonth, formatPeriod } from "../../lib/formatters";
-import { UpgradePrompt } from "../billing/UpgradePrompt";
+import {
+  formatTrendDate,
+  formatTrendTooltipDate,
+  trendXAxisInterval,
+} from "../../lib/cashflowTrendFormat";
+import { formatMoney, formatPeriod } from "../../lib/formatters";
 import { createMonthlyTrendAxis, formatMonthlyTrendTick } from "../../lib/monthlyTrendAxis";
+import { UpgradePrompt } from "../billing/UpgradePrompt";
+import { MobileCashflowChart } from "./MobileCashflowChart";
 
 const trendOptions: Array<{ value: CashflowTrendView; label: string }> = [
   { value: "weekly", label: "Weekly" },
@@ -33,37 +39,31 @@ interface Props {
   onSubscribeToPro?: (trigger: HTMLButtonElement) => void;
 }
 
-function formatTrendDate(date: string, granularity: CashflowTrend["granularity"]): string {
-  if (granularity === "month") return formatMonth(date.slice(0, 7));
+const NARROW_VIEWPORT_QUERY = "(max-width: 760px)";
 
-  return new Intl.DateTimeFormat("en-PH", {
-    weekday: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T00:00:00Z`));
+function getNarrowViewport(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia(NARROW_VIEWPORT_QUERY).matches
+    : false;
 }
 
-function formatTrendTooltipDate(date: string, granularity: CashflowTrend["granularity"]): string {
-  if (granularity === "month") {
-    return new Intl.DateTimeFormat("en-PH", {
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(new Date(`${date}T00:00:00Z`));
-  }
+/** True on phone-sized viewports, where the chart switches to the touch-first SVG renderer. */
+function useNarrowViewport(): boolean {
+  const [narrow, setNarrow] = useState(getNarrowViewport);
 
-  return new Intl.DateTimeFormat("en-PH", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T00:00:00Z`));
-}
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return undefined;
 
-function xAxisInterval(data: CashflowTrend): number | undefined {
-  if (data.granularity === "month" || data.points.length <= 8) return 0;
-  return Math.ceil(data.points.length / 7) - 1;
+    const mediaQuery = window.matchMedia(NARROW_VIEWPORT_QUERY);
+    const handleChange = () => setNarrow(mediaQuery.matches);
+
+    handleChange();
+    mediaQuery.addEventListener?.("change", handleChange);
+
+    return () => mediaQuery.removeEventListener?.("change", handleChange);
+  }, []);
+
+  return narrow;
 }
 
 export function MonthlyTrend({
@@ -77,6 +77,7 @@ export function MonthlyTrend({
   onSubscribeToPro,
 }: Props) {
   const reduceMotion = useReducedMotion();
+  const narrowViewport = useNarrowViewport();
   const optionRefs = useRef<Partial<Record<CashflowTrendView, HTMLButtonElement | null>>>({});
   const maximumMinor = data?.points.reduce(
     (maximum, item) => Math.max(maximum, item.incomeMinor, item.expenseMinor),
@@ -203,98 +204,102 @@ export function MonthlyTrend({
         </div>
       ) : (
         <>
-          <div className="trend-chart" aria-hidden="true">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.points} margin={{ top: 12, right: 6, left: -10, bottom: 0 }}>
-                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(date) => formatTrendDate(String(date), data.granularity)}
-                  interval={xAxisInterval(data)}
-                  minTickGap={14}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
-                />
-                <YAxis
-                  ticks={axis.ticks}
-                  domain={axis.domain}
-                  interval={0}
-                  allowDecimals={false}
-                  tickFormatter={(value) => formatMonthlyTrendTick(Number(value))}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "var(--chart-axis)", fontSize: 11 }}
-                />
-                <Tooltip
-                  cursor={{
-                    stroke: "var(--chart-crosshair)",
-                    strokeWidth: 1,
-                    strokeDasharray: "3 4",
-                  }}
-                  labelFormatter={(label) =>
-                    formatTrendTooltipDate(String(label), data.granularity)
-                  }
-                  formatter={(value, name) => `${name}: ${formatMoney(Number(value))}`}
-                  contentStyle={{
-                    padding: "10px 12px",
-                    background: "var(--chart-tooltip-bg)",
-                    border: "1px solid var(--chart-tooltip-border)",
-                    borderRadius: "var(--radius-md)",
-                    boxShadow: "var(--shadow-raised)",
-                    color: "var(--ink)",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 11,
-                  }}
-                  labelStyle={{
-                    marginBottom: 6,
-                    color: "var(--ink)",
-                    fontFamily: "var(--font-ui)",
-                    fontWeight: 700,
-                  }}
-                  itemStyle={{ color: "var(--ink)", padding: "2px 0" }}
-                />
-                <Area
-                  type="linear"
-                  dataKey="incomeMinor"
-                  name="Income"
-                  stroke="var(--chart-income)"
-                  strokeWidth={2}
-                  fill="var(--chart-income)"
-                  fillOpacity={0.08}
-                  dot={false}
-                  activeDot={{
-                    r: 4,
-                    fill: "var(--chart-income)",
-                    stroke: "var(--chart-tooltip-bg)",
-                    strokeWidth: 2,
-                  }}
-                  isAnimationActive={!reduceMotion}
-                  animationDuration={520}
-                  animationEasing="ease-out"
-                />
-                <Area
-                  type="linear"
-                  dataKey="expenseMinor"
-                  name="Expenses"
-                  stroke="var(--chart-expense)"
-                  strokeWidth={2}
-                  fill="var(--chart-expense)"
-                  fillOpacity={0.07}
-                  dot={false}
-                  activeDot={{
-                    r: 4,
-                    fill: "var(--chart-expense)",
-                    stroke: "var(--chart-tooltip-bg)",
-                    strokeWidth: 2,
-                  }}
-                  isAnimationActive={!reduceMotion}
-                  animationDuration={520}
-                  animationEasing="ease-out"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {narrowViewport ? (
+            <MobileCashflowChart data={data} />
+          ) : (
+            <div className="trend-chart" aria-hidden="true">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data.points} margin={{ top: 12, right: 6, left: -10, bottom: 0 }}>
+                  <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(date) => formatTrendDate(String(date), data.granularity)}
+                    interval={trendXAxisInterval(data)}
+                    minTickGap={14}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
+                  />
+                  <YAxis
+                    ticks={axis.ticks}
+                    domain={axis.domain}
+                    interval={0}
+                    allowDecimals={false}
+                    tickFormatter={(value) => formatMonthlyTrendTick(Number(value))}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "var(--chart-axis)", fontSize: 11 }}
+                  />
+                  <Tooltip
+                    cursor={{
+                      stroke: "var(--chart-crosshair)",
+                      strokeWidth: 1,
+                      strokeDasharray: "3 4",
+                    }}
+                    labelFormatter={(label) =>
+                      formatTrendTooltipDate(String(label), data.granularity)
+                    }
+                    formatter={(value, name) => `${name}: ${formatMoney(Number(value))}`}
+                    contentStyle={{
+                      padding: "10px 12px",
+                      background: "var(--chart-tooltip-bg)",
+                      border: "1px solid var(--chart-tooltip-border)",
+                      borderRadius: "var(--radius-md)",
+                      boxShadow: "var(--shadow-raised)",
+                      color: "var(--ink)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11,
+                    }}
+                    labelStyle={{
+                      marginBottom: 6,
+                      color: "var(--ink)",
+                      fontFamily: "var(--font-ui)",
+                      fontWeight: 700,
+                    }}
+                    itemStyle={{ color: "var(--ink)", padding: "2px 0" }}
+                  />
+                  <Area
+                    type="linear"
+                    dataKey="incomeMinor"
+                    name="Income"
+                    stroke="var(--chart-income)"
+                    strokeWidth={2}
+                    fill="var(--chart-income)"
+                    fillOpacity={0.08}
+                    dot={false}
+                    activeDot={{
+                      r: 4,
+                      fill: "var(--chart-income)",
+                      stroke: "var(--chart-tooltip-bg)",
+                      strokeWidth: 2,
+                    }}
+                    isAnimationActive={!reduceMotion}
+                    animationDuration={520}
+                    animationEasing="ease-out"
+                  />
+                  <Area
+                    type="linear"
+                    dataKey="expenseMinor"
+                    name="Expenses"
+                    stroke="var(--chart-expense)"
+                    strokeWidth={2}
+                    fill="var(--chart-expense)"
+                    fillOpacity={0.07}
+                    dot={false}
+                    activeDot={{
+                      r: 4,
+                      fill: "var(--chart-expense)",
+                      stroke: "var(--chart-tooltip-bg)",
+                      strokeWidth: 2,
+                    }}
+                    isAnimationActive={!reduceMotion}
+                    animationDuration={520}
+                    animationEasing="ease-out"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
           <table className="sr-only">
             <caption>{selectedLabel} money in and expenses</caption>
             <thead>
