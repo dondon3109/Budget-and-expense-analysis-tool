@@ -1,0 +1,95 @@
+name: R2 Publish Smoke Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r2-publish-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Verify R2 publish credentials
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Upload harmless test object
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
+          OBJECT_KEY: ci-test/${{ github.run_id }}.txt
+        run: |
+          aws --version
+          printf '%s' 'Zoption R2 GitHub Actions smoke test' > /tmp/r2-smoke.txt
+          aws s3api put-object \
+            --endpoint-url "$R2_ENDPOINT" \
+            --region auto \
+            --bucket "$R2_BUCKET" \
+            --key "$OBJECT_KEY" \
+            --body /tmp/r2-smoke.txt \
+            --content-type text/plain
+          echo "uploaded s3://$R2_BUCKET/$OBJECT_KEY"
+
+      - name: Verify public download
+        env:
+          PUBLIC_URL: ${{ vars.R2_PUBLIC_BASE_URL }}/ci-test/${{ github.run_id }}.txt
+        run: |
+          printf '%s' 'Zoption R2 GitHub Actions smoke test' > /tmp/r2-smoke.txt
+          DOWNLOADED=0
+          for attempt in $(seq 1 12); do
+            if curl -fsS --max-time 15 "$PUBLIC_URL" -o /tmp/r2-download.txt; then
+              DOWNLOADED=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "$DOWNLOADED" != "1" ]; then
+            echo "::error::public download never succeeded at $PUBLIC_URL"
+            exit 1
+          fi
+          cmp /tmp/r2-smoke.txt /tmp/r2-download.txt \
+            && echo "public download verified: content matches exactly"
+
+      # Cleanup always runs, even when the verification step above failed.
+      - name: Clean up test object
+        if: always()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
+          OBJECT_KEY: ci-test/${{ github.run_id }}.txt
+        run: |
+          aws s3api delete-object \
+            --endpoint-url "$R2_ENDPOINT" \
+            --region auto \
+            --bucket "$R2_BUCKET" \
+            --key "$OBJECT_KEY"
+          echo "deleted s3://$R2_BUCKET/$OBJECT_KEY"
+
+      - name: Confirm no test object remains
+        if: always()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
+          OBJECT_KEY: ci-test/${{ github.run_id }}.txt
+        run: |
+          if aws s3api head-object \
+              --endpoint-url "$R2_ENDPOINT" \
+              --region auto \
+              --bucket "$R2_BUCKET" \
+              --key "$OBJECT_KEY" >/dev/null 2>&1; then
+            echo "::error::test object still exists after cleanup"
+            exit 1
+          fi
+          echo "confirmed: no test object remains"
