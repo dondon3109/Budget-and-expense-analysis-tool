@@ -1,11 +1,6 @@
 import { File, Paths } from "expo-file-system";
-import {
-  AudioModule,
-  RecordingPresets,
-  useAudioPlayer,
-  useAudioRecorder,
-} from "expo-audio";
-import { useCallback, useRef, useState } from "react";
+import { AudioModule, RecordingPresets, useAudioPlayer, useAudioRecorder } from "expo-audio";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ApiTransportError,
@@ -34,7 +29,10 @@ export function useAssistantRecorder({
 }) {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [phase, setPhase] = useState<RecordingPhase>("idle");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const phaseRef = useRef<RecordingPhase>("idle");
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentPhase = (): RecordingPhase => phaseRef.current;
 
   const setPhaseBoth = useCallback((next: RecordingPhase) => {
@@ -42,16 +40,50 @@ export function useAssistantRecorder({
     setPhase(next);
   }, []);
 
+  const clearElapsedTimer = useCallback(() => {
+    if (elapsedTimerRef.current !== null) {
+      clearInterval(elapsedTimerRef.current);
+      elapsedTimerRef.current = null;
+    }
+  }, []);
+
+  const stopElapsedTimer = useCallback(() => {
+    clearElapsedTimer();
+    setElapsedSeconds(0);
+  }, [clearElapsedTimer]);
+
+  const clearRecordingTimeout = useCallback(() => {
+    if (recordingTimeoutRef.current !== null) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startElapsedTimer = useCallback(() => {
+    stopElapsedTimer();
+    elapsedTimerRef.current = setInterval(() => {
+      setElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
+  }, [stopElapsedTimer]);
+
+  useEffect(
+    () => () => {
+      clearElapsedTimer();
+      clearRecordingTimeout();
+    },
+    [clearElapsedTimer, clearRecordingTimeout],
+  );
+
   const stopAndTranscribe = useCallback(async () => {
     if (currentPhase() !== "recording") return;
+    stopElapsedTimer();
+    clearRecordingTimeout();
     setPhaseBoth("transcribing");
     try {
       await recorder.stop();
       const uri = recorder.uri;
       if (!uri) {
-        onError(
-          new ApiTransportError("Nothing was recorded. Try again.", "invalid_request", 0),
-        );
+        onError(new ApiTransportError("Nothing was recorded. Try again.", "invalid_request", 0));
         setPhaseBoth("idle");
         return;
       }
@@ -72,7 +104,15 @@ export function useAssistantRecorder({
     } finally {
       setPhaseBoth("idle");
     }
-  }, [recorder, getAccessToken, onError, onTranscribed, setPhaseBoth]);
+  }, [
+    recorder,
+    getAccessToken,
+    onError,
+    onTranscribed,
+    setPhaseBoth,
+    stopElapsedTimer,
+    clearRecordingTimeout,
+  ]);
 
   const startRecording = useCallback(async () => {
     if (currentPhase() !== "idle") return;
@@ -80,6 +120,8 @@ export function useAssistantRecorder({
     try {
       const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) {
+        stopElapsedTimer();
+        clearRecordingTimeout();
         onError(
           new ApiTransportError(
             "Microphone access is off. Enable it in system settings to use voice input.",
@@ -91,20 +133,33 @@ export function useAssistantRecorder({
         return;
       }
       setPhaseBoth("recording");
+      startElapsedTimer();
       recorder.record({
         forDuration: MAX_RECORDING_SECONDS,
       });
       // A hard stop when the user keeps recording past the cap.
-      setTimeout(() => {
+      clearRecordingTimeout();
+      recordingTimeoutRef.current = setTimeout(() => {
+        recordingTimeoutRef.current = null;
         if (currentPhase() === "recording") {
           void stopAndTranscribe();
         }
       }, MAX_RECORDING_SECONDS * 1000);
     } catch {
+      stopElapsedTimer();
+      clearRecordingTimeout();
       onError(new ApiTransportError("Voice input could not start.", "network", 0));
       setPhaseBoth("idle");
     }
-  }, [onError, recorder, setPhaseBoth, stopAndTranscribe]);
+  }, [
+    onError,
+    recorder,
+    setPhaseBoth,
+    startElapsedTimer,
+    stopAndTranscribe,
+    stopElapsedTimer,
+    clearRecordingTimeout,
+  ]);
 
   const cancelRecording = useCallback(async () => {
     if (currentPhase() === "recording") {
@@ -114,11 +169,14 @@ export function useAssistantRecorder({
         // Cancellation must never crash the screen.
       }
     }
+    stopElapsedTimer();
+    clearRecordingTimeout();
     setPhaseBoth("idle");
-  }, [recorder, setPhaseBoth]);
+  }, [recorder, setPhaseBoth, stopElapsedTimer, clearRecordingTimeout]);
 
   return {
     phase,
+    elapsedSeconds,
     startRecording,
     stopAndTranscribe,
     cancelRecording,

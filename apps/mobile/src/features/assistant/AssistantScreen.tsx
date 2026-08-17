@@ -1,6 +1,10 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import type { AssistantMemory, AssistantPreferences, AssistantVoicePreferences } from "@zoption/shared";
+import type {
+  AssistantMemory,
+  AssistantPreferences,
+  AssistantVoicePreferences,
+} from "@zoption/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -38,7 +42,16 @@ import {
 } from "@/api/assistant-voice";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
-import { BottomSheet, Button, ConfirmationDialog, EmptyState, ErrorState, FormField, SelectionField, SkeletonLines } from "@/ui/components";
+import {
+  BottomSheet,
+  Button,
+  ConfirmationDialog,
+  EmptyState,
+  ErrorState,
+  FormField,
+  SelectionField,
+  SkeletonLines,
+} from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -56,7 +69,9 @@ import {
   AssistantMessageBubble,
   AssistantThreadRow,
   AssistantUpgradeBanner,
+  formatRecordingElapsed,
   MemoryPreferencesBlock,
+  VoiceRecordButton,
 } from "./assistant-ui";
 import { useAssistantRecorder, useSpokenReplies } from "./assistant-voice-hooks";
 
@@ -235,7 +250,10 @@ export function AssistantScreen() {
         const turn = await withToken((token) =>
           activeThreadId === null
             ? createAssistantThreadTurn({ accessToken: token }, { message, clientRequestId })
-            : sendAssistantTurn({ accessToken: token }, activeThreadId, { message, clientRequestId }),
+            : sendAssistantTurn({ accessToken: token }, activeThreadId, {
+                message,
+                clientRequestId,
+              }),
         );
         if (!mounted.current) return;
         setActiveThreadId(turn.thread.id);
@@ -275,18 +293,25 @@ export function AssistantScreen() {
         if (mounted.current) setSending(false);
       }
     },
-    [activeThreadId, draft, sending, voiceOptions.replyMode, voiceOptions.voice, voicePreferences, withToken],
+    [
+      activeThreadId,
+      draft,
+      sending,
+      voiceOptions.replyMode,
+      voiceOptions.voice,
+      voicePreferences,
+      withToken,
+    ],
   );
 
-  const handleVoiceError = useCallback((error: ApiTransportError  ) => {
+  const handleVoiceError = useCallback((error: ApiTransportError) => {
     setVoiceError({ message: error.message });
   }, []);
 
   const recorder = useAssistantRecorder({
     getAccessToken: session.getAccessToken,
     onTranscribed: (text) => {
-      const canAutoSend =
-        voiceOptions.autoSend && voicePreferences?.reviewRequired !== true;
+      const canAutoSend = voiceOptions.autoSend && voicePreferences?.reviewRequired !== true;
       if (canAutoSend) {
         void handleSend(text);
       } else {
@@ -339,9 +364,15 @@ export function AssistantScreen() {
   );
 
   const saveStylePreferences = useCallback(
-    async (update: { responseDetail: "concise" | "standard" } | { coachingStyle: "gentle" | "direct" }) => {
+    async (
+      update: { responseDetail: "concise" | "standard" } | { coachingStyle: "gentle" | "direct" },
+    ) => {
       // The server updates detail and style as one preference record.
-      const fullUpdate = { responseDetail: preferences?.responseDetail ?? "concise", coachingStyle: preferences?.coachingStyle ?? "gentle", ...update };
+      const fullUpdate = {
+        responseDetail: preferences?.responseDetail ?? "concise",
+        coachingStyle: preferences?.coachingStyle ?? "gentle",
+        ...update,
+      };
       setBusyAction("style");
       try {
         const updated = await withToken((token) =>
@@ -441,7 +472,9 @@ export function AssistantScreen() {
       }
     } catch (error) {
       setInlineError(
-        error instanceof ApiTransportError ? error.message : "The conversation could not be deleted.",
+        error instanceof ApiTransportError
+          ? error.message
+          : "The conversation could not be deleted.",
       );
     } finally {
       if (mounted.current) setBusyAction(null);
@@ -548,7 +581,10 @@ export function AssistantScreen() {
   }
 
   return (
-    <SafeAreaView edges={["top", "left", "right"]} style={[styles.safe, { backgroundColor: theme.colors.canvas }]}>
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
+    >
       <View style={styles.header}>
         <View className="flex-1">
           <View className="flex-row items-center gap-2">
@@ -584,7 +620,12 @@ export function AssistantScreen() {
       </View>
 
       {inlineError && view === "threads" ? (
-        <Text style={[typography.caption, { color: theme.colors.danger, paddingHorizontal: spacing.md }]}>
+        <Text
+          style={[
+            typography.caption,
+            { color: theme.colors.danger, paddingHorizontal: spacing.md },
+          ]}
+        >
           {inlineError}
         </Text>
       ) : null}
@@ -678,35 +719,58 @@ export function AssistantScreen() {
           />
           {voiceError ? (
             <View style={styles.voiceErrorWrap}>
-              <Text style={[typography.caption, { color: theme.colors.danger }]}>{voiceError.message}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Dismiss" onPress={() => setVoiceError(null)} hitSlop={8}>
+              <Text style={[typography.caption, { color: theme.colors.danger }]}>
+                {voiceError.message}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss"
+                onPress={() => setVoiceError(null)}
+                hitSlop={8}
+              >
                 <MaterialCommunityIcons name="close" size={16} color={theme.colors.textMuted} />
               </Pressable>
+            </View>
+          ) : null}
+          {recorder.phase !== "idle" ? (
+            <View style={styles.voiceStatusWrap}>
+              <Text
+                style={[
+                  typography.caption,
+                  {
+                    color:
+                      recorder.phase === "recording" ? theme.colors.danger : theme.colors.textMuted,
+                  },
+                ]}
+              >
+                {recorder.phase === "recording"
+                  ? "Recording… " +
+                    formatRecordingElapsed(recorder.elapsedSeconds) +
+                    " — tap the microphone to stop."
+                  : recorder.phase === "transcribing"
+                    ? "Transcribing your question…"
+                    : "Allowing microphone access…"}
+              </Text>
             </View>
           ) : null}
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
           >
-            <View style={[styles.composer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <View
+              style={[
+                styles.composer,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
               {voicePreferences?.enabled === true && voicePreferences.consentedAt !== null ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    recorder.phase === "recording" ? "Stop and transcribe" : "Record voice question"
-                  }
+                <VoiceRecordButton
+                  phase={recorder.phase}
                   onPress={() => {
                     if (recorder.phase === "recording") void recorder.stopAndTranscribe();
                     else if (recorder.phase === "idle") void recorder.startRecording();
                   }}
-                  style={[styles.micButton, { backgroundColor: recorder.phase === "recording" ? theme.colors.danger : theme.colors.brand }]}
-                >
-                  {recorder.phase === "recording" || recorder.phase === "transcribing" ? (
-                    <ActivityIndicator color={theme.colors.onBrand} size="small" />
-                  ) : (
-                    <MaterialCommunityIcons name="microphone-outline" size={22} color={theme.colors.onBrand} />
-                  )}
-                </Pressable>
+                />
               ) : null}
               <TextInput
                 accessibilityLabel="Message the assistant"
@@ -730,7 +794,10 @@ export function AssistantScreen() {
                 onPress={() => void handleSend()}
                 style={[
                   styles.sendButton,
-                  { backgroundColor: draftValid && !sending ? theme.colors.brand : theme.colors.border },
+                  {
+                    backgroundColor:
+                      draftValid && !sending ? theme.colors.brand : theme.colors.border,
+                  },
                 ]}
               >
                 {sending ? (
@@ -744,7 +811,11 @@ export function AssistantScreen() {
         </View>
       )}
 
-      <BottomSheet visible={settingsOpen} title="Assistant settings" onDismiss={() => setSettingsOpen(false)}>
+      <BottomSheet
+        visible={settingsOpen}
+        title="Assistant settings"
+        onDismiss={() => setSettingsOpen(false)}
+      >
         <View className="gap-4 pb-4">
           <Text style={[typography.label, { color: theme.colors.text }]}>Identity</Text>
           <FormField
@@ -807,10 +878,7 @@ export function AssistantScreen() {
 
           <Text style={[typography.label, { color: theme.colors.text }]}>Voice</Text>
           {voicePreferences?.enabled !== true || voicePreferences.consentedAt === null ? (
-            <VoiceConsentBlock
-              busy={busyAction === "voice"}
-              onEnable={() => void enableVoice()}
-            />
+            <VoiceConsentBlock busy={busyAction === "voice"} onEnable={() => void enableVoice()} />
           ) : (
             <View className="gap-3">
               <SelectionField
@@ -818,14 +886,16 @@ export function AssistantScreen() {
                 value={voiceOptions.replyMode}
                 options={[
                   { id: "text", label: "Text only" },
-                  { id: "voice", label: "Spoken replies", detail: "Generated speech with each answer" },
+                  {
+                    id: "voice",
+                    label: "Spoken replies",
+                    detail: "Generated speech with each answer",
+                  },
                 ]}
                 placeholder="Text only"
                 sheetTitle="Reply mode"
                 disabled={!voicePreferences.speechAvailable}
-                onSelect={(value) =>
-                  voiceOptions.setReplyMode(value as "text" | "voice")
-                }
+                onSelect={(value) => voiceOptions.setReplyMode(value as "text" | "voice")}
               />
               {!voicePreferences.speechAvailable ? (
                 <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -862,9 +932,8 @@ export function AssistantScreen() {
                 onSelect={(value) => voiceOptions.setAutoSend(value === "auto")}
               />
               <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                Recordings are transcribed by Cloudflare Workers AI and spoken replies are
-                generated by Fish Audio. Zoption does not store your recordings or the
-                generated audio.
+                Recordings are transcribed by Cloudflare Workers AI and spoken replies are generated
+                by Fish Audio. Zoption does not store your recordings or the generated audio.
               </Text>
             </View>
           )}
@@ -929,9 +998,9 @@ function VoiceConsentBlock({ busy, onEnable }: { busy: boolean; onEnable: () => 
   return (
     <View className="gap-3">
       <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-        Enable voice mode to ask questions aloud and hear spoken replies. Your recording is
-        sent to Cloudflare Workers AI for transcription; generated speech is provided by Fish
-        Audio. Zoption does not store recordings or generated audio.
+        Enable voice mode to ask questions aloud and hear spoken replies. Your recording is sent to
+        Cloudflare Workers AI for transcription; generated speech is provided by Fish Audio. Zoption
+        does not store recordings or generated audio.
       </Text>
       <Button variant="secondary" loading={busy} onPress={onEnable}>
         Enable voice mode
@@ -942,13 +1011,11 @@ function VoiceConsentBlock({ busy, onEnable }: { busy: boolean; onEnable: () => 
 
 function evidenceLabelFor(message: AssistantWireMessage): string | undefined {
   const metadata = message.metadata as
-    | { sources?: Array<{ label?: unknown; period?: { label?: unknown } }> }
-    | undefined;
+    { sources?: Array<{ label?: unknown; period?: { label?: unknown } }> } | undefined;
   const sources = Array.isArray(metadata?.sources) ? metadata.sources : [];
   const first = sources[0];
   if (!first || typeof first.label !== "string") return undefined;
-  const period =
-    typeof first.period?.label === "string" ? " · " + first.period.label : "";
+  const period = typeof first.period?.label === "string" ? " · " + first.period.label : "";
   return "Grounded in " + first.label + period;
 }
 
@@ -988,12 +1055,11 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 10 : 8,
     paddingHorizontal: 4,
   },
-  micButton: {
-    width: touchTarget,
-    height: touchTarget,
-    borderRadius: radii.round,
+  voiceStatusWrap: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xs,
   },
   sendButton: {
     width: touchTarget,
@@ -1002,7 +1068,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  thinking: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.sm },
+  thinking: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
   voiceErrorWrap: {
     flexDirection: "row",
     alignItems: "center",

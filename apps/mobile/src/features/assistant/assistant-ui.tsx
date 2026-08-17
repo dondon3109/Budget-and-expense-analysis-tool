@@ -1,19 +1,18 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { AssistantMemory } from "@zoption/shared";
 import { Button } from "@/ui/components/Button";
 import { Card } from "@/ui/components/Card";
 import { FormField } from "@/ui/components/FormField";
 import { SelectionField, type SelectionOption } from "@/ui/components/SelectionField";
-import { radii, spacing, typography } from "@/ui/tokens";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
-import {
-  formatThreadTime,
-  validateIdentityName,
-} from "./assistant-forms";
+import type { RecordingPhase } from "./assistant-voice-hooks";
+
+import { formatThreadTime, validateIdentityName } from "./assistant-forms";
 
 export function AssistantConsentCard({
   retentionDays,
@@ -39,8 +38,8 @@ export function AssistantConsentCard({
           Your data, your boundaries.
         </Text>
         <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-          The AI Financial Assistant answers questions using your own records. Before it can
-          help, confirm how your data is handled.
+          The AI Financial Assistant answers questions using your own records. Before it can help,
+          confirm how your data is handled.
         </Text>
         <View className="gap-2">
           {points.map((point) => (
@@ -55,9 +54,9 @@ export function AssistantConsentCard({
           ))}
         </View>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Assistant conversations, audit snapshots and memory are retained for up to{" "}
-          {retentionDays} days. Educational budgeting information only — not personalized
-          investment, tax or insurance advice.
+          Assistant conversations, audit snapshots and memory are retained for up to {retentionDays}{" "}
+          days. Educational budgeting information only — not personalized investment, tax or
+          insurance advice.
         </Text>
         <Button loading={accepting} onPress={onAccept}>
           Accept and continue
@@ -83,8 +82,7 @@ export function AssistantIdentityCard({
   const [preferred, setPreferred] = useState(userPreferredName);
   const assistantError = useMemo(() => validateIdentityName(assistant), [assistant]);
   const preferredError = useMemo(() => validateIdentityName(preferred), [preferred]);
-  const canSave =
-    assistantError === null && preferredError === null && !saving;
+  const canSave = assistantError === null && preferredError === null && !saving;
   return (
     <Card>
       <View className="gap-4">
@@ -92,8 +90,8 @@ export function AssistantIdentityCard({
           Meet your assistant
         </Text>
         <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-          Choose a name for your assistant and tell it what to call you. Both stay between
-          you and your workspace.
+          Choose a name for your assistant and tell it what to call you. Both stay between you and
+          your workspace.
         </Text>
         <FormField
           label="Your assistant's name"
@@ -156,10 +154,7 @@ export function AssistantMessageBubble({
         ]}
       >
         <Text
-          style={[
-            typography.body,
-            { color: isUser ? theme.colors.onBrand : theme.colors.text },
-          ]}
+          style={[typography.body, { color: isUser ? theme.colors.onBrand : theme.colors.text }]}
         >
           {content}
         </Text>
@@ -333,10 +328,7 @@ export function MemoryPreferencesBlock({
         <View className="gap-2">
           <Text style={[typography.label, { color: theme.colors.text }]}>Remembered facts</Text>
           {facts.map((item) => (
-            <View
-              key={item.id}
-              style={[styles.factRow, { borderColor: theme.colors.border }]}
-            >
+            <View key={item.id} style={[styles.factRow, { borderColor: theme.colors.border }]}>
               <Text style={[typography.body, { color: theme.colors.text }]}>{item.value}</Text>
               <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                 {item.source === "user_stated" ? "You shared this" : "Learned from context"}
@@ -388,4 +380,61 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     gap: 2,
   },
+  recordButton: {
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
+
+export function formatRecordingElapsed(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainder = safeSeconds % 60;
+  return minutes + ":" + String(remainder).padStart(2, "0");
+}
+
+interface VoiceRecordButtonProps {
+  phase: RecordingPhase;
+  onPress: () => void;
+}
+
+/**
+ * Composer microphone control with three visually distinct states: idle shows
+ * the microphone, recording keeps the microphone on a danger background, and
+ * the loading states (permission request and transcription) show a spinner on
+ * the brand background. Recording never looks like loading.
+ */
+export function VoiceRecordButton({ phase, onPress }: VoiceRecordButtonProps) {
+  const theme = useZoptionTheme();
+  const recording = phase === "recording";
+  const loading = phase === "requesting" || phase === "transcribing";
+  const label = recording
+    ? "Stop and transcribe"
+    : phase === "transcribing"
+      ? "Transcribing your question"
+      : phase === "requesting"
+        ? "Allowing microphone access"
+        : "Record voice question";
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: loading, busy: loading }}
+      disabled={loading}
+      onPress={onPress}
+      style={[
+        styles.recordButton,
+        { backgroundColor: recording ? theme.colors.danger : theme.colors.brand },
+      ]}
+    >
+      {loading ? (
+        <ActivityIndicator color={theme.colors.onBrand} size="small" />
+      ) : (
+        <MaterialCommunityIcons name="microphone-outline" size={22} color={theme.colors.onBrand} />
+      )}
+    </Pressable>
+  );
+}

@@ -6,6 +6,8 @@ import {
   AssistantMessageBubble,
   AssistantThreadRow,
   AssistantUpgradeBanner,
+  formatRecordingElapsed,
+  VoiceRecordButton,
 } from "./assistant-ui";
 
 describe("assistant accessibility-critical interactions", () => {
@@ -101,5 +103,46 @@ describe("assistant accessibility-critical interactions", () => {
     const review = screen.getByRole("button", { name: "Review Plan" });
     await fireEvent.press(review);
     expect(onReviewPlan).toHaveBeenCalled();
+  });
+});
+
+describe("voice record button states", () => {
+  it("formats recording elapsed time as minutes and seconds", () => {
+    expect(formatRecordingElapsed(0)).toBe("0:00");
+    expect(formatRecordingElapsed(7)).toBe("0:07");
+    expect(formatRecordingElapsed(83)).toBe("1:23");
+    expect(formatRecordingElapsed(-2)).toBe("0:00");
+  });
+
+  it("shows a microphone and is enabled while idle", async () => {
+    const onPress = jest.fn();
+    await render(<VoiceRecordButton phase="idle" onPress={onPress} />);
+    const button = screen.getByRole("button", { name: "Record voice question" });
+    expect(button).toBeEnabled();
+    await fireEvent.press(button);
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the microphone visible and names the stop action while recording", async () => {
+    const onPress = jest.fn();
+    await render(<VoiceRecordButton phase="recording" onPress={onPress} />);
+    const button = screen.getByRole("button", { name: "Stop and transcribe" });
+    expect(button).toBeEnabled();
+    await fireEvent.press(button);
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables the control with an explicit label while transcribing", async () => {
+    const onPress = jest.fn();
+    await render(<VoiceRecordButton phase="transcribing" onPress={onPress} />);
+    const button = screen.getByRole("button", { name: "Transcribing your question" });
+    expect(button).toBeDisabled();
+  });
+
+  it("disables the control while requesting microphone permission", async () => {
+    const onPress = jest.fn();
+    await render(<VoiceRecordButton phase="requesting" onPress={onPress} />);
+    const button = screen.getByRole("button", { name: "Allowing microphone access" });
+    expect(button).toBeDisabled();
   });
 });

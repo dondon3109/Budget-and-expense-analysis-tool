@@ -8,6 +8,8 @@ import { buildDashboardView, localIsoDate } from "@/features/dashboard/dashboard
 import { useSyncState } from "@/sync/sync-state";
 import {
   Card,
+  CashflowChart,
+  ChartCard,
   EmptyState,
   ErrorState,
   MoneyValue,
@@ -15,6 +17,7 @@ import {
   Skeleton,
   SyncStatus,
 } from "@/ui/components";
+import { fullDateLabel } from "@/ui/components/cashflow-chart-geometry";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -135,7 +138,10 @@ function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
               </View>
               <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
                 <View
-                  style={[styles.fill, { width: (percent + "%") as DimensionValue, backgroundColor: item.color }]}
+                  style={[
+                    styles.fill,
+                    { width: (percent + "%") as DimensionValue, backgroundColor: item.color },
+                  ]}
                 />
               </View>
             </View>
@@ -169,14 +175,14 @@ function CashflowCard({
   selectedView: CashflowTrend["view"];
 }) {
   const theme = useZoptionTheme();
-  const max = cashflow.points.reduce(
-    (largest, point) => Math.max(largest, point.incomeMinor, point.expenseMinor),
-    0,
-  );
-  const title = CASHFLOW_VIEWS.find((option) => option.value === selectedView)?.title ?? "Cash flow";
+  const title =
+    CASHFLOW_VIEWS.find((option) => option.value === selectedView)?.title ?? "Cash flow";
+  const summary = `Income and expenses · ${fullDateLabel(
+    cashflow.range.from,
+    cashflow.granularity,
+  )} to ${fullDateLabel(cashflow.range.to, cashflow.granularity)}. Tap a point to see exact amounts, or drag across the chart to scrub.`;
   return (
-    <Card accessibilityLabel={title}>
-      <SectionLabel>{title}</SectionLabel>
+    <ChartCard title={title} accessibleSummary={summary}>
       <View accessibilityRole="tablist" style={styles.segmented}>
         {CASHFLOW_VIEWS.map((option) => {
           const locked = option.proOnly && !isPro;
@@ -228,43 +234,15 @@ function CashflowCard({
           Month and 6-month cash flow are Pro features.
         </Text>
       ) : null}
-      <View style={{ gap: spacing.sm }}>
-        {cashflow.points.length === 0 ? (
-          <EmptyState
-            title="No cash flow yet"
-            description="Income and expense activity will chart here as you record transactions."
-          />
-        ) : null}
-        {cashflow.points.map((point) => {
-          const net = point.incomeMinor - point.expenseMinor;
-          const percent =
-            max <= 0
-              ? 0
-              : Math.round((Math.max(point.incomeMinor, point.expenseMinor) / max) * 100);
-          const label =
-            cashflow.granularity === "month" ? point.date.slice(0, 7) : point.date.slice(5);
-          return (
-            <View
-              key={point.date}
-              accessible
-              accessibilityLabel={label + ": income " + point.incomeMinor + ", expense " + point.expenseMinor}
-            >
-              <View style={styles.cashflowRow}>
-                <Text style={[typography.caption, { color: theme.colors.textMuted, width: 44 }]}>
-                  {label}
-                </Text>
-                <View style={[styles.track, { backgroundColor: theme.colors.border, flex: 1 }]}>
-                  <View
-                    style={[styles.fill, { width: (percent + "%") as DimensionValue, backgroundColor: theme.colors.income }]}
-                  />
-                </View>
-                <MoneyValue amountMinor={net} tone={net >= 0 ? "income" : "expense"} />
-              </View>
-            </View>
-          );
-        })}
-      </View>
-    </Card>
+      {cashflow.points.length === 0 ? (
+        <EmptyState
+          title="No cash flow yet"
+          description="Income and expense activity will chart here as you record transactions."
+        />
+      ) : (
+        <CashflowChart cashflow={cashflow} />
+      )}
+    </ChartCard>
   );
 }
 
@@ -352,11 +330,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   categoryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  cashflowRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,

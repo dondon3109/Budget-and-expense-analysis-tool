@@ -1,6 +1,7 @@
 export * from "./BottomSheet";
 export * from "./Button";
 export * from "./Card";
+export * from "./CashflowChart";
 export * from "./ChartCard";
 export * from "./ConfirmationDialog";
 export * from "./EmptyState";
