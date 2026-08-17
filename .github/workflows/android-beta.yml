@@ -1,0 +1,106 @@
+name: Android Beta Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-beta-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify signed release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - run: pnpm install --frozen-lockfile
+
+      # Reuses the web pipeline's validated public production configuration;
+      # writes VITE_API_URL / VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY
+      # to the job environment.
+      - name: Export production public configuration
+        run: node scripts/export-production-deployment-env.mjs
+
+      - name: Prebuild Android (production)
+        working-directory: apps/mobile
+        run: CI=1 APP_VARIANT=production npx expo prebuild --platform android --clean --no-install
+
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      # The release signing config injected by the prebuild plugin reads the
+      # CI environment; the keystore itself never touches the working tree.
+      - name: Prepare release keystore
+        run: |
+          SIGNING_DIR="$RUNNER_TEMP/zoption-signing"
+          mkdir -p "$SIGNING_DIR"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$SIGNING_DIR/zoption-release.keystore"
+          chmod 600 "$SIGNING_DIR/zoption-release.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$SIGNING_DIR/zoption-release.keystore" >> "$GITHUB_ENV"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Assemble signed release APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+        env:
+          APP_VARIANT: production
+          ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          EXPO_PUBLIC_API_URL: ${{ env.VITE_API_URL }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+
+      # Hard gate: the APK must be signed by the permanent Zoption key
+      # (F9:46:70:EB...) and carry the production app identity. Failure here
+      # fails the workflow.
+      - name: Verify APK signing identity
+        run: |
+          APK=$(find apps/mobile/android/app/build/outputs/apk/release -name '*.apk' -print -quit)
+          test -n "$APK" || { echo "::error::No release APK was produced."; exit 1; }
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
+          EXPECTED_FINGERPRINT="f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d"
+          EXPECTED_DN="CN=Zoption, O=Zoption, C=PH"
+          "$APKSIGNER" verify "$APK"
+          "$APKSIGNER" verify --print-certs "$APK" > /tmp/zoption-apk-certs.txt
+          grep -q "Signer #1 certificate SHA-256 digest: $EXPECTED_FINGERPRINT" /tmp/zoption-apk-certs.txt
+          grep -q "Signer #1 certificate DN: $EXPECTED_DN" /tmp/zoption-apk-certs.txt
+          if grep -q 'Signer #2 certificate DN' /tmp/zoption-apk-certs.txt; then
+            echo '::error::The APK has more than one signer.'; exit 1;
+          fi
+          "$AAPT" dump badging "$APK" | grep -q "package: name='site.zoption.android' versionCode='20201' versionName='0.1.1'"
+          echo "APK signing verified: $EXPECTED_FINGERPRINT"
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+
+      # Build-only CI storage (7 days), not a release channel.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zoption-beta-release-apk
+          path: ${{ env.APK_PATH }}
+          if-no-files-found: error
+          retention-days: 7
