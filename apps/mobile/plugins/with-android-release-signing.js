@@ -58,7 +58,7 @@ function transformBuildGradle(contents) {
   // brace). A plain substring replace of "    }" would match inside the
   // 8-space "        }" line and nest release inside the debug block.
   const signingBlockWithRelease = DEBUG_SIGNING_BLOCK.replace(
-    /\n    }\s*$/,
+    /\n {4}}\s*$/,
     "\n" + RELEASE_SIGNING_BLOCK + "\n    }",
   );
   let next = contents.replace(DEBUG_SIGNING_BLOCK, signingBlockWithRelease);

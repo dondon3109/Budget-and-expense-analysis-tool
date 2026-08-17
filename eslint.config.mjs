@@ -34,6 +34,7 @@ export default tseslint.config(
     files: [
       "**/scripts/**/*.mjs",
       "apps/mobile/*.cjs",
+      "apps/mobile/plugins/**/*.js",
       "apps/web/public/**/*.js",
       "release.config.mjs",
     ],
@@ -57,6 +58,20 @@ export default tseslint.config(
     rules: {
       ...tseslint.configs.disableTypeChecked.rules,
       "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    files: ["apps/mobile/plugins/**/*.test.js"],
+    languageOptions: {
+      globals: {
+        afterEach: "readonly",
+        beforeEach: "readonly",
+        describe: "readonly",
+        expect: "readonly",
+        it: "readonly",
+        jest: "readonly",
+        test: "readonly",
+      },
     },
   },
   {
