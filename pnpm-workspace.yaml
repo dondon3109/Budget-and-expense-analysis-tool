@@ -14,6 +14,11 @@ overrides:
   "@lhci/cli>uuid": 11.1.1
   "external-editor>tmp": 0.2.7
 
+auditConfig:
+  ignoreGhsas:
+    - GHSA-w3rx-r6r6-pgpr
+    - GHSA-5p2g-fcmc-qvqq
+
 minimumReleaseAgeExclude:
   - miniflare@5.20260811.0-alpha
   - wrangler@4.122.0
