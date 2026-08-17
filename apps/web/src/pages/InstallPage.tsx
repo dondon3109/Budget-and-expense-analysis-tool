@@ -19,14 +19,15 @@ import { Link } from "react-router-dom";
 import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
-import { ANDROID_RELEASE } from "../releases/androidRelease";
+import type { AndroidRelease } from "../releases/androidRelease";
+import { useAndroidRelease } from "../releases/useAndroidRelease";
 import "./LandingPage.css";
 import "./InstallPage.css";
 
 type DeviceKind = "checking" | "android" | "other";
 type CopyState = "idle" | "copied" | "failed";
 
-function DownloadPanel() {
+function DownloadPanel({ release }: { release: AndroidRelease }) {
   const [deviceKind, setDeviceKind] = useState<DeviceKind>("checking");
   const [copyState, setCopyState] = useState<CopyState>("idle");
 
@@ -37,7 +38,7 @@ function DownloadPanel() {
   async function copyChecksum() {
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
-      await navigator.clipboard.writeText(ANDROID_RELEASE.sha256);
+      await navigator.clipboard.writeText(release.sha256);
       setCopyState("copied");
     } catch {
       setCopyState("failed");
@@ -57,8 +58,8 @@ function DownloadPanel() {
 
       <a
         className="button primary apk-download-action"
-        href={ANDROID_RELEASE.downloadPath}
-        download={ANDROID_RELEASE.filename}
+        href={release.downloadPath}
+        download={release.filename}
       >
         <Download size={19} aria-hidden="true" /> Download Android APK
       </a>
@@ -68,35 +69,44 @@ function DownloadPanel() {
         zoption.site — not distributed through Google Play.
       </p>
 
-      <p className="apk-update-note">
-        <RefreshCw size={16} aria-hidden="true" /> New in this beta: scan a receipt with your
-        camera and Zoption drafts the expense for you. The older Zoption app must be uninstalled
-        before installing the beta — it uses a different signing identity.
-      </p>
+      {release.reinstallRequired ? (
+        <p className="apk-update-note apk-reinstall-note">
+          <RefreshCw size={16} aria-hidden="true" /> This update changes the signing key. Uninstall
+          the previous Zoption Beta first, then install this version — future updates install over
+          it normally.
+        </p>
+      ) : (
+        <p className="apk-update-note">
+          <RefreshCw size={16} aria-hidden="true" />{" "}
+          {release.notes && release.notes.length > 0
+            ? release.notes.join(" ")
+            : "New in this beta: scan a receipt with your camera and Zoption drafts the expense for you. The older Zoption app must be uninstalled before installing the beta — it uses a different signing identity."}
+        </p>
+      )}
 
       <dl className="apk-release-facts">
         <div>
           <dt>Version</dt>
-          <dd>{ANDROID_RELEASE.versionName}</dd>
+          <dd>{release.versionName}</dd>
         </div>
         <div>
           <dt>File size</dt>
-          <dd>{ANDROID_RELEASE.sizeLabel}</dd>
+          <dd>{release.sizeLabel}</dd>
         </div>
         <div>
           <dt>Released</dt>
-          <dd>{ANDROID_RELEASE.releaseDateLabel}</dd>
+          <dd>{release.releaseDateLabel}</dd>
         </div>
         <div>
           <dt>Requires</dt>
-          <dd>{ANDROID_RELEASE.minimumAndroid}</dd>
+          <dd>{release.minimumAndroid}</dd>
         </div>
       </dl>
 
       <div className="apk-checksum">
         <div>
           <p>SHA-256 checksum</p>
-          <code>{ANDROID_RELEASE.sha256}</code>
+          <code>{release.sha256}</code>
         </div>
         <button type="button" onClick={() => void copyChecksum()} aria-describedby="copy-result">
           {copyState === "copied" ? (
@@ -114,9 +124,11 @@ function DownloadPanel() {
             ? "Checksum copied to the clipboard."
             : ""}
       </p>
-      <a className="apk-checksum-file" href={ANDROID_RELEASE.checksumPath} download>
-        Download checksum file <ExternalLink size={14} aria-hidden="true" />
-      </a>
+      {release.checksumPath && (
+        <a className="apk-checksum-file" href={release.checksumPath} download>
+          Download checksum file <ExternalLink size={14} aria-hidden="true" />
+        </a>
+      )}
 
       {deviceKind !== "checking" && (
         <div className={`apk-device-note ${deviceKind === "android" ? "is-android" : ""}`}>
@@ -137,6 +149,9 @@ function DownloadPanel() {
 }
 
 export function InstallPage() {
+  const { release } = useAndroidRelease();
+  const trustedDownloadOrigin = new URL(release.downloadPath).origin;
+
   return (
     <div className="landing-page install-page">
       <header className="landing-nav" id="top">
@@ -188,7 +203,7 @@ export function InstallPage() {
           </div>
 
           <div className="install-hero-action">
-            <DownloadPanel />
+            <DownloadPanel release={release} />
           </div>
         </section>
 
@@ -215,8 +230,8 @@ export function InstallPage() {
                 <h3>Download from this page</h3>
                 <p>
                   Tap “Download Android APK.” Only trust a file whose address begins with
-                  <code>https://github.com/dondon3109/Budget-and-expense-analysis-tool/releases/download/</code>
-                  and ends in <code>{ANDROID_RELEASE.filename}</code>.
+                  <code>{trustedDownloadOrigin}/</code>
+                  and ends in <code>{release.filename}</code>.
                 </p>
               </div>
             </li>
@@ -355,7 +370,7 @@ export function InstallPage() {
           <h2 id="install-next-title">Your account works in the beta and the browser.</h2>
           <p>Download the Android beta, or continue with Zoption on the web.</p>
           <div>
-            <a className="button primary" href={ANDROID_RELEASE.downloadPath} download>
+            <a className="button primary" href={release.downloadPath} download>
               <Download size={18} aria-hidden="true" /> Download APK
             </a>
             <Link className="button secondary" to="/app">

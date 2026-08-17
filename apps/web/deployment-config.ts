@@ -163,10 +163,22 @@ export function validateDeploymentConfigForBuild(
   };
 }
 
+/**
+ * Exact origin of the public R2 Android download bucket. The install page
+ * fetches android/latest.json from this origin, so connect-src must include
+ * it; no wildcard sources are ever emitted.
+ */
+export const ANDROID_DOWNLOAD_ORIGIN = "https://downloads.zoption.site";
+
 export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): string {
   const scriptSources = ["'self'"];
   const imageSources = ["'self'", "data:", "blob:", config.supabaseOrigin];
-  const connectSources = ["'self'", config.supabaseOrigin, config.apiOrigin];
+  const connectSources = [
+    "'self'",
+    config.supabaseOrigin,
+    config.apiOrigin,
+    ANDROID_DOWNLOAD_ORIGIN,
+  ];
 
   if (config.analyticsEnabled) {
     scriptSources.push("https://www.googletagmanager.com");

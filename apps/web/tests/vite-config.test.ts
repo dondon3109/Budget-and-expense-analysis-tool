@@ -141,6 +141,8 @@ describe("environment-derived CSP", () => {
 
     expect(policy).toContain(`img-src 'self' data: blob: ${supabaseUrl}`);
     expect(policy).toContain(`connect-src 'self' ${supabaseUrl} ${productionApiUrl}`);
+    expect(policy).toContain("connect-src");
+    expect(policy).toContain("https://downloads.zoption.site");
     expect(policy).toContain("media-src 'self' blob:");
     expect(policy).not.toContain("*.supabase.co");
     expect(policy).not.toContain("*.workers.dev");

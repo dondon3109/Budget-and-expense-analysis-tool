@@ -17,7 +17,7 @@ import { LegalFooter } from "../components/legal/LegalFooter";
 import { SupportChat } from "../components/support/SupportChat";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { getPublicCustomerReviews } from "../lib/api";
-import { ANDROID_RELEASE } from "../releases/androidRelease";
+import { useAndroidRelease } from "../releases/useAndroidRelease";
 
 const previewBars = [42, 55, 38, 66, 50, 61];
 
@@ -26,6 +26,7 @@ export function LandingPage() {
   const accountDeleted = searchParams.get("accountDeleted");
   const [reviews, setReviews] = useState<PublicCustomerReview[]>([]);
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
+  const { release: androidRelease } = useAndroidRelease();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -460,11 +461,11 @@ export function LandingPage() {
             <dl>
               <div>
                 <dt>File size</dt>
-                <dd>{ANDROID_RELEASE.sizeLabel}</dd>
+                <dd>{androidRelease.sizeLabel}</dd>
               </div>
               <div>
                 <dt>Requires</dt>
-                <dd>{ANDROID_RELEASE.minimumAndroid}</dd>
+                <dd>{androidRelease.minimumAndroid}</dd>
               </div>
               <div>
                 <dt>Source</dt>
