@@ -31,7 +31,6 @@ Baseline verified on 2026-08-13 at `origin/main` commit
 | Product support and bug reports | `/api/support`, authenticated support routes     | Native support surface                                      | 8         | Native support chat with provider disclosure, review-first bug-report drafts, and a reports list. Support chat never reads financial records. |
 | Account/profile management      | Supabase Auth/Storage and Worker deletion        | Native settings and high-friction online deletion           | 8         | High-friction native deletion (typed DELETE + password, permanent-warning dialog); the encrypted local workspace clears only after the server confirms deletion. |
 | Themes                          | Web Light/Dark/Coffee tokens                     | Native Light/Dark/Coffee tokens and system-aware choice     | 1         | Theme preference is harmless UI state with validated/versioned persistence.                                    |
-| Existing Android TWA            | `apps/android`                                   | Remains intact until explicit replacement                   | 9         | No files are deleted or replaced during rebuild.                                                               |
 
 ## Current route inventory
 

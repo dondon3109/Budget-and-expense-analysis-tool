@@ -15,6 +15,10 @@ function optionalValue(value: string | undefined): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+function environmentValue(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
 /**
  * Validates the raw environment values into the public configuration shape.
  * Kept separate so it stays unit-testable without touching process.env.
@@ -37,9 +41,9 @@ export function parsePublicConfig(
 // dev-server environment at runtime. A dynamic source[key] read silently
 // lost this configuration in release bundles.
 export const publicConfig = parsePublicConfig(
-  process.env.EXPO_PUBLIC_API_URL,
-  process.env.EXPO_PUBLIC_SUPABASE_URL,
-  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  environmentValue(process.env.EXPO_PUBLIC_API_URL),
+  environmentValue(process.env.EXPO_PUBLIC_SUPABASE_URL),
+  environmentValue(process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
 );
 
 export const isSupabaseConfigured = Boolean(

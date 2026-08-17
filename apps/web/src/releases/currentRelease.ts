@@ -55,17 +55,6 @@ export const releaseHistory: readonly ProductRelease[] = [
     ],
   },
   {
-    version: "2.1.1",
-    releasedOn: "August 13, 2026",
-    changes: [
-      {
-        title: "Android status bar restored",
-        description:
-          "The installed Android app no longer opens in immersive fullscreen. The system status bar with the time, Wi-Fi, and battery indicators is visible again while Zoption keeps its standalone, chrome-free window. Already using the app? Download the updated APK from the Install page and install it over your current version — your signed-in workspace is preserved.",
-      },
-    ],
-  },
-  {
     version: "2.1.0",
     releasedOn: "August 12, 2026",
     changes: [
@@ -93,37 +82,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         title: "A more capable, easier-to-reach Zoption",
         description:
           "This release also adds Google and Facebook sign-in, in-product help and bug reporting, clearer Free-plan information, improved mobile navigation, and more accurate remaining-budget calculations.",
-      },
-    ],
-  },
-  {
-    version: "2.0.0",
-    releasedOn: "August 10, 2026",
-    changes: [
-      {
-        title: "Zoption for Android",
-        description:
-          "Download the release-signed Zoption 2.0.0 APK directly from zoption.site. The Android app opens the same private workspace with your existing account and is distributed independently of Google Play.",
-      },
-      {
-        title: "A trustworthy installation guide",
-        description:
-          "The installation page lists the APK version, file size, checksum, Android requirements, and safe sideloading steps, with a direct download that never starts without your action.",
-      },
-      {
-        title: "Installable, without weakening privacy",
-        description:
-          "Zoption includes its installable web foundation and connection guidance while keeping authentication, financial records, assistant conversations, imports, and billing responses out of offline caches.",
-      },
-      {
-        title: "More room on mobile",
-        description:
-          "Calendar, billing, plan selection, and the Financial Assistant fit smaller screens more reliably. Assistant history closes by tapping outside or using its close control, and the mobile chat keeps more space for your conversation.",
-      },
-      {
-        title: "Profile scrolling restored",
-        description:
-          "The first-launch workspace loader and release notes coordinate page scrolling, so the Profile dashboard remains scrollable after startup in the Android app and mobile browsers.",
       },
     ],
   },

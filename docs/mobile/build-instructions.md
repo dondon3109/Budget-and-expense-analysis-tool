@@ -26,9 +26,9 @@ any store artifact; those actions require explicit approval.
 | preview      | Zoption Preview | site.zoption.android.preview | site.zoption.ios.preview | zoption-preview |
 | production   | Zoption         | site.zoption.android      | site.zoption.ios     | zoption      |
 
-The production identifiers are reserved for the eventual replacement of the
-TWA; they are never used for test builds. The iOS bundle identifier is a
-proposal pending approval and Apple Developer registration.
+The production identifiers are used only for the website-linked Beta build;
+development and preview builds use their own identifiers. The iOS bundle
+identifier is a proposal pending approval and Apple Developer registration.
 
 ## Development builds (required — not Expo Go)
 

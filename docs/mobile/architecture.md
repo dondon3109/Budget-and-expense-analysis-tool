@@ -2,9 +2,9 @@
 
 ## Verified baseline
 
-The repository is a pnpm monorepo with React/Vite in `apps/web`, a Hono Cloudflare Worker in `apps/api`, tenant-isolated financial data in D1, Supabase Auth for identity/session management, approved avatar responsibilities in Supabase Storage, reusable TypeScript in `packages/shared`, and the signed Android TWA in `apps/android`.
+The repository is a pnpm monorepo with React/Vite in `apps/web`, a Hono Cloudflare Worker in `apps/api`, tenant-isolated financial data in D1, Supabase Auth for identity/session management, approved avatar responsibilities in Supabase Storage, reusable TypeScript in `packages/shared`, and the native mobile client in `apps/mobile`.
 
-The native application is additive under `apps/mobile`. It does not replace a production surface during development.
+The native application is the supported Android and iOS mobile client under `apps/mobile`. The website remains the browser client, and both clients use the same authenticated Worker boundary and tenant-scoped data model.
 
 ```mermaid
 flowchart LR
@@ -52,7 +52,7 @@ flowchart LR
 | ----------- | ------------------------------ | -------------------------- | --------------------------------------------------------------------------------------------- |
 | Development | `site.zoption.android.dev`     | `site.zoption.ios.dev`     | Local development build with developer tooling                                                |
 | Preview     | `site.zoption.android.preview` | `site.zoption.ios.preview` | Internal distribution against non-production configuration                                    |
-| Production  | `site.zoption.android`         | `site.zoption.ios`         | Eventual store build; identifiers are not registered or used for replacement without approval |
+| Production  | `site.zoption.android`         | `site.zoption.ios`         | Website-linked Zoption Beta build; no app-store listing |
 
 The final iOS bundle identifier is a proposal only. Variant selection must be build-profile controlled and validated at config load.
 

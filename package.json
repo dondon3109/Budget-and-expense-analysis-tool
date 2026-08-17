@@ -28,8 +28,6 @@
     "ads:render:showcase": "pnpm --filter @zoption/ads render:showcase",
     "ads:render:combined": "pnpm --filter @zoption/ads render:combined",
     "ads:render:all": "pnpm --filter @zoption/ads render:all",
-    "android:release": "./apps/android/scripts/build-release.sh",
-    "android:stage:web": "node apps/android/scripts/stage-web-release.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "pnpm --filter @zoption/api exec wrangler d1 migrations apply budget-expense-local --local"
   },
