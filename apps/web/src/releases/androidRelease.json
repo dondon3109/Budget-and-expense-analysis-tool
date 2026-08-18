@@ -1,16 +1,21 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.1.1",
-  "versionCode": 20201,
-  "filename": "zoption-beta-0.1.1.apk",
-  "downloadPath": "https://github.com/dondon3109/Budget-and-expense-analysis-tool/releases/download/android-beta-0.1.1/zoption-beta-0.1.1.apk",
-  "checksumPath": "https://github.com/dondon3109/Budget-and-expense-analysis-tool/releases/download/android-beta-0.1.1/zoption-beta-0.1.1.apk.sha256",
-  "sha256": "2e68b78cda241796023e039069865e164a9839c15036c696308ca9b61f28cc67",
-  "sizeBytes": 139005705,
-  "sizeLabel": "139,005,705 bytes (132.57 MiB)",
-  "releaseDate": "2026-08-17",
-  "releaseDateLabel": "August 17, 2026",
+  "versionName": "0.2.0-beta",
+  "versionCode": 20300,
+  "filename": "zoption-beta-0.2.0.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.0.apk",
+  "sha256": "46ac54ce4325bb7ed395d7ffeeb918f05a614d929ad31cb0dbe929d0f73cf011",
+  "sizeBytes": 138989349,
+  "sizeLabel": "138,989,349 bytes (132.55 MiB)",
+  "releaseDate": "2026-08-18",
+  "releaseDateLabel": "August 18, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
-  "certificateSha256": "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C"
+  "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
+  "reinstallRequired": true,
+  "notes": [
+    "Zoption Android Beta now uses the permanent Zoption signing certificate.",
+    "If you have Zoption Beta 0.1.0 or 0.1.1 installed, uninstall it before installing this version.",
+    "This signing-key migration is a one-time reinstall requirement."
+  ]
 }

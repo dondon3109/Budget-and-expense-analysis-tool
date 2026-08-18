@@ -22,28 +22,28 @@ interface PackageManifest {
 }
 
 describe("Android release contract", () => {
-  it("keeps the mobile version sources synchronized for the 0.2.0-beta signing migration", async () => {
+  it("keeps the beta release metadata synchronized with the mobile app config", async () => {
     const mobilePackage = await json<PackageManifest>(resolve(mobileRoot, "package.json"));
     const appConfig = await text(resolve(mobileRoot, "app.config.ts"));
 
-    // The build-time snapshot (androidRelease.json) is refreshed from the
-    // published R2 object after the CI build produces its artifact checksums;
-    // the authoritative mobile sources change together here.
+    expect(ANDROID_RELEASE.versionName).toBe(mobilePackage.version);
     expect(mobilePackage.version).toBe("0.2.0-beta");
+    expect(ANDROID_RELEASE.versionCode).toBe(20300);
+    expect(ANDROID_RELEASE.packageId).toBe("site.zoption.android");
+    expect(ANDROID_RELEASE.filename).toBe("zoption-beta-0.2.0.apk");
     expect(appConfig).toContain('version: "0.2.0-beta"');
     expect(appConfig).toContain("versionCode: 20300");
-    expect(ANDROID_RELEASE.packageId).toBe("site.zoption.android");
     expect(appConfig).toContain('name: "Zoption Beta"');
     expect(appConfig).toContain('androidPackage: "site.zoption.android"');
   });
 
-  it("hosts the beta artifact on the public GitHub release behind the website link", () => {
-    const base =
-      "https://github.com/dondon3109/Budget-and-expense-analysis-tool/releases/download/android-beta-0.1.1";
-    expect(ANDROID_RELEASE.downloadPath).toBe(`${base}/${ANDROID_RELEASE.filename}`);
-    expect(ANDROID_RELEASE.checksumPath).toBe(
-      `${base}/${ANDROID_RELEASE.filename}.sha256`,
+  it("hosts the beta artifact on the Zoption R2 download domain", () => {
+    expect(ANDROID_RELEASE.downloadPath).toBe(
+      "https://downloads.zoption.site/android/zoption-beta-0.2.0.apk",
     );
+    // No checksum sidecar is published on R2; the APK checksum lives in
+    // android/latest.json and is shown on the install page.
+    expect(ANDROID_RELEASE.checksumPath).toBeUndefined();
   });
 
   it("keeps APK binaries and signing keys out of Git source", async () => {
@@ -56,14 +56,18 @@ describe("Android release contract", () => {
   it("records exact immutable artifact metadata for integrity checks", () => {
     expect(ANDROID_RELEASE).toMatchObject({
       packageId: "site.zoption.android",
-      versionName: "0.1.1",
-      versionCode: 20201,
+      versionName: "0.2.0-beta",
+      versionCode: 20300,
       targetApi: 36,
+      reinstallRequired: true,
     });
     expect(ANDROID_RELEASE.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(ANDROID_RELEASE.sizeBytes).toBeGreaterThan(1_000_000);
     expect(ANDROID_RELEASE.minimumAndroid).toContain("Android");
     expect(ANDROID_RELEASE.releaseDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(ANDROID_RELEASE.certificateSha256).toMatch(/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
+    expect(ANDROID_RELEASE.certificateSha256).toBe(
+      "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
+    );
+    expect(ANDROID_RELEASE.notes?.length).toBeGreaterThanOrEqual(3);
   });
 });

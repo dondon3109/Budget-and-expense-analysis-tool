@@ -220,7 +220,7 @@ export function assertPublicStructuredDataGraph(
       typeof application.operatingSystem === "string" &&
         application.operatingSystem.startsWith("Android") &&
         typeof application.softwareVersion === "string" &&
-        /^\d+\.\d+\.\d+$/.test(application.softwareVersion) &&
+        /^\d+\.\d+\.\d+(-[a-z0-9.]+)?$/.test(application.softwareVersion) &&
         typeof application.downloadUrl === "string" &&
         application.downloadUrl === release.downloadPath &&
         application.downloadUrl.endsWith(`/${release.filename}`) &&

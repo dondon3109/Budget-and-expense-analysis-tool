@@ -116,6 +116,12 @@ function DownloadPanel({ source }: { source: AndroidReleaseSource }) {
           <dt>Requires</dt>
           <dd>{release.minimumAndroid}</dd>
         </div>
+        <div>
+          <dt>Signing certificate</dt>
+          <dd>
+            <code className="apk-cert-fingerprint">{release.certificateSha256}</code>
+          </dd>
+        </div>
       </dl>
 
       <div className="apk-checksum">

@@ -112,6 +112,7 @@ describe("Android APK download page", () => {
     expect(screen.getByText("66,067,723 bytes (63.01 MiB)")).toBeInTheDocument();
     expect(screen.getByText("August 18, 2026")).toBeInTheDocument();
     expect(screen.getByText(REMOTE_APK_SHA256)).toBeInTheDocument();
+    expect(screen.getByText(REMOTE_CERT_SHA256)).toBeInTheDocument();
     expect(screen.getByText(/not distributed through Google Play/i)).toBeInTheDocument();
     expect(screen.getByText(/Remote note: the metadata came from R2/)).toBeInTheDocument();
     expect(screen.getByText(/Do not disable Play Protect/i)).toBeInTheDocument();

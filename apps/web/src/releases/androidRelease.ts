@@ -24,7 +24,4 @@ export interface AndroidRelease {
  * install page prefers the remote R2 metadata (android/latest.json) and only
  * falls back to this trusted snapshot when R2 is unavailable or invalid.
  */
-export const ANDROID_RELEASE: AndroidRelease = {
-  ...release,
-  reinstallRequired: false,
-};
+export const ANDROID_RELEASE: AndroidRelease = release;
