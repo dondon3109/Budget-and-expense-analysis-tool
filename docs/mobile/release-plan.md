@@ -74,3 +74,18 @@ first locally rendered financial screen, transaction-list scroll, local query
 latency, sync batch duration, memory, APK/AAB size, and iOS archive size.
 Low-end Android performance testing is pending device access and must include
 a list scroll of 1,000+ transactions and an import preview of 500 rows.
+
+## 0.2.0-beta signing migration release
+
+Released 2026-08-18. The permanent Zoption signing certificate replaces the
+insecure Android debug certificate used by 0.1.0 and 0.1.1.
+
+- **Permanent Zoption signing certificate introduced.** The SHA-256
+  fingerprint is
+  `F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D`
+  (recorded in `android/latest.json`).
+- **Existing 0.1.0 / 0.1.1 users must uninstall the old Beta before
+  installing this version** — the signing identity change intentionally
+  breaks in-place updates once.
+- **The reinstall requirement is one-time only.** Future releases signed with
+  the permanent Zoption key update over 0.2.0-beta normally.

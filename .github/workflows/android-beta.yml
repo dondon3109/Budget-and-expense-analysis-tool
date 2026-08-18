@@ -104,10 +104,139 @@ jobs:
           fi
           "$AAPT" dump badging "$APK" > /tmp/zoption-apk-badging.txt
           grep "^package: name=" /tmp/zoption-apk-badging.txt
-          grep -q "package: name='site.zoption.android' versionCode='20201' versionName='0.1.1'" /tmp/zoption-apk-badging.txt \
-            || { echo "::error::APK package identity or version does not match site.zoption.android / 20201 / 0.1.1."; exit 1; }
+          grep -q "package: name='site.zoption.android' versionCode='20300' versionName='0.2.0-beta'" /tmp/zoption-apk-badging.txt \
+            || { echo "::error::APK package identity or version does not match site.zoption.android / 20300 / 0.2.0-beta."; exit 1; }
           echo "APK signing verified: $EXPECTED_FINGERPRINT"
 
       # Intentionally no artifact upload: the signed APK exists only on the
       # ephemeral runner during build verification and is never retained by
       # GitHub Actions.
+
+      - name: Compute APK digest and size
+        run: |
+          APK=$(find apps/mobile/android/app/build/outputs/apk/release -name '*.apk' -print -quit)
+          APK_SHA256=$(shasum -a 256 "$APK" | awk '{print $1}')
+          APK_SIZE=$(stat -c%s "$APK")
+          echo "APK_SHA256=$APK_SHA256" >> "$GITHUB_ENV"
+          echo "APK_SIZE=$APK_SIZE" >> "$GITHUB_ENV"
+          echo "APK SHA-256: $APK_SHA256"
+          echo "APK size: $APK_SIZE bytes"
+
+      # Phase 3: publish the verified APK to the Zoption R2 bucket. This step
+      # only runs after every signing/identity gate above has passed.
+      - name: Publish APK to R2
+        if: inputs.publish_apk
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
+          OBJECT_KEY: android/zoption-beta-0.2.0.apk
+        run: |
+          APK=$(find apps/mobile/android/app/build/outputs/apk/release -name '*.apk' -print -quit)
+          aws s3api put-object \
+            --endpoint-url "$R2_ENDPOINT" \
+            --region auto \
+            --bucket "$R2_BUCKET" \
+            --key "$OBJECT_KEY" \
+            --body "$APK" \
+            --content-type application/vnd.android.package-archive
+          echo "uploaded s3://$R2_BUCKET/$OBJECT_KEY"
+
+      # Phase 4: re-verify the PUBLIC object through the Zoption domain. Never
+      # trust only the local CI build.
+      - name: Verify public R2 APK
+        if: inputs.publish_apk
+        env:
+          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.0.apk
+          EXPECTED_FINGERPRINT: f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d
+          EXPECTED_DN: CN=Zoption, O=Zoption, C=PH
+          EXPECTED_SHA256: ${{ env.APK_SHA256 }}
+          EXPECTED_SIZE: ${{ env.APK_SIZE }}
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --max-time 60 "$PUBLIC_URL" -o /tmp/zoption-public.apk
+          PUBLIC_SHA256=$(shasum -a 256 /tmp/zoption-public.apk | awk '{print $1}')
+          PUBLIC_SIZE=$(stat -c%s /tmp/zoption-public.apk)
+          if [ "$PUBLIC_SHA256" != "$EXPECTED_SHA256" ]; then
+            echo "::error::public APK SHA-256 mismatch: $PUBLIC_SHA256 vs $EXPECTED_SHA256"; exit 1;
+          fi
+          if [ "$PUBLIC_SIZE" != "$EXPECTED_SIZE" ]; then
+            echo "::error::public APK size mismatch: $PUBLIC_SIZE vs $EXPECTED_SIZE"; exit 1;
+          fi
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
+          "$APKSIGNER" verify /tmp/zoption-public.apk
+          "$APKSIGNER" verify --print-certs /tmp/zoption-public.apk > /tmp/zoption-public-certs.txt
+          grep -q "certificate SHA-256 digest: $EXPECTED_FINGERPRINT" /tmp/zoption-public-certs.txt \
+            || { echo "::error::public APK certificate does not match the permanent Zoption key."; exit 1; }
+          grep -q "certificate DN: $EXPECTED_DN" /tmp/zoption-public-certs.txt \
+            || { echo "::error::public APK certificate DN mismatch."; exit 1; }
+          if [ "$(grep -o 'certificate SHA-256 digest: [0-9a-f]*' /tmp/zoption-public-certs.txt | sort -u | wc -l | tr -d ' ')" != "1" ]; then
+            echo "::error::public APK has more than one signer."; exit 1;
+          fi
+          "$AAPT" dump badging /tmp/zoption-public.apk > /tmp/zoption-public-badging.txt
+          grep -q "package: name='site.zoption.android' versionCode='20300' versionName='0.2.0-beta'" /tmp/zoption-public-badging.txt \
+            || { echo "::error::public APK package identity or version mismatch."; exit 1; }
+          echo "public APK verified: sha256=$PUBLIC_SHA256 size=$PUBLIC_SIZE"
+
+      # Phase 5: publish android/latest.json LAST, only after the public APK
+      # passes every verification gate. The metadata is built from the verified
+      # public object, never from unverified local values.
+      - name: Publish android/latest.json
+        if: inputs.publish_latest_json
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
+          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.0.apk
+          EXPECTED_FINGERPRINT: f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d
+          EXPECTED_DN: CN=Zoption, O=Zoption, C=PH
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --max-time 60 "$PUBLIC_URL" -o /tmp/zoption-public.apk
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
+          "$APKSIGNER" verify /tmp/zoption-public.apk \
+            || { echo "::error::public APK signature verification failed; latest.json was not published."; exit 1; }
+          "$APKSIGNER" verify --print-certs /tmp/zoption-public.apk > /tmp/zoption-public-certs.txt
+          grep -q "certificate SHA-256 digest: $EXPECTED_FINGERPRINT" /tmp/zoption-public-certs.txt \
+            || { echo "::error::public APK certificate mismatch; latest.json was not published."; exit 1; }
+          grep -q "certificate DN: $EXPECTED_DN" /tmp/zoption-public-certs.txt \
+            || { echo "::error::public APK certificate DN mismatch; latest.json was not published."; exit 1; }
+          if [ "$(grep -o 'certificate SHA-256 digest: [0-9a-f]*' /tmp/zoption-public-certs.txt | sort -u | wc -l | tr -d ' ')" != "1" ]; then
+            echo "::error::public APK has more than one signer; latest.json was not published."; exit 1;
+          fi
+          "$AAPT" dump badging /tmp/zoption-public.apk > /tmp/zoption-public-badging.txt
+          grep -q "package: name='site.zoption.android' versionCode='20300' versionName='0.2.0-beta'" /tmp/zoption-public-badging.txt \
+            || { echo "::error::public APK identity mismatch; latest.json was not published."; exit 1; }
+          PUBLIC_SHA256=$(shasum -a 256 /tmp/zoption-public.apk | awk '{print $1}')
+          PUBLIC_SIZE=$(stat -c%s /tmp/zoption-public.apk)
+          RELEASED_AT=$(date -u +%F)
+          cat > /tmp/zoption-latest.json <<JSON
+          {
+            "version": "0.2.0-beta",
+            "versionCode": 20300,
+            "downloadUrl": "https://downloads.zoption.site/android/zoption-beta-0.2.0.apk",
+            "sha256": "${PUBLIC_SHA256}",
+            "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
+            "size": ${PUBLIC_SIZE},
+            "releasedAt": "${RELEASED_AT}",
+            "minimumAndroidVersion": "Android 7.0 or newer (API 24+)",
+            "reinstallRequired": true,
+            "notes": [
+              "Zoption Android Beta now uses the permanent Zoption signing certificate.",
+              "If you have Zoption Beta 0.1.0 or 0.1.1 installed, uninstall it before installing this version.",
+              "This signing-key migration is a one-time reinstall requirement."
+            ]
+          }
+          JSON
+          aws s3api put-object \
+            --endpoint-url "$R2_ENDPOINT" \
+            --region auto \
+            --bucket "$R2_BUCKET" \
+            --key "android/latest.json" \
+            --body /tmp/zoption-latest.json \
+            --content-type application/json
+          echo "uploaded android/latest.json"
