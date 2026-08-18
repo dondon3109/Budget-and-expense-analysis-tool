@@ -2,6 +2,17 @@ name: Android Beta Build
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_apk:
+        description: "Upload the verified APK to R2 (android/zoption-beta-0.2.0.apk) and re-verify the public object"
+        type: boolean
+        required: true
+        default: false
+      publish_latest_json:
+        description: "Verify the public R2 APK, then upload android/latest.json"
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
