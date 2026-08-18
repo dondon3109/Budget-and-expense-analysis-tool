@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
+import { UpdateSettingsCard } from "@/features/updates";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
 import { ThemePicker } from "@/ui/theme-picker";
 import { Screen } from "@/ui/screen";
@@ -164,6 +165,7 @@ export default function MoreScreen() {
         </View>
       </Card>
       <ThemePicker />
+      <UpdateSettingsCard />
       <Card accessibilityLabel="Account session controls">
         <View className="gap-3">
           <Text style={[typography.headline, { color: theme.colors.text }]}>Session</Text>

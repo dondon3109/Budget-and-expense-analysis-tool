@@ -11,6 +11,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SessionProvider } from "@/auth/session-state";
 import { WorkerIdentityProvider } from "@/auth/worker-identity-state";
 import { configureConnectivity } from "@/config/connectivity";
+import { AndroidUpdateProvider } from "@/features/updates";
 import { registerBackgroundSyncTask } from "@/sync/background-sync-task";
 import { Button } from "@/ui/components";
 import { ZoptionThemeProvider, useZoptionTheme } from "@/ui/theme-provider";
@@ -50,7 +51,9 @@ export default function RootLayout() {
         <SessionProvider>
           <WorkerIdentityProvider>
             <ZoptionThemeProvider>
-              <RootNavigator />
+              <AndroidUpdateProvider>
+                <RootNavigator />
+              </AndroidUpdateProvider>
             </ZoptionThemeProvider>
           </WorkerIdentityProvider>
         </SessionProvider>

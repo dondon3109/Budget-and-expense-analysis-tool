@@ -1,0 +1,9 @@
+{
+  "platforms": ["android", "apple"],
+  "apple": {
+    "modules": ["ZoptionApkUpdaterModule"]
+  },
+  "android": {
+    "modules": ["site.zoption.apkupdater.ZoptionApkUpdaterModule"]
+  }
+}
