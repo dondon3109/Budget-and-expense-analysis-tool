@@ -89,3 +89,14 @@ insecure Android debug certificate used by 0.1.0 and 0.1.1.
   breaks in-place updates once.
 - **The reinstall requirement is one-time only.** Future releases signed with
   the permanent Zoption key update over 0.2.0-beta normally.
+
+## 0.2.1-beta in-app updater release
+
+`versionName` `0.2.1-beta`, `versionCode` `20301`. Same permanent Zoption
+signer as `0.2.0-beta`, so `reinstallRequired` is `false` and Android can
+update in place.
+
+This release ships the secure in-app APK updater: startup and manual update
+checks, verified APK download, native package/signer gates, and the guided
+system installer handoff. OTA JavaScript updates are not part of this
+release.

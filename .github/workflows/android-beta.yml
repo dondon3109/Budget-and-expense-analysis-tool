@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_apk:
-        description: "Upload the verified APK to R2 (android/zoption-beta-0.2.0.apk) and re-verify the public object"
+        description: "Upload the verified APK to R2 (android/zoption-beta-0.2.1.apk) and re-verify the public object"
         type: boolean
         required: true
         default: false
@@ -115,8 +115,15 @@ jobs:
           fi
           "$AAPT" dump badging "$APK" > /tmp/zoption-apk-badging.txt
           grep "^package: name=" /tmp/zoption-apk-badging.txt
-          grep -q "package: name='site.zoption.android' versionCode='20300' versionName='0.2.0-beta'" /tmp/zoption-apk-badging.txt \
-            || { echo "::error::APK package identity or version does not match site.zoption.android / 20300 / 0.2.0-beta."; exit 1; }
+          grep -q "package: name='site.zoption.android' versionCode='20301' versionName='0.2.1-beta'" /tmp/zoption-apk-badging.txt \
+            || { echo "::error::APK package identity or version does not match site.zoption.android / 20301 / 0.2.1-beta."; exit 1; }
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > /tmp/zoption-apk-manifest.txt
+          grep -q "REQUEST_INSTALL_PACKAGES" /tmp/zoption-apk-manifest.txt \
+            || { echo "::error::APK is missing REQUEST_INSTALL_PACKAGES."; exit 1; }
+          grep -q "ZoptionApkFileProvider" /tmp/zoption-apk-manifest.txt \
+            || { echo "::error::APK is missing the restricted updater FileProvider."; exit 1; }
+          grep -q "site.zoption.android.zoption.apkupdater" /tmp/zoption-apk-manifest.txt \
+            || { echo "::error::APK FileProvider authority is not the updater authority."; exit 1; }
           echo "APK signing verified: $EXPECTED_FINGERPRINT"
 
       # Intentionally no artifact upload: the signed APK exists only on the
@@ -143,7 +150,7 @@ jobs:
           AWS_EC2_METADATA_DISABLED: "true"
           R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
           R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
-          OBJECT_KEY: android/zoption-beta-0.2.0.apk
+          OBJECT_KEY: android/zoption-beta-0.2.1.apk
         run: |
           APK=$(find apps/mobile/android/app/build/outputs/apk/release -name '*.apk' -print -quit)
           aws s3api put-object \
@@ -160,7 +167,7 @@ jobs:
       - name: Verify public R2 APK
         if: inputs.publish_apk
         env:
-          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.0.apk
+          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.1.apk
           EXPECTED_FINGERPRINT: f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d
           EXPECTED_DN: CN=Zoption, O=Zoption, C=PH
           EXPECTED_SHA256: ${{ env.APK_SHA256 }}
@@ -187,7 +194,7 @@ jobs:
             echo "::error::public APK has more than one signer."; exit 1;
           fi
           "$AAPT" dump badging /tmp/zoption-public.apk > /tmp/zoption-public-badging.txt
-          grep -q "package: name='site.zoption.android' versionCode='20300' versionName='0.2.0-beta'" /tmp/zoption-public-badging.txt \
+          grep -q "package: name='site.zoption.android' versionCode='20301' versionName='0.2.1-beta'" /tmp/zoption-public-badging.txt \
             || { echo "::error::public APK package identity or version mismatch."; exit 1; }
           echo "public APK verified: sha256=$PUBLIC_SHA256 size=$PUBLIC_SIZE"
 
@@ -202,7 +209,7 @@ jobs:
           AWS_EC2_METADATA_DISABLED: "true"
           R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
           R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
-          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.0.apk
+          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.1.apk
           EXPECTED_FINGERPRINT: f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d
           EXPECTED_DN: CN=Zoption, O=Zoption, C=PH
         run: |
@@ -220,29 +227,53 @@ jobs:
             echo "::error::public APK has more than one signer; latest.json was not published."; exit 1;
           fi
           "$AAPT" dump badging /tmp/zoption-public.apk > /tmp/zoption-public-badging.txt
-          grep -q "package: name='site.zoption.android' versionCode='20300' versionName='0.2.0-beta'" /tmp/zoption-public-badging.txt \
+          grep -q "package: name='site.zoption.android' versionCode='20301' versionName='0.2.1-beta'" /tmp/zoption-public-badging.txt \
             || { echo "::error::public APK identity mismatch; latest.json was not published."; exit 1; }
           PUBLIC_SHA256=$(shasum -a 256 /tmp/zoption-public.apk | awk '{print $1}')
           PUBLIC_SIZE=$(stat -c%s /tmp/zoption-public.apk)
           RELEASED_AT=$(date -u +%F)
           cat > /tmp/zoption-latest.json <<JSON
           {
-            "version": "0.2.0-beta",
-            "versionCode": 20300,
-            "downloadUrl": "https://downloads.zoption.site/android/zoption-beta-0.2.0.apk",
+            "version": "0.2.1-beta",
+            "versionCode": 20301,
+            "downloadUrl": "https://downloads.zoption.site/android/zoption-beta-0.2.1.apk",
             "sha256": "${PUBLIC_SHA256}",
             "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
             "size": ${PUBLIC_SIZE},
             "releasedAt": "${RELEASED_AT}",
             "minimumAndroidVersion": "Android 7.0 or newer (API 24+)",
-            "reinstallRequired": true,
+            "reinstallRequired": false,
             "notes": [
-              "Zoption Android Beta now uses the permanent Zoption signing certificate.",
-              "If you have Zoption Beta 0.1.0 or 0.1.1 installed, uninstall it before installing this version.",
-              "This signing-key migration is a one-time reinstall requirement."
+              "Added secure in-app update checking.",
+              "Added verified in-app APK downloads for future Zoption Beta updates.",
+              "Added guided Android installation flow for future updates.",
+              "Future Zoption Beta updates can be detected directly inside the app."
             ]
           }
           JSON
+          node --experimental-strip-types -e "
+            import { readFileSync } from 'node:fs';
+            import { parseRemoteAndroidRelease } from './apps/web/src/releases/androidReleaseMetadata.ts';
+            const raw = JSON.parse(readFileSync('/tmp/zoption-latest.json', 'utf8'));
+            const parsed = parseRemoteAndroidRelease(raw);
+            if (!parsed) {
+              console.error('parseRemoteAndroidRelease rejected android/latest.json');
+              process.exit(1);
+            }
+            if (parsed.versionName !== '0.2.1-beta' || parsed.versionCode !== 20301) {
+              console.error('latest.json identity mismatch', parsed.versionName, parsed.versionCode);
+              process.exit(1);
+            }
+            if (parsed.reinstallRequired !== false) {
+              console.error('latest.json must set reinstallRequired=false');
+              process.exit(1);
+            }
+            if (parsed.downloadPath !== 'https://downloads.zoption.site/android/zoption-beta-0.2.1.apk') {
+              console.error('latest.json download URL is not the versioned R2 object');
+              process.exit(1);
+            }
+            console.log('latest.json accepted by the production metadata parser');
+          "
           aws s3api put-object \
             --endpoint-url "$R2_ENDPOINT" \
             --region auto \
