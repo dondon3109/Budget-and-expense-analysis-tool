@@ -3,6 +3,7 @@ import { ANDROID_DOWNLOAD_HOST } from "./constants";
 import {
   apkDestinationUri,
   type DownloadProgress,
+  type DownloadTiming,
   type UpdateFileSystem,
 } from "./update-filesystem";
 
@@ -31,7 +32,7 @@ export async function downloadReleaseApk(input: {
   fileSystem: UpdateFileSystem;
   onProgress?: (progress: DownloadProgress) => void;
   signal?: AbortSignal;
-}): Promise<{ uri: string; size: number }> {
+}): Promise<{ uri: string; size: number } & DownloadTiming> {
   if (!isTrustedDownloadUrl(input.release.downloadUrl, input.release.downloadUrl)) {
     throw new ApkDownloadError("invalid-url", "The update download URL is not trusted.");
   }
@@ -42,6 +43,7 @@ export async function downloadReleaseApk(input: {
     const downloaded = await input.fileSystem.downloadToFile({
       url: input.release.downloadUrl,
       destinationUri,
+      expectedSize: input.release.size,
       onProgress: input.onProgress,
       signal: input.signal,
     });

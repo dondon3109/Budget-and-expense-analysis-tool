@@ -32,12 +32,32 @@ export type UpdateCheckResult =
   | { status: "reinstallRequired"; installed: InstalledAndroidApp; latest: ParsedAndroidRelease }
   | { status: "unavailable"; reason: UpdateCheckFailureReason };
 
+export interface UpdateTiming {
+  /** Wall-clock transfer time, in milliseconds. */
+  downloadMs: number;
+  /** Measured transfer throughput in bytes per second. */
+  downloadBytesPerSecond: number;
+  /** Time spent hashing the downloaded APK (SHA-256), in milliseconds. */
+  hashMs: number;
+  /** Time spent reading the APK package identity and signing certificates. */
+  verifyMs: number;
+  /** Time spent checking install permission readiness. */
+  installPrepMs: number;
+  /** Time spent launching the system package installer. */
+  installMs: number;
+}
+
 export type ApplyUpdateResult =
-  | { status: "installed" }
-  | { status: "needs-permission"; apkUri: string }
-  | { status: "cancelled" }
-  | { status: "failed"; reason: "download" | "verification"; detail?: ApkVerifyFailureReason }
-  | { status: "failed"; reason: "install" };
+  | { status: "installed"; stats?: UpdateTiming }
+  | { status: "needs-permission"; apkUri: string; stats?: UpdateTiming }
+  | { status: "cancelled"; stats?: UpdateTiming }
+  | {
+      status: "failed";
+      reason: "download" | "verification";
+      detail?: ApkVerifyFailureReason;
+      stats?: UpdateTiming;
+    }
+  | { status: "failed"; reason: "install"; stats?: UpdateTiming };
 
 export interface UpdateServiceDependencies {
   platform: string;
@@ -168,6 +188,7 @@ export async function applyAndroidUpdate(
     onProgress?: (progress: DownloadProgress) => void;
     onPhase?: (phase: "downloading" | "verifying" | "installing") => void;
     signal?: AbortSignal;
+    onStats?: (stats: UpdateTiming) => void;
   } = {},
 ): Promise<ApplyUpdateResult> {
   if (!isTrustedDownloadUrl(release.downloadUrl)) {
@@ -175,6 +196,7 @@ export async function applyAndroidUpdate(
   }
 
   let downloadedUri: string | null = null;
+  const stats = createStats();
   try {
     options.onPhase?.("downloading");
     const downloaded = await downloadReleaseApk({
@@ -184,16 +206,22 @@ export async function applyAndroidUpdate(
       signal: options.signal,
     });
     downloadedUri = downloaded.uri;
+    stats.downloadMs = downloaded.transferDurationMs ?? 0;
+    stats.downloadBytesPerSecond = downloaded.transferBytesPerSecond ?? 0;
 
     options.onPhase?.("verifying");
     let digest: string;
     let inspection: Awaited<ReturnType<UpdateServiceDependencies["native"]["inspectApkAsync"]>>;
     try {
+      const hashStart = nowMs();
       digest = await deps.native.digestFileSha256Async(downloaded.uri);
+      stats.hashMs = Math.max(0, Math.round(nowMs() - hashStart));
+      const verifyStart = nowMs();
       inspection = await deps.native.verifyApkAsync(downloaded.uri, release.versionCode);
+      stats.verifyMs = Math.max(0, Math.round(nowMs() - verifyStart));
     } catch {
       await deps.fileSystem.deleteUri(downloaded.uri);
-      return { status: "failed", reason: "verification" };
+      return attachStats(options, stats, { status: "failed", reason: "verification" });
     }
     const verification = verifyDownloadedApk({
       downloadedSize: downloaded.size,
@@ -211,32 +239,40 @@ export async function applyAndroidUpdate(
     });
     if (!verification.ok) {
       await deps.fileSystem.deleteUri(downloaded.uri);
-      return { status: "failed", reason: "verification", detail: verification.reason };
+      return attachStats(options, stats, {
+        status: "failed",
+        reason: "verification",
+        detail: verification.reason,
+      });
     }
 
+    const prepStart = nowMs();
     const canInstall = await deps.native.canInstallPackagesAsync();
+    stats.installPrepMs = Math.max(0, Math.round(nowMs() - prepStart));
     if (!canInstall) {
       await reserveApk(deps, downloaded.uri);
-      return { status: "needs-permission", apkUri: downloaded.uri };
+      return attachStats(options, stats, { status: "needs-permission", apkUri: downloaded.uri });
     }
 
     options.onPhase?.("installing");
+    const installStart = nowMs();
     await installReservedApk(deps, downloaded.uri, release);
-    return { status: "installed" };
+    stats.installMs = Math.max(0, Math.round(nowMs() - installStart));
+    return attachStats(options, stats, { status: "installed" });
   } catch (error) {
     if (error instanceof ApkDownloadError && error.code === "cancelled") {
       if (downloadedUri) {
         await deps.fileSystem.deleteUri(downloadedUri).catch(() => undefined);
       }
-      return { status: "cancelled" };
+      return attachStats(options, stats, { status: "cancelled" });
     }
     if (error instanceof ApkDownloadError) {
       if (downloadedUri) {
         await deps.fileSystem.deleteUri(downloadedUri).catch(() => undefined);
       }
-      return { status: "failed", reason: "download" };
+      return attachStats(options, stats, { status: "failed", reason: "download" });
     }
-    return { status: "failed", reason: "install" };
+    return attachStats(options, stats, { status: "failed", reason: "install" });
   }
 }
 
@@ -245,21 +281,31 @@ export async function continueAndroidInstall(
   apkUri: string,
   release: ParsedAndroidRelease,
   installed: InstalledAndroidApp,
+  options: { onStats?: (stats: UpdateTiming) => void } = {},
 ): Promise<ApplyUpdateResult> {
+  const stats = createStats();
+  stats.downloadMs = -1;
+  stats.downloadBytesPerSecond = -1;
   try {
+    const prepStart = nowMs();
     const canInstall = await deps.native.canInstallPackagesAsync();
+    stats.installPrepMs = Math.max(0, Math.round(nowMs() - prepStart));
     if (!canInstall) {
-      return { status: "needs-permission", apkUri };
+      return attachStats(options, stats, { status: "needs-permission", apkUri });
     }
     const size = await deps.fileSystem.fileSize(apkUri);
     let digest: string;
     let inspection: Awaited<ReturnType<UpdateServiceDependencies["native"]["verifyApkAsync"]>>;
     try {
+      const hashStart = nowMs();
       digest = await deps.native.digestFileSha256Async(apkUri);
+      stats.hashMs = Math.max(0, Math.round(nowMs() - hashStart));
+      const verifyStart = nowMs();
       inspection = await deps.native.verifyApkAsync(apkUri, release.versionCode);
+      stats.verifyMs = Math.max(0, Math.round(nowMs() - verifyStart));
     } catch {
       await deps.fileSystem.deleteUri(apkUri);
-      return { status: "failed", reason: "verification" };
+      return attachStats(options, stats, { status: "failed", reason: "verification" });
     }
     const verification = verifyDownloadedApk({
       downloadedSize: size,
@@ -277,14 +323,47 @@ export async function continueAndroidInstall(
     });
     if (!verification.ok) {
       await deps.fileSystem.deleteUri(apkUri);
-      return { status: "failed", reason: "verification", detail: verification.reason };
+      return attachStats(options, stats, {
+        status: "failed",
+        reason: "verification",
+        detail: verification.reason,
+      });
     }
+    const installStart = nowMs();
     await installReservedApk(deps, apkUri, release);
-    return { status: "installed" };
+    stats.installMs = Math.max(0, Math.round(nowMs() - installStart));
+    return attachStats(options, stats, { status: "installed" });
   } catch {
     await deps.fileSystem.deleteUri(apkUri).catch(() => undefined);
-    return { status: "failed", reason: "install" };
+    return attachStats(options, stats, { status: "failed", reason: "install" });
   }
+}
+
+function nowMs(): number {
+  return typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+}
+
+function createStats(): UpdateTiming {
+  return {
+    downloadMs: 0,
+    downloadBytesPerSecond: 0,
+    hashMs: 0,
+    verifyMs: 0,
+    installPrepMs: 0,
+    installMs: 0,
+  };
+}
+
+function attachStats<T extends object>(
+  options: { onStats?: (stats: UpdateTiming) => void },
+  stats: UpdateTiming,
+  result: T,
+): T & { stats?: UpdateTiming } {
+  if (!options.onStats) return result;
+  options.onStats(stats);
+  return { ...result, stats };
 }
 
 async function installReservedApk(

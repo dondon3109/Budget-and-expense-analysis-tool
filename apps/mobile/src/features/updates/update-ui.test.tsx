@@ -33,6 +33,7 @@ function controller(overrides: Partial<AndroidUpdateController> = {}): AndroidUp
     latest: parsedRelease(),
     error: null,
     progress: null,
+    timing: null,
     prompt: "available",
     check: jest.fn(async () => undefined),
     updateNow: jest.fn(async () => undefined),

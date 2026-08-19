@@ -19,6 +19,7 @@ import {
   type ApplyUpdateResult,
   type UpdateCheckResult,
   type UpdateServiceDependencies,
+  type UpdateTiming,
 } from "./update-service";
 import { checkFailureMessage, verificationFailureMessage } from "./update-copy";
 import type { DownloadProgress } from "./update-filesystem";
@@ -45,6 +46,8 @@ export interface AndroidUpdateController {
   latest: ParsedAndroidRelease | null;
   error: string | null;
   progress: DownloadProgress | null;
+  /** Most recent measured phase timings for the last update attempt (no sensitive data). */
+  timing: UpdateTiming | null;
   prompt: "hidden" | "available" | "reinstallRequired";
   check: () => Promise<void>;
   updateNow: () => Promise<void>;
@@ -85,6 +88,7 @@ export function useAndroidUpdateController(
   const [latest, setLatest] = useState<ParsedAndroidRelease | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
+  const [timing, setTiming] = useState<UpdateTiming | null>(null);
   const [prompt, setPrompt] = useState<"hidden" | "available" | "reinstallRequired">("hidden");
   const [pendingApkUri, setPendingApkUri] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -199,6 +203,20 @@ export function useAndroidUpdateController(
     setError("Android could not open the package installer.");
   }, []);
 
+  const recordTiming = useCallback((next: UpdateTiming) => {
+    if (!next) return;
+    setTiming(next);
+    if (__DEV__) {
+      // Timing telemetry is limited to durations/throughput and never includes
+      // the download URL, paths, hashes, or certificate data.
+      const mbps = (next.downloadBytesPerSecond / 1024 / 1024).toFixed(1);
+      console.info(
+        "[update] download " + mbps + " MB/s (" + next.downloadMs + "ms) hash " + next.hashMs +
+          "ms verify " + next.verifyMs + "ms install " + next.installMs + "ms (prep " + next.installPrepMs + "ms)",
+      );
+    }
+  }, []);
+
   const updateNow = useCallback(async () => {
     const release = latestRef.current;
     const currentInstall = installedRef.current;
@@ -224,9 +242,10 @@ export function useAndroidUpdateController(
         setStatus("downloading");
         setProgress(next);
       },
+      onStats: recordTiming,
     });
     handleApplyResult(result);
-  }, [deps, handleApplyResult]);
+  }, [deps, handleApplyResult, recordTiming]);
 
   const openInstallPage = useCallback(async () => {
     try {
@@ -251,9 +270,11 @@ export function useAndroidUpdateController(
     setStatus("installing");
     const currentInstall = installedRef.current;
     if (!currentInstall) return;
-    const result = await continueAndroidInstall(deps, apkUri, release, currentInstall);
+    const result = await continueAndroidInstall(deps, apkUri, release, currentInstall, {
+      onStats: recordTiming,
+    });
     handleApplyResult(result);
-  }, [deps, handleApplyResult, pendingApkUri, status]);
+  }, [deps, handleApplyResult, pendingApkUri, recordTiming, status]);
 
   useEffect(() => {
     if (!supported) return;
@@ -298,6 +319,7 @@ export function useAndroidUpdateController(
     latest,
     error,
     progress,
+    timing,
     prompt,
     check,
     updateNow,

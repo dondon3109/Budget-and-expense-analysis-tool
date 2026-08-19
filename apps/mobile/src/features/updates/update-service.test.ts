@@ -49,6 +49,7 @@ function createDeps(
     lastSuccessfulCheckAt?: number;
     lastRelease?: unknown;
     downloadError?: boolean;
+    downloadTiming?: { transferDurationMs: number; transferBytesPerSecond: number };
   } = {},
 ): UpdateServiceDependencies & {
   deleted: string[];
@@ -90,7 +91,12 @@ function createDeps(
     ensureUpdateDirectory: async () => "file:///cache/apk-updates/",
     downloadToFile: async ({ destinationUri }) => {
       if (overrides.downloadError) throw new Error("download failed");
-      return { uri: destinationUri, size: overrides.size ?? 1024 };
+      return {
+        uri: destinationUri,
+        size: overrides.size ?? 1024,
+        ...(overrides.downloadTiming ??
+          /* istanbul ignore next */ {}),
+      };
     },
     fileSize: async () => overrides.size ?? 1024,
     deleteUri: async (uri) => {
@@ -299,3 +305,43 @@ describe("Android update service", () => {
     await expect(fetchCanonicalLatestJson(fetchImpl)).rejects.toThrow(/metadata/);
   });
 });
+
+describe("Android update timing diagnostics", () => {
+  it("attaches and emits download/hash/verify timing when onStats is provided", async () => {
+    const onStats = jest.fn();
+    const deps = createDeps({
+      downloadTiming: { transferDurationMs: 1204, transferBytesPerSecond: 115_478_569 },
+    });
+    const result = await applyAndroidUpdate(deps, parsedRelease(), installedApp(), {
+      onStats,
+    });
+    expect(result.status).toBe("installed");
+    expect(onStats).toHaveBeenCalledTimes(1);
+    const stats = (onStats.mock.calls as Array<
+      [
+        {
+          downloadMs: number;
+          downloadBytesPerSecond: number;
+          hashMs: number;
+          verifyMs: number;
+          installPrepMs: number;
+          installMs: number;
+        },
+      ]
+    >)[0]![0];
+    expect(stats.downloadMs).toBe(1204);
+    expect(stats.downloadBytesPerSecond).toBe(115_478_569);
+    expect(stats.hashMs).toBeGreaterThanOrEqual(0);
+    expect(stats.verifyMs).toBeGreaterThanOrEqual(0);
+    expect(stats.installPrepMs).toBeGreaterThanOrEqual(0);
+    expect(stats.installMs).toBeGreaterThanOrEqual(0);
+    expect(result.stats).toEqual(stats);
+  });
+
+  it("omits stats from the result when onStats is not provided", async () => {
+    const result = await applyAndroidUpdate(createDeps(), parsedRelease(), installedApp());
+    expect(result.status).toBe("installed");
+    expect("stats" in result).toBe(false);
+  });
+});
+
