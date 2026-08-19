@@ -145,7 +145,7 @@ test("Android download page keeps the official R2 snapshot when live metadata is
 
   await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
     "href",
-    "https://downloads.zoption.site/android/zoption-beta-0.2.1.apk",
+    "https://downloads.zoption.site/android/zoption-beta-0.2.2.apk",
   );
   await expect(page.getByText(/temporarily unavailable/i)).toHaveCount(0);
 });
