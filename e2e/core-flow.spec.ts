@@ -134,7 +134,7 @@ test("Android download page renders as a public deep link with exact release gui
   await expect(page.getByRole("heading", { name: "Download Zoption Beta for Android." })).toBeVisible();
 });
 
-test("Android download page shows the temporary-unavailable state when R2 metadata is missing", async ({
+test("Android download page keeps the official R2 snapshot when live metadata is missing", async ({
   page,
 }) => {
   await page.route("https://downloads.zoption.site/android/latest.json", (route) =>
@@ -143,9 +143,11 @@ test("Android download page shows the temporary-unavailable state when R2 metada
 
   await page.goto("/install");
 
-  await expect(page.getByText(/Android Beta download temporarily unavailable/i)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Download APK" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
+    "href",
+    "https://downloads.zoption.site/android/zoption-beta-0.2.1.apk",
+  );
+  await expect(page.getByText(/temporarily unavailable/i)).toHaveCount(0);
 });
 
 test("private pages redirect signed-out users to login", async ({ page }) => {

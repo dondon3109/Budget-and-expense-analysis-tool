@@ -7,6 +7,7 @@ import {
   STATIC_CACHE_NAME,
   isCacheableResponse,
   isSafePublicNavigation,
+  isSameOriginRequest,
   isSensitiveRequest,
   isStaticAssetRequest,
 } from "/pwa/cache-policy.js";
@@ -60,6 +61,13 @@ async function networkFirstPublicPage(request) {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const appOrigin = self.location.origin;
+
+  // Cross-origin requests (R2 latest.json, analytics) must stay with the
+  // page. Re-fetching them here breaks CORS and leaves /install without a
+  // download button.
+  if (!isSameOriginRequest(request, appOrigin)) {
+    return;
+  }
 
   if (isSensitiveRequest(request, appOrigin)) {
     event.respondWith(fetch(request));

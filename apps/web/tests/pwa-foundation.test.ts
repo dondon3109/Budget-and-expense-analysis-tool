@@ -9,6 +9,7 @@ interface CachePolicyModule {
   PRECACHE_URLS: readonly string[];
   isCacheableResponse(response: Response): boolean;
   isSafePublicNavigation(request: Request, appOrigin: string): boolean;
+  isSameOriginRequest(request: Request, appOrigin: string): boolean;
   isSensitiveRequest(request: Request, appOrigin: string): boolean;
   isStaticAssetRequest(request: Request, appOrigin: string): boolean;
 }
@@ -117,6 +118,10 @@ describe("PWA foundation", () => {
       policy.isStaticAssetRequest(request(`${origin}/brand/zoption-mark-512.png`), origin),
     ).toBe(true);
     expect(policy.isStaticAssetRequest(request(`${origin}/user-avatar.png`), origin)).toBe(false);
+    expect(policy.isSameOriginRequest(request(`${origin}/install`), origin)).toBe(true);
+    expect(
+      policy.isSameOriginRequest(request("https://downloads.zoption.site/android/latest.json"), origin),
+    ).toBe(false);
     expect(
       policy.isSafePublicNavigation(request(`${origin}/install`, { mode: "navigate" }), origin),
     ).toBe(true);
@@ -156,6 +161,7 @@ describe("PWA foundation", () => {
     expect(worker).toContain('self.addEventListener("install"');
     expect(worker).toContain('self.addEventListener("fetch"');
     expect(worker).toContain("isSensitiveRequest(request, appOrigin)");
+    expect(worker).toContain("isSameOriginRequest(request, appOrigin)");
     expect(worker).not.toContain("skipWaiting");
     expect(worker).toContain("clients.claim");
     expect(worker).not.toMatch(/location\.reload/);

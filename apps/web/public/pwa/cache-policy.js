@@ -1,4 +1,4 @@
-export const CACHE_VERSION = "zoption-pwa-v1";
+export const CACHE_VERSION = "zoption-pwa-v2";
 export const STATIC_CACHE_NAME = `${CACHE_VERSION}-static`;
 export const PUBLIC_PAGE_CACHE_NAME = `${CACHE_VERSION}-public-pages`;
 
@@ -63,6 +63,10 @@ function hasSensitiveParameters(url) {
   return [...url.searchParams.keys()].some((name) =>
     SENSITIVE_PARAMETER_NAMES.has(name.toLowerCase()),
   );
+}
+
+export function isSameOriginRequest(request, appOrigin) {
+  return new URL(request.url).origin === appOrigin;
 }
 
 export function isSensitiveRequest(request, appOrigin) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { AndroidRelease } from "./androidRelease";
+import { ANDROID_RELEASE, type AndroidRelease } from "./androidRelease";
 import {
   ANDROID_LATEST_URL,
   parseRemoteAndroidRelease,
@@ -29,23 +29,21 @@ function isAbortError(error: unknown): boolean {
  * checksum) ends in "unavailable" so the UI shows a safe download-
  * unavailable state instead of any fallback artifact link.
  *
- * The request is a simple CORS GET: no custom headers and no cache mode
- * that browsers promote into Cache-Control/Pragma, so it does not depend
- * on an R2 preflight. Unmount/StrictMode aborts are ignored so they cannot
- * overwrite a later successful load.
+ * Start from the last shipped snapshot so the official R2 APK stays
+ * downloadable if the live latest.json request is blocked. A successful
+ * remote parse replaces the snapshot. Unmount/StrictMode aborts are
+ * ignored so they cannot clear a working card.
  */
 export function useAndroidRelease(): AndroidReleaseSource {
   const [source, setSource] = useState<AndroidReleaseSource>({
-    release: null,
-    status: "loading",
+    release: ANDROID_RELEASE,
+    status: "remote",
   });
 
   useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
-    let timedOut = false;
     const timeout = window.setTimeout(() => {
-      timedOut = true;
       controller.abort();
     }, FETCH_TIMEOUT_MS);
 
@@ -55,22 +53,14 @@ export function useAndroidRelease(): AndroidReleaseSource {
           signal: controller.signal,
         });
         if (cancelled) return;
-        if (!response.ok) {
-          setSource({ release: null, status: "unavailable" });
-          return;
-        }
+        if (!response.ok) return;
         const release = parseRemoteAndroidRelease(await response.json());
-        if (cancelled) return;
-        setSource(
-          release
-            ? { release, status: "remote" }
-            : { release: null, status: "unavailable" },
-        );
+        if (cancelled || !release) return;
+        setSource({ release, status: "remote" });
       } catch (error) {
-        if (cancelled || (isAbortError(error) && !timedOut)) {
+        if (cancelled || isAbortError(error)) {
           return;
         }
-        setSource({ release: null, status: "unavailable" });
       } finally {
         window.clearTimeout(timeout);
       }

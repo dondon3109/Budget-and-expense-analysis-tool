@@ -39,7 +39,7 @@ describe("Android release contract", () => {
 
   it("hosts the beta artifact on the Zoption R2 download domain", () => {
     expect(ANDROID_RELEASE.downloadPath).toBe(
-      "https://downloads.zoption.site/android/zoption-beta-0.2.0.apk",
+      "https://downloads.zoption.site/android/zoption-beta-0.2.1.apk",
     );
     // No checksum sidecar is published on R2; the APK checksum lives in
     // android/latest.json and is shown on the install page.
@@ -56,10 +56,10 @@ describe("Android release contract", () => {
   it("records exact immutable artifact metadata for integrity checks", () => {
     expect(ANDROID_RELEASE).toMatchObject({
       packageId: "site.zoption.android",
-      versionName: "0.2.0-beta",
-      versionCode: 20300,
+      versionName: "0.2.1-beta",
+      versionCode: 20301,
       targetApi: 36,
-      reinstallRequired: true,
+      reinstallRequired: false,
     });
     expect(ANDROID_RELEASE.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(ANDROID_RELEASE.sizeBytes).toBeGreaterThan(1_000_000);

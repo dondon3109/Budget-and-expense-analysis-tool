@@ -186,13 +186,15 @@ describe("R2 remote release metadata", () => {
     expect(screen.getByText("0.2.0")).toBeInTheDocument();
   });
 
-  it("shows a loading state before the metadata settles and offers no download", () => {
+  it("keeps the official R2 snapshot downloadable while live metadata is in flight", () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise<never>(() => undefined)));
     renderInstallPage();
 
-    expect(screen.getByText(/Loading the latest Beta download/i)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Download Android APK" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Download APK" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
+      "href",
+      "https://downloads.zoption.site/android/zoption-beta-0.2.1.apk",
+    );
+    expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -211,18 +213,19 @@ describe("R2 remote release metadata", () => {
       () => stubFetchJson(remoteMetadata({ certificateSha256: "GG:00:00" })),
     ],
   ])(
-    "shows the temporary-unavailable state with no download link when %s",
+    "keeps the official R2 snapshot and never offers a GitHub APK when %s",
     async (_label, arrange) => {
       arrange();
       renderInstallPage();
 
       await waitFor(() =>
-        expect(
-          screen.getByText(/Android Beta download temporarily unavailable/i),
-        ).toBeInTheDocument(),
+        expect(screen.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
+          "href",
+          "https://downloads.zoption.site/android/zoption-beta-0.2.1.apk",
+        ),
       );
-      expect(screen.queryByRole("link", { name: "Download Android APK" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "Download APK" })).not.toBeInTheDocument();
+      expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /github/i })).not.toBeInTheDocument();
     },
   );
 });

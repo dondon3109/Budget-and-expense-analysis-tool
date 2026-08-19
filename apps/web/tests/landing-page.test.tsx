@@ -144,16 +144,12 @@ describe("landing page", () => {
     );
   });
 
-  it("shows a safe unavailable state instead of GitHub-hosted release facts when metadata is unreachable", async () => {
+  it("keeps the official R2 snapshot visible when live metadata is unreachable", async () => {
     renderLanding();
 
     const installation = screen.getByRole("region", { name: "Take Zoption Beta to Android." });
-    await waitFor(() =>
-      expect(
-        within(installation).getByText(/Android Beta download temporarily unavailable/i),
-      ).toBeInTheDocument(),
-    );
-    expect(within(installation).queryByText(/bytes \(/)).not.toBeInTheDocument();
+    expect(within(installation).getByText(/139,035,425 bytes/i)).toBeInTheDocument();
+    expect(within(installation).queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
     expect(
       within(installation).getByRole("link", { name: "Download Android APK" }),
     ).toHaveAttribute("href", "/install");
