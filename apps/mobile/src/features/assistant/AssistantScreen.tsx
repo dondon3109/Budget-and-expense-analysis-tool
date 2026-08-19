@@ -464,23 +464,34 @@ export function AssistantScreen() {
     const threadId = pendingDeleteThread;
     setPendingDeleteThread(null);
     setBusyAction("threads");
+    let succeeded = true;
     try {
       await withToken((token) => deleteAssistantThread({ accessToken: token }, threadId));
-      if (!mounted.current) return;
-      setThreads((previous) => previous.filter((item) => item.id !== threadId));
-      if (activeThreadId === threadId) {
-        setActiveThreadId(null);
-        setMessages([]);
-        setView("threads");
-      }
     } catch (error) {
-      setInlineError(
-        error instanceof ApiTransportError
-          ? error.message
-          : "The conversation could not be deleted.",
-      );
+      // A 404 for an already-absent conversation means the desired end state is
+      // already reached, so we treat it as a successful delete instead of a
+      // misleading "not found" error. Genuine network / server failures still
+      // surface as errors below.
+      const alreadyAbsent =
+        error instanceof ApiTransportError && error.code === "not_found" && error.status === 404;
+      if (!alreadyAbsent) {
+        succeeded = false;
+        setInlineError(
+          error instanceof ApiTransportError
+            ? error.message
+            : "The conversation could not be deleted.",
+        );
+      }
     } finally {
       if (mounted.current) setBusyAction(null);
+    }
+    if (!succeeded) return;
+    if (!mounted.current) return;
+    setThreads((previous) => previous.filter((item) => item.id !== threadId));
+    if (activeThreadId === threadId) {
+      setActiveThreadId(null);
+      setMessages([]);
+      setView("threads");
     }
   }, [activeThreadId, pendingDeleteThread, withToken]);
 

@@ -703,14 +703,16 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
   },
 
   async deleteThread(env, tenantId, threadId) {
-    const result = await env.DB.prepare(
+    await env.DB.prepare(
       `DELETE FROM assistant_threads WHERE id = ? AND tenant_id = ?`,
     )
       .bind(threadId, tenantId)
       .run();
-    if (result.meta.changes !== 1) {
-      throw new HttpError(404, "assistant_thread_not_found", "The assistant chat was not found.");
-    }
+    // Deleting is idempotent: an already-absent conversation has already reached
+    // the desired end state, so a no-op delete returns success instead of a
+    // misleading "not found" error. The tenant_id predicate keeps auth/tenant
+    // isolation — deleting a thread that belongs to another tenant (or does not
+    // exist) is the same no-op, so a caller can never learn whether it existed.
   },
 
   async deleteAllThreads(env, tenantId) {

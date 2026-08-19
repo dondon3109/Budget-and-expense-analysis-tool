@@ -46,24 +46,34 @@ export function grantAssistantVoiceConsent(
 
 export const assistantSpeechVoices = ["default", "bright", "energetic"] as const;
 
-const VOICE_REQUEST_TIMEOUT_MS = 30_000;
+export const VOICE_REQUEST_TIMEOUT_MS = 45_000;
 
 /**
  * Runs fetch with a hard timeout so a stalled provider request (for example
  * while the Worker voice providers are being configured) fails with a clear
  * error instead of leaving the recorder spinner running forever.
+ *
+ * Classification is based on whether the request was aborted (by the timeout or
+ * an external signal), not just on error.name being "AbortError". React Native
+ * may reject an aborted in-flight request with a generic "Network request failed"
+ * error rather than a DOMException named "AbortError". Relying only on the error
+ * name converted a slow transcription (timeout) into the misleading "Zoption
+ * could not be reached. Connect to the internet and retry." message even though
+ * the network was fine. Only a request that is not aborted and still rejects is
+ * reported as a genuine connectivity failure.
  */
-async function fetchWithTimeout(
+export async function fetchWithTimeout(
   fetchImpl: typeof fetch,
   input: string,
   init: RequestInit,
+  timeoutMs: number = VOICE_REQUEST_TIMEOUT_MS,
 ): Promise<Response> {
   const controller = new AbortController();
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, VOICE_REQUEST_TIMEOUT_MS);
+  }, timeoutMs);
   const externalSignal = init.signal;
   const forwardAbort = () => controller.abort();
   if (externalSignal) {
@@ -73,7 +83,9 @@ async function fetchWithTimeout(
   try {
     return await fetchImpl(input, { ...init, signal: controller.signal });
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
+    // The request was interrupted (hard timeout or external abort). Surface the
+    // timeout honestly instead of blaming connectivity.
+    if (controller.signal.aborted) {
       if (timedOut) {
         throw new ApiTransportError(
           "Voice mode is taking too long. The provider may not be ready yet - try again shortly.",
@@ -81,6 +93,7 @@ async function fetchWithTimeout(
           0,
         );
       }
+      if (error instanceof Error && error.name === "AbortError") throw error;
       throw error;
     }
     throw new ApiTransportError(
@@ -119,7 +132,7 @@ export async function transcribeVoice(
   try {
     response = await fetchWithTimeout(api.fetchImpl ?? fetch, publicConfig.apiUrl + "/api/app/assistant/voice/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
       body: form,
       signal: api.signal,
     });

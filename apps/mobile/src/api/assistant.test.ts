@@ -1,5 +1,6 @@
 import {
   createAssistantThreadTurn,
+  deleteAssistantThread,
   getAssistantMemory,
   getAssistantPreferences,
   listAssistantThreads,
@@ -146,6 +147,42 @@ describe("assistant api transport", () => {
     await expect(
       getAssistantPreferences({ accessToken: token, fetchImpl: fetchMock }),
     ).rejects.toMatchObject({ code: "plan_limit" });
+  });
+
+  it("deletes an assistant conversation with a DELETE to the thread path", async () => {
+    const threadId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = jest.fn(async () => new Response(null, { status: 204 }));
+    await deleteAssistantThread({ accessToken: token, fetchImpl: fetchMock }, threadId);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(apiBase + "/api/app/assistant/threads/" + threadId);
+    expect(init.method).toBe("DELETE");
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer " + token);
+  });
+
+  it("maps an already-absent conversation to not_found so callers can treat it as the reached end state", async () => {
+    const threadId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = jest.fn(async () =>
+      jsonResponse(
+        {
+          error: "assistant_thread_not_found",
+          message: "The assistant chat was not found.",
+        },
+        404,
+      ),
+    );
+    await expect(
+      deleteAssistantThread({ accessToken: token, fetchImpl: fetchMock }, threadId),
+    ).rejects.toMatchObject({ code: "not_found", status: 404 });
+  });
+
+  it("surfaces a genuine server failure on delete instead of hiding it", async () => {
+    const threadId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = jest.fn(async () =>
+      jsonResponse({ error: "internal_error", message: "Something broke." }, 500),
+    );
+    await expect(
+      deleteAssistantThread({ accessToken: token, fetchImpl: fetchMock }, threadId),
+    ).rejects.toMatchObject({ code: "unavailable", status: 500 });
   });
 
   it("decodes memory items and debt-strategy preference updates", async () => {
