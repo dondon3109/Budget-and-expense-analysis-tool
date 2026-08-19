@@ -146,8 +146,47 @@
   font-weight: 700;
 }
 
+.apk-download-unavailable,
+.apk-download-status {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.apk-download-unavailable {
+  display: grid;
+  gap: 8px;
+  max-width: 68ch;
+}
+
+.apk-download-unavailable > p:first-child,
+.apk-download-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--lp-fg);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.apk-download-unavailable svg,
+.apk-download-status svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--lp-accent-strong);
+}
+
+.apk-unavailable-detail {
+  margin: 0;
+  padding-left: 27px;
+  color: var(--lp-muted);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
 .apk-download-action {
-  grid-column: 9 / -1;
+  grid-column: 8 / -1;
   min-height: 52px;
   justify-content: center;
   gap: 9px;
@@ -164,13 +203,14 @@
 }
 
 .apk-store-note {
-  grid-column: 9 / -1;
+  grid-column: 1 / -1;
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  max-width: 68ch;
   color: var(--lp-muted);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .apk-store-note svg {
@@ -180,14 +220,15 @@
 }
 
 .apk-update-note {
-  grid-column: 9 / -1;
+  grid-column: 1 / -1;
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  max-width: 68ch;
   color: var(--lp-accent-strong);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .apk-update-note svg {
@@ -230,6 +271,22 @@
   font-size: 13px;
   font-weight: 650;
   line-height: 1.45;
+}
+
+.apk-release-facts > .apk-release-cert {
+  grid-column: 1 / -1;
+  padding: 17px 0 17px;
+  border-left: 0;
+  border-top: 1px solid var(--lp-border);
+}
+
+.apk-cert-fingerprint {
+  display: block;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.55;
 }
 
 .apk-checksum {
@@ -599,10 +656,15 @@
     grid-column: 1 / span 6;
   }
 
-  .apk-download-action,
+  .apk-download-action {
+    grid-column: 8 / -1;
+  }
+
+  .apk-download-unavailable,
+  .apk-download-status,
   .apk-store-note,
   .apk-update-note {
-    grid-column: 8 / -1;
+    grid-column: 1 / -1;
   }
 
   .apk-install-steps {
@@ -658,12 +720,14 @@
     margin-top: 28px;
   }
 
+  .apk-download-unavailable,
+  .apk-download-status,
   .apk-store-note {
-    margin-top: 12px;
+    margin-top: 16px;
   }
 
   .apk-update-note {
-    margin-top: 10px;
+    margin-top: 14px;
   }
 
   .apk-release-facts {
@@ -761,7 +825,8 @@
   .apk-release-facts > div,
   .apk-release-facts > div + div,
   .apk-release-facts > div:nth-child(3),
-  .apk-release-facts > div:nth-child(4) {
+  .apk-release-facts > div:nth-child(4),
+  .apk-release-facts > .apk-release-cert {
     padding: 15px 0;
     border-left: 0;
     border-top: 1px solid var(--lp-border);

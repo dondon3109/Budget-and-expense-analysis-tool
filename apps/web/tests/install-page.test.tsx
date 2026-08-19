@@ -114,7 +114,9 @@ describe("Android APK download page", () => {
     expect(screen.getByText(REMOTE_APK_SHA256)).toBeInTheDocument();
     expect(screen.getByText(REMOTE_CERT_SHA256)).toBeInTheDocument();
     expect(screen.getByText(/not distributed through Google Play/i)).toBeInTheDocument();
-    expect(screen.getByText(/Remote note: the metadata came from R2/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/This build can check for updates inside the app/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Do not disable Play Protect/i)).toBeInTheDocument();
     expect(screen.getByText(/offline-first with a connected sync/i)).toBeInTheDocument();
     expect(screen.getAllByText(/same Zoption account/i).length).toBeGreaterThan(0);

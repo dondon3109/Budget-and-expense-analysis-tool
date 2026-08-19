@@ -15,6 +15,12 @@ export interface AndroidReleaseSource {
 
 const FETCH_TIMEOUT_MS = 8_000;
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException
+    ? error.name === "AbortError"
+    : error instanceof Error && error.name === "AbortError";
+}
+
 /**
  * Loads the authoritative Android release metadata from R2. The page only
  * ever renders metadata that passed the strict untrusted-input validation;
@@ -22,6 +28,11 @@ const FETCH_TIMEOUT_MS = 8_000;
  * (network, timeout, malformed JSON, invalid shape, wrong host, bad
  * checksum) ends in "unavailable" so the UI shows a safe download-
  * unavailable state instead of any fallback artifact link.
+ *
+ * The request is a simple CORS GET: no custom headers and no cache mode
+ * that browsers promote into Cache-Control/Pragma, so it does not depend
+ * on an R2 preflight. Unmount/StrictMode aborts are ignored so they cannot
+ * overwrite a later successful load.
  */
 export function useAndroidRelease(): AndroidReleaseSource {
   const [source, setSource] = useState<AndroidReleaseSource>({
@@ -31,28 +42,34 @@ export function useAndroidRelease(): AndroidReleaseSource {
 
   useEffect(() => {
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let cancelled = false;
+    let timedOut = false;
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, FETCH_TIMEOUT_MS);
 
     void (async () => {
       try {
         const response = await fetch(ANDROID_LATEST_URL, {
-          headers: { accept: "application/json" },
           signal: controller.signal,
-          cache: "no-store",
         });
+        if (cancelled) return;
         if (!response.ok) {
           setSource({ release: null, status: "unavailable" });
           return;
         }
         const release = parseRemoteAndroidRelease(await response.json());
+        if (cancelled) return;
         setSource(
           release
             ? { release, status: "remote" }
             : { release: null, status: "unavailable" },
         );
-      } catch {
-        // Timeout, network failure, or non-JSON body: show the safe
-        // download-unavailable state. No fallback artifact is offered.
+      } catch (error) {
+        if (cancelled || (isAbortError(error) && !timedOut)) {
+          return;
+        }
         setSource({ release: null, status: "unavailable" });
       } finally {
         window.clearTimeout(timeout);
@@ -60,6 +77,7 @@ export function useAndroidRelease(): AndroidReleaseSource {
     })();
 
     return () => {
+      cancelled = true;
       window.clearTimeout(timeout);
       controller.abort();
     };

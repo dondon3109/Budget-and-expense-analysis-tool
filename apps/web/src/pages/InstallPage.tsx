@@ -63,11 +63,12 @@ function DownloadPanel({ source }: { source: AndroidReleaseSource }) {
       {status === "unavailable" ? (
         <div className="apk-download-unavailable" role="alert">
           <p>
-            <Info size={19} aria-hidden="true" /> Android Beta download temporarily unavailable.
+            <Info size={19} aria-hidden="true" />
+            <span>Android Beta download temporarily unavailable.</span>
           </p>
           <p className="apk-unavailable-detail">
-            The download information could not be loaded right now. Zoption is still available in
-            your browser — check back shortly to download the Beta.
+            The latest file details could not be loaded. Use Zoption in the browser for now, and try
+            this page again shortly.
           </p>
         </div>
       ) : status === "loading" ? (
@@ -87,15 +88,13 @@ function DownloadPanel({ source }: { source: AndroidReleaseSource }) {
           {release.reinstallRequired ? (
             <p className="apk-update-note apk-reinstall-note">
               <RefreshCw size={16} aria-hidden="true" /> This update changes the signing key.
-              Uninstall the previous Zoption Beta first, then install this version — future updates
+              Uninstall the previous Zoption Beta first, then install this version. Later updates
               install over it normally.
             </p>
           ) : (
             <p className="apk-update-note">
-              <RefreshCw size={16} aria-hidden="true" />{" "}
-              {release.notes && release.notes.length > 0
-                ? release.notes.join(" ")
-                : "New in this beta: scan a receipt with your camera and Zoption drafts the expense for you. The older Zoption app must be uninstalled before installing the beta — it uses a different signing identity."}
+              <RefreshCw size={16} aria-hidden="true" /> This build can check for updates inside the
+              app and install the next verified Zoption Beta.
             </p>
           )}
 
@@ -116,7 +115,7 @@ function DownloadPanel({ source }: { source: AndroidReleaseSource }) {
           <dt>Requires</dt>
           <dd>{release.minimumAndroid}</dd>
         </div>
-        <div>
+        <div className="apk-release-cert">
           <dt>Signing certificate</dt>
           <dd>
             <code className="apk-cert-fingerprint">{release.certificateSha256}</code>
