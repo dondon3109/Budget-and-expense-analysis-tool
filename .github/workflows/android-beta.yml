@@ -73,6 +73,20 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
+      # expo prebuild writes -Xmx2048m. The 0.2.1 updater-era release assemble
+      # OOMs at compileReleaseKotlin / compressReleaseAssets on some runners,
+      # then hangs until cancelled. Raise heap on the ephemeral generated tree
+      # only; this does not change signing, verification, or publish gates.
+      - name: Raise Gradle heap for release assemble
+        working-directory: apps/mobile/android
+        run: |
+          if ! grep -q '^org.gradle.jvmargs=' gradle.properties; then
+            echo "::error::Expected org.gradle.jvmargs in generated gradle.properties."
+            exit 1
+          fi
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError/' gradle.properties
+          grep '^org.gradle.jvmargs=' gradle.properties
+
       - name: Assemble signed release APK
         working-directory: apps/mobile/android
         run: ./gradlew assembleRelease --no-daemon
