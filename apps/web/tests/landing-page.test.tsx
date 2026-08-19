@@ -148,7 +148,7 @@ describe("landing page", () => {
     renderLanding();
 
     const installation = screen.getByRole("region", { name: "Take Zoption Beta to Android." });
-    expect(within(installation).getByText(/139,035,425 bytes/i)).toBeInTheDocument();
+    expect(within(installation).getByText(/139,035,997 bytes/i)).toBeInTheDocument();
     expect(within(installation).queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
     expect(
       within(installation).getByRole("link", { name: "Download Android APK" }),
