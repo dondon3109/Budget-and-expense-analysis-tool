@@ -13,6 +13,7 @@ import {
 import type { InstalledAndroidApp } from "./update-policy";
 import type { DownloadProgress } from "./update-filesystem";
 import { useOptionalAndroidUpdates, type ManualUpdateStatus } from "./use-android-updates";
+import { UpdateDownloadBenchmarkCard } from "./UpdateDownloadBenchmarkCard";
 
 export interface UpdateSettingsCardViewProps {
   supported: boolean;
@@ -32,19 +33,22 @@ export function UpdateSettingsCard() {
   const updates = useOptionalAndroidUpdates();
   if (!updates?.supported) return null;
   return (
-    <UpdateSettingsCardView
-      supported={updates.supported}
-      status={updates.status}
-      installed={updates.installed}
-      latest={updates.latest}
-      error={updates.error}
-      progress={updates.progress}
-      onCheck={() => void updates.check()}
-      onUpdate={() => void updates.updateNow()}
-      onCancelDownload={updates.cancelDownload}
-      onOpenInstallPage={() => void updates.openInstallPage()}
-      onOpenUnknownSourcesSettings={() => void updates.openUnknownSourcesSettings()}
-    />
+    <View className="gap-3">
+      <UpdateSettingsCardView
+        supported={updates.supported}
+        status={updates.status}
+        installed={updates.installed}
+        latest={updates.latest}
+        error={updates.error}
+        progress={updates.progress}
+        onCheck={() => void updates.check()}
+        onUpdate={() => void updates.updateNow()}
+        onCancelDownload={updates.cancelDownload}
+        onOpenInstallPage={() => void updates.openInstallPage()}
+        onOpenUnknownSourcesSettings={() => void updates.openUnknownSourcesSettings()}
+      />
+      {__DEV__ ? <UpdateDownloadBenchmarkCard /> : null}
+    </View>
   );
 }
 
