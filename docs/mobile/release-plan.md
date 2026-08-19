@@ -100,3 +100,25 @@ This release ships the secure in-app APK updater: startup and manual update
 checks, verified APK download, native package/signer gates, and the guided
 system installer handoff. OTA JavaScript updates are not part of this
 release.
+## 0.2.2-beta assistant fixes release
+
+`versionName` `0.2.2-beta`, `versionCode` `20302`. Same permanent Zoption
+signer as `0.2.0-beta` / `0.2.1-beta`, so `reinstallRequired` stays `false`
+and Android can update in place from `0.2.1-beta`.
+
+This release fixes two assistant regressions reported in the 0.2.1-beta
+test cycle:
+
+- **Conversation deletion is now reliable.** Deleting an existing
+  conversation succeeds and removes it; deleting an already-absent one is
+  treated as the desired end state instead of surfacing a misleading
+  "The assistant chat was not found." error. Auth/tenant isolation is
+  unchanged, and genuine server errors still surface. Covered by server
+  (api) and client (mobile) regression tests.
+- **Voice transcription errors are now accurate.** The microphone path
+  (record → stop → upload → transcribe → reply) no longer collapses slow
+  transcription timeouts into the misleading "Zoption could not be
+  reached. Connect to the internet and retry." message. Connectivity
+  errors still show the connectivity message; timeouts, permission,
+  recording, unsupported-audio, transcription, auth, and server errors
+  now surface their accurate states.

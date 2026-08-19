@@ -1,9 +1,9 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.1-beta",
-  "versionCode": 20301,
-  "filename": "zoption-beta-0.2.1.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.1.apk",
+  "versionName": "0.2.2-beta",
+  "versionCode": 20302,
+  "filename": "zoption-beta-0.2.2.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.2.apk",
   "sha256": "1b6fe0039be0377ea51087361048041d202f7bbf4d6d2729662124392f97461b",
   "sizeBytes": 139035425,
   "sizeLabel": "139,035,425 bytes (132.59 MiB)",
@@ -14,9 +14,8 @@
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Added secure in-app update checking.",
-    "Added verified in-app APK downloads for future Zoption Beta updates.",
-    "Added guided Android installation flow for future updates.",
-    "Future Zoption Beta updates can be detected directly inside the app."
+    "Assistant: deleting a conversation is now reliable and no longer reports 'not found' when it is already gone.",
+    "Assistant voice: transcription errors and timeouts now show accurate messages instead of a misleading 'connect to the internet' error.",
+    "Deleting an already-absent conversation is treated as the desired end state, with tenant isolation unchanged."
   ]
 }

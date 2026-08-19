@@ -192,7 +192,7 @@ describe("R2 remote release metadata", () => {
 
     expect(screen.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
       "href",
-      "https://downloads.zoption.site/android/zoption-beta-0.2.1.apk",
+      "https://downloads.zoption.site/android/zoption-beta-0.2.2.apk",
     );
     expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
   });
@@ -221,7 +221,7 @@ describe("R2 remote release metadata", () => {
       await waitFor(() =>
         expect(screen.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
           "href",
-          "https://downloads.zoption.site/android/zoption-beta-0.2.1.apk",
+          "https://downloads.zoption.site/android/zoption-beta-0.2.2.apk",
         ),
       );
       expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
