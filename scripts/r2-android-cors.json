@@ -1,0 +1,13 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": ["https://zoption.site", "https://www.zoption.site"],
+        "methods": ["GET", "HEAD"],
+        "headers": ["Content-Type", "Accept", "Cache-Control", "Pragma"]
+      },
+      "exposeHeaders": ["Content-Length", "ETag"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}
