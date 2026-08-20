@@ -362,16 +362,16 @@ jobs:
               echo "::error::OTA metadata requires the public APK to match this job's verified build."
               exit 1
             fi
-            node --input-type=module <<'NODE'
-            import { readFileSync, writeFileSync } from "node:fs";
-            const path = "/tmp/zoption-latest.json";
-            const metadata = JSON.parse(readFileSync(path, "utf8"));
-            metadata.otaRuntimeVersion = process.env.OTA_RUNTIME_VERSION;
-            metadata.otaNativeFingerprint = process.env.OTA_NATIVE_FINGERPRINT;
-            metadata.otaSourceCommit = process.env.OTA_SOURCE_COMMIT;
-            metadata.otaSigningCertificateSha256 = process.env.OTA_SIGNING_CERTIFICATE_SHA256;
-            writeFileSync(path, JSON.stringify(metadata, null, 2) + "\n");
-            NODE
+            node --input-type=module -e '
+              import { readFileSync, writeFileSync } from "node:fs";
+              const path = "/tmp/zoption-latest.json";
+              const metadata = JSON.parse(readFileSync(path, "utf8"));
+              metadata.otaRuntimeVersion = process.env.OTA_RUNTIME_VERSION;
+              metadata.otaNativeFingerprint = process.env.OTA_NATIVE_FINGERPRINT;
+              metadata.otaSourceCommit = process.env.OTA_SOURCE_COMMIT;
+              metadata.otaSigningCertificateSha256 = process.env.OTA_SIGNING_CERTIFICATE_SHA256;
+              writeFileSync(path, JSON.stringify(metadata, null, 2) + "\n");
+            '
           fi
           node --experimental-strip-types -e "
             import { readFileSync } from 'node:fs';
