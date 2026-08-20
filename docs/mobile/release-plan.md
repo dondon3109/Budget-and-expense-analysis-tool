@@ -146,6 +146,18 @@ strict download-host validation, redirect blocking, exact size and SHA-256
 checks, package/version inspection, and signing-certificate verification remain
 enforced before the system installer opens.
 
+## 0.2.4-beta Android voice upload release
+
+`versionName` `0.2.4-beta`, `versionCode` `20304`. The permanent Zoption signer
+is unchanged, so `reinstallRequired` stays `false` and Android can update in
+place from `0.2.3-beta`.
+
+This release sends assistant recordings through Expo SDK 57's supported
+file-backed multipart path. Android voice uploads no longer use React Native's
+legacy URI-shaped FormData part or attach the AbortSignal that can reject the
+request locally before it reaches Zoption. Connectivity, timeout, cancellation,
+package, version, and signing-certificate checks remain enforced.
+
 ## Future signed OTA bootstrap (deferred)
 
 The code, signing certificate, compatibility gates, and manual workflows are

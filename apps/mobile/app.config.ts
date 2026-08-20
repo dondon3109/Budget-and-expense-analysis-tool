@@ -95,7 +95,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: variant.name,
     slug: "zoption-mobile",
-    version: "0.2.3-beta",
+    version: "0.2.4-beta",
     icon: "./assets/zoption-icon.png",
     scheme: variant.scheme,
     userInterfaceStyle: "automatic",
@@ -126,7 +126,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: variant.androidPackage,
-      versionCode: 20303,
+      versionCode: 20304,
       allowBackup: false,
       // Predictive back is disabled: with enableOnBackInvokedCallback the
       // system finished the activity instead of popping the native stack,

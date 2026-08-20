@@ -1,6 +1,6 @@
 {
   "name": "@zoption/mobile",
-  "version": "0.2.3-beta",
+  "version": "0.2.4-beta",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
