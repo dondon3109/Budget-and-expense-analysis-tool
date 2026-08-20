@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
+import { themes } from "@/ui/tokens";
 import { Button } from "./Button";
 
 describe("Button", () => {
@@ -14,6 +15,11 @@ describe("Button", () => {
 
   it("announces a disabled busy state while loading", async () => {
     await render(<Button loading>Save transaction</Button>);
-    expect(screen.getByRole("button", { name: "Save transaction" })).toBeDisabled();
+    const button = screen.getByRole("button", { name: "Save transaction" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveStyle({
+      backgroundColor: themes.light.colors.surface,
+      borderColor: themes.light.colors.border,
+    });
   });
 });

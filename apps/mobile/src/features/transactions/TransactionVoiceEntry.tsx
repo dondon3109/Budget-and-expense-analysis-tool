@@ -122,6 +122,18 @@ export function TransactionVoiceEntry({
 
   const recording = recorder.phase === "recording";
   const busy = recorder.phase === "requesting" || recorder.phase === "transcribing";
+  const actionDisabled = Boolean(disabled || busy);
+  const actionBackground = actionDisabled
+    ? theme.colors.surface
+    : recording
+      ? theme.colors.danger
+      : theme.colors.brand;
+  const actionBorder = actionDisabled
+    ? theme.colors.border
+    : recording
+      ? theme.colors.danger
+      : theme.colors.brandPressed;
+  const actionForeground = actionDisabled ? theme.colors.textMuted : theme.colors.onBrand;
   const label =
     readiness === "checking"
       ? "Checking AI entry…"
@@ -168,24 +180,25 @@ export function TransactionVoiceEntry({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={label}
-          accessibilityState={{ disabled: Boolean(disabled || busy), busy }}
-          disabled={disabled || busy}
+          accessibilityState={{ disabled: actionDisabled, busy }}
+          disabled={actionDisabled}
           onPress={action}
           style={({ pressed }) => [
             styles.action,
             {
-              backgroundColor: recording ? theme.colors.danger : theme.colors.brand,
-              opacity: disabled || busy ? 0.55 : pressed ? 0.86 : 1,
+              backgroundColor: actionBackground,
+              borderColor: actionBorder,
+              opacity: actionDisabled ? 1 : pressed ? 0.86 : 1,
             },
           ]}
         >
           <MaterialCommunityIcons
             accessibilityElementsHidden
-            color={theme.colors.onBrand}
+            color={actionForeground}
             name={recording ? "stop" : "microphone"}
             size={19}
           />
-          <Text style={[typography.label, { color: theme.colors.onBrand }]}>{label}</Text>
+          <Text style={[typography.label, { color: actionForeground }]}>{label}</Text>
         </Pressable>
         {recording ? (
           <Text style={[typography.caption, { color: theme.colors.danger }]}>
@@ -224,6 +237,7 @@ const styles = StyleSheet.create({
   },
   action: {
     alignItems: "center",
+    borderWidth: 1,
     borderRadius: radii.md,
     flexDirection: "row",
     gap: spacing.sm,

@@ -29,7 +29,7 @@ export function Button({
       background: theme.colors.brand,
       pressed: theme.colors.brandPressed,
       text: theme.colors.onBrand,
-      border: theme.colors.brand,
+      border: theme.colors.brandPressed,
     },
     secondary: {
       background: theme.colors.surfaceRaised,
@@ -50,6 +50,11 @@ export function Button({
       border: "transparent",
     },
   }[variant];
+  const disabledPalette = {
+    background: theme.colors.surface,
+    text: theme.colors.textMuted,
+    border: theme.colors.border,
+  };
 
   return (
     <Pressable
@@ -68,17 +73,28 @@ export function Button({
       style={[
         styles.base,
         {
-          backgroundColor: pressed ? palette.pressed : palette.background,
-          borderColor: palette.border,
-          opacity: isDisabled ? 0.52 : 1,
+          backgroundColor: isDisabled
+            ? disabledPalette.background
+            : pressed
+              ? palette.pressed
+              : palette.background,
+          borderColor: isDisabled ? disabledPalette.border : palette.border,
         },
       ]}
       {...props}
     >
-      {loading ? <ActivityIndicator accessibilityElementsHidden color={palette.text} /> : null}
+      {loading ? (
+        <ActivityIndicator
+          accessibilityElementsHidden
+          color={isDisabled ? disabledPalette.text : palette.text}
+        />
+      ) : null}
       <Text
         numberOfLines={2}
-        style={[typography.label, { color: palette.text, textAlign: "center" }]}
+        style={[
+          typography.label,
+          { color: isDisabled ? disabledPalette.text : palette.text, textAlign: "center" },
+        ]}
       >
         {children}
       </Text>
