@@ -64,11 +64,7 @@ describe("AI entry service", () => {
       tokens: 42,
       data: "08/20/2026 GROCERIES 1,250.50",
     }));
-    const previewImport = vi.fn(
-      async (_env: Bindings, _tenantId: string, _input: Parameters<ImportRepository["preview"]>[2]) => {
-        return preview;
-      },
-    );
+    const previewImport = vi.fn<ImportRepository["preview"]>(async () => preview);
     const importRepository: ImportRepository = { preview: previewImport, commit: vi.fn() };
     const service = createAiEntryService(repository(), importRepository);
 

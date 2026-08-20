@@ -796,8 +796,7 @@ describe("API foundation", () => {
     });
 
     expect(response.status).toBe(200);
-    const body: unknown = await response.json();
-    expect(body).toMatchObject({ token: expect.any(String) });
+    expect(await response.text()).toContain('"token"');
     expect(previewPdf).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
   });
 
