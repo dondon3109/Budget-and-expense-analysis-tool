@@ -22,16 +22,16 @@ interface PackageManifest {
 }
 
 describe("Android release contract", () => {
-  it("keeps the mobile version sources synchronized for the 0.2.5-beta AI entry release", async () => {
+  it("keeps the mobile version sources synchronized for the 0.2.6-beta updater release", async () => {
     const mobilePackage = await json<PackageManifest>(resolve(mobileRoot, "package.json"));
     const appConfig = await text(resolve(mobileRoot, "app.config.ts"));
 
     // The build-time snapshot (androidRelease.json) is refreshed from the
     // published R2 object after the CI build produces its artifact checksums;
     // the authoritative mobile sources change together here.
-    expect(mobilePackage.version).toBe("0.2.5-beta");
-    expect(appConfig).toContain('version: "0.2.5-beta"');
-    expect(appConfig).toContain("versionCode: 20305");
+    expect(mobilePackage.version).toBe("0.2.6-beta");
+    expect(appConfig).toContain('version: "0.2.6-beta"');
+    expect(appConfig).toContain("versionCode: 20306");
     expect(ANDROID_RELEASE.packageId).toBe("site.zoption.android");
     expect(appConfig).toContain('name: "Zoption Beta"');
     expect(appConfig).toContain('androidPackage: "site.zoption.android"');

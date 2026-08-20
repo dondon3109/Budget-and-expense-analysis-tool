@@ -298,8 +298,19 @@ describe("Android update service", () => {
 
   it("does not follow an untrusted latest.json URL", async () => {
     const fetchImpl: typeof fetch = Object.assign(
-      async (url: URL | RequestInfo) => {
-        expect(url).toBe("https://downloads.zoption.site/android/latest.json");
+      async (url: URL | RequestInfo, init?: RequestInit) => {
+        expect(url).toBeInstanceOf(URL);
+        if (!(url instanceof URL)) {
+          throw new Error("Expected update metadata to use a URL instance.");
+        }
+        expect(url.toString()).toMatch(
+          /^https:\/\/downloads\.zoption\.site\/android\/latest\.json\?check=\d+$/,
+        );
+        expect(init).toMatchObject({
+          method: "GET",
+          cache: "no-store",
+          headers: { Accept: "application/json", "Cache-Control": "no-cache, no-store" },
+        });
         return {
           ok: false,
           json: async () => ({}),

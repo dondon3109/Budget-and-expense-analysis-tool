@@ -34,8 +34,8 @@ describe("mobile OTA app configuration", () => {
     const config = configFor({ APP_VARIANT: "production", EAS_PROJECT_ID: undefined });
 
     expect(config.updates).toEqual({ enabled: false });
-    expect(config.version).toBe("0.2.5-beta");
-    expect(config.android).toMatchObject({ package: "site.zoption.android", versionCode: 20305 });
+    expect(config.version).toBe("0.2.6-beta");
+    expect(config.android).toMatchObject({ package: "site.zoption.android", versionCode: 20306 });
     expect(config.runtimeVersion).toEqual({ policy: "appVersion" });
   });
 

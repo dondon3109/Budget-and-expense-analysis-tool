@@ -48,7 +48,7 @@ part of this distribution channel.
   or independently of the app; mobile has no pinned server schema beyond the
   shared response contracts in this repository.
 
-The public `0.2.5-beta` APK includes the dormant `expo-updates` dependency, but
+The public `0.2.6-beta` APK includes the dormant `expo-updates` dependency, but
 was built without an EAS project ID, so it cannot receive OTA updates. Activation
 is deferred until the required EAS project/token and a later explicit signed APK
 complete the bootstrap in [`ota-updates.md`](ota-updates.md).
@@ -171,6 +171,18 @@ the selected recording and statement source files from the device cache after AI
 processing completes or fails, and improves receipt itemization, discount
 reconciliation, and multi-transaction saving. No AI-derived entry is saved until
 the user reviews and commits it.
+
+## 0.2.6-beta update metadata revalidation release
+
+`versionName` `0.2.6-beta`, `versionCode` `20306`. The permanent Zoption signer
+is unchanged, so `reinstallRequired` stays `false` and Android can update in
+place from `0.2.5-beta`.
+
+The updater now cache-busts and sends no-cache directives when checking mutable
+`android/latest.json`. The Android Beta workflow publishes that metadata with a
+`no-store` response policy and verifies the public object and header after upload.
+Versioned APK files remain immutable and cacheable; package, version, checksum,
+and signing-certificate gates remain unchanged.
 
 ## Future signed OTA bootstrap (deferred)
 

@@ -89,9 +89,17 @@ export function createDefaultUpdateDependencies(): UpdateServiceDependencies {
 }
 
 export async function fetchCanonicalLatestJson(fetchImpl: typeof fetch = fetch): Promise<unknown> {
-  const response = await fetchImpl(ANDROID_LATEST_URL, {
+  // `latest.json` is mutable release metadata. Every manual or scheduled check
+  // must revalidate it; only the versioned APK itself may be cached long-term.
+  const metadataUrl = new URL(ANDROID_LATEST_URL);
+  metadataUrl.searchParams.set("check", String(Date.now()));
+  const response = await fetchImpl(metadataUrl, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      "Cache-Control": "no-cache, no-store",
+    },
   });
   if (!response.ok) {
     throw new Error("The Android update metadata could not be loaded.");
