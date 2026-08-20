@@ -211,8 +211,19 @@ export function useAndroidUpdateController(
       // the download URL, paths, hashes, or certificate data.
       const mbps = (next.downloadBytesPerSecond / 1024 / 1024).toFixed(1);
       console.info(
-        "[update] download " + mbps + " MB/s (" + next.downloadMs + "ms) hash " + next.hashMs +
-          "ms verify " + next.verifyMs + "ms install " + next.installMs + "ms (prep " + next.installPrepMs + "ms)",
+        "[update] download " +
+          mbps +
+          " MB/s (" +
+          next.downloadMs +
+          "ms) hash " +
+          next.hashMs +
+          "ms verify " +
+          next.verifyMs +
+          "ms install " +
+          next.installMs +
+          "ms (prep " +
+          next.installPrepMs +
+          "ms)",
       );
     }
   }, []);
@@ -348,9 +359,12 @@ function unsupportedUpdateDependencies(platform: string): UpdateServiceDependenc
     fetchLatest: () => Promise.resolve(null),
     native: {
       getInstalledPackageInfoAsync: () => Promise.reject(new Error("unsupported")),
+      downloadApkAsync: () => Promise.reject(new Error("unsupported")),
+      cancelApkDownloadAsync: () => Promise.resolve(),
       digestFileSha256Async: () => Promise.reject(new Error("unsupported")),
       inspectApkAsync: () => Promise.reject(new Error("unsupported")),
       verifyApkAsync: () => Promise.reject(new Error("unsupported")),
+      verifyBenchmarkApkAsync: () => Promise.reject(new Error("unsupported")),
       canInstallPackagesAsync: () => Promise.resolve(false),
       openUnknownSourcesSettingsAsync: () => Promise.resolve(),
       installApkAsync: () => Promise.resolve(),

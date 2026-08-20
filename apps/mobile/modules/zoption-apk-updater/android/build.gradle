@@ -16,3 +16,9 @@ android {
     abortOnError false
   }
 }
+
+dependencies {
+  // React Native already resolves this version in the app. Declaring it here
+  // gives the updater a direct HTTP/2-capable transport without another copy.
+  implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}

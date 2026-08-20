@@ -13,6 +13,14 @@ public final class ZoptionApkUpdaterModule: Module {
       ]
     }
 
+    AsyncFunction("downloadApkAsync") { (_: String, _: String, _: String, _: Int) -> [String: Any] in
+      throw ApkUpdaterException("APK updates are only available on Android.")
+    }
+
+    AsyncFunction("cancelApkDownloadAsync") { (_: String) in
+      throw ApkUpdaterException("APK updates are only available on Android.")
+    }
+
     AsyncFunction("digestFileSha256Async") { (_: String) -> String in
       throw ApkUpdaterException("APK updates are only available on Android.")
     }
@@ -22,6 +30,10 @@ public final class ZoptionApkUpdaterModule: Module {
     }
 
     AsyncFunction("verifyApkAsync") { (_: String, _: Int) -> [String: Any] in
+      throw ApkUpdaterException("APK updates are only available on Android.")
+    }
+
+    AsyncFunction("verifyBenchmarkApkAsync") { (_: String, _: Int) -> [String: Any] in
       throw ApkUpdaterException("APK updates are only available on Android.")
     }
 

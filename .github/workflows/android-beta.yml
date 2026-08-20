@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_apk:
-        description: "Upload the verified APK to R2 (android/zoption-beta-0.2.2.apk) and re-verify the public object"
+        description: "Upload the verified APK to R2 (android/zoption-beta-0.2.3.apk) and re-verify the public object"
         type: boolean
         required: true
         default: false
@@ -129,8 +129,8 @@ jobs:
           fi
           "$AAPT" dump badging "$APK" > /tmp/zoption-apk-badging.txt
           grep "^package: name=" /tmp/zoption-apk-badging.txt
-          grep -q "package: name='site.zoption.android' versionCode='20302' versionName='0.2.2-beta'" /tmp/zoption-apk-badging.txt \
-            || { echo "::error::APK package identity or version does not match site.zoption.android / 20302 / 0.2.2-beta."; exit 1; }
+          grep -q "package: name='site.zoption.android' versionCode='20303' versionName='0.2.3-beta'" /tmp/zoption-apk-badging.txt \
+            || { echo "::error::APK package identity or version does not match site.zoption.android / 20303 / 0.2.3-beta."; exit 1; }
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml > /tmp/zoption-apk-manifest.txt
           grep -q "REQUEST_INSTALL_PACKAGES" /tmp/zoption-apk-manifest.txt \
             || { echo "::error::APK is missing REQUEST_INSTALL_PACKAGES."; exit 1; }
@@ -164,7 +164,7 @@ jobs:
           AWS_EC2_METADATA_DISABLED: "true"
           R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
           R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
-          OBJECT_KEY: android/zoption-beta-0.2.2.apk
+          OBJECT_KEY: android/zoption-beta-0.2.3.apk
         run: |
           APK=$(find apps/mobile/android/app/build/outputs/apk/release -name '*.apk' -print -quit)
           aws s3api put-object \
@@ -181,7 +181,7 @@ jobs:
       - name: Verify public R2 APK
         if: inputs.publish_apk
         env:
-          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.2.apk
+          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.3.apk
           EXPECTED_FINGERPRINT: f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d
           EXPECTED_DN: CN=Zoption, O=Zoption, C=PH
           EXPECTED_SHA256: ${{ env.APK_SHA256 }}
@@ -208,7 +208,7 @@ jobs:
             echo "::error::public APK has more than one signer."; exit 1;
           fi
           "$AAPT" dump badging /tmp/zoption-public.apk > /tmp/zoption-public-badging.txt
-          grep -q "package: name='site.zoption.android' versionCode='20302' versionName='0.2.2-beta'" /tmp/zoption-public-badging.txt \
+          grep -q "package: name='site.zoption.android' versionCode='20303' versionName='0.2.3-beta'" /tmp/zoption-public-badging.txt \
             || { echo "::error::public APK package identity or version mismatch."; exit 1; }
           echo "public APK verified: sha256=$PUBLIC_SHA256 size=$PUBLIC_SIZE"
 
@@ -223,7 +223,7 @@ jobs:
           AWS_EC2_METADATA_DISABLED: "true"
           R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
           R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
-          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.2.apk
+          PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.3.apk
           EXPECTED_FINGERPRINT: f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d
           EXPECTED_DN: CN=Zoption, O=Zoption, C=PH
         run: |
@@ -241,16 +241,16 @@ jobs:
             echo "::error::public APK has more than one signer; latest.json was not published."; exit 1;
           fi
           "$AAPT" dump badging /tmp/zoption-public.apk > /tmp/zoption-public-badging.txt
-          grep -q "package: name='site.zoption.android' versionCode='20302' versionName='0.2.2-beta'" /tmp/zoption-public-badging.txt \
+          grep -q "package: name='site.zoption.android' versionCode='20303' versionName='0.2.3-beta'" /tmp/zoption-public-badging.txt \
             || { echo "::error::public APK identity mismatch; latest.json was not published."; exit 1; }
           PUBLIC_SHA256=$(shasum -a 256 /tmp/zoption-public.apk | awk '{print $1}')
           PUBLIC_SIZE=$(stat -c%s /tmp/zoption-public.apk)
           RELEASED_AT=$(date -u +%F)
           cat > /tmp/zoption-latest.json <<JSON
           {
-            "version": "0.2.2-beta",
-            "versionCode": 20302,
-            "downloadUrl": "https://downloads.zoption.site/android/zoption-beta-0.2.2.apk",
+            "version": "0.2.3-beta",
+            "versionCode": 20303,
+            "downloadUrl": "https://downloads.zoption.site/android/zoption-beta-0.2.3.apk",
             "sha256": "${PUBLIC_SHA256}",
             "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
             "size": ${PUBLIC_SIZE},
@@ -258,9 +258,9 @@ jobs:
             "minimumAndroidVersion": "Android 7.0 or newer (API 24+)",
             "reinstallRequired": false,
             "notes": [
-              "Assistant: deleting a conversation is now reliable and no longer reports 'not found' when it is already gone.",
-              "Assistant voice: transcription errors and timeouts now show accurate messages instead of a misleading 'connect to the internet' error.",
-              "Deleting an already-absent conversation is treated as the desired end state, with tenant isolation unchanged."
+              "Android updates now stream the APK entirely in native code for faster, steadier downloads.",
+              "Download progress remains responsive while limiting UI updates to four times per second.",
+              "Cancellation and the existing size, hash, package, version, and signing-certificate checks remain enforced."
             ]
           }
           JSON
@@ -273,7 +273,7 @@ jobs:
               console.error('parseRemoteAndroidRelease rejected android/latest.json');
               process.exit(1);
             }
-            if (parsed.versionName !== '0.2.2-beta' || parsed.versionCode !== 20302) {
+            if (parsed.versionName !== '0.2.3-beta' || parsed.versionCode !== 20303) {
               console.error('latest.json identity mismatch', parsed.versionName, parsed.versionCode);
               process.exit(1);
             }
@@ -281,7 +281,7 @@ jobs:
               console.error('latest.json must set reinstallRequired=false');
               process.exit(1);
             }
-            if (parsed.downloadPath !== 'https://downloads.zoption.site/android/zoption-beta-0.2.2.apk') {
+            if (parsed.downloadPath !== 'https://downloads.zoption.site/android/zoption-beta-0.2.3.apk') {
               console.error('latest.json download URL is not the versioned R2 object');
               process.exit(1);
             }

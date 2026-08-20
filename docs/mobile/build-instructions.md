@@ -1,8 +1,8 @@
 # Mobile build instructions
 
-Last updated: 2026-08-15. All commands run from `apps/mobile` inside the
-`codex/expo-mobile` worktree. Nothing here registers, publishes or replaces
-any store artifact; those actions require explicit approval.
+Last updated: 2026-08-20. All commands run from `apps/mobile` in the repository.
+Nothing here registers, publishes, or replaces any store artifact; those
+actions require explicit approval.
 
 ## Prerequisites
 
@@ -20,11 +20,11 @@ any store artifact; those actions require explicit approval.
 
 `APP_VARIANT` selects the app identity (see `app.config.ts`):
 
-| Variant      | Name            | Android package           | iOS bundle ID        | Scheme       |
-| ------------ | --------------- | ------------------------- | -------------------- | ------------ |
-| development  | Zoption Dev     | site.zoption.android.dev  | site.zoption.ios.dev | zoption-dev  |
-| preview      | Zoption Preview | site.zoption.android.preview | site.zoption.ios.preview | zoption-preview |
-| production   | Zoption         | site.zoption.android      | site.zoption.ios     | zoption      |
+| Variant     | Name            | Android package              | iOS bundle ID            | Scheme          |
+| ----------- | --------------- | ---------------------------- | ------------------------ | --------------- |
+| development | Zoption Dev     | site.zoption.android.dev     | site.zoption.ios.dev     | zoption-dev     |
+| preview     | Zoption Preview | site.zoption.android.preview | site.zoption.ios.preview | zoption-preview |
+| production  | Zoption         | site.zoption.android         | site.zoption.ios         | zoption         |
 
 The production identifiers are used only for the website-linked Beta build;
 development and preview builds use their own identifiers. The iOS bundle
@@ -83,12 +83,15 @@ npx expo export --platform ios   # bundle sanity; delete dist afterwards
 
 ## Signed production artifacts
 
-Deliberately unconfigured. Producing a signed AAB/IPA requires:
+The website-linked Android Beta is built and published only through the
+manually dispatched `Android Beta Build` GitHub Actions workflow. Its signing
+key and R2 credentials remain in GitHub Actions secrets; the workflow prebuilds
+the production variant, signs with the permanent Zoption key, verifies the APK
+identity, publishes the immutable versioned object, verifies that public object,
+and advances `android/latest.json` last. Both publish inputs must remain false
+for a build-only validation run and may be enabled only with explicit release
+approval.
 
-- Android: a release keystore and signing config (the template currently signs
-  release builds with the debug key for compile checks only).
-- iOS: an Apple Developer distribution certificate/provisioning profile
-  (Automatic signing) and an App Store Connect app record.
-
-Both require explicit approval before they are created, and no signed artifact
-may be distributed without it.
+Local release builds remain compile proofs and must never be distributed. iOS
+production signing is still unconfigured and requires an Apple Developer
+distribution certificate, provisioning profile, and App Store Connect record.

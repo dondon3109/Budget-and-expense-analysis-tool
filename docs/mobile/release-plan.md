@@ -61,13 +61,13 @@ Measured on the iPhone 17 Pro simulator with the **development** build
 (debug instrumentation, Metro attached). These are baselines, not claims
 about release-build device performance:
 
-| Metric                                  | Budget target          | Measured (dev, simulator) | Status |
-| --------------------------------------- | ---------------------- | ------------------------- | ------ |
-| Hermes bytecode bundle                  | ≤ 10 MB                | 7.0 MB                    | ok     |
-| App bundle (debug .app)                 | ≤ 200 MB               | 135 MB                    | ok     |
-| Cold launch to process up               | ≤ 2 s                  | ~1.5 s                    | ok     |
-| First window activity                   | ≤ 2 s after process    | ~1.2 s                    | ok     |
-| Dev-build process-set RSS               | document only          | ~0.7 GB across processes  | n/a    |
+| Metric                    | Budget target       | Measured (dev, simulator) | Status |
+| ------------------------- | ------------------- | ------------------------- | ------ |
+| Hermes bytecode bundle    | ≤ 10 MB             | 7.0 MB                    | ok     |
+| App bundle (debug .app)   | ≤ 200 MB            | 135 MB                    | ok     |
+| Cold launch to process up | ≤ 2 s               | ~1.5 s                    | ok     |
+| First window activity     | ≤ 2 s after process | ~1.2 s                    | ok     |
+| Dev-build process-set RSS | document only       | ~0.7 GB across processes  | n/a    |
 
 Remaining to measure on release builds and real devices: cold startup, time to
 first locally rendered financial screen, transaction-list scroll, local query
@@ -100,6 +100,7 @@ This release ships the secure in-app APK updater: startup and manual update
 checks, verified APK download, native package/signer gates, and the guided
 system installer handoff. OTA JavaScript updates are not part of this
 release.
+
 ## 0.2.2-beta assistant fixes release
 
 `versionName` `0.2.2-beta`, `versionCode` `20302`. Same permanent Zoption
@@ -122,3 +123,17 @@ test cycle:
   errors still show the connectivity message; timeouts, permission,
   recording, unsupported-audio, transcription, auth, and server errors
   now surface their accurate states.
+
+## 0.2.3-beta Android updater performance release
+
+`versionName` `0.2.3-beta`, `versionCode` `20303`. Same permanent Zoption
+signer as the earlier `0.2.x-beta` releases, so `reinstallRequired` stays
+`false` and Android can update in place from `0.2.2-beta`.
+
+This release moves the APK transfer into a dedicated native HTTP stream with
+no per-chunk progress events crossing the React Native bridge. The UI samples
+the on-disk file size at most four times per second, preserving responsive
+progress without backpressuring the transfer near completion. Cancellation,
+strict download-host validation, redirect blocking, exact size and SHA-256
+checks, package/version inspection, and signing-certificate verification remain
+enforced before the system installer opens.

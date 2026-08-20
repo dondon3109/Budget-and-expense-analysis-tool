@@ -31,13 +31,23 @@ describe("native updater trust boundary", () => {
   });
 
   it("does not let JS supply an expected package or signer to native verification", () => {
+    expect(jsNative).toMatch(/downloadApkAsync\(/);
+    expect(jsNative).toMatch(/cancelApkDownloadAsync\(downloadId: string\)/);
     expect(jsNative).toMatch(/verifyApkAsync\(fileUri: string, expectedVersionCode: number\)/);
+    expect(jsNative).toMatch(
+      /verifyBenchmarkApkAsync\(fileUri: string, expectedVersionCode: number\)/,
+    );
     expect(jsNative).toMatch(/installApkAsync\(fileUri: string, expectedVersionCode: number\)/);
     expect(jsNative).not.toMatch(/expectedPackage/);
     expect(jsNative).not.toMatch(/expectedSigner/);
 
+    expect(native).toContain('AsyncFunction("downloadApkAsync") Coroutine');
+    expect(native).toContain('AsyncFunction("cancelApkDownloadAsync") { downloadId: String ->');
     expect(native).toContain(
       'AsyncFunction("verifyApkAsync") { fileUri: String, expectedVersionCode: Int ->',
+    );
+    expect(native).toContain(
+      'AsyncFunction("verifyBenchmarkApkAsync") { fileUri: String, expectedVersionCode: Int ->',
     );
     expect(native).toContain(
       'AsyncFunction("installApkAsync") { fileUri: String, expectedVersionCode: Int ->',
@@ -45,6 +55,11 @@ describe("native updater trust boundary", () => {
     expect(native).not.toContain("expectedPackage");
     expect(native).not.toContain("expectedSigner");
     expect(ios).toContain('AsyncFunction("verifyApkAsync") { (_: String, _: Int)');
+    expect(ios).toContain(
+      'AsyncFunction("downloadApkAsync") { (_: String, _: String, _: String, _: Int)',
+    );
+    expect(ios).toContain('AsyncFunction("cancelApkDownloadAsync") { (_: String)');
+    expect(ios).toContain('AsyncFunction("verifyBenchmarkApkAsync") { (_: String, _: Int)');
     expect(ios).toContain('AsyncFunction("installApkAsync") { (_: String, _: Int)');
   });
 
@@ -56,6 +71,9 @@ describe("native updater trust boundary", () => {
     expect(trust).toContain("inspection.packageName != TRUSTED_PACKAGE_ID");
     expect(trust).toContain("signers.first() != TRUSTED_SIGNER_SHA256");
     expect(trust).toContain("signers.size != 1");
+    expect(trust).toContain("fun evaluateBenchmarkArchive");
+    expect(native).toContain("verifyTrustedBenchmarkArchive");
+    expect(native).toContain("ZoptionApkTrust.evaluateBenchmarkArchive");
   });
 
   it("JS only forwards the dynamic versionCode into native install", () => {
@@ -65,5 +83,6 @@ describe("native updater trust boundary", () => {
     expect(service).not.toMatch(/installApkAsync\([^)]*ZOPTION_ANDROID_SIGNER_SHA256/);
     expect(service).not.toContain("ZOPTION_ANDROID_PACKAGE_ID");
     expect(service).not.toContain("ZOPTION_ANDROID_SIGNER_SHA256");
+    expect(service).not.toContain("verifyBenchmarkApkAsync");
   });
 });

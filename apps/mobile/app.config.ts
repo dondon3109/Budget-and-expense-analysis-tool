@@ -79,7 +79,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: variant.name,
     slug: "zoption-mobile",
-    version: "0.2.2-beta",
+    version: "0.2.3-beta",
     icon: "./assets/zoption-icon.png",
     scheme: variant.scheme,
     userInterfaceStyle: "automatic",
@@ -96,7 +96,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: variant.androidPackage,
-      versionCode: 20302,
+      versionCode: 20303,
       allowBackup: false,
       // Predictive back is disabled: with enableOnBackInvokedCallback the
       // system finished the activity instead of popping the native stack,
@@ -118,8 +118,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         "expo-image-picker",
         {
-          cameraPermission:
-            "Zoption uses the camera to scan receipts into expense transactions.",
+          cameraPermission: "Zoption uses the camera to scan receipts into expense transactions.",
         },
       ],
       ["expo-secure-store", { configureAndroidBackup: true }],

@@ -9,6 +9,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import expo.modules.kotlin.exception.CodedException
+import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
@@ -16,6 +17,8 @@ import java.io.FileInputStream
 import java.security.MessageDigest
 
 class ZoptionApkUpdaterModule : Module() {
+  private val apkDownloader = ZoptionApkDownloader()
+
   override fun definition() = ModuleDefinition {
     Name("ZoptionApkUpdater")
 
@@ -28,6 +31,25 @@ class ZoptionApkUpdaterModule : Module() {
         "versionName" to (info.versionName ?: ""),
         "versionCode" to versionCodeOf(info)
       )
+    }
+
+    AsyncFunction("downloadApkAsync") Coroutine {
+      downloadId: String,
+      downloadUrl: String,
+      destinationUri: String,
+      expectedSize: Int ->
+      val destination = resolveUpdaterDestination(destinationUri)
+      val downloaded = apkDownloader.download(
+        downloadId,
+        downloadUrl,
+        destination,
+        expectedSize.toLong()
+      )
+      mapOf("uri" to destinationUri, "size" to downloaded.size)
+    }
+
+    AsyncFunction("cancelApkDownloadAsync") { downloadId: String ->
+      apkDownloader.cancel(downloadId)
     }
 
     AsyncFunction("digestFileSha256Async") { fileUri: String ->
@@ -43,6 +65,11 @@ class ZoptionApkUpdaterModule : Module() {
     AsyncFunction("verifyApkAsync") { fileUri: String, expectedVersionCode: Int ->
       val file = resolveUpdaterFile(fileUri)
       verifyTrustedApk(file, expectedVersionCode).toMap()
+    }
+
+    AsyncFunction("verifyBenchmarkApkAsync") { fileUri: String, expectedVersionCode: Int ->
+      val file = resolveUpdaterFile(fileUri)
+      verifyTrustedBenchmarkArchive(file, expectedVersionCode).toMap()
     }
 
     AsyncFunction("canInstallPackagesAsync") {
@@ -116,12 +143,17 @@ class ZoptionApkUpdaterModule : Module() {
   }
 
   private fun resolveUpdaterFile(fileUri: String): File {
-    val path = localFilePath(fileUri)
-      ?: throw ApkUpdaterException("Only local updater files can be inspected.")
-    val file = File(path)
+    val file = resolveUpdaterDestination(fileUri)
     if (!file.isFile) {
       throw ApkUpdaterException("The update file is missing.")
     }
+    return file
+  }
+
+  private fun resolveUpdaterDestination(fileUri: String): File {
+    val path = localFilePath(fileUri)
+      ?: throw ApkUpdaterException("Only local updater files can be inspected.")
+    val file = File(path)
     val allowedRoot = File(requireContext().cacheDir, UPDATE_CACHE_DIRECTORY).canonicalFile
     val canonical = file.canonicalFile
     if (canonical != allowedRoot && !canonical.path.startsWith(allowedRoot.path + File.separator)) {
@@ -147,6 +179,28 @@ class ZoptionApkUpdaterModule : Module() {
       ),
       expectedVersionCode = expectedVersionCode.toLong(),
       installedVersionCode = versionCodeOf(installed),
+    )
+    if (rejection != null) {
+      throw ApkUpdaterException(rejection.toUserMessage())
+    }
+    return inspection
+  }
+
+  /**
+   * Archive-only verification for the __DEV__ transfer benchmark. Unlike the
+   * installer path, it intentionally permits measuring the installed version
+   * and a development-client caller. It still pins the archive package,
+   * expected version, and signer to ZoptionApkTrust's immutable constants.
+   */
+  private fun verifyTrustedBenchmarkArchive(file: File, expectedVersionCode: Int): ApkInspection {
+    val inspection = inspectApk(file)
+    val rejection = ZoptionApkTrust.evaluateBenchmarkArchive(
+      inspection = ZoptionApkTrust.Inspection(
+        packageName = inspection.packageName,
+        versionCode = inspection.versionCode,
+        signerSha256 = inspection.signerSha256,
+      ),
+      expectedVersionCode = expectedVersionCode.toLong(),
     )
     if (rejection != null) {
       throw ApkUpdaterException(rejection.toUserMessage())

@@ -49,6 +49,27 @@ describe("native APK updater configuration", () => {
     expect(source).not.toContain("expectedSigner");
   });
 
+  it("streams APKs natively without progress events and pins the download boundary", () => {
+    const moduleSource = read(
+      "android/src/main/java/site/zoption/apkupdater/ZoptionApkUpdaterModule.kt",
+    );
+    const downloader = read(
+      "android/src/main/java/site/zoption/apkupdater/ZoptionApkDownloader.kt",
+    );
+    expect(moduleSource).toContain('AsyncFunction("downloadApkAsync") Coroutine');
+    expect(moduleSource).toContain('AsyncFunction("cancelApkDownloadAsync")');
+    expect(downloader).toContain('TRUSTED_DOWNLOAD_HOST = "downloads.zoption.site"');
+    expect(downloader).toContain(".followRedirects(false)");
+    expect(downloader).toContain(".followSslRedirects(false)");
+    expect(downloader).toContain('.header("Accept-Encoding", "identity")');
+    expect(downloader).toContain("body.contentLength() != expectedSize");
+    expect(downloader).toContain("totalBytes > expectedSize");
+    expect(downloader).toContain("COPY_BUFFER_BYTES = 256 * 1024");
+    expect(downloader).toContain("activeDownloads[downloadId]?.cancel()");
+    expect(downloader).not.toContain("sendEvent");
+    expect(downloader).not.toContain("downloadProgress");
+  });
+
   it("does not embed the private signing key", () => {
     const moduleSource = read(
       "android/src/main/java/site/zoption/apkupdater/ZoptionApkUpdaterModule.kt",

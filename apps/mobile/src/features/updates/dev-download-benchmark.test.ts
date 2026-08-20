@@ -1,5 +1,3 @@
-import { File } from "expo-file-system";
-
 import { runDownloadBenchmark } from "./dev-download-benchmark";
 import { VALID_APK_SHA256, validInspection, validRemoteMetadata } from "./test-fixtures";
 
@@ -20,7 +18,6 @@ jest.mock("expo-file-system", () => {
       }
     },
     File: class {
-      static downloadFileAsync: jest.Mock = jest.fn();
       uri = "";
       size = 0;
       exists = false;
@@ -34,17 +31,21 @@ jest.mock("expo-file-system", () => {
   };
 });
 
-const downloadFileAsync = File.downloadFileAsync as jest.Mock;
-
 const mockNative = {
   getInstalledPackageInfoAsync: jest.fn(async () => ({
     packageName: "site.zoption.android",
     versionName: "0.2.0-beta",
     versionCode: 20300,
   })),
+  downloadApkAsync: jest.fn(async (_id: string, _url: string, destinationUri: string) => ({
+    uri: destinationUri,
+    size: 1024,
+  })),
+  cancelApkDownloadAsync: jest.fn(async () => undefined),
   digestFileSha256Async: jest.fn(async () => VALID_APK_SHA256),
   inspectApkAsync: jest.fn(async () => validInspection()),
   verifyApkAsync: jest.fn(async () => validInspection()),
+  verifyBenchmarkApkAsync: jest.fn(async () => validInspection()),
   canInstallPackagesAsync: jest.fn(async () => true),
   openUnknownSourcesSettingsAsync: jest.fn(async () => undefined),
   installApkAsync: jest.fn(async () => undefined),
@@ -60,10 +61,9 @@ describe("runDownloadBenchmark", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    downloadFileAsync.mockReset();
-    downloadFileAsync.mockResolvedValue({ uri: DESTINATION_URI, size: 1024 });
+    mockNative.downloadApkAsync.mockClear();
     mockNative.digestFileSha256Async.mockResolvedValue(VALID_APK_SHA256);
-    mockNative.verifyApkAsync.mockResolvedValue(validInspection());
+    mockNative.verifyBenchmarkApkAsync.mockResolvedValue(validInspection());
     global.fetch = jest.fn(async () => ({
       json: async () => validRemoteMetadata(),
     })) as unknown as typeof fetch;
@@ -91,6 +91,7 @@ describe("runDownloadBenchmark", () => {
     expect(result.timing.downloadMbps).toBeGreaterThanOrEqual(0);
     expect(result.timing.hashMs).toBeGreaterThanOrEqual(0);
     expect(result.timing.verifyMs).toBeGreaterThanOrEqual(0);
+    expect(mockNative.verifyBenchmarkApkAsync).toHaveBeenCalledWith(DESTINATION_URI, 20301);
   });
 
   it("flags a gate failure and reports not ok when the digest mismatches", async () => {
@@ -105,7 +106,11 @@ describe("runDownloadBenchmark", () => {
 
   it("fails cleanly when latest.json is untrusted and still attempts cleanup", async () => {
     global.fetch = jest.fn(async () => ({
-      json: async () => ({ version: "x", versionCode: 1, downloadUrl: "https://evil.example/x.apk" }),
+      json: async () => ({
+        version: "x",
+        versionCode: 1,
+        downloadUrl: "https://evil.example/x.apk",
+      }),
     })) as unknown as typeof fetch;
     const result = await runDownloadBenchmark();
     expect(result.ok).toBe(false);

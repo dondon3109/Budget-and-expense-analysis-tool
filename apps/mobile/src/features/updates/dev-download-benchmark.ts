@@ -83,10 +83,12 @@ function emptyGates(): DownloadBenchmarkGates {
   };
 }
 
-export async function runDownloadBenchmark(input: {
-  onProgress?: (progress: DownloadProgress) => void;
-  signal?: AbortSignal;
-} = {}): Promise<DownloadBenchmarkResult> {
+export async function runDownloadBenchmark(
+  input: {
+    onProgress?: (progress: DownloadProgress) => void;
+    signal?: AbortSignal;
+  } = {},
+): Promise<DownloadBenchmarkResult> {
   const fileSystem = createExpoUpdateFileSystem();
   const native = getApkUpdaterNative();
   const start = nowMs();
@@ -132,14 +134,15 @@ export async function runDownloadBenchmark(input: {
     timing.transferBytesPerSecond = downloaded.transferBytesPerSecond ?? null;
     timing.downloadSeconds = transferMs / 1000;
     timing.downloadMbps =
-      (downloaded.transferBytesPerSecond ?? (release.size / timing.downloadSeconds)) * 8 / 1_000_000;
+      ((downloaded.transferBytesPerSecond ?? release.size / timing.downloadSeconds) * 8) /
+      1_000_000;
 
     const hashStart = nowMs();
     const digest = await native.digestFileSha256Async(downloaded.uri);
     timing.hashMs = nowMs() - hashStart;
 
     const verifyStart = nowMs();
-    const inspection = await native.verifyApkAsync(downloaded.uri, release.versionCode);
+    const inspection = await native.verifyBenchmarkApkAsync(downloaded.uri, release.versionCode);
     timing.verifyMs = nowMs() - verifyStart;
     gates.verifiedByNative = true;
 
@@ -182,9 +185,16 @@ export async function runDownloadBenchmark(input: {
   timing.totalSeconds = (nowMs() - start) / 1000;
   const ok = Object.values(gates).every(Boolean);
   console.info(
-    "[benchmark] done: " + timing.downloadSeconds.toFixed(1) + "s " + timing.downloadMbps.toFixed(1) +
-      " Mbps down, hash " + Math.round(timing.hashMs) + "ms, verify " + Math.round(timing.verifyMs) +
-      "ms, progress callbacks " + progressCallbacks,
+    "[benchmark] done: " +
+      timing.downloadSeconds.toFixed(1) +
+      "s " +
+      timing.downloadMbps.toFixed(1) +
+      " Mbps down, hash " +
+      Math.round(timing.hashMs) +
+      "ms, verify " +
+      Math.round(timing.verifyMs) +
+      "ms, progress callbacks " +
+      progressCallbacks,
   );
   return {
     ok,

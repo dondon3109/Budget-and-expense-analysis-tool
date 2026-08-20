@@ -38,6 +38,27 @@ internal object ZoptionApkTrust {
     if (runningPackageName != TRUSTED_PACKAGE_ID) {
       return Rejection.WRONG_RUNNING_PACKAGE
     }
+    return evaluateArchive(inspection, expectedVersionCode, installedVersionCode)
+  }
+
+  /**
+   * Verifies a downloaded archive for the development-only transfer benchmark.
+   *
+   * It deliberately has no caller-package or installed-version requirement:
+   * the benchmark must be able to measure the already-installed public Beta
+   * from a development client and never opens the installer. Package, version,
+   * and signer remain pinned to the immutable production trust anchors below.
+   */
+  fun evaluateBenchmarkArchive(
+    inspection: Inspection,
+    expectedVersionCode: Long,
+  ): Rejection? = evaluateArchive(inspection, expectedVersionCode, null)
+
+  private fun evaluateArchive(
+    inspection: Inspection,
+    expectedVersionCode: Long,
+    installedVersionCode: Long?,
+  ): Rejection? {
     if (inspection.packageName != TRUSTED_PACKAGE_ID) {
       return Rejection.WRONG_PACKAGE
     }
@@ -47,7 +68,7 @@ internal object ZoptionApkTrust {
     if (inspection.versionCode != expectedVersionCode) {
       return Rejection.VERSION_MISMATCH
     }
-    if (inspection.versionCode <= installedVersionCode) {
+    if (installedVersionCode != null && inspection.versionCode <= installedVersionCode) {
       return Rejection.DOWNGRADE
     }
 

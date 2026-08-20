@@ -1,15 +1,24 @@
 import { Directory, File, Paths } from "expo-file-system";
 
+import { getApkUpdaterNative } from "./apk-updater-native";
 import { UPDATE_CACHE_DIRECTORY } from "./constants";
 
 /**
- * Throttled interval for sampling on-disk progress while a NativeModule
- * streams a download to disk. The native download task does NOT emit a
- * progress callback per chunk across the JS bridge (that per-chunk event
- * flood can backpressure the transfer and trigger a React re-render storm),
- * so progress is sampled from the destination file size at this bounded rate.
+ * Throttled interval for sampling on-disk progress while the updater-native
+ * stream writes the APK. The native transfer emits no progress events, so the
+ * React tree receives at most four bounded updates per second.
  */
 export const DOWNLOAD_PROGRESS_POLL_MS = 250;
+
+export interface NativeApkDownloader {
+  downloadApkAsync(
+    downloadId: string,
+    downloadUrl: string,
+    destinationUri: string,
+    expectedSize: number,
+  ): Promise<{ uri: string; size: number }>;
+  cancelApkDownloadAsync(downloadId: string): Promise<void>;
+}
 
 export interface DownloadProgress {
   bytesWritten: number;
@@ -29,7 +38,7 @@ export interface UpdateFileSystem {
     url: string;
     destinationUri: string;
     /** Expected final size of the artifact, used to render throttled progress. */
-    expectedSize?: number;
+    expectedSize: number;
     onProgress?: (progress: DownloadProgress) => void;
     signal?: AbortSignal;
   }): Promise<{ uri: string; size: number } & DownloadTiming>;
@@ -53,7 +62,22 @@ function nowMs(): number {
     : Date.now();
 }
 
-export function createExpoUpdateFileSystem(): UpdateFileSystem {
+let nextDownloadId = 0;
+
+function createDownloadId(): string {
+  nextDownloadId = (nextDownloadId + 1) % Number.MAX_SAFE_INTEGER;
+  return `apk-${Date.now()}-${nextDownloadId}`;
+}
+
+function abortError(): Error {
+  const error = new Error("The APK download was cancelled.");
+  error.name = "AbortError";
+  return error;
+}
+
+export function createExpoUpdateFileSystem(
+  native: NativeApkDownloader = getApkUpdaterNative(),
+): UpdateFileSystem {
   return {
     ensureUpdateDirectory() {
       const directory = updateDirectory();
@@ -67,17 +91,24 @@ export function createExpoUpdateFileSystem(): UpdateFileSystem {
       if (destination.exists) {
         destination.delete();
       }
+      if (input.signal?.aborted) {
+        throw abortError();
+      }
       const startedAt = nowMs();
-      // No onProgress is passed to the native download task: the NativeModule
-      // streams to disk at full speed and progress is sampled below instead of
-      // flooding the JS bridge with a per-chunk callback for every ~64KiB.
-      const downloadPromise = File.downloadFileAsync(input.url, destination, {
-        idempotent: true,
-        signal: input.signal,
-      });
+      const downloadId = createDownloadId();
+      const cancelNativeDownload = () => {
+        void native.cancelApkDownloadAsync(downloadId).catch(() => undefined);
+      };
+      input.signal?.addEventListener("abort", cancelNativeDownload, { once: true });
+      const downloadPromise = native.downloadApkAsync(
+        downloadId,
+        input.url,
+        destination.uri,
+        input.expectedSize,
+      );
 
       let progressTimer: ReturnType<typeof setInterval> | null = null;
-      const expectedSize = input.expectedSize ?? 0;
+      const expectedSize = input.expectedSize;
       if (input.onProgress && expectedSize > 0) {
         const reportProgress = () => {
           if (input.signal?.aborted) return;
@@ -89,23 +120,31 @@ export function createExpoUpdateFileSystem(): UpdateFileSystem {
       }
 
       try {
-        const file = await downloadPromise;
+        const downloaded = await downloadPromise;
         if (progressTimer !== null) {
           clearInterval(progressTimer);
         }
+        if (input.signal?.aborted) {
+          throw abortError();
+        }
         const transferDurationMs = Math.max(1, Math.round(nowMs() - startedAt));
-        input.onProgress?.({ bytesWritten: file.size, totalBytes: expectedSize || file.size });
+        input.onProgress?.({
+          bytesWritten: downloaded.size,
+          totalBytes: expectedSize,
+        });
         return {
-          uri: file.uri,
-          size: file.size,
+          uri: downloaded.uri,
+          size: downloaded.size,
           transferDurationMs,
-          transferBytesPerSecond: Math.round(file.size / (transferDurationMs / 1000)),
+          transferBytesPerSecond: Math.round(downloaded.size / (transferDurationMs / 1000)),
         };
       } catch (error) {
         if (progressTimer !== null) {
           clearInterval(progressTimer);
         }
         throw error;
+      } finally {
+        input.signal?.removeEventListener("abort", cancelNativeDownload);
       }
     },
     fileSize(uri) {

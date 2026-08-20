@@ -68,6 +68,11 @@ function createDeps(
   };
   const native: ApkUpdaterNativeModule = {
     getInstalledPackageInfoAsync: async () => overrides.installed ?? installedApp(),
+    downloadApkAsync: async (_downloadId, _downloadUrl, destinationUri) => ({
+      uri: destinationUri,
+      size: overrides.size ?? 1024,
+    }),
+    cancelApkDownloadAsync: async () => undefined,
     digestFileSha256Async: async () => overrides.digest ?? VALID_APK_SHA256,
     inspectApkAsync: async () => overrides.inspection ?? validInspection(),
     verifyApkAsync: async (_uri, expectedVersionCode) => {
@@ -78,6 +83,7 @@ function createDeps(
       }
       return inspection;
     },
+    verifyBenchmarkApkAsync: async () => overrides.inspection ?? validInspection(),
     canInstallPackagesAsync: async () => overrides.canInstall ?? true,
     openUnknownSourcesSettingsAsync: async () => {
       openedSettings += 1;
@@ -94,8 +100,7 @@ function createDeps(
       return {
         uri: destinationUri,
         size: overrides.size ?? 1024,
-        ...(overrides.downloadTiming ??
-          /* istanbul ignore next */ {}),
+        ...(overrides.downloadTiming ?? /* istanbul ignore next */ {}),
       };
     },
     fileSize: async () => overrides.size ?? 1024,
@@ -317,18 +322,20 @@ describe("Android update timing diagnostics", () => {
     });
     expect(result.status).toBe("installed");
     expect(onStats).toHaveBeenCalledTimes(1);
-    const stats = (onStats.mock.calls as Array<
-      [
-        {
-          downloadMs: number;
-          downloadBytesPerSecond: number;
-          hashMs: number;
-          verifyMs: number;
-          installPrepMs: number;
-          installMs: number;
-        },
-      ]
-    >)[0]![0];
+    const stats = (
+      onStats.mock.calls as Array<
+        [
+          {
+            downloadMs: number;
+            downloadBytesPerSecond: number;
+            hashMs: number;
+            verifyMs: number;
+            installPrepMs: number;
+            installMs: number;
+          },
+        ]
+      >
+    )[0]![0];
     expect(stats.downloadMs).toBe(1204);
     expect(stats.downloadBytesPerSecond).toBe(115_478_569);
     expect(stats.hashMs).toBeGreaterThanOrEqual(0);
@@ -344,4 +351,3 @@ describe("Android update timing diagnostics", () => {
     expect("stats" in result).toBe(false);
   });
 });
-
