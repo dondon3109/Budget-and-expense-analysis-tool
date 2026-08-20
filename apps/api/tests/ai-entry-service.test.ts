@@ -64,7 +64,12 @@ describe("AI entry service", () => {
       tokens: 42,
       data: "08/20/2026 GROCERIES 1,250.50",
     }));
-    const importRepository = imports();
+    const previewImport = vi.fn(
+      async (_env: Bindings, _tenantId: string, _input: Parameters<ImportRepository["preview"]>[2]) => {
+        return preview;
+      },
+    );
+    const importRepository: ImportRepository = { preview: previewImport, commit: vi.fn() };
     const service = createAiEntryService(repository(), importRepository);
 
     await expect(
@@ -76,14 +81,10 @@ describe("AI entry service", () => {
     ).resolves.toEqual(preview);
 
     expect(toMarkdown).toHaveBeenCalledOnce();
-    expect(importRepository.preview).toHaveBeenCalledWith(
-      expect.anything(),
-      "tenant-id",
-      expect.objectContaining({
-        fileName: "statement.pdf",
-        csvText: expect.stringContaining('"2026-08-20","Groceries","-1250.50","expense"'),
-      }),
-    );
+    expect(previewImport).toHaveBeenCalledOnce();
+    const previewRequest = previewImport.mock.calls[0]?.[2];
+    expect(previewRequest?.fileName).toBe("statement.pdf");
+    expect(previewRequest?.csvText).toContain('"2026-08-20","Groceries","-1250.50","expense"');
   });
 
   it("returns a review-only draft from voice and does not need a transaction repository", async () => {

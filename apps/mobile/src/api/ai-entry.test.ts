@@ -43,7 +43,7 @@ describe("mobile AI-entry voice transport", () => {
     const draft = await extractVoiceTransaction(
       "token",
       { uri: "file:///recording.m4a", fileName: "voice-entry.m4a" },
-      fetchMock as unknown as typeof fetch,
+      fetchMock,
     );
     expect(draft.description).toBe("Lunch");
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];

@@ -93,7 +93,7 @@ describe("mobile import transport", () => {
     const preview = await previewPdfImport({
       accessToken: "token",
       file: { uri: "file:///statement.pdf", fileName: "statement.pdf" },
-      fetchImpl: fetchMock as unknown as typeof fetch,
+      fetchImpl: fetchMock,
     });
     expect(preview.fileName).toBe("statement.pdf");
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
