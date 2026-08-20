@@ -469,6 +469,7 @@ export default function ReceiptScanScreen() {
           styles.primaryCapture,
           {
             backgroundColor: pressed ? theme.colors.brandPressed : theme.colors.brand,
+            borderColor: theme.colors.brandPressed,
             opacity: scanning ? 0.6 : 1,
           },
         ]}
@@ -853,6 +854,7 @@ const styles = StyleSheet.create({
   },
   primaryCapture: {
     minHeight: touchTarget,
+    borderWidth: 1,
     borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
