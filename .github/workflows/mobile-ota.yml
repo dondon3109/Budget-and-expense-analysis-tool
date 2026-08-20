@@ -1,0 +1,205 @@
+name: Mobile OTA Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "User-facing summary of the JS/assets-only update"
+        type: string
+        required: true
+      confirm_ota_trust_boundary:
+        description: "Confirm this update is signed by the private key for the certificate pinned in the APK"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: mobile-ota-production
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Validate and publish production OTA
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: mobile-production-ota
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require main as the publication source
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Production OTA updates must be dispatched from main."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Require OTA credentials and project identity
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          OTA_CODE_SIGNING_PRIVATE_KEY: ${{ secrets.OTA_CODE_SIGNING_PRIVATE_KEY }}
+          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
+          OTA_TRUST_CONFIRMED: ${{ inputs.confirm_ota_trust_boundary }}
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "::error::EXPO_TOKEN is not configured."; exit 1; }
+          test -n "$OTA_CODE_SIGNING_PRIVATE_KEY" \
+            || { echo "::error::OTA_CODE_SIGNING_PRIVATE_KEY is not configured."; exit 1; }
+          test -n "$EAS_PROJECT_ID" || { echo "::error::EAS_PROJECT_ID is not configured."; exit 1; }
+          test "$OTA_TRUST_CONFIRMED" = "true" \
+            || { echo "::error::The OTA trust boundary was not explicitly confirmed."; exit 1; }
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prepare and verify the OTA signing key
+        env:
+          OTA_CODE_SIGNING_PRIVATE_KEY: ${{ secrets.OTA_CODE_SIGNING_PRIVATE_KEY }}
+        run: |
+          OTA_PRIVATE_KEY_PATH="$RUNNER_TEMP/zoption-ota-private-key.pem"
+          printf '%s' "$OTA_CODE_SIGNING_PRIVATE_KEY" > "$OTA_PRIVATE_KEY_PATH"
+          chmod 600 "$OTA_PRIVATE_KEY_PATH"
+          OTA_PRIVATE_KEY_PATH="$OTA_PRIVATE_KEY_PATH" pnpm --filter @zoption/mobile verify:ota-signing
+          echo "OTA_PRIVATE_KEY_PATH=$OTA_PRIVATE_KEY_PATH" >> "$GITHUB_ENV"
+          echo "OTA_SIGNING_CERTIFICATE_SHA256=0981ef1b233b9eb5b2de46c675effda0c50ade8724c04ac9d4d478c5ba2ed2e6" >> "$GITHUB_ENV"
+
+      - name: Export validated production public configuration
+        run: node scripts/export-production-deployment-env.mjs
+
+      - name: Validate mobile implementation
+        run: |
+          pnpm --filter @zoption/mobile typecheck
+          pnpm --filter @zoption/mobile test
+          pnpm --filter @zoption/mobile lint
+
+      - name: Resolve and validate production update configuration
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: production
+          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
+        run: |
+          pnpm exec expo config --type introspect --json > "$RUNNER_TEMP/zoption-ota-config.json"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          const config = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/zoption-ota-config.json", "utf8"));
+          const projectId = process.env.EAS_PROJECT_ID;
+          const expectedUrl = `https://u.expo.dev/${projectId}`;
+          if (config.updates?.enabled !== true || config.updates?.url !== expectedUrl) {
+            throw new Error("Production OTA is not enabled for the configured EAS project.");
+          }
+          if (config.updates?.requestHeaders?.["expo-channel-name"] !== "production") {
+            throw new Error("Production APK is not pinned to the production OTA channel.");
+          }
+          if (config.runtimeVersion?.policy !== "appVersion") {
+            throw new Error("OTA runtimeVersion must remain bound to appVersion.");
+          }
+          if (
+            config.updates?.codeSigningCertificate !== "./certs/ota-production.pem" ||
+            config.updates?.codeSigningMetadata?.keyid !== "main" ||
+            config.updates?.codeSigningMetadata?.alg !== "rsa-v1_5-sha256"
+          ) {
+            throw new Error("Production OTA code-signing trust is not pinned correctly.");
+          }
+          if (config.android?.package !== "site.zoption.android") {
+            throw new Error("OTA configuration resolved the wrong Android package.");
+          }
+          console.log(`Validated production OTA runtime ${config.version}.`);
+          NODE
+
+      # The first OTA-capable APK must be live before any update can publish.
+      # Its latest.json record opts in with otaRuntimeVersion, so an old binary
+      # can never be mistaken for an OTA client merely because source changed.
+      - name: Require a live OTA-capable APK with the same runtime
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: production
+          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
+        run: |
+          curl -fsS --retry 5 --retry-delay 3 --max-time 30 \
+            https://downloads.zoption.site/android/latest.json \
+            -o "$RUNNER_TEMP/zoption-latest-android.json"
+          pnpm exec expo config --type introspect --json > "$RUNNER_TEMP/zoption-ota-config.json"
+          pnpm exec expo-updates fingerprint:generate --platform android > "$RUNNER_TEMP/zoption-native-fingerprint.json"
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from "node:fs";
+          const latest = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/zoption-latest-android.json", "utf8"));
+          const config = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/zoption-ota-config.json", "utf8"));
+          const fingerprint = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/zoption-native-fingerprint.json", "utf8"));
+          if (latest.otaRuntimeVersion !== config.version) {
+            throw new Error(
+              `Live APK is not OTA-capable for runtime ${config.version}; expected latest.json otaRuntimeVersion to match.`,
+            );
+          }
+          if (latest.otaNativeFingerprint !== fingerprint.hash) {
+            throw new Error("Current source changes the native runtime and requires a new signed APK.");
+          }
+          if (latest.otaSigningCertificateSha256 !== process.env.OTA_SIGNING_CERTIFICATE_SHA256) {
+            throw new Error("Live APK does not trust this OTA signing certificate.");
+          }
+          if (!/^[0-9a-f]{40}$/.test(latest.otaSourceCommit)) {
+            throw new Error("Live OTA metadata has no valid source commit.");
+          }
+          appendFileSync(process.env.GITHUB_ENV, `OTA_BASE_COMMIT=${latest.otaSourceCommit}\n`);
+          console.log(`Live APK confirms OTA runtime ${latest.otaRuntimeVersion} and native fingerprint.`);
+          NODE
+
+      - name: Require live APK source ancestry
+        run: |
+          git merge-base --is-ancestor "$OTA_BASE_COMMIT" "$GITHUB_SHA" \
+            || { echo "::error::The live OTA-capable APK is not an ancestor of this update."; exit 1; }
+
+      - name: Set up authenticated EAS CLI
+        uses: expo/expo-github-action@eab7a230208c952974db8c3245cfd78402c7b385 # v9.0.0
+        with:
+          eas-version: 22.0.0
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Require current main and successful CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CURRENT_MAIN_SHA=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$CURRENT_MAIN_SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::main advanced to $CURRENT_MAIN_SHA after this run selected $GITHUB_SHA. Dispatch again."
+            exit 1
+          fi
+          CI_CONCLUSION=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=completed&per_page=1" \
+            --jq '.workflow_runs[0].conclusion // ""')
+          if [ "$CI_CONCLUSION" != "success" ]; then
+            echo "::error::The CI workflow for $GITHUB_SHA is not successful (conclusion: ${CI_CONCLUSION:-missing})."
+            exit 1
+          fi
+          echo "Current main and successful CI confirmed at $GITHUB_SHA."
+
+      - name: Publish production Android OTA
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: production
+          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
+          EXPO_PUBLIC_API_URL: ${{ env.VITE_API_URL }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          UPDATE_MESSAGE: ${{ inputs.message }}
+        run: |
+          eas update \
+            --channel production \
+            --platform android \
+            --message "$UPDATE_MESSAGE" \
+            --environment production \
+            --private-key-path "$OTA_PRIVATE_KEY_PATH" \
+            --non-interactive

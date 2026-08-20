@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
+import { OtaUpdateSettingsCard } from "@/features/ota-updates";
 import { UpdateSettingsCard } from "@/features/updates";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
 import { ThemePicker } from "@/ui/theme-picker";
@@ -165,6 +166,7 @@ export default function MoreScreen() {
         </View>
       </Card>
       <ThemePicker />
+      <OtaUpdateSettingsCard />
       <UpdateSettingsCard />
       <Card accessibilityLabel="Account session controls">
         <View className="gap-3">

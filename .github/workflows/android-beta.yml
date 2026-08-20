@@ -54,9 +54,81 @@ jobs:
       - name: Export production public configuration
         run: node scripts/export-production-deployment-env.mjs
 
+      - name: Resolve OTA runtime and native fingerprint
+        if: vars.EXPO_PROJECT_ID != ''
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: production
+          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
+        run: |
+          pnpm run verify:ota-signing
+          pnpm exec expo config --type introspect --json > "$RUNNER_TEMP/zoption-ota-config.json"
+          pnpm exec expo-updates fingerprint:generate --platform android > "$RUNNER_TEMP/zoption-native-fingerprint.json"
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from "node:fs";
+          const config = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/zoption-ota-config.json", "utf8"));
+          const fingerprint = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/zoption-native-fingerprint.json", "utf8"));
+          const expectedUrl = `https://u.expo.dev/${process.env.EAS_PROJECT_ID}`;
+          if (config.updates?.enabled !== true || config.updates?.url !== expectedUrl) {
+            throw new Error("Production OTA configuration is not enabled for this EAS project.");
+          }
+          if (config.updates?.requestHeaders?.["expo-channel-name"] !== "production") {
+            throw new Error("The production APK is not pinned to the production OTA channel.");
+          }
+          if (config.runtimeVersion?.policy !== "appVersion") {
+            throw new Error("OTA runtimeVersion must remain bound to appVersion.");
+          }
+          if (
+            config.updates?.codeSigningCertificate !== "./certs/ota-production.pem" ||
+            config.updates?.codeSigningMetadata?.keyid !== "main" ||
+            config.updates?.codeSigningMetadata?.alg !== "rsa-v1_5-sha256"
+          ) {
+            throw new Error("Production OTA code-signing trust is not pinned correctly.");
+          }
+          if (!/^[0-9a-f]{40}$/.test(fingerprint.hash)) {
+            throw new Error("Expo did not produce a valid Android native fingerprint.");
+          }
+          const certificateSha256 = "0981ef1b233b9eb5b2de46c675effda0c50ade8724c04ac9d4d478c5ba2ed2e6";
+          appendFileSync(
+            process.env.GITHUB_ENV,
+            `OTA_RUNTIME_VERSION=${config.version}\nOTA_VERSION_CODE=${config.android.versionCode}\nOTA_NATIVE_FINGERPRINT=${fingerprint.hash}\nOTA_SIGNING_CERTIFICATE_SHA256=${certificateSha256}\n`,
+          );
+          console.log(`Resolved OTA runtime ${config.version} and its native fingerprint.`);
+          NODE
+
       - name: Prebuild Android (production)
         working-directory: apps/mobile
         run: CI=1 APP_VARIANT=production npx expo prebuild --platform android --clean --no-install
+        env:
+          # Optional until the first OTA-capable APK release. When configured,
+          # app.config.ts embeds the production EAS channel in the new binary.
+          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
+
+      - name: Verify generated OTA native configuration
+        if: vars.EXPO_PROJECT_ID != ''
+        working-directory: apps/mobile
+        env:
+          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          STRINGS=android/app/src/main/res/values/strings.xml
+          grep -Eq 'expo.modules.updates.ENABLED[^>]*android:value="true"' "$MANIFEST" \
+            || { echo "::error::Generated Android manifest does not enable Expo Updates."; exit 1; }
+          grep -Fq "https://u.expo.dev/$EAS_PROJECT_ID" "$MANIFEST" \
+            || { echo "::error::Generated Android manifest has the wrong OTA URL."; exit 1; }
+          grep -Fq 'expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY' "$MANIFEST" \
+            || { echo "::error::Generated Android manifest has no OTA channel header."; exit 1; }
+          grep -Fq 'expo-channel-name' "$MANIFEST" && grep -Fq 'production' "$MANIFEST" \
+            || { echo "::error::Generated Android manifest is not pinned to the production OTA channel."; exit 1; }
+          grep -Fq ">${OTA_RUNTIME_VERSION}</string>" "$STRINGS" \
+            || { echo "::error::Generated Android runtimeVersion does not match appVersion."; exit 1; }
+          grep -Fq 'expo.modules.updates.CODE_SIGNING_CERTIFICATE' "$MANIFEST" \
+            || { echo "::error::Generated Android manifest has no pinned OTA certificate."; exit 1; }
+          grep -Fq 'expo.modules.updates.CODE_SIGNING_METADATA' "$MANIFEST" \
+            || { echo "::error::Generated Android manifest has no OTA signing metadata."; exit 1; }
+          grep -Fq 'rsa-v1_5-sha256' "$MANIFEST" \
+            || { echo "::error::Generated Android manifest has the wrong OTA signing algorithm."; exit 1; }
+          OTA_ANDROID_MANIFEST_PATH="$MANIFEST" pnpm run verify:ota-signing
 
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
@@ -92,6 +164,7 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon
         env:
           APP_VARIANT: production
+          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -156,6 +229,24 @@ jobs:
 
       # Phase 3: publish the verified APK to the Zoption R2 bucket. This step
       # only runs after every signing/identity gate above has passed.
+      - name: Require a new version code for the OTA bootstrap APK
+        if: inputs.publish_apk && vars.EXPO_PROJECT_ID != ''
+        run: |
+          curl -fsS --retry 5 --retry-delay 3 --max-time 30 \
+            https://downloads.zoption.site/android/latest.json \
+            -o /tmp/zoption-current-latest.json
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          const current = JSON.parse(readFileSync("/tmp/zoption-current-latest.json", "utf8"));
+          const candidateVersionCode = Number(process.env.OTA_VERSION_CODE);
+          if (!Number.isInteger(candidateVersionCode) || current.versionCode >= candidateVersionCode) {
+            throw new Error(
+              `OTA bootstrap requires a new Android versionCode; live=${current.versionCode}, candidate=${candidateVersionCode}.`,
+            );
+          }
+          console.log(`OTA bootstrap versionCode advances ${current.versionCode} -> ${candidateVersionCode}.`);
+          NODE
+
       - name: Publish APK to R2
         if: inputs.publish_apk
         env:
@@ -226,6 +317,8 @@ jobs:
           PUBLIC_URL: https://downloads.zoption.site/android/zoption-beta-0.2.3.apk
           EXPECTED_FINGERPRINT: f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d
           EXPECTED_DN: CN=Zoption, O=Zoption, C=PH
+          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
+          OTA_SOURCE_COMMIT: ${{ github.sha }}
         run: |
           curl -fsS --retry 5 --retry-delay 5 --max-time 60 "$PUBLIC_URL" -o /tmp/zoption-public.apk
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
@@ -264,6 +357,22 @@ jobs:
             ]
           }
           JSON
+          if [ -n "$EAS_PROJECT_ID" ]; then
+            if [ "$PUBLIC_SHA256" != "$APK_SHA256" ] || [ "$PUBLIC_SIZE" != "$APK_SIZE" ]; then
+              echo "::error::OTA metadata requires the public APK to match this job's verified build."
+              exit 1
+            fi
+            node --input-type=module <<'NODE'
+            import { readFileSync, writeFileSync } from "node:fs";
+            const path = "/tmp/zoption-latest.json";
+            const metadata = JSON.parse(readFileSync(path, "utf8"));
+            metadata.otaRuntimeVersion = process.env.OTA_RUNTIME_VERSION;
+            metadata.otaNativeFingerprint = process.env.OTA_NATIVE_FINGERPRINT;
+            metadata.otaSourceCommit = process.env.OTA_SOURCE_COMMIT;
+            metadata.otaSigningCertificateSha256 = process.env.OTA_SIGNING_CERTIFICATE_SHA256;
+            writeFileSync(path, JSON.stringify(metadata, null, 2) + "\n");
+            NODE
+          fi
           node --experimental-strip-types -e "
             import { readFileSync } from 'node:fs';
             import { parseRemoteAndroidRelease } from './apps/web/src/releases/androidReleaseMetadata.ts';
@@ -284,6 +393,24 @@ jobs:
             if (parsed.downloadPath !== 'https://downloads.zoption.site/android/zoption-beta-0.2.3.apk') {
               console.error('latest.json download URL is not the versioned R2 object');
               process.exit(1);
+            }
+            if (process.env.EAS_PROJECT_ID) {
+              if (raw.otaRuntimeVersion !== process.env.OTA_RUNTIME_VERSION) {
+                console.error('latest.json OTA runtime does not match the verified APK');
+                process.exit(1);
+              }
+              if (raw.otaNativeFingerprint !== process.env.OTA_NATIVE_FINGERPRINT) {
+                console.error('latest.json native fingerprint does not match the verified APK');
+                process.exit(1);
+              }
+              if (raw.otaSourceCommit !== process.env.OTA_SOURCE_COMMIT) {
+                console.error('latest.json OTA source commit does not match this build');
+                process.exit(1);
+              }
+              if (raw.otaSigningCertificateSha256 !== process.env.OTA_SIGNING_CERTIFICATE_SHA256) {
+                console.error('latest.json OTA signing certificate does not match this build');
+                process.exit(1);
+              }
             }
             console.log('latest.json accepted by the production metadata parser');
           "

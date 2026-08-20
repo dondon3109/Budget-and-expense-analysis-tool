@@ -94,3 +94,13 @@ APP_VARIANT=production ANDROID_HOME="$HOME/Library/Android/sdk" \
 ```
 
 The Beta APK is sideloaded from the Zoption website and is not distributed through Google Play.
+
+## OTA updates
+
+Expo OTA support is implemented as a separate JS/assets-only channel and does
+not replace the verified APK updater. Development and unconfigured builds keep
+it disabled. Production updates must be signed by the private key matching the
+public certificate pinned in a future signed APK. Activation is deferred until
+the required EAS subscription and an explicit signed-APK release are approved; see
+[`docs/mobile/ota-updates.md`](../../docs/mobile/ota-updates.md) for the release
+gate, runtime boundary, and rollback procedure.

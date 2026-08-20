@@ -7,18 +7,21 @@ const variants = {
     androidPackage: "site.zoption.android.dev",
     iosBundleIdentifier: "site.zoption.ios.dev",
     scheme: "zoption-dev",
+    updateChannel: "development",
   },
   preview: {
     name: "Zoption Preview",
     androidPackage: "site.zoption.android.preview",
     iosBundleIdentifier: "site.zoption.ios.preview",
     scheme: "zoption-preview",
+    updateChannel: "preview",
   },
   production: {
     name: "Zoption Beta",
     androidPackage: "site.zoption.android",
     iosBundleIdentifier: "site.zoption.ios",
     scheme: "zoption",
+    updateChannel: "production",
   },
 } as const;
 
@@ -31,6 +34,17 @@ function resolveVariant(value: string | undefined): AppVariant {
 
 function environmentValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function resolveEasProjectId(value: unknown): string | undefined {
+  const projectId = environmentValue(value)?.trim();
+  if (!projectId) return undefined;
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(projectId)
+  ) {
+    throw new Error("EAS_PROJECT_ID must be a valid UUID.");
+  }
+  return projectId;
 }
 
 /**
@@ -74,6 +88,8 @@ const withLegacyBackHandling: ConfigPlugin = (config) =>
 export default ({ config }: ConfigContext): ExpoConfig => {
   const appVariant = resolveVariant(environmentValue(process.env.APP_VARIANT));
   const variant = variants[appVariant];
+  const easProjectId = resolveEasProjectId(process.env.EAS_PROJECT_ID);
+  const otaEnabled = appVariant !== "development" && Boolean(easProjectId);
 
   return {
     ...config,
@@ -84,6 +100,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     scheme: variant.scheme,
     userInterfaceStyle: "automatic",
     runtimeVersion: { policy: "appVersion" },
+    // OTA is additive to the signed APK updater. A missing project ID leaves
+    // it disabled so existing local/CI APK builds keep their current behavior.
+    // Release builds opt in by embedding the repository's EAS project ID.
+    updates: otaEnabled
+      ? {
+          enabled: true,
+          url: `https://u.expo.dev/${easProjectId}`,
+          requestHeaders: { "expo-channel-name": variant.updateChannel },
+          codeSigningCertificate: "./certs/ota-production.pem",
+          codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
+          checkAutomatically: "ON_ERROR_RECOVERY",
+          fallbackToCacheTimeout: 0,
+        }
+      : { enabled: false },
     ios: {
       bundleIdentifier: variant.iosBundleIdentifier,
       supportsTablet: true,
@@ -144,6 +174,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     extra: {
       appVariant,
+      ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
     },
   };
 };

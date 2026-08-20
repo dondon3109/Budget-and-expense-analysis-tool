@@ -37,12 +37,20 @@ part of this distribution channel.
 
 - Ship channel: website-linked Android APK. iOS distribution remains pending
   the separate Apple approval and signing work below.
-- Versions: `version: 0.1.0` with `runtimeVersion: { policy: "appVersion" }`;
-  each production release must build a matching embedded bundle so no
-  over-the-air update bypasses review.
+- Versions use `runtimeVersion: { policy: "appVersion" }`. A native release must
+  change the app version whenever its runtime changes. Compatible JavaScript
+  and bundled-asset fixes may then use the separately gated Expo OTA channel;
+  native dependencies, permissions, config plugins, Expo SDK changes, and
+  native source changes always require another signed APK/build.
+- The verified APK updater remains the native Android release and fallback
+  channel. OTA never downloads, verifies, or installs APK files.
 - Both platforms talk only to the existing Worker. Deploy the Worker before
   or independently of the app; mobile has no pinned server schema beyond the
   shared response contracts in this repository.
+
+The public `0.2.3-beta` APK predates `expo-updates`, so OTA publication remains
+blocked. Activation is deferred until the required paid EAS service and a later
+explicit signed APK complete the bootstrap in [`ota-updates.md`](ota-updates.md).
 
 ## Rollback plan
 
@@ -98,8 +106,8 @@ update in place.
 
 This release ships the secure in-app APK updater: startup and manual update
 checks, verified APK download, native package/signer gates, and the guided
-system installer handoff. OTA JavaScript updates are not part of this
-release.
+system installer handoff. OTA JavaScript updates are not part of this release;
+the later OTA implementation does not alter this updater.
 
 ## 0.2.2-beta assistant fixes release
 
@@ -137,3 +145,12 @@ progress without backpressuring the transfer near completion. Cancellation,
 strict download-host validation, redirect blocking, exact size and SHA-256
 checks, package/version inspection, and signing-certificate verification remain
 enforced before the system installer opens.
+
+## Future signed OTA bootstrap (deferred)
+
+The code, signing certificate, compatibility gates, and manual workflows are
+kept dormant for a future release. No version is reserved. When activation is
+approved, the new APK must retain the permanent APK signer, package ID, native
+streaming updater, and all existing size/hash/package/version/signer checks.
+It must embed the production EAS endpoint/channel and pinned OTA certificate,
+with `runtimeVersion` bound to `appVersion`.
