@@ -1,6 +1,6 @@
 # Mobile release and rollback plan
 
-Updated 2026-08-17. Status: current native Beta release plan. The website-linked
+Updated 2026-08-20. Status: current native Beta release plan. The website-linked
 Android Beta is the supported native mobile release; no app-store submission is
 part of this distribution channel.
 
@@ -48,9 +48,10 @@ part of this distribution channel.
   or independently of the app; mobile has no pinned server schema beyond the
   shared response contracts in this repository.
 
-The public `0.2.3-beta` APK predates `expo-updates`, so OTA publication remains
-blocked. Activation is deferred until the required paid EAS service and a later
-explicit signed APK complete the bootstrap in [`ota-updates.md`](ota-updates.md).
+The public `0.2.4-beta` APK includes the dormant `expo-updates` dependency, but
+was built without an EAS project ID, so it cannot receive OTA updates. Activation
+is deferred until the required EAS project/token and a later explicit signed APK
+complete the bootstrap in [`ota-updates.md`](ota-updates.md).
 
 ## Rollback plan
 

@@ -22,16 +22,16 @@ interface PackageManifest {
 }
 
 describe("Android release contract", () => {
-  it("keeps the mobile version sources synchronized for the 0.2.3-beta updater release", async () => {
+  it("keeps the mobile version sources synchronized for the 0.2.4-beta voice release", async () => {
     const mobilePackage = await json<PackageManifest>(resolve(mobileRoot, "package.json"));
     const appConfig = await text(resolve(mobileRoot, "app.config.ts"));
 
     // The build-time snapshot (androidRelease.json) is refreshed from the
     // published R2 object after the CI build produces its artifact checksums;
     // the authoritative mobile sources change together here.
-    expect(mobilePackage.version).toBe("0.2.3-beta");
-    expect(appConfig).toContain('version: "0.2.3-beta"');
-    expect(appConfig).toContain("versionCode: 20303");
+    expect(mobilePackage.version).toBe("0.2.4-beta");
+    expect(appConfig).toContain('version: "0.2.4-beta"');
+    expect(appConfig).toContain("versionCode: 20304");
     expect(ANDROID_RELEASE.packageId).toBe("site.zoption.android");
     expect(appConfig).toContain('name: "Zoption Beta"');
     expect(appConfig).toContain('androidPackage: "site.zoption.android"');
@@ -39,7 +39,7 @@ describe("Android release contract", () => {
 
   it("hosts the beta artifact on the Zoption R2 download domain", () => {
     expect(ANDROID_RELEASE.downloadPath).toBe(
-      "https://downloads.zoption.site/android/zoption-beta-0.2.3.apk",
+      "https://downloads.zoption.site/android/zoption-beta-0.2.4.apk",
     );
     // No checksum sidecar is published on R2; the APK checksum lives in
     // android/latest.json and is shown on the install page.
@@ -56,8 +56,8 @@ describe("Android release contract", () => {
   it("records exact immutable artifact metadata for integrity checks", () => {
     expect(ANDROID_RELEASE).toMatchObject({
       packageId: "site.zoption.android",
-      versionName: "0.2.3-beta",
-      versionCode: 20303,
+      versionName: "0.2.4-beta",
+      versionCode: 20304,
       targetApi: 36,
       reinstallRequired: false,
     });
