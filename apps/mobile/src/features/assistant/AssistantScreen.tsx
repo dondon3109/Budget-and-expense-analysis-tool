@@ -38,7 +38,6 @@ import {
 import {
   getAssistantVoicePreferences,
   grantAssistantVoiceConsent,
-  type AssistantSpeechVoice,
 } from "@/api/assistant-voice";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -71,9 +70,14 @@ import {
   AssistantUpgradeBanner,
   formatRecordingElapsed,
   MemoryPreferencesBlock,
+  VoiceModelField,
   VoiceRecordButton,
 } from "./assistant-ui";
-import { useAssistantRecorder, useSpokenReplies } from "./assistant-voice-hooks";
+import {
+  useAssistantRecorder,
+  useAssistantVoicePreview,
+  useSpokenReplies,
+} from "./assistant-voice-hooks";
 
 type AssistantView = "threads" | "chat";
 
@@ -242,6 +246,7 @@ export function AssistantScreen() {
     getAccessToken: session.getAccessToken,
     onError: handleVoiceError,
   });
+  const voicePreview = useAssistantVoicePreview({ getAccessToken: session.getAccessToken });
 
   const handleSend = useCallback(
     async (text?: string) => {
@@ -927,7 +932,7 @@ export function AssistantScreen() {
                   { id: "text", label: "Text only" },
                   {
                     id: "voice",
-                    label: "Spoken replies",
+                    label: "Voice + text",
                     detail: "Generated speech with each answer",
                   },
                 ]}
@@ -941,17 +946,16 @@ export function AssistantScreen() {
                   Spoken replies are unavailable in this environment.
                 </Text>
               ) : null}
-              <SelectionField
-                label="Voice"
-                value={voiceOptions.voice}
-                options={[
-                  { id: "default", label: "Default" },
-                  { id: "bright", label: "Bright" },
-                  { id: "energetic", label: "Energetic" },
-                ]}
-                placeholder="Default"
-                sheetTitle="Assistant voice"
-                onSelect={(value) => voiceOptions.setVoice(value as AssistantSpeechVoice)}
+              <VoiceModelField
+                voice={voiceOptions.voice}
+                disabled={!voicePreferences.speechAvailable}
+                previewingVoice={voicePreview.previewingVoice}
+                previewError={voicePreview.previewError}
+                onSelect={(voice) => {
+                  voicePreview.clearPreview();
+                  voiceOptions.setVoice(voice);
+                }}
+                onPreview={(voice) => void voicePreview.preview(voice)}
               />
               <SelectionField
                 label="Voice input"

@@ -1,4 +1,9 @@
-import { fetchMultipartWithTimeout, fetchWithTimeout, transcribeVoice } from "./assistant-voice";
+import {
+  fetchMultipartWithTimeout,
+  fetchWithTimeout,
+  previewAssistantSpeech,
+  transcribeVoice,
+} from "./assistant-voice";
 
 const token = "access-token";
 
@@ -192,5 +197,26 @@ describe("transcribeVoice error mapping", () => {
     ).rejects.toMatchObject({
       code: "session_expired",
     });
+  });
+});
+
+describe("previewAssistantSpeech", () => {
+  it("requests the authenticated curated preview for the selected voice", async () => {
+    const fetchMock = jest.fn(async () => new Response(new Uint8Array([1, 2, 3])));
+
+    const preview = await previewAssistantSpeech(
+      { accessToken: token, fetchImpl: fetchMock },
+      "bright",
+    );
+
+    expect(preview.bytes).toEqual(new Uint8Array([1, 2, 3]));
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url.endsWith("/api/app/assistant/voice/preview")).toBe(true);
+    expect(init.headers).toMatchObject({
+      Accept: "audio/mpeg",
+      Authorization: "Bearer access-token",
+      "Content-Type": "application/json",
+    });
+    expect(init.body).toBe(JSON.stringify({ voice: "bright" }));
   });
 });

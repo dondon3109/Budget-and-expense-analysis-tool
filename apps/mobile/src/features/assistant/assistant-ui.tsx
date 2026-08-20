@@ -3,6 +3,10 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { AssistantMemory } from "@zoption/shared";
+import {
+  assistantSpeechVoiceOptions,
+  type AssistantSpeechVoice,
+} from "@/api/assistant-voice";
 import { Button } from "@/ui/components/Button";
 import { Card } from "@/ui/components/Card";
 import { FormField } from "@/ui/components/FormField";
@@ -292,6 +296,56 @@ export function AssistantUpgradeBanner({
           </View>
         </View>
       </View>
+    </View>
+  );
+}
+
+export function VoiceModelField({
+  voice,
+  disabled,
+  previewingVoice,
+  previewError,
+  onSelect,
+  onPreview,
+}: {
+  voice: AssistantSpeechVoice;
+  disabled: boolean;
+  previewingVoice: AssistantSpeechVoice | null;
+  previewError: string | null;
+  onSelect: (voice: AssistantSpeechVoice) => void;
+  onPreview: (voice: AssistantSpeechVoice) => void;
+}) {
+  const theme = useZoptionTheme();
+  const selected = assistantSpeechVoiceOptions.find((option) => option.id === voice);
+  return (
+    <View className="gap-2">
+      <SelectionField
+        label="Voice and gender"
+        value={voice}
+        options={assistantSpeechVoiceOptions.map((option) => ({
+          id: option.id,
+          label: `${option.label} · ${option.gender}`,
+          detail: option.description,
+        }))}
+        placeholder="Default · Male"
+        sheetTitle="Choose a voice"
+        disabled={disabled}
+        onSelect={(value) => onSelect(value as AssistantSpeechVoice)}
+      />
+      <Button
+        accessibilityLabel={`Preview ${selected?.label ?? "selected"} voice`}
+        variant="secondary"
+        disabled={disabled}
+        loading={previewingVoice === voice}
+        onPress={() => onPreview(voice)}
+      >
+        Preview {selected?.label ?? "voice"}
+      </Button>
+      {previewError ? (
+        <Text accessibilityRole="alert" style={[typography.caption, { color: theme.colors.danger }]}>
+          {previewError}
+        </Text>
+      ) : null}
     </View>
   );
 }

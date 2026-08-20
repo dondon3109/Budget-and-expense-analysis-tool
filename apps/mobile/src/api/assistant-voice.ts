@@ -19,6 +19,36 @@ export interface AssistantVoiceApi {
 }
 
 const voiceFallback = "Voice mode could not be reached. Try again shortly.";
+const voicePreviewFallback = "The voice preview could not be prepared. Try again shortly.";
+
+export interface AssistantSpeechVoiceOption {
+  id: AssistantSpeechVoice;
+  label: string;
+  gender: "Female" | "Male";
+  description: string;
+}
+
+// Keep the mobile picker aligned with the curated models the Worker accepts.
+export const assistantSpeechVoiceOptions: readonly AssistantSpeechVoiceOption[] = [
+  {
+    id: "default",
+    label: "Default",
+    gender: "Male",
+    description: "Fish Audio’s balanced male voice.",
+  },
+  {
+    id: "bright",
+    label: "Bright",
+    gender: "Female",
+    description: "A bright, lively female voice.",
+  },
+  {
+    id: "energetic",
+    label: "Energetic",
+    gender: "Female",
+    description: "An upbeat, energetic female voice.",
+  },
+];
 
 export function getAssistantVoicePreferences(
   api: AssistantVoiceApi,
@@ -222,24 +252,27 @@ export async function transcribeVoice(
   return assistantVoiceTranscriptionResponseSchema.parse(await response.json());
 }
 
-export async function synthesizeAssistantSpeech(
+async function requestAssistantSpeech(
   api: AssistantVoiceApi,
-  messageId: string,
-  voice: AssistantSpeechVoice,
+  path: "/api/app/assistant/voice/speech" | "/api/app/assistant/voice/preview",
+  body: { messageId: string; voice: AssistantSpeechVoice } | { voice: AssistantSpeechVoice },
+  fallback: string,
+  emptyResponseMessage: string,
 ): Promise<{ bytes: Uint8Array; mimeType: "audio/mpeg" }> {
   const accessToken = api.accessToken;
   let response: Response;
   try {
     response = await fetchWithTimeout(
       api.fetchImpl ?? fetch,
-      publicConfig.apiUrl + "/api/app/assistant/voice/speech",
+      publicConfig.apiUrl + path,
       {
         method: "POST",
         headers: {
+          Accept: "audio/mpeg",
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ messageId, voice }),
+        body: JSON.stringify(body),
         signal: api.signal,
       },
     );
@@ -251,18 +284,45 @@ export async function synthesizeAssistantSpeech(
     throw mapApiError(
       response.status,
       (await response.json().catch(() => ({}))) as never,
-      voiceFallback,
+      fallback,
     );
   }
   const buffer = await response.arrayBuffer();
   if (buffer.byteLength === 0) {
     throw new ApiTransportError(
-      "No spoken reply was returned.",
+      emptyResponseMessage,
       "invalid_response",
       response.status,
     );
   }
   return { bytes: new Uint8Array(buffer), mimeType: "audio/mpeg" };
+}
+
+export function synthesizeAssistantSpeech(
+  api: AssistantVoiceApi,
+  messageId: string,
+  voice: AssistantSpeechVoice,
+): Promise<{ bytes: Uint8Array; mimeType: "audio/mpeg" }> {
+  return requestAssistantSpeech(
+    api,
+    "/api/app/assistant/voice/speech",
+    { messageId, voice },
+    voiceFallback,
+    "No spoken reply was returned.",
+  );
+}
+
+export function previewAssistantSpeech(
+  api: AssistantVoiceApi,
+  voice: AssistantSpeechVoice,
+): Promise<{ bytes: Uint8Array; mimeType: "audio/mpeg" }> {
+  return requestAssistantSpeech(
+    api,
+    "/api/app/assistant/voice/preview",
+    { voice },
+    voicePreviewFallback,
+    "No voice preview was returned.",
+  );
 }
 
 export { ApiTransportError };

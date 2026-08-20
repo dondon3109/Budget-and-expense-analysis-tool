@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ApiTransportError,
+  previewAssistantSpeech,
   synthesizeAssistantSpeech,
   transcribeVoice,
   type AssistantSpeechVoice,
@@ -211,6 +212,13 @@ export interface SpokenReplyController {
   listen: (messageId: string, voice: AssistantSpeechVoice) => Promise<void>;
 }
 
+export interface VoicePreviewController {
+  previewingVoice: AssistantSpeechVoice | null;
+  previewError: string | null;
+  preview: (voice: AssistantSpeechVoice) => Promise<void>;
+  clearPreview: () => void;
+}
+
 /**
  * Fetches a synthesized spoken reply from the Worker (Fish Audio) and plays it
  * through expo-audio. Generated audio is cached as a temporary file and is
@@ -257,4 +265,52 @@ export function useSpokenReplies({
   );
 
   return { playingMessageId, listen };
+}
+
+/**
+ * Plays the curated, non-financial sample returned by the voice preview
+ * endpoint. Samples remain temporary cache files and never join local records.
+ */
+export function useAssistantVoicePreview({
+  getAccessToken,
+}: {
+  getAccessToken: (refresh: boolean) => Promise<string>;
+}): VoicePreviewController {
+  const player = useAudioPlayer(null);
+  const [previewingVoice, setPreviewingVoice] = useState<AssistantSpeechVoice | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const clearPreview = useCallback(() => {
+    player.pause();
+    setPreviewingVoice(null);
+    setPreviewError(null);
+  }, [player]);
+
+  const preview = useCallback(
+    async (voice: AssistantSpeechVoice) => {
+      if (previewingVoice !== null) return;
+      setPreviewingVoice(voice);
+      setPreviewError(null);
+      try {
+        await setAudioModeAsync(playbackAudioMode);
+        const accessToken = await getAccessToken(false);
+        const { bytes } = await previewAssistantSpeech({ accessToken }, voice);
+        const file = new File(Paths.cache, "assistant-voice-preview.mp3");
+        file.write(bytes);
+        player.replace({ uri: file.uri });
+        player.play();
+      } catch (error) {
+        setPreviewError(
+          error instanceof ApiTransportError
+            ? error.message
+            : "The voice preview failed. Try again.",
+        );
+      } finally {
+        setPreviewingVoice(null);
+      }
+    },
+    [getAccessToken, player, previewingVoice],
+  );
+
+  return { previewingVoice, previewError, preview, clearPreview };
 }

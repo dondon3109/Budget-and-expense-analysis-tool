@@ -7,6 +7,7 @@ import {
   AssistantThreadRow,
   AssistantUpgradeBanner,
   formatRecordingElapsed,
+  VoiceModelField,
   VoiceRecordButton,
 } from "./assistant-ui";
 
@@ -174,5 +175,33 @@ describe("voice record button states", () => {
     await render(<VoiceRecordButton phase="requesting" onPress={onPress} />);
     const button = screen.getByRole("button", { name: "Allowing microphone access" });
     expect(button).toBeDisabled();
+  });
+});
+
+describe("voice model selection", () => {
+  it("uses the same labelled voice choices as the website and previews the selection", async () => {
+    const onSelect = jest.fn();
+    const onPreview = jest.fn();
+    await render(
+      <VoiceModelField
+        voice="bright"
+        disabled={false}
+        previewingVoice={null}
+        previewError={null}
+        onSelect={onSelect}
+        onPreview={onPreview}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Voice and gender, Bright · Female/ }),
+    ).toBeTruthy();
+    expect(screen.getByText("A bright, lively female voice.")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Preview Bright voice" }));
+    expect(onPreview).toHaveBeenCalledWith("bright");
+
+    await fireEvent.press(screen.getByRole("button", { name: /Voice and gender/ }));
+    await fireEvent.press(screen.getByRole("radio", { name: "Energetic · Female" }));
+    expect(onSelect).toHaveBeenCalledWith("energetic");
   });
 });
