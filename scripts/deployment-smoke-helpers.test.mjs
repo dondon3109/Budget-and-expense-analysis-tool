@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   assertDeploymentContentSecurityPolicy,
   assertFrontendAssetOrigins,
+  fetchFrontendScriptGraph,
 } from "./deployment-smoke-helpers.mjs";
 
 const apiUrl = "https://api.preview.example.com";
@@ -60,5 +61,37 @@ describe("deployment smoke origin checks", () => {
         },
       ),
     ).toThrow("expected Supabase origin");
+  });
+
+  it("walks the deployed JavaScript graph and rejects a missing lazy chunk", async () => {
+    const webUrl = "https://zoption.site";
+    const html = '<script type="module" src="/assets/index-new.js"></script>';
+    const fetchImpl = vi.fn(async (url) => {
+      if (url === `${webUrl}/assets/index-new.js`) {
+        return new Response('const lazy="/assets/lazy-new.js"', { status: 200 });
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    await expect(fetchFrontendScriptGraph(html, webUrl, fetchImpl)).rejects.toThrow(
+      `Frontend asset ${webUrl}/assets/lazy-new.js failed with HTTP 404.`,
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns the source of every available deployed JavaScript chunk", async () => {
+    const webUrl = "https://zoption.site";
+    const html = '<script type="module" src="/assets/index-new.js"></script>';
+    const fetchImpl = vi.fn(async (url) => {
+      if (url === `${webUrl}/assets/index-new.js`) {
+        return new Response('const lazy="/assets/lazy-new.js"', { status: 200 });
+      }
+      return new Response("const ready=true", { status: 200 });
+    });
+
+    await expect(fetchFrontendScriptGraph(html, webUrl, fetchImpl)).resolves.toEqual([
+      'const lazy="/assets/lazy-new.js"',
+      "const ready=true",
+    ]);
   });
 });

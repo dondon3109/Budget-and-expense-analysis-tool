@@ -2,6 +2,7 @@ import { assertPublicStructuredDataGraph } from "../apps/web/scripts/verify-prer
 import {
   assertDeploymentContentSecurityPolicy,
   assertFrontendAssetOrigins,
+  fetchFrontendScriptGraph,
 } from "./deployment-smoke-helpers.mjs";
 
 const webUrl = requiredUrl("WEB_URL");
@@ -32,28 +33,7 @@ async function expectResponse(label, url, init, validate) {
 }
 
 async function expectFrontendDeploymentOrigins(html) {
-  const pending = [...html.matchAll(/<script[^>]+src=["']([^"']+\.js)["']/g)].map(
-    (match) => new URL(match[1], webUrl).href,
-  );
-  const visited = new Set();
-  const sources = [];
-
-  while (pending.length > 0) {
-    const assetUrl = pending.pop();
-    if (!assetUrl || visited.has(assetUrl)) continue;
-    visited.add(assetUrl);
-    const response = await fetch(assetUrl);
-    if (!response.ok) throw new Error(`Frontend asset failed with HTTP ${response.status}.`);
-    const source = await response.text();
-    sources.push(source);
-    for (const match of source.matchAll(/["']([^"']+\.js)["']/g)) {
-      const assetPath = match[1];
-      if (!/^(?:\.\/|\/?assets\/)/.test(assetPath)) continue;
-      const baseUrl = assetPath.startsWith("./") ? assetUrl : `${webUrl}/`;
-      pending.push(new URL(assetPath, baseUrl).href);
-    }
-  }
-
+  const sources = await fetchFrontendScriptGraph(html, webUrl);
   assertFrontendAssetOrigins(sources, {
     apiUrl,
     expectedSupabaseUrl,

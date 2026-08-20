@@ -100,3 +100,37 @@ export function assertFrontendAssetOrigins(
     }
   }
 }
+
+/**
+ * Fetches the complete JavaScript chunk graph referenced by a deployed page.
+ * Pages can expose a new release marker before every immutable chunk has
+ * reached the same edge, so release propagation and smoke verification share
+ * this availability check.
+ */
+export async function fetchFrontendScriptGraph(html, webUrl, fetchImpl = fetch) {
+  const pending = [...html.matchAll(/<script[^>]+src=["']([^"']+\.js)["']/g)].map(
+    (match) => new URL(match[1], webUrl).href,
+  );
+  const visited = new Set();
+  const sources = [];
+
+  while (pending.length > 0) {
+    const assetUrl = pending.pop();
+    if (!assetUrl || visited.has(assetUrl)) continue;
+    visited.add(assetUrl);
+    const response = await fetchImpl(assetUrl, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Frontend asset ${assetUrl} failed with HTTP ${response.status}.`);
+    }
+    const source = await response.text();
+    sources.push(source);
+    for (const match of source.matchAll(/["']([^"']+\.js)["']/g)) {
+      const assetPath = match[1];
+      if (!/^(?:\.\/|\/?assets\/)/.test(assetPath)) continue;
+      const baseUrl = assetPath.startsWith("./") ? assetUrl : `${webUrl}/`;
+      pending.push(new URL(assetPath, baseUrl).href);
+    }
+  }
+
+  return sources;
+}

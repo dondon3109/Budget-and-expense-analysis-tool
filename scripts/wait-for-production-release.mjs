@@ -1,6 +1,8 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 
+import { fetchFrontendScriptGraph } from "./deployment-smoke-helpers.mjs";
+
 export function matchesDeploymentMarker(marker, expectedVersion) {
   return typeof marker === "object" && marker !== null && marker.appVersion === expectedVersion;
 }
@@ -17,6 +19,13 @@ async function main() {
     try {
       const response = await fetch(markerUrl, { cache: "no-store" });
       if (response.ok && matchesDeploymentMarker(await response.json(), expectedVersion)) {
+        const homeResponse = await fetch(`${webUrl}/?release_probe=${attempt}`, {
+          cache: "no-store",
+        });
+        if (!homeResponse.ok) {
+          throw new Error(`Production landing page failed with HTTP ${homeResponse.status}.`);
+        }
+        await fetchFrontendScriptGraph(await homeResponse.text(), webUrl);
         console.log(`Production Pages is serving v${expectedVersion}.`);
         return;
       }
