@@ -187,12 +187,15 @@ describe("R2 remote release metadata", () => {
   });
 
   it("keeps the official R2 snapshot downloadable while live metadata is in flight", () => {
-    vi.stubGlobal("fetch", vi.fn(() => new Promise<never>(() => undefined)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<never>(() => undefined)),
+    );
     renderInstallPage();
 
     expect(screen.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
       "href",
-      "https://downloads.zoption.site/android/zoption-beta-0.2.2.apk",
+      "https://downloads.zoption.site/android/zoption-beta-0.2.3.apk",
     );
     expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
   });
@@ -205,7 +208,10 @@ describe("R2 remote release metadata", () => {
     ["the remote shape is malformed", () => stubFetchJson({ version: 42 })],
     [
       "the download host is wrong",
-      () => stubFetchJson(remoteMetadata({ downloadUrl: "https://zoption.site/zoption-beta-0.2.0.apk" })),
+      () =>
+        stubFetchJson(
+          remoteMetadata({ downloadUrl: "https://zoption.site/zoption-beta-0.2.0.apk" }),
+        ),
     ],
     ["the APK checksum is invalid", () => stubFetchJson(remoteMetadata({ sha256: "deadbeef" }))],
     [
@@ -221,7 +227,7 @@ describe("R2 remote release metadata", () => {
       await waitFor(() =>
         expect(screen.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
           "href",
-          "https://downloads.zoption.site/android/zoption-beta-0.2.2.apk",
+          "https://downloads.zoption.site/android/zoption-beta-0.2.3.apk",
         ),
       );
       expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();

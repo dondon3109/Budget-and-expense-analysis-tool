@@ -1,21 +1,21 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.2-beta",
-  "versionCode": 20302,
-  "filename": "zoption-beta-0.2.2.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.2.apk",
-  "sha256": "9630a3dbb603104801ce63a8106be457e52680c88375811ef6b546bdd5b5cc5c",
-  "sizeBytes": 139035997,
-  "sizeLabel": "139,035,997 bytes (132.59 MiB)",
-  "releaseDate": "2026-08-19",
-  "releaseDateLabel": "August 19, 2026",
+  "versionName": "0.2.3-beta",
+  "versionCode": 20303,
+  "filename": "zoption-beta-0.2.3.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.3.apk",
+  "sha256": "5a90ebbb45076c5f8c726f17be13be8c1d1ba1b2b91ca30a6ca180e80bd5b978",
+  "sizeBytes": 139065005,
+  "sizeLabel": "139,065,005 bytes (132.62 MiB)",
+  "releaseDate": "2026-08-20",
+  "releaseDateLabel": "August 20, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Assistant: deleting a conversation is now reliable and no longer reports 'not found' when it is already gone.",
-    "Assistant voice: transcription errors and timeouts now show accurate messages instead of a misleading 'connect to the internet' error.",
-    "Deleting an already-absent conversation is treated as the desired end state, with tenant isolation unchanged."
+    "Android updates now stream the APK entirely in native code for faster, steadier downloads.",
+    "Download progress remains responsive while limiting UI updates to four times per second.",
+    "Cancellation and the existing size, hash, package, version, and signing-certificate checks remain enforced."
   ]
 }

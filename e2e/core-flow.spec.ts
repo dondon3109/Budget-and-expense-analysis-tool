@@ -112,7 +112,9 @@ test("Android download page renders as a public deep link with exact release gui
   await page.goto("/install");
 
   await expect(page).toHaveURL(/\/install$/);
-  await expect(page.getByRole("heading", { name: "Download Zoption Beta for Android." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Download Zoption Beta for Android." }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Four steps from download to app icon." }),
   ).toBeVisible();
@@ -121,7 +123,9 @@ test("Android download page renders as a public deep link with exact release gui
     "https://downloads.zoption.site/zoption-beta-0.2.0.apk",
   );
   await expect(page.getByText(/does not receive bank credentials/i)).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Offline-first with a connected sync" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Offline-first with a connected sync" }),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Read the privacy policy" })).toHaveAttribute(
     "href",
     "/privacy-policy",
@@ -131,7 +135,9 @@ test("Android download page renders as a public deep link with exact release gui
   await expect(page).toHaveURL(/\/privacy-policy$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/install$/);
-  await expect(page.getByRole("heading", { name: "Download Zoption Beta for Android." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Download Zoption Beta for Android." }),
+  ).toBeVisible();
 });
 
 test("Android download page keeps the official R2 snapshot when live metadata is missing", async ({
@@ -145,7 +151,7 @@ test("Android download page keeps the official R2 snapshot when live metadata is
 
   await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
     "href",
-    "https://downloads.zoption.site/android/zoption-beta-0.2.2.apk",
+    "https://downloads.zoption.site/android/zoption-beta-0.2.3.apk",
   );
   await expect(page.getByText(/temporarily unavailable/i)).toHaveCount(0);
 });

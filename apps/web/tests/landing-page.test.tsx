@@ -128,14 +128,14 @@ describe("landing page", () => {
     renderLanding();
 
     const installation = screen.getByRole("region", { name: "Take Zoption Beta to Android." });
-    expect(within(installation).getAllByText(/same account and workspace/i).length).toBeGreaterThan(0);
+    expect(within(installation).getAllByText(/same account and workspace/i).length).toBeGreaterThan(
+      0,
+    );
     expect(within(installation).getByText(/offline-first entry/i)).toBeInTheDocument();
     expect(
       within(installation).getByText(/not distributed through Google Play/i),
     ).toBeInTheDocument();
-    expect(
-      within(installation).getByText(/uninstall it first/i),
-    ).toBeInTheDocument();
+    expect(within(installation).getByText(/uninstall it first/i)).toBeInTheDocument();
     expect(
       within(installation).getByRole("link", { name: "Download Android APK" }),
     ).toHaveAttribute("href", "/install");
@@ -148,7 +148,7 @@ describe("landing page", () => {
     renderLanding();
 
     const installation = screen.getByRole("region", { name: "Take Zoption Beta to Android." });
-    expect(within(installation).getByText(/139,035,997 bytes/i)).toBeInTheDocument();
+    expect(within(installation).getByText(/139,065,005 bytes/i)).toBeInTheDocument();
     expect(within(installation).queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
     expect(
       within(installation).getByRole("link", { name: "Download Android APK" }),
