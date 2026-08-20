@@ -1,7 +1,6 @@
 import type {
   AccountBalanceSummaryItem,
   AccountInput,
-  AccountInterestUpdate,
   CashflowTrend,
   CashflowTrendView,
   DashboardSummary,
@@ -48,7 +47,6 @@ import {
   getTransferFeeInsight,
   isBillingEnforcementError,
   updateAccount,
-  updateAccountInterest,
 } from "../lib/api";
 import {
   currentMonth,
@@ -275,9 +273,26 @@ export function DashboardPage() {
       await refreshAccountData();
     },
   });
-  const renameAccountMutation = useMutation({
-    mutationFn: (args: { id: string; name: string; type: AccountInput["type"] }) =>
-      updateAccount(workspace, { id: args.id, input: { name: args.name, type: args.type } }),
+  const updateAccountMutation = useMutation({
+    mutationFn: (args: {
+      id: string;
+      name: string;
+      type: AccountInput["type"];
+      interest?: {
+        enabled: boolean;
+        annualRateBasisPoints: number;
+        frequency: InterestFrequency;
+        payDay: number | null;
+      };
+    }) =>
+      updateAccount(workspace, {
+        id: args.id,
+        input: {
+          name: args.name,
+          type: args.type,
+          ...(args.interest !== undefined && { interest: args.interest }),
+        },
+      }),
     onSuccess: async () => {
       setEditingAccount(undefined);
       await refreshAccountData();
@@ -290,15 +305,6 @@ export function DashboardPage() {
       await refreshAccountData();
     },
   });
-  const updateInterestMutation = useMutation({
-    mutationFn: (args: { id: string; input: AccountInterestUpdate }) =>
-      updateAccountInterest(workspace, args),
-    onSuccess: async () => {
-      setEditingAccount(undefined);
-      await refreshAccountData();
-    },
-  });
-
   if (isError) {
     return (
       <AppShell>
@@ -334,7 +340,7 @@ export function DashboardPage() {
   const empty =
     transactionHistoryQuery.data !== undefined &&
     isDashboardEmpty(data, cashflowTrendQuery.data, transactionHistoryQuery.data.total);
-  const accountActionError = renameAccountMutation.error ?? removeAccountMutation.error;
+  const accountActionError = updateAccountMutation.error ?? removeAccountMutation.error;
   const transferFeeInsight = transferFeeInsightQuery.data;
   const transferNoun =
     transferFeeInsight?.totalFeeChargedTransfers === 1 ? "transfer" : "transfers";
@@ -661,7 +667,7 @@ export function DashboardPage() {
                   className="icon-button"
                   type="button"
                   onClick={() => setEditingAccount(undefined)}
-                  disabled={renameAccountMutation.isPending || updateInterestMutation.isPending}
+                  disabled={updateAccountMutation.isPending}
                   aria-label="Close edit account"
                 >
                   <X size={19} />
@@ -671,26 +677,27 @@ export function DashboardPage() {
                 className="transaction-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  renameAccountMutation.mutate({
+                  updateAccountMutation.mutate({
                     id: editingAccount.id,
                     name: editName,
                     type: editType,
+                    ...(editType === "savings" && isPro
+                      ? {
+                          interest: {
+                            enabled: interestEnabled,
+                            annualRateBasisPoints:
+                              interestEnabled && Number(interestRate) > 0
+                                ? Math.round(Number(interestRate) * 100)
+                                : 0,
+                            frequency: interestEnabled ? interestFrequency : "monthly",
+                            payDay:
+                              interestEnabled && interestFrequency !== "daily"
+                                ? interestPayDay
+                                : null,
+                          },
+                        }
+                      : {}),
                   });
-                  if (editType === "savings" && isPro) {
-                    updateInterestMutation.mutate({
-                      id: editingAccount.id,
-                      input: {
-                        enabled: interestEnabled,
-                        annualRateBasisPoints:
-                          interestEnabled && Number(interestRate) > 0
-                            ? Math.round(Number(interestRate) * 100)
-                            : 0,
-                        frequency: interestEnabled ? interestFrequency : "monthly",
-                        payDay:
-                          interestEnabled && interestFrequency !== "daily" ? interestPayDay : null,
-                      },
-                    });
-                  }
                 }}
               >
                 <fieldset>
@@ -817,18 +824,11 @@ export function DashboardPage() {
                   <button
                     className="button primary"
                     type="submit"
-                    disabled={renameAccountMutation.isPending || updateInterestMutation.isPending}
+                    disabled={updateAccountMutation.isPending}
                   >
-                    {renameAccountMutation.isPending || updateInterestMutation.isPending
-                      ? "Saving…"
-                      : "Save"}
+                    {updateAccountMutation.isPending ? "Saving…" : "Save"}
                   </button>
                 </div>
-                {updateInterestMutation.error && (
-                  <p className="form-error" role="alert">
-                    {updateInterestMutation.error.message}
-                  </p>
-                )}
               </form>
             </section>
           </div>

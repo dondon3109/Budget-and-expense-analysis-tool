@@ -1,4 +1,8 @@
-import { accountInputSchema, accountUpdateSchema, interestUpdateSchema } from "@zoption/shared";
+import {
+  accountInputSchema,
+  accountUpdateWithInterestSchema,
+  interestUpdateSchema,
+} from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { AccountRepository } from "../db/accounts";
@@ -36,12 +40,12 @@ export function createAccountRoutes(
 
   routes.patch("/:id", async (context) => {
     await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
-    const parsed = accountUpdateSchema.safeParse(await readJson(context));
+    const parsed = accountUpdateWithInterestSchema.safeParse(await readJson(context));
     if (!parsed.success) {
       throw new HttpError(
         400,
         "invalid_request",
-        "Enter a valid account name.",
+        "Check the account and interest details.",
         parsed.error.flatten(),
       );
     }

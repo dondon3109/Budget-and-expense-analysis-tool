@@ -1645,6 +1645,90 @@ describe("durable local savings-interest mutations", () => {
     });
   });
 
+  it("stores a savings conversion and its interest settings in one local mutation", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createAccount({ name: "Travel fund", type: "checking" });
+    const interest = {
+      enabled: true,
+      annualRateBasisPoints: 425,
+      frequency: "monthly" as const,
+      payDay: 10,
+    };
+
+    await mutations.updateAccount(id, {
+      name: "Travel fund",
+      type: "savings",
+      interest,
+    });
+
+    expect(
+      database.native.prepare("SELECT type, interest_json FROM accounts WHERE id = ?").get(id),
+    ).toEqual({ type: "savings", interest_json: JSON.stringify(interest) });
+    const batch = (await mutations.getPushBatch())!;
+    expect(batch.operations).toMatchObject([
+      {
+        entityType: "account",
+        entityId: id,
+        operationType: "create",
+        payload: { name: "Travel fund", type: "savings", interest },
+      },
+    ]);
+  });
+
+  it("allows an interest-only plan rejection to be retried after Pro access changes", async () => {
+    const mutations = repository(database);
+    const id = await mutations.createAccount({ name: "Emergency fund", type: "checking" });
+    const interest = {
+      enabled: true,
+      annualRateBasisPoints: 500,
+      frequency: "monthly" as const,
+      payDay: 15,
+    };
+    await mutations.updateAccount(id, {
+      name: "Emergency fund",
+      type: "savings",
+      interest,
+    });
+    const rejected = (await mutations.getPushBatch())!;
+    await mutations.applyPushResponse(rejected, {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: rejected.operations[0]!.operationId,
+          entityType: "account",
+          entityId: id,
+          status: "rejected",
+          code: "plan_limit",
+          message: "Automatic interest requires Zoption Pro.",
+        },
+      ],
+    });
+
+    await mutations.retryAccountInterestSync(id);
+
+    expect(
+      database.native
+        .prepare(
+          "SELECT state, attempt_count, last_error_code FROM sync_outbox WHERE entity_id = ?",
+        )
+        .get(id),
+    ).toEqual({ state: "pending", attempt_count: 0, last_error_code: null });
+    expect(database.native.prepare("SELECT sync_state FROM accounts WHERE id = ?").get(id)).toEqual(
+      {
+        sync_state: "pending",
+      },
+    );
+    const retried = (await mutations.getPushBatch())!;
+    expect(retried.operations).toMatchObject([
+      {
+        entityType: "account",
+        entityId: id,
+        operationType: "create",
+        payload: { name: "Emergency fund", type: "savings", interest },
+      },
+    ]);
+  });
+
   it("rejects interest settings on non-savings accounts", async () => {
     const mutations = repository(database);
     const id = await mutations.createAccount({ name: "Cash purse", type: "cash" });

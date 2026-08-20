@@ -8,6 +8,7 @@ import {
   categoryInputSchema,
   interestAmountMinor,
   interestFrequencies,
+  interestUpdateSchema,
   nextInterestCreditDate,
   type AccountInterestUpdate,
   type AccountType,
@@ -48,11 +49,12 @@ const categoryOptions: Array<{ id: TransactionKind; label: string }> = [
   { id: "transfer", label: "Transfer" },
 ];
 
-const frequencyOptions: Array<{ id: InterestFrequency; label: string }> =
-  interestFrequencies.map((frequency) => ({
+const frequencyOptions: Array<{ id: InterestFrequency; label: string }> = interestFrequencies.map(
+  (frequency) => ({
     id: frequency,
     label: frequency === "daily" ? "Daily" : frequency === "monthly" ? "Monthly" : "Yearly",
-  }));
+  }),
+);
 
 const payDayOptions = Array.from({ length: 31 }, (_, index) => ({
   id: String(index + 1),
@@ -118,8 +120,8 @@ function InterestProjection({
         </Text>
       )}
       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-        The server credits interest automatically when it is due. This device never writes
-        interest transactions.
+        The server credits interest automatically when it is due. This device never writes interest
+        transactions.
       </Text>
     </View>
   );
@@ -149,7 +151,6 @@ export function ReferenceEditorScreen() {
   const [interestPayDay, setInterestPayDay] = useState("15");
   const [interestInitialized, setInterestInitialized] = useState(false);
   const [interestMessage, setInterestMessage] = useState<string | null>(null);
-  const [savingInterest, setSavingInterest] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -204,6 +205,7 @@ export function ReferenceEditorScreen() {
     category?.syncState === "failed" ||
     category?.syncState === "conflicted";
   const permanent = Boolean(account?.system || category?.system);
+  const retryableInterestFailure = entityType === "account" && account?.syncState === "failed";
 
   const save = async (): Promise<void> => {
     if (!local.workspace || saving || blocked || unavailable) return;
@@ -216,8 +218,31 @@ export function ReferenceEditorScreen() {
           setMessage("Enter an account name and choose its type.");
           return;
         }
-        if (id) await local.workspace.transactionMutations.updateAccount(id, parsed.data);
-        else await local.workspace.transactionMutations.createAccount(parsed.data);
+        if (id) {
+          let interest: AccountInterestUpdate | undefined;
+          if (accountType === "savings" && interestInitialized) {
+            const parsedInterest = interestUpdateSchema.safeParse({
+              enabled: interestEnabled,
+              annualRateBasisPoints:
+                interestEnabled && Number(interestRate.trim()) > 0
+                  ? Math.round(Number(interestRate.trim()) * 100)
+                  : 0,
+              frequency: interestFrequency,
+              payDay: interestFrequency === "daily" ? null : Number(interestPayDay),
+            });
+            if (!parsedInterest.success) {
+              setInterestMessage("Enter a rate above 0% and a valid pay day.");
+              return;
+            }
+            interest = parsedInterest.data;
+          }
+          await local.workspace.transactionMutations.updateAccount(id, {
+            ...parsed.data,
+            ...(interest !== undefined && { interest }),
+          });
+        } else {
+          await local.workspace.transactionMutations.createAccount(parsed.data);
+        }
       } else if (entityType === "category") {
         const parsed = categoryInputSchema.safeParse({ name, kind: categoryKind, color });
         if (!parsed.success) {
@@ -246,30 +271,22 @@ export function ReferenceEditorScreen() {
     }
   };
 
-  const saveInterest = async (): Promise<void> => {
-    if (!local.workspace || !editing || !id || savingInterest || blocked) return;
-    const rate = Number(interestRate.trim());
-    const settings: AccountInterestUpdate = {
-      enabled: interestEnabled,
-      annualRateBasisPoints:
-        interestEnabled && rate > 0 ? Math.round(rate * 100) : 0,
-      frequency: interestFrequency,
-      payDay: interestFrequency === "daily" ? null : Number(interestPayDay),
-    };
-    setInterestMessage(null);
-    setSavingInterest(true);
+  const retryInterestSync = async (): Promise<void> => {
+    if (!local.workspace || !id || !retryableInterestFailure || saving) return;
+    setMessage(null);
+    setSaving(true);
     try {
-      await local.workspace.transactionMutations.updateAccountInterest(id, settings);
+      await local.workspace.transactionMutations.retryAccountInterestSync(id);
       router.back();
       sync.retry();
     } catch (error) {
-      setInterestMessage(
+      setMessage(
         error instanceof Error
           ? error.message
-          : "The interest settings could not be saved to encrypted local storage.",
+          : "The interest synchronization could not be retried from encrypted local storage.",
       );
     } finally {
-      setSavingInterest(false);
+      setSaving(false);
     }
   };
 
@@ -353,9 +370,15 @@ export function ReferenceEditorScreen() {
                 Synchronization needs review
               </Text>
               <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                Zoption preserved this item, but editing is disabled until account/category recovery
-                is available.
+                {retryableInterestFailure
+                  ? "If this interest setting was rejected while a recent Pro change was still processing, retry it after confirming your plan."
+                  : "Zoption preserved this item, but editing is disabled until account/category recovery is available."}
               </Text>
+              {retryableInterestFailure ? (
+                <Button disabled={saving} loading={saving} onPress={() => void retryInterestSync()}>
+                  Retry interest sync
+                </Button>
+              ) : null}
             </Card>
           ) : null}
           {permanent ? (
@@ -398,77 +421,92 @@ export function ReferenceEditorScreen() {
                     <Text style={[typography.headline, { color: theme.colors.text }]}>
                       Automatic interest
                     </Text>
-                    <SelectionField
-                      label="Earn automatic interest"
-                      value={interestEnabled ? "on" : "off"}
-                      options={[
-                        { id: "off", label: "Off" },
-                        { id: "on", label: "On" },
-                      ]}
-                      placeholder="Choose a setting"
-                      sheetTitle="Automatic interest"
-                      disabled={savingInterest || blocked}
-                      onSelect={(value) => {
-                        setInterestEnabled(value === "on");
-                        setInterestMessage(null);
-                      }}
-                    />
-                    {interestEnabled ? (
+                    {!interestInitialized ? (
+                      <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                        Reading saved interest settings from encrypted storage.
+                      </Text>
+                    ) : (
                       <View className="gap-4">
-                        <FormField
-                          accessibilityHint="The annual interest rate as a percentage"
-                          editable={!savingInterest && !blocked}
-                          error={
-                            interestRate.trim() && Number.isNaN(Number(interestRate))
-                              ? "Use a number like 5.00."
-                              : undefined
-                          }
-                          hint="Annual interest rate (%), for example 5.00"
-                          inputMode="decimal"
-                          keyboardType="decimal-pad"
-                          label="Annual interest rate"
-                          onChangeText={(value) => {
-                            setInterestRate(value);
-                            setInterestMessage(null);
-                          }}
-                          placeholder="5.00"
-                          value={interestRate}
-                        />
                         <SelectionField
-                          label="Interest received"
-                          value={interestFrequency}
-                          options={frequencyOptions}
-                          placeholder="Choose a frequency"
-                          sheetTitle="Interest frequency"
-                          disabled={savingInterest || blocked}
+                          label="Earn automatic interest"
+                          value={interestEnabled ? "on" : "off"}
+                          options={[
+                            { id: "off", label: "Off" },
+                            { id: "on", label: "On" },
+                          ]}
+                          placeholder="Choose a setting"
+                          sheetTitle="Automatic interest"
+                          disabled={saving || blocked}
                           onSelect={(value) => {
-                            setInterestFrequency(value as InterestFrequency);
+                            setInterestEnabled(value === "on");
                             setInterestMessage(null);
                           }}
                         />
-                        {interestFrequency !== "daily" ? (
-                          <SelectionField
-                            label="Pay day"
-                            value={interestPayDay}
-                            options={payDayOptions}
-                            placeholder="Choose a day"
-                            sheetTitle="Pay day"
-                            disabled={savingInterest || blocked}
-                            onSelect={(value) => {
-                              setInterestPayDay(value);
-                              setInterestMessage(null);
-                            }}
-                          />
-                        ) : null}
-                        <InterestProjection
-                          balanceMinor={modelingState.modeling?.balanceMinor ?? null}
-                          annualRateBasisPoints={
-                            Number(interestRate) > 0 ? Math.round(Number(interestRate) * 100) : 0
-                          }
-                          currency={modelingState.modeling?.currency ?? "PHP"}
-                          frequency={interestFrequency}
-                          payDay={interestFrequency === "daily" ? null : Number(interestPayDay)}
-                        />
+                        {interestEnabled ? (
+                          <>
+                            <FormField
+                              accessibilityHint="The annual interest rate as a percentage"
+                              editable={!saving && !blocked}
+                              error={
+                                interestRate.trim() && Number.isNaN(Number(interestRate))
+                                  ? "Use a number like 5.00."
+                                  : undefined
+                              }
+                              hint="Annual interest rate (%), for example 5.00"
+                              inputMode="decimal"
+                              keyboardType="decimal-pad"
+                              label="Annual interest rate"
+                              onChangeText={(value) => {
+                                setInterestRate(value);
+                                setInterestMessage(null);
+                              }}
+                              placeholder="5.00"
+                              value={interestRate}
+                            />
+                            <SelectionField
+                              label="Interest received"
+                              value={interestFrequency}
+                              options={frequencyOptions}
+                              placeholder="Choose a frequency"
+                              sheetTitle="Interest frequency"
+                              disabled={saving || blocked}
+                              onSelect={(value) => {
+                                setInterestFrequency(value as InterestFrequency);
+                                setInterestMessage(null);
+                              }}
+                            />
+                            {interestFrequency !== "daily" ? (
+                              <SelectionField
+                                label="Pay day"
+                                value={interestPayDay}
+                                options={payDayOptions}
+                                placeholder="Choose a day"
+                                sheetTitle="Pay day"
+                                disabled={saving || blocked}
+                                onSelect={(value) => {
+                                  setInterestPayDay(value);
+                                  setInterestMessage(null);
+                                }}
+                              />
+                            ) : null}
+                            <InterestProjection
+                              balanceMinor={modelingState.modeling?.balanceMinor ?? null}
+                              annualRateBasisPoints={
+                                Number(interestRate) > 0
+                                  ? Math.round(Number(interestRate) * 100)
+                                  : 0
+                              }
+                              currency={modelingState.modeling?.currency ?? "PHP"}
+                              frequency={interestFrequency}
+                              payDay={interestFrequency === "daily" ? null : Number(interestPayDay)}
+                            />
+                          </>
+                        ) : (
+                          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                            Interest settings save with this account. The server confirms Pro access
+                            when synchronization runs.
+                          </Text>
+                        )}
                         {interestMessage ? (
                           <Text
                             accessibilityRole="alert"
@@ -477,20 +515,7 @@ export function ReferenceEditorScreen() {
                             {interestMessage}
                           </Text>
                         ) : null}
-                        <Button
-                          disabled={blocked}
-                          loading={savingInterest}
-                          onPress={() => void saveInterest()}
-                          variant="secondary"
-                        >
-                          Save interest
-                        </Button>
                       </View>
-                    ) : (
-                      <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                        Automatic interest is a Zoption Pro feature. The server checks your plan
-                        when synchronization runs.
-                      </Text>
                     )}
                   </Card>
                 ) : null}
@@ -533,7 +558,7 @@ export function ReferenceEditorScreen() {
                 {message}
               </Text>
             ) : null}
-            <Button disabled={blocked} loading={saving} onPress={() => void save()}>
+            <Button disabled={blocked || saving} loading={saving} onPress={() => void save()}>
               {editing ? "Save changes" : `Add ${entityType}`}
             </Button>
             {editing && !permanent ? (

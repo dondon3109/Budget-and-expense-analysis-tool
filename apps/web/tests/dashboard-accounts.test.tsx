@@ -491,24 +491,22 @@ describe("Profile dashboard account management", () => {
     await waitFor(() =>
       expect(apiMocks.updateAccount).toHaveBeenCalledWith(
         { key: "user:user-1", userId: "user-1" },
-        { id: "bank", input: { name: "Bank", type: "savings" } },
-      ),
-    );
-    await waitFor(() =>
-      expect(apiMocks.updateAccountInterest).toHaveBeenCalledWith(
-        { key: "user:user-1", userId: "user-1" },
         {
           id: "bank",
           input: {
-            enabled: true,
-            annualRateBasisPoints: 500,
-            frequency: "monthly",
-            payDay: 15,
+            name: "Bank",
+            type: "savings",
+            interest: {
+              enabled: true,
+              annualRateBasisPoints: 500,
+              frequency: "monthly",
+              payDay: 15,
+            },
           },
         },
       ),
     );
-    expect(apiMocks.updateAccountInterest).toHaveBeenCalled();
+    expect(apiMocks.updateAccountInterest).not.toHaveBeenCalled();
   });
 
   it("keeps interest settings hidden behind a Pro callout for free users", async () => {

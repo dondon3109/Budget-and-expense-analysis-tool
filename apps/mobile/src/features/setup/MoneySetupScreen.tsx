@@ -186,7 +186,6 @@ export function MoneySetupScreen() {
                       title={account.name}
                       detail={`${accountTypeLabel[account.type]} · ${account.currency}${account.system ? " · Permanent" : ""}`}
                       state={account.syncState}
-                      disabled={account.syncState === "failed"}
                       onPress={() =>
                         account.syncState === "conflicted"
                           ? openConflict("account", account.id)

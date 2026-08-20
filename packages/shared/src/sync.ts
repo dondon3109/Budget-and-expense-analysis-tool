@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import {
   accountInputSchema,
-  accountUpdateSchema,
+  accountUpdateWithInterestSchema,
   interestUpdateSchema,
   calendarEventInputSchema,
   calendarEventUpdateSchema,
@@ -61,9 +61,7 @@ export const mobileSyncAccountCreateSchema = accountInputSchema
   .extend({ interest: interestUpdateSchema.optional() })
   .strict();
 
-export const mobileSyncAccountUpdateSchema = accountUpdateSchema
-  .extend({ interest: interestUpdateSchema.optional() })
-  .strict();
+export const mobileSyncAccountUpdateSchema = accountUpdateWithInterestSchema;
 
 export const mobileSyncAccountSnapshotSchema = z
   .object({

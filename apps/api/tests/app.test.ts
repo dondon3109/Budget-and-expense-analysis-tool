@@ -2,7 +2,7 @@ import {
   type AccountBalanceUpdate,
   type AccountInterestUpdate,
   type AccountRecord,
-  type AccountUpdate,
+  type AccountUpdateWithInterest,
   type AssistantTurnResult,
   type BudgetMonthPlan,
   type CalendarEventMonth,
@@ -256,7 +256,7 @@ function createAccountStore(): AccountRepository {
         _env: Bindings,
         _tenantId: string,
         _accountId: string,
-        input: AccountUpdate,
+        input: AccountUpdateWithInterest,
       ): Promise<AccountRecord> => ({
         ...accountItem,
         ...input,
@@ -1105,19 +1105,27 @@ describe("API foundation", () => {
     expect(accounts.list).toHaveBeenCalledWith(undefined, TENANT_ID);
   });
 
-  it("updates an account's name and type together", async () => {
+  it("updates an account type and interest settings atomically", async () => {
     const accounts = createAccountStore();
     const app = createTestApp({ accounts });
+    const interest = {
+      enabled: true,
+      annualRateBasisPoints: 500,
+      frequency: "monthly" as const,
+      payDay: 15,
+    };
     const response = await app.request("/api/app/accounts/account-1", {
       method: "PATCH",
       headers: privateHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ name: "Maya Wallet", type: "savings" }),
+      body: JSON.stringify({ name: "Maya Wallet", type: "savings", interest }),
     });
     expect(response.status).toBe(200);
     expect(accounts.update).toHaveBeenCalledWith(undefined, TENANT_ID, "account-1", {
       name: "Maya Wallet",
       type: "savings",
+      interest,
     });
+    expect(accounts.updateInterest).not.toHaveBeenCalled();
   });
 
   it("updates interest settings on a savings account", async () => {

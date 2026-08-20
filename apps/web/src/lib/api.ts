@@ -2,7 +2,7 @@ import type {
   AccountInput,
   AccountInterestUpdate,
   AccountRecord,
-  AccountUpdate,
+  AccountUpdateWithInterest,
   AssistantMemory,
   AssistantMemoryPreferences,
   AssistantMemoryPreferencesUpdate,
@@ -785,7 +785,7 @@ export function createAccount(
 
 export function updateAccount(
   workspace: AuthenticatedWorkspace,
-  args: { id: string; input: AccountUpdate },
+  args: { id: string; input: AccountUpdateWithInterest },
 ): Promise<AccountRecord> {
   return requestJson(workspace, `/api/app/accounts/${args.id}`, {
     method: "PATCH",

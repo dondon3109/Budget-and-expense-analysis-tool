@@ -209,6 +209,17 @@ export const interestUpdateSchema = z
 
 export type AccountInterestUpdate = z.infer<typeof interestUpdateSchema>;
 
+/**
+ * An account edit may change its type and automatic-interest settings together.
+ * Keeping them in one payload prevents a savings conversion from racing a
+ * follow-up interest update.
+ */
+export const accountUpdateWithInterestSchema = accountUpdateSchema
+  .extend({ interest: interestUpdateSchema.optional() })
+  .strict();
+
+export type AccountUpdateWithInterest = z.infer<typeof accountUpdateWithInterestSchema>;
+
 // Backwards-compatible type export for integrations compiled against the previous API.
 export type AccountBalanceUpdate = { balanceMinor: number | null; balanceAsOf: string | null };
 

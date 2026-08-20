@@ -2,7 +2,7 @@ import type {
   AccountInput,
   AccountInterestUpdate,
   AccountRecord,
-  AccountUpdate,
+  AccountUpdateWithInterest,
   Currency,
 } from "@zoption/shared";
 import { and, asc, eq, sql } from "drizzle-orm";
@@ -19,7 +19,7 @@ export interface AccountRepository {
     env: Bindings,
     tenantId: string,
     accountId: string,
-    input: AccountUpdate,
+    input: AccountUpdateWithInterest,
   ): Promise<AccountRecord>;
   remove?(env: Bindings, tenantId: string, accountId: string): Promise<void>;
   setBalance?(
@@ -132,6 +132,23 @@ async function ensureUniqueName(
   }
 }
 
+function interestColumns(input: AccountInterestUpdate) {
+  if (input.enabled) {
+    return {
+      interestEnabled: true,
+      annualRateBasisPoints: input.annualRateBasisPoints,
+      interestFrequency: input.frequency,
+      interestPayDay: input.frequency === "daily" ? null : input.payDay,
+    };
+  }
+  return {
+    interestEnabled: false,
+    annualRateBasisPoints: null,
+    interestFrequency: null,
+    interestPayDay: null,
+  };
+}
+
 export const accountRepository: AccountRepository = {
   async list(env, tenantId) {
     const rows = await drizzle(env.DB)
@@ -169,11 +186,16 @@ export const accountRepository: AccountRepository = {
       throw new HttpError(409, "system_account_protected", "Permanent accounts cannot be renamed.");
     }
     await ensureUniqueName(env, tenantId, input.name, accountId);
+    const nextType = input.type ?? existing.type;
+    if (input.interest !== undefined && nextType !== "savings") {
+      throw new HttpError(400, "interest_not_for_account_type", "Only savings accounts earn interest.");
+    }
     await drizzle(env.DB)
       .update(accounts)
       .set({
         name: input.name,
         ...(input.type !== undefined && { type: input.type }),
+        ...(input.interest !== undefined && interestColumns(input.interest)),
         updatedAt: sql`(datetime('now'))`,
       })
       .where(and(eq(accounts.id, accountId), eq(accounts.tenantId, tenantId)));
@@ -198,24 +220,15 @@ export const accountRepository: AccountRepository = {
     const existing = await findAccount(env, tenantId, accountId);
     if (!existing) throw new HttpError(404, "account_not_found", "The account was not found.");
     if (existing.type !== "savings") {
-      throw new HttpError(400, "interest_not_for_account_type", "Only savings accounts earn interest.");
-    }
-    const set: Record<string, unknown> = {
-      interestEnabled: input.enabled,
-      updatedAt: sql`(datetime('now'))`,
-    };
-    if (input.enabled) {
-      set.annualRateBasisPoints = input.annualRateBasisPoints;
-      set.interestFrequency = input.frequency;
-      set.interestPayDay = input.frequency === "daily" ? null : input.payDay;
-    } else {
-      set.annualRateBasisPoints = null;
-      set.interestFrequency = null;
-      set.interestPayDay = null;
+      throw new HttpError(
+        400,
+        "interest_not_for_account_type",
+        "Only savings accounts earn interest.",
+      );
     }
     await drizzle(env.DB)
       .update(accounts)
-      .set(set)
+      .set({ ...interestColumns(input), updatedAt: sql`(datetime('now'))` })
       .where(and(eq(accounts.id, accountId), eq(accounts.tenantId, tenantId)));
     const updated = await findAccount(env, tenantId, accountId);
     if (!updated) throw new Error("Updated account could not be read back.");

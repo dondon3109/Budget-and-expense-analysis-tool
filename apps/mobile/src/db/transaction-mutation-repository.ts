@@ -5,7 +5,7 @@ import { z } from "zod";
 import {
   MOBILE_SYNC_PROTOCOL_VERSION,
   accountInputSchema,
-  accountUpdateSchema,
+  accountUpdateWithInterestSchema,
   buildTransferLegs,
   calendarEventInputSchema,
   categoryInputSchema,
@@ -41,7 +41,7 @@ import {
   type MobileSyncPushResponse,
   type AccountInput,
   type AccountInterestUpdate,
-  type AccountUpdate,
+  type AccountUpdateWithInterest,
   type CalendarEventInput,
   type CategoryInput,
   type CategoryUpdate,
@@ -224,6 +224,7 @@ const outboxRowSchema = z.object({
   base_json: z.string(),
   state: z.enum(["pending", "sending", "retryable", "failed", "conflicted"]),
   attempt_count: z.number().int().nonnegative(),
+  last_error_code: z.string().nullable().optional(),
 });
 const outboxGraphRowSchema = z.object({
   operation_id: uuidSchema,
@@ -1210,7 +1211,8 @@ export class LocalTransactionMutationRepository {
   private async currentOutbox(entityType: MobileSyncPushOperation["entityType"], entityId: string) {
     const row = await this.database.getFirstAsync(
       `SELECT operation_id, idempotency_key, entity_type, entity_id, operation_type,
-        base_revision, payload_json, dependency_ids_json, base_json, state, attempt_count
+        base_revision, payload_json, dependency_ids_json, base_json, state, attempt_count,
+        last_error_code
        FROM sync_outbox WHERE entity_type = ? AND entity_id = ?`,
       entityType,
       entityId,
@@ -1317,8 +1319,8 @@ export class LocalTransactionMutationRepository {
     });
   }
 
-  updateAccount(id: string, value: AccountUpdate): Promise<void> {
-    const update = accountUpdateSchema.parse(value);
+  updateAccount(id: string, value: AccountUpdateWithInterest): Promise<void> {
+    const update = accountUpdateWithInterestSchema.parse(value);
     return this.writer.run(async () => {
       await this.database.withTransactionAsync(async () => {
         const current = await this.currentAccount(id);
@@ -1352,7 +1354,16 @@ export class LocalTransactionMutationRepository {
           name: update.name,
           type: update.type ?? current.type,
         };
-        if (pending?.success && pending.data.interest !== undefined) {
+        if (update.interest !== undefined && next.type !== "savings") {
+          throw new LocalMutationError("Only savings accounts earn interest.", "mutation_blocked");
+        }
+        if (update.interest !== undefined) {
+          next.interest = update.interest;
+        } else if (
+          next.type === "savings" &&
+          pending?.success &&
+          pending.data.interest !== undefined
+        ) {
           next.interest = pending.data.interest;
         }
         if (outbox) {
@@ -1377,12 +1388,73 @@ export class LocalTransactionMutationRepository {
             await this.nextSequence(),
           );
         }
+        if (update.interest !== undefined) {
+          await this.database.runAsync(
+            "UPDATE accounts SET name = ?, type = ?, interest_json = ?, sync_state = 'pending' WHERE id = ?",
+            next.name,
+            next.type,
+            JSON.stringify({
+              enabled: update.interest.enabled,
+              annualRateBasisPoints: update.interest.enabled
+                ? update.interest.annualRateBasisPoints
+                : null,
+              frequency: update.interest.enabled ? update.interest.frequency : null,
+              payDay: update.interest.enabled ? update.interest.payDay : null,
+            }),
+            id,
+          );
+        } else {
+          await this.database.runAsync(
+            "UPDATE accounts SET name = ?, type = ?, sync_state = 'pending' WHERE id = ?",
+            next.name,
+            next.type,
+            id,
+          );
+        }
+      });
+    });
+  }
+
+  /** Requeues a rejected interest change after the user has confirmed their Pro access. */
+  retryAccountInterestSync(id: string): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        const current = await this.currentAccount(id);
+        const outbox = await this.currentOutbox("account", id);
+        if (
+          current.sync_state !== "failed" ||
+          !outbox ||
+          outbox.state !== "failed" ||
+          outbox.last_error_code !== "plan_limit"
+        ) {
+          throw new LocalMutationError(
+            "This account is not waiting to retry an interest setting.",
+            "mutation_blocked",
+          );
+        }
+        let payload: unknown;
+        try {
+          payload = JSON.parse(outbox.payload_json) as unknown;
+        } catch {
+          throw new LocalMutationError("The encrypted outbox is invalid.", "invalid_outbox");
+        }
+        const parsed = mobileSyncAccountUpdateSchema.safeParse(payload);
+        if (
+          !parsed.success ||
+          parsed.data.interest === undefined ||
+          (parsed.data.type ?? current.type) !== "savings"
+        ) {
+          throw new LocalMutationError(
+            "This account is not waiting to retry an interest setting.",
+            "mutation_blocked",
+          );
+        }
         await this.database.runAsync(
-          "UPDATE accounts SET name = ?, type = ?, sync_state = 'pending' WHERE id = ?",
-          next.name,
-          next.type,
-          id,
+          `UPDATE sync_outbox SET state = 'pending', attempt_count = 0,
+            next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
+          outbox.operation_id,
         );
+        await this.database.runAsync("UPDATE accounts SET sync_state = 'pending' WHERE id = ?", id);
       });
     });
   }
