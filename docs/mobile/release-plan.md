@@ -48,7 +48,7 @@ part of this distribution channel.
   or independently of the app; mobile has no pinned server schema beyond the
   shared response contracts in this repository.
 
-The public `0.2.4-beta` APK includes the dormant `expo-updates` dependency, but
+The public `0.2.5-beta` APK includes the dormant `expo-updates` dependency, but
 was built without an EAS project ID, so it cannot receive OTA updates. Activation
 is deferred until the required EAS project/token and a later explicit signed APK
 complete the bootstrap in [`ota-updates.md`](ota-updates.md).
@@ -158,6 +158,19 @@ file-backed multipart path. Android voice uploads no longer use React Native's
 legacy URI-shaped FormData part or attach the AbortSignal that can reject the
 request locally before it reaches Zoption. Connectivity, timeout, cancellation,
 package, version, and signing-certificate checks remain enforced.
+
+## 0.2.5-beta AI-assisted entry release
+
+`versionName` `0.2.5-beta`, `versionCode` `20305`. The permanent Zoption signer
+is unchanged, so `reinstallRequired` stays `false` and Android can update in
+place from `0.2.4-beta`.
+
+This release adds review-first voice transaction entry and PDF statement import
+previews. It keeps the existing import validation and deduplication flow, deletes
+the selected recording and statement source files from the device cache after AI
+processing completes or fails, and improves receipt itemization, discount
+reconciliation, and multi-transaction saving. No AI-derived entry is saved until
+the user reviews and commits it.
 
 ## Future signed OTA bootstrap (deferred)
 
