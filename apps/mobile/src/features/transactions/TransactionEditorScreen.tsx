@@ -34,6 +34,7 @@ import {
   type TransactionFormKind,
   type TransactionFormValues,
 } from "./transaction-form";
+import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
 
 const emptyForm: TransactionFormValues = {
   kind: "expense",
@@ -381,6 +382,46 @@ export function TransactionEditorScreen() {
                 saving.
               </Text>
             </Card>
+          ) : null}
+
+          {!editing ? (
+            <TransactionVoiceEntry
+              disabled={!hasChoices || saving || mutationBlocked}
+              onDraft={(draft) => {
+                const nextKind = draft.kind;
+                const matchingCategory = formData.data?.categories.find(
+                  (category) =>
+                    category.kind === nextKind &&
+                    category.name.trim().toLocaleLowerCase("en") ===
+                      draft.categoryName?.trim().toLocaleLowerCase("en"),
+                );
+                const fallbackCategory = formData.data?.categories.find(
+                  (category) => category.kind === nextKind && !category.pending,
+                );
+                const activeAccounts =
+                  formData.data?.accounts.filter((account) => !account.pending) ?? [];
+                const fromAccount =
+                  activeAccounts.find((account) => account.id === values.accountId) ??
+                  activeAccounts[0];
+                setValues((current) => ({
+                  ...current,
+                  kind: nextKind,
+                  accountId: fromAccount?.id ?? current.accountId,
+                  toAccountId:
+                    nextKind === "transfer"
+                      ? (activeAccounts.find((account) => account.id !== fromAccount?.id)?.id ?? "")
+                      : "",
+                  categoryId: matchingCategory?.id ?? fallbackCategory?.id ?? current.categoryId,
+                  date: draft.date,
+                  description: draft.description,
+                  amount: formatMinorForInput(draft.amountMinor),
+                  transferFee: "",
+                  currency: draft.currency,
+                }));
+                setErrors({});
+                setMessage(null);
+              }}
+            />
           ) : null}
 
           <KindSelector

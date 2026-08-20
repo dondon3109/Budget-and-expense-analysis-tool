@@ -305,6 +305,18 @@ export const receiptDraftSchema = z
     currency: z.literal("PHP"),
     kind: z.enum(transactionKinds),
     categoryName: z.string().trim().min(1).max(80).optional(),
+    items: z
+      .array(
+        z
+          .object({
+            description: z.string().trim().min(1).max(160),
+            amountMinor: z.number().int().positive(),
+            categoryName: z.string().trim().min(1).max(80).optional(),
+          })
+          .strict(),
+      )
+      .max(30)
+      .optional(),
     rawText: z.string().max(6_000),
   })
   .strict()
@@ -317,6 +329,18 @@ export const receiptDraftSchema = z
       });
     }
   });
+
+export const transactionVoiceDraftSchema = z
+  .object({
+    transcript: z.string().trim().min(1).max(20_000),
+    description: z.string().trim().min(1).max(240),
+    date: isoDateSchema,
+    amountMinor: z.number().int().positive(),
+    currency: z.literal("PHP"),
+    kind: z.enum(transactionKinds),
+    categoryName: z.string().trim().min(1).max(80).optional(),
+  })
+  .strict();
 
 export const assistantSpeechVoiceSchema = z.enum(assistantSpeechVoices);
 
@@ -1052,9 +1076,7 @@ export const billingSummaryResponseSchema = z
     plan: z.enum(["free", "zoption_pro"]),
     entitlementSource: z.enum(["paypal", "platform_admin", "sponsored"]).nullable(),
     provider: z.enum(["paypal"]).nullable(),
-    status: z
-      .enum(["active", "trialing", "past_due", "paused", "canceled"])
-      .nullable(),
+    status: z.enum(["active", "trialing", "past_due", "paused", "canceled"]).nullable(),
     interval: z.enum(["month", "year"]).nullable(),
     currentPeriodEndsAt: z.iso.datetime().nullable(),
     scheduledChangeAt: z.iso.datetime().nullable(),
@@ -1077,9 +1099,7 @@ export const billingSummaryResponseSchema = z
   })
   .strict();
 
-export const billingCheckoutResponseSchema = z
-  .object({ approvalUrl: z.string().url() })
-  .strict();
+export const billingCheckoutResponseSchema = z.object({ approvalUrl: z.string().url() }).strict();
 
 export const billingCancelResponseSchema = z
   .object({ cancellationRequested: z.literal(true) })

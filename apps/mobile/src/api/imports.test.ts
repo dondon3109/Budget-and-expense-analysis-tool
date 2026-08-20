@@ -1,4 +1,18 @@
-import { ImportTransportError, commitImport, previewImport } from "./imports";
+import { ImportTransportError, commitImport, previewImport, previewPdfImport } from "./imports";
+
+const mockDelete = jest.fn();
+
+jest.mock("expo-file-system", () => ({
+  File: class MockExpoFile extends Blob {
+    constructor(uri: string) {
+      super([uri], { type: "application/pdf" });
+    }
+
+    delete() {
+      mockDelete();
+    }
+  },
+}));
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -16,8 +30,24 @@ const validPreview = {
   rejectedCount: 1,
   duplicateCount: 0,
   rows: [
-    { rowNumber: 2, status: "ready", date: "2026-07-20", description: "Groceries", amountMinor: -125050, kind: "expense", errors: [] },
-    { rowNumber: 3, status: "ready", date: "2026-07-21", description: "Salary", amountMinor: 800000, kind: "income", errors: [] },
+    {
+      rowNumber: 2,
+      status: "ready",
+      date: "2026-07-20",
+      description: "Groceries",
+      amountMinor: -125050,
+      kind: "expense",
+      errors: [],
+    },
+    {
+      rowNumber: 3,
+      status: "ready",
+      date: "2026-07-21",
+      description: "Salary",
+      amountMinor: 800000,
+      kind: "income",
+      errors: [],
+    },
     { rowNumber: 4, status: "invalid", errors: ["The date is invalid."] },
   ],
 };
@@ -30,6 +60,8 @@ const previewInput = {
 };
 
 describe("mobile import transport", () => {
+  beforeEach(() => mockDelete.mockClear());
+
   it("previews and decodes the server response", async () => {
     const fetchMock = jest.fn(async () => jsonResponse(validPreview));
     const fetchImpl = fetchMock as unknown as typeof fetch;
@@ -52,6 +84,40 @@ describe("mobile import transport", () => {
     await expect(
       previewImport({ accessToken: "token", input: previewInput, fetchImpl }),
     ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("sends a PDF for the same server-side preview contract", async () => {
+    const fetchMock = jest.fn(async () =>
+      jsonResponse({ ...validPreview, fileName: "statement.pdf" }),
+    );
+    const preview = await previewPdfImport({
+      accessToken: "token",
+      file: { uri: "file:///statement.pdf", fileName: "statement.pdf" },
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(preview.fileName).toBe("statement.pdf");
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url.endsWith("/api/app/entry/pdf-preview")).toBe(true);
+    expect(init.headers).toMatchObject({ Authorization: "Bearer token" });
+    expect((init.body as FormData).get("pdf")).toBeInstanceOf(Blob);
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells the caller when PDF AI-entry consent is required", async () => {
+    const fetchImpl = jest.fn(async () =>
+      jsonResponse(
+        { error: "entry_consent_required", message: "Accept the AI entry notice first." },
+        409,
+      ),
+    ) as unknown as typeof fetch;
+    await expect(
+      previewPdfImport({
+        accessToken: "token",
+        file: { uri: "file:///statement.pdf", fileName: "statement.pdf" },
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({ code: "entry_consent_required" });
+    expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
   it("maps 401 responses to session expiry", async () => {

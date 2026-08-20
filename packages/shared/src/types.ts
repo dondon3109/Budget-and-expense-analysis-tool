@@ -596,13 +596,32 @@ export interface AssistantVoiceTranscription {
   languageCode?: string;
 }
 
-export const CURRENT_RECEIPT_CONSENT_VERSION = 1;
+/** Covers in-flight AI processing of receipt photos, statement PDFs, and voice entries. */
+export const CURRENT_RECEIPT_CONSENT_VERSION = 2;
 
 export interface ReceiptPreferences {
   enabled: boolean;
   consentedAt: string | null;
   consentVersion: number;
   visionModel: string;
+}
+
+/** A purchasable line read from a receipt. Amounts are always positive centavos. */
+export interface ReceiptLineItem {
+  description: string;
+  amountMinor: number;
+  categoryName?: string;
+}
+
+/** A review-only transaction draft parsed from a spoken entry. */
+export interface TransactionVoiceDraft {
+  transcript: string;
+  description: string;
+  date: string;
+  amountMinor: number;
+  currency: "PHP";
+  kind: TransactionKind;
+  categoryName?: string;
 }
 
 export interface ReceiptDraft {
@@ -612,6 +631,8 @@ export interface ReceiptDraft {
   currency: "PHP";
   kind: TransactionKind;
   categoryName?: string;
+  /** Omitted by earlier API deployments; an empty list means no line could be read confidently. */
+  items?: ReceiptLineItem[];
   rawText: string;
 }
 

@@ -12,12 +12,13 @@ export const MAX_IMPORT_FILE_BYTES = 5_000_000;
 export const MAX_CSV_FILE_BYTES = 1_000_000;
 export const MAX_IMPORT_ROWS = 500;
 
-export type ImportFileKind = "csv" | "workbook" | "unsupported";
+export type ImportFileKind = "csv" | "workbook" | "pdf" | "unsupported";
 
 export function importFileKind(fileName: string): ImportFileKind {
   const normalized = fileName.trim().toLowerCase();
   if (normalized.endsWith(".csv") || normalized.endsWith(".txt")) return "csv";
   if (normalized.endsWith(".xlsx") || normalized.endsWith(".xls")) return "workbook";
+  if (normalized.endsWith(".pdf")) return "pdf";
   return "unsupported";
 }
 
@@ -54,10 +55,7 @@ export interface MappingProblem {
  * a network round trip. The server re-validates every request and remains the
  * authority.
  */
-export function mappingProblems(
-  state: ImportMappingState,
-  headers: string[],
-): MappingProblem[] {
+export function mappingProblems(state: ImportMappingState, headers: string[]): MappingProblem[] {
   const mapping = state.mapping;
   const problems: MappingProblem[] = [];
   const usesAmount = Boolean(mapping.amount);
@@ -112,9 +110,7 @@ export function buildImportPreviewRequest(
   };
   const parsed = importPreviewRequestSchema.safeParse(input);
   if (!parsed.success) {
-    throw new Error(
-      "The import setup is incomplete. Check the mapped columns and try again.",
-    );
+    throw new Error("The import setup is incomplete. Check the mapped columns and try again.");
   }
   return parsed.data;
 }

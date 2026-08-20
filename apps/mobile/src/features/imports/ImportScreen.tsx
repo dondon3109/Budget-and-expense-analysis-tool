@@ -16,7 +16,7 @@ import {
 import { useMemo, useState } from "react";
 import { FlatList, Pressable, Text, View, type ColorValue } from "react-native";
 
-import { ImportTransportError, commitImport, previewImport } from "@/api/imports";
+import { ImportTransportError, commitImport, previewImport, previewPdfImport } from "@/api/imports";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
@@ -52,6 +52,7 @@ const pickerTypes = [
   "text/comma-separated-values",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
+  "application/pdf",
   "application/octet-stream",
 ];
 
@@ -82,6 +83,7 @@ export function ImportScreen() {
   const [result, setResult] = useState<{ importedCount: number; rejectedCount: number } | null>(
     null,
   );
+  const [needsAiEntryConsent, setNeedsAiEntryConsent] = useState(false);
 
   const withToken = async <T,>(operation: (token: string) => Promise<T>): Promise<T> => {
     try {
@@ -108,7 +110,9 @@ export function ImportScreen() {
       await readFile(asset.name, asset.uri, asset.size ?? 0);
     } catch (readError) {
       setError(
-        readError instanceof Error ? readError.message : "The file could not be opened on this device.",
+        readError instanceof Error
+          ? readError.message
+          : "The file could not be opened on this device.",
       );
     }
   };
@@ -116,7 +120,7 @@ export function ImportScreen() {
   const readFile = async (name: string, uri: string, size: number): Promise<void> => {
     const kind = importFileKind(name);
     if (kind === "unsupported") {
-      setError("Choose a CSV, XLSX, or XLS file.");
+      setError("Choose a CSV, XLSX, XLS, or PDF file.");
       return;
     }
     if (size > MAX_IMPORT_FILE_BYTES) {
@@ -125,6 +129,10 @@ export function ImportScreen() {
     }
     if (kind === "csv" && size > MAX_CSV_FILE_BYTES) {
       setError("CSV files must be 1 MB or smaller.");
+      return;
+    }
+    if (kind === "pdf") {
+      await previewPdfFile(name, uri);
       return;
     }
     setBusy(true);
@@ -136,9 +144,31 @@ export function ImportScreen() {
         readCsv(name, new TextDecoder("utf-8").decode(bytes));
       }
     } catch (readError) {
-      setError(
-        readError instanceof Error ? readError.message : "The file could not be read.",
+      setError(readError instanceof Error ? readError.message : "The file could not be read.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const previewPdfFile = async (name: string, uri: string): Promise<void> => {
+    setBusy(true);
+    setError(null);
+    setNeedsAiEntryConsent(false);
+    try {
+      const next = await withToken((accessToken) =>
+        previewPdfImport({ accessToken, file: { uri, fileName: name } }),
       );
+      setFileName(name);
+      setFileKind("pdf");
+      setPreview(next);
+      setOverrides(new Map());
+      setStep("preview");
+    } catch (previewError) {
+      setNeedsAiEntryConsent(
+        previewError instanceof ImportTransportError &&
+          previewError.code === "entry_consent_required",
+      );
+      setError(previewError instanceof Error ? previewError.message : "The PDF preview failed.");
     } finally {
       setBusy(false);
     }
@@ -237,20 +267,13 @@ export function ImportScreen() {
     setError(null);
     setBusy(true);
     try {
-      const input = buildImportPreviewRequest(
-        fileName,
-        csvText,
-        headerRowNumber,
-        mappingState,
-      );
+      const input = buildImportPreviewRequest(fileName, csvText, headerRowNumber, mappingState);
       const next = await withToken((token) => previewImport({ accessToken: token, input }));
       setPreview(next);
       setOverrides(new Map());
       setStep("preview");
     } catch (previewError) {
-      setError(
-        previewError instanceof Error ? previewError.message : "The import preview failed.",
-      );
+      setError(previewError instanceof Error ? previewError.message : "The import preview failed.");
     } finally {
       setBusy(false);
     }
@@ -264,7 +287,8 @@ export function ImportScreen() {
       const categoryOverrides: { rowNumber: number; categoryId: string }[] = [];
       const kindOverrides: { rowNumber: number; kind: "expense" | "income" }[] = [];
       for (const [rowNumber, override] of overrides) {
-        if (override.categoryId) categoryOverrides.push({ rowNumber, categoryId: override.categoryId });
+        if (override.categoryId)
+          categoryOverrides.push({ rowNumber, categoryId: override.categoryId });
         if (override.kind) kindOverrides.push({ rowNumber, kind: override.kind });
       }
       const next = await withToken((token) =>
@@ -358,8 +382,8 @@ export function ImportScreen() {
                 Import from a bank file
               </Text>
               <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-                Choose a CSV, XLSX, or XLS statement. Zoption detects the headers, maps the
-                columns, flags duplicates, and shows every row before saving anything.
+                Choose a CSV, XLSX, XLS, or PDF statement. Zoption detects the rows, flags
+                duplicates, and shows every transaction before saving anything.
               </Text>
               <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                 Template: Date, Description, Amount, Type, Category — one row per transaction.
@@ -383,8 +407,9 @@ export function ImportScreen() {
                 size={18}
               />
               <Text style={[typography.caption, { color: theme.colors.textMuted, flex: 1 }]}>
-                Imports need a connection and are processed on Zoption's servers. The
-                imported rows never touch this device before you confirm them.
+                CSV and spreadsheets are read on this device. PDFs are sent only after the AI entry
+                notice, processed in-flight, then shown through the same duplicate-aware preview
+                before you confirm.
               </Text>
             </View>
           </Card>
@@ -535,8 +560,8 @@ export function ImportScreen() {
                 {preview.rejectedCount} invalid
               </Text>
               <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                Duplicate rows are skipped and invalid rows are not imported. Tap a row to
-                fix its category or type. Nothing is saved until you confirm.
+                Duplicate rows are skipped and invalid rows are not imported. Tap a row to fix its
+                category or type. Nothing is saved until you confirm.
               </Text>
             </View>
           </Card>
@@ -546,7 +571,10 @@ export function ImportScreen() {
             data={preview.rows.slice(0, MAX_IMPORT_ROWS)}
             keyExtractor={(row) => String(row.rowNumber)}
             ListHeaderComponent={() => (
-              <View style={{ flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.xs }}>                <Text style={[typography.caption, { color: theme.colors.textMuted, flex: 3 }]}>
+              <View
+                style={{ flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.xs }}
+              >
+                <Text style={[typography.caption, { color: theme.colors.textMuted, flex: 3 }]}>
                   Transaction
                 </Text>
                 <Text style={[typography.caption, { color: theme.colors.textMuted, flex: 2 }]}>
@@ -561,7 +589,9 @@ export function ImportScreen() {
               const override = overrides.get(item.rowNumber);
               return (
                 <Pressable
-                  accessibilityLabel={"Import row " + item.rowNumber + ": " + (item.description ?? "")}
+                  accessibilityLabel={
+                    "Import row " + item.rowNumber + ": " + (item.description ?? "")
+                  }
                   accessibilityHint="Opens category and type corrections"
                   onPress={() => setEditingRow(item)}
                   style={({ pressed }) => ({
@@ -576,10 +606,7 @@ export function ImportScreen() {
                   })}
                 >
                   <View style={{ flex: 3, minWidth: 0 }}>
-                    <Text
-                      numberOfLines={1}
-                      style={[typography.body, { color: theme.colors.text }]}
-                    >
+                    <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
                       {item.description ?? "Row " + item.rowNumber}
                     </Text>
                     {item.date ? (
@@ -606,9 +633,7 @@ export function ImportScreen() {
                         }
                       />
                     ) : (
-                      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                        —
-                      </Text>
+                      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>—</Text>
                     )}
                   </View>
                   <View
@@ -684,15 +709,17 @@ export function ImportScreen() {
 
       {error ? (
         <View className="w-full gap-3">
-          <Text
-            accessibilityRole="alert"
-            style={[typography.body, { color: theme.colors.danger }]}
-          >
+          <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.danger }]}>
             {error}
           </Text>
           <Button variant="secondary" onPress={retryCurrentStep}>
             Retry
           </Button>
+          {needsAiEntryConsent ? (
+            <Button variant="quiet" onPress={() => router.push("/(app)/receipt-scan")}>
+              Review AI entry notice
+            </Button>
+          ) : null}
         </View>
       ) : null}
 
@@ -705,10 +732,7 @@ export function ImportScreen() {
           {editingRow && editingRow.errors.length > 0 ? (
             <View className="gap-1">
               {editingRow.errors.map((rowError) => (
-                <Text
-                  key={rowError}
-                  style={[typography.caption, { color: theme.colors.danger }]}
-                >
+                <Text key={rowError} style={[typography.caption, { color: theme.colors.danger }]}>
                   {rowError}
                 </Text>
               ))}

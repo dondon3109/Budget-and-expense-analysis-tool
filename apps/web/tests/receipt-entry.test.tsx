@@ -58,7 +58,7 @@ const categories: CategoryRecord[] = [
 const consentedPreferences = {
   enabled: true,
   consentedAt: "2026-08-13T00:00:00.000Z",
-  consentVersion: 1,
+  consentVersion: 2,
   visionModel: "@cf/meta/llama-3.2-11b-vision-instruct",
 };
 
@@ -115,8 +115,10 @@ describe("ReceiptEntry", () => {
   it("shows the one-time consent notice before any capture UI", async () => {
     renderEntry();
 
-    expect(await screen.findByText("Snap a receipt. You approve every field.")).toBeInTheDocument();
-    expect(screen.getByText("Photos are never stored")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Use AI to draft. You approve every field."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Source files are never stored")).toBeInTheDocument();
     expect(screen.queryByLabelText("Choose receipt photo")).not.toBeInTheDocument();
     expect(apiMocks.extractReceipt).not.toHaveBeenCalled();
   });
@@ -124,9 +126,7 @@ describe("ReceiptEntry", () => {
   it("enables capture after the user accepts the notice", async () => {
     renderEntry();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Accept and enable receipt scanning" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Accept and enable AI entry" }));
 
     expect(await screen.findByLabelText("Choose receipt photo")).toBeInTheDocument();
     expect(apiMocks.grantReceiptConsent).toHaveBeenCalledOnce();

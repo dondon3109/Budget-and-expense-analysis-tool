@@ -2500,6 +2500,72 @@ export class LocalTransactionMutationRepository {
     });
   }
 
+  /** Writes one ordinary transaction while the caller owns the SQLite transaction. */
+  private async createNonTransfer(input: NonTransferInput): Promise<string> {
+    const dependencyIds = await validateLocalReferences(this.database, input, true);
+    await this.clientId();
+    const transactionId = uuidSchema.parse(this.randomUuid());
+    const operationId = uuidSchema.parse(this.randomUuid());
+    const idempotencyKey = uuidSchema.parse(this.randomUuid());
+    const sequence = await this.nextSequence();
+    await this.database.runAsync(
+      `INSERT INTO transactions (
+        id, account_id, category_id, date, description, amount_minor, currency, kind,
+        notes, server_revision, server_updated_at, deleted_at, sync_state
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, 'pending')`,
+      transactionId,
+      input.accountId,
+      input.categoryId,
+      input.date,
+      input.description,
+      normalizeSignedAmount(input.amountMinor, input.kind),
+      input.currency,
+      input.kind,
+      input.notes || null,
+    );
+    await this.database.runAsync(
+      `INSERT INTO sync_outbox (
+        operation_id, idempotency_key, entity_type, entity_id, operation_type,
+        base_revision, payload_json, dependency_ids_json, base_json, created_sequence
+      ) VALUES (?, ?, 'transaction', ?, 'create', 0, ?, ?, '{}', ?)`,
+      operationId,
+      idempotencyKey,
+      transactionId,
+      JSON.stringify(input),
+      JSON.stringify(dependencyIds),
+      sequence,
+    );
+    return transactionId;
+  }
+
+  /**
+   * Persists a reviewed receipt's entries as one local operation: either every
+   * line and its outbox record exist, or none do.
+   */
+  createTransactions(values: NonTransferInput[]): Promise<string[]> {
+    const inputs = z
+      .array(transactionInputSchema)
+      .min(1, "Add at least one receipt item.")
+      .max(30, "A receipt can contain at most 30 items.")
+      .parse(values)
+      .map((input) => {
+        if (input.kind === "transfer") {
+          throw new LocalMutationError(
+            "Receipt items must be income or expense transactions.",
+            "mutation_blocked",
+          );
+        }
+        return input;
+      });
+    return this.writer.run(async () => {
+      const transactionIds: string[] = [];
+      await this.database.withTransactionAsync(async () => {
+        for (const input of inputs) transactionIds.push(await this.createNonTransfer(input));
+      });
+      return transactionIds;
+    });
+  }
+
   createTransaction(value: TransactionInput): Promise<string> {
     const input = transactionInputSchema.parse(value);
     return this.writer.run(async () => {
@@ -2551,40 +2617,7 @@ export class LocalTransactionMutationRepository {
           transactionId = fromId;
           return;
         }
-        const nonTransfer = asNonTransfer(input);
-        const dependencyIds = await validateLocalReferences(this.database, nonTransfer, true);
-        await this.clientId();
-        transactionId = uuidSchema.parse(this.randomUuid());
-        const operationId = uuidSchema.parse(this.randomUuid());
-        const idempotencyKey = uuidSchema.parse(this.randomUuid());
-        const sequence = await this.nextSequence();
-        await this.database.runAsync(
-          `INSERT INTO transactions (
-            id, account_id, category_id, date, description, amount_minor, currency, kind,
-            notes, server_revision, server_updated_at, deleted_at, sync_state
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, 'pending')`,
-          transactionId,
-          nonTransfer.accountId,
-          nonTransfer.categoryId,
-          nonTransfer.date,
-          nonTransfer.description,
-          normalizeSignedAmount(nonTransfer.amountMinor, nonTransfer.kind),
-          nonTransfer.currency,
-          nonTransfer.kind,
-          nonTransfer.notes || null,
-        );
-        await this.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'transaction', ?, 'create', 0, ?, ?, '{}', ?)`,
-          operationId,
-          idempotencyKey,
-          transactionId,
-          JSON.stringify(nonTransfer),
-          JSON.stringify(dependencyIds),
-          sequence,
-        );
+        transactionId = await this.createNonTransfer(asNonTransfer(input));
       });
       return transactionId;
     });

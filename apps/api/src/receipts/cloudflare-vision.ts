@@ -11,7 +11,15 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const BINARY_CHUNK_SIZE = 32_768;
-const MAX_RESPONSE_CHARACTERS = 8_000;
+const MAX_RESPONSE_CHARACTERS = 12_000;
+
+const candidateItemSchema = z
+  .object({
+    description: z.string().optional(),
+    amountMinor: z.number().int().optional(),
+    categoryName: z.string().optional(),
+  })
+  .strict();
 
 const candidateSchema = z
   .object({
@@ -20,6 +28,7 @@ const candidateSchema = z
     amountMinor: z.number().int().optional(),
     kind: z.enum(transactionKinds).optional(),
     categoryName: z.string().optional(),
+    items: z.array(candidateItemSchema).max(30).optional(),
     rawText: z.string().max(6_000).optional(),
   })
   .strict();
@@ -28,10 +37,7 @@ const completionSchema = z.object({
   // Newer Workers AI responses put the model output in "response"; for the
   // vision model this is either prose containing JSON or a parsed object
   // when the model complies with a strict-JSON prompt.
-  response: z.union([
-    z.string().max(MAX_RESPONSE_CHARACTERS),
-    z.record(z.string(), z.unknown()),
-  ]),
+  response: z.union([z.string().max(MAX_RESPONSE_CHARACTERS), z.record(z.string(), z.unknown())]),
 });
 
 const EXTRACTION_PROMPT = [
@@ -43,6 +49,8 @@ const EXTRACTION_PROMPT = [
   "- amountMinor: the total amount in centavos as an integer (for example 353.00 PHP is 35300)",
   '- kind: exactly one of "expense", "income", or "transfer"',
   "- categoryName: one short category label such as Food, Transport, Utilities",
+  "- items: an array of up to 30 individually charged purchase lines. Each item has description, amountMinor in centavos as the final line total, and optional categoryName.",
+  "  Include every readable product or paid fee line. Exclude discounts, coupons, promotions, receipt headers, subtotal, grand total, payment, tendered cash, and change. If any discount, coupon, or promotion is applied, return items: [] so the reviewed receipt total remains accurate. Items should add up to amountMinor. Use [] if no individual line is readable.",
   "- rawText: the readable text from the receipt, up to a few lines",
 ].join("\n");
 
@@ -123,6 +131,11 @@ function parseCandidate(text: string): ReceiptVisionCandidate | undefined {
     amountMinor: candidate.data.amountMinor,
     kind: candidate.data.kind,
     categoryName: candidate.data.categoryName?.trim() || undefined,
+    items: candidate.data.items?.map((item) => ({
+      description: item.description?.trim() || undefined,
+      amountMinor: item.amountMinor,
+      categoryName: item.categoryName?.trim() || undefined,
+    })),
     rawText: candidate.data.rawText?.trim() || undefined,
   };
 }
@@ -137,8 +150,7 @@ export const cloudflareVisionProvider: ReceiptVisionProvider = {
     const timer = setTimeout(() => controller.abort(), timeoutMs(env));
     try {
       const mediaType = image.type.split(";", 1)[0]?.toLowerCase() || "image/jpeg";
-      const dataUrl =
-        "data:" + mediaType + ";base64," + encodeBase64(await image.arrayBuffer());
+      const dataUrl = "data:" + mediaType + ";base64," + encodeBase64(await image.arrayBuffer());
       const result = await env.AI.run(
         env.RECEIPT_VISION_MODEL?.trim() || DEFAULT_RECEIPT_VISION_MODEL,
         {
@@ -146,7 +158,7 @@ export const cloudflareVisionProvider: ReceiptVisionProvider = {
           // image; an array of data URLs is rejected by the Workers AI API.
           image: dataUrl,
           prompt: EXTRACTION_PROMPT,
-          max_tokens: 1024,
+          max_tokens: 2048,
         },
         { signal: controller.signal },
       );

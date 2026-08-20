@@ -7,6 +7,7 @@ import {
   useAudioRecorder,
 } from "expo-audio";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AssistantVoiceTranscription } from "@zoption/shared";
 
 import {
   ApiTransportError,
@@ -15,6 +16,7 @@ import {
   transcribeVoice,
   type AssistantSpeechVoice,
 } from "@/api/assistant-voice";
+import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 
 import {
   MAX_RECORDING_SECONDS,
@@ -41,14 +43,25 @@ async function restorePlaybackAudioMode(): Promise<void> {
  * record(); calling record on an unprepared recorder is a no-op on Android
  * and throws on iOS, which is why the composer microphone appeared dead.
  */
-export function useAssistantRecorder({
+export interface VoiceRecording {
+  uri: string;
+  fileName: string;
+}
+
+/**
+ * Owns native microphone lifecycle for review-first voice features. Callers
+ * decide where the temporary recording is sent and what draft it returns.
+ */
+export function useVoiceRecorder<Result>({
   getAccessToken,
   onTranscribed,
   onError,
+  transcribe,
 }: {
   getAccessToken: (refresh: boolean) => Promise<string>;
-  onTranscribed: (text: string) => void;
+  onTranscribed: (result: Result) => void;
   onError: (error: ApiTransportError) => void;
+  transcribe: (accessToken: string, recording: VoiceRecording) => Promise<Result>;
 }) {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [phase, setPhase] = useState<RecordingPhase>("idle");
@@ -93,8 +106,20 @@ export function useAssistantRecorder({
     () => () => {
       clearElapsedTimer();
       clearRecordingTimeout();
+      if (phaseRef.current === "recording") {
+        const uri = recorder.uri;
+        void recorder
+          .stop()
+          .catch(() => {
+            // Leaving the screen must not surface a recorder cleanup error.
+          })
+          .finally(() => {
+            discardTemporarySourceFile(recorder.uri ?? uri);
+            void restorePlaybackAudioMode();
+          });
+      }
     },
-    [clearElapsedTimer, clearRecordingTimeout],
+    [clearElapsedTimer, clearRecordingTimeout, recorder],
   );
 
   const stopAndTranscribe = useCallback(async () => {
@@ -102,21 +127,23 @@ export function useAssistantRecorder({
     stopElapsedTimer();
     clearRecordingTimeout();
     setPhaseBoth("transcribing");
+    let recordingUri = recorder.uri;
+    let uploadStarted = false;
     try {
       await recorder.stop();
-      const uri = recorder.uri;
+      const uri = recorder.uri ?? recordingUri;
+      recordingUri = uri;
       if (!uri) {
         onError(new ApiTransportError("Nothing was recorded. Try again.", "invalid_request", 0));
         setPhaseBoth("idle");
         return;
       }
       const accessToken = await getAccessToken(false);
-      const transcription = await transcribeVoice(
-        { accessToken },
-        { uri, mimeType: "audio/mp4", fileName: "voice-input.m4a" },
-      );
+      // The multipart transport removes the file after native fetch settles.
+      uploadStarted = true;
+      const transcription = await transcribe(accessToken, { uri, fileName: "voice-input.m4a" });
       if (currentPhase() !== "transcribing") return;
-      onTranscribed(transcription.text);
+      onTranscribed(transcription);
     } catch (error) {
       if (currentPhase() !== "transcribing") return;
       onError(
@@ -125,6 +152,7 @@ export function useAssistantRecorder({
           : new ApiTransportError("Voice input failed. Try again.", "network", 0),
       );
     } finally {
+      if (!uploadStarted) discardTemporarySourceFile(recordingUri ?? recorder.uri);
       await restorePlaybackAudioMode();
       setPhaseBoth("idle");
     }
@@ -133,6 +161,7 @@ export function useAssistantRecorder({
     getAccessToken,
     onError,
     onTranscribed,
+    transcribe,
     setPhaseBoth,
     stopElapsedTimer,
     clearRecordingTimeout,
@@ -185,6 +214,7 @@ export function useAssistantRecorder({
   ]);
 
   const cancelRecording = useCallback(async () => {
+    const recordingUri = recorder.uri;
     if (currentPhase() === "recording") {
       try {
         await recorder.stop();
@@ -192,6 +222,7 @@ export function useAssistantRecorder({
         // Cancellation must never crash the screen.
       }
     }
+    discardTemporarySourceFile(recorder.uri ?? recordingUri);
     stopElapsedTimer();
     clearRecordingTimeout();
     await restorePlaybackAudioMode();
@@ -205,6 +236,25 @@ export function useAssistantRecorder({
     stopAndTranscribe,
     cancelRecording,
   };
+}
+
+/** Keeps the Assistant's existing transcript-only behavior on the shared recorder lifecycle. */
+export function useAssistantRecorder({
+  getAccessToken,
+  onTranscribed,
+  onError,
+}: {
+  getAccessToken: (refresh: boolean) => Promise<string>;
+  onTranscribed: (text: string) => void;
+  onError: (error: ApiTransportError) => void;
+}) {
+  return useVoiceRecorder<AssistantVoiceTranscription>({
+    getAccessToken,
+    onTranscribed: (result) => onTranscribed(result.text),
+    onError,
+    transcribe: (accessToken, recording) =>
+      transcribeVoice({ accessToken }, { ...recording, mimeType: "audio/mp4" }),
+  });
 }
 
 export interface SpokenReplyController {

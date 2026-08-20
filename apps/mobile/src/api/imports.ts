@@ -6,8 +6,11 @@ import {
   type ImportPreviewRequest,
   type ImportCommitResult,
 } from "@zoption/shared";
+import { File } from "expo-file-system";
 
 import { publicConfig } from "@/config/public-config";
+import { discardTemporarySourceFile } from "@/files/temporary-source-file";
+import { fetchMultipartWithTimeout } from "./assistant-voice";
 
 export type ImportTransportErrorCode =
   | "session_expired"
@@ -19,6 +22,7 @@ export type ImportTransportErrorCode =
   | "invalid_request"
   | "plan_limit"
   | "duplicate_conflict"
+  | "entry_consent_required"
   | "network"
   | "invalid_response";
 
@@ -80,6 +84,13 @@ function mapError(status: number, body: ImportErrorBody): ImportTransportError {
     return new ImportTransportError(
       "The preview has no valid rows to import.",
       "nothing_to_import",
+      status,
+    );
+  }
+  if (status === 409 && code === "entry_consent_required") {
+    return new ImportTransportError(
+      errorMessage(body, "Accept the AI entry notice before importing a PDF."),
+      "entry_consent_required",
       status,
     );
   }
@@ -145,18 +156,15 @@ export async function previewImport({
 }): Promise<ImportPreview> {
   let response: Response;
   try {
-    response = await fetchImpl(
-      `${publicConfig.apiUrl}/api/app/imports/preview`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(input),
-        signal,
+    response = await fetchImpl(`${publicConfig.apiUrl}/api/app/imports/preview`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
       },
-    );
+      body: JSON.stringify(input),
+      signal,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     throw new ImportTransportError(
@@ -179,6 +187,59 @@ export async function previewImport({
   return decoded.data;
 }
 
+/** Sends a PDF only for in-flight AI extraction, then receives the usual import preview token. */
+export async function previewPdfImport({
+  accessToken,
+  file,
+  fetchImpl = fetch,
+}: {
+  accessToken: string;
+  file: { uri: string; fileName: string };
+  fetchImpl?: typeof fetch;
+}): Promise<ImportPreview> {
+  const form = new FormData();
+  try {
+    form.append("pdf", new File(file.uri) as unknown as Blob, file.fileName);
+  } catch (error) {
+    discardTemporarySourceFile(file.uri);
+    throw error;
+  }
+  let response: Response;
+  try {
+    response = await fetchMultipartWithTimeout(
+      fetchImpl,
+      `${publicConfig.apiUrl}/api/app/entry/pdf-preview`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+        body: form,
+      },
+      undefined,
+      "Reading the PDF is taking too long. Try a shorter statement or try again shortly.",
+      () => discardTemporarySourceFile(file.uri),
+    );
+  } catch (error) {
+    if (error instanceof ImportTransportError) throw error;
+    throw new ImportTransportError(
+      error instanceof Error ? error.message : "Zoption could not be reached. Connect and retry.",
+      "network",
+      0,
+    );
+  }
+  if (!response.ok) {
+    throw mapError(response.status, (await decodeJsonResponse(response)) as ImportErrorBody);
+  }
+  const decoded = importPreviewResponseSchema.safeParse(await decodeJsonResponse(response));
+  if (!decoded.success) {
+    throw new ImportTransportError(
+      "Zoption returned an unrecognized PDF import preview.",
+      "invalid_response",
+      response.status,
+    );
+  }
+  return decoded.data;
+}
+
 export async function commitImport({
   accessToken,
   input,
@@ -192,18 +253,15 @@ export async function commitImport({
 }): Promise<ImportCommitResult> {
   let response: Response;
   try {
-    response = await fetchImpl(
-      `${publicConfig.apiUrl}/api/app/imports/commit`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(input),
-        signal,
+    response = await fetchImpl(`${publicConfig.apiUrl}/api/app/imports/commit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
       },
-    );
+      body: JSON.stringify(input),
+      signal,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     throw new ImportTransportError(

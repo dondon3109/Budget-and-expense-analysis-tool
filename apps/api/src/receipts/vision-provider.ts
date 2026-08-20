@@ -26,6 +26,11 @@ export interface ReceiptVisionCandidate {
   amountMinor?: number;
   kind?: TransactionKind;
   categoryName?: string;
+  items?: Array<{
+    description?: string;
+    amountMinor?: number;
+    categoryName?: string;
+  }>;
   rawText?: string;
 }
 

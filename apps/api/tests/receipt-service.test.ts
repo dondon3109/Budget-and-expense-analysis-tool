@@ -38,6 +38,10 @@ function provider(): ReceiptVisionProvider {
       amountMinor: -28500,
       kind: "expense" as const,
       categoryName: "Food & dining",
+      items: [
+        { description: "Chickenjoy", amountMinor: 18500, categoryName: "Food & dining" },
+        { description: "Peach mango pie", amountMinor: 10000, categoryName: "Food & dining" },
+      ],
       rawText: "JOLLIBEE 285.00",
     })),
   };
@@ -71,6 +75,10 @@ describe("receipt service", () => {
       currency: "PHP",
       kind: "expense",
       categoryName: "Food & dining",
+      items: [
+        { description: "Chickenjoy", amountMinor: 18500, categoryName: "Food & dining" },
+        { description: "Peach mango pie", amountMinor: 10000, categoryName: "Food & dining" },
+      ],
       rawText: "JOLLIBEE 285.00",
     });
   });
@@ -87,6 +95,48 @@ describe("receipt service", () => {
     expect(draft.kind).toBe("income");
     expect(draft.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(draft.rawText).toBe("");
+  });
+
+  it("keeps each usable line item and omits malformed model lines", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: 24500,
+      kind: "expense",
+      items: [
+        { description: "Vegetables", amountMinor: 12000, categoryName: "Groceries" },
+        { description: "Fish", amountMinor: -12500 },
+        { description: "", amountMinor: 100 },
+        { description: "Ignored", amountMinor: 0 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, "tenant-id", receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Vegetables", amountMinor: 12000, categoryName: "Groceries" },
+        { description: "Fish", amountMinor: 12500 },
+      ],
+    });
+  });
+
+  it("falls back to the receipt total when a discount would make itemization not reconcile", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: 24_500,
+      kind: "expense",
+      items: [
+        { description: "Vegetables", amountMinor: 25_000, categoryName: "Groceries" },
+        { description: "Member discount", amountMinor: -500 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, "tenant-id", receiptImage())).resolves.toMatchObject({
+      amountMinor: 24_500,
+      items: [],
+    });
   });
 
   it("rejects an unreadable merchant or amount with 422", async () => {

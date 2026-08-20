@@ -100,6 +100,14 @@ function mapProviderError(error: unknown, reporter: ReceiptDiagnosticReporter): 
   );
 }
 
+function containsDiscountLine(candidate: ReceiptVisionCandidate): boolean {
+  return Boolean(
+    candidate.items?.some((item) =>
+      /\b(?:discount|coupon|promo(?:tion)?|voucher)\b/i.test(item.description ?? ""),
+    ),
+  );
+}
+
 export function createReceiptService(
   repository: ReceiptRepository,
   provider: ReceiptVisionProvider,
@@ -109,11 +117,7 @@ export function createReceiptService(
     requireEnabled(env);
     const consent = await repository.getConsent(env, tenantId);
     if (!consent.consentedAt || consent.consentVersion !== CURRENT_RECEIPT_CONSENT_VERSION) {
-      throw new HttpError(
-        409,
-        "receipt_consent_required",
-        "Accept the receipt photo notice first.",
-      );
+      throw new HttpError(409, "receipt_consent_required", "Accept the AI entry notice first.");
     }
   }
 
@@ -150,6 +154,33 @@ export function createReceiptService(
       );
     }
     const kind = candidate.kind ?? (amountMinor < 0 ? "expense" : "income");
+    // A receipt discount needs a negative adjustment, but local receipt-item
+    // transactions are deliberately positive. Fall back to the reviewed total
+    // instead of presenting an itemization that cannot reconcile.
+    const items = containsDiscountLine(candidate)
+      ? []
+      : candidate.items
+          ?.flatMap((item) => {
+            const description = item.description?.trim();
+            if (
+              !description ||
+              typeof item.amountMinor !== "number" ||
+              !Number.isSafeInteger(item.amountMinor) ||
+              item.amountMinor === 0
+            ) {
+              return [];
+            }
+            return [
+              {
+                description: description.slice(0, 160),
+                amountMinor: Math.abs(item.amountMinor),
+                ...(item.categoryName?.trim()
+                  ? { categoryName: item.categoryName.trim().slice(0, 80) }
+                  : {}),
+              },
+            ];
+          })
+          .slice(0, 30);
     return {
       merchant,
       date: normalizeImportDate(candidate.date?.trim() ?? "") ?? currentDateInTimeZone(env),
@@ -159,6 +190,7 @@ export function createReceiptService(
       ...(candidate.categoryName?.trim()
         ? { categoryName: candidate.categoryName.trim().slice(0, 80) }
         : {}),
+      ...(items ? { items } : {}),
       rawText: candidate.rawText?.trim().slice(0, 6_000) ?? "",
     };
   }

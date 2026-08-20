@@ -19,7 +19,7 @@ export function createReceiptRoutes(service: ReceiptService) {
   routes.patch("/preferences", async (context) => {
     const parsed = receiptConsentUpdateSchema.safeParse(await readJson(context));
     if (!parsed.success) {
-      throw new HttpError(400, "invalid_request", "Accept the receipt photo notice.");
+      throw new HttpError(400, "invalid_request", "Accept the AI entry notice.");
     }
     return context.json(await service.grantConsent(context.env, context.get("tenant").tenantId));
   });

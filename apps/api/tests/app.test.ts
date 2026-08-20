@@ -26,6 +26,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AccountDeletionService } from "../src/account-deletion";
 import type { AssistantService, AssistantTurnExecution } from "../src/assistant/service";
 import type { AssistantVoiceService } from "../src/assistant/voice-service";
+import type { AiEntryService } from "../src/entry/ai-entry-service";
 import type { ReceiptService } from "../src/receipts/service";
 import { createApp, type AppOptions } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
@@ -764,6 +765,70 @@ describe("API foundation", () => {
 
     expect(response.status).toBe(415);
     expect(extract).not.toHaveBeenCalled();
+  });
+
+  it("keeps PDF statements on the authenticated preview path", async () => {
+    const previewPdf = vi.fn(async () => ({
+      token: "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
+      expiresAt: "2026-08-20T15:15:00.000Z",
+      fileName: "statement.pdf",
+      rowCount: 1,
+      acceptedCount: 1,
+      rejectedCount: 0,
+      duplicateCount: 0,
+      rows: [],
+    }));
+    const aiEntryService: AiEntryService = {
+      previewPdf,
+      extractVoice: vi.fn(),
+    };
+    const app = createTestApp({ aiEntryService });
+    const form = new FormData();
+    form.set(
+      "pdf",
+      new File([new Uint8Array([1, 2, 3])], "statement.pdf", { type: "application/pdf" }),
+    );
+
+    const response = await app.request("/api/app/entry/pdf-preview", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: form,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ token: expect.any(String) });
+    expect(previewPdf).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
+  });
+
+  it("returns a review-only voice transaction draft without creating a transaction", async () => {
+    const extractVoice = vi.fn(async () => ({
+      transcript: "Spent 250 pesos on lunch today",
+      description: "Lunch",
+      date: "2026-08-20",
+      amountMinor: 25_000,
+      currency: "PHP" as const,
+      kind: "expense" as const,
+    }));
+    const aiEntryService: AiEntryService = {
+      previewPdf: vi.fn(),
+      extractVoice,
+    };
+    const app = createTestApp({ aiEntryService });
+    const form = new FormData();
+    form.set("audio", new File([new Uint8Array([1, 2, 3])], "voice.m4a", { type: "audio/mp4" }));
+
+    const response = await app.request("/api/app/entry/voice", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: form,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      description: "Lunch",
+      amountMinor: 25_000,
+    });
+    expect(extractVoice).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
   });
 
   it.each([

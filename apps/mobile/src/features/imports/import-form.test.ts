@@ -17,6 +17,7 @@ describe("mobile import form helpers", () => {
     expect(importFileKind("STATEMENT.TXT")).toBe("csv");
     expect(importFileKind("history.xlsx")).toBe("workbook");
     expect(importFileKind("history.xls")).toBe("workbook");
+    expect(importFileKind("statement.PDF")).toBe("pdf");
     expect(importFileKind("photo.png")).toBe("unsupported");
   });
 
@@ -49,11 +50,12 @@ describe("mobile import form helpers", () => {
     const headers = ["Date", "Description", "Amount"];
     const state = initialMappingState("history.csv", headers);
     expect(mappingProblems(state, headers)).toEqual([]);
-    expect(mappingProblems({ ...state, mapping: { description: "Description" } }, headers))
-      .toContainEqual({
-        path: "amount",
-        message: "Choose one Amount column or both Debit and Credit columns.",
-      });
+    expect(
+      mappingProblems({ ...state, mapping: { description: "Description" } }, headers),
+    ).toContainEqual({
+      path: "amount",
+      message: "Choose one Amount column or both Debit and Credit columns.",
+    });
     expect(
       mappingProblems(
         { ...state, mapping: { ...state.mapping, date: undefined }, fallbackDate: "" },
@@ -105,8 +107,8 @@ describe("mobile import form helpers", () => {
         mapping: { ...state.mapping, amount: "Amount", date: "Date" },
       }),
     ).not.toThrow();
-    expect(() =>
-      buildImportPreviewRequest("history.csv", bpiCsv, 1, state),
-    ).toThrow("The import setup is incomplete.");
+    expect(() => buildImportPreviewRequest("history.csv", bpiCsv, 1, state)).toThrow(
+      "The import setup is incomplete.",
+    );
   });
 });

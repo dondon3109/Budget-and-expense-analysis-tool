@@ -47,6 +47,7 @@ import { bugReportRepository, type BugReportRepository } from "./db/bug-reports"
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
 import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
+import { createAiEntryService, type AiEntryService } from "./entry/ai-entry-service";
 import { HttpError } from "./errors";
 import { d1RateLimiter, type RateLimiter } from "./rate-limit";
 import { checkApiReadiness } from "./readiness";
@@ -64,6 +65,7 @@ import {
   createPublicCustomerReviewRoutes,
 } from "./routes/customer-reviews";
 import { createDebtRoutes } from "./routes/debts";
+import { createAiEntryRoutes } from "./routes/ai-entry";
 import { createCalendarEventRoutes } from "./routes/events";
 import { createExportRoutes } from "./routes/exports";
 import { createFinancialGoalRoutes } from "./routes/goals";
@@ -91,6 +93,7 @@ const DEFAULT_JSON_BODY_LIMIT = 64 * 1024;
 const IMPORT_PREVIEW_BODY_LIMIT = 3 * 1024 * 1024;
 const ASSISTANT_VOICE_BODY_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
 const RECEIPT_IMAGE_BODY_LIMIT = 8 * 1024 * 1024 + 64 * 1024;
+const AI_ENTRY_PDF_BODY_LIMIT = 5 * 1024 * 1024 + 64 * 1024;
 const PAYPAL_WEBHOOK_BODY_LIMIT = 128 * 1024;
 const PAYPAL_WEBHOOK_RATE_LIMIT = {
   scope: "paypal-webhook",
@@ -160,6 +163,7 @@ export interface AppOptions {
   assistantVoiceProviders?: AssistantVoiceProviders;
   assistantVoiceService?: AssistantVoiceService;
   receiptService?: ReceiptService;
+  aiEntryService?: AiEntryService;
   accountDeletionService?: AccountDeletionService;
   platformAdmins?: PlatformAdminRepository;
   platformAdminService?: PlatformAdminService;
@@ -229,6 +233,8 @@ export function createApp(options: AppOptions = {}) {
     );
   const receiptService =
     options.receiptService ?? createReceiptService(receiptRepository, cloudflareVisionProvider);
+  const aiEntryService =
+    options.aiEntryService ?? createAiEntryService(receiptRepository, importStore);
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =
     options.platformAdminService ?? createPlatformAdminService(platformAdminStore);
@@ -349,6 +355,16 @@ export function createApp(options: AppOptions = {}) {
           typeMessage: "Send the receipt photo as multipart form data.",
           sizeMessage: "The receipt photo is too large.",
         },
+        "/api/app/entry/voice": {
+          maxSize: ASSISTANT_VOICE_BODY_LIMIT,
+          typeMessage: "Send voice recordings as multipart form data.",
+          sizeMessage: "The voice recording is too large.",
+        },
+        "/api/app/entry/pdf-preview": {
+          maxSize: AI_ENTRY_PDF_BODY_LIMIT,
+          typeMessage: "Send the statement PDF as multipart form data.",
+          sizeMessage: "The statement PDF is too large.",
+        },
       }[context.req.path];
     if (multipartRoute) {
       const contentType = context.req.header("Content-Type")?.toLowerCase() ?? "";
@@ -416,6 +432,10 @@ export function createApp(options: AppOptions = {}) {
         context.req.path === "/api/app/assistant/voice/preview");
     const isReceiptExtraction =
       context.req.method === "POST" && context.req.path === "/api/app/receipts/extract";
+    const isAiEntryVoice =
+      context.req.method === "POST" && context.req.path === "/api/app/entry/voice";
+    const isAiEntryPdf =
+      context.req.method === "POST" && context.req.path === "/api/app/entry/pdf-preview";
     const isExportRead =
       context.req.method === "GET" && context.req.path.startsWith("/api/app/exports");
     const isAssistantHistoryRead =
@@ -435,40 +455,52 @@ export function createApp(options: AppOptions = {}) {
               { scope: "tenant-receipt-extraction-minute", limit: 6, windowSeconds: 60 },
               { scope: "tenant-receipt-extraction-day", limit: 60, windowSeconds: 86_400 },
             ]
-          : isAccountDeletion
-            ? [{ scope: "user-account-deletion", limit: 5, windowSeconds: 15 * 60 }]
-            : isPlatformAdminRoute && WRITE_METHODS.has(context.req.method)
-              ? [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: 15 * 60 }]
-              : isPlatformAdminRoute
-                ? [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: 60 }]
-                : isAssistantGeneration || isSupportGeneration
-                  ? [
-                      {
-                        scope: isSupportGeneration
-                          ? "tenant-support-minute"
-                          : "tenant-assistant-minute",
-                        limit: 10,
-                        windowSeconds: 60,
-                      },
-                      {
-                        scope: isSupportGeneration ? "tenant-support-day" : "tenant-assistant-day",
-                        limit: 100,
-                        windowSeconds: 24 * 60 * 60,
-                      },
-                    ]
-                  : isExportRead
-                    ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
-                    : isAssistantHistoryRead
-                      ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
-                      : WRITE_METHODS.has(context.req.method)
-                        ? [
-                            context.req.path.startsWith("/api/app/imports")
-                              ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
-                              : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
-                          ]
-                        : context.req.method === "GET"
-                          ? [{ scope: "tenant-read", limit: 120, windowSeconds: 60 }]
-                          : [];
+          : isAiEntryVoice
+            ? [
+                { scope: "tenant-entry-voice-minute", limit: 6, windowSeconds: 60 },
+                { scope: "tenant-entry-voice-day", limit: 30, windowSeconds: 86_400 },
+              ]
+            : isAiEntryPdf
+              ? [
+                  { scope: "tenant-entry-pdf-minute", limit: 3, windowSeconds: 60 },
+                  { scope: "tenant-entry-pdf-day", limit: 20, windowSeconds: 86_400 },
+                ]
+              : isAccountDeletion
+                ? [{ scope: "user-account-deletion", limit: 5, windowSeconds: 15 * 60 }]
+                : isPlatformAdminRoute && WRITE_METHODS.has(context.req.method)
+                  ? [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: 15 * 60 }]
+                  : isPlatformAdminRoute
+                    ? [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: 60 }]
+                    : isAssistantGeneration || isSupportGeneration
+                      ? [
+                          {
+                            scope: isSupportGeneration
+                              ? "tenant-support-minute"
+                              : "tenant-assistant-minute",
+                            limit: 10,
+                            windowSeconds: 60,
+                          },
+                          {
+                            scope: isSupportGeneration
+                              ? "tenant-support-day"
+                              : "tenant-assistant-day",
+                            limit: 100,
+                            windowSeconds: 24 * 60 * 60,
+                          },
+                        ]
+                      : isExportRead
+                        ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
+                        : isAssistantHistoryRead
+                          ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
+                          : WRITE_METHODS.has(context.req.method)
+                            ? [
+                                context.req.path.startsWith("/api/app/imports")
+                                  ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
+                                  : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
+                              ]
+                            : context.req.method === "GET"
+                              ? [{ scope: "tenant-read", limit: 120, windowSeconds: 60 }]
+                              : [];
 
     if (policies.length === 0) {
       await next();
@@ -642,6 +674,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/goals", createFinancialGoalRoutes(goalStore));
   app.route("/api/app/debts", createDebtRoutes(debtStore));
   app.route("/api/app/imports", createImportRoutes(importStore));
+  app.route("/api/app/entry", createAiEntryRoutes(aiEntryService));
   app.route("/api/app/sync", createMobileSyncRoutes(mobileSyncStore));
   app.route("/api/app/receipts", createReceiptRoutes(receiptService));
   app.route("/api/app/exports", createExportRoutes(transactionStore, billingStore));

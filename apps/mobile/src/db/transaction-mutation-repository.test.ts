@@ -618,6 +618,51 @@ describe("durable local transaction mutations", () => {
     await expect(reopened.getPushBatch()).resolves.toEqual(batch);
   });
 
+  it("commits every reviewed receipt item with its outbox records atomically", async () => {
+    const mutations = repository(database);
+
+    const created = await mutations.createTransactions([
+      { ...input, description: "Market · Vegetables", amountMinor: 12_000 },
+      { ...input, description: "Market · Fish", amountMinor: 12_500 },
+    ]);
+
+    expect(created).toHaveLength(2);
+    expect(
+      database.native
+        .prepare("SELECT description, amount_minor FROM transactions ORDER BY rowid")
+        .all(),
+    ).toEqual([
+      { description: "Market · Vegetables", amount_minor: -12_000 },
+      { description: "Market · Fish", amount_minor: -12_500 },
+    ]);
+    expect(database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get()).toEqual({
+      count: 2,
+    });
+  });
+
+  it("rolls back a receipt batch if any item cannot be saved", async () => {
+    const mutations = repository(database);
+
+    await expect(
+      mutations.createTransactions([
+        { ...input, description: "Market · Vegetables", amountMinor: 12_000 },
+        {
+          ...input,
+          categoryId: "missing-category",
+          description: "Market · Fish",
+          amountMinor: 12_500,
+        },
+      ]),
+    ).rejects.toMatchObject({ code: "invalid_reference" });
+
+    expect(database.native.prepare("SELECT count(*) AS count FROM transactions").get()).toEqual({
+      count: 0,
+    });
+    expect(database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get()).toEqual({
+      count: 0,
+    });
+  });
+
   it("replays an in-flight operation unchanged after restart and blocks payload mutation", async () => {
     const mutations = repository(database);
     const id = await mutations.createTransaction(input);
@@ -2011,5 +2056,4 @@ describe("durable local calendar event mutations", () => {
     ).toEqual({ title: "Server Event", server_revision: 4, sync_state: "synced" });
   });
 });
-
 

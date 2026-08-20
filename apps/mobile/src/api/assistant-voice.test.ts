@@ -6,6 +6,7 @@ import {
 } from "./assistant-voice";
 
 const token = "access-token";
+const mockDelete = jest.fn();
 
 jest.mock("@/config/public-config", () => ({
   publicConfig: { apiUrl: "https://api.example.test" },
@@ -18,6 +19,10 @@ jest.mock("expo-file-system", () => ({
     constructor(uri: string) {
       super([new Uint8Array([1, 2, 3])], { type: "audio/mp4" });
       this.uri = uri;
+    }
+
+    delete() {
+      mockDelete(this.uri);
     }
   },
 }));
@@ -141,6 +146,8 @@ describe("fetchMultipartWithTimeout Android compatibility", () => {
 });
 
 describe("transcribeVoice error mapping", () => {
+  beforeEach(() => mockDelete.mockClear());
+
   it("decodes a successful transcription response", async () => {
     const controller = new AbortController();
     const fetchMock = jest.fn(async () =>
@@ -158,6 +165,7 @@ describe("transcribeVoice error mapping", () => {
     const audio = (init.body as FormData).get("audio");
     expect(audio).toBeInstanceOf(Blob);
     expect((audio as globalThis.File).name).toBe(RECORDING.fileName);
+    expect(mockDelete).toHaveBeenCalledWith(RECORDING.uri);
   });
 
   it("surfaces a server timeout (504) accurately instead of connectivity", async () => {

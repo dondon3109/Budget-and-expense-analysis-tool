@@ -29,6 +29,10 @@ describe("Cloudflare vision provider", () => {
           amountMinor: 28500,
           kind: "expense",
           categoryName: " Food ",
+          items: [
+            { description: " Chickenjoy ", amountMinor: 18500, categoryName: " Food " },
+            { description: " Peach mango pie ", amountMinor: 10000 },
+          ],
           rawText: "JOLLIBEE TOTAL 285.00",
         }) +
         "\n" +
@@ -43,9 +47,11 @@ describe("Cloudflare vision provider", () => {
       { signal: unknown },
     ];
     expect(call[0]).toBe(DEFAULT_RECEIPT_VISION_MODEL);
-    expect(call[1]).toMatchObject({ max_tokens: 1024 });
+    expect(call[1]).toMatchObject({ max_tokens: 2048 });
     expect(String(call[1].image)).toMatch(/^data:image\/jpeg;base64,/);
     expect(String(call[1].prompt)).toContain("merchant");
+    expect(String(call[1].prompt)).toContain("items");
+    expect(String(call[1].prompt)).toContain("discount");
     expect(call[2].signal).toBeInstanceOf(AbortSignal);
     expect(result).toEqual({
       merchant: "Jollibee",
@@ -53,6 +59,10 @@ describe("Cloudflare vision provider", () => {
       amountMinor: 28500,
       kind: "expense",
       categoryName: "Food",
+      items: [
+        { description: "Chickenjoy", amountMinor: 18500, categoryName: "Food" },
+        { description: "Peach mango pie", amountMinor: 10000, categoryName: undefined },
+      ],
       rawText: "JOLLIBEE TOTAL 285.00",
     });
   });
@@ -71,6 +81,7 @@ describe("Cloudflare vision provider", () => {
         amountMinor: 35300,
         kind: "expense",
         categoryName: "Food",
+        items: [{ description: "Burger steak", amountMinor: 35300, categoryName: "Food" }],
         rawText: "JOLLIBEE TOTAL 353.00",
       },
     }));
@@ -83,6 +94,7 @@ describe("Cloudflare vision provider", () => {
       amountMinor: 35300,
       kind: "expense",
       categoryName: "Food",
+      items: [{ description: "Burger steak", amountMinor: 35300, categoryName: "Food" }],
       rawText: "JOLLIBEE TOTAL 353.00",
     });
   });

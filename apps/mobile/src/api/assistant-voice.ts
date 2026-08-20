@@ -9,6 +9,7 @@ import {
 import { File } from "expo-file-system";
 
 import { publicConfig } from "@/config/public-config";
+import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 
 import { ApiTransportError, apiRequest, mapApiError } from "./authenticated";
 
@@ -154,6 +155,8 @@ export async function fetchMultipartWithTimeout(
   input: string,
   init: RequestInit,
   timeoutMs: number = VOICE_REQUEST_TIMEOUT_MS,
+  timeoutMessage: string = "Voice mode is taking too long. The provider may not be ready yet - try again shortly.",
+  onRequestSettled?: () => void,
 ): Promise<Response> {
   const { signal, ...requestInit } = init;
 
@@ -164,6 +167,13 @@ export async function fetchMultipartWithTimeout(
     const cleanup = () => {
       if (timeout !== null) clearTimeout(timeout);
       signal?.removeEventListener("abort", onAbort);
+    };
+    const requestSettled = () => {
+      try {
+        onRequestSettled?.();
+      } catch {
+        // Releasing a temporary upload must not affect the request result.
+      }
     };
     const resolveOnce = (response: Response) => {
       if (settled) return;
@@ -180,21 +190,34 @@ export async function fetchMultipartWithTimeout(
     const onAbort = () => rejectOnce(abortError());
 
     if (signal?.aborted) {
+      requestSettled();
       onAbort();
       return;
     }
     signal?.addEventListener("abort", onAbort, { once: true });
     timeout = setTimeout(() => {
-      rejectOnce(
-        new ApiTransportError(
-          "Voice mode is taking too long. The provider may not be ready yet - try again shortly.",
-          "network",
-          0,
-        ),
-      );
+      rejectOnce(new ApiTransportError(timeoutMessage, "network", 0));
     }, timeoutMs);
 
-    void fetchImpl(input, requestInit).then(resolveOnce, () => {
+    try {
+      void fetchImpl(input, requestInit).then(
+        (response) => {
+          requestSettled();
+          resolveOnce(response);
+        },
+        () => {
+          requestSettled();
+          rejectOnce(
+            new ApiTransportError(
+              "Zoption could not be reached. Connect to the internet and retry.",
+              "network",
+              0,
+            ),
+          );
+        },
+      );
+    } catch {
+      requestSettled();
       rejectOnce(
         new ApiTransportError(
           "Zoption could not be reached. Connect to the internet and retry.",
@@ -202,7 +225,7 @@ export async function fetchMultipartWithTimeout(
           0,
         ),
       );
-    });
+    }
   });
 }
 
@@ -224,7 +247,12 @@ export async function transcribeVoice(
   // Expo SDK 57's Winter fetch cannot serialize React Native's legacy
   // { uri, name, type } FormData part. expo-file-system's File implements the
   // Blob byte contract used by Winter and keeps the upload on-device/in-flight.
-  form.append("audio", new File(recording.uri) as unknown as Blob, recording.fileName);
+  try {
+    form.append("audio", new File(recording.uri) as unknown as Blob, recording.fileName);
+  } catch (error) {
+    discardTemporarySourceFile(recording.uri);
+    throw error;
+  }
   const accessToken = api.accessToken;
   let response: Response;
   try {
@@ -237,6 +265,9 @@ export async function transcribeVoice(
         body: form,
         signal: api.signal,
       },
+      undefined,
+      undefined,
+      () => discardTemporarySourceFile(recording.uri),
     );
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
@@ -262,20 +293,16 @@ async function requestAssistantSpeech(
   const accessToken = api.accessToken;
   let response: Response;
   try {
-    response = await fetchWithTimeout(
-      api.fetchImpl ?? fetch,
-      publicConfig.apiUrl + path,
-      {
-        method: "POST",
-        headers: {
-          Accept: "audio/mpeg",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(body),
-        signal: api.signal,
+    response = await fetchWithTimeout(api.fetchImpl ?? fetch, publicConfig.apiUrl + path, {
+      method: "POST",
+      headers: {
+        Accept: "audio/mpeg",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
       },
-    );
+      body: JSON.stringify(body),
+      signal: api.signal,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     throw error;
@@ -289,11 +316,7 @@ async function requestAssistantSpeech(
   }
   const buffer = await response.arrayBuffer();
   if (buffer.byteLength === 0) {
-    throw new ApiTransportError(
-      emptyResponseMessage,
-      "invalid_response",
-      response.status,
-    );
+    throw new ApiTransportError(emptyResponseMessage, "invalid_response", response.status);
   }
   return { bytes: new Uint8Array(buffer), mimeType: "audio/mpeg" };
 }
