@@ -1,6 +1,6 @@
 import { Stack, router } from "expo-router";
 import { useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useCalendarMonth, useLocalWorkspace } from "@/db/local-workspace-state";
@@ -67,7 +67,9 @@ function DayCard({ day }: { day: LocalCalendarDay }) {
         >
           <Text style={[typography.body, { color: theme.colors.text }]}>{event.title}</Text>
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-            {event.startTime ? event.startTime + (event.endTime ? "–" + event.endTime : "") : "All day"}
+            {event.startTime
+              ? event.startTime + (event.endTime ? "–" + event.endTime : "")
+              : "All day"}
             {event.syncState !== "synced" ? " · " + event.syncState : ""}
           </Text>
         </Pressable>
@@ -83,7 +85,9 @@ function DayCard({ day }: { day: LocalCalendarDay }) {
       ))}
       {day.transactions.map((transaction) => (
         <View key={transaction.id} style={styles.row}>
-          <Text style={[typography.body, { color: theme.colors.text }]}>{transaction.description}</Text>
+          <Text style={[typography.body, { color: theme.colors.text }]}>
+            {transaction.description}
+          </Text>
           <MoneyValue
             amountMinor={transaction.amountMinor}
             tone={transaction.kind === "income" ? "income" : "expense"}
@@ -93,6 +97,8 @@ function DayCard({ day }: { day: LocalCalendarDay }) {
     </Card>
   );
 }
+
+const renderDay = ({ item }: ListRenderItemInfo<LocalCalendarDay>) => <DayCard day={item} />;
 
 export function CalendarScreen() {
   const [month, setMonth] = useState(() => currentMonthStart());
@@ -118,10 +124,7 @@ export function CalendarScreen() {
         >
           ‹
         </Button>
-        <Text
-          accessibilityRole="header"
-          style={[typography.title, { color: theme.colors.text }]}
-        >
+        <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
           {monthLabel(month)}
         </Text>
         <Button
@@ -150,7 +153,7 @@ export function CalendarScreen() {
               description="Events, subscription bills, and transactions for this month will appear here."
             />
           }
-          renderItem={({ item }) => <DayCard day={item} />}
+          renderItem={renderDay}
           contentContainerStyle={styles.list}
         />
       )}

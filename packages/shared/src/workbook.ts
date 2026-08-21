@@ -1,4 +1,20 @@
-import { read, utils, type CellObject, type WorkBook, type WorkSheet } from "xlsx";
+import type { CellObject, WorkBook, WorkSheet } from "xlsx";
+import type * as xlsxTypes from "xlsx";
+
+type XlsxModule = typeof xlsxTypes;
+
+let xlsxModulePromise: Promise<XlsxModule> | null = null;
+
+/**
+ * SheetJS is large and only needed by the import flows, so it is evaluated on
+ * first use instead of whenever the shared barrel is imported. Metro keeps
+ * dynamic imports in the same native bundle but defers their evaluation until
+ * this promise first resolves; web bundlers split them into a separate chunk.
+ */
+function loadXlsx(): Promise<XlsxModule> {
+  xlsxModulePromise ??= import("xlsx");
+  return xlsxModulePromise;
+}
 
 export const MAX_WORKBOOK_FILE_BYTES = 5_000_000;
 const MAX_CANONICAL_CSV_BYTES = 1_000_000;
@@ -245,9 +261,9 @@ function assertWorkbook(buffer: ArrayBuffer): void {
   if (zip) assertZipMetadata(buffer);
 }
 
-function readWorkbook(buffer: ArrayBuffer, sheetName?: string): WorkBook {
+function readWorkbook(xlsx: XlsxModule, buffer: ArrayBuffer, sheetName?: string): WorkBook {
   try {
-    return read(buffer, {
+    return xlsx.read(buffer, {
       type: "array",
       ...(sheetName ? { sheets: [sheetName] } : { bookSheets: true }),
       cellDates: true,
@@ -270,9 +286,10 @@ function assertWorkbookResources(workbook: WorkBook): void {
   if (workbook.SheetNames.some((name) => name.length > 128)) failUnsafeWorkbook();
 }
 
-export function inspectWorkbook(buffer: ArrayBuffer): string[] {
+export async function inspectWorkbook(buffer: ArrayBuffer): Promise<string[]> {
+  const xlsx = await loadXlsx();
   assertWorkbook(buffer);
-  const workbook = readWorkbook(buffer);
+  const workbook = readWorkbook(xlsx, buffer);
   assertWorkbookResources(workbook);
   if (workbook.SheetNames.length === 0) {
     throw new WorkbookImportError("The workbook does not contain any worksheets.");
@@ -333,13 +350,16 @@ function csvField(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
-function worksheetCells(sheet: WorkSheet): Array<{ address: string; r: number; c: number }> {
+function worksheetCells(
+  xlsx: XlsxModule,
+  sheet: WorkSheet,
+): Array<{ address: string; r: number; c: number }> {
   const addresses = Object.keys(sheet).filter((key) => !key.startsWith("!"));
   if (addresses.length > MAX_WORKSHEET_CELLS) failUnsafeWorkbook();
 
   return addresses.map((address) => {
     if (!CELL_ADDRESS_PATTERN.test(address)) failUnsafeWorkbook();
-    const position = utils.decode_cell(address);
+    const position = xlsx.utils.decode_cell(address);
     if (position.r >= MAX_WORKSHEET_ROWS || position.c >= MAX_WORKSHEET_COLUMNS) {
       failUnsafeWorkbook();
     }
@@ -347,9 +367,9 @@ function worksheetCells(sheet: WorkSheet): Array<{ address: string; r: number; c
   });
 }
 
-function worksheetRows(sheet: WorkSheet, state: CellConversionState): string[][] {
+function worksheetRows(xlsx: XlsxModule, sheet: WorkSheet, state: CellConversionState): string[][] {
   const inspectionState: CellConversionState = { formulaCount: 0, missingFormulaValueCount: 0 };
-  const populated = worksheetCells(sheet)
+  const populated = worksheetCells(xlsx, sheet)
     .map(({ address, r, c }) => {
       const value = cellValue(sheet[address] as CellObject | undefined, inspectionState);
       return { r, c, value };
@@ -373,7 +393,7 @@ function worksheetRows(sheet: WorkSheet, state: CellConversionState): string[][]
 
   for (let row = minRow; row <= maxRow; row += 1) {
     const values = columns.map((column) => {
-      const address = utils.encode_cell({ r: row, c: column });
+      const address = xlsx.utils.encode_cell({ r: row, c: column });
       return cellValue(sheet[address] as CellObject | undefined, state);
     });
     if (values.some((value) => value.trim() !== "")) rows.push(values);
@@ -392,15 +412,19 @@ function serializeWorksheetRows(rows: string[][]): string {
   return csvText;
 }
 
-export function convertWorksheet(buffer: ArrayBuffer, sheetName: string): WorkbookConversion {
+export async function convertWorksheet(
+  buffer: ArrayBuffer,
+  sheetName: string,
+): Promise<WorkbookConversion> {
+  const xlsx = await loadXlsx();
   assertWorkbook(buffer);
-  const workbook = readWorkbook(buffer, sheetName);
+  const workbook = readWorkbook(xlsx, buffer, sheetName);
   assertWorkbookResources(workbook);
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) throw new WorkbookImportError("The selected worksheet could not be found.");
 
   const state: CellConversionState = { formulaCount: 0, missingFormulaValueCount: 0 };
-  const rows = worksheetRows(sheet, state);
+  const rows = worksheetRows(xlsx, sheet, state);
   const csvText = serializeWorksheetRows(rows);
   const warnings: string[] = [];
   if (state.formulaCount > 0) {
