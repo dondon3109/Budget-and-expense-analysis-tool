@@ -64,9 +64,11 @@ complete the bootstrap in [`ota-updates.md`](ota-updates.md).
 - **App-level**: replace the website-linked Beta artifact with a previously
   verified native Beta artifact or temporarily direct users to the website.
   Server-owned identity and data remain unchanged. Rolling the live channel
-  back also means re-syncing the website snapshot deliberately: the
-  `Production Release` snapshot job refuses a lower `versionCode`, so an
-  intentional rollback must run the refresh script with `--allow-downgrade`.
+  back also means refreshing the website snapshot deliberately after the live
+  metadata is verified. The refresh script refuses a lower `versionCode`, so
+  an intentional rollback must run it with `--allow-downgrade`, review the
+  generated diff, and send the snapshot commit through normal Production
+  Release deployment.
 - **Server-level**: the Worker changes introduced for mobile sync (revisions,
   tombstones, cursor) are additive; rolling them back requires the documented
   migration plan in `sync-protocol.md` and would precede any app rollback.

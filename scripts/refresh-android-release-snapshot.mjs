@@ -15,12 +15,12 @@
  *   node scripts/refresh-android-release-snapshot.mjs --write        # update the file
  *   node scripts/refresh-android-release-snapshot.mjs --allow-downgrade [--write]
  *
- * The Production Release workflow runs this with --write on main and commits
- * the result as a non-releasing [skip ci] chore commit; that small job is the
- * only place besides semantic-release granted contents: write. A live
- * versionCode below the committed snapshot is rejected unless
- * --allow-downgrade is passed explicitly, so a stale or rolled-back R2
- * channel can never silently regress the website's advertised release.
+ * Run this after android/latest.json has been published and publicly verified,
+ * then commit the generated snapshot through the normal CI/Production Release
+ * path so the build-time fallback and SEO metadata are actually deployed. A
+ * live versionCode below the committed snapshot is rejected unless
+ * --allow-downgrade is passed explicitly, so a stale or rolled-back R2 channel
+ * can never silently regress the website's advertised release.
  */
 
 import { readFile, writeFile } from "node:fs/promises";

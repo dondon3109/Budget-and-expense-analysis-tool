@@ -20,8 +20,8 @@ on:
         default: ""
 
 # The workflow stays read-only over the repository: it publishes artifacts to
-# R2 but never commits. The website fallback snapshot is synced by a separate,
-# narrowly scoped Production Release job instead of pushing from here.
+# R2 but never commits. After publication, refresh the website fallback through
+# the explicit post-release procedure in docs/mobile/build-instructions.md.
 permissions:
   contents: read
 

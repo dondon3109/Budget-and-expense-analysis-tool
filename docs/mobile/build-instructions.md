@@ -90,10 +90,22 @@ the production variant, signs with the permanent Zoption key, verifies the APK
 identity, publishes the immutable versioned object, verifies that public object,
 and advances `android/latest.json` last. Both publish inputs must remain false
 for a build-only validation run and may be enabled only with explicit release
-approval. That workflow never commits to this repository: after a successful
-production release run, the `Production Release` workflow's snapshot job syncs
-the website fallback (`apps/web/src/releases/androidRelease.json`) from the
-live channel as a `[skip ci]` chore commit.
+approval. That workflow never commits to this repository.
+
+After `android/latest.json` is publicly verified, refresh the build-time website
+fallback from the repository root:
+
+```bash
+node scripts/refresh-android-release-snapshot.mjs --write
+git diff -- apps/web/src/releases/androidRelease.json
+```
+
+Commit the reviewed snapshot as `fix(web): refresh Android install snapshot`
+and let the normal CI/`Production Release` workflow deploy and smoke-test it.
+This explicit second commit is intentional: refreshing after Pages deployment
+or committing with `[skip ci]` would leave the deployed fallback and SEO
+metadata one release behind. The script rejects a lower live `versionCode`;
+an approved rollback must additionally pass `--allow-downgrade`.
 
 Local release builds remain compile proofs and must never be distributed. iOS
 production signing is still unconfigured and requires an Apple Developer
