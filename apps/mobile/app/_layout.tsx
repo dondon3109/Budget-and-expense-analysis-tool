@@ -14,6 +14,7 @@ import { configureConnectivity } from "@/config/connectivity";
 import { OtaUpdateProvider } from "@/features/ota-updates";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { registerBackgroundSyncTask } from "@/sync/background-sync-task";
+import { telemetry } from "@/telemetry/telemetry";
 import { Button } from "@/ui/components";
 import { ZoptionThemeProvider, useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
@@ -41,6 +42,9 @@ function RootNavigator() {
 export default function RootLayout() {
   useEffect(() => {
     configureConnectivity();
+    // Inert unless the build embeds EXPO_PUBLIC_POSTHOG_KEY; init resolves
+    // even when the telemetry backend fails, so startup is never affected.
+    void telemetry.init();
     void registerBackgroundSyncTask().catch(() => {
       // Background sync is a best-effort convenience; registration failure must
       // never affect foreground behavior.
@@ -66,6 +70,9 @@ export default function RootLayout() {
 }
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    void telemetry.captureException(error, "root-error-boundary");
+  }, [error]);
   return (
     <SafeAreaProvider>
       <ZoptionThemeProvider>

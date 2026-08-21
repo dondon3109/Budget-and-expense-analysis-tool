@@ -17,24 +17,24 @@
 
 ## Threats and controls
 
-| Threat                                           | Required control                                                                                                                               |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Service or deployment secrets extracted from app | Ship only public URL and Supabase publishable key; validate build config; scan bundles and logs                                                |
-| Cross-user data after account switch             | Subject-scoped database/key names, close-before-open transition, clear observers/caches; Worker identity assertion gates sync, not local reads |
-| Plaintext local finance                          | SQLCipher enabled in both native targets; set key before schema access; verification test reads file bytes/native SQLite without key           |
-| Database key in backups                          | SecureStore configuration plus platform backup exclusions; database files excluded from unsafe cloud/device transfer paths                     |
-| Token leakage                                    | SecureStore-backed session persistence, no logs/breadcrumbs/screenshots, redacted network diagnostics                                          |
-| Client-supplied tenant or entitlement            | Strict request schemas reject tenant IDs; Worker derives both tenant and effective plan                                                        |
-| Replay/duplicate mutation                        | Tenant-scoped idempotency record and canonical request hash                                                                                    |
-| Device-clock overwrite                           | Server monotonic cursor, server timestamps, row revisions; no last-device-time-wins logic                                                      |
-| Half transfer                                    | One logical command and atomic local/server transactions                                                                                       |
-| Silent conflict loss                             | Preserve base/local/server versions and require explicit resolution                                                                            |
-| Malicious import                                 | Bounded file size/rows, safe parser, no formula execution, preview before online atomic commit, no file-content logging                        |
-| Compromised/crashed migration                    | Versioned transactional migrations, backup generation/recovery state, fail closed without deleting readable data                               |
-| Arbitrary exfiltration path                      | Allowlisted Worker base URL and typed routes only; no arbitrary HTTP/SQL/debug consoles in production                                          |
-| Sensitive telemetry                              | No financial fields, tokens, names, descriptions, file contents, or assistant messages in analytics/crash breadcrumbs                          |
-| Stale JWT after account deletion                 | Honor Worker `410` tombstone behavior; freeze and clear according to documented recovery state                                                 |
-| Rooted/jailbroken device                         | At-rest encryption and minimal exposure reduce risk but cannot guarantee secrecy on a fully compromised runtime; document limitation honestly  |
+| Threat                                           | Required control                                                                                                                                                                                    |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Service or deployment secrets extracted from app | Ship only public URL and Supabase publishable key; validate build config; scan bundles and logs                                                                                                     |
+| Cross-user data after account switch             | Subject-scoped database/key names, close-before-open transition, clear observers/caches; Worker identity assertion gates sync, not local reads                                                      |
+| Plaintext local finance                          | SQLCipher enabled in both native targets; set key before schema access; verification test reads file bytes/native SQLite without key                                                                |
+| Database key in backups                          | SecureStore configuration plus platform backup exclusions; database files excluded from unsafe cloud/device transfer paths                                                                          |
+| Token leakage                                    | SecureStore-backed session persistence, no logs/breadcrumbs/screenshots, redacted network diagnostics                                                                                               |
+| Client-supplied tenant or entitlement            | Strict request schemas reject tenant IDs; Worker derives both tenant and effective plan                                                                                                             |
+| Replay/duplicate mutation                        | Tenant-scoped idempotency record and canonical request hash                                                                                                                                         |
+| Device-clock overwrite                           | Server monotonic cursor, server timestamps, row revisions; no last-device-time-wins logic                                                                                                           |
+| Half transfer                                    | One logical command and atomic local/server transactions                                                                                                                                            |
+| Silent conflict loss                             | Preserve base/local/server versions and require explicit resolution                                                                                                                                 |
+| Malicious import                                 | Bounded file size/rows, safe parser, no formula execution, preview before online atomic commit, no file-content logging                                                                             |
+| Compromised/crashed migration                    | Versioned transactional migrations, backup generation/recovery state, fail closed without deleting readable data                                                                                    |
+| Arbitrary exfiltration path                      | Allowlisted Worker base URL and typed routes only; no arbitrary HTTP/SQL/debug consoles in production                                                                                               |
+| Sensitive telemetry                              | No financial fields, tokens, names, descriptions, file contents, or assistant messages in analytics/crash breadcrumbs; crash reports carry only sanitized exception types plus one-way fingerprints |
+| Stale JWT after account deletion                 | Honor Worker `410` tombstone behavior; freeze and clear according to documented recovery state                                                                                                      |
+| Rooted/jailbroken device                         | At-rest encryption and minimal exposure reduce risk but cannot guarantee secrecy on a fully compromised runtime; document limitation honestly                                                       |
 
 ## Key lifecycle
 
@@ -64,6 +64,45 @@ opens. It exposes no caller-selected path; failure prevents workspace access.
 - Search release bundles, native manifests, logs, tests, screenshots, and source for secrets and sensitive fixtures.
 - Exercise two real Supabase identities and prove no local or server cross-tenant visibility.
 - Exercise expired tokens, identity switch, migration corruption, interrupted cleanup, and lost sync responses.
+
+## Crash telemetry
+
+The Android Beta ships operator-enabled, build-time gated crash reporting
+(`apps/mobile/src/telemetry`, posthog-react-native). It is **not user opt-in**:
+there is no in-app consent setting today, and every installation built with an
+embedded `EXPO_PUBLIC_POSTHOG_KEY` reports crashes unless the operator
+disables the pipeline. Properties:
+
+- **Inert without a key.** Without `EXPO_PUBLIC_POSTHOG_KEY` at build time no
+  client is constructed and no network calls are made; local and CI builds are
+  unaffected.
+- **Sanitized payloads only.** The SDK's exception autocapture stays fully
+  disabled because it would transmit raw errors and stacks, which can embed
+  transaction text, identifiers, or server responses. Reports instead carry a
+  coarse exception type (for example `TypeError`), a one-way fingerprint hash
+  of the message and stack so identical failures group without disclosing
+  their content, and the reporting source label. Raw messages, stacks,
+  workspace contents, notes, identifiers, and credentials never leave the
+  device. App lifecycle events, session replay, console capture, and the
+  native crash plugin are all disabled.
+- **Two kill switches.** Remote: disabling the PostHog feature flag
+  `crash-telemetry-enabled` stops reporting on every installed build that can
+  evaluate flags; the app fails closed and sends nothing while flags are
+  unknown or the flag is absent or false. Build-time:
+  `EXPO_PUBLIC_TELEMETRY_DISABLED=1`, passed through CI from a repository
+  variable, keeps the client unconstructed in every subsequently built
+  APK/OTA; devices already installed receive it only by shipping such an
+  update.
+- **Fail-safe initialization.** The PostHog module loads lazily inside a
+  caught initializer; a telemetry failure can never prevent startup or
+  compound the failure being reported.
+- **JS-only dependency.** posthog-react-native has no required native module,
+  so adding it does not change the expo-updates native fingerprint or require
+  a new signed APK bootstrap.
+- **Uncaught errors take one path.** SDK autocapture is replaced by a global
+  handler wrapper that forwards exceptions through the same sanitizer; the
+  root error boundary reports through it as well. Delivery on a fatal crash is
+  best-effort.
 
 ## Known limitations
 

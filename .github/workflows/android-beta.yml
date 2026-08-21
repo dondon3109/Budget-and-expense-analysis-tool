@@ -200,6 +200,11 @@ jobs:
           EXPO_PUBLIC_API_URL: ${{ env.VITE_API_URL }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          # Crash telemetry is operator-gated: the secret enables it in built
+          # artifacts, and the repository variable hard-disables it in every
+          # build produced while set (devices pick that up via OTA/APK).
+          EXPO_PUBLIC_POSTHOG_KEY: ${{ secrets.EXPO_PUBLIC_POSTHOG_KEY }}
+          EXPO_PUBLIC_TELEMETRY_DISABLED: ${{ vars.EXPO_PUBLIC_TELEMETRY_DISABLED }}
 
       # Hard gate: the APK must be signed by the permanent Zoption key
       # (F9:46:70:EB...) and carry the production app identity. Failure here

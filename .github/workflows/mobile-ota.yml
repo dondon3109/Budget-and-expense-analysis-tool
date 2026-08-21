@@ -194,6 +194,10 @@ jobs:
           EXPO_PUBLIC_API_URL: ${{ env.VITE_API_URL }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          # Same operator gates as the APK workflow: secret to enable, repo
+          # variable to hard-disable subsequent builds.
+          EXPO_PUBLIC_POSTHOG_KEY: ${{ secrets.EXPO_PUBLIC_POSTHOG_KEY }}
+          EXPO_PUBLIC_TELEMETRY_DISABLED: ${{ vars.EXPO_PUBLIC_TELEMETRY_DISABLED }}
           UPDATE_MESSAGE: ${{ inputs.message }}
         run: |
           eas update \
