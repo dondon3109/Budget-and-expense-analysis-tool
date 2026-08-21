@@ -1,10 +1,12 @@
 import {
   CRASH_EVENT_NAME,
+  createPostHogOptions,
   createTelemetryService,
   crashFingerprint,
   DEFAULT_POSTHOG_HOST,
   extractErrorName,
   forwardUncaughtErrors,
+  normalizedStackShape,
   normalizeCrashToken,
   parseTelemetryConfig,
   REMOTE_KILL_SWITCH_FLAG,
@@ -62,22 +64,28 @@ describe("sanitizeError", () => {
     expect(report.fingerprint).toMatch(/^[0-9a-z]{14}$/);
   });
 
-  it("is deterministic per failure and distinct across failures", () => {
-    // The fingerprint hashes name+message+stack: an identical recurring
-    // failure (same stack) must group; different messages must not.
-    const error = new Error("boom");
-    const first = sanitizeError(error, "src");
-    const again = sanitizeError(error, "src");
-    const recurring = sanitizeError(
-      Object.assign(new Error("boom"), { stack: error.stack }),
-      "src",
-    );
-    const otherMessage = sanitizeError(new Error("different"), "src");
-    const otherSource = sanitizeError(error, "elsewhere");
+  it("groups by message-free stack shape", () => {
+    const firstError = Object.assign(new Error("acct=ZEN-1"), {
+      stack:
+        "Error: acct=ZEN-1\n    at submit (/app/entry.ts:10:20)\n    at root (/app/root.ts:30:40)",
+    });
+    const sameFramesDifferentMessage = Object.assign(new Error("acct=OTHER"), {
+      stack:
+        "Error: acct=OTHER\n    at submit (/app/entry.ts:99:7)\n    at root (/app/root.ts:31:2)",
+    });
+    const differentFrames = Object.assign(new Error("acct=ZEN-1"), {
+      stack: "Error: acct=ZEN-1\n    at sync (/app/sync.ts:10:20)",
+    });
+    const first = sanitizeError(firstError, "src");
+    const again = sanitizeError(firstError, "src");
+    const recurring = sanitizeError(sameFramesDifferentMessage, "src");
+    const otherFailure = sanitizeError(differentFrames, "src");
+    const otherSource = sanitizeError(firstError, "elsewhere");
     expect(again.fingerprint).toBe(first.fingerprint);
     expect(recurring.fingerprint).toBe(first.fingerprint);
-    expect(otherMessage.fingerprint).not.toBe(first.fingerprint);
+    expect(otherFailure.fingerprint).not.toBe(first.fingerprint);
     expect(otherSource.fingerprint).toBe(first.fingerprint); // source is not hashed
+    expect(normalizedStackShape(firstError)).not.toContain("ZEN-1");
   });
 
   it("reduces non-Error throws to safe generic types", () => {
@@ -85,8 +93,8 @@ describe("sanitizeError", () => {
     expect(sanitizeError(null, "s").type).toBe("ThrownVoid");
     expect(sanitizeError(undefined, "s").type).toBe("ThrownVoid");
     expect(sanitizeError({ code: 7 }, "s").type).toBe("NonError");
-    const named = Object.assign(new Error("x"), { name: "ApiFailure" });
-    expect(sanitizeError(named, "s").type).toBe("ApiFailure");
+    const named = Object.assign(new Error("x"), { name: "AccountZENError" });
+    expect(sanitizeError(named, "s").type).toBe("CustomError");
   });
 
   it("caps and cleans hostile token content", () => {
@@ -94,7 +102,7 @@ describe("sanitizeError", () => {
     const report = sanitizeError(new Error("x"), "source/with\u0000weird*chars!!");
     expect(report.source).toMatch(/^[A-Za-z0-9_.-]{1,48}$/);
     const longName = Object.assign(new Error("x"), { name: "E".repeat(200) });
-    expect(sanitizeError(longName, "s").type).toHaveLength(64);
+    expect(sanitizeError(longName, "s").type).toBe("CustomError");
   });
 });
 
@@ -104,6 +112,28 @@ describe("crashFingerprint and extractErrorName", () => {
     expect(crashFingerprint("same")).not.toBe(crashFingerprint("other"));
     expect(extractErrorName(new TypeError("t"))).toBe("TypeError");
     expect(extractErrorName(42)).toBe("NonError");
+  });
+});
+
+describe("createPostHogOptions", () => {
+  it("uses ephemeral, profile-free SDK defaults", () => {
+    const options = createPostHogOptions("https://eu.i.posthog.com");
+    expect(options).toMatchObject({
+      host: "https://eu.i.posthog.com",
+      persistence: "memory",
+      personProfiles: "never",
+      setDefaultPersonProperties: false,
+      disableSurveys: true,
+      captureAppLifecycleEvents: false,
+      enableSessionReplay: false,
+    });
+    expect(options.customAppProperties()).toEqual({});
+    expect(options.errorTracking.autocapture).toEqual({
+      uncaughtExceptions: false,
+      unhandledRejections: false,
+      console: false,
+      nativeCrashes: false,
+    });
   });
 });
 
@@ -176,6 +206,24 @@ describe("createTelemetryService", () => {
     await harness.service.init();
     expect(harness.transports).toHaveLength(1);
     expect(harness.service.isActive()).toBe(true);
+  });
+
+  it("shares one in-flight initialization", async () => {
+    let resolveTransport: ((transport: TelemetryTransport) => void) | undefined;
+    let factoryCalls = 0;
+    const transportPromise = new Promise<TelemetryTransport>((resolve) => {
+      resolveTransport = resolve;
+    });
+    const service = createTelemetryService(enabledConfig, () => {
+      factoryCalls += 1;
+      return transportPromise;
+    });
+    const first = service.init();
+    const second = service.init();
+    expect(factoryCalls).toBe(1);
+    resolveTransport?.({ captureCrash: jest.fn(), flush: async () => undefined });
+    await Promise.all([first, second]);
+    expect(service.isActive()).toBe(true);
   });
 
   it("flushes each sanitized report for immediate delivery", async () => {
@@ -295,16 +343,26 @@ describe("forwardUncaughtErrors", () => {
     expect(previousCalls).toEqual([[error, true]]);
   });
 
-  it("survives throwing reporters and throwing previous handlers", () => {
-    const state = install(() => {
-      throw new Error("previous handler bug");
-    });
+  it("survives a throwing reporter before calling the previous handler", () => {
+    const previous = jest.fn();
+    const state = install(previous);
     forwardUncaughtErrors(() => {
       throw new Error("reporter bug");
     });
     const handler = state.handler;
     if (!handler) throw new Error("handler was not installed");
     expect(() => handler(new Error("boom"), false)).not.toThrow();
+    expect(previous).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves a throwing previous handler", () => {
+    const state = install(() => {
+      throw new Error("previous handler bug");
+    });
+    forwardUncaughtErrors(() => undefined);
+    const handler = state.handler;
+    if (!handler) throw new Error("handler was not installed");
+    expect(() => handler(new Error("boom"), false)).toThrow("previous handler bug");
   });
 
   it("does nothing where no global handler mechanism exists", () => {

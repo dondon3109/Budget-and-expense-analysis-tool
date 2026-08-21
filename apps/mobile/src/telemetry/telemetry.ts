@@ -17,10 +17,12 @@
  *
  * Privacy: raw errors NEVER leave the device. SDK exception autocapture
  * stays disabled because it would transmit raw messages and stacks, which
- * can embed transaction text, identifiers, or server responses. Reports
- * carry a coarse exception type, a one-way fingerprint hash of the
- * message/stack (identical failures group without disclosing content), and
- * the reporting source label. See docs/mobile/security-and-privacy.md.
+ * can embed transaction text, identifiers, or server responses. Custom crash
+ * fields carry only a coarse exception type, a deterministic grouping token
+ * derived from message-free stack frames, and the reporting source label.
+ * PostHog still supplies ephemeral SDK/session identifiers required for event
+ * delivery; no Zoption account identity is attached. See
+ * docs/mobile/security-and-privacy.md.
  */
 
 export const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
@@ -35,13 +37,13 @@ export interface TelemetryConfig {
   host: string;
 }
 
-/** The exact payload shape transmitted for a crash - nothing else. */
+/** Zoption-controlled crash fields; PostHog adds its minimal event envelope. */
 export interface SanitizedCrashReport {
   /** Where in the app the failure was observed (developer-controlled literal). */
   source: string;
   /** Coarse exception class name, e.g. "TypeError" or "NonError". */
   type: string;
-  /** One-way hash of name+message+stack so identical crashes group together. */
+  /** Deterministic hash of type plus message-free stack-frame shape. */
   fingerprint: string;
 }
 
@@ -81,15 +83,7 @@ export function normalizeCrashToken(value: string, maxLength: number): string {
     .slice(0, maxLength);
 }
 
-export function extractErrorName(error: unknown): string {
-  if (error instanceof Error && error.name) return error.name;
-  if (typeof error === "string") return "ThrownString";
-  if (error === null || error === undefined) return "ThrownVoid";
-  const name = (error as { name?: unknown } | null)?.name;
-  return typeof name === "string" && name.trim() ? name : "NonError";
-}
-
-/** Deterministic 70-bit fingerprint rendered as 14 lowercase base36 chars. */
+/** Deterministic 64-bit grouping hash rendered as 14 lowercase base36 chars. */
 export function crashFingerprint(input: string): string {
   let h1 = 0xdeadbeef ^ input.length;
   let h2 = 0x41c6ce57 ^ input.length;
@@ -103,34 +97,57 @@ export function crashFingerprint(input: string): string {
   return (h1 >>> 0).toString(36).padStart(7, "0") + (h2 >>> 0).toString(36).padStart(7, "0");
 }
 
-/**
- * Raw text used ONLY as one-way fingerprint input. Objects are deliberately
- * never stringified: their default form is useless for grouping and could
- * carry embedded sensitive content.
- */
-function rawMessageOf(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  if (typeof error === "number" || typeof error === "boolean" || typeof error === "bigint") {
-    return String(error);
+const STANDARD_ERROR_NAMES = new Set([
+  "AggregateError",
+  "Error",
+  "EvalError",
+  "RangeError",
+  "ReferenceError",
+  "SyntaxError",
+  "TypeError",
+  "URIError",
+]);
+
+/** Never forwards a caller-controlled custom error name as a telemetry field. */
+export function extractErrorName(error: unknown): string {
+  if (error instanceof Error) {
+    return STANDARD_ERROR_NAMES.has(error.name) ? error.name : "CustomError";
   }
-  return "";
+  if (typeof error === "string") return "ThrownString";
+  if (error === null || error === undefined) return "ThrownVoid";
+  return "NonError";
+}
+
+/**
+ * Extracts only JavaScript stack frames. The message-bearing first line and
+ * any non-frame continuation lines are discarded before hashing. Line and
+ * column numbers are normalized so the same code location groups across
+ * minor bundle layout changes.
+ */
+export function normalizedStackShape(error: unknown): string {
+  if (!(error instanceof Error) || typeof error.stack !== "string") return "";
+  return error.stack
+    .split(/\r?\n/)
+    .filter((line) => /^\s*at\s+/.test(line) || /@\S+:\d+(?::\d+)?\s*$/.test(line))
+    .map((line) =>
+      line
+        .trim()
+        .replace(/:\d+:\d+/g, ":#:#")
+        .replace(/:\d+(?=\)?\s*$)/, ":#"),
+    )
+    .join("\n")
+    .slice(0, FINGERPRINT_INPUT_LIMIT);
 }
 
 /**
  * Reduces any thrown value to the only fields that may be transmitted.
- * Messages and stacks feed the one-way fingerprint exclusively; they are
- * never included verbatim, so sensitive content embedded in an error cannot
- * reach the telemetry backend.
+ * Messages are never read. Only message-free stack frames feed the grouping
+ * fingerprint, so sensitive text embedded in an error cannot reach the
+ * telemetry backend either directly or as a guessable message hash.
  */
 export function sanitizeError(error: unknown, source: string): SanitizedCrashReport {
   const rawName = extractErrorName(error);
-  const message = rawMessageOf(error);
-  const stack = error instanceof Error ? (error.stack ?? "") : message;
-  const fingerprintInput = `${rawName}\u0000${message}\u0000${stack}`.slice(
-    0,
-    FINGERPRINT_INPUT_LIMIT,
-  );
+  const fingerprintInput = `${rawName}\u0000${normalizedStackShape(error)}`;
   return {
     source: normalizeCrashToken(source, MAX_SOURCE_LENGTH) || "unknown-source",
     type: normalizeCrashToken(rawName, MAX_TYPE_LENGTH) || "UnknownError",
@@ -170,6 +187,8 @@ export function createTelemetryService(
   let transport: TelemetryTransport | null = null;
   let gateResolved = false;
   let gateOpen = false;
+  let initializationFailed = false;
+  let initialization: Promise<void> | null = null;
   const pending: SanitizedCrashReport[] = [];
 
   const deliver = (report: SanitizedCrashReport): void => {
@@ -194,28 +213,33 @@ export function createTelemetryService(
   };
 
   return {
-    async init() {
-      if (!config.enabled || transport) return;
-      try {
-        const created = await createTransport(config);
-        if (transport) return; // lost an initialization race; keep first
-        transport = created;
-        if (typeof created.onRemoteGateChange === "function") {
-          created.onRemoteGateChange((allowed) => {
+    init() {
+      if (!config.enabled || transport || initializationFailed) return Promise.resolve();
+      if (initialization) return initialization;
+      initialization = (async () => {
+        try {
+          const created = await createTransport(config);
+          transport = created;
+          if (typeof created.onRemoteGateChange === "function") {
+            created.onRemoteGateChange((allowed) => {
+              gateResolved = true;
+              gateOpen = allowed;
+              if (allowed) drainPending();
+              else pending.length = 0;
+            });
+          } else {
+            // Transport opted out of remote gating entirely (tests/simple sinks).
             gateResolved = true;
-            gateOpen = allowed;
-            if (allowed) drainPending();
-            else pending.length = 0;
-          });
-        } else {
-          // Transport opted out of remote gating entirely (tests/simple sinks).
-          gateResolved = true;
-          gateOpen = true;
+            gateOpen = true;
+          }
+        } catch {
+          // Fail-safe: a broken telemetry backend must never affect the app.
+          initializationFailed = true;
+          pending.length = 0;
+          transport = null;
         }
-      } catch {
-        // Fail-safe: a broken telemetry backend must never affect the app.
-        transport = null;
-      }
+      })();
+      return initialization;
     },
     isActive: () => transport !== null,
     // Synchronous internally (delivery is fire-and-forget); the Promise keeps
@@ -223,6 +247,7 @@ export function createTelemetryService(
     captureException(error: unknown, source: string): Promise<void> {
       if (!config.enabled) return Promise.resolve();
       const report = sanitizeError(error, source);
+      if (initializationFailed) return Promise.resolve();
       if (!transport || !gateResolved) {
         // Hold at most a bounded window of reports while the remote gate is
         // still unresolved (or init is still importing its backend).
@@ -261,11 +286,9 @@ export function forwardUncaughtErrors(report: (error: unknown) => void): void {
       /* reporting must never mask the crash itself */
     }
     if (previous) {
-      try {
-        previous(error, isFatal);
-      } catch {
-        /* preserve the original handler's errors visibly */
-      }
+      // The platform handler remains authoritative. If it throws, preserve
+      // that original behavior instead of hiding it behind telemetry.
+      previous(error, isFatal);
     }
   });
 }
@@ -282,9 +305,39 @@ async function createPostHogTransport(config: TelemetryConfig): Promise<Telemetr
   // Lazy import keeps the library off the critical path: disabled builds
   // never execute it, and a failing load is caught by the service's init.
   const posthog = await import("posthog-react-native");
-  const client = new posthog.default(config.apiKey ?? "", {
-    host: config.host,
-    persistence: "file",
+  const client = new posthog.default(config.apiKey ?? "", createPostHogOptions(config.host));
+
+  let gateListener: ((allowed: boolean) => void) | undefined;
+  client.onFeatureFlags((flags) => {
+    gateListener?.(flags[REMOTE_KILL_SWITCH_FLAG] === true);
+  });
+
+  return {
+    captureCrash: (report) => {
+      client.capture(CRASH_EVENT_NAME, { ...report });
+    },
+    flush: () => client.flush(),
+    onRemoteGateChange: (listener) => {
+      gateListener = listener;
+      // Resolve immediately from cached state when available. Undefined is
+      // deliberately closed until the current flag request completes.
+      listener(client.getFeatureFlag(REMOTE_KILL_SWITCH_FLAG, { sendEvent: false }) === true);
+    },
+  };
+}
+
+/** Minimal PostHog configuration used by the real transport. */
+export function createPostHogOptions(host: string) {
+  return {
+    host,
+    // Do not persist a stable device identity or queued events across app
+    // restarts. PostHog still assigns an ephemeral distinct/session id because
+    // its ingestion and feature-flag protocols require them.
+    persistence: "memory" as const,
+    personProfiles: "never" as const,
+    setDefaultPersonProperties: false,
+    customAppProperties: () => ({}),
+    disableSurveys: true,
     // Crash reports only: no lifecycle analytics, no session replay, no
     // console capture, and NO SDK exception autocapture - autocapture would
     // bypass sanitization by transmitting raw errors and stacks. Uncaught
@@ -298,24 +351,6 @@ async function createPostHogTransport(config: TelemetryConfig): Promise<Telemetr
         console: false,
         nativeCrashes: false,
       },
-    },
-  });
-
-  let gateListener: ((allowed: boolean) => void) | undefined;
-  client.onFeatureFlags((flags) => {
-    gateListener?.(flags[REMOTE_KILL_SWITCH_FLAG] === true);
-  });
-
-  return {
-    captureCrash: (report) => {
-      client.capture(CRASH_EVENT_NAME, {
-        ...report,
-        $process_person_profile: false,
-      });
-    },
-    flush: () => client.flush(),
-    onRemoteGateChange: (listener) => {
-      gateListener = listener;
     },
   };
 }
