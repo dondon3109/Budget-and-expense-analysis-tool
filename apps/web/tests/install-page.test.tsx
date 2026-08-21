@@ -7,6 +7,9 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
+// The committed fallback snapshot is the expected value wherever these tests
+// assert "the official R2 snapshot", so refreshing it never breaks the tests.
+import { ANDROID_RELEASE } from "../src/releases/androidRelease";
 import { InstallPage } from "../src/pages/InstallPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
@@ -195,7 +198,7 @@ describe("R2 remote release metadata", () => {
 
     expect(screen.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
       "href",
-      "https://downloads.zoption.site/android/zoption-beta-0.2.4.apk",
+      ANDROID_RELEASE.downloadPath,
     );
     expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
   });
@@ -227,7 +230,7 @@ describe("R2 remote release metadata", () => {
       await waitFor(() =>
         expect(screen.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
           "href",
-          "https://downloads.zoption.site/android/zoption-beta-0.2.4.apk",
+          ANDROID_RELEASE.downloadPath,
         ),
       );
       expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();

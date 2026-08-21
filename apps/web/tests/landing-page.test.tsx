@@ -7,6 +7,9 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
+// Assert against the committed fallback snapshot so refreshing it never
+// breaks this test.
+import { ANDROID_RELEASE } from "../src/releases/androidRelease";
 import { LandingPage } from "../src/pages/LandingPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
@@ -148,7 +151,13 @@ describe("landing page", () => {
     renderLanding();
 
     const installation = screen.getByRole("region", { name: "Take Zoption Beta to Android." });
-    expect(within(installation).getByText(/142,945,299 bytes/i)).toBeInTheDocument();
+    const label = ANDROID_RELEASE.sizeLabel;
+    expect(
+      within(installation).getByText((_, element) => {
+        if (!element || !element.textContent?.includes(label)) return false;
+        return ![...element.children].some((child) => child.textContent?.includes(label));
+      }),
+    ).toBeInTheDocument();
     expect(within(installation).queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
     expect(
       within(installation).getByRole("link", { name: "Download Android APK" }),

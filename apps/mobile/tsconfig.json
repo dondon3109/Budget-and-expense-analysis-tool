@@ -6,6 +6,7 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
     "paths": {
       "@/*": ["./src/*"],
       "@zoption/shared": ["../../packages/shared/src/index.ts"]

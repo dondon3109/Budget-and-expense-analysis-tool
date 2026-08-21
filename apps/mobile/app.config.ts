@@ -1,6 +1,20 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 import { withAndroidManifest, type ConfigPlugin } from "expo/config-plugins";
 
+import packageJson from "./package.json";
+
+// package.json is the single source of truth for the release version name;
+// the Android versionCode counter below stays the only other hand-picked
+// release value.
+const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+
+function resolveAppVersion(value: unknown): string {
+  if (typeof value !== "string" || !VERSION_PATTERN.test(value)) {
+    throw new Error("apps/mobile/package.json must provide a valid semver version string.");
+  }
+  return value;
+}
+
 const variants = {
   development: {
     name: "Zoption Dev",
@@ -95,7 +109,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: variant.name,
     slug: "zoption-mobile",
-    version: "0.2.7-beta",
+    version: resolveAppVersion(packageJson.version),
     icon: "./assets/zoption-icon.png",
     scheme: variant.scheme,
     userInterfaceStyle: "automatic",

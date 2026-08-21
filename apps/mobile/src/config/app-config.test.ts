@@ -2,6 +2,8 @@ import process from "node:process";
 
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
+import packageJson from "../../package.json";
+
 import createConfig from "../../app.config";
 
 const PROJECT_ID = "9f20b628-1869-4f69-94d6-b4237a682ac0";
@@ -34,8 +36,12 @@ describe("mobile OTA app configuration", () => {
     const config = configFor({ APP_VARIANT: "production", EAS_PROJECT_ID: undefined });
 
     expect(config.updates).toEqual({ enabled: false });
-    expect(config.version).toBe("0.2.7-beta");
-    expect(config.android).toMatchObject({ package: "site.zoption.android", versionCode: 20307 });
+    // The resolved version must be exactly what package.json declares - the
+    // single source of truth - not a separately maintained literal.
+    expect(config.version).toBe(packageJson.version);
+    expect(config.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
+    expect(config.android).toMatchObject({ package: "site.zoption.android" });
+    expect(config.android?.versionCode).toBeGreaterThan(0);
     expect(config.runtimeVersion).toEqual({ policy: "appVersion" });
   });
 

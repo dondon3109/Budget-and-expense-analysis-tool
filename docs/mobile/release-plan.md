@@ -42,6 +42,12 @@ part of this distribution channel.
   and bundled-asset fixes may then use the separately gated Expo OTA channel;
   native dependencies, permissions, config plugins, Expo SDK changes, and
   native source changes always require another signed APK/build.
+- A signed-release version bump edits exactly two files:
+  `apps/mobile/package.json` for the release version name and `app.config.ts`
+  for the Android `versionCode`. The `Android Beta Build` workflow resolves
+  that Expo configuration once and derives every other identity value it
+  publishes (APK object key, public URL, and `android/latest.json` fields), so
+  no release literal is repeated anywhere else.
 - The verified APK updater remains the native Android release and fallback
   channel. OTA never downloads, verifies, or installs APK files.
 - Both platforms talk only to the existing Worker. Deploy the Worker before

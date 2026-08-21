@@ -22,16 +22,18 @@ interface PackageManifest {
 }
 
 describe("Android release contract", () => {
-  it("keeps the mobile version sources synchronized for the 0.2.7-beta updater release", async () => {
+  it("keeps the Android release version single-sourced in package.json", async () => {
     const mobilePackage = await json<PackageManifest>(resolve(mobileRoot, "package.json"));
     const appConfig = await text(resolve(mobileRoot, "app.config.ts"));
 
-    // The build-time snapshot (androidRelease.json) is refreshed from the
-    // published R2 object after the CI build produces its artifact checksums;
-    // the authoritative mobile sources change together here.
-    expect(mobilePackage.version).toBe("0.2.7-beta");
-    expect(appConfig).toContain('version: "0.2.7-beta"');
-    expect(appConfig).toContain("versionCode: 20307");
+    // package.json is the only hand-maintained copy of the release version;
+    // app.config.ts must derive its version from there instead of duplicating
+    // a literal, so a bump never requires touching this test.
+    expect(mobilePackage.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
+    expect(appConfig).toContain('import packageJson from "./package.json"');
+    expect(appConfig).not.toMatch(/version: "\d/);
+    // The Android versionCode counter stays an explicit literal in one place.
+    expect(appConfig).toMatch(/versionCode: \d+,/);
     expect(ANDROID_RELEASE.packageId).toBe("site.zoption.android");
     expect(appConfig).toContain('name: "Zoption Beta"');
     expect(appConfig).toContain('androidPackage: "site.zoption.android"');
@@ -39,7 +41,10 @@ describe("Android release contract", () => {
 
   it("hosts the beta artifact on the Zoption R2 download domain", () => {
     expect(ANDROID_RELEASE.downloadPath).toBe(
-      "https://downloads.zoption.site/android/zoption-beta-0.2.4.apk",
+      "https://downloads.zoption.site/android/" + ANDROID_RELEASE.filename,
+    );
+    expect(ANDROID_RELEASE.downloadPath).toMatch(
+      /^https:\/\/downloads\.zoption\.site\/android\/[a-z0-9.-]+\.apk$/,
     );
     // No checksum sidecar is published on R2; the APK checksum lives in
     // android/latest.json and is shown on the install page.
@@ -53,18 +58,22 @@ describe("Android release contract", () => {
     expect(gitignore).toMatch(/\*\.apk/);
   });
 
-  it("records exact immutable artifact metadata for integrity checks", () => {
+  it("records well-formed artifact metadata for integrity checks", () => {
+    // Values change with every publish; only their shape and the permanent
+    // signing identity are contractual here.
     expect(ANDROID_RELEASE).toMatchObject({
       packageId: "site.zoption.android",
-      versionName: "0.2.4-beta",
-      versionCode: 20304,
       targetApi: 36,
       reinstallRequired: false,
     });
+    expect(ANDROID_RELEASE.versionName).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
+    expect(ANDROID_RELEASE.versionCode).toBeGreaterThan(0);
+    expect(Number.isInteger(ANDROID_RELEASE.versionCode)).toBe(true);
     expect(ANDROID_RELEASE.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(ANDROID_RELEASE.sizeBytes).toBeGreaterThan(1_000_000);
     expect(ANDROID_RELEASE.minimumAndroid).toContain("Android");
     expect(ANDROID_RELEASE.releaseDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // The fallback must always advertise the permanent Zoption signing key.
     expect(ANDROID_RELEASE.certificateSha256).toBe(
       "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
     );
