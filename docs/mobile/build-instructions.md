@@ -90,7 +90,10 @@ the production variant, signs with the permanent Zoption key, verifies the APK
 identity, publishes the immutable versioned object, verifies that public object,
 and advances `android/latest.json` last. Both publish inputs must remain false
 for a build-only validation run and may be enabled only with explicit release
-approval.
+approval. That workflow never commits to this repository: after a successful
+production release run, the `Production Release` workflow's snapshot job syncs
+the website fallback (`apps/web/src/releases/androidRelease.json`) from the
+live channel as a `[skip ci]` chore commit.
 
 Local release builds remain compile proofs and must never be distributed. iOS
 production signing is still unconfigured and requires an Apple Developer

@@ -184,3 +184,54 @@ jobs:
         run: pnpm release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Syncs the website's offline Android-release fallback with the live
+  # channel. This is the ONLY job besides semantic-release that may commit to
+  # main, and only for this single generated metadata file, so contents: write
+  # is confined here; the Android build workflow itself stays read-only and
+  # cannot race Production Release. Runs after the production pipeline
+  # succeeded so the fallback never advances ahead of a healthy deployment.
+  # The refresh script rejects any live versionCode below the committed
+  # snapshot; an intentional rollback must run it manually with
+  # --allow-downgrade.
+  sync-android-release-snapshot:
+    name: Sync published Android release snapshot
+    needs: [deploy-and-release]
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Node 24 strips the imported TypeScript helper natively; no install is
+      # needed because the script uses only Node built-ins plus fetch.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Refresh and publish the fallback snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SNAPSHOT_DIR="$RUNNER_TEMP/zoption-snapshot-repo"
+          git clone --depth 1 --single-branch \
+            "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git" \
+            "$SNAPSHOT_DIR"
+          node "$GITHUB_WORKSPACE/scripts/refresh-android-release-snapshot.mjs" \
+            --latest-url "https://downloads.zoption.site/android/latest.json" \
+            --target "$SNAPSHOT_DIR/apps/web/src/releases/androidRelease.json" \
+            --write
+          git -C "$SNAPSHOT_DIR" add apps/web/src/releases/androidRelease.json
+          if git -C "$SNAPSHOT_DIR" diff --cached --quiet; then
+            echo "Committed snapshot already matches the live channel."
+          else
+            git -C "$SNAPSHOT_DIR" config user.name "github-actions[bot]"
+            git -C "$SNAPSHOT_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$SNAPSHOT_DIR" commit -m "chore(android): sync published release snapshot [skip ci]"
+            git -C "$SNAPSHOT_DIR" push origin main
+          fi
