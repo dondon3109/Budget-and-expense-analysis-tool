@@ -1,4 +1,5 @@
 import {
+  accountTypes,
   monthStartSchema,
   subscriptionBillingDateForMonth,
   type AccountRecord,
@@ -57,6 +58,7 @@ type EditableTransactionInput = TransactionInput;
 const localAccountOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
+  type: z.enum(accountTypes),
   currency: z.enum(["PHP", "USD"]),
   pending: z
     .number()
@@ -424,31 +426,34 @@ LEFT JOIN accounts destination
   ON destination.id = peer.account_id AND destination.deleted_at IS NULL`;
 
 function mapTransactionRows(rows: unknown[]): LocalTransactionItem[] {
-  return z.array(localTransactionRowSchema).parse(rows).map((row) => {
-    const linkedTransfer = row.kind === "transfer" && row.transfer_group_id !== null;
-    const transaction: TransactionListItem = {
-      id: row.id,
-      date: row.date,
-      description: row.description,
-      amountMinor: linkedTransfer ? Math.abs(row.amount_minor) : row.amount_minor,
-      currency: row.currency,
-      kind: row.kind,
-      categoryId: row.category_id,
-      categoryName: row.category_name,
-      categoryColor: row.category_color,
-      accountId: row.account_id,
-      accountName: row.account_name ?? "Unassigned",
-      notes: row.notes,
-      transferGroupId: row.transfer_group_id,
-      fromAccountId: linkedTransfer ? row.account_id : null,
-      fromAccountName: linkedTransfer ? (row.account_name ?? "Unassigned") : null,
-      toAccountId: linkedTransfer ? row.to_account_id : null,
-      toAccountName: linkedTransfer ? (row.to_account_name ?? "Unassigned") : null,
-      transferFeeMinor: row.transfer_fee_minor,
-      legacyTransfer: row.kind === "transfer" && !linkedTransfer,
-    };
-    return { transaction, syncState: row.sync_state };
-  });
+  return z
+    .array(localTransactionRowSchema)
+    .parse(rows)
+    .map((row) => {
+      const linkedTransfer = row.kind === "transfer" && row.transfer_group_id !== null;
+      const transaction: TransactionListItem = {
+        id: row.id,
+        date: row.date,
+        description: row.description,
+        amountMinor: linkedTransfer ? Math.abs(row.amount_minor) : row.amount_minor,
+        currency: row.currency,
+        kind: row.kind,
+        categoryId: row.category_id,
+        categoryName: row.category_name,
+        categoryColor: row.category_color,
+        accountId: row.account_id,
+        accountName: row.account_name ?? "Unassigned",
+        notes: row.notes,
+        transferGroupId: row.transfer_group_id,
+        fromAccountId: linkedTransfer ? row.account_id : null,
+        fromAccountName: linkedTransfer ? (row.account_name ?? "Unassigned") : null,
+        toAccountId: linkedTransfer ? row.to_account_id : null,
+        toAccountName: linkedTransfer ? (row.to_account_name ?? "Unassigned") : null,
+        transferFeeMinor: row.transfer_fee_minor,
+        legacyTransfer: row.kind === "transfer" && !linkedTransfer,
+      };
+      return { transaction, syncState: row.sync_state };
+    });
 }
 
 export class LocalWorkspaceRepository {
@@ -574,7 +579,8 @@ LIMIT ?`;
   async getTransactionFormData(id?: string): Promise<TransactionFormData> {
     const [accounts, categories, transactionRow] = await Promise.all([
       this.database.getAllAsync(
-        `SELECT id, name, currency, CASE WHEN server_revision = 0 THEN 1 ELSE 0 END AS pending
+        `SELECT id, name, type, currency,
+          CASE WHEN server_revision = 0 THEN 1 ELSE 0 END AS pending
          FROM accounts
          WHERE deleted_at IS NULL AND archived = 0
            AND (

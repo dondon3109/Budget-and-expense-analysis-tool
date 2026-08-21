@@ -177,7 +177,9 @@ describe("encrypted local workspace repository", () => {
     const database = {
       getAllAsync: jest
         .fn()
-        .mockResolvedValueOnce([{ id: "account-1", name: "Wallet", currency: "PHP", pending: 0 }])
+        .mockResolvedValueOnce([
+          { id: "account-1", name: "Wallet", type: "cash", currency: "PHP", pending: 0 },
+        ])
         .mockResolvedValueOnce([
           {
             id: "category-1",
@@ -209,7 +211,9 @@ describe("encrypted local workspace repository", () => {
     await expect(
       new LocalWorkspaceRepository(database as never).getTransactionFormData("transaction-1"),
     ).resolves.toEqual({
-      accounts: [{ id: "account-1", name: "Wallet", currency: "PHP", pending: false }],
+      accounts: [
+        { id: "account-1", name: "Wallet", type: "cash", currency: "PHP", pending: false },
+      ],
       categories: [
         {
           id: "category-1",
@@ -250,8 +254,8 @@ describe("encrypted local workspace repository", () => {
       getAllAsync: jest
         .fn()
         .mockResolvedValueOnce([
-          { id: "account-1", name: "Wallet", currency: "PHP", pending: 0 },
-          { id: "account-2", name: "Savings", currency: "PHP", pending: 0 },
+          { id: "account-1", name: "Wallet", type: "cash", currency: "PHP", pending: 0 },
+          { id: "account-2", name: "Savings", type: "savings", currency: "PHP", pending: 0 },
         ])
         .mockResolvedValueOnce([
           {

@@ -8,6 +8,7 @@ export * from "./planning";
 export * from "./schemas";
 export * from "./subscriptions";
 export * from "./sync";
+export * from "./transactions";
 export * from "./types";
 
 export * from "./workbook";

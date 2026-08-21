@@ -48,7 +48,7 @@ part of this distribution channel.
   or independently of the app; mobile has no pinned server schema beyond the
   shared response contracts in this repository.
 
-The public `0.2.6-beta` APK includes the dormant `expo-updates` dependency, but
+The public `0.2.7-beta` APK includes the dormant `expo-updates` dependency, but
 was built without an EAS project ID, so it cannot receive OTA updates. Activation
 is deferred until the required EAS project/token and a later explicit signed APK
 complete the bootstrap in [`ota-updates.md`](ota-updates.md).
@@ -186,6 +186,18 @@ and signing-certificate gates remain unchanged.
 
 It also clarifies disabled button states and improves contrast for the
 voice-entry and receipt-capture actions.
+
+## 0.2.7-beta transaction entry defaults release
+
+`versionName` `0.2.7-beta`, `versionCode` `20307`. The permanent Zoption signer
+is unchanged, so `reinstallRequired` stays `false` and Android can update in
+place from `0.2.6-beta`.
+
+New transactions now prefer an active Cash account when one is available,
+with the first active account retained as the fallback. The same typed shared
+rule is used by native transaction entry, receipt drafts, and the website.
+Voice recording status and receipt photo actions are also clearer and use the
+shared accessible button component.
 
 ## Future signed OTA bootstrap (deferred)
 

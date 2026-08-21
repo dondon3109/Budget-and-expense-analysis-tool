@@ -1,14 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { CURRENT_RECEIPT_CONSENT_VERSION, type TransactionVoiceDraft } from "@zoption/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { extractVoiceTransaction } from "@/api/ai-entry";
 import { ApiTransportError } from "@/api/authenticated";
 import { getReceiptPreferences, grantReceiptConsent } from "@/api/receipt-scan";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useVoiceRecorder } from "@/features/assistant/assistant-voice-hooks";
-import { Card, ConfirmationDialog } from "@/ui/components";
+import { Button, Card, ConfirmationDialog } from "@/ui/components";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
@@ -122,30 +122,23 @@ export function TransactionVoiceEntry({
 
   const recording = recorder.phase === "recording";
   const busy = recorder.phase === "requesting" || recorder.phase === "transcribing";
-  const actionDisabled = Boolean(disabled || busy);
-  const actionBackground = actionDisabled
-    ? theme.colors.surface
-    : recording
-      ? theme.colors.danger
-      : theme.colors.brand;
-  const actionBorder = actionDisabled
-    ? theme.colors.border
-    : recording
-      ? theme.colors.danger
-      : theme.colors.brandPressed;
-  const actionForeground = actionDisabled ? theme.colors.textMuted : theme.colors.onBrand;
+  const loading = readiness === "checking" || busy;
   const label =
     readiness === "checking"
-      ? "Checking AI entry…"
+      ? "Checking voice entry…"
       : readiness === "unavailable"
         ? "Retry AI voice entry"
         : readiness === "needs-consent"
           ? "Enable AI voice entry"
           : recording
             ? "Stop and review"
-            : busy
-              ? "Drafting transaction…"
-              : "Speak a transaction";
+            : recorder.phase === "requesting"
+              ? "Starting microphone…"
+              : recorder.phase === "transcribing"
+                ? "Creating your draft…"
+                : "Speak a transaction";
+  const elapsedMinutes = Math.floor(recorder.elapsedSeconds / 60);
+  const elapsedRemainder = String(recorder.elapsedSeconds % 60).padStart(2, "0");
 
   return (
     <>
@@ -157,16 +150,12 @@ export function TransactionVoiceEntry({
               { backgroundColor: recording ? theme.colors.dangerSoft : theme.colors.brandSoft },
             ]}
           >
-            {busy ? (
-              <ActivityIndicator color={theme.colors.brand} />
-            ) : (
-              <MaterialCommunityIcons
-                accessibilityElementsHidden
-                color={recording ? theme.colors.danger : theme.colors.brand}
-                name={recording ? "stop-circle-outline" : "microphone-outline"}
-                size={24}
-              />
-            )}
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color={recording ? theme.colors.danger : theme.colors.brand}
+              name={recording ? "waveform" : "microphone-outline"}
+              size={24}
+            />
           </View>
           <View className="min-w-0 flex-1 gap-1">
             <Text style={[typography.headline, { color: theme.colors.text }]}>
@@ -177,34 +166,46 @@ export function TransactionVoiceEntry({
             </Text>
           </View>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={label}
-          accessibilityState={{ disabled: actionDisabled, busy }}
-          disabled={actionDisabled}
-          onPress={action}
-          style={({ pressed }) => [
-            styles.action,
-            {
-              backgroundColor: actionBackground,
-              borderColor: actionBorder,
-              opacity: actionDisabled ? 1 : pressed ? 0.86 : 1,
-            },
-          ]}
-        >
-          <MaterialCommunityIcons
-            accessibilityElementsHidden
-            color={actionForeground}
-            name={recording ? "stop" : "microphone"}
-            size={19}
-          />
-          <Text style={[typography.label, { color: actionForeground }]}>{label}</Text>
-        </Pressable>
         {recording ? (
-          <Text style={[typography.caption, { color: theme.colors.danger }]}>
-            Recording {recorder.elapsedSeconds}s — tap Stop and review when you finish.
-          </Text>
+          <View
+            accessible
+            accessibilityLabel={`Recording, ${elapsedMinutes} minutes ${recorder.elapsedSeconds % 60} seconds`}
+            style={[
+              styles.recordingStatus,
+              {
+                backgroundColor: theme.colors.dangerSoft,
+                borderColor: theme.colors.danger,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color={theme.colors.danger}
+              name="record-circle-outline"
+              size={20}
+            />
+            <View className="min-w-0 flex-1">
+              <Text style={[typography.label, { color: theme.colors.text }]}>Recording</Text>
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                Speak naturally, then stop to review the draft.
+              </Text>
+            </View>
+            <Text style={[styles.timer, { color: theme.colors.danger }]}>
+              {elapsedMinutes}:{elapsedRemainder}
+            </Text>
+          </View>
         ) : null}
+        <Button
+          accessibilityLabel={label}
+          disabled={disabled}
+          icon={recording ? "stop" : "microphone-outline"}
+          loading={loading}
+          onPress={action}
+          size="large"
+          variant={recording ? "danger" : "primary"}
+        >
+          {label}
+        </Button>
         {message ? (
           <Text
             accessibilityRole="alert"
@@ -235,14 +236,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: touchTarget,
   },
-  action: {
-    alignItems: "center",
+  recordingStatus: {
     borderWidth: 1,
     borderRadius: radii.md,
     flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
-    justifyContent: "center",
     minHeight: touchTarget,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  timer: {
+    ...typography.headline,
+    fontVariant: ["tabular-nums"],
   },
 });

@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
+  preferredTransactionAccount,
   type ReceiptDraft,
   type TransactionInput,
 } from "@zoption/shared";
@@ -192,7 +193,8 @@ export default function ReceiptScanScreen() {
   }, []);
 
   useEffect(() => {
-    if (!accountId && accounts[0]) setAccountId(accounts[0].id);
+    const defaultAccount = preferredTransactionAccount(accounts);
+    if (!accountId && defaultAccount) setAccountId(defaultAccount.id);
   }, [accountId, accounts]);
 
   useEffect(() => {
@@ -431,16 +433,18 @@ export default function ReceiptScanScreen() {
     <Card style={styles.captureCard}>
       <View className="flex-row items-start gap-3">
         <View style={[styles.captureIcon, { backgroundColor: theme.colors.brandSoft }]}>
-          {scanning ? (
-            <ActivityIndicator accessibilityLabel="Reading receipt" color={theme.colors.brand} />
-          ) : (
-            <MaterialCommunityIcons
-              accessibilityElementsHidden
-              color={theme.colors.brand}
-              name={draft ? "receipt-text-check-outline" : "camera-outline"}
-              size={25}
-            />
-          )}
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.brand}
+            name={
+              scanning
+                ? "receipt-text-outline"
+                : draft
+                  ? "receipt-text-check-outline"
+                  : "camera-outline"
+            }
+            size={25}
+          />
         </View>
         <View className="min-w-0 flex-1 gap-1">
           <Text style={[typography.headline, { color: theme.colors.text }]}>
@@ -459,54 +463,25 @@ export default function ReceiptScanScreen() {
           </Text>
         </View>
       </View>
-      <Pressable
-        accessibilityRole="button"
+      <Button
         accessibilityLabel={draft ? "Scan another receipt photo" : "Take receipt photo"}
-        accessibilityState={{ disabled: scanning, busy: scanning }}
-        disabled={scanning}
+        icon="camera-outline"
+        loading={scanning}
         onPress={() => void takePhoto()}
-        style={({ pressed }) => [
-          styles.primaryCapture,
-          {
-            backgroundColor: pressed ? theme.colors.brandPressed : theme.colors.brand,
-            borderColor: theme.colors.brandPressed,
-            opacity: scanning ? 0.6 : 1,
-          },
-        ]}
+        size="large"
       >
-        <MaterialCommunityIcons
-          accessibilityElementsHidden
-          color={theme.colors.onBrand}
-          name="camera-outline"
-          size={20}
-        />
-        <Text style={[typography.label, { color: theme.colors.onBrand }]}>
-          {draft ? "Scan another photo" : "Take receipt photo"}
-        </Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
+        {scanning ? "Reading receipt…" : draft ? "Scan another photo" : "Take receipt photo"}
+      </Button>
+      <Button
         accessibilityLabel="Choose receipt photo from library"
-        accessibilityState={{ disabled: scanning }}
         disabled={scanning}
+        icon="image-outline"
         onPress={() => void choosePhoto()}
-        style={({ pressed }) => [
-          styles.secondaryCapture,
-          {
-            backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surface,
-            borderColor: theme.colors.border,
-            opacity: scanning ? 0.6 : 1,
-          },
-        ]}
+        size="large"
+        variant="secondary"
       >
-        <MaterialCommunityIcons
-          accessibilityElementsHidden
-          color={theme.colors.brand}
-          name="image-outline"
-          size={20}
-        />
-        <Text style={[typography.label, { color: theme.colors.text }]}>Choose a photo</Text>
-      </Pressable>
+        Choose a photo
+      </Button>
       {!draft && !scanning ? (
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
           JPEG, PNG, or WebP · up to 8 MB · photos are not stored
@@ -516,7 +491,7 @@ export default function ReceiptScanScreen() {
   );
 
   return (
-    <Screen title="Scan receipt" description="Review every item before it becomes a transaction.">
+    <Screen title="Scan receipt" showHeading={false}>
       {phase === "loading" ? (
         <View className="w-full items-center py-10">
           <ActivityIndicator color={theme.colors.brand} />
@@ -851,28 +826,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
-  },
-  primaryCapture: {
-    minHeight: touchTarget,
-    borderWidth: 1,
-    borderRadius: radii.md,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  secondaryCapture: {
-    minHeight: touchTarget,
-    borderWidth: 1,
-    borderRadius: radii.md,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
   },
   kindGroup: {
     flexDirection: "row",

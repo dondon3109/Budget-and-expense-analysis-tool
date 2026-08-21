@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { parseAmountToMinor } from "@zoption/shared";
+import { parseAmountToMinor, preferredTransactionAccount } from "@zoption/shared";
 
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
@@ -142,7 +142,7 @@ export function TransactionEditorScreen() {
       existing?.kind === "transfer" ? existing.fromAccountId : existing?.accountId;
     const account = existing
       ? formData.data.accounts.find((item) => item.id === existingAccountId)
-      : formData.data.accounts[0];
+      : preferredTransactionAccount(formData.data.accounts);
     const kind = existing?.kind ?? "expense";
     const category = existing
       ? formData.data.categories.find((item) => item.id === existing.categoryId)

@@ -10,29 +10,39 @@ interface ScreenProps extends PropsWithChildren {
   description?: string;
   action?: ReactNode;
   scroll?: boolean;
+  showHeading?: boolean;
 }
 
-export function Screen({ title, description, action, scroll = true, children }: ScreenProps) {
+export function Screen({
+  title,
+  description,
+  action,
+  scroll = true,
+  showHeading = true,
+  children,
+}: ScreenProps) {
   const theme = useZoptionTheme();
   const body = (
     <View className="w-full gap-6 px-4 pb-8 pt-3" style={[styles.content, !scroll && styles.fill]}>
-      <View className="flex-row items-start justify-between gap-4">
-        <View className="gap-1" style={styles.titleBlock}>
-          <Text
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={[typography.display, { color: theme.colors.text }]}
-          >
-            {title}
-          </Text>
-          {description ? (
-            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-              {description}
+      {showHeading ? (
+        <View className="flex-row items-start justify-between gap-4">
+          <View className="gap-1" style={styles.titleBlock}>
+            <Text
+              accessibilityRole="header"
+              numberOfLines={1}
+              style={[typography.display, { color: theme.colors.text }]}
+            >
+              {title}
             </Text>
-          ) : null}
+            {description ? (
+              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                {description}
+              </Text>
+            ) : null}
+          </View>
+          <View style={styles.actionBlock}>{action}</View>
         </View>
-        <View style={styles.actionBlock}>{action}</View>
-      </View>
+      ) : null}
       {children}
     </View>
   );

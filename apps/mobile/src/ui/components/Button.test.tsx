@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
-import { themes } from "@/ui/tokens";
+import { spacing, themes, touchTarget } from "@/ui/tokens";
 import { Button } from "./Button";
 
 describe("Button", () => {
@@ -20,6 +20,18 @@ describe("Button", () => {
     expect(button).toHaveStyle({
       backgroundColor: themes.light.colors.surface,
       borderColor: themes.light.colors.border,
+    });
+  });
+
+  it("renders a large icon action with a production touch target", async () => {
+    await render(
+      <Button icon="camera-outline" size="large">
+        Take receipt photo
+      </Button>,
+    );
+
+    expect(screen.getByRole("button", { name: "Take receipt photo" })).toHaveStyle({
+      minHeight: touchTarget + spacing.sm,
     });
   });
 });

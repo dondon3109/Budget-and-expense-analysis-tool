@@ -35,7 +35,7 @@ quick fixes first, verified APK updates second.
 
 ## One-time bootstrap
 
-The public `0.2.6-beta` APK contains the dormant `expo-updates` dependency but
+The public `0.2.7-beta` APK contains the dormant `expo-updates` dependency but
 was built without an EAS project ID, so it cannot receive OTA updates. Do not
 publish an OTA until a later OTA-capable APK is live and verified.
 
@@ -46,7 +46,7 @@ The next explicit signed-APK release must:
 2. Store an Expo access token as the `EXPO_TOKEN` repository or
    `mobile-production-ota` environment secret.
 3. Choose a new native app version and Android `versionCode` through the normal
-   signed-app release process. Do not reuse `0.2.6-beta` / `20306`.
+   signed-app release process. Do not reuse `0.2.7-beta` / `20307`.
 4. Build with `APP_VARIANT=production` and `EAS_PROJECT_ID` set. The existing
    Android Beta workflow already forwards the repository variable during
    prebuild; missing configuration leaves OTA disabled and preserves the old

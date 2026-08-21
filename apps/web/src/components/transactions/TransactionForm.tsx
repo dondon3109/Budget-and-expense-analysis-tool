@@ -2,6 +2,7 @@ import {
   currencies,
   currencyMetadata,
   parseAmountToMinor,
+  preferredTransactionAccount,
   transactionInputSchema,
   type AccountRecord,
   type CategoryRecord,
@@ -57,6 +58,10 @@ export function TransactionForm({
   const [currency, setCurrency] = useState<Currency>(item?.currency ?? "PHP");
   const [clientError, setClientError] = useState<string>();
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
+  const defaultAccount = useMemo(
+    () => preferredTransactionAccount(activeAccounts),
+    [activeAccounts],
+  );
   const availableCategories = useMemo(
     () => categories.filter((category) => !category.archived && category.kind === kind),
     [categories, kind],
@@ -70,9 +75,10 @@ export function TransactionForm({
    *  category (which is the natural home for earned money), then falls back
    *  to the first selectable category of the chosen kind. */
   const preferredDefaultCategory = useMemo(() => {
-    const incomeSalary = kind === "income"
-      ? selectableCategories.find((category) => category.name === "Salary")
-      : undefined;
+    const incomeSalary =
+      kind === "income"
+        ? selectableCategories.find((category) => category.name === "Salary")
+        : undefined;
     return incomeSalary ?? selectableCategories[0];
   }, [kind, selectableCategories]);
 
@@ -100,12 +106,12 @@ export function TransactionForm({
   }, [availableCategories, categoryId, item?.categoryId, preferredDefaultCategory]);
   useEffect(() => {
     if (!activeAccounts.some((account) => account.id === accountId))
-      setAccountId(activeAccounts[0]?.id ?? "");
+      setAccountId(defaultAccount?.id ?? "");
     if (!activeAccounts.some((account) => account.id === fromAccountId))
-      setFromAccountId(activeAccounts[0]?.id ?? "");
+      setFromAccountId(defaultAccount?.id ?? "");
     if (!activeAccounts.some((account) => account.id === toAccountId))
       setToAccountId(activeAccounts.find((account) => account.id !== fromAccountId)?.id ?? "");
-  }, [accountId, activeAccounts, fromAccountId, toAccountId]);
+  }, [accountId, activeAccounts, defaultAccount, fromAccountId, toAccountId]);
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !busy) onClose();

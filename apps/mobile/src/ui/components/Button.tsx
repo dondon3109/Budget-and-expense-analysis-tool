@@ -1,4 +1,5 @@
-import { useState, type PropsWithChildren } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useState, type ComponentProps, type PropsWithChildren } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -9,11 +10,15 @@ export type ButtonVariant = "primary" | "secondary" | "danger" | "quiet";
 interface ButtonProps extends Omit<PressableProps, "children" | "style">, PropsWithChildren {
   variant?: ButtonVariant;
   loading?: boolean;
+  icon?: ComponentProps<typeof MaterialCommunityIcons>["name"];
+  size?: "default" | "large";
 }
 
 export function Button({
   variant = "primary",
   loading = false,
+  icon,
+  size = "default",
   disabled,
   children,
   accessibilityLabel,
@@ -24,6 +29,8 @@ export function Button({
   const theme = useZoptionTheme();
   const [pressed, setPressed] = useState(false);
   const isDisabled = disabled || loading;
+  const resolvedAccessibilityLabel =
+    accessibilityLabel ?? (typeof children === "string" ? children : undefined);
   const palette = {
     primary: {
       background: theme.colors.brand,
@@ -58,7 +65,7 @@ export function Button({
 
   return (
     <Pressable
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={resolvedAccessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
@@ -72,6 +79,7 @@ export function Button({
       }}
       style={[
         styles.base,
+        size === "large" ? styles.large : null,
         {
           backgroundColor: isDisabled
             ? disabledPalette.background
@@ -88,11 +96,18 @@ export function Button({
           accessibilityElementsHidden
           color={isDisabled ? disabledPalette.text : palette.text}
         />
+      ) : icon ? (
+        <MaterialCommunityIcons
+          accessibilityElementsHidden
+          color={isDisabled ? disabledPalette.text : palette.text}
+          name={icon}
+          size={size === "large" ? 22 : 19}
+        />
       ) : null}
       <Text
         numberOfLines={2}
         style={[
-          typography.label,
+          size === "large" ? styles.largeLabel : typography.label,
           { color: isDisabled ? disabledPalette.text : palette.text, textAlign: "center" },
         ]}
       >
@@ -114,5 +129,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  large: {
+    minHeight: touchTarget + spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  largeLabel: {
+    ...typography.callout,
+    fontWeight: "600",
   },
 });

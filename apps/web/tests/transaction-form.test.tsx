@@ -75,6 +75,31 @@ describe("TransactionForm", () => {
     expect(screen.getByLabelText("Date")).toHaveValue("2026-08-12");
   });
 
+  it("defaults a new transaction to the Cash account", async () => {
+    render(
+      <TransactionForm
+        categories={[category]}
+        accounts={[
+          ...accounts,
+          {
+            id: "account-cash",
+            name: "Cash",
+            type: "cash",
+            currency: "PHP",
+            balanceMinor: null,
+            balanceAsOf: null,
+            archived: false,
+          },
+        ]}
+        busy={false}
+        onSubmit={vi.fn(async () => undefined)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Account")).toHaveValue("account-cash"));
+  });
+
   it("keeps the existing date when editing even if an initial date is provided", () => {
     render(
       <TransactionForm
@@ -203,7 +228,8 @@ describe("TransactionForm", () => {
     expect(screen.getByLabelText("Category")).toHaveValue("salary");
   });
 
-  it("keeps a locked historical category selected for non-category edits", async () => {    const user = userEvent.setup();
+  it("keeps a locked historical category selected for non-category edits", async () => {
+    const user = userEvent.setup();
     const lockedCategory: CategoryRecord = {
       ...category,
       id: "pro-food",
