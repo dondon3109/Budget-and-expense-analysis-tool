@@ -34,7 +34,7 @@ async function handleRequest(request: WorkbookRequest) {
   try {
     const parser = await import("../lib/workbookParser");
     if (request.type === "inspect") {
-      const sheetNames = parser.inspectWorkbook(request.buffer);
+      const sheetNames = await parser.inspectWorkbook(request.buffer);
       workbookBuffer = request.buffer;
       workerScope.postMessage({
         id: request.id,
@@ -48,7 +48,7 @@ async function handleRequest(request: WorkbookRequest) {
     workerScope.postMessage({
       id: request.id,
       ok: true,
-      result: parser.convertWorksheet(workbookBuffer, request.sheetName),
+      result: await parser.convertWorksheet(workbookBuffer, request.sheetName),
     });
   } catch (error) {
     workerScope.postMessage({

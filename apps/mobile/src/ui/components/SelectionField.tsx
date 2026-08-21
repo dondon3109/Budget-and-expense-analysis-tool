@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -39,6 +39,56 @@ export function SelectionField({
   const theme = useZoptionTheme();
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.id === value);
+
+  // Stable renderItem identity so the sheet list does not re-render rows on
+  // unrelated parent renders.
+  const renderOption = useCallback(
+    ({ item }: ListRenderItemInfo<SelectionOption>) => {
+      const isSelected = item.id === value;
+      return (
+        <Pressable
+          accessibilityRole="radio"
+          accessibilityState={{ checked: isSelected }}
+          accessibilityLabel={item.label}
+          accessibilityHint={item.detail}
+          onPress={() => {
+            onSelect(item.id);
+            setOpen(false);
+          }}
+          style={[
+            styles.option,
+            {
+              backgroundColor: isSelected ? theme.colors.brandSoft : "transparent",
+            },
+          ]}
+        >
+          {item.color ? (
+            <View
+              accessibilityElementsHidden
+              style={[styles.dot, { backgroundColor: item.color }]}
+            />
+          ) : null}
+          <View className="min-w-0 flex-1">
+            <Text style={[typography.body, { color: theme.colors.text }]}>{item.label}</Text>
+            {item.detail ? (
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                {item.detail}
+              </Text>
+            ) : null}
+          </View>
+          {isSelected ? (
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color={theme.colors.brand}
+              name="check"
+              size={22}
+            />
+          ) : null}
+        </Pressable>
+      );
+    },
+    [onSelect, theme, value],
+  );
   return (
     <View className="w-full gap-2">
       <Text style={[typography.label, { color: theme.colors.text }]}>{label}</Text>
@@ -111,50 +161,7 @@ export function SelectionField({
           data={options}
           keyExtractor={(option) => option.id}
           keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => {
-            const isSelected = item.id === value;
-            return (
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityState={{ checked: isSelected }}
-                accessibilityLabel={item.label}
-                accessibilityHint={item.detail}
-                onPress={() => {
-                  onSelect(item.id);
-                  setOpen(false);
-                }}
-                style={[
-                  styles.option,
-                  {
-                    backgroundColor: isSelected ? theme.colors.brandSoft : "transparent",
-                  },
-                ]}
-              >
-                {item.color ? (
-                  <View
-                    accessibilityElementsHidden
-                    style={[styles.dot, { backgroundColor: item.color }]}
-                  />
-                ) : null}
-                <View className="min-w-0 flex-1">
-                  <Text style={[typography.body, { color: theme.colors.text }]}>{item.label}</Text>
-                  {item.detail ? (
-                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                      {item.detail}
-                    </Text>
-                  ) : null}
-                </View>
-                {isSelected ? (
-                  <MaterialCommunityIcons
-                    accessibilityElementsHidden
-                    color={theme.colors.brand}
-                    name="check"
-                    size={22}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          }}
+          renderItem={renderOption}
         />
       </BottomSheet>
     </View>

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
+  type ListRenderItemInfo,
   Platform,
   Pressable,
   StyleSheet,
@@ -35,10 +36,7 @@ import {
   updateAssistantPreferences,
   type AssistantWireMessage,
 } from "@/api/assistant";
-import {
-  getAssistantVoicePreferences,
-  grantAssistantVoiceConsent,
-} from "@/api/assistant-voice";
+import { getAssistantVoicePreferences, grantAssistantVoiceConsent } from "@/api/assistant-voice";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import {
@@ -81,6 +79,13 @@ import {
 
 type AssistantView = "threads" | "chat";
 
+interface AssistantThreadSummary {
+  id: string;
+  title: string;
+  lastMessageAt: string;
+  createdAt: string;
+}
+
 interface VoiceError {
   message: string;
 }
@@ -96,9 +101,7 @@ export function AssistantScreen() {
   const [voicePreferences, setVoicePreferences] = useState<AssistantVoicePreferences | null>(null);
 
   const [view, setView] = useState<AssistantView>("threads");
-  const [threads, setThreads] = useState<
-    { id: string; title: string; lastMessageAt: string; createdAt: string }[]
-  >([]);
+  const [threads, setThreads] = useState<AssistantThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AssistantWireMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -545,6 +548,47 @@ export function AssistantScreen() {
     !requiresAssistantConsent(preferences) &&
     requiresIdentitySetup(preferences);
 
+  // Stable renderItem identities keep the FlatLists from re-rendering every
+  // row on unrelated state changes such as composer keystrokes.
+  const renderThread = useCallback(
+    ({ item }: ListRenderItemInfo<AssistantThreadSummary>) => (
+      <AssistantThreadRow
+        title={item.title}
+        lastMessageAt={item.lastMessageAt}
+        managing={managingThreads}
+        onOpen={() => {
+          if (managingThreads) return;
+          setView("chat");
+          void openThread(item.id);
+        }}
+        onDelete={() => setPendingDeleteThread(item.id)}
+      />
+    ),
+    [managingThreads, openThread],
+  );
+
+  const renderMessage = useCallback(
+    ({ item }: ListRenderItemInfo<AssistantWireMessage>) => (
+      <AssistantMessageBubble
+        role={item.role}
+        content={item.content}
+        status={item.status}
+        createdAt={item.createdAt}
+        evidenceLabel={evidenceLabelFor(item)}
+        listening={spokenReplies.playingMessageId === item.id}
+        onListen={
+          item.role === "assistant" &&
+          item.status === "completed" &&
+          voicePreferences?.enabled === true &&
+          voicePreferences.speechAvailable
+            ? () => void spokenReplies.listen(item.id, voiceOptions.voice)
+            : undefined
+        }
+      />
+    ),
+    [spokenReplies.playingMessageId, spokenReplies.listen, voicePreferences, voiceOptions],
+  );
+
   const settingsAction = (
     <Pressable
       accessibilityRole="button"
@@ -679,20 +723,8 @@ export function AssistantScreen() {
           data={threads}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <AssistantThreadRow
-              title={item.title}
-              lastMessageAt={item.lastMessageAt}
-              managing={managingThreads}
-              onOpen={() => {
-                if (managingThreads) return;
-                setView("chat");
-                void openThread(item.id);
-              }}
-              onDelete={() => setPendingDeleteThread(item.id)}
-            />
-          )}
-          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+          renderItem={renderThread}
+          ItemSeparatorComponent={ThreadListSeparator}
           ListHeaderComponent={
             <View style={styles.newChat}>
               <Button onPress={startNewChat}>New conversation</Button>
@@ -719,25 +751,8 @@ export function AssistantScreen() {
             data={messages}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.chatContent}
-            renderItem={({ item }) => (
-              <AssistantMessageBubble
-                role={item.role}
-                content={item.content}
-                status={item.status}
-                createdAt={item.createdAt}
-                evidenceLabel={evidenceLabelFor(item)}
-                listening={spokenReplies.playingMessageId === item.id}
-                onListen={
-                  item.role === "assistant" &&
-                  item.status === "completed" &&
-                  voicePreferences?.enabled === true &&
-                  voicePreferences.speechAvailable
-                    ? () => void spokenReplies.listen(item.id, voiceOptions.voice)
-                    : undefined
-                }
-              />
-            )}
-            ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+            renderItem={renderMessage}
+            ItemSeparatorComponent={MessageListSeparator}
             ListEmptyComponent={
               loadingMessages ? (
                 <ActivityIndicator color={theme.colors.brand} />
@@ -796,8 +811,11 @@ export function AssistantScreen() {
               </Text>
             </View>
           ) : null}
+          {/* Edge-to-edge on Android 15+ stops the OS from resizing the
+              window for the keyboard, so Android needs an explicit avoiding
+              behavior instead of relying on adjustResize. */}
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior="padding"
             keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
           >
             <View
@@ -1060,6 +1078,14 @@ function evidenceLabelFor(message: AssistantWireMessage): string | undefined {
   if (!first || typeof first.label !== "string") return undefined;
   const period = typeof first.period?.label === "string" ? " · " + first.period.label : "";
   return "Grounded in " + first.label + period;
+}
+
+function ThreadListSeparator() {
+  return <View style={{ height: spacing.sm }} />;
+}
+
+function MessageListSeparator() {
+  return <View style={{ height: spacing.md }} />;
 }
 
 const styles = StyleSheet.create({

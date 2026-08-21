@@ -1,1 +1,1 @@
-export * from "@zoption/shared";
+export * from "@zoption/shared/workbook";

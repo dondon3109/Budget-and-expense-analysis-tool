@@ -3,18 +3,26 @@ import { getDocumentAsync } from "expo-document-picker";
 import { File } from "expo-file-system";
 import { router } from "expo-router";
 import {
-  convertWorksheet,
   importPresets,
   inspectCsv,
-  inspectWorkbook,
   parseCsv,
   resolvePresetMapping,
   type ImportPreview,
   type ImportPreviewRow,
   type ImportPresetId,
 } from "@zoption/shared";
-import { useMemo, useState } from "react";
-import { FlatList, Pressable, Text, View, type ColorValue } from "react-native";
+// Imported through the dedicated subpath so the SheetJS dependency is only
+// evaluated when a workbook is actually parsed, not at app startup.
+import { convertWorksheet, inspectWorkbook } from "@zoption/shared/workbook";
+import { useCallback, useMemo, useState } from "react";
+import {
+  FlatList,
+  type ListRenderItemInfo,
+  Pressable,
+  Text,
+  View,
+  type ColorValue,
+} from "react-native";
 
 import { ImportTransportError, commitImport, previewImport, previewPdfImport } from "@/api/imports";
 import { useSessionSnapshot } from "@/auth/session-state";
@@ -139,7 +147,7 @@ export function ImportScreen() {
     try {
       const bytes = await new File(uri).bytes();
       if (kind === "workbook") {
-        readWorkbook(name, bytes);
+        await readWorkbook(name, bytes);
       } else {
         readCsv(name, new TextDecoder("utf-8").decode(bytes));
       }
@@ -174,29 +182,37 @@ export function ImportScreen() {
     }
   };
 
-  const readWorkbook = (name: string, bytes: Uint8Array): void => {
+  const readWorkbook = async (name: string, bytes: Uint8Array): Promise<void> => {
     const buffer = bytes.buffer.slice(
       bytes.byteOffset,
       bytes.byteOffset + bytes.byteLength,
     ) as ArrayBuffer;
-    const names = inspectWorkbook(buffer);
+    const names = await inspectWorkbook(buffer);
     setFileName(name);
     setFileKind("workbook");
     setWorkbookBytes(bytes);
     setWorksheetNames(names);
     setWorksheetName(names[0] ?? "");
-    applyWorksheet(name, names[0] ?? "", bytes);
+    await applyWorksheet(name, names[0] ?? "", bytes);
   };
 
-  const applyWorksheet = (name: string, sheet: string, bytes: Uint8Array): void => {
+  const applyWorksheet = async (name: string, sheet: string, bytes: Uint8Array): Promise<void> => {
     const buffer = bytes.buffer.slice(
       bytes.byteOffset,
       bytes.byteOffset + bytes.byteLength,
     ) as ArrayBuffer;
-    const conversion = convertWorksheet(buffer, sheet);
-    setWorksheetName(sheet);
-    setStep("configure");
-    applyCsv(name, conversion.csvText);
+    try {
+      const conversion = await convertWorksheet(buffer, sheet);
+      setWorksheetName(sheet);
+      setStep("configure");
+      applyCsv(name, conversion.csvText);
+    } catch (conversionError) {
+      setError(
+        conversionError instanceof Error
+          ? conversionError.message
+          : "The worksheet could not be converted.",
+      );
+    }
   };
 
   const readCsv = (name: string, text: string): void => {
@@ -368,6 +384,80 @@ export function ImportScreen() {
     else if (step === "preview") void confirmImport();
   };
 
+  // Stable renderItem identity: preview rows only re-render when the override
+  // map or theme changes, not on every keystroke elsewhere in the screen.
+  const renderPreviewRow = useCallback(
+    ({ item }: ListRenderItemInfo<ImportPreviewRow>) => {
+      const override = overrides.get(item.rowNumber);
+      return (
+        <Pressable
+          accessibilityLabel={"Import row " + item.rowNumber + ": " + (item.description ?? "")}
+          accessibilityHint="Opens category and type corrections"
+          onPress={() => setEditingRow(item)}
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.7 : 1,
+            backgroundColor: theme.colors.surface,
+            borderRadius: radii.md,
+            marginVertical: spacing.xs,
+            padding: spacing.sm,
+            flexDirection: "row",
+            gap: spacing.sm,
+            alignItems: "center",
+          })}
+        >
+          <View style={{ flex: 3, minWidth: 0 }}>
+            <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
+              {item.description ?? "Row " + item.rowNumber}
+            </Text>
+            {item.date ? (
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                {item.date}
+              </Text>
+            ) : null}
+            {override?.categoryId || override?.kind ? (
+              <Text style={[typography.caption, { color: theme.colors.brand }]}>Edited</Text>
+            ) : null}
+          </View>
+          <View style={{ flex: 2 }}>
+            {item.amountMinor !== undefined ? (
+              <MoneyValue
+                amountMinor={item.amountMinor}
+                tone={
+                  item.kind === "income"
+                    ? "income"
+                    : item.kind === "expense"
+                      ? "expense"
+                      : "default"
+                }
+              />
+            ) : (
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>—</Text>
+            )}
+          </View>
+          <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+            <View
+              accessibilityElementsHidden
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: radii.round,
+                backgroundColor: rowStatusColor(item),
+              }}
+            />
+            <Text style={[typography.caption, { color: rowStatusColor(item) }]}>
+              {item.status === "ready"
+                ? "Ready"
+                : item.status === "duplicate"
+                  ? "Duplicate"
+                  : "Invalid"}
+            </Text>
+          </View>
+        </Pressable>
+      );
+    },
+    [overrides, theme],
+  );
+
   return (
     <Screen
       scroll={step !== "preview"}
@@ -432,7 +522,7 @@ export function ImportScreen() {
                   sheetTitle="Worksheets"
                   value={worksheetName}
                   options={worksheetNames.map((name) => ({ id: name, label: name }))}
-                  onSelect={(sheet) => applyWorksheet(fileName, sheet, workbookBytes)}
+                  onSelect={(sheet) => void applyWorksheet(fileName, sheet, workbookBytes)}
                 />
               ) : null}
               {headerCandidates.length > 1 ? (
@@ -585,80 +675,7 @@ export function ImportScreen() {
                 </Text>
               </View>
             )}
-            renderItem={({ item }) => {
-              const override = overrides.get(item.rowNumber);
-              return (
-                <Pressable
-                  accessibilityLabel={
-                    "Import row " + item.rowNumber + ": " + (item.description ?? "")
-                  }
-                  accessibilityHint="Opens category and type corrections"
-                  onPress={() => setEditingRow(item)}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    backgroundColor: theme.colors.surface,
-                    borderRadius: radii.md,
-                    marginVertical: spacing.xs,
-                    padding: spacing.sm,
-                    flexDirection: "row",
-                    gap: spacing.sm,
-                    alignItems: "center",
-                  })}
-                >
-                  <View style={{ flex: 3, minWidth: 0 }}>
-                    <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
-                      {item.description ?? "Row " + item.rowNumber}
-                    </Text>
-                    {item.date ? (
-                      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                        {item.date}
-                      </Text>
-                    ) : null}
-                    {override?.categoryId || override?.kind ? (
-                      <Text style={[typography.caption, { color: theme.colors.brand }]}>
-                        Edited
-                      </Text>
-                    ) : null}
-                  </View>
-                  <View style={{ flex: 2 }}>
-                    {item.amountMinor !== undefined ? (
-                      <MoneyValue
-                        amountMinor={item.amountMinor}
-                        tone={
-                          item.kind === "income"
-                            ? "income"
-                            : item.kind === "expense"
-                              ? "expense"
-                              : "default"
-                        }
-                      />
-                    ) : (
-                      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>—</Text>
-                    )}
-                  </View>
-                  <View
-                    style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.xs }}
-                  >
-                    <View
-                      accessibilityElementsHidden
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: radii.round,
-                        backgroundColor: rowStatusColor(item),
-                      }}
-                    />
-                    <Text style={[typography.caption, { color: rowStatusColor(item) }]}>
-                      {item.status === "ready"
-                        ? "Ready"
-                        : item.status === "duplicate"
-                          ? "Duplicate"
-                          : "Invalid"}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            }}
+            renderItem={renderPreviewRow}
           />
           <Button
             disabled={preview.acceptedCount === 0}

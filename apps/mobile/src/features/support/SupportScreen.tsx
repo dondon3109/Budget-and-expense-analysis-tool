@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
+  type ListRenderItemInfo,
   Platform,
   Pressable,
   StyleSheet,
@@ -23,7 +24,15 @@ import {
   type SupportChatMessage,
 } from "@/api/support";
 import { useSessionSnapshot } from "@/auth/session-state";
-import { Button, Card, EmptyState, ErrorState, FormField, SelectionField, SkeletonLines } from "@/ui/components";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  FormField,
+  SelectionField,
+  SkeletonLines,
+} from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -115,9 +124,7 @@ export function SupportScreen() {
       setOpenReportId(report.id);
       setOpenReport(report);
       try {
-        const detail = await withToken((token) =>
-          getBugReport({ accessToken: token }, report.id),
-        );
+        const detail = await withToken((token) => getBugReport({ accessToken: token }, report.id));
         setOpenReport(detail);
       } catch {
         // The list row already carries the essentials; detail loading is best-effort.
@@ -147,10 +154,7 @@ export function SupportScreen() {
       setDraftText("");
       try {
         const result = await withToken((token) =>
-          completeSupportChat(
-            { accessToken: token },
-            { messages: history, pageContext: "app" },
-          ),
+          completeSupportChat({ accessToken: token }, { messages: history, pageContext: "app" }),
         );
         setMessages((previous) => [...previous, { role: "assistant", content: result.message }]);
         if (result.bugReportDraft) {
@@ -203,6 +207,48 @@ export function SupportScreen() {
 
   const canSend = validateSupportMessage(draftText) === null && !busy;
 
+  // Stable renderItem identity: the reports list only re-renders rows when
+  // one of these values actually changes.
+  const renderReport = useCallback(
+    ({ item }: ListRenderItemInfo<BugReport>) => (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={item.reference + ", " + item.title}
+        onPress={() => void toggleReport(item)}
+        style={[
+          styles.reportRow,
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+        ]}
+      >
+        <View className="flex-1 gap-1">
+          <Text style={[typography.body, { color: theme.colors.text }]}>{item.title}</Text>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            {item.reference} · {item.status}
+          </Text>
+          {openReportId === item.id && openReport ? (
+            <View className="gap-1 mt-2">
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                Expected: {openReport.expectedBehavior}
+              </Text>
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                Actual: {openReport.actualBehavior}
+              </Text>
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                Steps: {openReport.stepsToReproduce}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        <MaterialCommunityIcons
+          name={openReportId === item.id ? "chevron-up" : "chevron-down"}
+          size={20}
+          color={theme.colors.textMuted}
+        />
+      </Pressable>
+    ),
+    [openReport, openReportId, theme, toggleReport],
+  );
+
   return (
     <Screen
       title="Help & support"
@@ -229,12 +275,17 @@ export function SupportScreen() {
             data={messages}
             keyExtractor={(item, index) => index + ":" + item.role}
             contentContainerStyle={styles.chatContent}
-            renderItem={({ item }) => <SupportBubble message={item} />}
+            renderItem={renderSupportMessage}
             ListHeaderComponent={
-              <Text style={[typography.caption, { color: theme.colors.textMuted, marginBottom: spacing.sm }]}>
-                Messages go to Zoption's AI support provider for a reply. Bug reports are saved
-                only after you review and submit them. Never share passwords, card numbers or
-                uploaded files here.
+              <Text
+                style={[
+                  typography.caption,
+                  { color: theme.colors.textMuted, marginBottom: spacing.sm },
+                ]}
+              >
+                Messages go to Zoption's AI support provider for a reply. Bug reports are saved only
+                after you review and submit them. Never share passwords, card numbers or uploaded
+                files here.
               </Text>
             }
             ListEmptyComponent={
@@ -260,27 +311,50 @@ export function SupportScreen() {
 
           {submittedReference ? (
             <View style={[styles.notice, { backgroundColor: theme.colors.brandSoft }]}>
-              <MaterialCommunityIcons name="check-circle-outline" size={16} color={theme.colors.brand} />
+              <MaterialCommunityIcons
+                name="check-circle-outline"
+                size={16}
+                color={theme.colors.brand}
+              />
               <Text style={[typography.caption, { color: theme.colors.text }]}>
                 {submittedReference} received · status New. You can follow it under My reports.
               </Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Dismiss" onPress={() => setSubmittedReference(null)} hitSlop={8}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss"
+                onPress={() => setSubmittedReference(null)}
+                hitSlop={8}
+              >
                 <MaterialCommunityIcons name="close" size={16} color={theme.colors.textMuted} />
               </Pressable>
             </View>
           ) : null}
 
           {error ? (
-            <Text accessibilityRole="alert" style={[typography.caption, { color: theme.colors.danger, paddingHorizontal: spacing.md }]}>
+            <Text
+              accessibilityRole="alert"
+              style={[
+                typography.caption,
+                { color: theme.colors.danger, paddingHorizontal: spacing.md },
+              ]}
+            >
               {error}
             </Text>
           ) : null}
 
+          {/* Edge-to-edge on Android 15+ stops the OS from resizing the
+              window for the keyboard, so Android needs an explicit avoiding
+              behavior instead of relying on adjustResize. */}
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior="padding"
             keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
           >
-            <View style={[styles.composer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <View
+              style={[
+                styles.composer,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
               <TextInput
                 accessibilityLabel="Message Zoption Support"
                 multiline
@@ -297,7 +371,10 @@ export function SupportScreen() {
                 accessibilityState={{ disabled: !canSend }}
                 disabled={!canSend}
                 onPress={() => void sendChat()}
-                style={[styles.sendButton, { backgroundColor: canSend ? theme.colors.brand : theme.colors.border }]}
+                style={[
+                  styles.sendButton,
+                  { backgroundColor: canSend ? theme.colors.brand : theme.colors.border },
+                ]}
               >
                 {busy ? (
                   <ActivityIndicator color={theme.colors.onBrand} size="small" />
@@ -323,39 +400,7 @@ export function SupportScreen() {
               data={reports}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.reportsContent}
-              renderItem={({ item }) => (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={item.reference + ", " + item.title}
-                  onPress={() => void toggleReport(item)}
-                  style={[styles.reportRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-                >
-                  <View className="flex-1 gap-1">
-                    <Text style={[typography.body, { color: theme.colors.text }]}>{item.title}</Text>
-                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                      {item.reference} · {item.status}
-                    </Text>
-                    {openReportId === item.id && openReport ? (
-                      <View className="gap-1 mt-2">
-                        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                          Expected: {openReport.expectedBehavior}
-                        </Text>
-                        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                          Actual: {openReport.actualBehavior}
-                        </Text>
-                        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                          Steps: {openReport.stepsToReproduce}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <MaterialCommunityIcons
-                    name={openReportId === item.id ? "chevron-up" : "chevron-down"}
-                    size={20}
-                    color={theme.colors.textMuted}
-                  />
-                </Pressable>
-              )}
+              renderItem={renderReport}
             />
           ) : (
             <EmptyState
@@ -368,6 +413,12 @@ export function SupportScreen() {
     </Screen>
   );
 }
+
+// Module-level so the chat list never sees a new renderItem identity; it reads
+// no component state.
+const renderSupportMessage = ({ item }: ListRenderItemInfo<SupportChatMessage>) => (
+  <SupportBubble message={item} />
+);
 
 function SupportBubble({ message }: { message: SupportChatMessage }) {
   const theme = useZoptionTheme();
@@ -383,7 +434,9 @@ function SupportBubble({ message }: { message: SupportChatMessage }) {
           },
         ]}
       >
-        <Text style={[typography.body, { color: isUser ? theme.colors.onBrand : theme.colors.text }]}>
+        <Text
+          style={[typography.body, { color: isUser ? theme.colors.onBrand : theme.colors.text }]}
+        >
           {message.content}
         </Text>
       </View>
@@ -485,9 +538,17 @@ function SegmentButton({
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       onPress={onPress}
-      style={[styles.segment, { backgroundColor: active ? theme.colors.surfaceRaised : "transparent", borderColor: active ? theme.colors.brand : theme.colors.border }]}
+      style={[
+        styles.segment,
+        {
+          backgroundColor: active ? theme.colors.surfaceRaised : "transparent",
+          borderColor: active ? theme.colors.brand : theme.colors.border,
+        },
+      ]}
     >
-      <Text style={[typography.body, { color: active ? theme.colors.text : theme.colors.textMuted }]}>
+      <Text
+        style={[typography.body, { color: active ? theme.colors.text : theme.colors.textMuted }]}
+      >
         {label}
       </Text>
     </Pressable>

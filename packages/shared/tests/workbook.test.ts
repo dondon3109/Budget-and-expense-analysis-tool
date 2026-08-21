@@ -28,13 +28,13 @@ function workbookBuffer(): ArrayBuffer {
 }
 
 describe("workbook conversion shared module", () => {
-  it("lists worksheet names", () => {
-    expect(inspectWorkbook(workbookBuffer())).toEqual(["Transactions", "Notes"]);
+  it("lists worksheet names", async () => {
+    expect(await inspectWorkbook(workbookBuffer())).toEqual(["Transactions", "Notes"]);
   });
 
-  it("converts a worksheet into canonical CSV text", () => {
+  it("converts a worksheet into canonical CSV text", async () => {
     const buffer = workbookBuffer();
-    const conversion = convertWorksheet(buffer, "Transactions");
+    const conversion = await convertWorksheet(buffer, "Transactions");
     expect(conversion.rowCount).toBe(5);
     expect(conversion.csvText).toBe(
       [
@@ -47,41 +47,41 @@ describe("workbook conversion shared module", () => {
     );
   });
 
-  it("reports formula cells as warnings without recalculating", () => {
-    const conversion = convertWorksheet(workbookBuffer(), "Transactions");
+  it("reports formula cells as warnings without recalculating", async () => {
+    const conversion = await convertWorksheet(workbookBuffer(), "Transactions");
     expect(conversion.warnings).toEqual([
       "Formula cells use their last saved results and are not recalculated during import.",
     ]);
   });
 
-  it("rejects workbooks larger than the file cap", () => {
+  it("rejects workbooks larger than the file cap", async () => {
     const oversized = new Uint8Array(MAX_WORKBOOK_FILE_BYTES + 1);
     oversized.set([0x50, 0x4b, 0x03, 0x04]);
-    expect(() => inspectWorkbook(oversized.buffer)).toThrow(
+    await expect(inspectWorkbook(oversized.buffer)).rejects.toThrow(
       new WorkbookImportError("Excel workbooks must be 5 MB or smaller."),
     );
   });
 
-  it("rejects files that are not XLSX or XLS", () => {
+  it("rejects files that are not XLSX or XLS", async () => {
     const garbage = new TextEncoder().encode("not a workbook at all").buffer;
-    expect(() => inspectWorkbook(garbage)).toThrow(
+    await expect(inspectWorkbook(garbage)).rejects.toThrow(
       new WorkbookImportError(
         "This file is not a valid XLSX or XLS workbook. Choose the original Excel file and try again.",
       ),
     );
   });
 
-  it("rejects an unknown worksheet name", () => {
-    expect(() => convertWorksheet(workbookBuffer(), "Missing")).toThrow(
+  it("rejects an unknown worksheet name", async () => {
+    await expect(convertWorksheet(workbookBuffer(), "Missing")).rejects.toThrow(
       new WorkbookImportError("The selected worksheet could not be found."),
     );
   });
 
-  it("rejects an empty worksheet", () => {
+  it("rejects an empty worksheet", async () => {
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, xlsx.utils.aoa_to_sheet([[]]), "Blank");
     const output = xlsx.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
-    expect(() => convertWorksheet(output.slice(0), "Blank")).toThrow(
+    await expect(convertWorksheet(output.slice(0), "Blank")).rejects.toThrow(
       new WorkbookImportError("The selected worksheet is empty."),
     );
   });

@@ -313,11 +313,11 @@ function transactionWorkbook(): WorkBook {
 describe("Excel workbook parsing", () => {
   it.each(["xlsx", "xls"] as const)(
     "discovers and converts worksheets from %s files",
-    (bookType) => {
+    async (bookType) => {
       const buffer = workbookBuffer(transactionWorkbook(), bookType);
 
-      expect(inspectWorkbook(buffer)).toEqual(["Instructions", "Transactions"]);
-      const converted = convertWorksheet(buffer, "Transactions");
+      expect(await inspectWorkbook(buffer)).toEqual(["Instructions", "Transactions"]);
+      const converted = await convertWorksheet(buffer, "Transactions");
       const parsed = parseCsv(converted.csvText);
 
       expect(parsed.headers).toEqual(["Date", "Description", "Amount", "Category"]);
@@ -335,7 +335,7 @@ describe("Excel workbook parsing", () => {
     },
   );
 
-  it("preserves introductory rows so the header can be selected later", () => {
+  it("preserves introductory rows so the header can be selected later", async () => {
     const workbook = utils.book_new();
     utils.book_append_sheet(
       workbook,
@@ -348,13 +348,13 @@ describe("Excel workbook parsing", () => {
       "Transactions",
     );
 
-    const converted = convertWorksheet(workbookBuffer(workbook), "Transactions");
+    const converted = await convertWorksheet(workbookBuffer(workbook), "Transactions");
 
     expect(converted.csvText).toContain("BPI Statement of Account");
     expect(parseCsv(converted.csvText, { headerRowNumber: 3 }).rows).toHaveLength(1);
   });
 
-  it("warns when a formula has no saved result", () => {
+  it("warns when a formula has no saved result", async () => {
     const workbook = utils.book_new();
     const sheet = utils.aoa_to_sheet([
       ["Date", "Description", "Amount", "Category"],
@@ -364,7 +364,7 @@ describe("Excel workbook parsing", () => {
     sheet["!ref"] = "A1:D2";
     utils.book_append_sheet(workbook, sheet, "Transactions");
 
-    const converted = convertWorksheet(workbookBuffer(workbook), "Transactions");
+    const converted = await convertWorksheet(workbookBuffer(workbook), "Transactions");
 
     expect(converted.warnings).toContain(
       "1 formula cell has no saved result and will be left blank.",
@@ -372,10 +372,10 @@ describe("Excel workbook parsing", () => {
     expect(converted.csvText).not.toContain("1+1");
   });
 
-  it("rejects empty sheets but preserves rows for header validation in the UI", () => {
+  it("rejects empty sheets but preserves rows for header validation in the UI", async () => {
     const emptyWorkbook = utils.book_new();
     utils.book_append_sheet(emptyWorkbook, utils.aoa_to_sheet([]), "Empty");
-    expect(() => convertWorksheet(workbookBuffer(emptyWorkbook), "Empty")).toThrow(
+    await expect(convertWorksheet(workbookBuffer(emptyWorkbook), "Empty")).rejects.toThrow(
       "The selected worksheet is empty.",
     );
 
@@ -388,11 +388,11 @@ describe("Excel workbook parsing", () => {
       ]),
       "Duplicate",
     );
-    const converted = convertWorksheet(workbookBuffer(duplicateWorkbook), "Duplicate");
+    const converted = await convertWorksheet(workbookBuffer(duplicateWorkbook), "Duplicate");
     expect(() => parseCsv(converted.csvText)).toThrow("CSV headers must be unique.");
   });
 
-  it("preserves worksheets over 500 rows for post-header validation", () => {
+  it("preserves worksheets over 500 rows for post-header validation", async () => {
     const workbook = utils.book_new();
     const rows = [
       ["Date", "Description", "Amount", "Category"],
@@ -405,35 +405,35 @@ describe("Excel workbook parsing", () => {
     ];
     utils.book_append_sheet(workbook, utils.aoa_to_sheet(rows), "Transactions");
 
-    expect(convertWorksheet(workbookBuffer(workbook), "Transactions").rowCount).toBe(502);
+    expect((await convertWorksheet(workbookBuffer(workbook), "Transactions")).rowCount).toBe(502);
   });
 
-  it("rejects oversized ZIP metadata and declared expansion before workbook parsing", () => {
+  it("rejects oversized ZIP metadata and declared expansion before workbook parsing", async () => {
     const buffer = workbookBuffer(transactionWorkbook());
 
-    expect(() =>
+    await expect(
       inspectWorkbook(withDeclaredZipEntryCount(buffer, MAX_XLSX_ZIP_ENTRIES + 1)),
-    ).toThrow("more data than can be processed safely");
-    expect(() =>
+    ).rejects.toThrow("more data than can be processed safely");
+    await expect(
       inspectWorkbook(
         withFirstEntryUncompressedBytes(buffer, MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES + 1),
       ),
-    ).toThrow("more data than can be processed safely");
+    ).rejects.toThrow("more data than can be processed safely");
   });
 
-  it("rejects ZIP entries whose local header disagrees with the central directory", () => {
+  it("rejects ZIP entries whose local header disagrees with the central directory", async () => {
     const buffer = workbookBuffer(transactionWorkbook());
 
-    expect(() => inspectWorkbook(withMismatchedLocalFileName(buffer))).toThrow(
+    await expect(inspectWorkbook(withMismatchedLocalFileName(buffer))).rejects.toThrow(
       "more data than can be processed safely",
     );
-    expect(() => inspectWorkbook(withMismatchedLocalCompressionMethod(buffer))).toThrow(
+    await expect(inspectWorkbook(withMismatchedLocalCompressionMethod(buffer))).rejects.toThrow(
       "more data than can be processed safely",
     );
-    expect(() => inspectWorkbook(withMismatchedLocalCompressedBytes(buffer))).toThrow(
+    await expect(inspectWorkbook(withMismatchedLocalCompressedBytes(buffer))).rejects.toThrow(
       "more data than can be processed safely",
     );
-    expect(() => inspectWorkbook(withMismatchedLocalUncompressedBytes(buffer))).toThrow(
+    await expect(inspectWorkbook(withMismatchedLocalUncompressedBytes(buffer))).rejects.toThrow(
       "more data than can be processed safely",
     );
   });
@@ -441,54 +441,54 @@ describe("Excel workbook parsing", () => {
   it.each([
     ["signed", true],
     ["unsigned", false],
-  ] as const)("accepts a valid %s data descriptor", (_label, signed) => {
+  ] as const)("accepts a valid %s data descriptor", async (_label, signed) => {
     const source = workbookBuffer(transactionWorkbook());
     const buffer = withInsertedFirstEntryDataDescriptor(
       source,
       firstEntryDataDescriptor(source, signed),
     );
 
-    expect(inspectWorkbook(buffer)).toEqual(["Instructions", "Transactions"]);
-    expect(convertWorksheet(buffer, "Transactions").rowCount).toBe(3);
+    expect(await inspectWorkbook(buffer)).toEqual(["Instructions", "Transactions"]);
+    expect((await convertWorksheet(buffer, "Transactions")).rowCount).toBe(3);
   });
 
-  it("rejects data-descriptor entries that are incomplete or invalid", () => {
+  it("rejects data-descriptor entries that are incomplete or invalid", async () => {
     const buffer = workbookBuffer(transactionWorkbook());
     const truncatedDescriptor = firstEntryDataDescriptor(buffer, true).subarray(0, 12);
 
-    expect(() =>
+    await expect(
       inspectWorkbook(withInsertedFirstEntryDataDescriptor(buffer, truncatedDescriptor)),
-    ).toThrow("more data than can be processed safely");
-    expect(() => inspectWorkbook(withDataDescriptorFlagAndOversizedLocalData(buffer))).toThrow(
-      "more data than can be processed safely",
-    );
-    expect(() => inspectWorkbook(withDataDescriptorFlagAndInvalidDescriptorSizes(buffer))).toThrow(
-      "more data than can be processed safely",
-    );
+    ).rejects.toThrow("more data than can be processed safely");
+    await expect(
+      inspectWorkbook(withDataDescriptorFlagAndOversizedLocalData(buffer)),
+    ).rejects.toThrow("more data than can be processed safely");
+    await expect(
+      inspectWorkbook(withDataDescriptorFlagAndInvalidDescriptorSizes(buffer)),
+    ).rejects.toThrow("more data than can be processed safely");
   });
 
-  it("rejects a data descriptor that overlaps the next entry's local header", () => {
+  it("rejects a data descriptor that overlaps the next entry's local header", async () => {
     const buffer = workbookBuffer(transactionWorkbook());
 
-    expect(() => inspectWorkbook(withOverlappingFirstEntryDataDescriptor(buffer))).toThrow(
+    await expect(inspectWorkbook(withOverlappingFirstEntryDataDescriptor(buffer))).rejects.toThrow(
       "more data than can be processed safely",
     );
   });
 
-  it("rejects a local payload that overlaps the next entry's local header", () => {
+  it("rejects a local payload that overlaps the next entry's local header", async () => {
     const buffer = workbookBuffer(transactionWorkbook());
 
-    expect(() => inspectWorkbook(withFirstEntryOverlappingNextEntry(buffer))).toThrow(
+    await expect(inspectWorkbook(withFirstEntryOverlappingNextEntry(buffer))).rejects.toThrow(
       "more data than can be processed safely",
     );
   });
 
-  it("bounds workbook resources and sparse worksheet coordinates above the import parser", () => {
+  it("bounds workbook resources and sparse worksheet coordinates above the import parser", async () => {
     const manySheets = utils.book_new();
     for (let index = 0; index < MAX_WORKBOOK_SHEETS + 1; index += 1) {
       utils.book_append_sheet(manySheets, utils.aoa_to_sheet([[index]]), `Sheet ${index + 1}`);
     }
-    expect(() => inspectWorkbook(workbookBuffer(manySheets))).toThrow(
+    await expect(inspectWorkbook(workbookBuffer(manySheets))).rejects.toThrow(
       "more data than can be processed safely",
     );
 
@@ -500,18 +500,18 @@ describe("Excel workbook parsing", () => {
     utils.book_append_sheet(sparseWorkbook, sparseSheet, "Transactions");
     const sparseBuffer = workbookBuffer(sparseWorkbook);
 
-    expect(inspectWorkbook(sparseBuffer)).toEqual(["Transactions"]);
-    expect(() => convertWorksheet(sparseBuffer, "Transactions")).toThrow(
+    expect(await inspectWorkbook(sparseBuffer)).toEqual(["Transactions"]);
+    await expect(convertWorksheet(sparseBuffer, "Transactions")).rejects.toThrow(
       "more data than can be processed safely",
     );
   });
 
-  it("rejects oversized and malformed workbooks", () => {
-    expect(() => inspectWorkbook(new ArrayBuffer(MAX_WORKBOOK_FILE_BYTES + 1))).toThrow(
+  it("rejects oversized and malformed workbooks", async () => {
+    await expect(inspectWorkbook(new ArrayBuffer(MAX_WORKBOOK_FILE_BYTES + 1))).rejects.toThrow(
       WorkbookImportError,
     );
-    expect(() => inspectWorkbook(new TextEncoder().encode("not a workbook").buffer)).toThrow(
-      WorkbookImportError,
-    );
+    await expect(
+      inspectWorkbook(new TextEncoder().encode("not a workbook").buffer),
+    ).rejects.toThrow(WorkbookImportError);
   });
 });
