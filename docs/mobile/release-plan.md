@@ -184,6 +184,9 @@ The updater now cache-busts and sends no-cache directives when checking mutable
 Versioned APK files remain immutable and cacheable; package, version, checksum,
 and signing-certificate gates remain unchanged.
 
+It also clarifies disabled button states and improves contrast for the
+voice-entry and receipt-capture actions.
+
 ## Future signed OTA bootstrap (deferred)
 
 The code, signing certificate, compatibility gates, and manual workflows are

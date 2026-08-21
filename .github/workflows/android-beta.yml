@@ -353,6 +353,7 @@ jobs:
             "reinstallRequired": false,
             "notes": [
               "Update checks now revalidate release metadata instead of using a stale cached response.",
+              "Make disabled actions clearer and improve voice-entry and receipt-capture button contrast.",
               "Keep versioned APK downloads immutable and cacheable while the latest release record stays fresh.",
               "Retain package, version, checksum, and signing-certificate verification before installation."
             ]
