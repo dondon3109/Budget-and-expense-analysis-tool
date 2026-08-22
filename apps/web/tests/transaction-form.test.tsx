@@ -9,6 +9,26 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TransactionForm } from "../src/components/transactions/TransactionForm";
 
+const voiceDraft = vi.hoisted(() => ({
+  transcript: "Spent 250 pesos on lunch today",
+  description: "Lunch",
+  date: "2026-08-21",
+  amountMinor: 25_000,
+  currency: "PHP" as const,
+  kind: "expense" as const,
+  categoryName: "Food & dining",
+}));
+
+vi.mock("../src/components/transactions/TransactionVoiceEntry", () => ({
+  TransactionVoiceEntry: ({ onDraft }: { onDraft: (draft: typeof voiceDraft) => void }) => (
+    <button type="button" onClick={() => onDraft(voiceDraft)}>
+      Simulate voice draft
+    </button>
+  ),
+}));
+
+const workspace = { key: "user:test-user" as const, userId: "test-user" };
+
 const accounts = [
   {
     id: "account-everyday",
@@ -60,9 +80,32 @@ const transaction: TransactionListItem = {
 };
 
 describe("TransactionForm", () => {
+  it("prefills fields from an AI voice draft without saving", async () => {
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[category]}
+        accounts={accounts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Simulate voice draft" }));
+
+    expect(screen.getByLabelText("Date")).toHaveValue("2026-08-21");
+    expect(screen.getByLabelText(/Description/)).toHaveValue("Lunch");
+    expect(screen.getByLabelText("Amount (PHP)")).toHaveValue("250.00");
+    expect(screen.getByLabelText("Category")).toHaveValue("food");
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("prefills a new transaction with the selected calendar date", () => {
     render(
       <TransactionForm
+        workspace={workspace}
         initialDate="2026-08-12"
         categories={[category]}
         accounts={accounts}
@@ -78,6 +121,7 @@ describe("TransactionForm", () => {
   it("defaults a new transaction to the Cash account", async () => {
     render(
       <TransactionForm
+        workspace={workspace}
         categories={[category]}
         accounts={[
           ...accounts,
@@ -103,6 +147,7 @@ describe("TransactionForm", () => {
   it("keeps the existing date when editing even if an initial date is provided", () => {
     render(
       <TransactionForm
+        workspace={workspace}
         item={transaction}
         initialDate="2026-08-12"
         categories={[category]}
@@ -121,6 +166,7 @@ describe("TransactionForm", () => {
     const onSubmit = vi.fn(async () => undefined);
     render(
       <TransactionForm
+        workspace={workspace}
         item={transaction}
         categories={[category]}
         accounts={accounts}
@@ -153,6 +199,7 @@ describe("TransactionForm", () => {
     const onSubmit = vi.fn(async () => undefined);
     render(
       <TransactionForm
+        workspace={workspace}
         categories={[category]}
         accounts={accounts}
         busy={false}
@@ -186,6 +233,7 @@ describe("TransactionForm", () => {
     };
     render(
       <TransactionForm
+        workspace={workspace}
         categories={[lockedCategory, category]}
         accounts={accounts}
         busy={false}
@@ -214,6 +262,7 @@ describe("TransactionForm", () => {
     const onSubmit = vi.fn(async () => undefined);
     render(
       <TransactionForm
+        workspace={workspace}
         categories={[otherIncome, salaryCategory]}
         accounts={accounts}
         busy={false}
@@ -240,6 +289,7 @@ describe("TransactionForm", () => {
     const onSubmit = vi.fn(async () => undefined);
     render(
       <TransactionForm
+        workspace={workspace}
         item={{ ...transaction, categoryId: lockedCategory.id, categoryName: lockedCategory.name }}
         categories={[lockedCategory]}
         accounts={accounts}
@@ -270,6 +320,7 @@ describe("TransactionForm", () => {
     };
     render(
       <TransactionForm
+        workspace={workspace}
         categories={[transferCategory]}
         accounts={accounts}
         busy={false}

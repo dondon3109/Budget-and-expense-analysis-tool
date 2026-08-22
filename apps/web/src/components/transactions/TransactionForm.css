@@ -1,5 +1,118 @@
 /* Transaction Form styles extracted from the private application surface. */
 
+.transaction-voice {
+  display: grid;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(120deg, var(--surface-soft), var(--surface) 70%);
+}
+
+.transaction-voice-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.transaction-voice-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: var(--brand);
+  border-radius: 10px;
+  background: var(--brand-soft);
+}
+
+.transaction-voice-icon.recording {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.transaction-voice-intro > div {
+  display: grid;
+  gap: 2px;
+}
+
+.transaction-voice-intro strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.transaction-voice-intro small,
+.transaction-voice-status small {
+  color: var(--subtle);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.transaction-voice-status {
+  min-height: 43px;
+  padding: 8px 11px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  background: var(--danger-soft);
+}
+
+.transaction-voice-status > div {
+  display: grid;
+  gap: 1px;
+}
+
+.transaction-voice-status strong {
+  color: var(--ink);
+  font-size: 11.5px;
+}
+
+.transaction-voice-timer {
+  color: var(--danger);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.transaction-voice .button.danger {
+  color: #fff;
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.transaction-voice-message {
+  color: var(--muted);
+}
+
+.transaction-voice-consent {
+  display: grid;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.transaction-voice-consent strong {
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+.transaction-voice-consent p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.transaction-voice-consent-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .transaction-form {
   margin-top: 24px;
   display: grid;

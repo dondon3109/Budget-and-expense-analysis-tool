@@ -488,6 +488,7 @@ export function CalendarPage() {
 
       {formOpen && (
         <TransactionForm
+          workspace={workspace}
           initialDate={selectedDate}
           categories={categoriesQuery.data ?? []}
           accounts={accountsQuery.data ?? []}

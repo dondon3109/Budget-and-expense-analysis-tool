@@ -454,6 +454,7 @@ export function TransactionsPage() {
 
       {formOpen && (
         <TransactionForm
+          workspace={workspace}
           item={editing}
           categories={categories}
           accounts={accounts}

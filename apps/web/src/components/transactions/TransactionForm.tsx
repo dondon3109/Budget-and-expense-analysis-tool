@@ -10,15 +10,19 @@ import {
   type TransactionInput,
   type TransactionKind,
   type TransactionListItem,
+  type TransactionVoiceDraft,
 } from "@zoption/shared";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
+import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import "./TransactionForm.css";
 import { localIsoDate } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
+import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
 
 interface TransactionFormProps {
+  workspace: AuthenticatedWorkspace;
   item?: TransactionListItem;
   initialDate?: string;
   categories: CategoryRecord[];
@@ -34,6 +38,7 @@ function toAmountText(item?: TransactionListItem): string {
 }
 
 export function TransactionForm({
+  workspace,
   item,
   initialDate,
   categories,
@@ -160,6 +165,37 @@ export function TransactionForm({
     await onSubmit(parsed.data);
   }
 
+  /** Applies an AI voice draft as review-only prefill, mirroring the mobile editor. */
+  function applyVoiceDraft(draft: TransactionVoiceDraft) {
+    const nextKind = draft.kind;
+    const normalizedDraftCategory = draft.categoryName?.trim().toLocaleLowerCase("en");
+    const nextKindCategories = categories.filter(
+      (category) => !category.archived && !category.locked && category.kind === nextKind,
+    );
+    const matchingCategory = normalizedDraftCategory
+      ? nextKindCategories.find(
+          (category) => category.name.trim().toLocaleLowerCase("en") === normalizedDraftCategory,
+        )
+      : undefined;
+    const fromAccountIdValue = activeAccounts.some((account) => account.id === accountId)
+      ? accountId
+      : (defaultAccount?.id ?? "");
+    setKind(nextKind);
+    setCategoryId(matchingCategory?.id ?? nextKindCategories[0]?.id ?? categoryId);
+    setDate(draft.date);
+    setDescription(draft.description);
+    setAmount((draft.amountMinor / 100).toFixed(2));
+    setTransferFee("");
+    setCurrency(draft.currency);
+    if (!activeAccounts.some((account) => account.id === accountId)) {
+      setAccountId(fromAccountIdValue);
+    }
+    if (nextKind === "transfer" && fromAccountId === toAccountId) {
+      setToAccountId(activeAccounts.find((account) => account.id !== fromAccountIdValue)?.id ?? "");
+    }
+    setClientError(undefined);
+  }
+
   const selector = (
     label: string,
     value: string,
@@ -211,6 +247,13 @@ export function TransactionForm({
           </button>
         </header>
         <form className="transaction-form" onSubmit={handleSubmit}>
+          {!item && (
+            <TransactionVoiceEntry
+              workspace={workspace}
+              disabled={busy || selectableCategories.length === 0 || activeAccounts.length === 0}
+              onDraft={applyVoiceDraft}
+            />
+          )}
           <div className="form-row split">
             <label>
               <span>Transaction type</span>

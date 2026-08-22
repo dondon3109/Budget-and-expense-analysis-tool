@@ -1,3 +1,4 @@
+import { transactionVoiceDraftSchema } from "@zoption/shared";
 import type {
   AccountInput,
   AccountInterestUpdate,
@@ -68,6 +69,7 @@ import type {
   TransactionListQuery,
   TransactionPage,
   TransactionUpdate,
+  TransactionVoiceDraft,
   TransferFeeInsight,
 } from "@zoption/shared";
 
@@ -1125,6 +1127,50 @@ export async function extractReceipt(
     );
   }
   return (await response.json()) as ReceiptDraft;
+}
+
+/** Uploads one temporary voice clip and returns a review-only transaction draft. */
+export async function extractVoiceTransaction(
+  workspace: AuthenticatedWorkspace,
+  audio: Blob,
+): Promise<TransactionVoiceDraft> {
+  const form = new FormData();
+  const extension = audio.type.includes("mp4")
+    ? "m4a"
+    : audio.type.includes("ogg")
+      ? "ogg"
+      : "webm";
+  form.set("audio", audio, `voice-input.${extension}`);
+  const response = await workspaceFetch(
+    workspace,
+    "/api/app/entry/voice",
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: form,
+    },
+    { timeoutMs: 60_000 },
+  );
+  if (!response.ok) {
+    const payload = apiErrorPayload(await response.json().catch(() => null));
+    throw new ApiRequestError(
+      payload.message ?? "The recording could not be read as a transaction.",
+      response.status,
+      payload.error ?? "entry_voice_failed",
+      payload.details,
+    );
+  }
+  let draft: TransactionVoiceDraft;
+  try {
+    draft = transactionVoiceDraftSchema.parse(await response.json());
+  } catch {
+    throw new ApiRequestError(
+      "The recording could not be read as a transaction.",
+      response.status,
+      "entry_voice_failed",
+    );
+  }
+  return draft;
 }
 
 export function getBudgets(
