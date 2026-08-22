@@ -1,4 +1,10 @@
+import { readFileSync } from "node:fs";
+
 import { expect, test } from "@playwright/test";
+
+const androidRelease = JSON.parse(
+  readFileSync(new URL("../apps/web/src/releases/androidRelease.json", import.meta.url), "utf8"),
+) as { downloadPath: string };
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("zoption-theme", "light"));
@@ -151,7 +157,7 @@ test("Android download page keeps the official R2 snapshot when live metadata is
 
   await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
     "href",
-    "https://downloads.zoption.site/android/zoption-beta-0.2.4.apk",
+    androidRelease.downloadPath,
   );
   await expect(page.getByText(/temporarily unavailable/i)).toHaveCount(0);
 });
