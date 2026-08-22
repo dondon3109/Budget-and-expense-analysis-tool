@@ -1,0 +1,132 @@
+import { describe, expect, it } from "vitest";
+
+import { categoryRepository } from "../src/db/categories";
+import type { Bindings } from "../src/types";
+import { createD1TestDatabase } from "./helpers/d1-test-harness";
+
+function categoryEnvironment(binding: D1Database): Bindings {
+  return { DB: binding };
+}
+
+function createTenant(database: ReturnType<typeof createD1TestDatabase>["database"], tenantId: string): void {
+  database.prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', ?)").run(tenantId, tenantId);
+}
+
+function grantPlatformAdminPro(
+  database: ReturnType<typeof createD1TestDatabase>["database"],
+  tenantId: string,
+): void {
+  const userId = `${tenantId}-admin`;
+  database.prepare("INSERT INTO user_tenants (user_id, tenant_id) VALUES (?, ?)").run(userId, tenantId);
+  database
+    .prepare("INSERT INTO platform_admin_grants (user_id, complimentary_pro_enabled) VALUES (?, 1)")
+    .run(userId);
+}
+
+function insertArchivedProCategory(
+  database: ReturnType<typeof createD1TestDatabase>["database"],
+  tenantId: string,
+  id: string,
+): void {
+  database
+    .prepare(
+      `INSERT INTO categories (id, tenant_id, name, kind, color, archived, origin, required_plan)
+       VALUES (?, ?, 'Archived Pro', 'expense', '#123456', 1, 'custom', 'zoption_pro')`,
+    )
+    .run(id, tenantId);
+}
+
+describe("categoryRepository entitlement enforcement", () => {
+  it("creates another custom category for a platform-admin Pro tenant already at the Free limit", async () => {
+    const { binding, database } = createD1TestDatabase();
+    const tenantId = "pro-tenant";
+    createTenant(database, tenantId);
+    const env = categoryEnvironment(binding);
+
+    await categoryRepository.create(env, tenantId, {
+      name: "Existing free category",
+      kind: "expense",
+      color: "#111111",
+    });
+    grantPlatformAdminPro(database, tenantId);
+
+    await expect(
+      categoryRepository.create(env, tenantId, {
+        name: "Additional Pro category",
+        kind: "expense",
+        color: "#222222",
+      }),
+    ).resolves.toMatchObject({
+      name: "Additional Pro category",
+      origin: "custom",
+      requiredPlan: "zoption_pro",
+      locked: false,
+    });
+  });
+
+  it("keeps the exact Free custom-category limit response", async () => {
+    const { binding, database } = createD1TestDatabase();
+    const tenantId = "free-tenant";
+    createTenant(database, tenantId);
+    const env = categoryEnvironment(binding);
+
+    await categoryRepository.create(env, tenantId, {
+      name: "Only free category",
+      kind: "expense",
+      color: "#111111",
+    });
+
+    await expect(
+      categoryRepository.create(env, tenantId, {
+        name: "Blocked free category",
+        kind: "expense",
+        color: "#222222",
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "resource_limit_reached",
+      details: {
+        resource: "custom_category",
+        used: 1,
+        limit: 1,
+        billingPath: "/app/settings#plan-and-billing",
+      },
+    });
+  });
+
+  it("restores an archived Pro custom category for a platform-admin Pro tenant", async () => {
+    const { binding, database } = createD1TestDatabase();
+    const tenantId = "restore-pro-tenant";
+    createTenant(database, tenantId);
+    grantPlatformAdminPro(database, tenantId);
+    insertArchivedProCategory(database, tenantId, "archived-pro-category");
+
+    await expect(
+      categoryRepository.update(categoryEnvironment(binding), tenantId, "archived-pro-category", {
+        archived: false,
+      }),
+    ).resolves.toMatchObject({
+      archived: false,
+      origin: "custom",
+      requiredPlan: "zoption_pro",
+      locked: false,
+    });
+  });
+
+  it("keeps archived Pro custom categories locked for tenants without an entitlement", async () => {
+    const { binding, database } = createD1TestDatabase();
+    const tenantId = "restore-free-tenant";
+    createTenant(database, tenantId);
+    insertArchivedProCategory(database, tenantId, "archived-pro-category");
+
+    await expect(
+      categoryRepository.update(categoryEnvironment(binding), tenantId, "archived-pro-category", {
+        archived: false,
+      }),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: "category_requires_pro",
+      details: { requiredPlan: "zoption_pro", billingPath: "/app/settings" },
+    });
+  });
+});
