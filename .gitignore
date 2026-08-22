@@ -30,3 +30,4 @@ tmp/
 *.aab
 *.idsig
 apps/ads/out/
+.worktrees/
