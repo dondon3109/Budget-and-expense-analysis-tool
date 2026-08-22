@@ -1,22 +1,22 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.7-beta",
-  "versionCode": 20307,
-  "filename": "zoption-beta-0.2.7.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.7.apk",
-  "sha256": "df60d98fb38c1ffdeb5186eacde3a83d29a6e94a33a6c8f8f6e8dc9b3aee05c3",
-  "sizeBytes": 142984575,
-  "sizeLabel": "142,984,575 bytes (136.36 MiB)",
-  "releaseDate": "2026-08-21",
-  "releaseDateLabel": "August 21, 2026",
+  "versionName": "0.2.8-beta",
+  "versionCode": 20308,
+  "filename": "zoption-beta-0.2.8.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.8.apk",
+  "sha256": "dc5c038d94bbe0fd1b4acdeacf5c84e9f95a61728d2ad8667325bfb25c45187b",
+  "sizeBytes": 143424175,
+  "sizeLabel": "143,424,175 bytes (136.78 MiB)",
+  "releaseDate": "2026-08-22",
+  "releaseDateLabel": "August 22, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Default new transactions and receipt drafts to the Cash account when one is available.",
-    "Make voice recording status and receipt photo actions clearer and easier to use.",
-    "Keep transaction defaults consistent between the mobile app and website.",
-    "Retain package, version, checksum, and signing-certificate verification before installation."
+    "Improve assistant, calendar, import, and support screen responsiveness.",
+    "Load spreadsheet parsing only when a workbook is imported.",
+    "Add fail-closed sanitized crash telemetry; reporting remains inactive until configured.",
+    "Preserve signed in-app update verification and trusted release metadata."
   ]
 }
