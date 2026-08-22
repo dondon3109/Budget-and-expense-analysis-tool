@@ -5,22 +5,18 @@ import {
   calendarEventInputSchema,
   categoryInputSchema,
   interestUpdateSchema,
-  mobileSyncAcknowledgeResponseSchema,
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
   mobileSyncEventSnapshotSchema,
   mobileSyncPushResultSchema,
   mobileSyncCategorySnapshotSchema,
-  mobileSyncChangeSchema,
   mobileSyncDebtSnapshotSchema,
   mobileSyncSubscriptionSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
-  mobileSyncSnapshotResponseSchema,
   normalizeSignedAmount,
   transactionInputSchema,
-  type MobileSyncChange,
   type MobileSyncAcknowledgeRequest,
   type MobileSyncAcknowledgeResponse,
   type MobileSyncPullRequest,
@@ -46,17 +42,24 @@ import {
   hasProEntitlement,
 } from "./billing";
 import { validateTransactionReferences } from "./transactions";
+import { mobileSyncServerTimestamp as serverTimestamp } from "./mobile-sync/protocol";
+import {
+  acknowledgeMobileSyncClient,
+  pullMobileSyncChanges,
+  snapshotMobileSync,
+  type MobileSyncEntitlementReader,
+} from "./mobile-sync/read";
 
-interface ChangeRow {
-  sequence: number;
-  entityType: "account" | "category" | "transaction" | "budget" | "goal" | "debt" | "subscription" | "event";
-  entityId: string;
-  rowRevision: number;
-  operation: "upsert" | "delete";
-  payloadJson: string | null;
-  serverUpdatedAt: string;
-  atomicGroupId: string | null;
-}
+export {
+  compactMobileSyncChanges,
+  type MobileSyncCompactionResult,
+} from "./mobile-sync/compaction";
+export {
+  decodeMobileSyncCursor,
+  decodeMobileSyncSnapshotCursor,
+  encodeMobileSyncCursor,
+  encodeMobileSyncSnapshotCursor,
+} from "./mobile-sync/protocol";
 
 interface IdempotencyRow {
   requestHash: string;
@@ -65,17 +68,6 @@ interface IdempotencyRow {
 
 interface EntitySyncRow {
   payloadJson: string;
-}
-
-interface CompactionTenantRow {
-  tenantId: string;
-  safeSequence: number;
-}
-
-export interface MobileSyncCompactionResult {
-  tenants: number;
-  deletedChanges: number;
-  expiredClients: number;
 }
 
 type AccountSnapshot = ReturnType<typeof mobileSyncAccountSnapshotSchema.parse>;
@@ -131,206 +123,7 @@ export interface MobileSyncRepository {
   ): Promise<MobileSyncPushResponse>;
 }
 
-type EntitlementReader = (env: Bindings, tenantId: string) => Promise<boolean>;
-
-export function encodeMobileSyncCursor(sequence: number): string {
-  if (!Number.isSafeInteger(sequence) || sequence < 0) {
-    throw new Error("Cannot encode an invalid mobile sync sequence.");
-  }
-  return `v1.${sequence.toString(36)}`;
-}
-
-export function decodeMobileSyncCursor(cursor: string | null): number {
-  if (cursor === null) return 0;
-  const encoded = cursor.slice(3);
-  const sequence = Number.parseInt(encoded, 36);
-  if (
-    !Number.isSafeInteger(sequence) ||
-    sequence < 0 ||
-    encodeMobileSyncCursor(sequence) !== cursor
-  ) {
-    throw new HttpError(400, "invalid_sync_cursor", "Restart synchronization from this device.");
-  }
-  return sequence;
-}
-
-export function encodeMobileSyncSnapshotCursor(sequence: number): string {
-  if (!Number.isSafeInteger(sequence) || sequence < 0) {
-    throw new Error("Cannot encode an invalid mobile snapshot sequence.");
-  }
-  return `s1.${sequence.toString(36)}`;
-}
-
-export function decodeMobileSyncSnapshotCursor(cursor: string): number {
-  const encoded = cursor.slice(3);
-  const sequence = Number.parseInt(encoded, 36);
-  if (
-    !Number.isSafeInteger(sequence) ||
-    sequence < 0 ||
-    encodeMobileSyncSnapshotCursor(sequence) !== cursor
-  ) {
-    throw new HttpError(400, "invalid_snapshot_cursor", "Restart the safe full snapshot.");
-  }
-  return sequence;
-}
-
-function decodePayload(row: ChangeRow, hasPro: boolean): MobileSyncChange {
-  try {
-    let payload: unknown = null;
-    if (row.operation === "upsert") {
-      if (!row.payloadJson) throw new Error("missing_payload");
-      payload = JSON.parse(row.payloadJson) as unknown;
-      if (row.entityType === "category") {
-        const category = mobileSyncCategorySnapshotSchema.parse(payload);
-        payload = {
-          ...category,
-          locked: category.requiredPlan === "zoption_pro" && !hasPro,
-        };
-      }
-    }
-    return mobileSyncChangeSchema.parse({
-      entityType: row.entityType,
-      entityId: row.entityId,
-      revision: row.rowRevision,
-      operation: row.operation,
-      serverUpdatedAt: row.serverUpdatedAt,
-      payload,
-    });
-  } catch {
-    // Do not let Zod include a financial payload in the global error log.
-    throw new Error("Stored mobile synchronization data failed validation.");
-  }
-}
-
-function atomicPullPage(rows: ChangeRow[], limit: number): ChangeRow[] {
-  const page: ChangeRow[] = [];
-  for (let index = 0; index < rows.length;) {
-    if (page.length >= limit) break;
-    const row = rows[index]!;
-    if (!row.atomicGroupId) {
-      page.push(row);
-      index += 1;
-      continue;
-    }
-    let end = index + 1;
-    while (rows[end]?.atomicGroupId === row.atomicGroupId) end += 1;
-    const group = rows.slice(index, end);
-    const kinds = group.map((item) => item.entityType);
-    const validTransfer = group.length === 2 && kinds.every((kind) => kind === "transaction");
-    const validSubscription =
-      group.length === 2 && kinds.includes("subscription") && kinds.includes("transaction");
-    if (!validTransfer && !validSubscription) {
-      throw new HttpError(
-        409,
-        "full_resync_required",
-        "An atomic synchronization boundary is invalid. Start a safe full resynchronization.",
-        { reason: "invalid_atomic_group_boundary" },
-      );
-    }
-    if (page.length > 0 && page.length + group.length > limit) break;
-    page.push(...group);
-    index = end;
-  }
-  return page;
-}
-
-function serverTimestamp(): string {
-  return new Date()
-    .toISOString()
-    .replace("T", " ")
-    .replace(/\.\d{3}Z$/, "");
-}
-
-/**
- * Removes only changes every non-expired installation has acknowledged and that
- * are older than the supported 90-day offline window. Latest live snapshots are
- * retained; acknowledged deletion tombstones may be compacted because a future
- * full snapshot represents their absence.
- */
-export async function compactMobileSyncChanges(
-  env: Bindings,
-  now = serverTimestamp(),
-  batchLimit = 1_000,
-): Promise<MobileSyncCompactionResult> {
-  if (!Number.isSafeInteger(batchLimit) || batchLimit < 1 || batchLimit > 5_000) {
-    throw new Error("Choose a mobile sync compaction batch from 1 to 5,000.");
-  }
-  const cutoff = new Date(`${now.replace(" ", "T")}Z`);
-  if (Number.isNaN(cutoff.getTime())) throw new Error("Choose a valid compaction timestamp.");
-  cutoff.setUTCDate(cutoff.getUTCDate() - 90);
-  const cutoffTimestamp = cutoff
-    .toISOString()
-    .replace("T", " ")
-    .replace(/\.\d{3}Z$/, "");
-
-  await env.DB.prepare(
-    `UPDATE mobile_sync_clients SET snapshot_sequence = NULL, snapshot_expires_at = NULL
-     WHERE snapshot_expires_at IS NOT NULL AND snapshot_expires_at < ?`,
-  )
-    .bind(now)
-    .run();
-  const expired = await env.DB.prepare(
-    `DELETE FROM mobile_sync_clients
-     WHERE expires_at < ? AND snapshot_sequence IS NULL`,
-  )
-    .bind(now)
-    .run();
-  const candidates = await env.DB.prepare(
-    `SELECT state.tenant_id AS tenantId,
-            MIN(clients.acknowledged_sequence) AS safeSequence
-     FROM mobile_sync_state state
-     JOIN mobile_sync_clients clients ON clients.tenant_id = state.tenant_id
-     WHERE clients.expires_at >= ?
-       AND NOT EXISTS (
-         SELECT 1 FROM mobile_sync_clients snapshot
-         WHERE snapshot.tenant_id = state.tenant_id
-           AND snapshot.snapshot_expires_at >= ?
-       )
-     GROUP BY state.tenant_id
-     HAVING MIN(clients.acknowledged_sequence) > state.retention_floor_sequence
-     LIMIT 100`,
-  )
-    .bind(now, now)
-    .all<CompactionTenantRow>();
-
-  let deletedChanges = 0;
-  for (const candidate of candidates.results) {
-    const safeSequence = Number(candidate.safeSequence);
-    if (!Number.isSafeInteger(safeSequence) || safeSequence < 1) continue;
-    const results = await env.DB.batch([
-      env.DB.prepare(
-        `DELETE FROM mobile_sync_changes
-         WHERE tenant_id = ? AND sequence IN (
-           SELECT old.sequence
-           FROM mobile_sync_changes old
-           WHERE old.tenant_id = ? AND old.sequence <= ? AND old.server_updated_at < ?
-             AND (
-               old.operation = 'delete'
-               OR EXISTS (
-                 SELECT 1 FROM mobile_sync_changes newer
-                 WHERE newer.tenant_id = old.tenant_id
-                   AND newer.entity_type = old.entity_type
-                   AND newer.entity_id = old.entity_id
-                   AND newer.sequence > old.sequence
-               )
-             )
-           ORDER BY old.sequence LIMIT ?
-         )`,
-      ).bind(candidate.tenantId, candidate.tenantId, safeSequence, cutoffTimestamp, batchLimit),
-      env.DB.prepare(
-        `UPDATE mobile_sync_state
-         SET retention_floor_sequence = MAX(retention_floor_sequence, ?), updated_at = ?
-         WHERE tenant_id = ?`,
-      ).bind(safeSequence, now, candidate.tenantId),
-    ]);
-    deletedChanges += Number(results[0]?.meta.changes ?? 0);
-  }
-  return {
-    tenants: candidates.results.length,
-    deletedChanges,
-    expiredClients: Number(expired.meta.changes ?? 0),
-  };
-}
+type EntitlementReader = MobileSyncEntitlementReader;
 
 async function requestHash(operation: MobileSyncPushOperation): Promise<string> {
   const bytes = new TextEncoder().encode(JSON.stringify(operation));
@@ -509,16 +302,9 @@ async function validateSubscriptionReferences(
     .bind(tenantId, categoryId)
     .first<{ kind: string; archived: number; requiredPlan: string }>();
   if (!category || category.archived === 1 || category.kind !== "expense") {
-    throw new HttpError(
-      400,
-      "invalid_subscription_category",
-      "Choose an active expense category.",
-    );
+    throw new HttpError(400, "invalid_subscription_category", "Choose an active expense category.");
   }
-  if (
-    category.requiredPlan !== "free" &&
-    !(await readEntitlement(env, tenantId))
-  ) {
+  if (category.requiredPlan !== "free" && !(await readEntitlement(env, tenantId))) {
     throw new HttpError(
       403,
       "category_requires_pro",
@@ -1049,13 +835,7 @@ function createGraphMutation(
          SELECT 1 FROM accounts WHERE tenant_id = ? AND lower(name) = lower(?)
        )`,
     );
-    const binds: unknown[] = [
-      operation.entityId,
-      tenantId,
-      payload.name,
-      payload.type,
-      timestamp,
-    ];
+    const binds: unknown[] = [operation.entityId, tenantId, payload.name, payload.type, timestamp];
     if (interest) {
       binds.push(
         interest.enabled ? 1 : 0,
@@ -1578,268 +1358,16 @@ export function createMobileSyncRepository(
   readEntitlement: EntitlementReader = hasProEntitlement,
 ): MobileSyncRepository {
   return {
-    async snapshot(env, tenantId, input) {
-      let snapshotSequence: number;
-      if (input.snapshotCursor === null) {
-        const state = await env.DB.prepare(
-          "SELECT sequence FROM mobile_sync_state WHERE tenant_id = ?",
-        )
-          .bind(tenantId)
-          .first<{ sequence: number }>();
-        snapshotSequence = Number(state?.sequence ?? 0);
-        await env.DB.prepare(
-          `INSERT INTO mobile_sync_clients (
-            tenant_id, client_id, acknowledged_sequence, last_seen_at, expires_at,
-            snapshot_sequence, snapshot_expires_at
-          ) VALUES (?, ?, 0, datetime('now'), datetime('now', '+90 days'), ?, datetime('now', '+1 day'))
-          ON CONFLICT (tenant_id, client_id) DO UPDATE SET
-            last_seen_at = datetime('now'),
-            expires_at = datetime('now', '+90 days'),
-            snapshot_sequence = excluded.snapshot_sequence,
-            snapshot_expires_at = excluded.snapshot_expires_at`,
-        )
-          .bind(tenantId, input.clientId, snapshotSequence)
-          .run();
-      } else {
-        snapshotSequence = decodeMobileSyncSnapshotCursor(input.snapshotCursor);
-        const client = await env.DB.prepare(
-          `SELECT snapshot_sequence AS snapshotSequence
-           FROM mobile_sync_clients
-           WHERE tenant_id = ? AND client_id = ?
-             AND snapshot_sequence = ? AND snapshot_expires_at >= datetime('now')`,
-        )
-          .bind(tenantId, input.clientId, snapshotSequence)
-          .first<{ snapshotSequence: number }>();
-        if (!client) {
-          throw new HttpError(
-            409,
-            "full_resync_required",
-            "This full snapshot expired or belongs to another installation. Restart it safely.",
-            { reason: "snapshot_session_expired" },
-          );
-        }
-        await env.DB.prepare(
-          `UPDATE mobile_sync_clients
-           SET last_seen_at = datetime('now'), expires_at = datetime('now', '+90 days')
-           WHERE tenant_id = ? AND client_id = ?`,
-        )
-          .bind(tenantId, input.clientId)
-          .run();
-      }
-
-      const result = await env.DB.prepare(
-        `WITH ranked AS (
-          SELECT changes.sequence, changes.entity_type AS entityType,
-            changes.entity_id AS entityId, changes.row_revision AS rowRevision,
-            changes.operation, changes.payload_json AS payloadJson,
-            changes.server_updated_at AS serverUpdatedAt,
-            groups.atomic_group_id AS atomicGroupId,
-            ROW_NUMBER() OVER (
-              PARTITION BY changes.entity_type, changes.entity_id
-              ORDER BY changes.sequence DESC
-            ) AS entityRank
-          FROM mobile_sync_changes changes
-          LEFT JOIN mobile_sync_change_groups groups
-            ON groups.tenant_id = changes.tenant_id AND groups.sequence = changes.sequence
-          WHERE changes.tenant_id = ? AND changes.sequence <= ?
-        ), grouped AS (
-          SELECT ranked.*, (
-            SELECT COUNT(*) FROM ranked partner
-            WHERE partner.atomicGroupId = ranked.atomicGroupId
-              AND partner.entityRank = 1 AND partner.operation = 'upsert'
-          ) AS groupSize
-          FROM ranked
-        ), ordered AS (
-          SELECT sequence, entityType, entityId, rowRevision, operation, payloadJson,
-            serverUpdatedAt,
-            CASE WHEN groupSize = 2 THEN atomicGroupId ELSE NULL END AS atomicGroupId,
-            ROW_NUMBER() OVER (
-              ORDER BY CASE entityType
-                WHEN 'account' THEN 1 WHEN 'category' THEN 2 ELSE 3 END,
-                COALESCE(atomicGroupId, entityId), entityId
-            ) - 1 AS snapshotPosition
-          FROM grouped WHERE entityRank = 1 AND operation = 'upsert'
-        )
-        SELECT sequence, entityType, entityId, rowRevision, operation, payloadJson,
-          serverUpdatedAt, atomicGroupId
-        FROM ordered WHERE snapshotPosition >= ?
-        ORDER BY snapshotPosition LIMIT ?`,
-      )
-        .bind(tenantId, snapshotSequence, input.offset, input.limit + 2)
-        .all<ChangeRow>();
-      const page = atomicPullPage(result.results, input.limit);
-      const hasPro = page.some((change) => change.entityType === "category")
-        ? await readEntitlement(env, tenantId)
-        : false;
-      const changes = page.map((change) => decodePayload(change, hasPro));
-      const snapshotCursor = encodeMobileSyncSnapshotCursor(snapshotSequence);
-      return mobileSyncSnapshotResponseSchema.parse({
-        protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
-        snapshotCursor,
-        changes,
-        nextOffset: input.offset + page.length,
-        hasMore: result.results.length > page.length,
-        resumeCursor: encodeMobileSyncCursor(snapshotSequence),
-      });
+    snapshot(env, tenantId, input) {
+      return snapshotMobileSync(env, tenantId, input, readEntitlement);
     },
 
-    async acknowledge(env, tenantId, input) {
-      const acknowledgedSequence = decodeMobileSyncCursor(input.cursor);
-      const state = await env.DB.prepare(
-        `SELECT sequence, retention_floor_sequence AS retentionFloorSequence
-         FROM mobile_sync_state WHERE tenant_id = ?`,
-      )
-        .bind(tenantId)
-        .first<{ sequence: number; retentionFloorSequence: number }>();
-      const currentSequence = Number(state?.sequence ?? 0);
-      const retentionFloorSequence = Number(state?.retentionFloorSequence ?? 0);
-      if (acknowledgedSequence > currentSequence || acknowledgedSequence < retentionFloorSequence) {
-        throw new HttpError(
-          409,
-          "full_resync_required",
-          "This device cursor is outside the retained synchronization window.",
-          { reason: "acknowledgement_outside_retention_window" },
-        );
-      }
-      if (acknowledgedSequence > 0) {
-        const boundary = await env.DB.prepare(
-          `SELECT current_group.atomic_group_id AS currentGroupId,
-                  next_group.atomic_group_id AS nextGroupId
-           FROM (SELECT 1) marker
-           LEFT JOIN mobile_sync_change_groups current_group
-             ON current_group.tenant_id = ? AND current_group.sequence = ?
-           LEFT JOIN mobile_sync_change_groups next_group
-             ON next_group.tenant_id = ? AND next_group.sequence = ?`,
-        )
-          .bind(tenantId, acknowledgedSequence, tenantId, acknowledgedSequence + 1)
-          .first<{ currentGroupId: string | null; nextGroupId: string | null }>();
-        if (boundary?.currentGroupId && boundary.currentGroupId === boundary.nextGroupId) {
-          throw new HttpError(
-            400,
-            "invalid_sync_cursor",
-            "A device cannot acknowledge only half of an atomic transfer.",
-          );
-        }
-      }
-
-      await env.DB.prepare(
-        `INSERT INTO mobile_sync_clients (
-          tenant_id, client_id, acknowledged_sequence, last_seen_at, expires_at
-        ) VALUES (?, ?, ?, datetime('now'), datetime('now', '+90 days'))
-        ON CONFLICT (tenant_id, client_id) DO UPDATE SET
-          acknowledged_sequence = MAX(acknowledged_sequence, excluded.acknowledged_sequence),
-          last_seen_at = datetime('now'),
-          expires_at = datetime('now', '+90 days'),
-          snapshot_sequence = CASE
-            WHEN snapshot_sequence IS NOT NULL
-              AND excluded.acknowledged_sequence >= snapshot_sequence THEN NULL
-            ELSE snapshot_sequence END,
-          snapshot_expires_at = CASE
-            WHEN snapshot_sequence IS NOT NULL
-              AND excluded.acknowledged_sequence >= snapshot_sequence THEN NULL
-            ELSE snapshot_expires_at END`,
-      )
-        .bind(tenantId, input.clientId, acknowledgedSequence)
-        .run();
-      const client = await env.DB.prepare(
-        `SELECT acknowledged_sequence AS acknowledgedSequence
-         FROM mobile_sync_clients WHERE tenant_id = ? AND client_id = ?`,
-      )
-        .bind(tenantId, input.clientId)
-        .first<{ acknowledgedSequence: number }>();
-      if (Number(client?.acknowledgedSequence ?? 0) !== acknowledgedSequence) {
-        throw new HttpError(
-          409,
-          "full_resync_required",
-          "This installation reported an older cursor than it previously acknowledged.",
-          { reason: "client_cursor_regressed" },
-        );
-      }
-      return mobileSyncAcknowledgeResponseSchema.parse({
-        protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
-        acknowledgedCursor: encodeMobileSyncCursor(acknowledgedSequence),
-        retentionFloorCursor: encodeMobileSyncCursor(retentionFloorSequence),
-      });
+    acknowledge(env, tenantId, input) {
+      return acknowledgeMobileSyncClient(env, tenantId, input);
     },
 
-    async pull(env, tenantId, input) {
-      const cursorSequence = decodeMobileSyncCursor(input.cursor);
-      const state = await env.DB.prepare(
-        `SELECT sequence, retention_floor_sequence AS retentionFloorSequence
-         FROM mobile_sync_state WHERE tenant_id = ?`,
-      )
-        .bind(tenantId)
-        .first<{ sequence: number; retentionFloorSequence: number }>();
-      const currentSequence = Number(state?.sequence ?? 0);
-      const retentionFloorSequence = Number(state?.retentionFloorSequence ?? 0);
-      if (cursorSequence < retentionFloorSequence) {
-        throw new HttpError(
-          409,
-          "full_resync_required",
-          "This device cursor has expired. Start a safe full resynchronization.",
-          { reason: "cursor_expired" },
-        );
-      }
-      if (cursorSequence > currentSequence) {
-        throw new HttpError(
-          409,
-          "full_resync_required",
-          "This device cursor is no longer valid. Start a safe full resynchronization.",
-          { reason: "cursor_ahead" },
-        );
-      }
-
-      const result = await env.DB.prepare(
-        `SELECT
-          changes.sequence,
-          changes.entity_type AS entityType,
-          changes.entity_id AS entityId,
-          changes.row_revision AS rowRevision,
-          changes.operation,
-          changes.payload_json AS payloadJson,
-          changes.server_updated_at AS serverUpdatedAt,
-          groups.atomic_group_id AS atomicGroupId
-        FROM mobile_sync_changes changes
-        LEFT JOIN mobile_sync_change_groups groups
-          ON groups.tenant_id = changes.tenant_id AND groups.sequence = changes.sequence
-        WHERE changes.tenant_id = ? AND changes.sequence > ?
-        ORDER BY changes.sequence
-        LIMIT ?`,
-      )
-        .bind(tenantId, cursorSequence, input.limit + 2)
-        .all<ChangeRow>();
-
-      const first = result.results[0];
-      if (first?.atomicGroupId && cursorSequence > 0) {
-        const previous = await env.DB.prepare(
-          `SELECT atomic_group_id AS atomicGroupId
-           FROM mobile_sync_change_groups
-           WHERE tenant_id = ? AND sequence = ?`,
-        )
-          .bind(tenantId, cursorSequence)
-          .first<{ atomicGroupId: string }>();
-        if (previous?.atomicGroupId === first.atomicGroupId) {
-          throw new HttpError(
-            409,
-            "full_resync_required",
-            "This device cursor splits an atomic transfer. Start a safe full resynchronization.",
-            { reason: "cursor_inside_atomic_transfer" },
-          );
-        }
-      }
-      const page = atomicPullPage(result.results, input.limit);
-      const hasPro = page.some((change) => change.entityType === "category")
-        ? await readEntitlement(env, tenantId)
-        : false;
-      const changes = page.map((change) => decodePayload(change, hasPro));
-      const nextSequence = page.at(-1)?.sequence ?? cursorSequence;
-
-      return {
-        protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
-        changes,
-        nextCursor: encodeMobileSyncCursor(nextSequence),
-        hasMore: nextSequence < currentSequence,
-      };
+    pull(env, tenantId, input) {
+      return pullMobileSyncChanges(env, tenantId, input, readEntitlement);
     },
 
     async push(env, tenantId, input) {
@@ -2158,9 +1686,7 @@ export function createMobileSyncRepository(
             binds.push(tenantId, payload.name);
             mutation = env.DB.prepare(
               `INSERT INTO accounts (id, tenant_id, name, type, currency, revision, updated_at${interestColumns})
-               SELECT ?, ?, ?, ?, 'PHP', 1, ?${
-                 interest !== undefined ? ", ?, ?, ?, ?" : ""
-               }
+               SELECT ?, ?, ?, ?, 'PHP', 1, ?${interest !== undefined ? ", ?, ?, ?, ?" : ""}
                WHERE NOT EXISTS (
                  SELECT 1 FROM accounts WHERE tenant_id = ? AND lower(name) = lower(?)
                )`,
@@ -2174,11 +1700,7 @@ export function createMobileSyncRepository(
               interest !== undefined
                 ? ", interest_enabled = ?, annual_rate_basis_points = ?, interest_frequency = ?, interest_pay_day = ?"
                 : "";
-            const binds: unknown[] = [
-              mergedName,
-              payload.type ?? account.type,
-              timestamp,
-            ];
+            const binds: unknown[] = [mergedName, payload.type ?? account.type, timestamp];
             if (interest !== undefined) {
               interestUpdateSchema.parse(interest);
               binds.push(

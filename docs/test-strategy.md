@@ -13,6 +13,19 @@ Zoption tests financial and identity boundaries at the lowest practical layer, t
 - **Runtime checks:** local D1 migrations, private API denial, production builds, and the empty-workspace path.
 - **Production smoke:** landing and security headers, exact expected API/Supabase origins in CSP and frontend assets, forbidden Supabase-origin absence, centralized API-binding/D1 readiness, retired endpoint `404`, anonymous private-route denial, and authenticated-request CORS preflight. The smoke check is non-mutating.
 
+## Persistence and convergence harnesses
+
+- API repository tests use a shared SQLite-backed `D1Database` harness that applies the complete
+  production migration chain. Tests must seed writable source tables rather than inserting into
+  production views such as `effective_pro_entitlements`.
+- Mobile persistence tests apply the real encrypted-workspace schema migrations and execute local
+  row plus outbox mutations inside SQLite transactions.
+- The focused convergence suite models two installations against one tenant-scoped server database.
+  It proves idempotent retry, stale-revision conflict, subsequent pull convergence, deletion
+  tombstones, and tenant-isolated bootstrap.
+- Node SQLite remains the fast repository layer. A small Workers-runtime/D1 integration layer should
+  cover runtime binding and migration semantics without duplicating the repository suite.
+
 ## Structured-data verification
 
 Public structured data has three complementary gates:

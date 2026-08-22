@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { DatabaseSync, type SQLInputValue } from "node:sqlite";
+import type { DatabaseSync } from "node:sqlite";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -17,273 +16,21 @@ import {
 import type { TenantResolver } from "../src/db/tenants";
 import type { RateLimiter } from "../src/rate-limit";
 import type { Bindings } from "../src/types";
+import { d1FromSqlite } from "./helpers/d1-test-harness";
+import {
+  createMobileSyncTestEnvironment,
+  grantMobileSyncTestPro,
+} from "./helpers/mobile-sync-test-environment";
 
 const databases: DatabaseSync[] = [];
-
-function d1FromSqlite(database: DatabaseSync, beforeBatch?: () => void): D1Database {
-  const api = {
-    prepare(sql: string) {
-      let bindings: SQLInputValue[] = [];
-      const statement = {
-        bind(...values: unknown[]) {
-          bindings = values as SQLInputValue[];
-          return statement;
-        },
-        async first<T>() {
-          return (database.prepare(sql).get(...bindings) as T | undefined) ?? null;
-        },
-        async all<T>() {
-          return {
-            success: true,
-            results: database.prepare(sql).all(...bindings) as T[],
-          };
-        },
-        async raw<T = unknown[]>() {
-          const rows = database.prepare(sql).all(...bindings) as Record<string, unknown>[];
-          return rows.map((row) => Object.values(row)) as T[];
-        },
-        async run() {
-          const result = database.prepare(sql).run(...bindings);
-          return { success: true, meta: { changes: Number(result.changes) } };
-        },
-        execute() {
-          const result = database.prepare(sql).run(...bindings);
-          return { success: true, meta: { changes: Number(result.changes) } };
-        },
-      };
-      return statement;
-    },
-    async batch(statements: Array<{ execute(): unknown }>) {
-      beforeBatch?.();
-      database.exec("BEGIN IMMEDIATE");
-      try {
-        const results = statements.map((statement) => statement.execute());
-        database.exec("COMMIT");
-        return results;
-      } catch (error) {
-        database.exec("ROLLBACK");
-        throw error;
-      }
-    },
-  };
-  return api as unknown as D1Database;
-}
 
 function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync) => void): {
   env: Bindings;
   database: DatabaseSync;
 } {
-  const database = new DatabaseSync(":memory:");
-  databases.push(database);
-  database.exec(`
-    PRAGMA foreign_keys = ON;
-    CREATE TABLE tenants (id text PRIMARY KEY NOT NULL, kind text NOT NULL, name text NOT NULL);
-    CREATE TABLE effective_pro_entitlements (tenant_id text PRIMARY KEY NOT NULL);
-    CREATE TABLE accounts (
-      id text PRIMARY KEY NOT NULL, tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-      name text NOT NULL,
-      type text NOT NULL, currency text NOT NULL DEFAULT 'PHP', system_key text,
-      archived integer NOT NULL DEFAULT 0, interest_enabled integer NOT NULL DEFAULT 0,
-      annual_rate_basis_points integer, interest_frequency text, interest_pay_day integer,
-      created_at text NOT NULL DEFAULT (datetime('now')),
-      updated_at text NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE categories (
-      id text PRIMARY KEY NOT NULL, tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-      name text NOT NULL,
-      kind text NOT NULL, color text NOT NULL, archived integer NOT NULL DEFAULT 0,
-      system_key text, origin text NOT NULL DEFAULT 'custom',
-      required_plan text NOT NULL DEFAULT 'free',
-      created_at text NOT NULL DEFAULT (datetime('now')),
-      updated_at text NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE transactions (
-      id text PRIMARY KEY NOT NULL, tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-      account_id text,
-      category_id text NOT NULL, date text NOT NULL, description text NOT NULL,
-      amount_minor integer NOT NULL, currency text NOT NULL DEFAULT 'PHP', kind text NOT NULL,
-      transfer_group_id text, import_fingerprint text, source_kind text NOT NULL DEFAULT 'manual',
-      import_id text, import_row_number integer, notes text, transfer_fee_minor integer,
-      subscription_id text, created_at text NOT NULL DEFAULT (datetime('now')),
-      updated_at text NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE budgets (
-      id text PRIMARY KEY NOT NULL,
-      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-      category_id text NOT NULL REFERENCES categories(id),
-      month text NOT NULL,
-      limit_minor integer NOT NULL,
-      created_at text NOT NULL DEFAULT (datetime('now')),
-      updated_at text NOT NULL DEFAULT (datetime('now')),
-      UNIQUE (tenant_id, month, category_id)
-    );
-    CREATE TABLE financial_goals (
-      id text PRIMARY KEY NOT NULL,
-      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-      name text NOT NULL,
-      target_amount_minor integer NOT NULL,
-      current_amount_minor integer NOT NULL DEFAULT 0,
-      target_date text NOT NULL,
-      status text NOT NULL DEFAULT 'active',
-      created_at text NOT NULL DEFAULT (datetime('now')),
-      updated_at text NOT NULL DEFAULT (datetime('now')),
-      UNIQUE (tenant_id, name)
-    );
-    CREATE TABLE debts (
-      id text PRIMARY KEY NOT NULL,
-      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-      name text NOT NULL,
-      type text NOT NULL,
-      balance_minor integer NOT NULL,
-      apr_basis_points integer NOT NULL,
-      minimum_payment_minor integer NOT NULL,
-      balance_as_of text NOT NULL,
-      status text NOT NULL DEFAULT 'active',
-      created_at text NOT NULL DEFAULT (datetime('now')),
-      updated_at text NOT NULL DEFAULT (datetime('now')),
-      UNIQUE (tenant_id, name)
-    );
-    CREATE TABLE subscriptions (
-      id text PRIMARY KEY NOT NULL,
-      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-      account_id text,
-      category_id text NOT NULL,
-      name text NOT NULL,
-      amount_minor integer NOT NULL,
-      currency text NOT NULL DEFAULT 'PHP',
-      billing_cycle text NOT NULL,
-      next_billing_date text NOT NULL,
-      status text NOT NULL DEFAULT 'active',
-      created_at text NOT NULL DEFAULT (datetime('now')),
-      updated_at text NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE calendar_events (
-      id text PRIMARY KEY NOT NULL,
-      tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-      title text NOT NULL,
-      date text NOT NULL,
-      start_time text,
-      end_time text,
-      notes text,
-      created_at text NOT NULL DEFAULT (datetime('now')),
-      updated_at text NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
-  database.exec(`
-    INSERT INTO tenants (id, kind, name) VALUES
-      ('tenant-1', 'user', 'One'), ('tenant-2', 'user', 'Two');
-    INSERT INTO accounts (id, tenant_id, name, type) VALUES
-      ('account-1', 'tenant-1', 'Wallet', 'cash'),
-      ('account-2', 'tenant-2', 'Private', 'cash');
-    INSERT INTO categories (id, tenant_id, name, kind, color, required_plan) VALUES
-      ('category-1', 'tenant-1', 'Dining', 'expense', '#123456', 'zoption_pro'),
-      ('category-2', 'tenant-2', 'Private', 'expense', '#654321', 'free');
-    INSERT INTO transactions (
-      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind
-    ) VALUES
-      ('transaction-1', 'tenant-1', 'account-1', 'category-1', '2026-08-13', 'Lunch', -25000, 'PHP', 'expense'),
-      ('transaction-2', 'tenant-2', 'account-2', 'category-2', '2026-08-13', 'Private', -99900, 'PHP', 'expense');
-    INSERT INTO budgets (id, tenant_id, category_id, month, limit_minor) VALUES
-      ('budget-1', 'tenant-1', 'category-1', '2026-08-01', 50000);
-    INSERT INTO financial_goals (
-      id, tenant_id, name, target_amount_minor, current_amount_minor, target_date, status
-    ) VALUES
-      ('goal-1', 'tenant-1', 'Emergency Fund', 100000, 25000, '2026-12-31', 'active');
-    INSERT INTO debts (
-      id, tenant_id, name, type, balance_minor, apr_basis_points, minimum_payment_minor, balance_as_of, status
-    ) VALUES
-      ('debt-1', 'tenant-1', 'Car Loan', 'auto_loan', 500000, 850, 12000, '2026-08-14', 'active');
-    INSERT INTO subscriptions (
-      id, tenant_id, account_id, category_id, name, amount_minor, billing_cycle, next_billing_date, status
-    ) VALUES
-      ('subscription-1', 'tenant-1', 'account-1', 'category-1', 'Netflix', 54900, 'monthly', '2026-09-01', 'canceled');
-    INSERT INTO calendar_events (id, tenant_id, title, date, start_time, end_time, notes) VALUES
-      ('event-1', 'tenant-1', 'Birthday dinner', '2026-08-20', '18:00', '20:00', 'With family');
-  `);
-  const migration = readFileSync(
-    new URL("../../../db/migrations/0034_mobile_sync_foundation.sql", import.meta.url),
-    "utf8",
-  );
-  for (const statement of migration
-    .split("--> statement-breakpoint")
-    .map((part) => part.trim())
-    .filter(Boolean)) {
-    database.exec(statement);
-  }
-  database.exec(
-    readFileSync(
-      new URL("../../../db/migrations/0035_mobile_sync_transaction_push.sql", import.meta.url),
-      "utf8",
-    ),
-  );
-  beforeTransferMigration?.(database);
-  const transferMigration = readFileSync(
-    new URL("../../../db/migrations/0036_mobile_sync_atomic_transfers.sql", import.meta.url),
-    "utf8",
-  );
-  for (const statement of transferMigration
-    .split("--> statement-breakpoint")
-    .map((part) => part.trim())
-    .filter(Boolean)) {
-    database.exec(statement);
-  }
-  const acknowledgementMigration = readFileSync(
-    new URL("../../../db/migrations/0037_mobile_sync_client_acknowledgements.sql", import.meta.url),
-    "utf8",
-  );
-  for (const statement of acknowledgementMigration
-    .split("--> statement-breakpoint")
-    .map((part) => part.trim())
-    .filter(Boolean)) {
-    database.exec(statement);
-  }
-  const budgetMigration = readFileSync(
-    new URL("../../../db/migrations/0038_mobile_sync_budgets.sql", import.meta.url),
-    "utf8",
-  );
-  for (const statement of budgetMigration
-    .split("--> statement-breakpoint")
-    .map((part) => part.trim())
-    .filter(Boolean)) {
-    database.exec(statement);
-  }
-  for (const statement of readFileSync(
-    new URL("../../../db/migrations/0039_mobile_sync_goals.sql", import.meta.url),
-    "utf8",
-  )
-    .split("--> statement-breakpoint")
-    .map((part) => part.trim())
-    .filter(Boolean)) {
-    database.exec(statement);
-  }
-  for (const statement of readFileSync(
-    new URL("../../../db/migrations/0040_mobile_sync_debts.sql", import.meta.url),
-    "utf8",
-  )
-    .split("--> statement-breakpoint")
-    .map((part) => part.trim())
-    .filter(Boolean)) {
-    database.exec(statement);
-  }
-  for (const statement of readFileSync(
-    new URL("../../../db/migrations/0041_mobile_sync_subscriptions.sql", import.meta.url),
-    "utf8",
-  )
-    .split("--> statement-breakpoint")
-    .map((part) => part.trim())
-    .filter(Boolean)) {
-    database.exec(statement);
-  }
-  for (const statement of readFileSync(
-    new URL("../../../db/migrations/0042_mobile_sync_calendar_events.sql", import.meta.url),
-    "utf8",
-  )
-    .split("--> statement-breakpoint")
-    .map((part) => part.trim())
-    .filter(Boolean)) {
-    database.exec(statement);
-  }
-  return { env: { DB: d1FromSqlite(database) }, database };
+  const environment = createMobileSyncTestEnvironment(beforeTransferMigration);
+  databases.push(environment.database);
+  return environment;
 }
 
 afterEach(() => {
@@ -664,15 +411,14 @@ describe("mobile sync pull repository", () => {
     expect(pulled.nextCursor).toBe("v1.a");
   });
 
-
   it("delivers a web-created subscription and its linked charge as adjacent group rows", async () => {
     const { env, database } = createSyncEnvironment();
     const repository = createMobileSyncRepository(vi.fn(async () => true));
     database.exec(
       "BEGIN;" +
-      "INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, billing_cycle, next_billing_date, status) VALUES ('web-sub', 'tenant-1', 'account-1', 'category-1', 'Spotify', 19900, 'monthly', '2026-09-05', 'active');" +
-      "INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, kind, subscription_id) VALUES ('web-charge', 'tenant-1', 'account-1', 'category-1', '2026-09-05', 'Spotify', -19900, 'expense', 'web-sub');" +
-      "COMMIT;",
+        "INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, billing_cycle, next_billing_date, status) VALUES ('web-sub', 'tenant-1', 'account-1', 'category-1', 'Spotify', 19900, 'monthly', '2026-09-05', 'active');" +
+        "INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, kind, subscription_id) VALUES ('web-charge', 'tenant-1', 'account-1', 'category-1', '2026-09-05', 'Spotify', -19900, 'expense', 'web-sub');" +
+        "COMMIT;",
     );
 
     const pulled = await repository.pull(env, "tenant-1", {
@@ -1342,9 +1088,7 @@ describe("mobile sync account and category push repository", () => {
       database.prepare("SELECT type, interest_enabled FROM accounts WHERE id = 'account-1'").get(),
     ).toEqual({ type: "cash", interest_enabled: 0 });
 
-    database
-      .prepare("INSERT INTO effective_pro_entitlements (tenant_id) VALUES (?)")
-      .run("tenant-1");
+    grantMobileSyncTestPro(database, "tenant-1");
     const pro = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
@@ -1416,7 +1160,9 @@ describe("mobile sync account and category push repository", () => {
     expect(disabled.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
     expect(
       database
-        .prepare("SELECT interest_enabled, annual_rate_basis_points FROM accounts WHERE id = 'account-1'")
+        .prepare(
+          "SELECT interest_enabled, annual_rate_basis_points FROM accounts WHERE id = 'account-1'",
+        )
         .get(),
     ).toEqual({ interest_enabled: 0, annual_rate_basis_points: 0 });
 
@@ -1474,7 +1220,6 @@ describe("mobile sync account and category push repository", () => {
         .get(),
     ).toBeUndefined();
   });
-
 
   it("protects account names, system rows, revisions, and tenant ownership", async () => {
     const { env, database } = createSyncEnvironment();
@@ -1618,9 +1363,7 @@ describe("mobile sync account and category push repository", () => {
     });
     expect(limited.results[0]).toMatchObject({ status: "rejected", code: "plan_limit" });
 
-    database
-      .prepare("INSERT INTO effective_pro_entitlements (tenant_id) VALUES (?)")
-      .run("tenant-1");
+    grantMobileSyncTestPro(database, "tenant-1");
     const proCategoryId = "12000000-0000-4000-8000-000000000007";
     const pro = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -2371,7 +2114,9 @@ describe("mobile sync debt push repository", () => {
       ],
     });
     expect(removed.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
-    expect(database.prepare("SELECT 1 AS found FROM debts WHERE id = ?").get(entityId)).toBeUndefined();
+    expect(
+      database.prepare("SELECT 1 AS found FROM debts WHERE id = ?").get(entityId),
+    ).toBeUndefined();
     expect(
       database
         .prepare(
@@ -2447,9 +2192,11 @@ describe("mobile sync subscription push repository", () => {
   const clientId = "50000000-0000-4000-8000-000000000001";
 
   function insertFreeCategory(database: DatabaseSync): void {
-    database.prepare(
-      "INSERT INTO categories (id, tenant_id, name, kind, color, required_plan) VALUES (?, ?, ?, ?, ?, ?)",
-    ).run("category-sub", "tenant-1", "Utilities", "expense", "#333333", "free");
+    database
+      .prepare(
+        "INSERT INTO categories (id, tenant_id, name, kind, color, required_plan) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run("category-sub", "tenant-1", "Utilities", "expense", "#333333", "free");
   }
 
   it("creates, updates, cancels, reactivates, and removes a subscription idempotently", async () => {
@@ -2597,9 +2344,7 @@ describe("mobile sync subscription push repository", () => {
     });
     expect(reactivated.results[0]).toMatchObject({ status: "acknowledged", revision: 4 });
     const reactivatedCharge = database
-      .prepare(
-        "SELECT count(*) AS count FROM transactions WHERE subscription_id = ?",
-      )
+      .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
       .get(entityId);
     expect(reactivatedCharge).toEqual({ count: 1 });
 
@@ -2698,7 +2443,9 @@ describe("mobile sync subscription push repository", () => {
     const { env, database } = createSyncEnvironment();
     const repository = createMobileSyncRepository(vi.fn(async () => false));
     insertFreeCategory(database);
-    database.prepare("UPDATE subscriptions SET name = ? WHERE id = ?").run("Server Name", "subscription-1");
+    database
+      .prepare("UPDATE subscriptions SET name = ? WHERE id = ?")
+      .run("Server Name", "subscription-1");
 
     const stale = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -2767,7 +2514,9 @@ describe("mobile sync event push repository", () => {
     expect(first.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
     expect(
       database
-        .prepare("SELECT title, date, start_time AS startTime, revision FROM calendar_events WHERE id = ?")
+        .prepare(
+          "SELECT title, date, start_time AS startTime, revision FROM calendar_events WHERE id = ?",
+        )
         .get(entityId),
     ).toEqual({ title: "Payday planning", date: "2026-08-30", startTime: "09:00", revision: 1 });
 
@@ -2790,7 +2539,9 @@ describe("mobile sync event push repository", () => {
     expect(updated.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
     expect(
       database
-        .prepare("SELECT title, start_time AS startTime, revision FROM calendar_events WHERE id = ?")
+        .prepare(
+          "SELECT title, start_time AS startTime, revision FROM calendar_events WHERE id = ?",
+        )
         .get(entityId),
     ).toEqual({ title: "Payday review", startTime: null, revision: 2 });
 
@@ -2873,7 +2624,9 @@ describe("mobile sync event push repository", () => {
   it("returns a stale revision conflict for an out-of-date event update", async () => {
     const { env, database } = createSyncEnvironment();
     const repository = createMobileSyncRepository(vi.fn(async () => false));
-    database.prepare("UPDATE calendar_events SET title = ? WHERE id = ?").run("Anniversary", "event-1");
+    database
+      .prepare("UPDATE calendar_events SET title = ? WHERE id = ?")
+      .run("Anniversary", "event-1");
 
     const stale = await repository.push(env, "tenant-1", {
       protocolVersion: 1,

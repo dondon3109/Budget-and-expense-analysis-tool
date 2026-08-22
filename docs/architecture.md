@@ -84,4 +84,6 @@ Browser origins are checked through the configured allow-list. CORS preflight al
 - Desktop/mobile browser tests cover the public account entry points, retired public-data route, and signed-out private-route redirects.
 - The production smoke check covers landing delivery, D1 readiness, retired public-data response, and denial of unauthenticated private access without mutating records.
 
-See [test strategy](test-strategy.md), [performance results](performance.md), and the [deployment runbook](deployment.md).
+See [test strategy](test-strategy.md), [maintainability boundaries](maintainability.md),
+[optional-system flags](optional-systems-review.md), [performance results](performance.md), and the
+[deployment runbook](deployment.md).
