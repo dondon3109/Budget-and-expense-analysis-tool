@@ -1,12 +1,12 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.8-beta",
-  "versionCode": 20308,
-  "filename": "zoption-beta-0.2.8.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.8.apk",
-  "sha256": "dc5c038d94bbe0fd1b4acdeacf5c84e9f95a61728d2ad8667325bfb25c45187b",
-  "sizeBytes": 143424175,
-  "sizeLabel": "143,424,175 bytes (136.78 MiB)",
+  "versionName": "0.2.9-beta",
+  "versionCode": 20309,
+  "filename": "zoption-beta-0.2.9.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.9.apk",
+  "sha256": "f4bfb4b5b89f9a907efb466debeca2af4193358c285de77ffb42865cbee1d78c",
+  "sizeBytes": 143438615,
+  "sizeLabel": "143,438,615 bytes (136.79 MiB)",
   "releaseDate": "2026-08-22",
   "releaseDateLabel": "August 22, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
@@ -14,9 +14,6 @@
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Improve assistant, calendar, import, and support screen responsiveness.",
-    "Load spreadsheet parsing only when a workbook is imported.",
-    "Add fail-closed sanitized crash telemetry; reporting remains inactive until configured.",
-    "Preserve signed in-app update verification and trusted release metadata."
+    "Strengthen offline synchronization reliability while preserving transaction behavior and signed update verification."
   ]
 }
