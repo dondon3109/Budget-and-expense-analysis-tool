@@ -138,7 +138,7 @@
   margin: 22px 0 18px;
   padding: 16px;
   display: grid;
-  grid-template-columns: 1.3fr 0.8fr 1fr auto;
+  grid-template-columns: minmax(0, 1.3fr) minmax(128px, 0.8fr) minmax(0, 1fr) auto;
   align-items: end;
   gap: 10px;
   border-radius: 14px;

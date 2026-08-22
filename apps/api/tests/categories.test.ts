@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { getCustomCategoryAllowance } from "../src/db/billing";
 import { categoryRepository } from "../src/db/categories";
 import type { Bindings } from "../src/types";
 import { createD1TestDatabase } from "./helpers/d1-test-harness";
@@ -8,8 +9,13 @@ function categoryEnvironment(binding: D1Database): Bindings {
   return { DB: binding };
 }
 
-function createTenant(database: ReturnType<typeof createD1TestDatabase>["database"], tenantId: string): void {
-  database.prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', ?)").run(tenantId, tenantId);
+function createTenant(
+  database: ReturnType<typeof createD1TestDatabase>["database"],
+  tenantId: string,
+): void {
+  database
+    .prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', ?)")
+    .run(tenantId, tenantId);
 }
 
 function grantPlatformAdminPro(
@@ -17,7 +23,9 @@ function grantPlatformAdminPro(
   tenantId: string,
 ): void {
   const userId = `${tenantId}-admin`;
-  database.prepare("INSERT INTO user_tenants (user_id, tenant_id) VALUES (?, ?)").run(userId, tenantId);
+  database
+    .prepare("INSERT INTO user_tenants (user_id, tenant_id) VALUES (?, ?)")
+    .run(userId, tenantId);
   database
     .prepare("INSERT INTO platform_admin_grants (user_id, complimentary_pro_enabled) VALUES (?, 1)")
     .run(userId);
@@ -34,6 +42,22 @@ function insertArchivedProCategory(
        VALUES (?, ?, 'Archived Pro', 'expense', '#123456', 1, 'custom', 'zoption_pro')`,
     )
     .run(id, tenantId);
+}
+
+function grantActivePaypalPro(
+  database: ReturnType<typeof createD1TestDatabase>["database"],
+  tenantId: string,
+): void {
+  database
+    .prepare(
+      `INSERT INTO billing_subscriptions
+        (provider, provider_subscription_id, tenant_id, provider_product_id, provider_plan_id,
+         provider_status, status, interval, current_period_ends_at, cancel_at_period_end,
+         last_provider_occurred_at, last_provider_event_id)
+       VALUES ('paypal', ?, ?, 'product', 'P-plan', 'active', 'active', 'month',
+               datetime('now', '+30 days'), 0, datetime('now'), ?)`,
+    )
+    .run(`sub-${tenantId}`, tenantId, `evt-${tenantId}`);
 }
 
 describe("categoryRepository entitlement enforcement", () => {
@@ -91,6 +115,49 @@ describe("categoryRepository entitlement enforcement", () => {
         limit: 1,
         billingPath: "/app/settings#plan-and-billing",
       },
+    });
+  });
+
+  it("creates a fourth custom category for an effective-Pro tenant already using three", async () => {
+    const { binding, database } = createD1TestDatabase();
+    const tenantId = "effective-pro-tenant";
+    createTenant(database, tenantId);
+    grantActivePaypalPro(database, tenantId);
+    const env = categoryEnvironment(binding);
+
+    for (const name of ["Pro A", "Pro B", "Pro C"]) {
+      await categoryRepository.create(env, tenantId, { name, kind: "expense", color: "#111111" });
+    }
+
+    await expect(
+      categoryRepository.create(env, tenantId, {
+        name: "Pro D",
+        kind: "expense",
+        color: "#222222",
+      }),
+    ).resolves.toMatchObject({
+      name: "Pro D",
+      origin: "custom",
+      requiredPlan: "zoption_pro",
+      locked: false,
+    });
+  });
+
+  it("reports an unlimited custom-category allowance for an effective-Pro tenant at usage 3", async () => {
+    const { binding, database } = createD1TestDatabase();
+    const tenantId = "effective-pro-allowance";
+    createTenant(database, tenantId);
+    grantActivePaypalPro(database, tenantId);
+    const env = categoryEnvironment(binding);
+
+    for (const name of ["Pro A", "Pro B", "Pro C"]) {
+      await categoryRepository.create(env, tenantId, { name, kind: "expense", color: "#111111" });
+    }
+
+    await expect(getCustomCategoryAllowance(env, tenantId)).resolves.toEqual({
+      resource: "custom_category",
+      used: 3,
+      limit: null,
     });
   });
 
