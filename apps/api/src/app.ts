@@ -688,7 +688,11 @@ export function createApp(options: AppOptions = {}) {
       );
     }
     console.error(
-      JSON.stringify({ message: "Request failed", name: error.name, error: error.message }),
+      JSON.stringify({
+        message: "Request failed",
+        category: "unexpected_error",
+        method: context.req.method,
+      }),
     );
     return context.json({ error: "internal_server_error" }, 500);
   });

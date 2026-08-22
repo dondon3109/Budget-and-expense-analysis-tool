@@ -472,6 +472,33 @@ describe("API foundation", () => {
     expect(customerReviews.listPublic).toHaveBeenCalledWith(undefined, 6);
   });
 
+  it("keeps unexpected repository details out of request logs", async () => {
+    const sensitiveDetail = "sensitive-repository-detail";
+    const customerReviews = createCustomerReviewStore();
+    customerReviews.listPublic = vi.fn(async () => {
+      throw new Error(sensitiveDetail);
+    });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      const app = createTestApp({ customerReviews });
+      const response = await app.request("/api/reviews");
+
+      expect(response.status).toBe(500);
+      await expect(response.json()).resolves.toEqual({ error: "internal_server_error" });
+      expect(errorSpy).toHaveBeenCalledWith(
+        JSON.stringify({
+          message: "Request failed",
+          category: "unexpected_error",
+          method: "GET",
+        }),
+      );
+      expect(errorSpy.mock.calls.flat().join(" ")).not.toContain(sensitiveDetail);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it("protects review moderation with platform-admin authorization", async () => {
     const customerReviews = createCustomerReviewStore();
     const requireAdmin = vi.fn().mockResolvedValue(undefined);
