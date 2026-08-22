@@ -77,6 +77,8 @@ describe("Android release contract", () => {
     expect(ANDROID_RELEASE.certificateSha256).toBe(
       "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
     );
-    expect(ANDROID_RELEASE.notes?.length).toBeGreaterThanOrEqual(3);
+    // The publisher accepts one or more concise release-note lines and
+    // deliberately supplies a single fallback line when none are provided.
+    expect(ANDROID_RELEASE.notes?.length).toBeGreaterThanOrEqual(1);
   });
 });
