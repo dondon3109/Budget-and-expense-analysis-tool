@@ -199,4 +199,78 @@ describe("landing page", () => {
     ).toBeInTheDocument();
     expect(within(section).getByText(/does not rewrite their words with AI/i)).toBeInTheDocument();
   });
+
+  it("toggles the responsive mobile navigation drawer and dismisses on selection or Escape", async () => {
+    const { user } = await import("@testing-library/user-event").then((module) => ({
+      user: module.default.setup(),
+    }));
+
+    renderLanding();
+
+    const toggleButton = screen.getByRole("button", { name: "Open navigation menu" });
+    expect(toggleButton).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Navigation menu" })).not.toBeInTheDocument();
+
+    await user.click(toggleButton);
+    const drawer = screen.getByRole("dialog", { name: "Navigation menu" });
+    expect(drawer).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close navigation menu" })).toBeInTheDocument();
+
+    const mobileFeaturesLink = within(drawer).getByRole("link", { name: "Features" });
+    expect(mobileFeaturesLink).toHaveAttribute("href", "#modules");
+
+    // Dismiss on link click
+    await user.click(mobileFeaturesLink);
+    expect(screen.queryByRole("dialog", { name: "Navigation menu" })).not.toBeInTheDocument();
+
+    // Reopen and dismiss on Escape
+    await user.click(screen.getByRole("button", { name: "Open navigation menu" }));
+    expect(screen.getByRole("dialog", { name: "Navigation menu" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Navigation menu" })).not.toBeInTheDocument();
+  });
+
+  it("highlights voice entry, receipt scanning, PDF/Excel/CSV imports, and the AI assistant in the interactive spotlight", async () => {
+    const { user } = await import("@testing-library/user-event").then((module) => ({
+      user: module.default.setup(),
+    }));
+
+    renderLanding();
+
+    const spotlight = screen.getByRole("region", {
+      name: /never type a transaction again/i,
+    });
+    expect(spotlight).toBeInTheDocument();
+
+    // Verify Voice Entry is active by default (Top Priority)
+    expect(within(spotlight).getByRole("tab", { name: /voice entry/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(within(spotlight).getByText(/just talk to log your spending/i)).toBeInTheDocument();
+    expect(within(spotlight).getByText(/live voice simulator/i)).toBeInTheDocument();
+
+    // Switch to Scan Receipt (Top Priority)
+    const receiptTab = within(spotlight).getByRole("tab", { name: /scan receipt/i });
+    await user.click(receiptTab);
+    expect(receiptTab).toHaveAttribute("aria-selected", "true");
+    expect(within(spotlight).getByText(/take a picture of any receipt/i)).toBeInTheDocument();
+    expect(within(spotlight).getByText(/smart ocr scanner/i)).toBeInTheDocument();
+
+    // Switch to PDF, CSV & Excel
+    const filesTab = within(spotlight).getByRole("tab", { name: /pdf, csv & excel/i });
+    await user.click(filesTab);
+    expect(filesTab).toHaveAttribute("aria-selected", "true");
+    expect(within(spotlight).getByText(/import pdf, csv, and excel files/i)).toBeInTheDocument();
+    expect(within(spotlight).getByText(/multi-format dropzone/i)).toBeInTheDocument();
+
+    // Switch to AI Assistant
+    const aiTab = within(spotlight).getByRole("tab", { name: /ai assistant/i });
+    await user.click(aiTab);
+    expect(aiTab).toHaveAttribute("aria-selected", "true");
+    expect(within(spotlight).getByText(/ask your numbers, not a generic chatbot/i)).toBeInTheDocument();
+    expect(within(spotlight).getByText(/grounded ai assistant/i)).toBeInTheDocument();
+  });
 });
+
+
