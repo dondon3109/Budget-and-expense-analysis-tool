@@ -2236,18 +2236,24 @@ describe("mobile sync subscription push repository", () => {
         .prepare("SELECT name, status, revision FROM subscriptions WHERE id = ?")
         .get(entityId),
     ).toEqual({ name: "Netflix", status: "active", revision: 1 });
-    expect(
-      database
-        .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
-        .get(entityId),
-    ).toEqual({ count: 0 });
+    const charge = database
+      .prepare(
+        "SELECT id, amount_minor AS amountMinor, date, subscription_id AS subscriptionId FROM transactions WHERE subscription_id = ?",
+      )
+      .get(entityId) as { id: string; amountMinor: number; date: string; subscriptionId: string };
+    expect(charge).toMatchObject({
+      amountMinor: -54_900,
+      date: "2026-09-01",
+      subscriptionId: entityId,
+    });
     const groups = database
       .prepare(
         "SELECT atomic_group_id AS atomicGroupId, sequence FROM mobile_sync_change_groups WHERE tenant_id = ? ORDER BY sequence DESC LIMIT 2",
       )
       .all("tenant-1") as Array<{ atomicGroupId: string; sequence: number }>;
-    expect(groups).toHaveLength(1);
-    expect(groups[0]!.atomicGroupId).toBe(`subscription:${entityId}`);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]!.atomicGroupId).toBe(groups[1]!.atomicGroupId);
+    expect(groups[0]!.sequence).toBe(groups[1]!.sequence + 1);
 
     const updated = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -2275,9 +2281,11 @@ describe("mobile sync subscription push repository", () => {
     expect(updated.results[0]).toMatchObject({ status: "acknowledged", revision: 2 });
     expect(
       database
-        .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
+        .prepare(
+          "SELECT amount_minor AS amountMinor, description FROM transactions WHERE subscription_id = ?",
+        )
         .get(entityId),
-    ).toEqual({ count: 0 });
+    ).toEqual({ amountMinor: -74_900, description: "Netflix Premium" });
 
     const canceled = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -2304,11 +2312,12 @@ describe("mobile sync subscription push repository", () => {
       ],
     });
     expect(canceled.results[0]).toMatchObject({ status: "acknowledged", revision: 3 });
+    // Cancelling does not delete the transaction (no refund)
     expect(
       database
         .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
         .get(entityId),
-    ).toEqual({ count: 0 });
+    ).toEqual({ count: 1 });
 
     const reactivated = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -2339,7 +2348,7 @@ describe("mobile sync subscription push repository", () => {
       database
         .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
         .get(entityId),
-    ).toEqual({ count: 0 });
+    ).toEqual({ count: 1 });
 
     const removed = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -2366,6 +2375,11 @@ describe("mobile sync subscription push repository", () => {
         .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
         .get(entityId),
     ).toEqual({ count: 0 });
+    expect(
+      database
+        .prepare("SELECT amount_minor AS amountMinor, subscription_id AS subscriptionId FROM transactions WHERE id = ?")
+        .get(charge.id),
+    ).toEqual({ amountMinor: -74_900, subscriptionId: null });
     expect(
       database
         .prepare(

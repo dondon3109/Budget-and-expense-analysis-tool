@@ -185,9 +185,9 @@ export const releaseHistory: readonly ProductRelease[] = [
     releasedOn: "August 6, 2026",
     changes: [
       {
-        title: "Subscriptions track a payment account",
+        title: "Subscriptions charge an account",
         description:
-          "Choose the account a subscription is paid from and track its upcoming billing date without treating the scheduled amount as a completed bank transaction. Canceling a schedule does not change the account balance or recorded transaction history.",
+          "Choose the account a subscription is paid from. Adding a subscription records its next charge as an expense in the transaction dashboard so your account balance reflects it right away, while canceling the subscription does not refund or change your recorded transaction history.",
       },
       {
         title: "Edit and delete subscriptions",

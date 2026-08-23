@@ -1,5 +1,6 @@
 import {
   monthlySubscriptionCost,
+  normalizeSignedAmount,
   subscriptionBillingDateForMonth,
   type SubscriptionInput,
   type SubscriptionMonthSummary,
@@ -31,6 +32,95 @@ export interface SubscriptionRepository {
     input: SubscriptionStatusUpdate,
   ): Promise<SubscriptionRecord>;
   remove(env: Bindings, tenantId: string, id: string): Promise<void>;
+}
+
+interface LinkedSubscriptionCharge {
+  id: string;
+  tenantId: string;
+  accountId: string;
+  categoryId: string;
+  name: string;
+  amountMinor: number;
+  nextBillingDate: string;
+  subscriptionId: string;
+}
+
+function buildLinkedSubscriptionCharge(args: {
+  tenantId: string;
+  subscriptionId: string;
+  accountId: string;
+  categoryId: string;
+  name: string;
+  amountMinor: number;
+  nextBillingDate: string;
+}): LinkedSubscriptionCharge {
+  return {
+    id: crypto.randomUUID(),
+    tenantId: args.tenantId,
+    accountId: args.accountId,
+    categoryId: args.categoryId,
+    date: args.nextBillingDate,
+    description: args.name,
+    amountMinor: normalizeSignedAmount(args.amountMinor, "expense"),
+    currency: "PHP",
+    kind: "expense",
+    sourceKind: "manual",
+    subscriptionId: args.subscriptionId,
+  };
+}
+
+function insertLinkedChargeStatement(env: Bindings, charge: LinkedSubscriptionCharge) {
+  return env.DB.prepare(
+    `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, source_kind, subscription_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'expense', 'manual', ?)`,
+  ).bind(
+    charge.id,
+    charge.tenantId,
+    charge.accountId,
+    charge.categoryId,
+    charge.date,
+    charge.description,
+    charge.amountMinor,
+    charge.currency,
+    charge.subscriptionId,
+  );
+}
+
+function updateLinkedChargeStatement(
+  env: Bindings,
+  tenantId: string,
+  subscriptionId: string,
+  input: {
+    accountId: string;
+    categoryId: string;
+    name: string;
+    amountMinor: number;
+    nextBillingDate: string;
+  },
+) {
+  return env.DB.prepare(
+    `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = 'PHP', kind = 'expense', updated_at = datetime('now') WHERE tenant_id = ? AND subscription_id = ?`,
+  ).bind(
+    input.accountId,
+    input.categoryId,
+    input.nextBillingDate,
+    input.name,
+    normalizeSignedAmount(input.amountMinor, "expense"),
+    tenantId,
+    subscriptionId,
+  );
+}
+
+async function findLinkedChargeId(
+  env: Bindings,
+  tenantId: string,
+  subscriptionId: string,
+): Promise<string | null> {
+  const row = await env.DB.prepare(
+    "SELECT id FROM transactions WHERE tenant_id = ? AND subscription_id = ? LIMIT 1",
+  )
+    .bind(tenantId, subscriptionId)
+    .first<{ id: string }>();
+  return row?.id ?? null;
 }
 
 async function validateCategory(env: Bindings, tenantId: string, categoryId: string) {
@@ -173,10 +263,10 @@ export const subscriptionRepository: SubscriptionRepository = {
     await validateCategory(env, tenantId, input.categoryId);
     await validateAccount(env, tenantId, input.accountId);
     const id = crypto.randomUUID();
-    await env.DB.prepare(
-      `INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, currency, billing_cycle, next_billing_date, status) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, 'active')`,
-    )
-      .bind(
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, currency, billing_cycle, next_billing_date, status) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, 'active')`,
+      ).bind(
         id,
         tenantId,
         input.accountId,
@@ -185,8 +275,20 @@ export const subscriptionRepository: SubscriptionRepository = {
         input.amountMinor,
         input.billingCycle,
         input.nextBillingDate,
-      )
-      .run();
+      ),
+      insertLinkedChargeStatement(
+        env,
+        buildLinkedSubscriptionCharge({
+          tenantId,
+          subscriptionId: id,
+          accountId: input.accountId,
+          categoryId: input.categoryId,
+          name: input.name,
+          amountMinor: input.amountMinor,
+          nextBillingDate: input.nextBillingDate,
+        }),
+      ),
+    ]);
 
     const created = await findSubscription(env, tenantId, id);
     if (!created) throw new Error("Created subscription could not be read back.");
@@ -218,10 +320,10 @@ export const subscriptionRepository: SubscriptionRepository = {
     await validateCategory(env, tenantId, input.categoryId);
     await validateAccount(env, tenantId, input.accountId);
 
-    await env.DB.prepare(
-      `UPDATE subscriptions SET name = ?, amount_minor = ?, billing_cycle = ?, next_billing_date = ?, account_id = ?, category_id = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
-    )
-      .bind(
+    const statements = [
+      env.DB.prepare(
+        `UPDATE subscriptions SET name = ?, amount_minor = ?, billing_cycle = ?, next_billing_date = ?, account_id = ?, category_id = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
+      ).bind(
         input.name,
         input.amountMinor,
         input.billingCycle,
@@ -230,8 +332,13 @@ export const subscriptionRepository: SubscriptionRepository = {
         input.categoryId,
         id,
         tenantId,
-      )
-      .run();
+      ),
+    ];
+    const linkedChargeId = await findLinkedChargeId(env, tenantId, id);
+    if (linkedChargeId) {
+      statements.push(updateLinkedChargeStatement(env, tenantId, id, input));
+    }
+    await env.DB.batch(statements);
 
     const updated = await findSubscription(env, tenantId, id);
     if (!updated) throw new Error("Updated subscription could not be read back.");
@@ -239,11 +346,15 @@ export const subscriptionRepository: SubscriptionRepository = {
   },
 
   async remove(env, tenantId, id) {
-    const result = await env.DB.prepare("DELETE FROM subscriptions WHERE id = ? AND tenant_id = ?")
-      .bind(id, tenantId)
-      .run();
-    if ((result.meta.changes ?? 0) !== 1) {
+    const existing = await findSubscription(env, tenantId, id);
+    if (!existing) {
       throw new HttpError(404, "subscription_not_found", "Subscription not found.");
     }
+    await env.DB.batch([
+      env.DB.prepare(
+        "UPDATE transactions SET subscription_id = NULL, updated_at = datetime('now') WHERE tenant_id = ? AND subscription_id = ?",
+      ).bind(tenantId, id),
+      env.DB.prepare("DELETE FROM subscriptions WHERE id = ? AND tenant_id = ?").bind(id, tenantId),
+    ]);
   },
 };

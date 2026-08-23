@@ -33,7 +33,7 @@ function seededEnvironment(): {
 }
 
 describe("subscription schedules", () => {
-  it("creates and cancels a subscription without changing the recorded account balance", async () => {
+  it("creates a subscription and automatically adds a transaction, and cancelling it does not refund the account balance", async () => {
     const { env, database } = seededEnvironment();
     await subscriptionRepository.create(env, "tenant-1", {
       name: "Music streaming",
@@ -44,14 +44,6 @@ describe("subscription schedules", () => {
       accountId: "account-1",
     });
 
-    expect(
-      database
-        .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
-        .get(String(database.prepare("SELECT id FROM subscriptions LIMIT 1").get()?.id)),
-    ).toEqual({ count: 0 });
-    await expect(accountRepository.list(env, "tenant-1")).resolves.toMatchObject([
-      { id: "account-1", balanceMinor: 100_000 },
-    ]);
     const subscriptionId = String(
       database.prepare("SELECT id FROM subscriptions LIMIT 1").get()?.id,
     );
@@ -61,13 +53,48 @@ describe("subscription schedules", () => {
       status: "active",
     });
 
+    // An expense transaction is automatically added for the subscription
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
+        .get(subscriptionId),
+    ).toEqual({ count: 1 });
+
+    const charge = database
+      .prepare(
+        "SELECT account_id AS accountId, category_id AS categoryId, date, description, amount_minor AS amountMinor, kind FROM transactions WHERE subscription_id = ?",
+      )
+      .get(subscriptionId);
+    expect(charge).toEqual({
+      accountId: "account-1",
+      categoryId: "category-1",
+      date: "2026-09-25",
+      description: "Music streaming",
+      amountMinor: -19_900,
+      kind: "expense",
+    });
+
+    // Account balance reflects the charge (100,000 - 19,900 = 80,100)
+    await expect(accountRepository.list(env, "tenant-1")).resolves.toMatchObject([
+      { id: "account-1", balanceMinor: 80_100 },
+    ]);
+
+    // Cancelling the subscription does not delete the transaction or refund the amount
     await subscriptionRepository.setStatus(env, "tenant-1", subscriptionId, { status: "canceled" });
 
     expect(
       database.prepare("SELECT status FROM subscriptions WHERE id = ?").get(subscriptionId),
     ).toEqual({ status: "canceled" });
+
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id = ?")
+        .get(subscriptionId),
+    ).toEqual({ count: 1 });
+
+    // Balance remains 80,100 (no refund)
     await expect(accountRepository.list(env, "tenant-1")).resolves.toMatchObject([
-      { id: "account-1", balanceMinor: 100_000 },
+      { id: "account-1", balanceMinor: 80_100 },
     ]);
   });
 
