@@ -45,6 +45,7 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   const themeToggle = page.getByRole("button", {
     name: "Choose theme. Current theme: Light",
   });
+  await themeToggle.scrollIntoViewIfNeeded();
   await expect(themeToggle).toBeVisible();
   await themeToggle.click();
   await page.getByRole("menuitemradio", { name: "Dark" }).click();

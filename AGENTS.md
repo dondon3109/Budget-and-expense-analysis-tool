@@ -17,6 +17,8 @@ Do not manually edit product version numbers during normal development. Semantic
 
 Do not deploy the production Worker or Pages app manually during normal development. The `Production Release` workflow owns D1 migration, Worker deployment, versioned Pages deployment, smoke verification, and semantic-release publication after CI. Manual production commands are emergency recovery operations and must never run concurrently with that workflow.
 
+Make sure that Changelog is always updated after each release.
+
 ## Working style
 
 - Do not spawn subagents for work a single agent can complete in one pass.

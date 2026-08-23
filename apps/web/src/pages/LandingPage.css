@@ -283,6 +283,16 @@
   background: var(--lp-surface);
 }
 
+.landing-nav .theme-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  bottom: auto;
+  left: auto;
+  width: max-content;
+  min-width: 168px;
+}
+
 .landing-nav .theme-menu-option {
   min-height: 44px;
 }
