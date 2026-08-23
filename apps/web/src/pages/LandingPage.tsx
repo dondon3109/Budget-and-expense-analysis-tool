@@ -41,13 +41,13 @@ export function LandingPage() {
   const [activeSavingsCadence, setActiveSavingsCadence] = useState<"monthly" | "daily" | "yearly">("monthly");
   const [activeBudgetId, setActiveBudgetId] = useState<string>("groceries");
 
-  // Interactive Marketing & Financial Clarity Calculator State
-  const [monthlyExpense, setMonthlyExpense] = useState<number>(45000);
-  const [activeSubsCount, setActiveSubsCount] = useState<number>(4);
+  // Interactive Marketing & Budget Planner State
+  const [monthlyBudget, setMonthlyBudget] = useState<number>(50000);
+  const [activeBudgetCategories, setActiveBudgetCategories] = useState<number>(5);
 
-  const annualSubscriptionTotal = activeSubsCount * 380 * 12;
-  const annualDriftSavings = Math.round(monthlyExpense * 0.04) * 12;
-  const annualLeakSavings = annualSubscriptionTotal + annualDriftSavings;
+  const annualProtectedSurplus = Math.round(monthlyBudget * 0.1) * 12;
+  const annualOverrunAvoidance = activeBudgetCategories * 350 * 12;
+  const annualTotalBudgetImpact = annualProtectedSurplus + annualOverrunAvoidance;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -75,7 +75,7 @@ export function LandingPage() {
         </a>
         <nav className="landing-links" aria-label="Learn more">
           <a href="#modules">Features</a>
-          <a href="#calculator">Savings impact</a>
+          <a href="#calculator">Budget planner</a>
           <a href="#compare">Why Zoption</a>
           <a href="#approach">How it works</a>
           <a href="#reviews">Reviews</a>
@@ -553,35 +553,35 @@ export function LandingPage() {
         </section>
 
         {/* ============================================================
-           Interactive Savings & Clarity Calculator
+           Interactive Budget Planner & Safeguard Calculator
            ============================================================ */}
         <section className="calculator-section" id="calculator" aria-labelledby="calculator-title">
           <div className="calculator-card">
             <div className="calculator-content">
               <p className="eyebrow">
-                <Calculator size={14} aria-hidden="true" /> Interactive Financial Clarity
+                <Calculator size={14} aria-hidden="true" /> Interactive Budget Planner
               </p>
-              <h2 id="calculator-title">See what clarity saves you each year.</h2>
+              <h2 id="calculator-title">See how budget targets protect your money.</h2>
               <p className="calculator-lead">
-                Unreviewed subscription renewals, hidden transfer fees, and unbudgeted impulses
-                quietly drain thousands each year. See how conscious, private tracking puts money
-                back in your pocket.
+                Setting practical category limits stops unmonitored spending drift and gives every
+                peso a clear job before the month starts. See what structured budget envelopes save
+                you each year.
               </p>
 
               <div className="calculator-controls">
                 <div className="calculator-field">
                   <div className="calculator-label-row">
-                    <span>Estimated monthly spending</span>
-                    <strong>₱{monthlyExpense.toLocaleString()}</strong>
+                    <span>Planned monthly budget</span>
+                    <strong>₱{monthlyBudget.toLocaleString()}</strong>
                   </div>
                   <input
                     type="range"
                     min={15000}
                     max={150000}
                     step={5000}
-                    value={monthlyExpense}
-                    onChange={(e) => setMonthlyExpense(Number(e.target.value))}
-                    aria-label="Estimated monthly expenses slider"
+                    value={monthlyBudget}
+                    onChange={(e) => setMonthlyBudget(Number(e.target.value))}
+                    aria-label="Planned monthly budget slider"
                     className="calculator-slider"
                   />
                   <div className="slider-ticks">
@@ -593,18 +593,18 @@ export function LandingPage() {
 
                 <div className="calculator-field">
                   <div className="calculator-label-row">
-                    <span>Recurring subscriptions tracked</span>
-                    <strong>{activeSubsCount} active services</strong>
+                    <span>Active budget categories</span>
+                    <strong>{activeBudgetCategories} category envelopes</strong>
                   </div>
                   <div className="calculator-subs-selector">
-                    {[2, 4, 6, 8, 10].map((count) => (
+                    {[3, 5, 7, 9, 12].map((count) => (
                       <button
                         type="button"
                         key={count}
-                        className={activeSubsCount === count ? "selected" : ""}
-                        onClick={() => setActiveSubsCount(count)}
+                        className={activeBudgetCategories === count ? "selected" : ""}
+                        onClick={() => setActiveBudgetCategories(count)}
                       >
-                        {count} {count === 10 ? "+" : ""}
+                        {count} {count === 12 ? "+" : ""}
                       </button>
                     ))}
                   </div>
@@ -613,27 +613,27 @@ export function LandingPage() {
             </div>
 
             <div className="calculator-result-box">
-              <span className="result-badge">Projected 1-Year Impact</span>
+              <span className="result-badge">Projected 1-Year Budget Safeguard</span>
               <div className="result-metric">
-                <small>Estimated annual leak recovery</small>
-                <strong>₱{annualLeakSavings.toLocaleString()}</strong>
+                <small>Estimated annual budget savings</small>
+                <strong>₱{annualTotalBudgetImpact.toLocaleString()}</strong>
               </div>
               <div className="result-breakdown">
                 <div className="breakdown-row">
-                  <span>Recurring bill visibility</span>
-                  <b>₱{annualSubscriptionTotal.toLocaleString()}/yr</b>
+                  <span>Protected monthly margin (~10%)</span>
+                  <b>₱{annualProtectedSurplus.toLocaleString()}/yr</b>
                 </div>
                 <div className="breakdown-row">
-                  <span>Recovered impulse drift (~4%)</span>
-                  <b>₱{annualDriftSavings.toLocaleString()}/yr</b>
+                  <span>Category overrun prevention</span>
+                  <b>₱{annualOverrunAvoidance.toLocaleString()}/yr</b>
                 </div>
               </div>
               <Link className="button primary full-width" to="/signup">
-                Claim your clarity — Start free <ArrowRight size={16} aria-hidden="true" />
+                Build your first budget — Start free <ArrowRight size={16} aria-hidden="true" />
               </Link>
               <small className="calculator-disclaimer">
-                Based on an average 4% budget optimization achieved through conscious, review-first
-                transaction management.
+                Based on an average 10% budget margin achieved through active category envelope targets
+                and duplicate expense prevention.
               </small>
             </div>
           </div>
