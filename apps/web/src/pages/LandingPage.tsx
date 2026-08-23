@@ -38,6 +38,7 @@ export function LandingPage() {
   const androidRelease = androidSource.release;
 
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(5);
+  const [savingsEnabled, setSavingsEnabled] = useState<boolean>(true);
   const [activeSavingsCadence, setActiveSavingsCadence] = useState<"monthly" | "daily" | "yearly">("monthly");
   const [activeBudgetId, setActiveBudgetId] = useState<string>("groceries");
 
@@ -463,7 +464,36 @@ export function LandingPage() {
                   balance — automatically.
                 </p>
                 <div className="facet-tags">
-                  <span>Daily &middot; monthly &middot; yearly</span>
+                  <button
+                    type="button"
+                    className={`facet-tag-btn ${activeSavingsCadence === "daily" ? "active" : ""}`}
+                    onClick={() => {
+                      setSavingsEnabled(true);
+                      setActiveSavingsCadence("daily");
+                    }}
+                  >
+                    Daily
+                  </button>
+                  <button
+                    type="button"
+                    className={`facet-tag-btn ${activeSavingsCadence === "monthly" ? "active" : ""}`}
+                    onClick={() => {
+                      setSavingsEnabled(true);
+                      setActiveSavingsCadence("monthly");
+                    }}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    type="button"
+                    className={`facet-tag-btn ${activeSavingsCadence === "yearly" ? "active" : ""}`}
+                    onClick={() => {
+                      setSavingsEnabled(true);
+                      setActiveSavingsCadence("yearly");
+                    }}
+                  >
+                    Yearly
+                  </button>
                   <span>Your rate, your pay day</span>
                   <span>Interest on</span>
                 </div>
@@ -475,41 +505,53 @@ export function LandingPage() {
                 </div>
                 <div className="balance-row interest-row">
                   <span>
-                    <PiggyBank size={14} aria-hidden="true" /> 0.6% p.a. &middot;{" "}
-                    {activeSavingsCadence === "monthly"
-                      ? "monthly pay day"
-                      : activeSavingsCadence === "daily"
-                        ? "daily accrual"
-                        : "yearly pay day"}
+                    <PiggyBank size={14} aria-hidden="true" />{" "}
+                    {savingsEnabled
+                      ? `0.6% p.a. · ${
+                          activeSavingsCadence === "monthly"
+                            ? "monthly pay day"
+                            : activeSavingsCadence === "daily"
+                              ? "daily accrual"
+                              : "yearly pay day"
+                        }`
+                      : "0.6% p.a. · Interest paused"}
                   </span>
-                  <span
-                    className="switch"
-                    role="presentation"
-                    onClick={() =>
-                      setActiveSavingsCadence((prev) =>
-                        prev === "monthly" ? "daily" : prev === "daily" ? "yearly" : "monthly",
-                      )
-                    }
+                  <button
+                    type="button"
+                    className={`switch ${savingsEnabled ? "on" : "off"}`}
+                    role="switch"
+                    aria-checked={savingsEnabled}
+                    aria-label="Toggle savings interest accrual"
+                    onClick={() => setSavingsEnabled((prev) => !prev)}
                   />
                 </div>
                 <div className="interest-gauge">
                   <i>
                     <em
                       style={{
-                        width:
-                          activeSavingsCadence === "daily"
-                            ? "95%"
+                        transform: !savingsEnabled
+                          ? "scaleX(0)"
+                          : activeSavingsCadence === "daily"
+                            ? "scaleX(0.95)"
                             : activeSavingsCadence === "monthly"
-                              ? "72%"
-                              : "45%",
+                              ? "scaleX(0.72)"
+                              : "scaleX(0.45)",
+                        opacity: savingsEnabled ? 1 : 0.3,
                       }}
                     />
                   </i>
                 </div>
                 <div className="balance-row">
-                  <span>Interest earned last month</span>
-                  <span className="chip in-soft">
-                    <TrendingUp size={13} /> +₱214
+                  <span>{savingsEnabled ? "Interest earned" : "Accrual status"}</span>
+                  <span className={`chip ${savingsEnabled ? "in-soft" : "muted-chip"}`}>
+                    <TrendingUp size={13} aria-hidden="true" />
+                    {savingsEnabled
+                      ? activeSavingsCadence === "daily"
+                        ? "+₱7.13 daily"
+                        : activeSavingsCadence === "monthly"
+                          ? "+₱214 last month"
+                          : "+₱2,568 annual yield"
+                      : "Paused (₱0)"}
                   </span>
                 </div>
               </div>

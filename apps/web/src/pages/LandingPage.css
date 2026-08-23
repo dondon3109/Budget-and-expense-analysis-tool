@@ -1019,24 +1019,71 @@
 
 .switch {
   position: relative;
-  width: 40px;
-  height: 24px;
+  width: 44px;
+  height: 26px;
   flex: none;
   border-radius: 999px;
+  border: none;
   background: var(--lp-accent-strong);
   cursor: pointer;
+  padding: 0;
+  outline: none;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.switch.off {
+  background: var(--lp-border);
+}
+
+.switch:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lp-accent) 30%, transparent);
 }
 
 .switch::after {
   content: "";
   position: absolute;
   top: 3px;
-  right: 3px;
-  width: 18px;
-  height: 18px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--lp-surface);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transform: translateX(18px);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.switch.off::after {
+  transform: translateX(0);
+}
+
+.facet-tag-btn {
+  padding: 6px 13px;
+  border: 1px solid var(--lp-border);
+  border-radius: 999px;
+  background: var(--lp-surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lp-muted);
+  box-shadow: var(--lp-shadow-sm);
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.facet-tag-btn:hover {
+  background: var(--lp-surface-hover);
+  color: var(--lp-fg);
+}
+
+.facet-tag-btn.active {
+  background: var(--lp-accent-soft);
+  color: var(--lp-accent-strong);
+  border-color: var(--lp-accent);
+}
+
+.chip.muted-chip {
+  background: var(--lp-surface-soft);
+  color: var(--lp-muted);
 }
 
 .interest-row {
@@ -1067,9 +1114,12 @@
 
 .interest-gauge i em {
   display: block;
+  width: 100%;
   height: 48px;
   border-radius: 12px;
   background: linear-gradient(90deg, var(--lp-accent-strong), var(--lp-income));
+  transform-origin: left center;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
 }
 
 .chat {
