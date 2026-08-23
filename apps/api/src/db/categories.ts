@@ -176,9 +176,9 @@ export const categoryRepository: CategoryRepository = {
     const restoringCustom =
       existing.origin === "custom" && existing.archived && input.archived === false;
 
-    let result: D1Result;
+    let updatedId: string | null;
     try {
-      result = await env.DB.prepare(
+      updatedId = await env.DB.prepare(
         `UPDATE categories
          SET name = ?, color = ?, archived = ?, updated_at = datetime('now')
          WHERE id = ? AND tenant_id = ?
@@ -195,7 +195,8 @@ export const categoryRepository: CategoryRepository = {
                  WHERE tenant_id = ? AND origin = 'custom' AND required_plan = 'free' AND archived = 0
                ) < ?
              )
-           )`,
+           )
+         RETURNING id`,
       )
         .bind(
           nextName,
@@ -210,11 +211,11 @@ export const categoryRepository: CategoryRepository = {
           tenantId,
           FREE_CUSTOM_CATEGORY_LIMIT,
         )
-        .run();
+        .first<string>("id");
     } catch (error) {
       rethrowCategoryWriteError(error);
     }
-    if ((result.meta.changes ?? 0) !== 1) {
+    if (!updatedId) {
       if (restoringCustom && existing.requiredPlan === "zoption_pro") {
         throw new HttpError(
           403,

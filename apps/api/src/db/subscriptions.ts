@@ -39,9 +39,12 @@ interface LinkedSubscriptionCharge {
   tenantId: string;
   accountId: string;
   categoryId: string;
-  name: string;
+  date: string;
+  description: string;
   amountMinor: number;
-  nextBillingDate: string;
+  currency: "PHP";
+  kind: "expense";
+  sourceKind: "manual";
   subscriptionId: string;
 }
 

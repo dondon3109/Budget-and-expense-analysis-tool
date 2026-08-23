@@ -251,7 +251,7 @@
   margin: 22px 0 18px;
   padding: 16px;
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(128px, 0.8fr) minmax(0, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: end;
   gap: 10px;
   border-radius: 14px;
@@ -372,12 +372,6 @@
 .manager-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
-}
-
-@media (max-width: 1050px) {
-  .new-category-form {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 @media (max-width: 760px) {

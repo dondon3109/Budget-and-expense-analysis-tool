@@ -5,13 +5,9 @@ import { expect, test, type Page } from "@playwright/test";
 /*
  * Faithful reproduction of the production category-manager layout defect.
  *
- * The `.new-category-form` uses a 4-column grid `1.3fr 0.8fr 1fr auto`. The
- * `Type` `<select>` (which renders "Money out") sits in the `0.8fr` column and
- * is `width: 100%`. At the modal width the category form occupies (~620px, the
- * `.form-modal` width), that column computes narrow enough that the native
- * select truncates "Money out" against its own dropdown indicator, clipped to
- * "Money o" (confirmed in the production incident screenshot). This regression
- * proves the selector keeps sufficient non-overlapping usable width.
+ * The category form must fit the native Type selector, the complete eight-color
+ * palette, and the Add action within the modal. These regressions cover both
+ * readable selector text and non-overlapping controls using the real palette.
  */
 
 const foundationStyles = readFileSync(
@@ -81,7 +77,23 @@ async function renderCategoryForm(page: Page, modalWidthPx = 620) {
           </label>
           <fieldset>
             <legend>Color</legend>
-            <div class="color-picker"><button type="button">Color</button></div>
+            <div class="color-picker">
+              ${[
+                "#2a78d6",
+                "#008300",
+                "#e87ba4",
+                "#eda100",
+                "#1baf7a",
+                "#eb6834",
+                "#4a3aa7",
+                "#e34948",
+              ]
+                .map(
+                  (color, index) =>
+                    `<button type="button" style="background:${color}" aria-label="Color ${index + 1}"></button>`,
+                )
+                .join("")}
+            </div>
           </fieldset>
           <button class="button primary" type="button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
@@ -129,6 +141,23 @@ test("keeps the Money out selector and dropdown indicator usable at 1402x768", a
 
   const { usableWidth, longestTextWidth } = await measureSelector(page);
   expect(usableWidth).toBeGreaterThanOrEqual(longestTextWidth + DROPDOWN_INDICATOR_RESERVE);
+});
+
+test("keeps the complete color palette clear of the Add button at 1402x768", async ({ page }) => {
+  await page.setViewportSize({ width: 1402, height: 768 });
+  await renderCategoryForm(page);
+
+  const palette = page.locator(".color-picker");
+  const addButton = page.getByRole("button", { name: "Add" });
+  await expect(palette.getByRole("button")).toHaveCount(8);
+
+  const [paletteBox, addButtonBox] = await Promise.all([
+    palette.boundingBox(),
+    addButton.boundingBox(),
+  ]);
+  expect(paletteBox).not.toBeNull();
+  expect(addButtonBox).not.toBeNull();
+  expect(paletteBox!.x + paletteBox!.width).toBeLessThanOrEqual(addButtonBox!.x);
 });
 
 test("keeps the selector usable across category-form breakpoints", async ({ page }) => {

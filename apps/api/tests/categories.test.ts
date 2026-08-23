@@ -9,6 +9,61 @@ function categoryEnvironment(binding: D1Database): Bindings {
   return { DB: binding };
 }
 
+/** Reproduces D1's aggregate write count when an UPDATE also fires sync triggers. */
+class TriggerInclusiveStatement implements D1PreparedStatement {
+  constructor(private statement: D1PreparedStatement) {}
+
+  bind(...values: unknown[]): D1PreparedStatement {
+    this.statement = this.statement.bind(...values);
+    return this;
+  }
+
+  first<T = unknown>(columnName?: string): Promise<T | null> {
+    return columnName === undefined
+      ? this.statement.first<T>()
+      : this.statement.first<T>(columnName);
+  }
+
+  async run<T = Record<string, unknown>>(): Promise<D1Result<T>> {
+    const result = await this.statement.run<T>();
+    return {
+      ...result,
+      meta: {
+        ...result.meta,
+        changes: (result.meta.changes ?? 0) + 2,
+        rows_written: (result.meta.rows_written ?? 0) + 2,
+      },
+    };
+  }
+
+  all<T = Record<string, unknown>>(): Promise<D1Result<T>> {
+    return this.statement.all<T>();
+  }
+
+  raw<T = unknown[]>(options: { columnNames: true }): Promise<[string[], ...T[]]>;
+  raw<T = unknown[]>(options?: { columnNames?: false }): Promise<T[]>;
+  raw<T = unknown[]>(options?: { columnNames?: boolean }): Promise<T[] | [string[], ...T[]]> {
+    return options?.columnNames
+      ? this.statement.raw<T>({ columnNames: true })
+      : this.statement.raw<T>();
+  }
+}
+
+function withTriggerInclusiveChanges(binding: D1Database): D1Database {
+  return {
+    prepare(query) {
+      const statement = binding.prepare(query);
+      return query.trimStart().startsWith("UPDATE categories")
+        ? new TriggerInclusiveStatement(statement)
+        : statement;
+    },
+    batch: binding.batch.bind(binding),
+    exec: binding.exec.bind(binding),
+    withSession: binding.withSession.bind(binding),
+    dump: binding.dump.bind(binding),
+  };
+}
+
 function createTenant(
   database: ReturnType<typeof createD1TestDatabase>["database"],
   tenantId: string,
@@ -169,9 +224,14 @@ describe("categoryRepository entitlement enforcement", () => {
     insertArchivedProCategory(database, tenantId, "archived-pro-category");
 
     await expect(
-      categoryRepository.update(categoryEnvironment(binding), tenantId, "archived-pro-category", {
-        archived: false,
-      }),
+      categoryRepository.update(
+        categoryEnvironment(withTriggerInclusiveChanges(binding)),
+        tenantId,
+        "archived-pro-category",
+        {
+          archived: false,
+        },
+      ),
     ).resolves.toMatchObject({
       archived: false,
       origin: "custom",
