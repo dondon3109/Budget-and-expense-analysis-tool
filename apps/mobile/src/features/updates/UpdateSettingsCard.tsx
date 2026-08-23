@@ -13,6 +13,7 @@ import {
 import type { InstalledAndroidApp } from "./update-policy";
 import type { DownloadProgress } from "./update-filesystem";
 import { useOptionalAndroidUpdates, type ManualUpdateStatus } from "./use-android-updates";
+import { DevTelemetryCard } from "../telemetry/DevTelemetryCard";
 import { UpdateDownloadBenchmarkCard } from "./UpdateDownloadBenchmarkCard";
 
 export interface UpdateSettingsCardViewProps {
@@ -47,7 +48,12 @@ export function UpdateSettingsCard() {
         onOpenInstallPage={() => void updates.openInstallPage()}
         onOpenUnknownSourcesSettings={() => void updates.openUnknownSourcesSettings()}
       />
-      {__DEV__ ? <UpdateDownloadBenchmarkCard /> : null}
+      {__DEV__ ? (
+        <>
+          <UpdateDownloadBenchmarkCard />
+          <DevTelemetryCard />
+        </>
+      ) : null}
     </View>
   );
 }

@@ -14,7 +14,6 @@ const productionApiUrl = "https://api.zoption.site";
 const previewApiUrl = "https://budget-expense-api-preview.dondon3109.workers.dev";
 const supabaseUrl = "https://project-ref.supabase.co";
 const publishableKey = "sb_publishable_public-test-key";
-const cloudflareAnalyticsToken = "0123456789abcdef0123456789abcdef";
 
 describe("application release version", () => {
   it("uses the semantic-release version when supplied", () => {
@@ -173,52 +172,41 @@ describe("environment-derived CSP", () => {
     expect(createContentSecurityPolicy(staging)).not.toContain("media-src");
   });
 
-  it("allows analytics origins only when the deployment enables analytics", () => {
-    const withoutAnalytics = validateDeploymentConfigForBuild(validInput());
-    const withAnalytics = validateDeploymentConfigForBuild({
+  it("allows PostHog connect-src origin only when the deployment enables PostHog", () => {
+    const withoutPostHog = validateDeploymentConfigForBuild(validInput());
+    const withPostHog = validateDeploymentConfigForBuild({
       ...validInput(),
-      analyticsMeasurementId: "G-APPROVED",
+      posthogKey: "phc_test_public_key",
     });
-    if (!withoutAnalytics || !withAnalytics) throw new Error("Expected deployment configs.");
-
-    expect(createContentSecurityPolicy(withoutAnalytics)).not.toContain("googletagmanager.com");
-    const analyticsPolicy = createContentSecurityPolicy(withAnalytics);
-    expect(analyticsPolicy).toContain("https://www.googletagmanager.com");
-    expect(analyticsPolicy).toContain("https://www.google-analytics.com");
-    expect(analyticsPolicy).toContain("https://region1.google-analytics.com");
-    expect(analyticsPolicy).not.toContain("*.google-analytics.com");
-  });
-
-  it("allows Cloudflare Web Analytics origins only for production with a valid site token", () => {
-    const withoutCloudflareAnalytics = validateDeploymentConfigForBuild(validInput());
-    const withCloudflareAnalytics = validateDeploymentConfigForBuild({
+    const withCustomPostHogHost = validateDeploymentConfigForBuild({
       ...validInput(),
-      cloudflareAnalyticsToken,
+      posthogKey: "phc_test_public_key",
+      posthogHost: "https://eu.i.posthog.com",
     });
-    const previewWithProductionToken = validateDeploymentConfigForBuild({
-      ...validInput("preview"),
-      cloudflareAnalyticsToken,
-    });
-    if (!withoutCloudflareAnalytics || !withCloudflareAnalytics || !previewWithProductionToken) {
+    if (!withoutPostHog || !withPostHog || !withCustomPostHogHost) {
       throw new Error("Expected deployment configs.");
     }
 
-    expect(createContentSecurityPolicy(withoutCloudflareAnalytics)).not.toContain(
-      "cloudflareinsights.com",
-    );
-    const cloudflarePolicy = createContentSecurityPolicy(withCloudflareAnalytics);
-    expect(cloudflarePolicy).toContain("https://static.cloudflareinsights.com");
-    expect(cloudflarePolicy).toContain("https://cloudflareinsights.com");
-    expect(cloudflarePolicy).not.toContain("*.cloudflareinsights.com");
-    expect(createContentSecurityPolicy(previewWithProductionToken)).not.toContain(
-      "cloudflareinsights.com",
-    );
+    expect(createContentSecurityPolicy(withoutPostHog)).not.toContain("posthog.com");
+    expect(createContentSecurityPolicy(withoutPostHog)).not.toContain("googletagmanager.com");
+    expect(createContentSecurityPolicy(withoutPostHog)).not.toContain("cloudflareinsights.com");
+
+    const posthogPolicy = createContentSecurityPolicy(withPostHog);
+    expect(posthogPolicy).toContain("https://us.i.posthog.com");
+    expect(posthogPolicy).not.toContain("*.posthog.com");
+    expect(posthogPolicy).toContain("script-src 'self'");
+
+    const customHostPolicy = createContentSecurityPolicy(withCustomPostHogHost);
+    expect(customHostPolicy).toContain("https://eu.i.posthog.com");
+    expect(customHostPolicy).not.toContain("https://us.i.posthog.com");
+
     expect(() =>
       validateDeploymentConfigForBuild({
         ...validInput(),
-        cloudflareAnalyticsToken: "invalid-token",
+        posthogKey: "phc_test_public_key",
+        posthogHost: "http://insecure.host.com",
       }),
-    ).toThrow("must be a 32-character site token");
+    ).toThrow("must use HTTPS");
   });
 
   it("rejects static, mismatched, or wildcard CSP headers", () => {

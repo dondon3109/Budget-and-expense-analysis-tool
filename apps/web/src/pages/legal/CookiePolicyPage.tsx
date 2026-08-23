@@ -32,11 +32,11 @@ export function CookiePolicyPage() {
         </p>
         <h3>Analytics — off by default</h3>
         <p>
-          Zoption uses Google Analytics 4 and Cloudflare Web Analytics for optional usage and
-          performance measurement. Their SDK, script, request, beacon, or similar activity remains
-          blocked until you explicitly enable Analytics. Cloudflare Web Analytics does not set
-          analytics cookies. Zoption does not send your financial workspace data, account
-          credentials, or assistant conversations to either analytics provider.
+          Zoption uses PostHog for privacy-preserving, cookieless aggregate usage and Core Web
+          Vitals (LCP, CLS, INP) performance measurement on public pages. PostHog operates in
+          cookieless, memory-only mode without setting analytics cookies, storing persistent device
+          identifiers, or creating person profiles. Zoption does not send your financial workspace
+          data, account credentials, or assistant conversations to the analytics platform.
         </p>
         <h3>Marketing — off by default</h3>
         <p>
@@ -83,9 +83,10 @@ export function CookiePolicyPage() {
       <section>
         <h2>5. Providers and future changes</h2>
         <p>
-          Google Analytics 4 and Cloudflare Web Analytics are Zoption&apos;s Analytics providers.
-          Cloudflare Web Analytics receives aggregate page-use and performance measurements without
-          setting analytics cookies. Before enabling any additional Analytics or Marketing provider,
+          PostHog is Zoption&apos;s public web analytics and performance measurement provider.
+          It receives aggregate page-use and Core Web Vitals measurements in cookieless,
+          memory-only mode without setting analytics cookies or tracking authenticated financial
+          application activity. Before enabling any additional Analytics or Marketing provider,
           Zoption must connect it to the consent gate, update this policy and its vendor inventory,
           disclose purposes and retention, and make any minimal Content Security Policy changes
           deliberately. Optional technology must not load before the corresponding consent.
@@ -96,17 +97,17 @@ export function CookiePolicyPage() {
         <h2>6. Relationship to other processing</h2>
         <p>
           Cookie Settings do not control the DeepSeek financial assistant, the user-initiated
-          product-support chat, or metadata-only PostHog AI observability. The financial assistant
-          has a separate, versioned consent flow because it involves feature-specific server
-          processing. The support chat sends a message only when you choose to submit it and keeps
-          its browser copy in session storage. A signed-in bug report is stored only after you
-          review and explicitly submit it; this account-bound storage is not controlled by Cookie
-          Settings. PostHog receives operational model, latency, token, call-structure, finish, and
-          error metadata for the financial assistant without questions, answers, financial records,
-          tool payloads, credentials, or internal IDs. This server-side processing does not load a
-          PostHog browser SDK or set a PostHog browser cookie. Read the{" "}
-          <Link to="/privacy-policy">Privacy Policy</Link> for account, financial, provider,
-          assistant, and rights information.
+          product-support chat, or metadata-only PostHog AI observability and mobile crash
+          telemetry. The financial assistant has a separate, versioned consent flow because it
+          involves feature-specific server processing. The support chat sends a message only when
+          you choose to submit it and keeps its browser copy in session storage. A signed-in bug
+          report is stored only after you review and explicitly submit it; this account-bound
+          storage is not controlled by Cookie Settings. PostHog receives operational model,
+          latency, token, call-structure, finish, and error metadata for the financial assistant
+          without questions, answers, financial records, tool payloads, credentials, or internal
+          IDs. Mobile builds transmit only sanitized crash summaries without message contents or
+          financial records. Read the <Link to="/privacy-policy">Privacy Policy</Link> for
+          account, financial, provider, assistant, and rights information.
         </p>
       </section>
 

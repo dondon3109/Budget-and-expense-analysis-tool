@@ -12,16 +12,16 @@ export interface DeploymentConfigInput {
   explicitSupabaseUrl?: string;
   effectiveSupabasePublishableKey?: string;
   explicitSupabasePublishableKey?: string;
-  analyticsMeasurementId?: string;
-  cloudflareAnalyticsToken?: string;
+  posthogKey?: string;
+  posthogHost?: string;
 }
 
 export interface ResolvedDeploymentConfig {
   deployEnvironment: DeployEnvironment;
   apiOrigin: string;
   supabaseOrigin: string;
-  analyticsEnabled: boolean;
-  cloudflareAnalyticsEnabled: boolean;
+  posthogEnabled: boolean;
+  posthogHost: string;
 }
 
 const stableVersionPattern = /^\d+\.\d+\.\d+$/;
@@ -148,18 +148,16 @@ export function validateDeploymentConfigForBuild(
     );
   }
 
-  const cloudflareAnalyticsToken = input.cloudflareAnalyticsToken?.trim();
-  if (cloudflareAnalyticsToken && !/^[a-f0-9]{32}$/i.test(cloudflareAnalyticsToken)) {
-    throw new Error("VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN must be a 32-character site token.");
-  }
+  const posthogKey = input.posthogKey?.trim();
+  const rawPosthogHost = input.posthogHost?.trim() || "https://us.i.posthog.com";
+  const posthogHost = deploymentOrigin(rawPosthogHost, "VITE_POSTHOG_HOST", input.deployEnvironment);
 
   return {
     deployEnvironment: input.deployEnvironment,
     apiOrigin,
     supabaseOrigin,
-    analyticsEnabled: Boolean(input.analyticsMeasurementId?.trim()),
-    cloudflareAnalyticsEnabled:
-      input.deployEnvironment === "production" && Boolean(cloudflareAnalyticsToken),
+    posthogEnabled: Boolean(posthogKey),
+    posthogHost,
   };
 }
 
@@ -180,15 +178,8 @@ export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): s
     ANDROID_DOWNLOAD_ORIGIN,
   ];
 
-  if (config.analyticsEnabled) {
-    scriptSources.push("https://www.googletagmanager.com");
-    imageSources.push("https://www.google-analytics.com");
-    connectSources.push("https://www.google-analytics.com", "https://region1.google-analytics.com");
-  }
-
-  if (config.cloudflareAnalyticsEnabled) {
-    scriptSources.push("https://static.cloudflareinsights.com");
-    connectSources.push("https://cloudflareinsights.com");
+  if (config.posthogEnabled) {
+    connectSources.push(config.posthogHost);
   }
 
   return [

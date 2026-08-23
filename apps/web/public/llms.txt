@@ -7,7 +7,7 @@
 - [Home](https://zoption.site/): Product overview and account creation.
 - [Terms of Service](https://zoption.site/terms-of-service): Terms governing the service.
 - [Privacy Policy](https://zoption.site/privacy-policy): Account, financial-data, assistant, and provider processing practices.
-- [Cookie Policy](https://zoption.site/cookie-policy): Necessary browser storage and consent-gated Google Analytics 4.
+- [Cookie Policy](https://zoption.site/cookie-policy): Necessary browser storage and privacy-preserving, cookieless web analytics.
 
 ## Product facts
 

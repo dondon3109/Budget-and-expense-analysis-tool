@@ -3,8 +3,7 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
-import { CloudflareAnalytics } from "./analytics/CloudflareAnalytics";
-import { GoogleAnalytics } from "./analytics/GoogleAnalytics";
+import { PostHogAnalytics } from "./analytics/PostHogAnalytics";
 import { App } from "./App";
 import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
 import { AuthProvider } from "./auth/AuthProvider";
@@ -43,8 +42,7 @@ function ClientExperiences() {
       <ThemeChoiceDialog />
       <CookieConsentExperience />
       <ReleaseNotesExperience />
-      <CloudflareAnalytics />
-      <GoogleAnalytics />
+      <PostHogAnalytics />
     </>
   );
 }

@@ -300,6 +300,32 @@ describe("createTelemetryService", () => {
     expect(harness.captured).toHaveLength(0);
   });
 
+  it("flushes transport when flush is called directly", async () => {
+    const harness = createHarness();
+    await harness.service.init();
+    await harness.service.flush();
+    expect(harness.flushCalls).toBe(1);
+  });
+
+  it("sends a sanitized test crash and flushes without crashing", async () => {
+    const harness = createHarness();
+    const sent = await harness.service.sendTestCrash("developer-test-action");
+    expect(sent).toBe(true);
+    expect(harness.captured).toHaveLength(1);
+    expect(harness.captured[0]?.source).toBe("developer-test-action");
+    expect(harness.captured[0]?.type).toBe("CustomError");
+    expect(harness.captured[0]?.fingerprint).toMatch(/^[0-9a-z]{14}$/);
+    expect(harness.flushCalls).toBeGreaterThanOrEqual(1);
+  });
+
+  it("returns false from sendTestCrash when telemetry is disabled", async () => {
+    const disabledService = createTelemetryService({ ...enabledConfig, enabled: false }, async () => {
+      throw new Error("must not be called");
+    });
+    const sent = await disabledService.sendTestCrash();
+    expect(sent).toBe(false);
+  });
+
   it("keeps the documented event name and flag constant in sync", () => {
     expect(CRASH_EVENT_NAME).toBe("mobile_crash");
     expect(REMOTE_KILL_SWITCH_FLAG).toBe("crash-telemetry-enabled");

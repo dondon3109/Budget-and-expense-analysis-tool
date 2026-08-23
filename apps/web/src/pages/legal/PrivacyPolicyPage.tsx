@@ -79,10 +79,10 @@ export function PrivacyPolicyPage() {
             and security diagnostics, rate-limit data, errors, and service-health information.
           </li>
           <li>
-            <strong>Optional analytics:</strong> limited page-use and performance information sent
-            to Google Analytics 4 and Cloudflare Web Analytics only after you enable Analytics in
-            Cookie Settings. Zoption does not send financial workspace data, account credentials, or
-            assistant conversations to either analytics provider.
+            <strong>Optional analytics:</strong> limited aggregate page-use and Core Web Vitals
+            performance information sent to PostHog on public web pages in cookieless, memory-only
+            mode. Zoption does not send financial workspace data, account credentials, or assistant
+            conversations to the analytics platform.
           </li>
         </ul>
         <div className="legal-callout">
@@ -152,9 +152,8 @@ export function PrivacyPolicyPage() {
             metadata, and avatar storage.
           </li>
           <li>
-            <strong>Cloudflare</strong> for website and API hosting, Cloudflare D1 storage of
-            tenant-isolated application and financial data, and consent-gated, cookie-free Web
-            Analytics for aggregate page-use and performance measurement.
+            <strong>Cloudflare</strong> for website and API hosting, and Cloudflare D1 storage of
+            tenant-isolated application and financial data.
           </li>
           <li>
             <strong>DeepSeek</strong> for the separately enabled AI financial assistant and for a
@@ -167,13 +166,14 @@ export function PrivacyPolicyPage() {
             workspace data.
           </li>
           <li>
-            <strong>PostHog</strong> for server-side AI operational observability after separate
-            assistant consent. PostHog receives random trace/span identifiers, provider/model,
-            latency, token counts, call sequence, finish reasons, error categories, and deployment
-            environment. It does not receive questions, answers, conversation history, financial
-            records, tool names, arguments or results, credentials, or Zoption user, tenant, thread,
-            message, or run identifiers. Zoption disables PostHog person-profile processing for
-            these events.
+            <strong>PostHog</strong> for unified product analytics and observability across three
+            privacy-safe streams: (1) cookieless, memory-only public web analytics and Core Web
+            Vitals on public pages without observing authenticated financial workspaces, (2)
+            server-side AI operational observability ($ai_generation, tokens, latency, safe status)
+            after separate assistant consent, and (3) sanitized mobile crash telemetry
+            (mobile_crash) with coarse exception types and hashed stack frame shapes. PostHog
+            person-profile processing is disabled ($process_person_profile: false), and no user
+            identities, financial records, prompts, or conversation contents are ever sent.
           </li>
           <li>
             <strong>Cloudflare Workers AI and Fish Audio</strong> for the separately enabled voice
@@ -194,11 +194,6 @@ export function PrivacyPolicyPage() {
             team after a confirmed bug report is stored. The notification contains the reviewed
             report, reporter email when available, and safe diagnostics, but not financial workspace
             data.
-          </li>
-          <li>
-            <strong>Google Analytics 4</strong> only after you enable Analytics through Cookie
-            Settings. It receives limited page-use and performance information, not financial
-            workspace data, account credentials, or assistant conversations.
           </li>
         </ul>
         <p>

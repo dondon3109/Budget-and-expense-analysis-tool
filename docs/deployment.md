@@ -192,7 +192,7 @@ Build Pages with environment-specific public values. The committed `apps/web/.en
 
 The public Android metadata bucket `zoption-android-beta` must allow CORS from the exact Pages origins `https://zoption.site` and `https://www.zoption.site` for `GET`/`HEAD` only. The install page fetch sends `Accept: application/json` and `cache: "no-store"` (browsers may preflight `Accept`, `Cache-Control`, and `Pragma`); those request headers must be listed. Do not use wildcard origins. The source-of-truth policy is `scripts/r2-android-cors.json`; apply it with `wrangler r2 bucket cors set zoption-android-beta --file scripts/r2-android-cors.json`.
 
-The client build derives the Pages CSP from the validated API and Supabase origins, writes those exact origins into `connect-src`, writes the exact Supabase origin into `img-src`, always includes the exact R2 Android download origin `https://downloads.zoption.site` in `connect-src` (the install page fetches `android/latest.json` from it), and rejects every wildcard source. When `VITE_GA_MEASUREMENT_ID` is configured, only the exact Google Tag Manager script host plus the `www.google-analytics.com` and `region1.google-analytics.com` collection hosts are added. Production builds with a valid `VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN` additionally allow only `static.cloudflareinsights.com` for the Cloudflare beacon script and `cloudflareinsights.com` for collection. Both providers remain connected to the Analytics consent gate and do not load until a visitor enables Analytics in Cookie Settings. The Cloudflare site token is a public, domain-bound embed identifier rather than an account API secret; Preview and Staging builds keep the integration disabled even if the production fallback file is loaded. PostHog AI Observability runs only in the Worker, so it adds no browser environment variable, script, request, cookie, or Pages CSP origin. Prerender verifies that the final `_headers` contains exactly the generated policy before deployment. Production client and SSR source maps are explicitly disabled, and a successful build must leave no `.map` files in `apps/web/dist`. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`.
+The client build derives the Pages CSP from the validated API and Supabase origins, writes those exact origins into `connect-src`, writes the exact Supabase origin into `img-src`, always includes the exact R2 Android download origin `https://downloads.zoption.site` in `connect-src` (the install page fetches `android/latest.json` from it), and rejects every wildcard source. When `VITE_POSTHOG_KEY` is configured, only the exact `VITE_POSTHOG_HOST` origin (defaulting to `https://us.i.posthog.com`) is added to `connect-src`. PostHog Web Analytics operates in cookieless, memory-only mode without setting cookies or creating person profiles, and only on public routes. Server-side PostHog AI Observability runs only in the Worker, so it adds no browser environment variable, script, request, cookie, or Pages CSP origin. Prerender verifies that the final `_headers` contains exactly the generated policy before deployment. Production client and SSR source maps are explicitly disabled, and a successful build must leave no `.map` files in `apps/web/dist`. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`.
 
 Set `ZOPTION_DEPLOY_ENV` explicitly in every Pages build: `production` for the production project and `preview` or `staging` for non-production projects. Preview/staging builds keep the public content and production canonicals for realistic review, but force HTML and HTTP `noindex,nofollow`, do not publish `sitemap.xml`, and do not advertise a sitemap in `robots.txt`. Production intentionally allows crawlers to fetch private routes rather than disallowing them in `robots.txt`, so crawlers can observe their HTML and `X-Robots-Tag` noindex directives. Vite embeds public environment variables in the generated assets, so changing `VITE_API_URL` or another `VITE_*` value requires a fresh build before deploying; re-uploading an existing `dist` directory does not update it.
 
@@ -200,7 +200,7 @@ Set `ZOPTION_DEPLOY_ENV` explicitly in every Pages build: `production` for the p
 VITE_API_URL=https://PREVIEW_API_HOST \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
-VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
+VITE_POSTHOG_KEY=phc_PREVIEW_KEY \
 ZOPTION_DEPLOY_ENV=preview \
 pnpm --filter @zoption/web build
 ```
@@ -272,7 +272,7 @@ Build and deploy the browser app:
 VITE_API_URL=https://PREVIEW_API_HOST \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
-VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
+VITE_POSTHOG_KEY=phc_PREVIEW_KEY \
 ZOPTION_DEPLOY_ENV=preview \
 pnpm --filter @zoption/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIEW_PAGES_PROJECT --branch=main
@@ -327,7 +327,7 @@ For an emergency Pages recovery, build and deploy the frontend with production S
 ```bash
 VITE_SUPABASE_URL=https://PRODUCTION_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PRODUCTION_PUBLISHABLE_KEY \
-VITE_GA_MEASUREMENT_ID=G-APPROVED_MEASUREMENT_ID \
+VITE_POSTHOG_KEY=phc_APPROVED_POSTHOG_KEY \
 ZOPTION_DEPLOY_ENV=production \
 pnpm --filter @zoption/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PRODUCTION_PAGES_PROJECT --branch=main
@@ -338,7 +338,7 @@ FORBIDDEN_SUPABASE_ORIGINS=https://PREVIEW_PROJECT_REF.supabase.co \
 pnpm smoke:production
 ```
 
-Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. The deployed output pre-renders `/`, `/terms-of-service`, `/privacy-policy`, and `/cookie-policy`; it also publishes `/sitemap.xml`, `/robots.txt`, `/llms.txt`, and a branded `404.html`. The committed `_redirects` file routes only authentication and private application paths to the `spa.html` shell, sends legacy application paths through permanent redirects, and leaves unknown public paths as HTTP 404 responses. Confirm the consent banner makes no Analytics or Marketing requests before opt-in, Google Analytics 4 and Cloudflare Web Analytics load only after Analytics opt-in, and withdrawal removes both in-page integrations. In DevTools, verify `beacon.min.js` loads from `static.cloudflareinsights.com`, SPA navigation sends requests to `/cdn-cgi/rum`, and the Cloudflare dashboard receives data after its normal processing delay. The retired `/demo` route should return HTTP 404.
+Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. The deployed output pre-renders `/`, `/terms-of-service`, `/privacy-policy`, and `/cookie-policy`; it also publishes `/sitemap.xml`, `/robots.txt`, `/llms.txt`, and a branded `404.html`. The committed `_redirects` file routes only authentication and private application paths to the `spa.html` shell, sends legacy application paths through permanent redirects, and leaves unknown public paths as HTTP 404 responses. PostHog Web Analytics operates in cookieless, memory-only mode without setting cookies or creating person profiles, and only tracks public route transitions. Verify that no requests are sent from private application routes (`/app/*`), and confirm that the Cloudflare Web Analytics beacon and GA4 scripts are completely removed. The retired `/demo` route should return HTTP 404.
 
 The normal workflow publishes semantic release metadata automatically only after both Cloudflare deployments and smoke verification succeed. Do not create a release tag manually after automation is enabled.
 

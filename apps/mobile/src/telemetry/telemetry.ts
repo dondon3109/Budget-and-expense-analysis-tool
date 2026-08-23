@@ -63,6 +63,10 @@ export interface TelemetryService {
   isActive(): boolean;
   /** Best-effort sanitized report; never throws and never blocks callers. */
   captureException(error: unknown, source: string): Promise<void>;
+  /** Explicitly flushes queued events to the backend. */
+  flush(): Promise<void>;
+  /** Safe diagnostic test action that sends a sanitized crash report without crashing the app. */
+  sendTestCrash(source?: string): Promise<boolean>;
 }
 
 function environmentValue(value: unknown): string | undefined {
@@ -257,6 +261,20 @@ export function createTelemetryService(
       }
       if (gateOpen) deliver(report);
       return Promise.resolve();
+    },
+    flush(): Promise<void> {
+      if (!transport) return Promise.resolve();
+      return transport.flush().catch(() => {});
+    },
+    async sendTestCrash(source = "developer-test-action"): Promise<boolean> {
+      if (!config.enabled) return false;
+      await this.init();
+      const testError = Object.assign(new Error("Zoption diagnostic test event"), {
+        name: "TestDiagnosticsError",
+      });
+      await this.captureException(testError, source);
+      await this.flush();
+      return true;
     },
   };
 }

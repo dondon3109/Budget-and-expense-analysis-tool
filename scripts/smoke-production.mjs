@@ -99,8 +99,8 @@ for (const [label, path, heading] of publicPages) {
     assertIncludes(html, '<meta property="og:title"', label);
     assertIncludes(html, '<meta name="twitter:card" content="summary_large_image"', label);
     assertIncludes(html, heading, label);
-    if (html.includes("www.googletagmanager.com/gtag/js")) {
-      throw new Error(`${label} loaded Google Analytics before consent.`);
+    if (html.includes("googletagmanager.com") || html.includes("cloudflareinsights.com")) {
+      throw new Error(`${label} contained legacy analytics scripts.`);
     }
 
     if (path === "/") await expectFrontendDeploymentOrigins(html);

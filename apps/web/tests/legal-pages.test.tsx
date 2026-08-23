@@ -80,14 +80,14 @@ describe("legal pages", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Cookie Policy" })).toBeInTheDocument();
     expect(
-      screen.getByText(/Google Analytics 4 and Cloudflare Web Analytics for optional usage/i),
+      screen.getByText(/PostHog for privacy-preserving, cookieless aggregate usage/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/No marketing provider is currently enabled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open Cookie Settings" })).toBeInTheDocument();
     expect(
       screen.getByText(/assistant has a separate, versioned consent flow/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/does not load a PostHog browser SDK/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/cookieless, memory-only mode/i).length).toBeGreaterThan(0);
   });
 
   it("uses one shared legal footer on legal surfaces", () => {
