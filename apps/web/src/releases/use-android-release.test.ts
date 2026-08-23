@@ -55,8 +55,7 @@ describe("useAndroidRelease", () => {
     const { result } = renderHook(() => useAndroidRelease());
 
     expect(result.current.status).toBe("remote");
-    expect(result.current.release?.versionName).toBe("0.2.4-beta");
-    await waitFor(() => expect(vi.mocked(fetchMock)).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.release?.versionName).toBe("0.2.4-beta"));
     expect(result.current.release?.versionCode).toBe(20304);
     expect(vi.mocked(fetchMock)).toHaveBeenCalledTimes(1);
     const [requestUrl, requestInit] = vi.mocked(fetchMock).mock.calls[0] ?? [];
@@ -77,11 +76,11 @@ describe("useAndroidRelease", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { result, unmount } = renderHook(() => useAndroidRelease());
-    expect(result.current.release?.versionName).toBe("0.2.4-beta");
+    expect(result.current.release?.versionName).toBe("0.2.9-beta");
     unmount();
     rejectFirst?.(new DOMException("The operation was aborted.", "AbortError"));
     await Promise.resolve();
-    expect(result.current.release?.downloadPath).toContain("zoption-beta-0.2.4.apk");
+    expect(result.current.release?.downloadPath).toContain("zoption-beta-0.2.9.apk");
   });
 
   it("keeps the shipped R2 snapshot when the live request fails", async () => {
@@ -90,7 +89,8 @@ describe("useAndroidRelease", () => {
     await Promise.resolve();
     expect(result.current.status).toBe("remote");
     expect(result.current.release?.downloadPath).toBe(
-      "https://downloads.zoption.site/android/zoption-beta-0.2.4.apk",
+      "https://downloads.zoption.site/android/zoption-beta-0.2.9.apk",
     );
   });
 });
+

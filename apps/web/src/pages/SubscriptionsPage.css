@@ -5,15 +5,20 @@
 }
 
 .subscription-summary {
-  margin: 28px 0 18px;
+  margin: 28px 0 20px;
 }
 
 .subscription-summary .metric-card {
-  min-height: 142px;
+  min-height: 144px;
   display: grid;
   align-content: center;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.subscription-summary .metric-card:hover {
+  box-shadow: var(--shadow-raised);
 }
 
 .subscription-table-wrap {
@@ -27,10 +32,10 @@
 
 .subscription-table th,
 .subscription-table td {
-  padding: 15px 16px;
+  padding: 16px 18px;
   text-align: left;
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .subscription-table th {
@@ -38,7 +43,7 @@
   background: var(--surface-soft);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -47,13 +52,17 @@
   border-bottom: 0;
 }
 
+.subscription-table tbody tr {
+  transition: background-color 0.14s ease;
+}
+
 .subscription-table tbody tr:hover {
   background: var(--surface-soft);
 }
 
 .subscription-name {
   color: var(--ink);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 750;
 }
 
@@ -67,15 +76,15 @@
 
 .subscription-amount strong {
   color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 650;
 }
 
 .subscription-amount span,
 .subscription-billing-empty {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 10.5px;
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
 }
@@ -84,23 +93,23 @@
   min-width: 170px;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
 }
 
 .subscription-status-badge {
   min-height: 26px;
-  padding: 0 8px;
+  padding: 0 9px;
   display: inline-flex;
   align-items: center;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 750;
 }
 
 .subscription-status-badge.active {
   color: var(--success);
-  border-color: color-mix(in srgb, var(--success) 18%, transparent);
+  border-color: color-mix(in srgb, var(--success) 22%, var(--line));
   background: var(--success-soft);
 }
 
@@ -112,13 +121,15 @@
 
 .subscription-status-action {
   min-height: 36px;
-  padding: 0 10px;
+  padding: 0 12px;
   color: var(--action);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 750;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .subscription-status-action:hover:not(:disabled) {
@@ -143,7 +154,7 @@
   color: var(--action);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 650;
 }
 
 @media (max-width: 760px) {

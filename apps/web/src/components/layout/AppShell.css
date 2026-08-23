@@ -6,6 +6,10 @@
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   background: var(--page);
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -10%, var(--brand-glow), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 85% 20%, var(--page-glow-alt), transparent 60%);
+  background-attachment: fixed;
   transition: grid-template-columns 180ms ease;
 }
 
@@ -25,8 +29,6 @@
   border-right: 1px solid var(--line);
   background: var(--paper);
   transition:
-    width 180ms ease,
-    padding 180ms ease,
     transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -47,6 +49,12 @@
   width: 36px;
   height: 36px;
   flex: 0 0 auto;
+  border-radius: 9px;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.nav-collapse-toggle:hover {
+  transform: scale(1.04);
 }
 
 .sidebar .brand,
@@ -65,7 +73,7 @@
   overflow: hidden;
   border-radius: var(--radius-sm);
   background: var(--solid-bg);
-  box-shadow: none;
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--solid-bg) 25%, transparent);
 }
 
 .sidebar .brand-wordmark,
@@ -76,11 +84,17 @@
 }
 
 .sidebar-profile {
-  margin-top: 22px;
-  padding: 13px 12px;
+  margin-top: 20px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface-soft);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.18s ease;
+}
+
+.sidebar-profile:hover {
+  border-color: var(--line-strong);
 }
 
 .sidebar-account-identity {
@@ -135,12 +149,12 @@
 
 .sidebar-account-identity strong {
   color: var(--ink);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 750;
 }
 
 .sidebar-profile-theme {
-  margin-top: 12px;
+  margin-top: 10px;
   padding-top: 10px;
   display: flex;
   align-items: center;
@@ -153,7 +167,7 @@
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -167,7 +181,7 @@
 .side-nav {
   margin-top: 16px;
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
 .nav-item {
@@ -179,7 +193,7 @@
   gap: 11px;
   color: var(--muted);
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 11px;
   background: transparent;
   cursor: pointer;
   font-size: 13px;
@@ -188,17 +202,20 @@
   transition:
     color 150ms ease,
     border-color 150ms ease,
-    background 150ms ease;
+    background 150ms ease,
+    transform 150ms ease;
 }
 
 .nav-item svg {
   flex: 0 0 auto;
   color: var(--subtle);
+  transition: color 150ms ease;
 }
 
 .nav-item:not(.current):hover {
   color: var(--ink);
   background: var(--surface-hover);
+  transform: translateX(2px);
 }
 
 .nav-item.current {
@@ -233,7 +250,7 @@
 
 .sidebar-account-action {
   min-height: 40px;
-  padding: 0 9px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -243,8 +260,9 @@
   border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
 }
 
 .sidebar-account-action:hover:not(:disabled),
@@ -270,6 +288,7 @@
   color: var(--muted);
   font-size: 11px;
   line-height: 1.5;
+  transition: color 150ms ease;
 }
 
 .back-link:hover {
@@ -320,7 +339,7 @@
   background: transparent;
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -331,15 +350,15 @@
   font-family: var(--font-display);
   font-size: clamp(38px, 3.3vw, 50px);
   font-weight: 500;
-  letter-spacing: -0.035em;
-  line-height: 0.98;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
 }
 
 .dashboard-header p:not(.eyebrow) {
   max-width: 64ch;
   margin: 12px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 14.5px;
   line-height: 1.65;
 }
 

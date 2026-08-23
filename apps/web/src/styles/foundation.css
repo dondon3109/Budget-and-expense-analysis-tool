@@ -309,6 +309,10 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--page);
+  background-image:
+    radial-gradient(ellipse 65% 40% at 50% -10%, var(--brand-glow), transparent 70%),
+    radial-gradient(ellipse 45% 30% at 85% 20%, var(--page-glow-alt), transparent 60%);
+  background-attachment: fixed;
 }
 button,
 a {

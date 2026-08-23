@@ -3,18 +3,19 @@
 .dashboard-header-actions {
   flex: 0 0 auto;
   align-items: center;
+  gap: 10px;
 }
 
 .workspace-onboarding {
   margin-top: 32px;
-  padding: clamp(30px, 5vw, 58px);
+  padding: clamp(32px, 5vw, 60px);
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
   gap: clamp(34px, 6vw, 78px);
   border: 1px solid var(--line);
-  border-radius: 20px;
-  background: radial-gradient(circle at 90% 10%, var(--brand-glow), transparent 34%), var(--paper);
-  box-shadow: 0 18px 52px var(--shadow);
+  border-radius: 22px;
+  background: radial-gradient(circle at 90% 10%, var(--brand-glow), transparent 36%), var(--paper);
+  box-shadow: var(--shadow-raised);
 }
 
 .onboarding-copy h2 {
@@ -32,34 +33,35 @@
   max-width: 650px;
   margin: 17px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 14.5px;
   line-height: 1.7;
 }
 
 .onboarding-steps {
   align-content: center;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 18px 12px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 18px 14px;
 }
 
 .onboarding-steps > span {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   color: var(--brand-strong);
   border: 1px solid var(--line);
   border-radius: 50%;
   background: var(--brand-soft);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 800;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--brand-strong) 15%, transparent);
 }
 
 .onboarding-steps p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.55;
 }
 
@@ -67,30 +69,39 @@
   display: block;
   margin-bottom: 3px;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
+/* ============================================================
+   Overview Stat Bar
+   ============================================================ */
 .overview-stat-bar {
   margin-top: 28px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--line);
-  border-radius: 17px;
+  border-radius: 18px;
   background: var(--paper);
-  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
 }
 
 .overview-stat {
   position: relative;
   min-width: 0;
-  padding: 21px 24px;
+  padding: 22px 24px;
+  transition: background-color 0.18s ease;
+}
+
+.overview-stat:hover {
+  background: var(--surface-soft);
 }
 
 .overview-stat + .overview-stat::before {
   content: "";
   position: absolute;
-  top: 17px;
-  bottom: 17px;
+  top: 18px;
+  bottom: 18px;
   left: 0;
   width: 1px;
   background: var(--line);
@@ -102,19 +113,20 @@
   justify-content: space-between;
   gap: 10px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 750;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .overview-stat-icon {
-  width: 29px;
-  height: 29px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .tone-income .overview-stat-icon {
@@ -159,13 +171,14 @@
 
 .overview-stat > strong {
   display: block;
-  margin: 15px 0 7px;
+  margin: 16px 0 8px;
   overflow-wrap: anywhere;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(22px, 2vw, 29px);
+  font-size: clamp(24px, 2.2vw, 32px);
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
+  letter-spacing: -0.02em;
 }
 
 .overview-stat-currency {
@@ -175,7 +188,7 @@
 .overview-stat > p {
   margin: 0;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -183,7 +196,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin: 0 0 9px;
+  margin: 0 0 10px;
   color: var(--muted);
 }
 
@@ -191,17 +204,17 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
-  font-weight: 720;
+  font-size: 12.5px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .overview-stat-secondary em {
-  padding: 1px 5px;
-  border-radius: 5px;
+  padding: 2px 6px;
+  border-radius: 6px;
   color: var(--ink);
   background: var(--surface-hover);
-  font-size: 9px;
+  font-size: 9.5px;
   font-style: normal;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -212,22 +225,22 @@
   margin: 0 0 8px;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
 
 .overview-stat-trend > span {
-  padding: 3px 6px;
+  padding: 3px 7px;
   border-radius: 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 10.5px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .overview-stat-trend > small {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 9.5px;
 }
 
 .overview-stat-trend[data-state="positive"] > span {
@@ -245,19 +258,24 @@
   background: var(--surface-hover);
 }
 
+/* ============================================================
+   Grid & Panels
+   ============================================================ */
 .dashboard-grid {
-  margin-top: 17px;
+  margin-top: 20px;
   display: grid;
   grid-template-columns: 1fr 1.25fr;
-  gap: 17px;
+  gap: 20px;
 }
 
 .panel {
-  padding: 23px;
+  padding: 26px;
   border: 1px solid var(--line);
-  border-radius: 17px;
+  border-radius: 18px;
   background: var(--paper);
-  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
 }
 
 .panel-heading {
@@ -271,42 +289,44 @@
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 19px;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.015em;
 }
 
 .panel-empty {
-  min-height: 215px;
+  min-height: 220px;
   margin-top: 18px;
   padding: 28px;
   display: grid;
   place-content: center;
   text-align: center;
   border: 1px dashed var(--line-strong);
-  border-radius: 14px;
+  border-radius: 15px;
   background: var(--surface-soft);
 }
 
 .panel-empty strong {
   color: var(--ink);
   font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 18px;
+  font-weight: 500;
+  font-size: 19px;
 }
 
 .panel-empty p {
   max-width: 360px;
   margin: 8px auto 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
+/* Donut category chart */
 .donut-layout {
   min-height: 280px;
-  margin-top: 10px;
+  margin-top: 12px;
   display: grid;
-  grid-template-columns: minmax(205px, 0.9fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(210px, 0.9fr) minmax(0, 1.1fr);
   align-items: center;
   gap: 24px;
 }
@@ -332,19 +352,19 @@
 
 .donut-center span {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .donut-center strong {
-  max-width: 84px;
+  max-width: 90px;
   margin-top: 5px;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 550;
   line-height: 1.12;
 }
 
@@ -358,9 +378,10 @@
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 11px 0;
+  gap: 12px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--line);
+  transition: background-color 0.15s ease;
 }
 
 .category-row:last-child {
@@ -368,8 +389,8 @@
 }
 
 .color-dot {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   box-shadow: 0 0 0 2px var(--chart-slice-separator);
 }
@@ -383,25 +404,26 @@
 .category-row strong {
   overflow-wrap: anywhere;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1.3;
 }
 
 .category-row b {
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
-  font-weight: 650;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 .category-row span:not(.color-dot) {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1.35;
 }
 
+/* Trend Panel */
 .trend-panel-heading {
   align-items: flex-start;
 }
@@ -409,19 +431,19 @@
 .trend-period {
   margin: 6px 0 0;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1.45;
 }
 
 .trend-currency-note {
   color: var(--muted);
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .trend-panel-actions {
   display: grid;
   justify-items: end;
-  gap: 11px;
+  gap: 12px;
 }
 
 .trend-view-options {
@@ -433,14 +455,14 @@
 }
 
 .trend-view-option {
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 32px;
+  padding: 0 12px;
   color: var(--muted);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   font: inherit;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 750;
   cursor: pointer;
   transition:
@@ -482,6 +504,7 @@
 .trend-panel-error {
   min-height: 282px;
 }
+
 .trend-chart-mobile {
   position: relative;
   height: 232px;
@@ -504,23 +527,12 @@
   opacity: 1;
 }
 
-.trend-chart-mobile.is-animated .trend-mobile-area {
-  opacity: 0;
-  animation: trend-mobile-area-in 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes trend-mobile-area-in {
-  from {
-    opacity: 0;
-  }
-}
-
 .trend-chart-callout {
   position: absolute;
   top: 2px;
   z-index: 2;
   min-width: 148px;
-  padding: 8px 10px 7px;
+  padding: 8px 11px;
   display: grid;
   gap: 4px;
   color: var(--ink);
@@ -568,21 +580,12 @@
   font-weight: 600;
 }
 
-.trend-panel-empty .button {
-  width: fit-content;
-  margin: 16px auto 0;
-}
-
-.trend-panel-error .button {
-  margin-top: 16px;
-}
-
 .chart-key {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -601,25 +604,36 @@
   background: var(--chart-expense);
 }
 
+/* ============================================================
+   Goals & Budgets Panels
+   ============================================================ */
 .budget-panel {
   grid-column: 1 / -1;
+  background: linear-gradient(145deg, var(--budget-soft), var(--paper) 28%);
+  box-shadow:
+    inset 0 3px 0 var(--budget),
+    0 12px 30px var(--shadow);
 }
 
 .goals-panel {
   grid-column: 1 / -1;
+  background: linear-gradient(145deg, var(--action-soft), var(--paper) 28%);
+  box-shadow:
+    inset 0 3px 0 var(--action),
+    0 12px 30px var(--shadow);
 }
 
 .goals-panel .panel-heading p {
   margin: 5px 0 0;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .goals-layout {
   margin-top: 20px;
   display: grid;
   grid-template-columns: 1.28fr minmax(220px, 0.72fr);
-  gap: 22px;
+  gap: 24px;
 }
 
 .goals-block {
@@ -627,7 +641,7 @@
 }
 
 .goals-block + .goals-block {
-  padding-left: 22px;
+  padding-left: 24px;
   border-left: 1px solid var(--line);
 }
 
@@ -636,7 +650,8 @@
   align-items: center;
   gap: 8px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 11.5px;
+  font-weight: 700;
 }
 
 .goals-block-heading svg {
@@ -650,7 +665,7 @@
 }
 
 .goals-list li {
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -667,12 +682,13 @@
 
 .goals-list-topline strong {
   color: var(--ink);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .goals-list-topline span {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 10px;
   white-space: nowrap;
 }
 
@@ -681,13 +697,13 @@
 }
 
 .goals-list-meta {
-  margin-top: 5px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .goals-empty {
@@ -699,14 +715,14 @@
 .insight-empty {
   margin: 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
 .text-link {
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 650;
+  color: var(--action);
+  font-size: 11px;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -715,7 +731,7 @@
 }
 
 .subscription-total {
-  margin-top: 12px;
+  margin-top: 14px;
   display: grid;
   gap: 4px;
 }
@@ -724,16 +740,17 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 23px;
+  font-size: 26px;
+  letter-spacing: -0.02em;
 }
 
 .subscription-total span {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .subscriptions-block .text-link {
-  margin-top: 10px;
+  margin-top: 12px;
   display: inline-block;
 }
 
@@ -741,15 +758,15 @@
   margin-top: 20px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  column-gap: 36px;
+  column-gap: 40px;
 }
 
 .budget-row {
   display: grid;
-  grid-template-columns: minmax(140px, 0.75fr) 1fr 42px;
+  grid-template-columns: minmax(140px, 0.75fr) 1fr 44px;
   align-items: center;
-  gap: 14px;
-  padding: 12px 0;
+  gap: 16px;
+  padding: 13px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -760,16 +777,17 @@
 }
 
 .budget-label strong {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .budget-label span {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .progress-track {
-  height: 8px;
+  height: 9px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--surface-hover);
@@ -779,10 +797,8 @@
   height: 100%;
   display: block;
   border-radius: inherit;
+  background: linear-gradient(90deg, var(--action-strong), var(--action));
   transform-origin: left center;
-  transition:
-    width 320ms cubic-bezier(0.16, 1, 0.3, 1),
-    background-color 160ms ease;
 }
 
 .progress-track span.over {
@@ -791,7 +807,7 @@
 
 .budget-value {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   text-align: right;
 }
@@ -801,10 +817,10 @@
 }
 
 .calculation-note {
-  margin-top: 16px;
+  margin-top: 18px;
   padding: 0 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .calculation-note summary {
@@ -819,131 +835,394 @@
   line-height: 1.6;
 }
 
-/* Surface-specific polish keeps the shared component language intact. */
-.dashboard-page .overview-stat-bar {
-  border-radius: 18px;
-  box-shadow: 0 14px 34px var(--shadow);
+/* ============================================================
+   Account Balances (Hero Card)
+   ============================================================ */
+.dashboard-balance {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: var(--shadow-raised);
 }
 
-.dashboard-page .overview-stat {
-  padding: 23px 25px;
+.dashboard-balance-total {
+  min-width: 0;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: var(--paper);
+  background: radial-gradient(circle at 10% 10%, rgba(15, 107, 91, 0.35), transparent 60%), var(--ink);
 }
 
-.dashboard-page .overview-stat > strong {
+.dashboard-balance-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-balance-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--ink);
+  border-radius: 11px;
+  background: var(--action);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-balance-heading p,
+.dashboard-balance-heading h2,
+.dashboard-balance-total > span,
+.dashboard-account-breakdown-heading {
+  margin: 0;
+}
+
+.dashboard-balance-heading p {
+  color: color-mix(in srgb, var(--paper) 70%, var(--ink));
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.dashboard-balance-heading h2 {
+  margin-top: 2px;
   font-family: var(--font-display);
-  font-size: clamp(26px, 2.3vw, 32px);
+  font-size: 22px;
   font-weight: 400;
-  letter-spacing: -0.035em;
-}
-
-.dashboard-page .dashboard-grid {
-  gap: 18px;
-}
-
-.dashboard-page .panel {
-  padding: 25px;
-  border-radius: 18px;
-  box-shadow: 0 12px 30px var(--shadow);
-}
-
-.dashboard-page .panel-heading h2 {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 400;
+  line-height: 1.1;
   letter-spacing: -0.015em;
 }
 
-.dashboard-page .panel-empty {
-  min-height: 230px;
-  border-radius: 15px;
+.dashboard-balance-total > strong {
+  display: block;
+  margin: 26px 0 8px;
+  overflow-wrap: anywhere;
+  font-size: clamp(32px, 3.2vw, 46px);
+  font-weight: 760;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
-.dashboard-page .calculation-note {
-  margin-top: 20px;
+.dashboard-balance-trend {
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.dashboard-page .panel {
-  position: relative;
-  overflow: hidden;
+.dashboard-balance-trend > span {
+  padding: 3px 7px;
+  color: var(--paper);
+  border: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--paper) 9%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.dashboard-page .category-panel {
-  background: var(--paper);
-  box-shadow:
-    inset 0 3px 0 var(--info),
-    0 12px 30px var(--shadow);
+.dashboard-balance-trend > small {
+  color: color-mix(in srgb, var(--paper) 70%, var(--ink));
+  font-family: var(--font-mono);
+  font-size: 9.5px;
 }
 
-.dashboard-page .trend-panel {
-  background: var(--paper);
-  box-shadow:
-    inset 0 3px 0 var(--income),
-    0 12px 30px var(--shadow);
+.dashboard-balance-trend[data-state="positive"] > span {
+  border-color: color-mix(in srgb, var(--income) 55%, transparent);
+  background: color-mix(in srgb, var(--income) 24%, transparent);
 }
 
-.dashboard-page .goals-panel {
-  background: linear-gradient(145deg, var(--action-soft), var(--paper) 28%);
-  box-shadow:
-    inset 0 3px 0 var(--action),
-    0 12px 30px var(--shadow);
+.dashboard-balance-trend[data-state="negative"] > span {
+  border-color: color-mix(in srgb, var(--expense) 55%, transparent);
+  background: color-mix(in srgb, var(--expense) 24%, transparent);
 }
 
-.dashboard-page .budget-panel {
-  background: linear-gradient(145deg, var(--budget-soft), var(--paper) 28%);
-  box-shadow:
-    inset 0 3px 0 var(--budget),
-    0 12px 30px var(--shadow);
+.dashboard-balance-total > span {
+  color: color-mix(in srgb, var(--paper) 66%, var(--ink));
+  font-size: 11.5px;
+  line-height: 1.45;
 }
 
-.dashboard-page .eyebrow {
+.dashboard-balance-usd {
+  margin: 14px 0 0;
+  color: color-mix(in srgb, var(--paper) 80%, var(--ink));
+  font-size: 14.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-account-breakdown {
+  min-width: 0;
+  padding: 24px 28px;
+}
+
+.dashboard-account-breakdown-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--subtle);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-account-add {
+  min-height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--action);
+  border: 0;
+  border-radius: 8px;
+  background: var(--action-soft);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.16s ease, transform 0.16s ease;
 }
 
-.dashboard-page .category-panel .eyebrow {
-  color: var(--info);
+.dashboard-account-add:hover {
+  color: var(--solid-text);
+  background: var(--solid-bg);
+  transform: translateY(-1px);
 }
 
-.category-panel-actions {
+.dashboard-account-form {
+  margin-top: 16px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr) auto;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.dashboard-account-form label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.dashboard-account-form label > span {
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dashboard-account-form input,
+.dashboard-account-form select {
+  width: 100%;
+  height: 42px;
+  min-width: 0;
+  padding: 0 12px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--paper);
+  font: inherit;
+  font-size: 13px;
+}
+
+.dashboard-account-form select {
+  padding-right: 28px;
+}
+
+.dashboard-account-form .button {
+  min-height: 42px;
+  padding: 0 16px;
+}
+
+.dashboard-account-form > .upgrade-prompt,
+.dashboard-account-form .form-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.dashboard-account-breakdown ul {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dashboard-account-breakdown li {
+  min-width: 0;
+  padding: 13px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.dashboard-account-details {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.dashboard-account-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+  color: var(--subtle);
+  font-size: 10.5px;
+  line-height: 1.3;
+  text-transform: capitalize;
+}
+
+.dashboard-account-meta em {
+  padding: 2px 6px;
+  color: var(--subtle);
+  border-radius: 4px;
+  background: var(--surface-hover);
+  font-size: 8.5px;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.dashboard-account-value {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.dashboard-page .category-month-picker {
-  width: auto;
+.dashboard-account-actions {
+  display: inline-flex;
+  gap: 3px;
 }
 
-.dashboard-page .category-month-picker .month-selector-trigger {
-  min-height: 32px;
-  padding: 0 9px;
+.dashboard-account-actions button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--subtle);
+  border: 0;
   border-radius: 8px;
-  font-size: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
-.dashboard-page .trend-panel .eyebrow {
-  color: var(--income);
+.dashboard-account-actions button:hover {
+  color: var(--action);
+  background: var(--action-soft);
 }
 
-.dashboard-page .budget-panel .eyebrow {
-  color: var(--budget);
+.dashboard-account-actions button:last-child:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
-@media (max-width: 470px) {
-  .category-panel .panel-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .category-panel-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .dashboard-page .category-month-picker {
-    width: auto;
-  }
+.dashboard-account-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 700;
 }
 
+.dashboard-account-name em {
+  padding: 3px 7px;
+  color: var(--action);
+  border-radius: 6px;
+  background: var(--action-soft);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dashboard-account-balances {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.dashboard-account-balances > strong {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.dashboard-account-balances em {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dashboard-removed-accounts {
+  margin-top: 16px;
+  color: var(--subtle);
+  font-size: 11.5px;
+}
+
+.dashboard-removed-accounts summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.dashboard-removed-accounts p {
+  margin: 8px 0 0;
+  line-height: 1.45;
+}
+
+.dashboard-removed-accounts ul {
+  margin-top: 10px;
+}
+
+.dashboard-removed-accounts li {
+  padding: 8px 0;
+  font-size: 12px;
+}
+
+.dashboard-account-error {
+  margin: 12px 0 0;
+  color: var(--danger);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* ============================================================
+   Responsive Rules
+   ============================================================ */
 @media (max-width: 1050px) {
   .workspace-onboarding {
     grid-template-columns: 1fr;
@@ -960,8 +1239,8 @@
   .overview-stat:nth-child(even)::before {
     content: "";
     position: absolute;
-    top: 17px;
-    bottom: 17px;
+    top: 18px;
+    bottom: 18px;
     left: 0;
     width: 1px;
     background: var(--line);
@@ -971,8 +1250,8 @@
     content: "";
     position: absolute;
     top: 0;
-    right: 17px;
-    left: 17px;
+    right: 18px;
+    left: 18px;
     height: 1px;
     background: var(--line);
   }
@@ -981,12 +1260,19 @@
     grid-template-columns: 1fr;
   }
 
-  .budget-panel {
-    grid-column: auto;
-  }
-
+  .budget-panel,
   .goals-panel {
     grid-column: auto;
+  }
+}
+
+@media (max-width: 980px) {
+  .dashboard-balance {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-account-breakdown {
+    padding: 24px;
   }
 }
 
@@ -1002,13 +1288,13 @@
   }
 
   .dashboard-page .panel {
-    padding: 20px 17px;
+    padding: 20px 18px;
     border-radius: 16px;
   }
 
   .dashboard-balance {
     margin-top: 22px;
-    border-radius: 15px;
+    border-radius: 16px;
   }
 
   .dashboard-balance-total,
@@ -1038,7 +1324,7 @@
   }
 
   .workspace-onboarding {
-    padding: 25px 20px;
+    padding: 26px 20px;
     border-radius: 18px;
   }
 
@@ -1060,6 +1346,14 @@
     border-left: 0;
     border-top: 1px solid var(--line);
   }
+
+  .dashboard-account-form {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-account-form .button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 470px) {
@@ -1080,9 +1374,9 @@
     content: "";
     position: absolute;
     top: 0;
-    right: 17px;
+    right: 18px;
     bottom: auto;
-    left: 17px;
+    left: 18px;
     width: auto;
     height: 1px;
     background: var(--line);
@@ -1093,7 +1387,7 @@
   }
 
   .budget-row {
-    grid-template-columns: 1fr 42px;
+    grid-template-columns: 1fr 44px;
   }
 
   .budget-label {
@@ -1101,643 +1395,7 @@
   }
 }
 
-.dashboard-page .button:hover {
-  transform: translateY(-1px);
-}
-
-.workspace-onboarding {
-  background: var(--paper);
-  box-shadow: 0 12px 28px var(--shadow);
-}
-
-.onboarding-steps > span {
-  color: var(--action);
-  border-color: color-mix(in srgb, var(--action) 35%, var(--line));
-  background: transparent;
-}
-
-.dashboard-page .overview-stat-bar {
-  border-radius: 15px;
-  box-shadow: 0 8px 20px var(--shadow);
-}
-
-.dashboard-page .overview-stat {
-  padding: 22px 24px;
-  box-shadow: none;
-}
-
-.dashboard-page .overview-stat.tone-income,
-.dashboard-page .overview-stat.tone-expense,
-.dashboard-page .overview-stat.tone-ink,
-.dashboard-page .overview-stat.tone-plum {
-  box-shadow: none;
-}
-
-.dashboard-page .overview-stat > strong {
-  font-weight: 700;
-}
-
-.dashboard-page .panel {
-  border-radius: 15px;
-  background: var(--paper);
-  box-shadow: 0 8px 20px var(--shadow);
-}
-
-.dashboard-page .category-panel,
-.dashboard-page .trend-panel,
-.dashboard-page .goals-panel,
-.dashboard-page .budget-panel {
-  background: var(--paper);
-  box-shadow: 0 8px 20px var(--shadow);
-}
-
-.dashboard-page .panel-heading h2 {
-  font-weight: 650;
-}
-
-@media (max-width: 760px) {
-  .dashboard-page {
-    padding: 28px 0 48px;
-  }
-
-  .dashboard-page .panel {
-    border-radius: 14px;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .dashboard-page .progress-track span {
-    animation-duration: 400ms;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dashboard-page .progress-track span {
-    animation: none !important;
-  }
-
-  .progress-track span {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* Account balances */
-.dashboard-balance {
-  margin-top: 28px;
-  display: grid;
-  grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.18fr);
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--paper);
-  box-shadow: 0 14px 34px var(--shadow);
-}
-
-.dashboard-balance-total {
-  min-width: 0;
-  padding: 25px 28px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  color: var(--paper);
-  background: var(--ink);
-}
-
-.dashboard-balance-heading {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-}
-
-.dashboard-balance-icon {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  color: var(--ink);
-  border-radius: 10px;
-  background: var(--action);
-}
-
-.dashboard-balance-heading p,
-.dashboard-balance-heading h2,
-.dashboard-balance-total > span,
-.dashboard-account-breakdown-heading {
-  margin: 0;
-}
-
-.dashboard-balance-heading p {
-  color: color-mix(in srgb, var(--paper) 68%, var(--ink));
-  font-size: 11px;
-  font-weight: 720;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.dashboard-balance-heading h2 {
-  margin-top: 2px;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 1.1;
-}
-
-.dashboard-balance-total > strong {
-  display: block;
-  margin: 26px 0 7px;
-  overflow-wrap: anywhere;
-  font-size: clamp(30px, 3.1vw, 43px);
-  font-weight: 760;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.dashboard-balance-trend {
-  margin: 0 0 9px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dashboard-balance-trend > span {
-  padding: 3px 6px;
-  color: var(--paper);
-  border: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--paper) 9%, transparent);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.dashboard-balance-trend > small {
-  color: color-mix(in srgb, var(--paper) 68%, var(--ink));
-  font-family: var(--font-mono);
-  font-size: 9px;
-}
-
-.dashboard-balance-trend[data-state="positive"] > span {
-  border-color: color-mix(in srgb, var(--income) 55%, transparent);
-  background: color-mix(in srgb, var(--income) 24%, transparent);
-}
-
-.dashboard-balance-trend[data-state="negative"] > span {
-  border-color: color-mix(in srgb, var(--expense) 55%, transparent);
-  background: color-mix(in srgb, var(--expense) 24%, transparent);
-}
-
-.dashboard-balance-total > span {
-  color: color-mix(in srgb, var(--paper) 64%, var(--ink));
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.dashboard-balance-usd {
-  margin: 12px 0 0;
-  color: color-mix(in srgb, var(--paper) 78%, var(--ink));
-  font-size: 14px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-.dashboard-account-breakdown {
-  min-width: 0;
-  padding: 22px 26px;
-}
-
-.dashboard-account-breakdown-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--subtle);
-  font-size: 11px;
-  font-weight: 720;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.dashboard-account-add {
-  min-height: 30px;
-  padding: 0 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--action);
-  border: 0;
-  border-radius: 7px;
-  background: var(--action-soft);
-  font: inherit;
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.03em;
-  text-transform: none;
-  cursor: pointer;
-}
-
-.dashboard-account-add:hover {
-  color: var(--solid-text);
-  background: var(--solid-bg);
-  box-shadow: 0 2px 8px var(--shadow);
-}
-
-.dashboard-account-form {
-  margin-top: 14px;
-  padding: 16px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr) auto;
-  gap: 10px;
-  align-items: end;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.dashboard-account-form label {
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.dashboard-account-form label > span {
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.dashboard-account-form input,
-.dashboard-account-form select {
-  width: 100%;
-  height: 40px;
-  min-width: 0;
-  padding: 0 11px;
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
-  border-radius: 9px;
-  background: var(--paper);
-  font: inherit;
-  font-size: 12px;
-}
-
-.dashboard-account-form select {
-  padding-right: 27px;
-}
-
-.dashboard-account-form .button {
-  min-height: 38px;
-  padding: 0 12px;
-}
-
-.dashboard-account-form > .upgrade-prompt,
-.dashboard-account-form .form-error {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-
-.dashboard-account-breakdown ul {
-  margin: 13px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.dashboard-account-breakdown li {
-  min-width: 0;
-  padding: 12px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  border-top: 1px solid var(--line);
-}
-
-.dashboard-account-details {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.dashboard-account-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-wrap: anywhere;
-  color: var(--subtle);
-  font-size: 10px;
-  line-height: 1.3;
-  text-transform: capitalize;
-}
-
-.dashboard-account-meta em {
-  padding: 2px 5px;
-  color: var(--subtle);
-  border-radius: 4px;
-  background: var(--surface-hover);
-  font-size: 8px;
-  font-style: normal;
-  font-weight: 750;
-  letter-spacing: 0.05em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-.dashboard-account-value {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.dashboard-account-actions {
-  display: inline-flex;
-  gap: 2px;
-}
-
-.dashboard-account-actions button {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  color: var(--subtle);
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-}
-
-.dashboard-account-actions button:hover {
-  color: var(--action);
-  background: var(--action-soft);
-}
-
-.dashboard-account-actions button:last-child:hover {
-  color: var(--danger);
-  background: var(--danger-soft);
-}
-
-.dashboard-account-name {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-wrap: anywhere;
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 680;
-}
-
-.dashboard-account-name em {
-  padding: 3px 6px;
-  color: var(--action);
-  border-radius: 5px;
-  background: var(--action-soft);
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 750;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.dashboard-account-balances {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-}
-
-.dashboard-account-balances > strong {
-  flex: 0 0 auto;
-  color: var(--ink);
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.dashboard-account-balances em {
-  color: var(--muted);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.dashboard-removed-accounts {
-  margin-top: 14px;
-  color: var(--subtle);
-  font-size: 11px;
-}
-
-.dashboard-removed-accounts summary {
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.dashboard-removed-accounts p {
-  margin: 8px 0 0;
-  line-height: 1.45;
-}
-
-.dashboard-removed-accounts ul {
-  margin-top: 9px;
-}
-
-.dashboard-removed-accounts li {
-  padding: 8px 0;
-  font-size: 12px;
-}
-
-.dashboard-account-error {
-  margin: 12px 0 0;
-  color: var(--danger);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-@media (max-width: 980px) {
-  .dashboard-balance {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-account-breakdown {
-    padding: 21px 24px;
-  }
-}
-
-@media (max-width: 760px) {
-  .dashboard-account-form {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-account-form .button {
-    width: 100%;
-  }
-}
 :root[data-theme="dark"] .overview-stat-bar,
 :root[data-theme="dark"] .panel {
-  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.18);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .dashboard-page .progress-track span {
-    animation-duration: 400ms;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dashboard-page .progress-track span {
-    animation: none !important;
-  }
-
-  .progress-track span {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* Dashboard summary refetch skeleton after the initial startup has completed. */
-.dashboard-refetch-skeleton {
-  min-height: min(58vh, 36rem);
-  border-radius: 18px;
-  background:
-    linear-gradient(100deg, transparent 25%, var(--surface-hover) 45%, transparent 65%),
-    var(--surface-soft);
-  background-size: 220% 100%;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .dashboard-refetch-skeleton {
-    animation: dashboard-refetch-skeleton-shimmer 1.4s ease-in-out infinite;
-  }
-}
-
-@keyframes dashboard-refetch-skeleton-shimmer {
-  to {
-    background-position: -120% 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dashboard-refetch-skeleton {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* Edit-account modal: automatic-bank-interest configuration.
-   The interest <fieldset> and its controls are scoped here (not in the global
-   TransactionForm styles) because they belong to the account edit surface. */
-.form-modal .account-interest-fieldset {
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.form-modal .account-interest-fieldset legend {
-  margin-bottom: 9px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* Free tier: no checkbox rendered (the Pro checkbox would gate on it). Show a
-   plain callout label instead, so non-Pro users never see an unclickable
-   square. The Pro upgrade callout that leads this block is styled below. */
-.form-modal .account-interest-free-option {
-  margin: 0;
-  padding: 12px;
-  border: 1px dashed var(--line-strong);
-  border-radius: 10px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
-  background: var(--surface-soft);
-}
-
-.form-modal .checkbox-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.form-modal .checkbox-inline > span {
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.form-modal .checkbox-inline input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--action);
-}
-
-.form-modal .account-interest-settings {
-  margin-top: 12px;
-  display: grid;
-  gap: 10px;
-}
-
-.form-modal .account-interest-settings label {
-  display: grid;
-  gap: 6px;
-}
-
-.form-modal .account-interest-settings label > span {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.form-modal .account-interest-settings input,
-.form-modal .account-interest-settings select {
-  width: 100%;
-  min-height: 43px;
-  padding: 10px 12px;
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  outline: 0;
-  background: var(--surface);
-  font-size: 12px;
-}
-
-.form-modal .account-interest-settings input:focus,
-.form-modal .account-interest-settings select:focus {
-  border-color: var(--action);
-  box-shadow: 0 0 0 3px var(--brand-glow);
-}
-
-.form-modal .form-hint {
-  margin: 2px 0 0;
-  color: var(--subtle);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.form-modal .form-hint.account-interest-pro-callout {
-  margin-top: 9px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--surface-soft);
-  line-height: 1.5;
-}
-
-.form-modal .form-hint.account-interest-pro-callout a {
-  color: var(--action);
-  font-weight: 700;
-  text-decoration: underline;
+  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.22);
 }
