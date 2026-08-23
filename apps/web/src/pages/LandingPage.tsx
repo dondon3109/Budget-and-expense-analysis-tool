@@ -590,7 +590,6 @@ export function LandingPage() {
                   </div>
 
                   <div className="spoken-bubble">
-                    <span className="spoken-quote-mark">&ldquo;</span>
                     <p>{activeVoiceSample.spoken}</p>
                   </div>
 

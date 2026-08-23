@@ -98,17 +98,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (active) applySession(nextSession);
     });
 
-    void supabase.auth.getSession().then(({ data, error }) => {
-      if (!active) return;
-      if (error) {
+    const sessionTimeout = window.setTimeout(() => {
+      if (!active || initializedRef.current) return;
+      applySession(null);
+    }, 4000);
+
+    void supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active) return;
+        window.clearTimeout(sessionTimeout);
+        if (error) {
+          applySession(null);
+          return;
+        }
+        applySession(data.session);
+      })
+      .catch(() => {
+        if (!active) return;
+        window.clearTimeout(sessionTimeout);
         applySession(null);
-        return;
-      }
-      applySession(data.session);
-    });
+      });
 
     return () => {
       active = false;
+      window.clearTimeout(sessionTimeout);
       listener.subscription.unsubscribe();
     };
   }, [applySession]);

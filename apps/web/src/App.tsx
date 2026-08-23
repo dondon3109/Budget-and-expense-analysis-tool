@@ -5,6 +5,7 @@ import { PublicOnly, RequireAuth } from "./auth/RouteGuards";
 import { useAuth } from "./auth/AuthProvider";
 import { FullPageLoadingStatus } from "./components/layout/FullPageLoadingStatus";
 import { PrivateAppStartupGate } from "./components/layout/PrivateAppStartupGate";
+import { ScrollToTop } from "./components/layout/ScrollToTop";
 import { syncVerifiedIdentity } from "./lib/api";
 import { userWorkspace } from "./lib/workspace";
 import { LandingPage } from "./pages/LandingPage";
@@ -123,6 +124,7 @@ function VerifiedIdentitySync() {
 export function App() {
   return (
     <>
+      <ScrollToTop />
       <SeoHead />
       <ConnectivityStatus />
       <VerifiedIdentitySync />

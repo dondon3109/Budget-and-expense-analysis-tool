@@ -74,6 +74,16 @@ export function PrivateAppStartupGate() {
     completeInitialDashboardExperience();
   }, [completeInitialDashboardExperience, minimumDurationElapsed, routeReady, startupActive, user]);
 
+  // Safeguard: Once the minimum duration has elapsed, do not hold the splash indefinitely
+  // if dashboard queries or route commits take abnormally long or stall.
+  useEffect(() => {
+    if (!startupActive || !user || !minimumDurationElapsed) return;
+    const safeguardTimer = window.setTimeout(() => {
+      completeInitialDashboardExperience();
+    }, 1200);
+    return () => window.clearTimeout(safeguardTimer);
+  }, [completeInitialDashboardExperience, minimumDurationElapsed, startupActive, user]);
+
   const readinessValue = useMemo(() => reportDashboardSettled, [reportDashboardSettled]);
   const handleRouteCommit = useCallback((locationKey: string) => {
     setCommittedLocationKey(locationKey);

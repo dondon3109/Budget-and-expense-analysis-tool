@@ -167,7 +167,6 @@
 }
 
 .settings-form {
-  max-width: 760px;
   margin-top: 28px;
   display: grid;
   gap: 18px;
@@ -243,7 +242,6 @@
 }
 
 .current-account-value {
-  max-width: 760px;
   margin-top: 26px;
   padding: 18px 20px;
   display: grid;

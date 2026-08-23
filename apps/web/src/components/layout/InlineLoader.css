@@ -1,134 +1,320 @@
 /* ============================================================
    INLINE LOADER
+   ------------------------------------------------------------
    Compact branded loading state for in-page / tab-level busy
-   states (plan lists, chat prep, auth completion). A smaller
-   sibling of the full-page loading screen — same blob-mark
-   motif, scaled down, with a soft pulsing label.
+   states (plan lists, chat prep, auth completion). Scaled sibling
+   of the full-page loading screen — micro astrolabe gyroscope,
+   drawing Z-emblem, and responsive live beacon.
    ============================================================ */
 
 .inline-loader {
-  min-height: 280px;
+  min-height: 240px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 16px;
   padding: 24px;
   color: var(--muted);
   text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .inline-loader-mark {
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  perspective: 400px;
 }
 
-.inline-loader-blob,
-.inline-loader-blob-inner {
+/* Subtle breathing ambient bloom */
+.inline-loader-bloom {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--brand) 12%, transparent) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* Micro Astrolabe SVG */
+.inline-loader-svg {
   position: absolute;
   inset: 0;
-  border-radius: 44% 56% 58% 42% / 46% 44% 56% 54%;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.inline-loader-blob {
-  background:
-    radial-gradient(120% 120% at 30% 22%, var(--brand) 0%, transparent 58%),
-    radial-gradient(120% 120% at 72% 78%, var(--brand-glow) 0%, transparent 60%);
-  opacity: 0.9;
+.inline-loader-reticle-outer {
+  fill: none;
+  stroke: color-mix(in srgb, var(--brand) 16%, transparent);
+  stroke-width: 1px;
+  stroke-dasharray: 2 4;
+  transform-origin: center;
 }
 
-.inline-loader-blob-inner {
-  inset: 17%;
-  background: var(--brand-soft);
-  border-radius: 58% 42% 46% 54% / 44% 58% 42% 56%;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+.inline-loader-reticle-inner {
+  fill: none;
+  stroke: color-mix(in srgb, var(--brand) 22%, transparent);
+  stroke-width: 1px;
+  stroke-dasharray: 3 6;
+  transform-origin: center;
 }
 
-.inline-loader-dot {
+.inline-loader-z-track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--brand) 12%, transparent);
+  stroke-width: 4.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.inline-loader-z-stroke {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 4.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  will-change: stroke-dashoffset;
+}
+
+.inline-loader-vertex {
+  fill: var(--brand-strong);
+  stroke: var(--income);
+  stroke-width: 1px;
+  transform-origin: center;
+}
+
+/* Mini 3D Orbit Satellites */
+.inline-loader-orbit-system {
   position: absolute;
-  top: 9%;
+  inset: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.inline-loader-orbit-plane {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  transform-style: preserve-3d;
+}
+
+.plane-income {
+  transform: rotateX(58deg) rotateY(16deg);
+}
+
+.plane-amber {
+  transform: rotateX(50deg) rotateY(-22deg);
+}
+
+.inline-loader-satellite {
+  position: absolute;
+  top: 0;
   left: 50%;
-  width: 9px;
-  height: 9px;
+  transform: translate(-50%, -50%);
+  display: block;
+  border-radius: 50%;
+}
+
+.sat-income {
+  width: 5px;
+  height: 5px;
+  background: var(--income);
+  box-shadow: 0 0 8px var(--income);
+}
+
+.sat-amber {
+  width: 4px;
+  height: 4px;
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+}
+
+/* Copy & Live Beacon */
+.inline-loader-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.inline-loader-beacon {
+  position: relative;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--income);
-  box-shadow: 0 0 0 3px var(--brand-glow), 0 0 14px var(--income);
-  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px var(--income);
+}
+
+.inline-loader-beacon::after {
+  content: "";
+  position: absolute;
+  inset: -2.5px;
+  border-radius: 50%;
+  border: 1px solid var(--income);
+  opacity: 0.8;
+  animation: inline-beacon-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 .inline-loader-label {
   margin: 0;
   font-size: 13px;
   font-weight: 530;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   line-height: 1.5;
+  color: var(--muted);
 }
 
+/* Animations */
 @media (prefers-reduced-motion: no-preference) {
-  .inline-loader-blob {
-    animation: inline-loader-blob-a 8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  .inline-loader-bloom {
+    animation: inline-bloom 3.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
 
-  .inline-loader-blob-inner {
-    animation: inline-loader-blob-b 6.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  .inline-loader-reticle-outer {
+    animation: inline-spin-cw 24s linear infinite;
   }
 
-  .inline-loader-dot {
-    animation: inline-loader-orbit 8s linear infinite;
+  .inline-loader-reticle-inner {
+    animation: inline-spin-ccw 18s linear infinite;
+  }
+
+  .inline-loader-z-stroke {
+    animation:
+      inline-z-draw 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards,
+      inline-z-breathe 3.6s ease-in-out 1.3s infinite;
+  }
+
+  .plane-income {
+    animation: inline-orbit-cw 6.5s linear infinite;
+  }
+
+  .plane-amber {
+    animation: inline-orbit-ccw 8s linear infinite;
   }
 
   .inline-loader-label {
-    animation: inline-loader-pulse 1.4s ease-in-out infinite;
+    animation: inline-pulse-text 2s ease-in-out infinite;
   }
 }
 
-@keyframes inline-loader-blob-a {
+@keyframes inline-bloom {
   0%,
   100% {
-    border-radius: 44% 56% 58% 42% / 46% 44% 56% 54%;
-    transform: rotate(0deg);
+    transform: scale(0.92);
+    opacity: 0.6;
   }
   50% {
-    border-radius: 58% 42% 47% 53% / 55% 48% 52% 45%;
-    transform: rotate(6deg);
+    transform: scale(1.12);
+    opacity: 0.95;
   }
 }
 
-@keyframes inline-loader-blob-b {
-  0%,
-  100% {
-    border-radius: 58% 42% 46% 54% / 44% 58% 42% 56%;
-    transform: rotate(0deg);
-  }
-  50% {
-    border-radius: 42% 58% 54% 46% / 56% 44% 58% 44%;
-    transform: rotate(-6deg);
-  }
-}
-
-@keyframes inline-loader-orbit {
+@keyframes inline-spin-cw {
   from {
-    transform: translate(-50%, -50%) rotate(0deg) translateY(26px);
+    transform: rotate(0deg);
   }
   to {
-    transform: translate(-50%, -50%) rotate(360deg) translateY(26px);
+    transform: rotate(360deg);
   }
 }
 
-@keyframes inline-loader-pulse {
+@keyframes inline-spin-ccw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes inline-z-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes inline-z-breathe {
   0%,
   100% {
-    opacity: 0.55;
+    stroke: var(--brand);
+    stroke-width: 4.5px;
+  }
+  50% {
+    stroke: color-mix(in srgb, var(--brand) 80%, var(--income));
+    stroke-width: 5.2px;
+  }
+}
+
+@keyframes inline-orbit-cw {
+  from {
+    transform: rotateX(58deg) rotateY(16deg) rotateZ(0deg);
+  }
+  to {
+    transform: rotateX(58deg) rotateY(16deg) rotateZ(360deg);
+  }
+}
+
+@keyframes inline-orbit-ccw {
+  from {
+    transform: rotateX(50deg) rotateY(-22deg) rotateZ(0deg);
+  }
+  to {
+    transform: rotateX(50deg) rotateY(-22deg) rotateZ(-360deg);
+  }
+}
+
+@keyframes inline-beacon-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  80%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes inline-pulse-text {
+  0%,
+  100% {
+    opacity: 0.7;
   }
   50% {
     opacity: 1;
   }
 }
 
-.inline-loader[data-reduced-motion] .inline-loader-blob,
-.inline-loader[data-reduced-motion] .inline-loader-blob-inner,
-.inline-loader[data-reduced-motion] .inline-loader-dot,
+/* Reduced Motion */
+.inline-loader[data-reduced-motion] {
+  animation: none;
+}
+
+.inline-loader[data-reduced-motion] .inline-loader-z-stroke {
+  stroke-dashoffset: 0;
+  stroke: var(--brand);
+  animation: none;
+}
+
+.inline-loader[data-reduced-motion] .inline-loader-bloom,
+.inline-loader[data-reduced-motion] .inline-loader-reticle-outer,
+.inline-loader[data-reduced-motion] .inline-loader-reticle-inner,
+.inline-loader[data-reduced-motion] .plane-income,
+.inline-loader[data-reduced-motion] .plane-amber,
+.inline-loader[data-reduced-motion] .inline-loader-beacon::after,
 .inline-loader[data-reduced-motion] .inline-loader-label {
   animation: none;
 }

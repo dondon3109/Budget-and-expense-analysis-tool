@@ -1134,16 +1134,6 @@
   margin-bottom: 16px;
 }
 
-.spoken-quote-mark {
-  position: absolute;
-  top: -8px;
-  left: 12px;
-  font-family: var(--lp-font-display);
-  font-size: 26px;
-  color: var(--lp-accent);
-  line-height: 1;
-}
-
 .spoken-bubble p {
   margin: 0;
   font-size: 13px;

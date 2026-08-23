@@ -216,10 +216,8 @@
 
 .nav-item.current {
   color: var(--action-strong);
-  border-color: color-mix(in srgb, var(--action) 24%, var(--line));
   background: var(--action-soft);
-  box-shadow: inset 3px 0 0 var(--action);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .nav-item.current svg {
@@ -547,7 +545,10 @@
   }
 
   .nav-item.current {
-    box-shadow: inset 0 3px 0 var(--action);
+    color: var(--action-strong);
+    border-color: color-mix(in srgb, var(--action) 28%, var(--line));
+    background: var(--action-soft);
+    box-shadow: none;
   }
 
   .sidebar-account {
