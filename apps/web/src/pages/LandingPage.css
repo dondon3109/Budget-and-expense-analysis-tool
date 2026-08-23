@@ -1417,29 +1417,29 @@
   color: var(--lp-muted);
 }
 
-.risk-cell {
-  color: var(--lp-muted);
-  font-size: 13.5px;
-  display: flex;
+.comparison-cell-value {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 
-.risk-cell svg {
+.comparison-cell-value.risk {
+  color: var(--lp-muted);
+}
+
+.comparison-cell-value.risk svg {
   color: var(--lp-expense);
   flex: 0 0 auto;
 }
 
-.advantage-cell {
+.comparison-cell-value.advantage {
   color: var(--lp-fg);
-  font-size: 13.5px;
   font-weight: 650;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
-.advantage-cell svg {
+.comparison-cell-value.advantage svg {
   color: var(--lp-accent-strong);
   flex: 0 0 auto;
 }

@@ -655,6 +655,11 @@ export function LandingPage() {
 
           <div className="comparison-table-wrap">
             <table className="comparison-table">
+              <colgroup>
+                <col style={{ width: "36%" }} />
+                <col style={{ width: "32%" }} />
+                <col style={{ width: "32%" }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Capability &amp; Security Standard</th>
@@ -668,11 +673,17 @@ export function LandingPage() {
                     <strong>Bank login credentials</strong>
                     <small>Access required to track your balance</small>
                   </td>
-                  <td className="risk-cell">
-                    <X size={15} aria-hidden="true" /> Mandatory bank passwords &amp; screen scraping
+                  <td>
+                    <span className="comparison-cell-value risk">
+                      <X size={15} aria-hidden="true" />
+                      <span>Mandatory bank passwords &amp; screen scraping</span>
+                    </span>
                   </td>
-                  <td className="zoption-col advantage-cell">
-                    <Check size={15} aria-hidden="true" /> Never requested &middot; 100% private file import
+                  <td className="zoption-col">
+                    <span className="comparison-cell-value advantage">
+                      <Check size={15} aria-hidden="true" />
+                      <span>Never requested &middot; 100% private file import</span>
+                    </span>
                   </td>
                 </tr>
                 <tr>
@@ -680,11 +691,17 @@ export function LandingPage() {
                     <strong>Data privacy &amp; profiling</strong>
                     <small>How your transactions are handled</small>
                   </td>
-                  <td className="risk-cell">
-                    <X size={15} aria-hidden="true" /> Aggregated for ad targeting &amp; lending offers
+                  <td>
+                    <span className="comparison-cell-value risk">
+                      <X size={15} aria-hidden="true" />
+                      <span>Aggregated for ad targeting &amp; lending offers</span>
+                    </span>
                   </td>
-                  <td className="zoption-col advantage-cell">
-                    <Check size={15} aria-hidden="true" /> Zero ad tracking &middot; only records you choose
+                  <td className="zoption-col">
+                    <span className="comparison-cell-value advantage">
+                      <Check size={15} aria-hidden="true" />
+                      <span>Zero ad tracking &middot; only records you choose</span>
+                    </span>
                   </td>
                 </tr>
                 <tr>
@@ -692,11 +709,17 @@ export function LandingPage() {
                     <strong>Calculation precision</strong>
                     <small>How balances and totals are computed</small>
                   </td>
-                  <td className="risk-cell">
-                    <X size={15} aria-hidden="true" /> Floating-point drift &amp; rounded decimals
+                  <td>
+                    <span className="comparison-cell-value risk">
+                      <X size={15} aria-hidden="true" />
+                      <span>Floating-point drift &amp; rounded decimals</span>
+                    </span>
                   </td>
-                  <td className="zoption-col advantage-cell">
-                    <Check size={15} aria-hidden="true" /> Exact integer centavo accuracy
+                  <td className="zoption-col">
+                    <span className="comparison-cell-value advantage">
+                      <Check size={15} aria-hidden="true" />
+                      <span>Exact integer centavo accuracy</span>
+                    </span>
                   </td>
                 </tr>
                 <tr>
@@ -704,11 +727,17 @@ export function LandingPage() {
                     <strong>Spreadsheet file support</strong>
                     <small>CSV, Excel, and bank statement uploads</small>
                   </td>
-                  <td className="risk-cell">
-                    <X size={15} aria-hidden="true" /> Rigid, error-prone or locked behind paywalls
+                  <td>
+                    <span className="comparison-cell-value risk">
+                      <X size={15} aria-hidden="true" />
+                      <span>Rigid, error-prone or locked behind paywalls</span>
+                    </span>
                   </td>
-                  <td className="zoption-col advantage-cell">
-                    <Check size={15} aria-hidden="true" /> Universal CSV, XLSX &amp; XLS with deduplication
+                  <td className="zoption-col">
+                    <span className="comparison-cell-value advantage">
+                      <Check size={15} aria-hidden="true" />
+                      <span>Universal CSV, XLSX &amp; XLS with deduplication</span>
+                    </span>
                   </td>
                 </tr>
                 <tr>
@@ -716,11 +745,17 @@ export function LandingPage() {
                     <strong>AI financial insights</strong>
                     <small>Intelligence and conversational tools</small>
                   </td>
-                  <td className="risk-cell">
-                    <X size={15} aria-hidden="true" /> Unverified chatbots with write access
+                  <td>
+                    <span className="comparison-cell-value risk">
+                      <X size={15} aria-hidden="true" />
+                      <span>Unverified chatbots with write access</span>
+                    </span>
                   </td>
-                  <td className="zoption-col advantage-cell">
-                    <Check size={15} aria-hidden="true" /> Read-only, grounded with evidence &amp; consent
+                  <td className="zoption-col">
+                    <span className="comparison-cell-value advantage">
+                      <Check size={15} aria-hidden="true" />
+                      <span>Read-only, grounded with evidence &amp; consent</span>
+                    </span>
                   </td>
                 </tr>
                 <tr>
@@ -728,11 +763,17 @@ export function LandingPage() {
                     <strong>Native mobile experience</strong>
                     <small>Android and on-the-go tracking</small>
                   </td>
-                  <td className="risk-cell">
-                    <X size={15} aria-hidden="true" /> Cloud-locked web wrappers
+                  <td>
+                    <span className="comparison-cell-value risk">
+                      <X size={15} aria-hidden="true" />
+                      <span>Cloud-locked web wrappers</span>
+                    </span>
                   </td>
-                  <td className="zoption-col advantage-cell">
-                    <Check size={15} aria-hidden="true" /> Native Android Beta APK with receipt scanning
+                  <td className="zoption-col">
+                    <span className="comparison-cell-value advantage">
+                      <Check size={15} aria-hidden="true" />
+                      <span>Native Android Beta APK with receipt scanning</span>
+                    </span>
                   </td>
                 </tr>
               </tbody>
