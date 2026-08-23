@@ -4,6 +4,23 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.11.0 — 2026-08-24
+
+### Added
+
+- Consolidated web and mobile telemetry into PostHog with cookieless, memory-only public page tracking and Core Web Vitals (LCP, CLS, INP) autocapture on public routes.
+- Added developer crash telemetry diagnostics on Android to safely test sanitized crash dispatch without crashing the app.
+- Added marketing trust pillars, interactive budget planner, and feature spotlight to landing page.
+
+### Removed
+
+- Removed legacy Google Analytics (GA4) and Cloudflare Web Analytics beacons from the web application.
+
+### Fixed
+
+- Fixed mobile theme popover positioning within sticky navigation.
+- Fixed scroll-to-top behavior on route transitions.
+
 ## 2.2.1 — 2026-08-17
 
 ### Added
