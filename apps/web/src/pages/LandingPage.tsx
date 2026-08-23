@@ -7,12 +7,9 @@ import {
   Check,
   FileSpreadsheet,
   FileText,
-  Lock,
   Menu,
   Mic,
   PiggyBank,
-  RefreshCw,
-  Scan,
   ShieldCheck,
   Sparkles,
   Star,
@@ -20,7 +17,6 @@ import {
   Upload,
   Volume2,
   X,
-  Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";

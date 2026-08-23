@@ -31,8 +31,7 @@ body {
 .ad-canvas {
   overflow: hidden;
   color: var(--ad-ink);
-  background:
-    radial-gradient(circle at 88% 18%, rgba(153, 232, 211, 0.4), transparent 29%), var(--ad-bg);
+  background: var(--ad-bg);
   font-family: "Zoption Manrope", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -1079,14 +1078,12 @@ body {
   align-items: flex-start;
   justify-content: center;
   color: #17342e;
-  background:
-    radial-gradient(circle at 88% 18%, rgba(153, 232, 211, 0.7), transparent 30%), #f4f1e9;
+  background: #f4f1e9;
 }
 
 .cta-screen.is-dark {
   color: #fffdf8;
-  background:
-    radial-gradient(circle at 88% 18%, rgba(103, 224, 188, 0.18), transparent 29%), #06473d;
+  background: #06473d;
 }
 
 .cta-screen.is-dark .brand-lockup {
@@ -1238,8 +1235,7 @@ body {
 
 .combined-intro-scene {
   color: #fffdf8;
-  background:
-    radial-gradient(circle at 78% 20%, rgba(103, 224, 188, 0.22), transparent 29%), #06473d;
+  background: #06473d;
 }
 
 .combined-intro-frame {

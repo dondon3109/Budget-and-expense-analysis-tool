@@ -38,9 +38,6 @@
   overflow-x: hidden;
   color: var(--lp-fg);
   background: var(--lp-bg);
-  background-image: 
-    radial-gradient(ellipse 60% 40% at 50% -10%, rgba(15, 107, 91, 0.12), transparent 70%),
-    radial-gradient(ellipse 40% 30% at 85% 20%, rgba(8, 119, 109, 0.08), transparent 60%);
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -73,9 +70,6 @@
   --lp-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 4px 14px rgba(0, 0, 0, 0.2);
   --lp-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 18px 44px rgba(0, 0, 0, 0.35);
   --lp-shadow-lg: 0 4px 14px rgba(0, 0, 0, 0.35), 0 34px 84px rgba(0, 0, 0, 0.48);
-  background-image: 
-    radial-gradient(ellipse 60% 40% at 50% -10%, rgba(103, 224, 188, 0.08), transparent 70%),
-    radial-gradient(ellipse 40% 30% at 85% 20%, rgba(98, 221, 203, 0.05), transparent 60%);
 }
 
 :root[data-theme="coffee"] .landing-page {
@@ -105,9 +99,6 @@
   --lp-shadow-sm: 0 1px 3px rgba(74, 49, 32, 0.05), 0 4px 12px rgba(74, 49, 32, 0.04);
   --lp-shadow: 0 2px 6px rgba(74, 49, 32, 0.06), 0 16px 38px rgba(74, 49, 32, 0.1);
   --lp-shadow-lg: 0 4px 14px rgba(74, 49, 32, 0.08), 0 32px 76px rgba(74, 49, 32, 0.16);
-  background-image: 
-    radial-gradient(ellipse 60% 40% at 50% -10%, rgba(15, 107, 91, 0.1), transparent 70%),
-    radial-gradient(ellipse 40% 30% at 85% 20%, rgba(201, 95, 45, 0.06), transparent 60%);
 }
 
 /* Typography basics */
@@ -694,7 +685,7 @@
   padding: 18px;
   border: 1px solid var(--lp-border);
   border-radius: 18px;
-  background: linear-gradient(180deg, var(--lp-surface-soft), var(--lp-surface) 65%);
+  background: var(--lp-surface);
 }
 
 .preview-chart-head {
@@ -728,7 +719,7 @@
   flex: 1;
   min-height: 12px;
   border-radius: 8px 8px 3px 3px;
-  background: linear-gradient(180deg, var(--lp-accent), var(--lp-income));
+  background: var(--lp-accent);
   cursor: pointer;
   opacity: 0.78;
   transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
@@ -738,7 +729,7 @@
 .chart-bars span.active {
   opacity: 1;
   transform: scaleY(1.04);
-  background: linear-gradient(180deg, var(--lp-accent-strong), var(--lp-accent));
+  background: var(--lp-accent-strong);
 }
 
 .preview-disclaimer {
@@ -781,7 +772,7 @@
 .pillar-item.highlight-pillar {
   position: relative;
   border-color: color-mix(in srgb, var(--lp-accent) 40%, var(--lp-border));
-  background: linear-gradient(180deg, var(--lp-surface), var(--lp-surface-soft));
+  background: var(--lp-surface);
 }
 
 .pillar-badge {
@@ -1798,7 +1789,7 @@
   display: block;
   height: 10px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--lp-accent-strong), var(--lp-income));
+  background: var(--lp-accent-strong);
 }
 
 .bill-row {
@@ -1939,7 +1930,7 @@
   width: 100%;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(90deg, var(--lp-accent-strong), var(--lp-income));
+  background: var(--lp-accent-strong);
   transform-origin: left center;
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
 }
@@ -2014,18 +2005,6 @@
   box-shadow: var(--lp-shadow-lg);
   position: relative;
   overflow: hidden;
-}
-
-.calculator-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 380px;
-  height: 380px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--lp-accent-glow), transparent 70%);
-  pointer-events: none;
 }
 
 .calculator-content {
@@ -2156,7 +2135,7 @@
   gap: 20px;
   border: 1px solid var(--lp-border);
   border-radius: 22px;
-  background: linear-gradient(150deg, var(--lp-surface-soft), var(--lp-surface) 60%);
+  background: var(--lp-surface-soft);
   box-shadow: var(--lp-shadow-md);
 }
 

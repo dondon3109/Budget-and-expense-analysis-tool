@@ -408,13 +408,7 @@ main:has(.assistant-page) > .legal-footer,
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
-  background:
-    radial-gradient(
-      circle at 92% 0,
-      color-mix(in srgb, var(--action) 5%, transparent),
-      transparent 30%
-    ),
-    linear-gradient(180deg, var(--paper), var(--surface-soft));
+  background: var(--paper);
 }
 
 /* --- Topbar --- */
@@ -698,7 +692,7 @@ main:has(.assistant-page) > .legal-footer,
   color: #fff;
   border: 0;
   border-radius: 24px;
-  background: linear-gradient(135deg, var(--action), var(--action-strong));
+  background: var(--action);
   box-shadow: 0 14px 34px -14px var(--brand-glow);
 }
 
@@ -874,7 +868,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--contrast-text);
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--action), var(--action-strong));
+  background: var(--action);
 }
 
 .assistant-message.user .assistant-message-avatar {

@@ -23,3 +23,7 @@ Do not deploy the production Worker or Pages app manually during normal developm
 - If parallel agents are justified, assign non-overlapping file ownership first.
 - Prefer focused tests over broad, repetitive regression suites.
 - If a request is phrased as a question, answer it without editing files and offer implementation separately.
+
+## Design Preferences
+
+- Prefer not to use gradient coloring on card, floating card and backgrounds

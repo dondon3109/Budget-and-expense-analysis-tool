@@ -6,7 +6,7 @@
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: linear-gradient(120deg, var(--surface-soft), var(--surface) 70%);
+  background: var(--surface-soft);
 }
 
 .transaction-voice-intro {
@@ -150,7 +150,7 @@
   padding: 11px 13px;
   margin-bottom: 2px;
   border-radius: 12px;
-  background: linear-gradient(120deg, var(--income-soft), var(--surface-soft) 70%);
+  background: var(--income-soft);
 }
 
 .transfer-net > span {

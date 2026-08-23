@@ -29,7 +29,7 @@ export function SpendingByCategory({
 
   return (
     <section className="panel category-panel" aria-labelledby="spending-title">
-      <div className="panel-heading">
+      <div className="panel-heading category-panel-heading">
         <div>
           <p className="eyebrow">Breakdown</p>
           <h2 id="spending-title">Spending by category</h2>

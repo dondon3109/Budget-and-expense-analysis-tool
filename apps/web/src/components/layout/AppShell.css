@@ -6,10 +6,6 @@
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   background: var(--page);
-  background-image:
-    radial-gradient(ellipse 60% 40% at 50% -10%, var(--brand-glow), transparent 70%),
-    radial-gradient(ellipse 40% 30% at 85% 20%, var(--page-glow-alt), transparent 60%);
-  background-attachment: fixed;
   transition: grid-template-columns 180ms ease;
 }
 
