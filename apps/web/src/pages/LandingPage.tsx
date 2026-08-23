@@ -20,6 +20,8 @@ import { getPublicCustomerReviews } from "../lib/api";
 import { useAndroidRelease } from "../releases/useAndroidRelease";
 
 const previewBars = [42, 55, 38, 66, 50, 61];
+const previewMonths = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+const previewAmounts = ["₱18,200", "₱22,500", "₱19,100", "₱26,400", "₱21,800", "₱21,400"];
 
 export function LandingPage() {
   const [searchParams] = useSearchParams();
@@ -28,6 +30,10 @@ export function LandingPage() {
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
   const androidSource = useAndroidRelease();
   const androidRelease = androidSource.release;
+
+  const [activeBarIndex, setActiveBarIndex] = useState<number | null>(5);
+  const [activeSavingsCadence, setActiveSavingsCadence] = useState<"monthly" | "daily" | "yearly">("monthly");
+  const [activeBudgetId, setActiveBudgetId] = useState<string>("groceries");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -40,8 +46,16 @@ export function LandingPage() {
 
   return (
     <div className="landing-page">
+      {/*
+        THESIS: Zoption rejects invasive fintech spyware, bank credential harvesting, and loud gamified spending trackers; it delivers an artisanal, calm, integer-precise financial workspace that empowers users through private file imports, transparent math, and grounded read-only intelligence.
+        OWN-WORLD: Deep forest and emerald accents, warm tactile paper and sand canvases, high-contrast editorial serifs (Newsreader), crisp tabular geometric interfaces (Manrope + IBM Plex Mono), fine hairline borders, luminous glass highlights, and responsive micro-interactions.
+        STORY: First-time visitors immediately realize Zoption is private, requires no bank password, handles Excel/CSV/Bank files with zero friction, and gives total clarity over monthly cash flow, budgets, recurring bills, and savings interest without invasive tracking.
+        FIRST VIEWPORT: Crisp navigation with glass blur and theme switch; bold editorial value proposition with live privacy trust badge and dual primary/secondary action triggers; floating interactive monthly dashboard mockup with live metric gauges, interactive 6-month chart bars with hover value inspector, and trust cards.
+        FORM: Persuade landing page crafted with museum-grade typography, dynamic interactive modules, rich tactile visual depth, accessible semantic hierarchy, and seamless responsive design across light, dark, and coffee themes.
+      */}
+
       <header className="landing-nav" id="top">
-        <a className="brand" href="#top">
+        <a className="brand" href="#top" aria-label="Zoption home">
           <BrandMark />
           <span className="brand-wordmark">Zoption</span>
         </a>
@@ -63,6 +77,7 @@ export function LandingPage() {
           </Link>
         </div>
       </header>
+
       <main>
         {accountDeleted && (
           <div className="account-deletion-notice" role="status">
@@ -75,6 +90,7 @@ export function LandingPage() {
             </span>
           </div>
         )}
+
         <section className="hero">
           <div className="hero-copy">
             <p className="hero-eyebrow">
@@ -116,6 +132,7 @@ export function LandingPage() {
               </li>
             </ul>
           </div>
+
           <div
             className="hero-visual"
             role="img"
@@ -143,11 +160,22 @@ export function LandingPage() {
             <div className="preview-chart">
               <div className="preview-chart-head">
                 <span>Spending rhythm</span>
-                <small>Six-month view</small>
+                <small>
+                  {activeBarIndex !== null
+                    ? `${previewMonths[activeBarIndex]}: ${previewAmounts[activeBarIndex]}`
+                    : "Six-month view"}
+                </small>
               </div>
               <div className="chart-bars" aria-hidden="true">
                 {previewBars.map((height, index) => (
-                  <span key={index} style={{ height: `${height}%` }} />
+                  <span
+                    key={index}
+                    style={{ height: `${height}%` }}
+                    className={activeBarIndex === index ? "active" : ""}
+                    onMouseEnter={() => setActiveBarIndex(index)}
+                    onClick={() => setActiveBarIndex(index)}
+                    title={`${previewMonths[index]}: ${previewAmounts[index]}`}
+                  />
                 ))}
               </div>
             </div>
@@ -248,7 +276,12 @@ export function LandingPage() {
                   <span>July budget</span>
                   <span>₱4,800 of ₱6,500</span>
                 </div>
-                <div className="progress row">
+                <div
+                  className={`progress row ${activeBudgetId === "groceries" ? "active-budget" : ""}`}
+                  onClick={() => setActiveBudgetId("groceries")}
+                  role="button"
+                  tabIndex={0}
+                >
                   <span>Groceries</span>
                   <b>
                     ₱4,800 <small>/ ₱6,500</small>
@@ -257,7 +290,12 @@ export function LandingPage() {
                     <em style={{ width: "74%" }} />
                   </i>
                 </div>
-                <div className="progress row">
+                <div
+                  className={`progress row ${activeBudgetId === "utilities" ? "active-budget" : ""}`}
+                  onClick={() => setActiveBudgetId("utilities")}
+                  role="button"
+                  tabIndex={0}
+                >
                   <span>Utilities</span>
                   <b>
                     ₱2,100 <small>/ ₱3,000</small>
@@ -266,7 +304,12 @@ export function LandingPage() {
                     <em style={{ width: "70%" }} />
                   </i>
                 </div>
-                <div className="progress row">
+                <div
+                  className={`progress row ${activeBudgetId === "transport" ? "active-budget" : ""}`}
+                  onClick={() => setActiveBudgetId("transport")}
+                  role="button"
+                  tabIndex={0}
+                >
                   <span>Transport</span>
                   <b>
                     ₱900 <small>/ ₱1,200</small>
@@ -374,13 +417,35 @@ export function LandingPage() {
                 </div>
                 <div className="balance-row interest-row">
                   <span>
-                    <PiggyBank size={14} aria-hidden="true" /> 0.6% p.a. &middot; monthly pay day
+                    <PiggyBank size={14} aria-hidden="true" /> 0.6% p.a. &middot;{" "}
+                    {activeSavingsCadence === "monthly"
+                      ? "monthly pay day"
+                      : activeSavingsCadence === "daily"
+                        ? "daily accrual"
+                        : "yearly pay day"}
                   </span>
-                  <span className="switch" role="presentation" />
+                  <span
+                    className="switch"
+                    role="presentation"
+                    onClick={() =>
+                      setActiveSavingsCadence((prev) =>
+                        prev === "monthly" ? "daily" : prev === "daily" ? "yearly" : "monthly",
+                      )
+                    }
+                  />
                 </div>
                 <div className="interest-gauge">
                   <i>
-                    <em style={{ width: "72%" }} />
+                    <em
+                      style={{
+                        width:
+                          activeSavingsCadence === "daily"
+                            ? "95%"
+                            : activeSavingsCadence === "monthly"
+                              ? "72%"
+                              : "45%",
+                      }}
+                    />
                   </i>
                 </div>
                 <div className="balance-row">
