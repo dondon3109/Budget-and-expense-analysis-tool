@@ -29,15 +29,15 @@
 .calendar-month-controls {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   margin-top: 14px;
   width: fit-content;
-  padding: 6px;
+  padding: 6px 8px;
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--surface);
-  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.04);
+  box-shadow: var(--shadow-card);
 }
 
 .calendar-month-nav {

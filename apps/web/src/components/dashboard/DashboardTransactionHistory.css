@@ -1,16 +1,16 @@
 /* All-time transaction history shown on the Profile dashboard. */
 
 .dashboard-history {
-  margin-top: 17px;
+  margin-top: 20px;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 17px;
+  border-radius: 18px;
   background: var(--paper);
-  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
+  box-shadow: var(--shadow-card);
 }
 
 .dashboard-history-heading {
-  padding: 23px 23px 20px;
+  padding: 24px 26px 20px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -22,36 +22,40 @@
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 19px;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.015em;
 }
 
 .dashboard-history-heading > div > p:not(.eyebrow) {
   max-width: 62ch;
-  margin: 7px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
 .dashboard-history-link {
-  min-height: 34px;
-  padding: 0 10px;
+  min-height: 36px;
+  padding: 0 12px;
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
-  color: var(--brand-strong);
+  color: var(--action);
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--surface);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
   text-decoration: none;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
 .dashboard-history-link:hover {
-  background: var(--brand-soft);
+  background: var(--action-soft);
+  color: var(--action-strong);
+  transform: translateY(-1px);
 }
 
 .dashboard-history-link:focus-visible,
@@ -61,28 +65,28 @@
 }
 
 .dashboard-history-status {
-  min-height: 150px;
-  padding: 28px;
+  min-height: 160px;
+  padding: 32px;
   display: grid;
   place-content: center;
-  gap: 8px;
+  gap: 10px;
   text-align: center;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.55;
 }
 
 .dashboard-history-status strong {
   color: var(--ink);
   font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 17px;
+  font-weight: 500;
+  font-size: 18px;
 }
 
 .dashboard-history-status button,
 .dashboard-history-status a {
   justify-self: center;
-  color: var(--brand-strong);
+  color: var(--action);
   font: inherit;
   font-weight: 750;
 }
@@ -98,15 +102,15 @@
 }
 
 .dashboard-history-meta {
-  min-height: 42px;
-  padding: 0 23px;
+  min-height: 44px;
+  padding: 0 26px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   color: var(--subtle);
   border-bottom: 1px solid var(--line);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .dashboard-history-table-wrap {
@@ -120,17 +124,18 @@
 
 .dashboard-history-table th,
 .dashboard-history-table td {
-  padding: 14px 16px;
+  padding: 15px 18px;
   text-align: left;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .dashboard-history-table th {
   color: var(--subtle);
   background: var(--surface-soft);
-  font-size: 9px;
-  font-weight: 800;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -151,12 +156,13 @@
 .dashboard-history-description strong {
   color: var(--ink);
   font-weight: 750;
+  font-size: 13px;
 }
 
 .dashboard-history-description span {
   margin-top: 3px;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .dashboard-history-category,
@@ -165,13 +171,13 @@
   align-items: center;
   gap: 6px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .dashboard-history-category i {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
 }
 
@@ -188,36 +194,45 @@
 .dashboard-history-amount {
   text-align: right !important;
   color: var(--ink);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 750;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 
 .dashboard-history-pagination {
-  min-height: 58px;
-  padding: 0 18px;
+  min-height: 60px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   color: var(--muted);
   border-top: 1px solid var(--line);
-  font-size: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .dashboard-history-pagination > div {
   display: flex;
-  gap: 5px;
+  gap: 6px;
 }
 
 .dashboard-history-pagination button {
-  width: 33px;
-  height: 33px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--surface);
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+.dashboard-history-pagination button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  transform: translateY(-1px);
 }
 
 .dashboard-history-pagination button:disabled {
@@ -277,8 +292,9 @@
     display: inline-block;
     color: var(--subtle);
     content: attr(data-label);
-    font-size: 8px;
-    font-weight: 800;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 750;
     letter-spacing: 0.05em;
     text-transform: uppercase;
   }

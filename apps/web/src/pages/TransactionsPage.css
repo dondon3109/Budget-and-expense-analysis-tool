@@ -5,12 +5,12 @@
 }
 
 .transaction-filters {
-  margin: 28px 0 18px;
-  padding: 12px;
+  margin: 28px 0 20px;
+  padding: 14px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--paper);
@@ -22,10 +22,10 @@
   max-width: 100%;
   flex: 1 1 280px;
   height: var(--control-height);
-  padding: 0 13px;
+  padding: 0 14px;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   color: var(--subtle);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
@@ -48,7 +48,7 @@
   outline: 0;
   background: transparent;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .search-form input::placeholder {
@@ -58,15 +58,20 @@
 .filter-select-wrap {
   min-width: 0;
   height: var(--control-height);
-  padding: 0 11px;
+  padding: 0 12px;
   display: flex;
   flex: 1 1 130px;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   color: var(--muted);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  transition: border-color 150ms ease;
+}
+
+.filter-select-wrap:focus-within {
+  border-color: var(--action);
 }
 
 .filter-select-wrap select {
@@ -77,14 +82,14 @@
   outline: 0;
   background: transparent;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 650;
 }
 
 .filter-date-wrap {
   min-width: 0;
   min-height: var(--control-height);
-  padding: 0 10px;
+  padding: 0 12px;
   display: inline-flex;
   flex: 1 1 145px;
   align-items: center;
@@ -92,13 +97,18 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  transition: border-color 150ms ease;
+}
+
+.filter-date-wrap:focus-within {
+  border-color: var(--action);
 }
 
 .filter-date-wrap span {
   color: var(--subtle);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -111,22 +121,24 @@
   outline: 0;
   background: transparent;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 
 .clear-filter {
   height: var(--control-height);
-  padding: 0 9px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   color: var(--muted);
   border: 0;
   background: transparent;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 750;
+  cursor: pointer;
+  transition: color 150ms ease;
 }
 
 .clear-filter:hover {
@@ -148,10 +160,10 @@
 .transaction-sort-control {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -159,15 +171,20 @@
 .transaction-sort-control select {
   min-height: var(--control-height);
   max-width: 180px;
-  padding: 0 30px 0 10px;
+  padding: 0 30px 0 12px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0;
+  transition: border-color 150ms ease;
+}
+
+.transaction-sort-control select:focus-visible {
+  border-color: var(--action);
 }
 
 .transaction-table-wrap {
@@ -181,10 +198,10 @@
 
 .transaction-table th,
 .transaction-table td {
-  padding: 15px 16px;
+  padding: 15px 18px;
   text-align: left;
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .transaction-table th {
@@ -192,7 +209,7 @@
   background: var(--surface-soft);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -207,18 +224,23 @@
   background: transparent;
   font: inherit;
   text-transform: inherit;
+  cursor: pointer;
 }
 
 .transaction-table td:first-child {
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .transaction-table tbody tr:last-child td {
   border-bottom: 0;
+}
+
+.transaction-table tbody tr {
+  transition: background-color 0.14s ease;
 }
 
 .transaction-table tbody tr:hover {
@@ -245,8 +267,10 @@
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 750;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .row-actions button:hover {
@@ -264,20 +288,20 @@
 
 .table-pagination {
   min-height: 60px;
-  padding: 0 18px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   color: var(--muted);
   border-top: 1px solid var(--line);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
 .table-pagination > div {
   display: flex;
-  gap: 5px;
+  gap: 6px;
 }
 
 .table-pagination button {
@@ -289,11 +313,14 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 
 .table-pagination button:hover:not(:disabled) {
   color: var(--ink);
   background: var(--surface-hover);
+  transform: translateY(-1px);
 }
 
 .table-pagination button:disabled {
