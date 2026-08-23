@@ -315,7 +315,7 @@ export function SubscriptionEditorScreen() {
       <ConfirmationDialog
         confirmLabel="Delete subscription"
         destructive
-        message="This subscription and its next scheduled charge will be removed from your Zoption workspace."
+        message="This subscription schedule will be removed from your Zoption workspace. Recorded transactions are not changed."
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => void remove()}
         title="Delete this subscription?"

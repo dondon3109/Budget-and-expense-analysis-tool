@@ -92,7 +92,7 @@ describe("AI entry service", () => {
         response: {
           draft: {
             description: "Lunch",
-            amountMinor: 25_000,
+            amountPhp: "250.00",
             kind: "expense",
             categoryName: "Food",
           },
@@ -113,6 +113,54 @@ describe("AI entry service", () => {
       amountMinor: 25_000,
       kind: "expense",
     });
+  });
+
+  it("converts comma-separated spoken pesos to centavos before returning the shared draft", async () => {
+    const run = vi.fn(async (model: string) => {
+      if (model === "@cf/openai/whisper-large-v3-turbo") {
+        return { text: "I have spent 1,000 today for snacks" };
+      }
+      return {
+        response: {
+          draft: {
+            description: "Snacks",
+            amountPhp: "1000.00",
+            kind: "expense",
+          },
+        },
+      };
+    });
+    const service = createAiEntryService(repository(), imports());
+
+    await expect(
+      service.extractVoice(
+        env(run, vi.fn()),
+        "tenant-id",
+        new File([new Uint8Array([1, 2, 3])], "voice.m4a", { type: "audio/mp4" }),
+      ),
+    ).resolves.toMatchObject({ amountMinor: 100_000, description: "Snacks" });
+  });
+
+  it("rejects a model amount that disagrees with the clear numeric transcript", async () => {
+    const run = vi.fn(async (model: string) => {
+      if (model === "@cf/openai/whisper-large-v3-turbo") {
+        return { text: "I have spent 1,000 today for snacks" };
+      }
+      return {
+        response: {
+          draft: { description: "Snacks", amountPhp: "10.00", kind: "expense" },
+        },
+      };
+    });
+    const service = createAiEntryService(repository(), imports());
+
+    await expect(
+      service.extractVoice(
+        env(run, vi.fn()),
+        "tenant-id",
+        new File([new Uint8Array([1, 2, 3])], "voice.m4a", { type: "audio/mp4" }),
+      ),
+    ).rejects.toMatchObject({ status: 422, code: "voice_transaction_amount_mismatch" });
   });
 
   it("does not send a PDF to AI without current AI-entry consent", async () => {

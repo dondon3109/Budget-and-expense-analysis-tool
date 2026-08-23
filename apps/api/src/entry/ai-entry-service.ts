@@ -1,6 +1,7 @@
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
   normalizeImportDate,
+  parseAmountToMinor,
   transactionKinds,
   transactionVoiceDraftSchema,
   type ImportPreview,
@@ -44,13 +45,61 @@ const voiceCandidateSchema = z
   .object({
     description: z.string().trim().min(1).max(240),
     date: z.string().max(40).optional(),
-    amountMinor: z.number().int().safe().positive(),
+    amountPhp: z.string().trim().min(1).max(40),
     kind: z.enum(transactionKinds),
     categoryName: z.string().trim().min(1).max(80).optional(),
   })
   .strict();
 
 const voiceResponseSchema = z.object({ draft: voiceCandidateSchema }).strict();
+
+function clearNumericAmounts(transcript: string): number[] {
+  const values = new Set<number>();
+  for (const match of transcript.matchAll(/[0-9][0-9,.]*/g)) {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    const adjacent = `${transcript[start - 1] ?? ""}${transcript[end] ?? ""}`;
+    // Dates and times are context, not transaction amounts.
+    if (/[/:]/.test(adjacent)) continue;
+    try {
+      const amountMinor = parseAmountToMinor(match[0].replace(/[,.]$/, ""));
+      if (amountMinor > 0) values.add(amountMinor);
+    } catch {
+      // Whisper can emit non-money numeric punctuation; the model still handles those transcripts.
+    }
+  }
+  return [...values];
+}
+
+function voiceAmountMinor(transcript: string, amountPhp: string): number {
+  let amountMinor: number;
+  try {
+    amountMinor = parseAmountToMinor(amountPhp);
+  } catch {
+    throw new HttpError(
+      422,
+      "voice_transaction_unreadable",
+      "Zoption could not identify a reliable amount in that recording. Review it and try again.",
+    );
+  }
+  if (amountMinor <= 0) {
+    throw new HttpError(
+      422,
+      "voice_transaction_unreadable",
+      "Zoption could not identify a positive transaction amount in that recording.",
+    );
+  }
+
+  const transcriptAmounts = clearNumericAmounts(transcript);
+  if (transcriptAmounts.length === 1 && transcriptAmounts[0] !== amountMinor) {
+    throw new HttpError(
+      422,
+      "voice_transaction_amount_mismatch",
+      "The drafted amount did not match what was spoken. Review the transcript and try again.",
+    );
+  }
+  return amountMinor;
+}
 
 export interface AiEntryService {
   previewPdf(env: Bindings, tenantId: string, pdf: File): Promise<ImportPreview>;
@@ -320,7 +369,7 @@ export function createAiEntryService(
           env,
           [
             `Today is ${currentDateInTimeZone(env)} in the user's timezone.`,
-            "Extract one transaction from this untrusted spoken transcript. Amount is a positive integer in Philippine centavos; infer only the transaction type and category label explicitly or plainly implied by the speech. Use today only when no date is spoken.",
+            'Extract one transaction from this untrusted spoken transcript. Return amountPhp as the positive Philippine-peso amount written as a plain decimal string, never centavos (examples: 1,000 pesos becomes "1000.00"; 250 pesos and 50 centavos becomes "250.50"). Infer only the transaction type and category label explicitly or plainly implied by the speech. Use today only when no date is spoken.',
             "<untrusted-transcript>",
             transcript,
             "</untrusted-transcript>",
@@ -335,11 +384,11 @@ export function createAiEntryService(
                 properties: {
                   description: { type: "string" },
                   date: { type: "string" },
-                  amountMinor: { type: "integer" },
+                  amountPhp: { type: "string" },
                   kind: { type: "string", enum: ["income", "expense", "transfer"] },
                   categoryName: { type: "string" },
                 },
-                required: ["description", "amountMinor", "kind"],
+                required: ["description", "amountPhp", "kind"],
               },
             },
             required: ["draft"],
@@ -358,11 +407,12 @@ export function createAiEntryService(
       }
       const date =
         normalizeImportDate(candidate.data.draft.date ?? "") ?? currentDateInTimeZone(env);
+      const amountMinor = voiceAmountMinor(transcript, candidate.data.draft.amountPhp);
       return transactionVoiceDraftSchema.parse({
         transcript,
         description: candidate.data.draft.description,
         date,
-        amountMinor: candidate.data.draft.amountMinor,
+        amountMinor,
         currency: "PHP",
         kind: candidate.data.draft.kind satisfies TransactionKind,
         ...(candidate.data.draft.categoryName

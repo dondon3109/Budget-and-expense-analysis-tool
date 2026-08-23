@@ -138,7 +138,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Can I track subscriptions and recurring charges?",
     answer:
-      "Yes. Log a subscription and Zoption records its next charge as an expense, so your balance already reflects what's coming. Edit, cancel, or delete a subscription and the recorded charge stays in sync, including annual plans.",
+      "Yes. Log a subscription to track its upcoming billing date and monthly cost without changing your recorded account balance. Edit, cancel, or delete the schedule independently, including annual plans.",
   },
   {
     question: "How does automatic savings interest work?",

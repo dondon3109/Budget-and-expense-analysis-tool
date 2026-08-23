@@ -1981,24 +1981,6 @@ export function createMobileSyncRepository(
               payload.nextBillingDate,
               timestamp,
             );
-            extraStatements.push(
-              env.DB.prepare(
-                `INSERT INTO transactions (
-                   id, tenant_id, account_id, category_id, date, description, amount_minor,
-                   currency, kind, source_kind, subscription_id, revision, updated_at
-                 ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PHP', 'expense', 'manual', ?, 1, ?)`,
-              ).bind(
-                crypto.randomUUID(),
-                tenantId,
-                payload.accountId,
-                payload.categoryId,
-                payload.nextBillingDate,
-                payload.name,
-                normalizeSignedAmount(payload.amountMinor, "expense"),
-                operation.entityId,
-                timestamp,
-              ),
-            );
           } else if (operation.operationType === "update") {
             const payload = operation.payload;
             const sub = mobileSyncSubscriptionSnapshotSchema.parse(current);
@@ -2029,63 +2011,10 @@ export function createMobileSyncRepository(
               tenantId,
               operation.baseRevision,
             );
-            if (sub.status === "active" && merged.status === "canceled") {
-              extraStatements.push(
-                env.DB.prepare(
-                  "DELETE FROM transactions WHERE tenant_id = ? AND subscription_id = ?",
-                ).bind(tenantId, operation.entityId),
-              );
-            } else if (merged.status === "active" && merged.accountId) {
-              extraStatements.push(
-                env.DB.prepare(
-                  `UPDATE transactions SET
-                     account_id = ?, category_id = ?, date = ?, description = ?,
-                     amount_minor = ?, currency = 'PHP', kind = 'expense', updated_at = datetime('now')
-                   WHERE tenant_id = ? AND subscription_id = ?`,
-                ).bind(
-                  merged.accountId,
-                  merged.categoryId,
-                  merged.nextBillingDate,
-                  merged.name,
-                  normalizeSignedAmount(merged.amountMinor, "expense"),
-                  tenantId,
-                  operation.entityId,
-                ),
-              );
-              extraStatements.push(
-                env.DB.prepare(
-                  `INSERT INTO transactions (
-                     id, tenant_id, account_id, category_id, date, description, amount_minor,
-                     currency, kind, source_kind, subscription_id, revision, updated_at
-                   )
-                   SELECT ?, ?, ?, ?, ?, ?, ?, 'PHP', 'expense', 'manual', ?, 1, ?
-                   WHERE NOT EXISTS (
-                     SELECT 1 FROM transactions WHERE tenant_id = ? AND subscription_id = ?
-                   )`,
-                ).bind(
-                  crypto.randomUUID(),
-                  tenantId,
-                  merged.accountId,
-                  merged.categoryId,
-                  merged.nextBillingDate,
-                  merged.name,
-                  normalizeSignedAmount(merged.amountMinor, "expense"),
-                  operation.entityId,
-                  timestamp,
-                  tenantId,
-                  operation.entityId,
-                ),
-              );
-            }
           } else {
             mutation = env.DB.prepare(
               "DELETE FROM subscriptions WHERE id = ? AND tenant_id = ? AND revision = ?",
             ).bind(operation.entityId, tenantId, operation.baseRevision);
-            extraStatements.push(
-              env.DB.prepare(
-                "DELETE FROM transactions WHERE tenant_id = ? AND subscription_id = ?",
-              ).bind(tenantId, operation.entityId),
-            );
           }
         } else if (operation.entityType === "event") {
           if (operation.operationType === "create") {
