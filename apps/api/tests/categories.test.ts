@@ -9,7 +9,7 @@ function categoryEnvironment(binding: D1Database): Bindings {
   return { DB: binding };
 }
 
-/** Reproduces D1's aggregate write count when an UPDATE also fires sync triggers. */
+/** Reproduces D1's aggregate write count when an INSERT or UPDATE also fires sync triggers. */
 class TriggerInclusiveStatement implements D1PreparedStatement {
   constructor(private statement: D1PreparedStatement) {}
 
@@ -53,7 +53,8 @@ function withTriggerInclusiveChanges(binding: D1Database): D1Database {
   return {
     prepare(query) {
       const statement = binding.prepare(query);
-      return query.trimStart().startsWith("UPDATE categories")
+      const trimmed = query.trimStart();
+      return trimmed.startsWith("UPDATE categories") || trimmed.startsWith("INSERT INTO categories")
         ? new TriggerInclusiveStatement(statement)
         : statement;
     },
@@ -192,6 +193,27 @@ describe("categoryRepository entitlement enforcement", () => {
       }),
     ).resolves.toMatchObject({
       name: "Pro D",
+      origin: "custom",
+      requiredPlan: "zoption_pro",
+      locked: false,
+    });
+  });
+
+  it("creates a custom category for an effective-Pro tenant when sync triggers report aggregate changes", async () => {
+    const { binding, database } = createD1TestDatabase();
+    const tenantId = "trigger-inclusive-pro-tenant";
+    createTenant(database, tenantId);
+    grantActivePaypalPro(database, tenantId);
+    const env = categoryEnvironment(withTriggerInclusiveChanges(binding));
+
+    await expect(
+      categoryRepository.create(env, tenantId, {
+        name: "New Pro Category",
+        kind: "expense",
+        color: "#2a78d6",
+      }),
+    ).resolves.toMatchObject({
+      name: "New Pro Category",
       origin: "custom",
       requiredPlan: "zoption_pro",
       locked: false,

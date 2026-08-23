@@ -95,16 +95,17 @@ export const categoryRepository: CategoryRepository = {
     const db = drizzle(env.DB);
     await ensureUniqueName(env, input.name, tenantId);
     const id = crypto.randomUUID();
-    let result: D1Result;
+    let createdId: string | null;
     try {
-      result = await env.DB.prepare(
+      createdId = await env.DB.prepare(
         `INSERT INTO categories (id, tenant_id, name, kind, color, origin, required_plan)
          SELECT ?, ?, ?, ?, ?, 'custom',
            CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN 'zoption_pro' ELSE 'free' END
          WHERE ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} OR (
            SELECT COUNT(*) FROM categories
            WHERE tenant_id = ? AND origin = 'custom' AND required_plan = 'free' AND archived = 0
-         ) < ?`,
+         ) < ?
+         RETURNING id`,
       )
         .bind(
           id,
@@ -117,11 +118,11 @@ export const categoryRepository: CategoryRepository = {
           tenantId,
           FREE_CUSTOM_CATEGORY_LIMIT,
         )
-        .run();
+        .first<string>("id");
     } catch (error) {
       rethrowCategoryWriteError(error);
     }
-    if ((result.meta.changes ?? 0) !== 1) throw await customCategoryLimitError(env, tenantId);
+    if (!createdId) throw await customCategoryLimitError(env, tenantId);
     const [created, hasPro] = await Promise.all([
       db
         .select({
