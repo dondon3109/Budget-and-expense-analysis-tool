@@ -1,12 +1,18 @@
 import type { PublicCustomerReview } from "@zoption/shared";
 import {
   ArrowRight,
+  Calculator,
   Check,
+  FileSpreadsheet,
+  Lock,
   PiggyBank,
+  RefreshCw,
   ShieldCheck,
   Sparkles,
   Star,
   TrendingUp,
+  X,
+  Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -35,6 +41,14 @@ export function LandingPage() {
   const [activeSavingsCadence, setActiveSavingsCadence] = useState<"monthly" | "daily" | "yearly">("monthly");
   const [activeBudgetId, setActiveBudgetId] = useState<string>("groceries");
 
+  // Interactive Marketing & Financial Clarity Calculator State
+  const [monthlyExpense, setMonthlyExpense] = useState<number>(45000);
+  const [activeSubsCount, setActiveSubsCount] = useState<number>(4);
+
+  const annualSubscriptionTotal = activeSubsCount * 380 * 12;
+  const annualDriftSavings = Math.round(monthlyExpense * 0.04) * 12;
+  const annualLeakSavings = annualSubscriptionTotal + annualDriftSavings;
+
   useEffect(() => {
     const controller = new AbortController();
     getPublicCustomerReviews(controller.signal)
@@ -61,6 +75,8 @@ export function LandingPage() {
         </a>
         <nav className="landing-links" aria-label="Learn more">
           <a href="#modules">Features</a>
+          <a href="#calculator">Savings impact</a>
+          <a href="#compare">Why Zoption</a>
           <a href="#approach">How it works</a>
           <a href="#reviews">Reviews</a>
           <a href="#banks">Supported imports</a>
@@ -182,6 +198,48 @@ export function LandingPage() {
             <p className="preview-disclaimer">
               Illustrative values only. Your workspace begins without transactions or budgets.
             </p>
+          </div>
+        </section>
+
+        {/* ============================================================
+           Marketing Trust Pillars Strip
+           ============================================================ */}
+        <section className="trust-pillars-strip" aria-label="Trust and privacy pillars">
+          <div className="pillar-item">
+            <div className="pillar-icon">
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <strong>Zero Bank Logins</strong>
+              <p>Never share banking passwords or credentials</p>
+            </div>
+          </div>
+          <div className="pillar-item">
+            <div className="pillar-icon">
+              <Zap size={20} />
+            </div>
+            <div>
+              <strong>Exact Centavo Math</strong>
+              <p>Integer precision with 0 floating-point drift</p>
+            </div>
+          </div>
+          <div className="pillar-item">
+            <div className="pillar-icon">
+              <FileSpreadsheet size={20} />
+            </div>
+            <div>
+              <strong>Universal File Importer</strong>
+              <p>Instant CSV, XLSX &amp; XLS mapper with deduplication</p>
+            </div>
+          </div>
+          <div className="pillar-item">
+            <div className="pillar-icon">
+              <Lock size={20} />
+            </div>
+            <div>
+              <strong>100% User-Owned Data</strong>
+              <p>No ad profiling, telemetry, or data monetization</p>
+            </div>
           </div>
         </section>
 
@@ -491,6 +549,194 @@ export function LandingPage() {
                 </div>
               </div>
             </article>
+          </div>
+        </section>
+
+        {/* ============================================================
+           Interactive Savings & Clarity Calculator
+           ============================================================ */}
+        <section className="calculator-section" id="calculator" aria-labelledby="calculator-title">
+          <div className="calculator-card">
+            <div className="calculator-content">
+              <p className="eyebrow">
+                <Calculator size={14} aria-hidden="true" /> Interactive Financial Clarity
+              </p>
+              <h2 id="calculator-title">See what clarity saves you each year.</h2>
+              <p className="calculator-lead">
+                Unreviewed subscription renewals, hidden transfer fees, and unbudgeted impulses
+                quietly drain thousands each year. See how conscious, private tracking puts money
+                back in your pocket.
+              </p>
+
+              <div className="calculator-controls">
+                <div className="calculator-field">
+                  <div className="calculator-label-row">
+                    <span>Estimated monthly spending</span>
+                    <strong>₱{monthlyExpense.toLocaleString()}</strong>
+                  </div>
+                  <input
+                    type="range"
+                    min={15000}
+                    max={150000}
+                    step={5000}
+                    value={monthlyExpense}
+                    onChange={(e) => setMonthlyExpense(Number(e.target.value))}
+                    aria-label="Estimated monthly expenses slider"
+                    className="calculator-slider"
+                  />
+                  <div className="slider-ticks">
+                    <span>₱15k</span>
+                    <span>₱75k</span>
+                    <span>₱150k</span>
+                  </div>
+                </div>
+
+                <div className="calculator-field">
+                  <div className="calculator-label-row">
+                    <span>Recurring subscriptions tracked</span>
+                    <strong>{activeSubsCount} active services</strong>
+                  </div>
+                  <div className="calculator-subs-selector">
+                    {[2, 4, 6, 8, 10].map((count) => (
+                      <button
+                        type="button"
+                        key={count}
+                        className={activeSubsCount === count ? "selected" : ""}
+                        onClick={() => setActiveSubsCount(count)}
+                      >
+                        {count} {count === 10 ? "+" : ""}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="calculator-result-box">
+              <span className="result-badge">Projected 1-Year Impact</span>
+              <div className="result-metric">
+                <small>Estimated annual leak recovery</small>
+                <strong>₱{annualLeakSavings.toLocaleString()}</strong>
+              </div>
+              <div className="result-breakdown">
+                <div className="breakdown-row">
+                  <span>Recurring bill visibility</span>
+                  <b>₱{annualSubscriptionTotal.toLocaleString()}/yr</b>
+                </div>
+                <div className="breakdown-row">
+                  <span>Recovered impulse drift (~4%)</span>
+                  <b>₱{annualDriftSavings.toLocaleString()}/yr</b>
+                </div>
+              </div>
+              <Link className="button primary full-width" to="/signup">
+                Claim your clarity — Start free <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+              <small className="calculator-disclaimer">
+                Based on an average 4% budget optimization achieved through conscious, review-first
+                transaction management.
+              </small>
+            </div>
+          </div>
+        </section>
+
+        {/* ============================================================
+           Comparison Matrix (SEO & Marketing Wedge)
+           ============================================================ */}
+        <section className="comparison-section" id="compare" aria-labelledby="compare-title">
+          <div className="section-head">
+            <p className="eyebrow">The Zoption Advantage</p>
+            <h2 id="compare-title">Why private budgeting beats bank-linked apps.</h2>
+            <p className="section-lead">
+              Fintech apps demand your bank password, harvest your financial habits for credit card
+              ads, and round decimals. Zoption gives you total control, zero credential risk, and
+              exact centavo accuracy.
+            </p>
+          </div>
+
+          <div className="comparison-table-wrap">
+            <table className="comparison-table">
+              <thead>
+                <tr>
+                  <th>Capability &amp; Security Standard</th>
+                  <th>Typical Finance Apps</th>
+                  <th className="zoption-col">Zoption Private Workspace</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <strong>Bank login credentials</strong>
+                    <small>Access required to track your balance</small>
+                  </td>
+                  <td className="risk-cell">
+                    <X size={15} aria-hidden="true" /> Mandatory bank passwords &amp; screen scraping
+                  </td>
+                  <td className="zoption-col advantage-cell">
+                    <Check size={15} aria-hidden="true" /> Never requested &middot; 100% private file import
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Data privacy &amp; profiling</strong>
+                    <small>How your transactions are handled</small>
+                  </td>
+                  <td className="risk-cell">
+                    <X size={15} aria-hidden="true" /> Aggregated for ad targeting &amp; lending offers
+                  </td>
+                  <td className="zoption-col advantage-cell">
+                    <Check size={15} aria-hidden="true" /> Zero ad tracking &middot; only records you choose
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Calculation precision</strong>
+                    <small>How balances and totals are computed</small>
+                  </td>
+                  <td className="risk-cell">
+                    <X size={15} aria-hidden="true" /> Floating-point drift &amp; rounded decimals
+                  </td>
+                  <td className="zoption-col advantage-cell">
+                    <Check size={15} aria-hidden="true" /> Exact integer centavo accuracy
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Spreadsheet file support</strong>
+                    <small>CSV, Excel, and bank statement uploads</small>
+                  </td>
+                  <td className="risk-cell">
+                    <X size={15} aria-hidden="true" /> Rigid, error-prone or locked behind paywalls
+                  </td>
+                  <td className="zoption-col advantage-cell">
+                    <Check size={15} aria-hidden="true" /> Universal CSV, XLSX &amp; XLS with deduplication
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>AI financial insights</strong>
+                    <small>Intelligence and conversational tools</small>
+                  </td>
+                  <td className="risk-cell">
+                    <X size={15} aria-hidden="true" /> Unverified chatbots with write access
+                  </td>
+                  <td className="zoption-col advantage-cell">
+                    <Check size={15} aria-hidden="true" /> Read-only, grounded with evidence &amp; consent
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Native mobile experience</strong>
+                    <small>Android and on-the-go tracking</small>
+                  </td>
+                  <td className="risk-cell">
+                    <X size={15} aria-hidden="true" /> Cloud-locked web wrappers
+                  </td>
+                  <td className="zoption-col advantage-cell">
+                    <Check size={15} aria-hidden="true" /> Native Android Beta APK with receipt scanning
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
 

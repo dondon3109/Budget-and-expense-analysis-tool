@@ -641,6 +641,62 @@
 }
 
 /* ============================================================
+   Trust Pillars Strip
+   ============================================================ */
+.trust-pillars-strip {
+  width: min(1160px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 40px 0 20px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.pillar-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--lp-border);
+  border-radius: 16px;
+  background: var(--lp-surface);
+  box-shadow: var(--lp-shadow-sm);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pillar-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--lp-accent);
+  box-shadow: var(--lp-shadow-md);
+}
+
+.pillar-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--lp-accent-soft);
+  color: var(--lp-accent-strong);
+}
+
+.pillar-item strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--lp-fg);
+  line-height: 1.25;
+}
+
+.pillar-item p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--lp-muted);
+}
+
+/* ============================================================
    Feature Modules (The 6 Facets)
    ============================================================ */
 .facet-modules {
@@ -1064,6 +1120,336 @@
   background: var(--lp-surface);
   font-size: 13px;
   color: var(--lp-muted);
+}
+
+/* ============================================================
+   Interactive Savings Calculator
+   ============================================================ */
+.calculator-section {
+  width: min(1160px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 60px 0;
+}
+
+.calculator-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 40px;
+  padding: clamp(32px, 5vw, 56px);
+  border: 1px solid var(--lp-border);
+  border-radius: 28px;
+  background: var(--lp-surface);
+  box-shadow: var(--lp-shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.calculator-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--lp-accent-glow), transparent 70%);
+  pointer-events: none;
+}
+
+.calculator-content {
+  display: grid;
+  align-content: center;
+  gap: 16px;
+}
+
+.calculator-content h2 {
+  font-size: clamp(30px, 3.6vw, 42px);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.calculator-lead {
+  margin: 0;
+  color: var(--lp-muted);
+  font-size: 15.5px;
+  line-height: 1.65;
+  max-width: 540px;
+}
+
+.calculator-controls {
+  margin-top: 14px;
+  display: grid;
+  gap: 24px;
+}
+
+.calculator-field {
+  display: grid;
+  gap: 10px;
+}
+
+.calculator-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.calculator-label-row span {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--lp-muted);
+}
+
+.calculator-label-row strong {
+  font-family: var(--lp-font-mono);
+  font-size: 18px;
+  font-weight: 750;
+  color: var(--lp-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.calculator-slider {
+  width: 100%;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 999px;
+  background: var(--lp-surface-soft);
+  outline: none;
+  cursor: pointer;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.calculator-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--lp-accent-strong);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.calculator-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--lp-font-mono);
+  font-size: 11px;
+  color: var(--lp-muted);
+}
+
+.calculator-subs-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.calculator-subs-selector button {
+  min-width: 48px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--lp-border);
+  border-radius: 10px;
+  background: var(--lp-surface-soft);
+  color: var(--lp-muted);
+  font-family: var(--lp-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.calculator-subs-selector button:hover {
+  background: var(--lp-surface-hover);
+  color: var(--lp-fg);
+}
+
+.calculator-subs-selector button.selected {
+  background: var(--lp-accent-soft);
+  color: var(--lp-accent-strong);
+  border-color: var(--lp-accent);
+}
+
+.calculator-result-box {
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  border: 1px solid var(--lp-border);
+  border-radius: 22px;
+  background: linear-gradient(150deg, var(--lp-surface-soft), var(--lp-surface) 60%);
+  box-shadow: var(--lp-shadow-md);
+}
+
+.result-badge {
+  width: fit-content;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--lp-accent-soft);
+  color: var(--lp-accent-strong);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.result-metric small {
+  display: block;
+  font-size: 12px;
+  color: var(--lp-muted);
+  font-weight: 650;
+}
+
+.result-metric strong {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--lp-font-display);
+  font-size: clamp(34px, 4vw, 44px);
+  font-weight: 500;
+  color: var(--lp-accent-strong);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-breakdown {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid var(--lp-border);
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+}
+
+.breakdown-row span {
+  color: var(--lp-muted);
+}
+
+.breakdown-row b {
+  color: var(--lp-fg);
+  font-family: var(--lp-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.calculator-result-box .button {
+  min-height: 48px;
+  width: 100%;
+}
+
+.calculator-disclaimer {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--lp-muted);
+  text-align: center;
+}
+
+/* ============================================================
+   Comparison Matrix
+   ============================================================ */
+.comparison-section {
+  width: min(1160px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 80px 0;
+}
+
+.comparison-table-wrap {
+  margin-top: 36px;
+  overflow-x: auto;
+  border: 1px solid var(--lp-border);
+  border-radius: 22px;
+  background: var(--lp-surface);
+  box-shadow: var(--lp-shadow-md);
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--lp-border);
+  vertical-align: middle;
+}
+
+.comparison-table th {
+  background: var(--lp-surface-soft);
+  font-family: var(--lp-font-mono);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lp-muted);
+}
+
+.comparison-table th.zoption-col {
+  color: var(--lp-accent-strong);
+  background: var(--lp-accent-soft);
+}
+
+.comparison-table td strong {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 750;
+  color: var(--lp-fg);
+}
+
+.comparison-table td small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--lp-muted);
+}
+
+.risk-cell {
+  color: var(--lp-muted);
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.risk-cell svg {
+  color: var(--lp-expense);
+  flex: 0 0 auto;
+}
+
+.advantage-cell {
+  color: var(--lp-fg);
+  font-size: 13.5px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.advantage-cell svg {
+  color: var(--lp-accent-strong);
+  flex: 0 0 auto;
+}
+
+.comparison-table td.zoption-col {
+  background: color-mix(in srgb, var(--lp-accent-soft) 40%, var(--lp-surface));
+}
+
+.comparison-table tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 /* ============================================================
@@ -1708,6 +2094,13 @@
   .landing-links {
     display: none;
   }
+  .trust-pillars-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .calculator-card {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
   .facet,
   .facet:nth-child(even) {
     grid-template-columns: 1fr;
@@ -1753,6 +2146,27 @@
   .landing-nav .button.primary {
     min-height: 44px;
     padding-inline: 14px;
+  }
+  .trust-pillars-strip {
+    grid-template-columns: 1fr;
+    width: min(1160px, calc(100% - 32px));
+    padding: 24px 0 10px;
+  }
+  .calculator-section,
+  .comparison-section {
+    width: min(1160px, calc(100% - 32px));
+    padding: 40px 0;
+  }
+  .calculator-card {
+    padding: 24px 18px;
+    border-radius: 20px;
+  }
+  .calculator-result-box {
+    padding: 22px 18px;
+  }
+  .comparison-table th,
+  .comparison-table td {
+    padding: 14px 16px;
   }
   .hero {
     padding: 44px 0 52px;
