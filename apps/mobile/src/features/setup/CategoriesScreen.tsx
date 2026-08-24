@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { resolveCategoryEmoji } from "@zoption/shared";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
 import type { LocalCategoryItem } from "@/db/repository";
 import { Button, EmptyState, ErrorState, Skeleton } from "@/ui/components";
@@ -61,8 +62,8 @@ function CategoryRow({
       ]}
     >
       <View accessibilityElementsHidden style={styles.leading}>
-        {category.iconEmoji ? (
-          <Text style={styles.leadingEmoji}>{category.iconEmoji}</Text>
+        {resolveCategoryEmoji(category) ? (
+          <Text style={styles.leadingEmoji}>{resolveCategoryEmoji(category)}</Text>
         ) : (
           <View style={[styles.colorDot, { backgroundColor: category.color }]} />
         )}

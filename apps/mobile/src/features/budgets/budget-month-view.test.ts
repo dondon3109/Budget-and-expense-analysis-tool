@@ -1,12 +1,20 @@
 import { buildBudgetMonthView } from "./budget-month-view";
 
 const categories = [
-  { id: "category-1", name: "Dining", kind: "expense" as const, color: "#123456", pending: false },
+  {
+    id: "category-1",
+    name: "Dining",
+    kind: "expense" as const,
+    color: "#123456",
+    iconEmoji: "🍔",
+    pending: false,
+  },
   {
     id: "category-2",
     name: "Groceries",
     kind: "expense" as const,
     color: "#0F766E",
+    iconEmoji: "🛒",
     pending: false,
   },
 ];

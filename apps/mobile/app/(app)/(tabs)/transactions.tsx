@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { Currency } from "@zoption/shared";
+import { resolveCategoryEmoji, type Currency } from "@zoption/shared";
 import { useLocalTransactions } from "@/db/local-workspace-state";
 import {
   transactionKindFilters,
@@ -157,9 +157,17 @@ function TransactionItemRow({
     >
       <View style={styles.categoryColumn}>
         <View style={styles.categoryLine}>
-          {transaction.categoryIconEmoji ? (
+          {resolveCategoryEmoji({
+            name: transaction.categoryName,
+            iconEmoji: transaction.categoryIconEmoji,
+            kind: transaction.kind,
+          }) ? (
             <Text accessibilityElementsHidden style={styles.categoryEmoji}>
-              {transaction.categoryIconEmoji}
+              {resolveCategoryEmoji({
+                name: transaction.categoryName,
+                iconEmoji: transaction.categoryIconEmoji,
+                kind: transaction.kind,
+              })}
             </Text>
           ) : (
             <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
@@ -647,9 +655,9 @@ export default function TransactionsScreen() {
                 { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
               ]}
             >
-              {item.iconEmoji ? (
+              {resolveCategoryEmoji(item) ? (
                 <Text accessibilityElementsHidden style={styles.summaryEmoji}>
-                  {item.iconEmoji}
+                  {resolveCategoryEmoji(item)}
                 </Text>
               ) : (
                 <View style={[styles.summaryDot, { backgroundColor: item.color }]} />

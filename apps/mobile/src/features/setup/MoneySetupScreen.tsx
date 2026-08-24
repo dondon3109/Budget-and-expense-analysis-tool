@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { resolveCategoryEmoji } from "@zoption/shared";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
 import type { LocalAccountItem } from "@/db/repository";
 import { Button, EmptyState, ErrorState, Skeleton } from "@/ui/components";
@@ -237,7 +238,7 @@ export function MoneySetupScreen() {
                       state={category.syncState}
                       icon="tag-outline"
                       iconColor={category.color}
-                      emoji={category.iconEmoji}
+                      emoji={resolveCategoryEmoji(category)}
                       disabled={category.system || category.syncState === "failed"}
                       onPress={() =>
                         category.syncState === "conflicted"

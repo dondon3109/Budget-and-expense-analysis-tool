@@ -175,6 +175,7 @@ describe("encrypted local workspace repository", () => {
           name: "Dining",
           kind: "expense",
           color: "#123456",
+          iconEmoji: "🍔",
           system: false,
           requiredPlan: "free",
           locked: false,
@@ -232,6 +233,7 @@ describe("encrypted local workspace repository", () => {
           name: "Dining",
           kind: "expense",
           color: "#123456",
+          iconEmoji: "🍔",
           pending: false,
         },
       ],
@@ -408,7 +410,7 @@ describe("encrypted local workspace repository", () => {
         categoryId: "category-1",
         categoryName: "Dining",
         categoryColor: "#123456",
-        categoryIconEmoji: null,
+        categoryIconEmoji: "🍔",
         accountName: "Wallet",
       },
     ]);
@@ -489,8 +491,8 @@ describe("encrypted local workspace repository", () => {
       },
     ]);
     expect(result.categories).toEqual([
-      { id: "category-1", name: "Dining", kind: "expense", color: "#123456", pending: false },
-      { id: "category-2", name: "Groceries", kind: "expense", color: "#0F766E", pending: false },
+      { id: "category-1", name: "Dining", kind: "expense", color: "#123456", iconEmoji: "🍔", pending: false },
+      { id: "category-2", name: "Groceries", kind: "expense", color: "#0F766E", iconEmoji: "🛒", pending: false },
     ]);
   });
 });

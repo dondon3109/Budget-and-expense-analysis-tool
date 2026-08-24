@@ -18,6 +18,7 @@ import {
   interestFrequencies,
   interestUpdateSchema,
   nextInterestCreditDate,
+  resolveCategoryEmoji,
   type AccountInterestUpdate,
   type AccountType,
   type InterestFrequency,
@@ -182,7 +183,7 @@ export function ReferenceEditorScreen() {
     setAccountType(account?.type ?? "cash");
     setCategoryKind(category?.kind ?? "expense");
     setColor(category?.color ?? "#0F766E");
-    setIconEmoji(category?.iconEmoji ?? "");
+    setIconEmoji(resolveCategoryEmoji(category) ?? "");
     initialized.current = true;
   }, [account, category, id, references.data]);
 

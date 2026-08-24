@@ -628,6 +628,64 @@ export const categoryIconEmojiSchema = z
     "Choose one emoji.",
   );
 
+export const DEFAULT_CATEGORY_EMOJIS: Readonly<Record<string, string>> = {
+  salary: "💼",
+  income: "💼",
+  housing: "🏠",
+  rent: "🏠",
+  food: "🍔",
+  dining: "🍔",
+  "food & dining": "🍔",
+  "dining & food": "🍔",
+  groceries: "🛒",
+  grocery: "🛒",
+  transport: "🚗",
+  transportation: "🚗",
+  travel: "✈️",
+  utilities: "💡",
+  "utilities & bills": "💡",
+  bills: "💡",
+  leisure: "🎁",
+  shopping: "🎁",
+  gifts: "🎁",
+  healthcare: "💊",
+  health: "💊",
+  medical: "💊",
+  "savings transfer": "💰",
+  "savings-transfer": "💰",
+  savings: "💰",
+  education: "📚",
+  fitness: "🏋️",
+  entertainment: "🎬",
+  interest: "📈",
+  investment: "📈",
+  investments: "📈",
+};
+
+export function getDefaultCategoryEmoji(name?: string | null): string | null {
+  if (!name) return null;
+  const normalized = name.trim().toLowerCase();
+  if (DEFAULT_CATEGORY_EMOJIS[normalized]) {
+    return DEFAULT_CATEGORY_EMOJIS[normalized];
+  }
+  for (const [key, emoji] of Object.entries(DEFAULT_CATEGORY_EMOJIS)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return emoji;
+    }
+  }
+  return null;
+}
+
+export function resolveCategoryEmoji(
+  category?: { name?: string | null; iconEmoji?: string | null; kind?: string | null } | null,
+): string | null {
+  if (!category) return null;
+  if (category.iconEmoji && category.iconEmoji.trim()) {
+    return category.iconEmoji.trim();
+  }
+  return getDefaultCategoryEmoji(category.name);
+}
+
 export const categoryInputSchema = z
   .object({
     name: z.string().trim().min(1).max(80),

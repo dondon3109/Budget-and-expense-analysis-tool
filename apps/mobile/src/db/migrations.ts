@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 11;
+export const LOCAL_SCHEMA_VERSION = 12;
 
 export const migrations: readonly Migration[] = [
   {
@@ -667,21 +667,26 @@ export const migrations: readonly Migration[] = [
     name: "category_emoji_icons",
     sql: `
       ALTER TABLE categories ADD COLUMN icon_emoji TEXT;
-
+    `,
+  },
+  {
+    version: 12,
+    name: "backfill_starter_category_emojis",
+    sql: `
       UPDATE categories
       SET icon_emoji = CASE
-        WHEN id = 'category-salary' OR id LIKE '%:category:salary' THEN '💼'
-        WHEN id = 'category-groceries' THEN '🛒'
-        WHEN id = 'category-dining' OR id = 'category-food' OR id LIKE '%:category:food' THEN '🍔'
-        WHEN id = 'category-housing' OR id LIKE '%:category:housing' THEN '🏠'
-        WHEN id = 'category-transport' OR id LIKE '%:category:transport' THEN '🚗'
-        WHEN id = 'category-utilities' OR id LIKE '%:category:utilities' THEN '💡'
-        WHEN id = 'category-leisure' OR id = 'category-shopping' OR id LIKE '%:category:leisure' THEN '🎁'
-        WHEN id = 'category-healthcare' THEN '💊'
-        WHEN id = 'category-savings-transfer' OR id LIKE '%:category:savings-transfer' THEN '💰'
+        WHEN id = 'category-salary' OR id LIKE '%:category:salary' OR lower(name) = 'salary' THEN '💼'
+        WHEN id = 'category-groceries' OR lower(name) = 'groceries' THEN '🛒'
+        WHEN id = 'category-dining' OR id = 'category-food' OR id LIKE '%:category:food' OR lower(name) LIKE '%food%' OR lower(name) LIKE '%dining%' THEN '🍔'
+        WHEN id = 'category-housing' OR id LIKE '%:category:housing' OR lower(name) = 'housing' OR lower(name) = 'rent' THEN '🏠'
+        WHEN id = 'category-transport' OR id LIKE '%:category:transport' OR lower(name) LIKE '%transport%' THEN '🚗'
+        WHEN id = 'category-utilities' OR id LIKE '%:category:utilities' OR lower(name) LIKE '%utilit%' OR lower(name) LIKE '%bills%' THEN '💡'
+        WHEN id = 'category-leisure' OR id = 'category-shopping' OR id LIKE '%:category:leisure' OR lower(name) = 'leisure' OR lower(name) = 'shopping' THEN '🎁'
+        WHEN id = 'category-healthcare' OR lower(name) LIKE '%health%' OR lower(name) LIKE '%medical%' THEN '💊'
+        WHEN id = 'category-savings-transfer' OR id LIKE '%:category:savings-transfer' OR lower(name) LIKE '%savings%' THEN '💰'
         ELSE icon_emoji
       END
-      WHERE origin = 'starter' AND icon_emoji IS NULL;
+      WHERE icon_emoji IS NULL OR icon_emoji = '';
     `,
   },
 ] as const;

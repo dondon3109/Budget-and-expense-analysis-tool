@@ -1,6 +1,7 @@
 import {
   accountTypes,
   monthStartSchema,
+  resolveCategoryEmoji,
   subscriptionBillingDateForMonth,
   type AccountRecord,
   type BudgetRecord,
@@ -69,19 +70,24 @@ const localAccountOptionSchema = z.object({
     .transform((value) => value === 1),
 });
 
-const localCategoryOptionSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  kind: z.enum(["income", "expense", "transfer"]),
-  color: z.string(),
-  iconEmoji: z.string().nullable().optional(),
-  pending: z
-    .number()
-    .int()
-    .min(0)
-    .max(1)
-    .transform((value) => value === 1),
-});
+const localCategoryOptionSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    kind: z.enum(["income", "expense", "transfer"]),
+    color: z.string(),
+    iconEmoji: z.string().nullable().optional(),
+    pending: z
+      .number()
+      .int()
+      .min(0)
+      .max(1)
+      .transform((value) => value === 1),
+  })
+  .transform((row) => ({
+    ...row,
+    iconEmoji: resolveCategoryEmoji({ name: row.name, iconEmoji: row.iconEmoji, kind: row.kind }),
+  }));
 
 const editableTransactionRowSchema = z.object({
   id: z.string(),
@@ -291,18 +297,23 @@ const localAccountItemSchema = z.object({
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
 
-const localCategoryItemSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  kind: z.enum(["income", "expense", "transfer"]),
-  color: z.string(),
-  iconEmoji: z.string().nullable().optional(),
-  system: z.number().int().min(0).max(1),
-  required_plan: z.enum(["free", "zoption_pro"]),
-  locked: z.number().int().min(0).max(1),
-  server_revision: z.number().int().nonnegative(),
-  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
-});
+const localCategoryItemSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    kind: z.enum(["income", "expense", "transfer"]),
+    color: z.string(),
+    iconEmoji: z.string().nullable().optional(),
+    system: z.number().int().min(0).max(1),
+    required_plan: z.enum(["free", "zoption_pro"]),
+    locked: z.number().int().min(0).max(1),
+    server_revision: z.number().int().nonnegative(),
+    sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+  })
+  .transform((row) => ({
+    ...row,
+    iconEmoji: resolveCategoryEmoji({ name: row.name, iconEmoji: row.iconEmoji, kind: row.kind }),
+  }));
 
 export interface LocalAccountItem {
   id: string;
@@ -448,7 +459,12 @@ function mapTransactionRows(rows: unknown[]): LocalTransactionItem[] {
         categoryId: row.category_id,
         categoryName: row.category_name,
         categoryColor: row.category_color,
-        categoryIconEmoji: row.category_icon_emoji ?? null,
+        categoryIconEmoji:
+          resolveCategoryEmoji({
+            name: row.category_name,
+            iconEmoji: row.category_icon_emoji,
+            kind: row.kind,
+          }) ?? null,
         accountId: row.account_id,
         accountName: row.account_name ?? "Unassigned",
         notes: row.notes,
@@ -815,7 +831,12 @@ LIMIT ?`;
           categoryId: decoded.category_id,
           categoryName: decoded.category_name,
           categoryColor: decoded.category_color,
-          categoryIconEmoji: decoded.category_icon_emoji ?? null,
+          categoryIconEmoji:
+            resolveCategoryEmoji({
+              name: decoded.category_name,
+              iconEmoji: decoded.category_icon_emoji,
+              kind: decoded.kind,
+            }) ?? null,
           accountName: decoded.account_name,
         };
       }),

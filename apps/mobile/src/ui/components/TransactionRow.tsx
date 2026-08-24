@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { TransactionListItem } from "@zoption/shared";
+import { resolveCategoryEmoji, type TransactionListItem } from "@zoption/shared";
 import { MoneyValue, moneyAccessibilityLabel } from "./MoneyValue";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -21,26 +21,31 @@ export function TransactionRow({
   onPress,
 }: TransactionRowProps) {
   const theme = useZoptionTheme();
+  const emoji = resolveCategoryEmoji({
+    name: transaction.categoryName,
+    iconEmoji: transaction.categoryIconEmoji,
+    kind: transaction.kind,
+  });
   const stateLabel = conflicted
     ? "Conflict needs review"
     : failed
       ? "Sync needs repair"
       : pending
         ? "Pending sync"
-        : null;
-  const statusColor = conflicted
-    ? theme.colors.warning
-    : failed
-      ? theme.colors.danger
-      : pending
-        ? theme.colors.warning
         : undefined;
+  const statusColor =
+    failed || conflicted ? theme.colors.danger : theme.colors.warning;
 
   return (
     <Pressable
-      accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={`${transaction.description}, ${transaction.categoryName}, ${transaction.date}, ${moneyAccessibilityLabel(transaction.amountMinor, transaction.currency)}`}
-      accessibilityHint={stateLabel ?? (onPress ? "Opens transaction details" : undefined)}
+      accessibilityHint={onPress ? "Opens transaction editor" : undefined}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityState={
+        conflicted || failed || pending
+          ? { busy: pending, disabled: !onPress }
+          : undefined
+      }
       android_ripple={
         onPress
           ? {
@@ -62,14 +67,12 @@ export function TransactionRow({
         style={[
           styles.categoryBadge,
           {
-            backgroundColor: transaction.categoryIconEmoji
-              ? "transparent"
-              : transaction.categoryColor + "22",
+            backgroundColor: emoji ? "transparent" : transaction.categoryColor + "22",
           },
         ]}
       >
-        {transaction.categoryIconEmoji ? (
-          <Text style={styles.categoryEmoji}>{transaction.categoryIconEmoji}</Text>
+        {emoji ? (
+          <Text style={styles.categoryEmoji}>{emoji}</Text>
         ) : (
           <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
         )}

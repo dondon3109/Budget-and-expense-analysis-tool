@@ -8,7 +8,7 @@ import type {
   TransactionRecord,
   TransferFeeInsight,
 } from "./types";
-import type { TransferInput } from "./schemas";
+import { resolveCategoryEmoji, type TransferInput } from "./schemas";
 
 function clampRoundPercent(value: number): number {
   return Math.round(value * 10) / 10;
@@ -205,10 +205,15 @@ export function buildDashboardSummary(
   for (const transaction of inPeriod) {
     if (transaction.kind !== "expense") continue;
     const existing = spending.get(transaction.categoryId);
+    const resolvedEmoji = resolveCategoryEmoji({
+      name: transaction.categoryName,
+      iconEmoji: transaction.categoryIconEmoji,
+      kind: "expense",
+    });
     spending.set(transaction.categoryId, {
       name: transaction.categoryName,
       color: transaction.categoryColor,
-      ...(transaction.categoryIconEmoji ? { iconEmoji: transaction.categoryIconEmoji } : {}),
+      ...(resolvedEmoji ? { iconEmoji: resolvedEmoji } : {}),
       amountMinor: (existing?.amountMinor ?? 0) + Math.abs(transaction.amountMinor),
     });
   }

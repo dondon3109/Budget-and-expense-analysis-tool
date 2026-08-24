@@ -11,7 +11,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { parseAmountToMinor, preferredTransactionAccount } from "@zoption/shared";
+import {
+  parseAmountToMinor,
+  preferredTransactionAccount,
+  resolveCategoryEmoji,
+} from "@zoption/shared";
 
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
@@ -181,12 +185,15 @@ export function TransactionEditorScreen() {
         label: account.name,
         detail: account.pending ? `${account.currency} · Pending setup` : account.currency,
       })) ?? [];
-  const categoryOptions = categories.map((category) => ({
-    id: category.id,
-    label: category.iconEmoji ? `${category.iconEmoji} ${category.name}` : category.name,
-    color: category.color,
-    detail: category.pending ? "Pending setup" : undefined,
-  }));
+  const categoryOptions = categories.map((category) => {
+    const emoji = resolveCategoryEmoji(category);
+    return {
+      id: category.id,
+      label: emoji ? `${emoji} ${category.name}` : category.name,
+      color: category.color,
+      detail: category.pending ? "Pending setup" : undefined,
+    };
+  });
 
   const updateValue = <Key extends keyof TransactionFormValues>(
     key: Key,

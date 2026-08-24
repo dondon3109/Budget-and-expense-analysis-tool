@@ -140,7 +140,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: variant.androidPackage,
-      versionCode: 20312,
+      versionCode: 20313,
       allowBackup: false,
       // Predictive back is disabled: with enableOnBackInvokedCallback the
       // system finished the activity instead of popping the native stack,

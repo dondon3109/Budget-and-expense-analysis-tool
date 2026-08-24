@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
+import { resolveCategoryEmoji } from "@zoption/shared";
 import { useBudgetMonth, useLocalWorkspace } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
 import {
@@ -135,12 +136,15 @@ export function BudgetsScreen() {
     () =>
       (budgetMonth.data?.categories ?? [])
         .filter((category) => !budgetedCategoryIds.has(category.id))
-        .map((category) => ({
-          id: category.id,
-          label: category.iconEmoji ? `${category.iconEmoji} ${category.name}` : category.name,
-          color: category.color,
-          detail: category.pending ? "Pending setup" : undefined,
-        })),
+        .map((category) => {
+          const emoji = resolveCategoryEmoji(category);
+          return {
+            id: category.id,
+            label: emoji ? `${emoji} ${category.name}` : category.name,
+            color: category.color,
+            detail: category.pending ? "Pending setup" : undefined,
+          };
+        }),
     [budgetMonth.data, budgetedCategoryIds],
   );
   const editingCategory = budgetMonth.data?.budgets.find(

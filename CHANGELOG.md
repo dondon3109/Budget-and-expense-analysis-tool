@@ -4,8 +4,14 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Released Android Beta `0.2.13-beta` (`versionCode` 20313) to guarantee built-in starter categories display their default emoji icons across all mobile screens.
+
 ### Fixed
 
+- Added default emoji icon fallback resolution and local SQLite migration 12 for mobile starter categories so default emojis appear reliably across all mobile views and existing databases.
+- Added D1 migration 0045 to backfill starter category emojis and increment sync revisions for connected mobile clients.
 - Formatted mobile in-app update patch notes as a bullet list and displayed release highlights in the web install page and release dialogs.
 
 ## 2.13.1 — 2026-08-24
