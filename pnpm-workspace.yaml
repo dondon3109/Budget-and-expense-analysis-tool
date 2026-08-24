@@ -54,3 +54,6 @@ minimumReleaseAgeExclude:
   - '@posthog/core@1.48.7'
   - '@posthog/types@1.405.1'
   - posthog-react-native@4.63.4
+
+patchedDependencies:
+  react-native-screens: patches/react-native-screens.patch

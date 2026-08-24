@@ -12,37 +12,59 @@ actions require explicit approval.
 - Android: JDK 17 and the Android SDK.
 
   ```bash
-  export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+  export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
   export ANDROID_HOME="$HOME/Library/Android/sdk"
+  export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+  export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
   ```
 
-## Variants
+## Daily Development Workflow (Fast Refresh)
 
-`APP_VARIANT` selects the app identity (see `app.config.ts`):
+Local mobile development operates like local web development with Metro and Expo Development Client:
 
-| Variant     | Name            | Android package              | iOS bundle ID            | Scheme          |
-| ----------- | --------------- | ---------------------------- | ------------------------ | --------------- |
-| development | Zoption Dev     | site.zoption.android.dev     | site.zoption.ios.dev     | zoption-dev     |
-| preview     | Zoption Preview | site.zoption.android.preview | site.zoption.ios.preview | zoption-preview |
-| production  | Zoption         | site.zoption.android         | site.zoption.ios         | zoption         |
+### 1. One-time Setup: Install the Development Build
 
-The production identifiers are used only for the website-linked Beta build;
-development and preview builds use their own identifiers. The iOS bundle
-identifier is a proposal pending approval and Apple Developer registration.
-
-## Development builds (required — not Expo Go)
+From repository root or `apps/mobile`:
 
 ```bash
-# iOS (builds the native project, installs, starts Metro)
-npx expo run:ios --device <UDID>
+# From repository root:
+pnpm mobile:android
 
-# Android (requires the exported JDK/SDK paths above)
+# Or from apps/mobile:
 npx expo run:android
 ```
 
-Development builds include `expo-dev-client`. The native projects are
-generated from `app.config.ts`; after changing config plugins run
-`npx expo prebuild --clean` (or `--no-install` to skip pod install).
+This compiles the native debug binary (`site.zoption.android.dev` with standard Android debug keystore), installs it onto your running emulator or connected device, and opens the app.
+
+### 2. Daily Workflow: Start Metro & Fast Refresh
+
+Once the development build is installed on your device/emulator, you do **not** need to rebuild the APK for normal development:
+
+1. **Start the Android Emulator** (if not already running):
+   ```bash
+   "$ANDROID_HOME/emulator/emulator" -avd zoption-api35 -no-snapshot -no-audio -gpu swiftshader_indirect &
+   adb wait-for-device
+   ```
+2. **Start Metro**:
+   ```bash
+   # From repository root:
+   pnpm mobile:start
+
+   # Or from apps/mobile:
+   npx expo start
+   ```
+3. **Launch the App**: Open **Zoption Dev** on your device/emulator (or press `a` in the Metro terminal).
+4. **Edit and Save**: Edit any React Native / TypeScript components, hooks, stores, or Tailwind styles in `apps/mobile/app` or `apps/mobile/src`. Changes update instantly on screen via Fast Refresh.
+
+### Separation of Change Types
+
+| Change Type | Action Required | Command |
+| ----------- | --------------- | ------- |
+| **JS / TS / UI / Styles / Stores** (`app/**`, `src/**`) | **Fast Refresh only** (Instant save) | `npx expo start` (Metro running) |
+| **Native Packages / Dependencies** (`package.json`) | Rebuild Development App | `pnpm mobile:android` / `npx expo run:android` |
+| **Config Plugins / Manifest** (`app.config.ts`, `plugins/**`) | Rebuild Development App | `pnpm mobile:android:rebuild` / `npx expo run:android --no-build-cache` |
+| **Custom Native Code** (`modules/**`, `android/**`) | Rebuild Development App | `pnpm mobile:android` / `npx expo run:android` |
+| **Production Release** | Trigger GitHub Actions CI | `Android Beta Build` workflow (Signs with production key) |
 
 ## Android emulator (available on this host)
 
@@ -50,7 +72,10 @@ An Android 15 emulator is installed on this machine:
 
 ```bash
 export ANDROID_HOME="$HOME/Library/Android/sdk"
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
+
 "$ANDROID_HOME/emulator/emulator" -avd zoption-api35 -no-snapshot -no-audio -gpu swiftshader_indirect &
 adb wait-for-device
 ```
