@@ -1,19 +1,19 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.9-beta",
-  "versionCode": 20309,
-  "filename": "zoption-beta-0.2.9.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.9.apk",
-  "sha256": "f4bfb4b5b89f9a907efb466debeca2af4193358c285de77ffb42865cbee1d78c",
-  "sizeBytes": 143438615,
-  "sizeLabel": "143,438,615 bytes (136.79 MiB)",
-  "releaseDate": "2026-08-22",
-  "releaseDateLabel": "August 22, 2026",
+  "versionName": "0.2.10-beta",
+  "versionCode": 20310,
+  "filename": "zoption-beta-0.2.10.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.10.apk",
+  "sha256": "808f9be67695819cd72199d86b7425843ec6f84d5c324bca74fdf688c7931c82",
+  "sizeBytes": 143436119,
+  "sizeLabel": "143,436,119 bytes (136.79 MiB)",
+  "releaseDate": "2026-08-24",
+  "releaseDateLabel": "August 24, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Strengthen offline synchronization reliability while preserving transaction behavior and signed update verification."
+    "Add sanitized crash telemetry reporting with developer test diagnostics."
   ]
 }
