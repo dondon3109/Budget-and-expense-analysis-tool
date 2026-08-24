@@ -161,6 +161,6 @@ function GoalRow({ goal, onPress }: { goal: LocalGoalItem; onPress: () => void }
 }
 
 const styles = StyleSheet.create({
-  track: { height: 8, borderRadius: radii.round, overflow: "hidden", marginTop: spacing.xxs },
-  fill: { height: 8, borderRadius: radii.round },
+  track: { height: 6, borderRadius: radii.round, overflow: "hidden", marginTop: spacing.xxs },
+  fill: { height: 6, borderRadius: radii.round },
 });

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 import { radii, typography } from "./tokens";
 import { useZoptionTheme } from "./theme-provider";
@@ -11,12 +11,11 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       accessibilityRole="text"
       className="flex-row items-center gap-3"
     >
-      <View
+      <Image
         accessibilityElementsHidden
-        style={[styles.mark, { backgroundColor: theme.colors.brand }]}
-      >
-        <Text style={[styles.letter, { color: theme.colors.onBrand }]}>Z</Text>
-      </View>
+        source={require("../../assets/zoption-icon.png")}
+        style={styles.mark}
+      />
       {!compact ? (
         <Text style={[typography.title, { color: theme.colors.text }]}>Zoption</Text>
       ) : null}
@@ -26,11 +25,8 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
 
 const styles = StyleSheet.create({
   mark: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: radii.md,
-    alignItems: "center",
-    justifyContent: "center",
   },
-  letter: { fontSize: 21, lineHeight: 24, fontWeight: "800" },
 });

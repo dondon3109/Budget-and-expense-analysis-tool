@@ -56,7 +56,7 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
                   accessibilityElementsHidden
                   style={[styles.accountIconBox, { backgroundColor: theme.colors.brandSoft }]}
                 >
-                  <MaterialCommunityIcons name="wallet-outline" size={16} color={theme.colors.brand} />
+                  <MaterialCommunityIcons name="wallet-outline" size={18} color={theme.colors.brand} />
                 </View>
                 <Text
                   numberOfLines={1}
@@ -444,9 +444,9 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   accountIconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: radii.sm,
+    width: 32,
+    height: 32,
+    borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   metricIconWrap: {
     width: 32,
     height: 32,
-    borderRadius: radii.round,
+    borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -498,18 +498,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dot: {
-    width: 12,
-    height: 12,
+    width: 10,
+    height: 10,
     borderRadius: radii.round,
   },
   track: {
-    height: 8,
+    height: 6,
     borderRadius: radii.round,
     overflow: "hidden",
     marginTop: spacing.xxs,
   },
   fill: {
-    height: 8,
+    height: 6,
     borderRadius: radii.round,
   },
 });

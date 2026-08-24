@@ -129,7 +129,7 @@ export default function MoreScreen() {
               accessibilityElementsHidden
               color={theme.colors.onBrand}
               name="robot-happy-outline"
-              size={24}
+              size={22}
             />
           </View>
           <View className="flex-1 gap-1">
@@ -274,7 +274,7 @@ export default function MoreScreen() {
               accessibilityElementsHidden
               style={[styles.securityIconBox, { backgroundColor: theme.colors.brandSoft }]}
             >
-              <MaterialCommunityIcons name="shield-lock-outline" size={22} color={theme.colors.brand} />
+              <MaterialCommunityIcons name="shield-lock-outline" size={20} color={theme.colors.brand} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={[typography.headline, { color: theme.colors.text }]}>Local data encrypted</Text>
@@ -381,12 +381,12 @@ const styles = StyleSheet.create({
     marginLeft: 58,
   },
   assistantCard: {
-    borderWidth: 1.5,
+    borderWidth: 1,
   },
   assistantIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.round,
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -396,8 +396,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   securityIconBox: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",

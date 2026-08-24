@@ -63,10 +63,10 @@ export default function TransactionsScreen() {
             android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
             onPress={() => router.push("/(app)/receipt-scan")}
             style={({ pressed }) => [
-              styles.scan,
+              styles.headerAction,
               {
                 backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surfaceRaised,
-                borderColor: theme.colors.brand,
+                borderColor: theme.colors.border,
               },
             ]}
           >
@@ -81,21 +81,21 @@ export default function TransactionsScreen() {
             accessibilityLabel="Add transaction"
             accessibilityHint="Opens the new transaction form"
             accessibilityRole="button"
-            android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+            android_ripple={{ color: "rgba(255, 255, 255, 0.2)", borderless: false }}
             onPress={() => router.push("/(app)/transaction")}
             style={({ pressed }) => [
-              styles.add,
+              styles.headerAction,
               {
-                backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surfaceRaised,
+                backgroundColor: pressed ? theme.colors.brandPressed : theme.colors.brand,
                 borderColor: theme.colors.brand,
               },
             ]}
           >
             <MaterialCommunityIcons
               accessibilityElementsHidden
-              color={theme.colors.brand}
+              color={theme.colors.onBrand}
               name="plus"
-              size={26}
+              size={24}
             />
           </Pressable>
         </View>
@@ -244,30 +244,14 @@ export default function TransactionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  scan: {
+  headerAction: {
     alignItems: "center",
     justifyContent: "center",
     minHeight: touchTarget,
     minWidth: touchTarget,
     paddingHorizontal: spacing.xs,
     borderRadius: radii.md,
-    borderWidth: 1.5,
-  },
-  add: {
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: touchTarget,
-    minWidth: touchTarget,
-    paddingHorizontal: spacing.sm,
-    // A contained, boxed button: rounded corners, a visible ring, and a
-    // shadow so it reads clearly against the canvas in any theme.
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    shadowColor: "#000000",
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    borderWidth: 1,
   },
   filters: {
     gap: spacing.xs,

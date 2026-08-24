@@ -33,7 +33,7 @@ function TabIcon({
       <MaterialCommunityIcons
         name={focused ? activeName : name}
         color={focused ? theme.colors.brand : iconColor}
-        size={size ?? 22}
+        size={23}
       />
     </View>
   );
@@ -59,7 +59,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: theme.colors.surfaceRaised,
           borderTopColor: theme.colors.border,
-          borderTopWidth: 1,
+          borderTopWidth: StyleSheet.hairlineWidth,
           height: 54 + bottomInset,
           paddingTop: 6,
           paddingBottom: bottomInset,
@@ -132,7 +132,7 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   iconPill: {
-    width: 48,
+    width: 44,
     height: 28,
     borderRadius: radii.round,
     alignItems: "center",

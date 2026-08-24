@@ -353,7 +353,7 @@ function BudgetRow({
       style={[
         styles.row,
         {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.surfaceRaised,
           borderColor: syncState === "conflicted" ? theme.colors.warning : theme.colors.border,
         },
       ]}
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   row: {
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     borderWidth: 1,
     padding: spacing.md,
     gap: spacing.xs,
@@ -595,15 +595,15 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     minHeight: touchTarget,
   },
-  dot: { width: 12, height: 12, borderRadius: radii.round },
+  dot: { width: 10, height: 10, borderRadius: radii.round },
   track: {
-    height: 8,
+    height: 6,
     borderRadius: radii.round,
     overflow: "hidden",
     marginTop: spacing.xxs,
   },
   fill: {
-    height: 8,
+    height: 6,
     borderRadius: radii.round,
   },
 });
