@@ -394,7 +394,18 @@
 
 .category-list {
   min-width: 0;
+  max-height: 280px;
+  padding-inline-end: 8px;
   display: grid;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.category-list:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .category-row {
@@ -545,10 +556,6 @@
 .trend-chart-mobile text {
   font-family: var(--font-ui);
   font-variant-numeric: tabular-nums;
-}
-
-.trend-chart-mobile .trend-mobile-area {
-  opacity: 1;
 }
 
 .trend-chart-callout {
@@ -1348,6 +1355,12 @@
 
   .trend-view-option {
     flex: 1;
+  }
+
+  .expense-key {
+    height: 0;
+    background: transparent;
+    border-top: 2px dashed var(--chart-expense);
   }
 
   .workspace-onboarding {

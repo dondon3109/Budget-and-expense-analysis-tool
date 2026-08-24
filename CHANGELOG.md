@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Fixed
 
 - Excluded spending in categories without a monthly limit from budget totals and over-budget amounts.
+- Kept dashboard cards compact with a scrollable category list and made overlapping mobile cashflow lines distinguishable.
 
 ## 2.12.1 — 2026-08-24
 

@@ -36,17 +36,6 @@ function createLinePath(
     .join("");
 }
 
-function createAreaPath(
-  linePath: string,
-  xAt: (index: number) => number,
-  baselineY: number,
-  count: number,
-): string {
-  const firstX = xAt(0).toFixed(1);
-  const lastX = xAt(Math.max(0, count - 1)).toFixed(1);
-  return `${linePath}L${lastX},${baselineY.toFixed(1)}L${firstX},${baselineY.toFixed(1)}Z`;
-}
-
 /**
  * Touch-first cashflow chart for narrow screens. Hand-rolled SVG so the
  * Android WebView renders it without a charting library: tap or drag across
@@ -94,8 +83,6 @@ export function MobileCashflowChart({ data }: Props) {
 
   const incomePath = createLinePath(points, (point) => point.incomeMinor, xAt, yAt);
   const expensePath = createLinePath(points, (point) => point.expenseMinor, xAt, yAt);
-  const incomeArea = createAreaPath(incomePath, xAt, baselineY, points.length);
-  const expenseArea = createAreaPath(expensePath, xAt, baselineY, points.length);
   const xTickInterval = trendXAxisInterval(data);
 
   function indexForClientX(clientX: number): number {
@@ -215,18 +202,7 @@ export function MobileCashflowChart({ data }: Props) {
           );
         })}
         <path
-          className="trend-mobile-area"
-          d={incomeArea}
-          fill="var(--chart-income)"
-          fillOpacity={0.08}
-        />
-        <path
-          className="trend-mobile-area"
-          d={expenseArea}
-          fill="var(--chart-expense)"
-          fillOpacity={0.07}
-        />
-        <path
+          className="trend-mobile-line income"
           d={incomePath}
           fill="none"
           stroke="var(--chart-income)"
@@ -235,10 +211,12 @@ export function MobileCashflowChart({ data }: Props) {
           strokeLinecap="round"
         />
         <path
+          className="trend-mobile-line expense"
           d={expensePath}
           fill="none"
           stroke="var(--chart-expense)"
           strokeWidth={2}
+          strokeDasharray="6 5"
           strokeLinejoin="round"
           strokeLinecap="round"
         />

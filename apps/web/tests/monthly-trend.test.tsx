@@ -189,4 +189,26 @@ describe("MonthlyTrend on narrow viewports", () => {
     expect(container.querySelector(".trend-chart-mobile")).toBeNull();
     expect(container.querySelector(".trend-chart")).toBeInTheDocument();
   });
+
+  it("expands beyond ₱10,000 and keeps overlapping mobile lines distinguishable", () => {
+    installNarrowViewport(true);
+    const overlappingData = {
+      ...weeklyData,
+      points: weeklyData.points.map((point, index) => ({
+        ...point,
+        incomeMinor: index === 3 ? 1_500_000 : 0,
+        expenseMinor: index === 3 ? 1_500_000 : 0,
+      })),
+    };
+    const { container } = render(
+      <MonthlyTrend data={overlappingData} selectedView="weekly" onViewChange={vi.fn()} />,
+    );
+
+    expect(screen.getByText("₱20,000")).toBeInTheDocument();
+    const incomeLine = container.querySelector(".trend-mobile-line.income");
+    const expenseLine = container.querySelector(".trend-mobile-line.expense");
+    expect(incomeLine).toHaveAttribute("d", expenseLine?.getAttribute("d"));
+    expect(expenseLine).toHaveAttribute("stroke-dasharray", "6 5");
+    expect(container.querySelector(".trend-mobile-area")).toBeNull();
+  });
 });

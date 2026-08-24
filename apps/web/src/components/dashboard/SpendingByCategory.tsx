@@ -117,7 +117,12 @@ export function SpendingByCategory({
                 <strong>{data[0]?.name}</strong>
               </div>
             </div>
-            <div className="category-list">
+            <div
+              className="category-list"
+              role="region"
+              aria-label="Category spending list"
+              tabIndex={data.length > 5 ? 0 : undefined}
+            >
               {data.map((item) => (
                 <div className="category-row" key={item.categoryId}>
                   <span className="color-dot" style={{ backgroundColor: item.color }} />
