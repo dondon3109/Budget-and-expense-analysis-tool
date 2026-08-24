@@ -289,6 +289,43 @@
   line-height: 1.55;
 }
 
+.apk-release-notes {
+  grid-column: 1 / -1;
+  padding: 18px 0 16px;
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.apk-release-notes-title {
+  color: var(--lp-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.apk-release-notes-list {
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+
+.apk-release-notes-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--lp-fg);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.apk-release-notes-list svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--lp-accent-strong);
+}
+
 .apk-checksum {
   grid-column: 1 / span 9;
   min-width: 0;

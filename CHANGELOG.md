@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Formatted mobile in-app update patch notes as a bullet list and displayed release highlights in the web install page and release dialogs.
+
 ## 2.13.1 — 2026-08-24
 
 ### Fixed

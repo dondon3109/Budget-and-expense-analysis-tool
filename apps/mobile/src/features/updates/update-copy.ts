@@ -19,8 +19,11 @@ export function updateAvailableMessage(
   installed: InstalledAndroidApp,
   latest: ParsedAndroidRelease,
 ): string {
-  const notes = latest.notes.length > 0 ? `\n\n${latest.notes.join("\n")}` : "";
-  return `You have ${installed.versionName}. Version ${latest.versionName} is ${formatApkSize(latest.size)}.${notes}`;
+  const bulletNotes =
+    latest.notes.length > 0
+      ? `\n\n${latest.notes.map((note) => (note.startsWith("•") || note.startsWith("-") ? note : `• ${note}`)).join("\n")}`
+      : "";
+  return `You have ${installed.versionName}. Version ${latest.versionName} is ${formatApkSize(latest.size)}.${bulletNotes}`;
 }
 
 export function reinstallRequiredMessage(latest: ParsedAndroidRelease): string {

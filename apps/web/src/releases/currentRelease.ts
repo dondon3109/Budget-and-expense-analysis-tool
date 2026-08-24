@@ -11,17 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "August 17, 2026",
+  releasedOn: "August 24, 2026",
   changes: [
     {
-      title: "Cash flow chart built for your phone",
+      title: "Category emojis across web and mobile",
       description:
-        "The Money in and out panel now draws the weekly, monthly, and six-month cash flow as a touch-first chart on phone screens. Tap any day or month to see the exact amounts, drag to scrub across the range, and tap again to dismiss. The installed Android app picks this up automatically on its next launch.",
+        "Give custom categories their own emoji icons with starter category presets, clear visual badges in transaction lists, and a dedicated mobile category editor.",
     },
     {
-      title: "Recording now looks like recording",
+      title: "Redesigned mobile transaction ledger",
       description:
-        "The microphone button shows a pulsing red recording state with a running timer while you speak, and a separate spinner while your voice is being transcribed. Recording and loading are no longer easy to confuse.",
+        "Navigate expenses month by month on your phone with grouped daily timelines, instant monthly income/expense/net totals, quick category filters, and actionable empty states.",
+    },
+    {
+      title: "Android Beta 0.2.12",
+      description:
+        "The official Android Beta includes native outline iconography, cleaner borderless layouts, visible multi-series cash flow charts, and in-app update checks.",
+    },
+    {
+      title: "Focused budget limits",
+      description:
+        "Spending in categories without a monthly budget is excluded from budget totals and over-budget warnings so your planned spending stays clear.",
     },
   ],
 };
@@ -33,6 +43,22 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.2.1",
+    releasedOn: "August 17, 2026",
+    changes: [
+      {
+        title: "Cash flow chart built for your phone",
+        description:
+          "The Money in and out panel now draws the weekly, monthly, and six-month cash flow as a touch-first chart on phone screens. Tap any day or month to see the exact amounts, drag to scrub across the range, and tap again to dismiss. The installed Android app picks this up automatically on its next launch.",
+      },
+      {
+        title: "Recording now looks like recording",
+        description:
+          "The microphone button shows a pulsing red recording state with a running timer while you speak, and a separate spinner while your voice is being transcribed. Recording and loading are no longer easy to confuse.",
+      },
+    ],
+  },
   {
     version: "2.2.0",
     releasedOn: "August 14, 2026",

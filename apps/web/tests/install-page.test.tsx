@@ -131,6 +131,8 @@ describe("Android APK download page", () => {
     await waitFor(() =>
       expect(screen.getByText(/This APK runs only on Android/i)).toBeInTheDocument(),
     );
+    expect(screen.getByText("What’s new in this release")).toBeInTheDocument();
+    expect(screen.getByText("Remote note: the metadata came from R2.")).toBeInTheDocument();
     expect(screen.queryByText(/Install directly from Google Chrome/i)).not.toBeInTheDocument();
   });
 

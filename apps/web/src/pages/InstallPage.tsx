@@ -123,6 +123,20 @@ function DownloadPanel({ source }: { source: AndroidReleaseSource }) {
         </div>
       </dl>
 
+      {release.notes && release.notes.length > 0 && (
+        <div className="apk-release-notes" aria-label="Release highlights">
+          <p className="apk-release-notes-title">What’s new in this release</p>
+          <ul className="apk-release-notes-list">
+            {release.notes.map((note) => (
+              <li key={note}>
+                <CheckCircle2 size={16} aria-hidden="true" />
+                <span>{note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="apk-checksum">
         <div>
           <p>SHA-256 checksum</p>
