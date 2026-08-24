@@ -527,7 +527,6 @@ export default function TransactionsScreen() {
             dateGroups.length === 0 && styles.emptyList,
           ]}
           sections={dateGroups.map((group) => ({ ...group, data: group.items }))}
-          style={styles.ledgerList}
           keyExtractor={(item) => item.transaction.id}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={emptyState}
@@ -550,7 +549,6 @@ export default function TransactionsScreen() {
             summaryItems.length === 0 && styles.emptyList,
           ]}
           data={summaryItems}
-          style={styles.ledgerList}
           keyExtractor={(item) => item.key}
           ListEmptyComponent={emptyState}
           refreshControl={
@@ -604,7 +602,6 @@ export default function TransactionsScreen() {
             monthlyItems.length === 0 && styles.emptyList,
           ]}
           data={monthlyItems}
-          style={styles.ledgerList}
           keyExtractor={(item) => item.transaction.id}
           ListEmptyComponent={emptyState}
           refreshControl={
@@ -624,7 +621,7 @@ export default function TransactionsScreen() {
           accessibilityLabel="Add transaction"
           accessibilityHint="Opens the new transaction form"
           accessibilityRole="button"
-          android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: true }}
+          android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 29 }}
           onPress={() => router.push("/(app)/transaction")}
           style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
         >
@@ -718,8 +715,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   loading: { gap: spacing.xs, padding: spacing.md },
-  ledgerList: { marginBottom: 84 },
-  listContent: { paddingBottom: spacing.sm },
+  listContent: { paddingBottom: 96 },
   emptyList: { flexGrow: 1 },
   dateHeader: {
     minHeight: 62,
@@ -786,17 +782,21 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: spacing.md,
     bottom: spacing.md,
-  },
-  fabButton: {
     width: 58,
     height: 58,
-    borderRadius: radii.round,
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 29,
     elevation: 6,
     shadowColor: "#000000",
     shadowOpacity: 0.2,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
+  },
+  fabButton: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
