@@ -39,13 +39,11 @@ describe("HomeScreen", () => {
       status: "synced",
       message: null,
       retry: jest.fn(),
-      reopen: jest.fn(),
     });
     jest.mocked(usePlan).mockReturnValue({
-      plan: "zoption_free",
-      loading: false,
-      error: null,
-      refresh: jest.fn(),
+      plan: "free",
+      status: "ready",
+      retry: jest.fn(),
     });
   });
 
