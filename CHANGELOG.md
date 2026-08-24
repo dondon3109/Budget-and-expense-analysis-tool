@@ -8,6 +8,10 @@ All notable product changes are documented here.
 
 - Released Android Beta `0.2.13-beta` (`versionCode` 20313) to guarantee built-in starter categories display their default emoji icons across all mobile screens.
 
+### Changed
+
+- Made the mobile transaction-type filters collapse while scrolling and kept each daily date header visible until the next date group arrives.
+
 ### Fixed
 
 - Added default emoji icon fallback resolution and local SQLite migration 12 for mobile starter categories so default emojis appear reliably across all mobile views and existing databases.
