@@ -4,6 +4,14 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.14.1 — 2026-08-24
+
+### Fixed
+
+- Refreshed the public Android install metadata snapshot for the signed `0.2.13-beta` APK.
+
+## 2.14.0 — 2026-08-24
+
 ### Added
 
 - Released Android Beta `0.2.13-beta` (`versionCode` 20313) to guarantee built-in starter categories display their default emoji icons across all mobile screens.
