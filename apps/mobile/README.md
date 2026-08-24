@@ -20,28 +20,50 @@ pnpm --filter @zoption/mobile test
 pnpm --filter @zoption/mobile lint
 ```
 
-## Development builds
+## Daily Development Workflow (Fast Refresh)
+
+Local mobile development operates with Fast Refresh (like local web development). You only compile/install the development client once, and then develop against Metro with instant hot reloading.
+
+### 1. One-time Setup: Install the Development Build
 
 ```bash
-APP_VARIANT=development pnpm --filter @zoption/mobile prebuild --clean
-APP_VARIANT=development pnpm --filter @zoption/mobile ios
-APP_VARIANT=development pnpm --filter @zoption/mobile android
+# From repository root:
+pnpm mobile:android
+
+# Or from apps/mobile:
+pnpm android
+# (or npx expo run:android)
 ```
 
-Generated `ios/` and `android/` folders are ignored. Configuration is owned by `app.config.ts` and Expo config plugins.
+This compiles the native debug build (`site.zoption.android.dev` with standard Android debug keystore), installs it onto your running emulator or connected device, and launches the app.
 
-On the current macOS workstation, Homebrew's JDK and the Android SDK are not exported globally. A direct Android build uses:
+### 2. Day-to-Day Development
 
-```bash
-JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
-ANDROID_HOME=/Users/dondon/Library/Android/sdk \
-ANDROID_SDK_ROOT=/Users/dondon/Library/Android/sdk \
-NODE_ENV=development \
-PATH=/opt/homebrew/opt/openjdk@17/bin:$PATH \
-./android/gradlew -p android assembleDebug
-```
+1. **Start the Android Emulator** (if not already running):
+   ```bash
+   "$ANDROID_HOME/emulator/emulator" -avd zoption-api35 -no-snapshot -no-audio -gpu swiftshader_indirect &
+   adb wait-for-device
+   ```
+2. **Start Metro**:
+   ```bash
+   # From repository root:
+   pnpm mobile:start
 
-The generated universal debug APK is intentionally large and is not a release-size measurement. Android runtime checks still require a connected device or installed emulator/system image.
+   # Or from apps/mobile:
+   pnpm start
+   # (or npx expo start)
+   ```
+3. **Launch the App**: Open **Zoption Dev** on your device/emulator (or press `a` in Metro terminal).
+4. **Edit and Save**: Edit any React Native / TypeScript code or Tailwind styles in `app/` or `src/`. Changes appear instantly on the emulator via Fast Refresh without native compilation.
+
+### What requires rebuilding the app (`npx expo run:android` / `pnpm mobile:android`)?
+
+- Adding, removing, or updating native npm dependencies
+- Changing native configuration in `app.config.ts` or config plugins
+- Editing custom native modules (`modules/zoption-apk-updater`, `modules/zoption-local-data-security`)
+- Modifying Android Gradle files or properties (`android/app/build.gradle`, `gradle.properties`)
+
+Normal JS/TS/UI/styles changes do **not** require rebuilding.
 
 Copy `.env.example` to an ignored `.env.local` for authenticated development, replace its
 placeholders with the same Supabase project URL and publishable key used by the website, and restart

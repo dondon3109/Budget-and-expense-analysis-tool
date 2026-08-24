@@ -181,6 +181,7 @@ export function BudgetsScreen() {
           />
           {view.rows.length === 0 ? (
             <EmptyState
+              icon="chart-donut"
               title="No budgets for this month"
               description="Add a monthly limit for an expense category to start tracking your spending against it."
             />
@@ -238,11 +239,15 @@ function MonthNavigator({ month, onChange }: { month: string; onChange: (month: 
     <View
       accessibilityRole="adjustable"
       accessibilityLabel={`Budget month, ${monthLabel(month)}`}
-      style={[styles.monthNav, { backgroundColor: theme.colors.canvasMuted }]}
+      style={[
+        styles.monthNav,
+        { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+      ]}
     >
       <Pressable
         accessibilityLabel="Previous month"
         accessibilityRole="button"
+        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
         onPress={() => onChange(shiftMonth(month, -1))}
         style={[styles.monthButton, { borderColor: theme.colors.border }]}
       >
@@ -257,6 +262,7 @@ function MonthNavigator({ month, onChange }: { month: string; onChange: (month: 
       <Pressable
         accessibilityLabel="Next month"
         accessibilityRole="button"
+        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
         onPress={() => onChange(shiftMonth(month, 1))}
         style={[styles.monthButton, { borderColor: theme.colors.border }]}
       >
@@ -347,7 +353,7 @@ function BudgetRow({
       style={[
         styles.row,
         {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.surfaceRaised,
           borderColor: syncState === "conflicted" ? theme.colors.warning : theme.colors.border,
         },
       ]}
@@ -543,6 +549,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderRadius: radii.md,
+    borderWidth: 1,
     padding: spacing.xs,
   },
   monthButton: {
@@ -560,7 +567,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   row: {
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     borderWidth: 1,
     padding: spacing.md,
     gap: spacing.xs,
@@ -588,15 +595,15 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     minHeight: touchTarget,
   },
-  dot: { width: 12, height: 12, borderRadius: radii.round },
+  dot: { width: 10, height: 10, borderRadius: radii.round },
   track: {
-    height: 8,
+    height: 6,
     borderRadius: radii.round,
     overflow: "hidden",
     marginTop: spacing.xxs,
   },
   fill: {
-    height: 8,
+    height: 6,
     borderRadius: radii.round,
   },
 });

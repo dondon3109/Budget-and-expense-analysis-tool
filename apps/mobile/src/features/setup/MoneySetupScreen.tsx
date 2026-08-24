@@ -59,12 +59,17 @@ function SetupRow({
             : "Opens item details"
       }
       accessibilityState={{ disabled: Boolean(disabled) }}
+      android_ripple={
+        disabled
+          ? undefined
+          : { color: "rgba(15, 107, 91, 0.12)", borderless: false }
+      }
       disabled={disabled}
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.row,
         {
-          backgroundColor: "transparent",
+          backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
           opacity: disabled ? 0.62 : 1,
         },
       ]}

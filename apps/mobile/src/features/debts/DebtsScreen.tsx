@@ -45,8 +45,14 @@ export function DebtsScreen() {
         </View>
       ) : state.debts.length === 0 ? (
         <EmptyState
+          icon="credit-card-refund-outline"
           title="No debts yet"
           description="Add a credit card or loan to compare avalanche and snowball payoff plans."
+          action={
+            <Button disabled={!local.workspace} onPress={addDebt} variant="secondary">
+              Add your first debt
+            </Button>
+          }
         />
       ) : (
         <View style={styles.stack}>
@@ -144,7 +150,11 @@ function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }
   const conflicted = debt.syncState === "conflicted";
   const failed = debt.syncState === "failed";
   return (
-    <Pressable accessibilityRole="button" onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+      onPress={onPress}
+    >
       <Card
         accessibilityLabel={debt.name + ", balance " + debt.balanceMinor}
         style={{

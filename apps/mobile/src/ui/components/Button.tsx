@@ -68,6 +68,17 @@ export function Button({
       accessibilityLabel={resolvedAccessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
+      android_ripple={
+        isDisabled
+          ? undefined
+          : {
+              color:
+                variant === "primary" || variant === "danger"
+                  ? "rgba(255, 255, 255, 0.24)"
+                  : "rgba(15, 107, 91, 0.16)",
+              borderless: false,
+            }
+      }
       disabled={isDisabled}
       onPressIn={(event) => {
         setPressed(true);

@@ -37,8 +37,14 @@ export function GoalsScreen() {
         </View>
       ) : state.goals.length === 0 ? (
         <EmptyState
+          icon="target"
           title="No goals yet"
           description="Add a savings goal like an emergency fund or a big purchase to track your progress."
+          action={
+            <Button disabled={!local.workspace} onPress={addGoal} variant="secondary">
+              Create your first goal
+            </Button>
+          }
         />
       ) : (
         <View style={{ gap: spacing.md }}>
@@ -66,6 +72,7 @@ function GoalRow({ goal, onPress }: { goal: LocalGoalItem; onPress: () => void }
   return (
     <Pressable
       accessibilityRole="button"
+      android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
       onPress={onPress}
     >
     <Card
@@ -154,6 +161,6 @@ function GoalRow({ goal, onPress }: { goal: LocalGoalItem; onPress: () => void }
 }
 
 const styles = StyleSheet.create({
-  track: { height: 8, borderRadius: radii.round, overflow: "hidden", marginTop: spacing.xxs },
-  fill: { height: 8, borderRadius: radii.round },
+  track: { height: 6, borderRadius: radii.round, overflow: "hidden", marginTop: spacing.xxs },
+  fill: { height: 6, borderRadius: radii.round },
 });

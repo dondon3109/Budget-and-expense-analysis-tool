@@ -9,7 +9,15 @@ export function Card({ children, style, ...props }: PropsWithChildren<ViewProps>
   return (
     <View
       className="w-full"
-      style={[styles.card, elevation.card, { backgroundColor: theme.colors.surfaceRaised }, style]}
+      style={[
+        styles.card,
+        elevation.card,
+        {
+          backgroundColor: theme.colors.surfaceRaised,
+          borderColor: theme.colors.border,
+        },
+        style,
+      ]}
       {...props}
     >
       {children}
@@ -18,5 +26,10 @@ export function Card({ children, style, ...props }: PropsWithChildren<ViewProps>
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radii.lg, padding: spacing.md, gap: spacing.sm },
+  card: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
 });

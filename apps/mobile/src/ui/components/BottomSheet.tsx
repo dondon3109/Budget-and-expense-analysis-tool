@@ -31,6 +31,9 @@ export function BottomSheet({ visible, title, onDismiss, children }: BottomSheet
           edges={["bottom"]}
           style={[styles.sheet, elevation.dialog, { backgroundColor: theme.colors.surfaceRaised }]}
         >
+          <View style={styles.handleWrap}>
+            <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
+          </View>
           <View className="flex-row items-center justify-between gap-4">
             <Text
               accessibilityRole="header"
@@ -64,12 +67,23 @@ export function BottomSheet({ visible, title, onDismiss, children }: BottomSheet
 
 const styles = StyleSheet.create({
   layer: { flex: 1, justifyContent: "flex-end" },
+  handleWrap: {
+    alignItems: "center",
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xxs,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: radii.round,
+  },
   sheet: {
     maxHeight: "88%",
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,
     padding: spacing.lg,
-    gap: spacing.lg,
+    paddingTop: spacing.sm,
+    gap: spacing.md,
   },
   scroll: {
     // Shrink to the sheet's maxHeight so long content scrolls instead of

@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
@@ -7,6 +8,7 @@ import { useDashboardData } from "@/db/local-workspace-state";
 import { buildDashboardView, localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
 import {
+  Button,
   Card,
   CashflowChart,
   ChartCard,
@@ -40,21 +42,29 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const balances = summary.accountBalances;
   return (
     <Card accessibilityLabel="Account balances">
-      <SectionLabel>Balance</SectionLabel>
-      <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} />
+      <SectionLabel>Total Balance</SectionLabel>
+      <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} style={styles.heroMoney} />
       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-        Calculated from your recorded ledger. It may omit activity from before tracking began.
+        Calculated from your recorded ledger across all accounts.
       </Text>
       {balances && balances.items.length > 0 ? (
-        <View style={{ gap: spacing.xs }}>
+        <View style={{ gap: spacing.xs, marginTop: spacing.xxs }}>
           {balances.items.map((account) => (
             <View key={account.id} style={styles.accountRow}>
-              <Text
-                numberOfLines={1}
-                style={[typography.body, { color: theme.colors.text, flex: 1 }]}
-              >
-                {account.name}
-              </Text>
+              <View style={styles.accountLeading}>
+                <View
+                  accessibilityElementsHidden
+                  style={[styles.accountIconBox, { backgroundColor: theme.colors.brandSoft }]}
+                >
+                  <MaterialCommunityIcons name="wallet-outline" size={18} color={theme.colors.brand} />
+                </View>
+                <Text
+                  numberOfLines={1}
+                  style={[typography.body, { color: theme.colors.text, flex: 1 }]}
+                >
+                  {account.name}
+                </Text>
+              </View>
               <MoneyValue amountMinor={account.balanceMinor} currency={account.currency} />
             </View>
           ))}
@@ -71,23 +81,55 @@ function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
     <Card accessibilityLabel="This month summary">
       <SectionLabel>This month</SectionLabel>
       <View style={styles.metricRow}>
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>Money in</Text>
+        <View style={styles.metricLabelGroup}>
+          <View
+            accessibilityElementsHidden
+            style={[styles.metricIconWrap, { backgroundColor: theme.colors.brandSoft }]}
+          >
+            <MaterialCommunityIcons name="arrow-down-left" size={18} color={theme.colors.income} />
+          </View>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>Money in</Text>
+        </View>
         <MoneyValue amountMinor={metrics.moneyInMinor} tone="income" />
       </View>
       <View style={styles.metricRow}>
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>Money out</Text>
+        <View style={styles.metricLabelGroup}>
+          <View
+            accessibilityElementsHidden
+            style={[styles.metricIconWrap, { backgroundColor: theme.colors.dangerSoft }]}
+          >
+            <MaterialCommunityIcons name="arrow-up-right" size={18} color={theme.colors.expense} />
+          </View>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>Money out</Text>
+        </View>
         <MoneyValue amountMinor={-metrics.moneyOutMinor} tone="expense" />
       </View>
       <View style={styles.metricRow}>
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>Net</Text>
+        <View style={styles.metricLabelGroup}>
+          <View
+            accessibilityElementsHidden
+            style={[styles.metricIconWrap, { backgroundColor: theme.colors.canvasMuted }]}
+          >
+            <MaterialCommunityIcons name="scale-balance" size={18} color={theme.colors.brand} />
+          </View>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>Net flow</Text>
+        </View>
         <MoneyValue
           amountMinor={metrics.netMinor}
           tone={metrics.netMinor >= 0 ? "income" : "expense"}
         />
       </View>
       <View style={styles.metricRow}>
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>Savings rate</Text>
-        <Text style={[typography.body, { color: theme.colors.text }]}>
+        <View style={styles.metricLabelGroup}>
+          <View
+            accessibilityElementsHidden
+            style={[styles.metricIconWrap, { backgroundColor: theme.colors.canvasMuted }]}
+          >
+            <MaterialCommunityIcons name="piggy-bank-outline" size={18} color={theme.colors.brand} />
+          </View>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>Savings rate</Text>
+        </View>
+        <Text style={[typography.body, { color: theme.colors.text, fontWeight: "600" }]}>
           {insights.savingsRatePercent === null ? "—" : insights.savingsRatePercent + "%"}
         </Text>
       </View>
@@ -220,6 +262,7 @@ function CashflowCard({
                       : locked
                         ? theme.colors.textMuted
                         : theme.colors.text,
+                    fontWeight: selected ? "600" : "500",
                   },
                 ]}
               >
@@ -247,15 +290,78 @@ function CashflowCard({
 }
 
 function BudgetCard({ summary }: { summary: DashboardSummary }) {
+  const theme = useZoptionTheme();
+  const hasBudgets = summary.budgetProgress.length > 0;
   return (
-    <Card>
-      <SectionLabel>Budgets</SectionLabel>
-      {summary.budgetProgress.length === 0 ? (
+    <Card accessibilityLabel="Budgets overview">
+      <View style={styles.cardHeaderRow}>
+        <SectionLabel>Budgets</SectionLabel>
+        {hasBudgets ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="View all budgets"
+            onPress={() => router.push("/(app)/(tabs)/budgets")}
+            hitSlop={8}
+          >
+            <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+              View all
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {!hasBudgets ? (
         <EmptyState
           title="No monthly budget yet"
-          description="Budget limits will use the same server-authoritative semantics as Zoption web."
+          description="Set spending limits by category to keep your monthly money goals on track."
+          action={
+            <Button
+              variant="secondary"
+              onPress={() => router.push("/(app)/(tabs)/budgets")}
+            >
+              Set up budgets
+            </Button>
+          }
         />
-      ) : null}
+      ) : (
+        <View style={{ gap: spacing.sm }}>
+          {summary.budgetProgress.slice(0, 3).map((item) => {
+            const percent = Math.min(100, item.usedPercent);
+            const overBudget = item.usedPercent > 100 || item.remainingMinor < 0;
+            return (
+              <View key={item.categoryId} style={{ gap: spacing.xxs }}>
+                <View style={styles.budgetRowHeader}>
+                  <View style={[styles.dot, { backgroundColor: item.color }]} />
+                  <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text, flex: 1 }]}>
+                    {item.name}
+                  </Text>
+                  <Text
+                    style={[
+                      typography.caption,
+                      {
+                        color: overBudget ? theme.colors.danger : theme.colors.textMuted,
+                        fontWeight: overBudget ? "600" : "500",
+                      },
+                    ]}
+                  >
+                    {item.usedPercent}%
+                  </Text>
+                </View>
+                <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
+                  <View
+                    style={[
+                      styles.fill,
+                      {
+                        width: (`${percent}%` as DimensionValue),
+                        backgroundColor: overBudget ? theme.colors.danger : item.color,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </Card>
   );
 }
@@ -317,19 +423,63 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  heroMoney: {
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: "700",
+    marginVertical: spacing.xxs,
+  },
   accountRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
+    paddingVertical: spacing.xxs,
+  },
+  accountLeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    flex: 1,
+    minWidth: 0,
+  },
+  accountIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
   metricRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
+    paddingVertical: spacing.xxs,
+  },
+  metricLabelGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  metricIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
   categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  cardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  budgetRowHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
@@ -348,18 +498,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dot: {
-    width: 12,
-    height: 12,
+    width: 10,
+    height: 10,
     borderRadius: radii.round,
   },
   track: {
-    height: 8,
+    height: 6,
     borderRadius: radii.round,
     overflow: "hidden",
     marginTop: spacing.xxs,
   },
   fill: {
-    height: 8,
+    height: 6,
     borderRadius: radii.round,
   },
 });

@@ -22,7 +22,14 @@ export function ConfirmationDialog(props: ConfirmationDialogProps) {
         <Pressable style={StyleSheet.absoluteFill} onPress={props.onCancel} />
         <View
           accessibilityRole="alert"
-          style={[styles.dialog, elevation.dialog, { backgroundColor: theme.colors.surfaceRaised }]}
+          style={[
+            styles.dialog,
+            elevation.dialog,
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: theme.colors.border,
+            },
+          ]}
         >
           <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
             {props.title}

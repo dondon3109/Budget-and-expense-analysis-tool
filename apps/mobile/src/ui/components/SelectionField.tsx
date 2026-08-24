@@ -51,6 +51,10 @@ export function SelectionField({
           accessibilityState={{ checked: isSelected }}
           accessibilityLabel={item.label}
           accessibilityHint={item.detail}
+          android_ripple={{
+            color: theme.colors.brandSoft ? "rgba(15, 107, 91, 0.12)" : "rgba(0,0,0,0.06)",
+            borderless: false,
+          }}
           onPress={() => {
             onSelect(item.id);
             setOpen(false);

@@ -1,4 +1,4 @@
-import { forwardRef, useId, type ReactNode } from "react";
+import { forwardRef, useId, useState, type ReactNode } from "react";
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
 
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -12,10 +12,11 @@ interface FormFieldProps extends TextInputProps {
 }
 
 export const FormField = forwardRef<TextInput, FormFieldProps>(function FormField(
-  { label, error, hint, trailing, style, ...props },
+  { label, error, hint, trailing, style, onFocus, onBlur, ...props },
   ref,
 ) {
   const theme = useZoptionTheme();
+  const [isFocused, setIsFocused] = useState(false);
   const nativeId = useId();
   const errorId = `${nativeId}-error`;
   const hintId = `${nativeId}-hint`;
@@ -30,11 +31,24 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
           accessibilityHint={error ?? hint}
           aria-describedby={error ? errorId : hint ? hintId : undefined}
           placeholderTextColor={theme.colors.textMuted}
+          onFocus={(event) => {
+            setIsFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setIsFocused(false);
+            onBlur?.(event);
+          }}
           style={[
             styles.input,
             {
               backgroundColor: theme.colors.surface,
-              borderColor: error ? theme.colors.danger : theme.colors.border,
+              borderColor: error
+                ? theme.colors.danger
+                : isFocused
+                  ? theme.colors.brand
+                  : theme.colors.border,
+              borderWidth: error || isFocused ? 1.5 : 1,
               color: theme.colors.text,
             },
             trailing ? styles.withTrailing : null,

@@ -4,6 +4,7 @@ import SignInScreen from "../../../app/(public)/sign-in";
 
 const mockSignInWithGoogle = jest.fn(async () => undefined);
 const mockSignInWithPassword = jest.fn(async () => undefined);
+const mockSignInWithDummyAccount = jest.fn(async () => undefined);
 
 jest.mock("@/auth/session-state", () => ({
   useSessionSnapshot: () => ({
@@ -12,6 +13,7 @@ jest.mock("@/auth/session-state", () => ({
     configured: true,
     signInWithGoogle: mockSignInWithGoogle,
     signInWithPassword: mockSignInWithPassword,
+    signInWithDummyAccount: mockSignInWithDummyAccount,
     sendPasswordReset: jest.fn(async () => undefined),
     exchangeCodeForSession: jest.fn(async () => undefined),
     updatePassword: jest.fn(async () => undefined),
@@ -22,6 +24,14 @@ jest.mock("@/auth/session-state", () => ({
 describe("sign-in screen social options", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("exposes a working dummy account sign-in action", async () => {
+    await render(<SignInScreen />);
+    const button = screen.getByRole("button", { name: "Sign in with dummy account" });
+    expect(button).not.toBeDisabled();
+    await fireEvent.press(button);
+    expect(mockSignInWithDummyAccount).toHaveBeenCalledTimes(1);
   });
 
   it("exposes a working Continue with Google action", async () => {
