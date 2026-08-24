@@ -391,6 +391,7 @@ export interface TransactionQuery {
   search?: string;
   kind?: TransactionKindFilter;
   accountId?: string;
+  month?: string;
   limit?: number;
 }
 
@@ -511,6 +512,11 @@ export class LocalWorkspaceRepository {
     if (query.accountId) {
       conditions.push("transaction_row.account_id = ?");
       params.push(query.accountId);
+    }
+    if (query.month) {
+      const month = monthStartSchema.parse(query.month);
+      conditions.push("transaction_row.date >= ? AND transaction_row.date < date(?, '+1 month')");
+      params.push(month, month);
     }
     const search = query.search ? query.search.trim() : "";
     if (search) {

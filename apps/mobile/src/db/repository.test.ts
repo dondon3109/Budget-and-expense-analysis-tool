@@ -111,6 +111,18 @@ describe("encrypted local workspace repository", () => {
     expect(plainSql).not.toContain("instr(lower");
     expect(plainSql).not.toContain("transaction_row.kind = ?");
     expect(plainParams).toEqual([100]);
+
+    await repository.queryTransactions({ month: "2026-08-01", limit: 200 });
+    const [monthSql, ...monthParams] = getAllAsync.mock.calls[2] as [
+      string,
+      ...Array<string | number>,
+    ];
+    expect(monthSql).toContain("transaction_row.date >= ?");
+    expect(monthSql).toContain("transaction_row.date < date(?, '+1 month')");
+    expect(monthParams).toEqual(["2026-08-01", "2026-08-01", 200]);
+    await expect(repository.queryTransactions({ month: "2026-08-02" })).rejects.toThrow(
+      "Use the first day of the month.",
+    );
   });
 
   it("decodes native account and category setup rows without financial state in memory stores", async () => {

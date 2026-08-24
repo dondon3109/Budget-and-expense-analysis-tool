@@ -1114,6 +1114,7 @@ export function useCalendarMonth(month: string): {
 export function useLocalTransactions(
   search = "",
   kind: TransactionKindFilter = "all",
+  month?: string,
 ): {
   items: LocalTransactionItem[] | null;
   error: string | null;
@@ -1133,7 +1134,7 @@ export function useLocalTransactions(
     let active = true;
     const refresh = (): void => {
       void workspace.repository
-        .queryTransactions({ search, kind })
+        .queryTransactions({ search, kind, month, limit: month ? 200 : undefined })
         .then((next) => {
           if (active) {
             setItems(next);
@@ -1157,7 +1158,7 @@ export function useLocalTransactions(
       active = false;
       subscription.remove();
     };
-  }, [attempt, workspace, search, kind]);
+  }, [attempt, workspace, search, kind, month]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { items, error, retry };

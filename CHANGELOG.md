@@ -13,6 +13,7 @@ All notable product changes are documented here.
 ### Changed
 
 - Refined mobile navigation and setup lists with flatter native-style outline icons and quieter row spacing.
+- Rebuilt the mobile Transactions tab around month navigation, daily date groups, monthly totals, alternate views, and a floating add action.
 
 ## 2.12.1 — 2026-08-24
 
