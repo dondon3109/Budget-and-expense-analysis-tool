@@ -18,12 +18,13 @@ import {
   OfflineBanner,
   Skeleton,
   SyncStatus,
+  TransactionRow,
 } from "@/ui/components";
 import { fullDateLabel } from "@/ui/components/cashflow-chart-geometry";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { radii, spacing, typography } from "@/ui/tokens";
-import type { CashflowTrend, DashboardSummary } from "@zoption/shared";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import type { CashflowTrend, DashboardSummary, TransactionRecord } from "@zoption/shared";
 
 function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
   if (status === "syncing") return "syncing" as const;
@@ -32,18 +33,171 @@ function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
   return "failed" as const;
 }
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 function SectionLabel({ children }: { children: string }) {
   const theme = useZoptionTheme();
   return <Text style={[typography.headline, { color: theme.colors.text }]}>{children}</Text>;
 }
 
+function QuickActionBar() {
+  const theme = useZoptionTheme();
+  return (
+    <View accessibilityLabel="Quick actions" style={styles.quickActionsGrid}>
+      <Pressable
+        accessibilityLabel="Add transaction"
+        accessibilityHint="Opens the new transaction form"
+        accessibilityRole="button"
+        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+        onPress={() => router.push("/(app)/transaction")}
+        style={[
+          styles.quickActionTile,
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+        ]}
+      >
+        <View
+          accessibilityElementsHidden
+          style={[styles.quickActionIconWrap, { backgroundColor: theme.colors.brandSoft }]}
+        >
+          <MaterialCommunityIcons name="plus" size={20} color={theme.colors.brand} />
+        </View>
+        <Text style={[typography.caption, { color: theme.colors.text, fontWeight: "600" }]}>
+          Add
+        </Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityLabel="Scan receipt"
+        accessibilityHint="Opens camera to scan a receipt"
+        accessibilityRole="button"
+        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+        onPress={() => router.push("/(app)/receipt-scan")}
+        style={[
+          styles.quickActionTile,
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+        ]}
+      >
+        <View
+          accessibilityElementsHidden
+          style={[styles.quickActionIconWrap, { backgroundColor: theme.colors.brandSoft }]}
+        >
+          <MaterialCommunityIcons name="camera-outline" size={20} color={theme.colors.brand} />
+        </View>
+        <Text style={[typography.caption, { color: theme.colors.text, fontWeight: "600" }]}>
+          Scan
+        </Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityLabel="View budgets"
+        accessibilityHint="Opens category budgets overview"
+        accessibilityRole="button"
+        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+        onPress={() => router.push("/(app)/(tabs)/budgets")}
+        style={[
+          styles.quickActionTile,
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+        ]}
+      >
+        <View
+          accessibilityElementsHidden
+          style={[styles.quickActionIconWrap, { backgroundColor: theme.colors.brandSoft }]}
+        >
+          <MaterialCommunityIcons name="chart-donut" size={20} color={theme.colors.brand} />
+        </View>
+        <Text style={[typography.caption, { color: theme.colors.text, fontWeight: "600" }]}>
+          Budgets
+        </Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityLabel="AI Assistant"
+        accessibilityHint="Opens financial AI assistant"
+        accessibilityRole="button"
+        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+        onPress={() => router.push("/(app)/assistant")}
+        style={[
+          styles.quickActionTile,
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+        ]}
+      >
+        <View
+          accessibilityElementsHidden
+          style={[styles.quickActionIconWrap, { backgroundColor: theme.colors.brandSoft }]}
+        >
+          <MaterialCommunityIcons
+            name="chat-processing-outline"
+            size={20}
+            color={theme.colors.brand}
+          />
+        </View>
+        <Text style={[typography.caption, { color: theme.colors.text, fontWeight: "600" }]}>
+          Assistant
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
   const balances = summary.accountBalances;
+  const netMinor = summary.metrics.netMinor;
+  const isNetPositive = netMinor >= 0;
+
   return (
     <Card accessibilityLabel="Account balances">
-      <SectionLabel>Total Balance</SectionLabel>
-      <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} style={styles.heroMoney} />
+      <View style={styles.cardHeaderRow}>
+        <SectionLabel>Total Balance</SectionLabel>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Manage accounts"
+          onPress={() => router.push("/(app)/money-setup")}
+          hitSlop={8}
+        >
+          <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+            Accounts
+          </Text>
+        </Pressable>
+      </View>
+      <View style={styles.balanceHeroRow}>
+        <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} style={styles.heroMoney} />
+        <View
+          style={[
+            styles.netChangePill,
+            {
+              backgroundColor: isNetPositive ? theme.colors.brandSoft : theme.colors.dangerSoft,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={isNetPositive ? "trending-up" : "trending-down"}
+            size={14}
+            color={isNetPositive ? theme.colors.income : theme.colors.expense}
+          />
+          <MoneyValue
+            amountMinor={netMinor}
+            tone={isNetPositive ? "income" : "expense"}
+            style={styles.netPillMoney}
+          />
+          <Text
+            style={[
+              typography.caption,
+              {
+                color: isNetPositive ? theme.colors.income : theme.colors.expense,
+                fontWeight: "700",
+              },
+            ]}
+          >
+            this month
+          </Text>
+        </View>
+      </View>
       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
         Calculated from your recorded ledger across all accounts.
       </Text>
@@ -57,7 +211,7 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
                   style={[styles.accountIconBox, { backgroundColor: theme.colors.brandSoft }]}
                 >
                   <MaterialCommunityIcons
-                    name="wallet-outline"
+                    name={account.currency === "USD" ? "currency-usd" : "wallet-outline"}
                     size={18}
                     color={theme.colors.brand}
                   />
@@ -68,6 +222,18 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
                 >
                   {account.name}
                 </Text>
+                {account.currency === "USD" ? (
+                  <View
+                    style={[
+                      styles.currencyTag,
+                      { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                    ]}
+                  >
+                    <Text style={[typography.caption, { color: theme.colors.textMuted, fontSize: 10 }]}>
+                      USD
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <MoneyValue amountMinor={account.balanceMinor} currency={account.currency} />
             </View>
@@ -83,63 +249,107 @@ function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
   const { metrics, insights } = summary;
   return (
     <Card accessibilityLabel="This month summary">
-      <SectionLabel>This month</SectionLabel>
-      <View style={styles.metricRow}>
-        <View style={styles.metricLabelGroup}>
-          <View
-            accessibilityElementsHidden
-            style={[styles.metricIconWrap, { backgroundColor: theme.colors.brandSoft }]}
-          >
-            <MaterialCommunityIcons name="arrow-down-left" size={18} color={theme.colors.income} />
-          </View>
-          <Text style={[typography.body, { color: theme.colors.textMuted }]}>Money in</Text>
-        </View>
-        <MoneyValue amountMinor={metrics.moneyInMinor} tone="income" />
-      </View>
-      <View style={styles.metricRow}>
-        <View style={styles.metricLabelGroup}>
-          <View
-            accessibilityElementsHidden
-            style={[styles.metricIconWrap, { backgroundColor: theme.colors.dangerSoft }]}
-          >
-            <MaterialCommunityIcons name="arrow-up-right" size={18} color={theme.colors.expense} />
-          </View>
-          <Text style={[typography.body, { color: theme.colors.textMuted }]}>Money out</Text>
-        </View>
-        <MoneyValue amountMinor={-metrics.moneyOutMinor} tone="expense" />
-      </View>
-      <View style={styles.metricRow}>
-        <View style={styles.metricLabelGroup}>
-          <View
-            accessibilityElementsHidden
-            style={[styles.metricIconWrap, { backgroundColor: theme.colors.canvasMuted }]}
-          >
-            <MaterialCommunityIcons name="scale-balance" size={18} color={theme.colors.brand} />
-          </View>
-          <Text style={[typography.body, { color: theme.colors.textMuted }]}>Net flow</Text>
-        </View>
-        <MoneyValue
-          amountMinor={metrics.netMinor}
-          tone={metrics.netMinor >= 0 ? "income" : "expense"}
-        />
-      </View>
-      <View style={styles.metricRow}>
-        <View style={styles.metricLabelGroup}>
-          <View
-            accessibilityElementsHidden
-            style={[styles.metricIconWrap, { backgroundColor: theme.colors.canvasMuted }]}
-          >
-            <MaterialCommunityIcons
-              name="piggy-bank-outline"
-              size={18}
-              color={theme.colors.brand}
-            />
-          </View>
-          <Text style={[typography.body, { color: theme.colors.textMuted }]}>Savings rate</Text>
-        </View>
-        <Text style={[typography.body, { color: theme.colors.text, fontWeight: "600" }]}>
-          {insights.savingsRatePercent === null ? "—" : insights.savingsRatePercent + "%"}
+      <View style={styles.cardHeaderRow}>
+        <SectionLabel>This month</SectionLabel>
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+          {summary.period.from} to {summary.period.to}
         </Text>
+      </View>
+
+      <View style={styles.summaryGrid}>
+        {/* Money in */}
+        <View
+          style={[
+            styles.summaryTile,
+            { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
+          ]}
+        >
+          <View style={styles.summaryTileHeader}>
+            <View
+              accessibilityElementsHidden
+              style={[styles.metricIconWrap, { backgroundColor: theme.colors.brandSoft }]}
+            >
+              <MaterialCommunityIcons
+                name="arrow-down-left"
+                size={16}
+                color={theme.colors.income}
+              />
+            </View>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Money in</Text>
+          </View>
+          <MoneyValue amountMinor={metrics.moneyInMinor} tone="income" style={typography.headline} />
+        </View>
+
+        {/* Money out */}
+        <View
+          style={[
+            styles.summaryTile,
+            { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
+          ]}
+        >
+          <View style={styles.summaryTileHeader}>
+            <View
+              accessibilityElementsHidden
+              style={[styles.metricIconWrap, { backgroundColor: theme.colors.dangerSoft }]}
+            >
+              <MaterialCommunityIcons
+                name="arrow-up-right"
+                size={16}
+                color={theme.colors.expense}
+              />
+            </View>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Money out</Text>
+          </View>
+          <MoneyValue amountMinor={-metrics.moneyOutMinor} tone="expense" style={typography.headline} />
+        </View>
+
+        {/* Net flow */}
+        <View
+          style={[
+            styles.summaryTile,
+            { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
+          ]}
+        >
+          <View style={styles.summaryTileHeader}>
+            <View
+              accessibilityElementsHidden
+              style={[styles.metricIconWrap, { backgroundColor: theme.colors.surfaceRaised }]}
+            >
+              <MaterialCommunityIcons name="scale-balance" size={16} color={theme.colors.brand} />
+            </View>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Net flow</Text>
+          </View>
+          <MoneyValue
+            amountMinor={metrics.netMinor}
+            tone={metrics.netMinor >= 0 ? "income" : "expense"}
+            style={typography.headline}
+          />
+        </View>
+
+        {/* Savings rate */}
+        <View
+          style={[
+            styles.summaryTile,
+            { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
+          ]}
+        >
+          <View style={styles.summaryTileHeader}>
+            <View
+              accessibilityElementsHidden
+              style={[styles.metricIconWrap, { backgroundColor: theme.colors.surfaceRaised }]}
+            >
+              <MaterialCommunityIcons
+                name="piggy-bank-outline"
+                size={16}
+                color={theme.colors.brand}
+              />
+            </View>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Savings rate</Text>
+          </View>
+          <Text style={[typography.headline, { color: theme.colors.text, fontWeight: "700" }]}>
+            {insights.savingsRatePercent === null ? "—" : `${insights.savingsRatePercent}%`}
+          </Text>
+        </View>
       </View>
     </Card>
   );
@@ -163,7 +373,19 @@ function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
   }
   return (
     <Card accessibilityLabel="Spending by category">
-      <SectionLabel>Spending by category</SectionLabel>
+      <View style={styles.cardHeaderRow}>
+        <SectionLabel>Spending by category</SectionLabel>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="View category budgets"
+          onPress={() => router.push("/(app)/(tabs)/budgets")}
+          hitSlop={8}
+        >
+          <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+            Budgets
+          </Text>
+        </Pressable>
+      </View>
       <View style={{ gap: spacing.sm }}>
         {summary.spendingByCategory.map((item) => {
           const percent = max <= 0 ? 0 : Math.round((item.amountMinor / max) * 100);
@@ -171,7 +393,7 @@ function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
             <View
               key={item.categoryId}
               accessible
-              accessibilityLabel={item.name + ": " + item.sharePercent + " percent of spending"}
+              accessibilityLabel={`${item.name}: ${item.sharePercent} percent of spending`}
             >
               <View style={styles.categoryRow}>
                 {item.iconEmoji ? (
@@ -187,16 +409,23 @@ function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
                 >
                   {item.name}
                 </Text>
-                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                  {item.sharePercent + "%"}
-                </Text>
+                <View
+                  style={[
+                    styles.shareBadge,
+                    { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
+                  ]}
+                >
+                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                    {item.sharePercent}%
+                  </Text>
+                </View>
                 <MoneyValue amountMinor={-item.amountMinor} tone="expense" />
               </View>
               <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
                 <View
                   style={[
                     styles.fill,
-                    { width: (percent + "%") as DimensionValue, backgroundColor: item.color },
+                    { width: `${percent}%` as DimensionValue, backgroundColor: item.color },
                   ]}
                 />
               </View>
@@ -348,12 +577,34 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
                   >
                     {item.name}
                   </Text>
+                  <View
+                    style={[
+                      styles.budgetStatusPill,
+                      {
+                        backgroundColor: overBudget
+                          ? theme.colors.dangerSoft
+                          : theme.colors.canvasMuted,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        typography.caption,
+                        {
+                          color: overBudget ? theme.colors.danger : theme.colors.textMuted,
+                          fontWeight: overBudget ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {overBudget ? "Over budget" : `${100 - item.usedPercent}% left`}
+                    </Text>
+                  </View>
                   <Text
                     style={[
                       typography.caption,
                       {
-                        color: overBudget ? theme.colors.danger : theme.colors.textMuted,
-                        fontWeight: overBudget ? "600" : "500",
+                        color: overBudget ? theme.colors.danger : theme.colors.text,
+                        fontWeight: overBudget ? "700" : "600",
                       },
                     ]}
                   >
@@ -376,6 +627,55 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
           })}
         </View>
       )}
+    </Card>
+  );
+}
+
+function RecentActivityCard({ transactions }: { transactions: TransactionRecord[] }) {
+  const theme = useZoptionTheme();
+  const recent = useMemo(
+    () =>
+      [...transactions]
+        .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+        .slice(0, 3),
+    [transactions],
+  );
+
+  if (recent.length === 0) return null;
+
+  return (
+    <Card accessibilityLabel="Recent transactions">
+      <View style={styles.cardHeaderRow}>
+        <SectionLabel>Recent activity</SectionLabel>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="View all transactions"
+          onPress={() => router.push("/(app)/(tabs)/transactions")}
+          hitSlop={8}
+        >
+          <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+            View all
+          </Text>
+        </Pressable>
+      </View>
+      <View style={{ gap: spacing.xs }}>
+        {recent.map((tx) => (
+          <TransactionRow
+            key={tx.id}
+            transaction={{
+              ...tx,
+              accountId: null,
+              notes: null,
+            }}
+            onPress={() =>
+              router.push({
+                pathname: "/(app)/transaction",
+                params: { id: tx.id },
+              })
+            }
+          />
+        ))}
+      </View>
     </Card>
   );
 }
@@ -433,41 +733,99 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
         accessibilityRole="header"
         style={[typography.title, styles.emptyTitle, { color: theme.colors.text }]}
       >
-        No transactions yet
+        Welcome to your workspace
       </Text>
       <Text
         style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}
       >
-        Track income and expenses, monitor cash flow trends, and set category budgets to take control of your money.
+        Take control of your money with offline-first tracking, smart receipt scans, and category budgeting.
       </Text>
-      <View style={styles.emptyActions}>
-        <Button
-          accessibilityHint="Opens the new transaction form"
+
+      <View style={styles.onboardingSteps}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Step 1: Set up accounts and categories"
+          onPress={() => router.push("/(app)/money-setup")}
+          style={[
+            styles.stepCard,
+            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+          ]}
+        >
+          <View
+            accessibilityElementsHidden
+            style={[styles.stepNumberBadge, { backgroundColor: theme.colors.brandSoft }]}
+          >
+            <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "700" }]}>
+              1
+            </Text>
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[typography.headline, { color: theme.colors.text }]}>
+              Set up accounts &amp; categories
+            </Text>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Create cash, bank, or e-wallet accounts and customize tags.
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.textMuted} />
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Step 2: Add your first transaction"
           onPress={() => router.push("/(app)/transaction")}
-          variant="primary"
+          style={[
+            styles.stepCard,
+            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+          ]}
         >
-          Add transaction
-        </Button>
-        <Button
-          accessibilityHint="Opens camera to scan a receipt"
-          onPress={() => router.push("/(app)/receipt-scan")}
-          variant="secondary"
+          <View
+            accessibilityElementsHidden
+            style={[styles.stepNumberBadge, { backgroundColor: theme.colors.brandSoft }]}
+          >
+            <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "700" }]}>
+              2
+            </Text>
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[typography.headline, { color: theme.colors.text }]}>
+              Add transaction or scan receipt
+            </Text>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Log daily spending or snap a receipt to auto-draft expenses.
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.textMuted} />
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Step 3: Set category budgets"
+          onPress={() => router.push("/(app)/(tabs)/budgets")}
+          style={[
+            styles.stepCard,
+            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+          ]}
         >
-          Scan receipt
-        </Button>
+          <View
+            accessibilityElementsHidden
+            style={[styles.stepNumberBadge, { backgroundColor: theme.colors.brandSoft }]}
+          >
+            <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "700" }]}>
+              3
+            </Text>
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[typography.headline, { color: theme.colors.text }]}>
+              Set monthly budget limits
+            </Text>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Keep food, utilities, and shopping expenses in check.
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.textMuted} />
+        </Pressable>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Set up accounts and categories"
-        hitSlop={8}
-        onPress={() => router.push("/(app)/money-setup")}
-        style={styles.setupLink}
-      >
-        <MaterialCommunityIcons name="cog-outline" size={16} color={theme.colors.brand} />
-        <Text style={[typography.label, { color: theme.colors.brand }]}>
-          Set up accounts &amp; categories
-        </Text>
-      </Pressable>
     </View>
   );
 }
@@ -477,6 +835,7 @@ export default function HomeScreen() {
   const sync = useSyncState();
   const planState = usePlan();
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
+  const greeting = useMemo(() => getGreeting(), []);
   const view = useMemo(
     () =>
       dashboard.data
@@ -484,11 +843,20 @@ export default function HomeScreen() {
         : null,
     [dashboard.data, cashflowView],
   );
-  const hasTransactions = Boolean(view && view.summary.monthlyTrend.length > 0);
+  const hasTransactions = Boolean(
+    view &&
+      (view.summary.monthlyTrend.length > 0 ||
+        (dashboard.data?.transactions.length ?? 0) > 0 ||
+        (dashboard.data?.accounts.length ?? 0) > 0),
+  );
   const isPro = planState.plan === "zoption_pro";
 
   return (
-    <Screen action={<SyncStatus state={visibleSyncState(sync.status)} />} title="Home">
+    <Screen
+      action={<SyncStatus state={visibleSyncState(sync.status)} />}
+      description={greeting}
+      title="Home"
+    >
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
         <ErrorState message={sync.message} onRetry={sync.retry} title="Sync paused" />
@@ -505,32 +873,81 @@ export default function HomeScreen() {
           <Skeleton height={120} />
           <Skeleton height={120} />
         </View>
-      ) : hasTransactions ? (
-        <View style={{ gap: spacing.md }}>
-          <BalanceCard summary={view.summary} />
-          <MonthSummaryCard summary={view.summary} />
-          <SpendingByCategory summary={view.summary} />
-          <CashflowCard
-            cashflow={view.cashflow}
-            isPro={isPro}
-            onSelectView={setCashflowView}
-            selectedView={cashflowView}
-          />
-          <BudgetCard summary={view.summary} />
-        </View>
       ) : (
-        <HomeEmptyView syncing={sync.status === "syncing"} />
+        <View style={{ gap: spacing.md }}>
+          <QuickActionBar />
+          {hasTransactions ? (
+            <>
+              <BalanceCard summary={view.summary} />
+              <MonthSummaryCard summary={view.summary} />
+              <SpendingByCategory summary={view.summary} />
+              <CashflowCard
+                cashflow={view.cashflow}
+                isPro={isPro}
+                onSelectView={setCashflowView}
+                selectedView={cashflowView}
+              />
+              <BudgetCard summary={view.summary} />
+              <RecentActivityCard transactions={dashboard.data?.transactions ?? []} />
+            </>
+          ) : (
+            <HomeEmptyView syncing={sync.status === "syncing"} />
+          )}
+        </View>
       )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  quickActionsGrid: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    justifyContent: "space-between",
+  },
+  quickActionTile: {
+    flex: 1,
+    minHeight: touchTarget + spacing.xs,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xxs,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xxs,
+  },
+  quickActionIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   heroMoney: {
     fontSize: 32,
     lineHeight: 38,
     fontWeight: "700",
+  },
+  balanceHeroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: spacing.xs,
     marginVertical: spacing.xxs,
+  },
+  netChangePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radii.round,
+  },
+  netPillMoney: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "700",
   },
   accountRow: {
     flexDirection: "row",
@@ -553,22 +970,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  metricRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-    paddingVertical: spacing.xxs,
+  currencyTag: {
+    paddingHorizontal: spacing.xxs + 2,
+    paddingVertical: 1,
+    borderRadius: radii.sm,
+    borderWidth: 1,
   },
-  metricLabelGroup: {
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  summaryTile: {
+    flex: 1,
+    minWidth: "47%",
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: spacing.xs,
+  },
+  summaryTileHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
   },
   metricIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.md,
+    width: 28,
+    height: 28,
+    borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -576,6 +1005,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+  },
+  categoryEmoji: { width: 24, fontSize: 19, lineHeight: 24 },
+  shareBadge: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: radii.round,
+    borderWidth: 1,
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -586,6 +1022,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+  },
+  budgetStatusPill: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: radii.round,
   },
   segmented: {
     flexDirection: "row",
@@ -605,7 +1046,6 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: radii.round,
   },
-  categoryEmoji: { width: 24, fontSize: 19, lineHeight: 24 },
   track: {
     height: 6,
     borderRadius: radii.round,
@@ -620,8 +1060,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xl,
     gap: spacing.sm,
   },
   emptyIconBox: {
@@ -644,19 +1084,24 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: spacing.xs,
   },
-  emptyActions: {
+  onboardingSteps: {
+    width: "100%",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  stepCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    flexWrap: "wrap",
-    justifyContent: "center",
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
   },
-  setupLink: {
-    flexDirection: "row",
+  stepNumberBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: radii.round,
     alignItems: "center",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    justifyContent: "center",
   },
 });

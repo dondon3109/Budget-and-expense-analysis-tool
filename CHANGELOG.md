@@ -4,7 +4,17 @@ All notable product changes are documented here.
 
 ## Unreleased
 
-## 2.14.1 — 2026-08-24
+### Added
+
+- Added a quick action bar to the mobile home dashboard for 1-tap transaction entry, receipt scanning, category budget reviews, and AI assistant queries.
+- Added a recent activity card to the mobile home screen displaying the latest transactions with quick editor navigation.
+- Added a structured 3-step onboarding guide to the mobile home screen for new workspaces.
+- Added capability badges, interactive workspace preview, and value pillars to the mobile welcome landing screen.
+
+### Changed
+
+- Redesigned the mobile home balance card with a monthly net momentum indicator and per-account breakdown.
+- Updated the mobile home month summary to a 2x2 grid layout with semantic icon badges and high-contrast tone styling.
 
 ### Fixed
 
