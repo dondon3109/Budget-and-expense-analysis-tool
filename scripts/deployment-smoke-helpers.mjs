@@ -1,3 +1,5 @@
+import { setTimeout as delay } from "node:timers/promises";
+
 function asOrigin(value, label) {
   let url;
   try {
@@ -130,7 +132,7 @@ export async function fetchFrontendScriptGraph(
       response = await fetchImpl(assetUrl, { cache: "no-store" });
       if (response.ok) break;
       if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        await delay(retryDelayMs);
       }
     }
     if (!response || !response.ok) {
