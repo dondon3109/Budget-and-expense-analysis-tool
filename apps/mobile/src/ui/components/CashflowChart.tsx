@@ -14,7 +14,6 @@ import {
   CHART_GUTTER_RIGHT,
   CHART_GUTTER_TOP,
   CHART_HEIGHT,
-  areaPathD,
   buildChartGeometry,
   chartSummaryLabel,
   compactDateLabel,
@@ -181,26 +180,23 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
             {width > 0 ? (
               <>
                 <Path
-                  d={areaPathD(incomeD, geometry, points.length)}
-                  fill={theme.colors.income}
-                  fillOpacity={0.08}
-                />
-                <Path
-                  d={areaPathD(expenseD, geometry, points.length)}
-                  fill={theme.colors.expense}
-                  fillOpacity={0.07}
-                />
-                <Path
+                  testID="cashflow-income-line"
                   d={incomeD}
+                  fill="none"
+                  fillOpacity={0}
                   stroke={theme.colors.income}
                   strokeWidth={2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
                 <Path
+                  testID="cashflow-expense-line"
                   d={expenseD}
+                  fill="none"
+                  fillOpacity={0}
                   stroke={theme.colors.expense}
                   strokeWidth={2}
+                  strokeDasharray={[6, 5]}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />

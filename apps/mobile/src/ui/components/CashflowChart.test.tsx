@@ -26,4 +26,12 @@ describe("CashflowChart", () => {
     expect(screen.getByText("Expenses")).toBeTruthy();
     expect(screen.queryByLabelText(/percent of spending/)).toBeNull();
   });
+
+  it("renders both series as unfilled lines so neither obscures the other", async () => {
+    await render(<CashflowChart cashflow={cashflow} />);
+
+    expect(screen.getByTestId("cashflow-income-line")).toHaveProp("fillOpacity", 0);
+    expect(screen.getByTestId("cashflow-expense-line")).toHaveProp("fillOpacity", 0);
+    expect(screen.getByTestId("cashflow-expense-line")).toHaveProp("strokeDasharray", [6, 5]);
+  });
 });

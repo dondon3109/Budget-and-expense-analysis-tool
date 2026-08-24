@@ -7,7 +7,6 @@ import {
   createCashflowAxis,
   fullDateLabel,
   indexForPosition,
-  areaPathD,
   linePathD,
   xAxisInterval,
 } from "./cashflow-chart-geometry";
@@ -72,10 +71,6 @@ describe("cashflow chart geometry", () => {
     expect(d).toContain("L");
     expect(geometry.yAt(0)).toBe(geometry.baselineY);
     expect(geometry.yAt(1_000_000)).toBe(12);
-    const area = areaPathD(d, geometry, weekly.points.length);
-    expect(area.endsWith("Z")).toBe(true);
-    expect(area).toContain(`L${geometry.xAt(6).toFixed(1)},${geometry.baselineY.toFixed(1)}`);
-    expect(area).toContain(`L${geometry.xAt(0).toFixed(1)},${geometry.baselineY.toFixed(1)}Z`);
   });
 
   it("summarizes every point for screen readers", () => {

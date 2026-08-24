@@ -138,13 +138,6 @@ export function linePathD(
     .join("");
 }
 
-export function areaPathD(lineD: string, geometry: ChartGeometry, pointCount: number): string {
-  const firstX = geometry.xAt(0).toFixed(1);
-  const lastX = geometry.xAt(Math.max(0, pointCount - 1)).toFixed(1);
-  const baseline = geometry.baselineY.toFixed(1);
-  return `${lineD}L${lastX},${baseline}L${firstX},${baseline}Z`;
-}
-
 export function chartSummaryLabel(cashflow: CashflowTrend): string {
   const perPoint = cashflow.points
     .map((point) => {

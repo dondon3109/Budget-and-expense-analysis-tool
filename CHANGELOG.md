@@ -11,7 +11,7 @@ All notable product changes are documented here.
 ### Fixed
 
 - Excluded spending in categories without a monthly limit from budget totals and over-budget amounts.
-- Kept dashboard cards compact with a scrollable category list and made overlapping mobile cashflow lines distinguishable.
+- Kept dashboard cards compact with a scrollable category list and rendered overlapping mobile cashflow series as unfilled solid and dashed lines.
 - Restored the mobile month calendar and fixed cramped icon alignment in More, account, and category lists.
 - Prevented Android transaction row text from collapsing into undersized columns and corrected the bottom spacing and circular add action.
 
