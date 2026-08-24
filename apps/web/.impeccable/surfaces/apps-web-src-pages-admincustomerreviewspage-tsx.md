@@ -1,8 +1,8 @@
 ---
 version: 1
 slug: "apps-web-src-pages-admincustomerreviewspage-tsx"
-primary_target: "apps/web/src/pages/AdminCustomerReviewsPage.tsx"
-related_targets: ["apps/web/src/pages/AdminCustomerReviewsPage.css"]
+primary_target: "src/pages/AdminCustomerReviewsPage.tsx"
+related_targets: ["src/pages/AdminCustomerReviewsPage.css"]
 ---
 
 # Admin customer reviews surface brief

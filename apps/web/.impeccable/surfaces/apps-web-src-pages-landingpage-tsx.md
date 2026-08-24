@@ -1,8 +1,8 @@
 ---
 version: 1
 slug: "apps-web-src-pages-landingpage-tsx"
-primary_target: "apps/web/src/pages/LandingPage.tsx"
-related_targets: ["apps/web/src/pages/LandingPage.css"]
+primary_target: "src/pages/LandingPage.tsx"
+related_targets: ["src/pages/LandingPage.css"]
 ---
 
 # Landing Page Surface Brief
