@@ -1,12 +1,12 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.12-beta",
-  "versionCode": 20312,
-  "filename": "zoption-beta-0.2.12.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.12.apk",
-  "sha256": "64162a3c8a0a1f306edb92d74723600ba9faa9a5d294c51be8c1a5099aff1a59",
-  "sizeBytes": 142708091,
-  "sizeLabel": "142,708,091 bytes (136.10 MiB)",
+  "versionName": "0.2.13-beta",
+  "versionCode": 20313,
+  "filename": "zoption-beta-0.2.13.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.13.apk",
+  "sha256": "473921a49b46714a2a3d58cc183631efda9402f6e487cf1dcddf8b4b973fce96",
+  "sizeBytes": 142712595,
+  "sizeLabel": "142,712,595 bytes (136.10 MiB)",
   "releaseDate": "2026-08-24",
   "releaseDateLabel": "August 24, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
@@ -14,9 +14,9 @@
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Redesigned mobile Transactions ledger with month navigation, daily date groups, monthly totals, and summary views.",
-    "Added optional emoji icons for custom categories with default starter icons and a dedicated mobile category manager.",
-    "Refined native navigation and setup lists with borderless outline iconography and quieter spacing.",
-    "Fixed cashflow chart series line visibility, transaction row text clipping, add action spacing, and Android checklist alignment."
+    "Fixed starter category emojis not showing across all mobile screens.",
+    "Collapsed the mobile transaction-type filters while scrolling and kept each daily date header visible until its group ends.",
+    "Prevented transaction-type filters from becoming stuck as a partially clipped strip.",
+    "Limited dummy account sign-in and demo-data seeding to Zoption Dev builds."
   ]
 }
