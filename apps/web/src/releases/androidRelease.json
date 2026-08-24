@@ -1,12 +1,12 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.10-beta",
-  "versionCode": 20310,
-  "filename": "zoption-beta-0.2.10.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.10.apk",
-  "sha256": "808f9be67695819cd72199d86b7425843ec6f84d5c324bca74fdf688c7931c82",
-  "sizeBytes": 143436119,
-  "sizeLabel": "143,436,119 bytes (136.79 MiB)",
+  "versionName": "0.2.11-beta",
+  "versionCode": 20311,
+  "filename": "zoption-beta-0.2.11.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.11.apk",
+  "sha256": "45a59022d2dcd7f55ce879f29f3dbf6dabcf58f705bc51488f89f4cecdd7fdf8",
+  "sizeBytes": 142677671,
+  "sizeLabel": "142,677,671 bytes (136.07 MiB)",
   "releaseDate": "2026-08-24",
   "releaseDateLabel": "August 24, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
@@ -14,6 +14,6 @@
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Add sanitized crash telemetry reporting with developer test diagnostics."
+    "Redesign Android UI with Material 3 polish, improve navigation and icons, and enable sanitized PostHog crash telemetry."
   ]
 }
