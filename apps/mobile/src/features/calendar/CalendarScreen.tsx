@@ -1,23 +1,16 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, router } from "expo-router";
 import { useMemo, useState } from "react";
-import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useCalendarMonth, useLocalWorkspace } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
 import type { LocalCalendarDay } from "@/db/repository";
-import {
-  Button,
-  Card,
-  EmptyState,
-  ErrorState,
-  MoneyValue,
-  Skeleton,
-  SyncStatus,
-} from "@/ui/components";
+import { Button, Card, ErrorState, MoneyValue, Skeleton, SyncStatus } from "@/ui/components";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
+import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { monthLabel, todayIso } from "./event-form";
 
 function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
@@ -47,17 +40,22 @@ function dayTitle(date: string): string {
   });
 }
 
-function DayCard({ day }: { day: LocalCalendarDay }) {
+function DayCard({ date, day }: { date: string; day?: LocalCalendarDay }) {
   const theme = useZoptionTheme();
   const hasContent =
-    day.events.length > 0 || day.transactions.length > 0 || day.subscriptionBills.length > 0;
-  if (!hasContent) return null;
+    day !== undefined &&
+    (day.events.length > 0 || day.transactions.length > 0 || day.subscriptionBills.length > 0);
   return (
-    <Card accessibilityLabel={"Agenda for " + day.date}>
+    <Card accessibilityLabel={`Agenda for ${date}`}>
       <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
-        {dayTitle(day.date)}
+        {dayTitle(date)}
       </Text>
-      {day.events.map((event) => (
+      {!hasContent ? (
+        <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+          No events, bills, or transactions on this day.
+        </Text>
+      ) : null}
+      {day?.events.map((event) => (
         <Pressable
           key={event.id}
           accessibilityHint="Opens the event editor"
@@ -76,7 +74,7 @@ function DayCard({ day }: { day: LocalCalendarDay }) {
           </Text>
         </Pressable>
       ))}
-      {day.subscriptionBills.map((bill) => (
+      {day?.subscriptionBills.map((bill) => (
         <View key={bill.id} style={styles.row}>
           <Text style={[typography.body, { color: theme.colors.text }]}>{bill.name}</Text>
           <View style={styles.rowRight}>
@@ -85,7 +83,7 @@ function DayCard({ day }: { day: LocalCalendarDay }) {
           </View>
         </View>
       ))}
-      {day.transactions.map((transaction) => (
+      {day?.transactions.map((transaction) => (
         <View key={transaction.id} style={styles.row}>
           <Text style={[typography.body, { color: theme.colors.text }]}>
             {transaction.description}
@@ -100,16 +98,25 @@ function DayCard({ day }: { day: LocalCalendarDay }) {
   );
 }
 
-const renderDay = ({ item }: ListRenderItemInfo<LocalCalendarDay>) => <DayCard day={item} />;
-
 export function CalendarScreen() {
   const [month, setMonth] = useState(() => currentMonthStart());
+  const [selectedDate, setSelectedDate] = useState(() => todayIso());
   const state = useCalendarMonth(month);
   const local = useLocalWorkspace();
   const sync = useSyncState();
   const theme = useZoptionTheme();
 
-  const content = useMemo(() => state.month?.days ?? [], [state.month]);
+  const days = useMemo(
+    () => new Map((state.month?.days ?? []).map((day) => [day.date, day])),
+    [state.month],
+  );
+  const selectedDay = days.get(selectedDate);
+
+  function changeMonth(delta: number) {
+    const nextMonth = shiftMonth(month, delta);
+    setMonth(nextMonth);
+    setSelectedDate(nextMonth);
+  }
 
   return (
     <SafeAreaView
@@ -127,7 +134,7 @@ export function CalendarScreen() {
           accessibilityLabel="Previous month"
           accessibilityRole="button"
           android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
-          onPress={() => setMonth((value) => shiftMonth(value, -1))}
+          onPress={() => changeMonth(-1)}
           style={[styles.monthButton, { borderColor: theme.colors.border }]}
         >
           <MaterialCommunityIcons
@@ -137,14 +144,17 @@ export function CalendarScreen() {
             size={22}
           />
         </Pressable>
-        <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
+        <Text
+          accessibilityRole="header"
+          style={[typography.headline, { color: theme.colors.text }]}
+        >
           {monthLabel(month)}
         </Text>
         <Pressable
           accessibilityLabel="Next month"
           accessibilityRole="button"
           android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
-          onPress={() => setMonth((value) => shiftMonth(value, 1))}
+          onPress={() => changeMonth(1)}
           style={[styles.monthButton, { borderColor: theme.colors.border }]}
         >
           <MaterialCommunityIcons
@@ -165,19 +175,20 @@ export function CalendarScreen() {
           <Skeleton height={160} />
         </View>
       ) : (
-        <FlatList
-          data={content}
-          keyExtractor={(day) => day.date}
-          ListEmptyComponent={
-            <EmptyState
-              icon="calendar-month-outline"
-              title="Nothing planned this month"
-              description="Events, subscription bills, and transactions for this month will appear here."
-            />
-          }
-          renderItem={renderDay}
+        <ScrollView
+          style={styles.scroll}
           contentContainerStyle={styles.list}
-        />
+          showsVerticalScrollIndicator={false}
+        >
+          <CalendarMonthGrid
+            days={days}
+            month={month}
+            selectedDate={selectedDate}
+            today={todayIso()}
+            onSelectDate={setSelectedDate}
+          />
+          <DayCard date={selectedDate} day={selectedDay} />
+        </ScrollView>
       )}
       {local.workspace ? (
         <View style={styles.addRow}>
@@ -195,6 +206,7 @@ export function CalendarScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  scroll: { flex: 1 },
   padded: { padding: spacing.md },
   monthNav: {
     flexDirection: "row",

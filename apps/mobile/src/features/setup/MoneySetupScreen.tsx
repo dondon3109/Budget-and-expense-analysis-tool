@@ -81,7 +81,7 @@ function SetupRow({
         <MaterialCommunityIcons
           color={color ? theme.colors.onBrand : theme.colors.brand}
           name={color ? "shape-outline" : "wallet-outline"}
-          size={20}
+          size={22}
         />
       </View>
       <View style={styles.rowText}>
@@ -249,18 +249,19 @@ const styles = StyleSheet.create({
   row: {
     minHeight: touchTarget + spacing.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
   },
   leading: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
+    flexShrink: 0,
     borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
   },
   rowText: { minWidth: 0, flex: 1, gap: 2 },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: 66 },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
 });

@@ -41,7 +41,7 @@ function MenuItem({ icon, title, subtitle, badge, onPress }: MenuItemProps) {
         accessibilityElementsHidden
         style={[styles.menuIconWrap, { backgroundColor: theme.colors.brandSoft }]}
       >
-        <MaterialCommunityIcons name={icon} size={20} color={theme.colors.brand} />
+        <MaterialCommunityIcons name={icon} size={22} color={theme.colors.brand} />
       </View>
       <View style={styles.menuTextWrap}>
         <Text numberOfLines={1} style={[typography.headline, { color: theme.colors.text }]}>
@@ -354,14 +354,15 @@ const styles = StyleSheet.create({
   menuItem: {
     minHeight: touchTarget + spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
   },
   menuIconWrap: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
+    flexShrink: 0,
     borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: 58,
+    marginLeft: 72,
   },
   assistantCard: {
     borderWidth: 1,

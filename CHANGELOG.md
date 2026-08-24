@@ -8,6 +8,7 @@ All notable product changes are documented here.
 
 - Excluded spending in categories without a monthly limit from budget totals and over-budget amounts.
 - Kept dashboard cards compact with a scrollable category list and made overlapping mobile cashflow lines distinguishable.
+- Restored the mobile month calendar and gave More, account, and category icons roomier leading containers.
 
 ## 2.12.1 — 2026-08-24
 
