@@ -79,6 +79,13 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
           }}
         />
         <Stack.Screen
+          name="categories"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Transactions",
+          }}
+        />
+        <Stack.Screen
           name="reference"
           options={{
             headerShown: true,

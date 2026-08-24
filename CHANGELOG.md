@@ -6,7 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
-- Added optional emoji icons for custom categories across the web and mobile apps.
+- Added optional emoji icons for custom categories across the web and mobile apps, including default emojis for starter categories and a dedicated mobile categories management screen.
 
 ### Fixed
 
@@ -17,8 +17,8 @@ All notable product changes are documented here.
 
 ### Changed
 
-- Refined mobile navigation and setup lists with flatter native-style outline icons and quieter row spacing.
-- Rebuilt the mobile Transactions tab around month navigation, daily date groups, monthly totals, alternate views, and a floating add action.
+- Refined mobile navigation and setup lists with flatter native-style outline icons, clean borderless list layouts, and quieter row spacing.
+- Rebuilt the mobile Transactions tab around month navigation, daily date groups, monthly totals, streamlined tab views (Daily, Monthly, Summary), and actionable empty states for empty months and the home dashboard.
 
 ## 2.12.1 — 2026-08-24
 

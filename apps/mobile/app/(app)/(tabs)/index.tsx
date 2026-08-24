@@ -380,6 +380,98 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
   );
 }
 
+function HomeEmptyView({ syncing }: { syncing: boolean }) {
+  const theme = useZoptionTheme();
+
+  if (syncing) {
+    return (
+      <View style={styles.emptyContainer}>
+        <View
+          accessibilityElementsHidden
+          style={[
+            styles.emptyIconBox,
+            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="cloud-sync-outline"
+            size={34}
+            color={theme.colors.brand}
+          />
+        </View>
+        <Text
+          accessibilityRole="header"
+          style={[typography.title, styles.emptyTitle, { color: theme.colors.text }]}
+        >
+          Checking your workspace…
+        </Text>
+        <Text
+          style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}
+        >
+          Synchronizing your encrypted financial workspace records.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.emptyContainer}>
+      <View
+        accessibilityElementsHidden
+        style={[
+          styles.emptyIconBox,
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+        ]}
+      >
+        <MaterialCommunityIcons
+          name="wallet-plus-outline"
+          size={36}
+          color={theme.colors.brand}
+        />
+      </View>
+      <Text
+        accessibilityRole="header"
+        style={[typography.title, styles.emptyTitle, { color: theme.colors.text }]}
+      >
+        No transactions yet
+      </Text>
+      <Text
+        style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}
+      >
+        Track income and expenses, monitor cash flow trends, and set category budgets to take control of your money.
+      </Text>
+      <View style={styles.emptyActions}>
+        <Button
+          accessibilityHint="Opens the new transaction form"
+          onPress={() => router.push("/(app)/transaction")}
+          variant="primary"
+        >
+          Add transaction
+        </Button>
+        <Button
+          accessibilityHint="Opens camera to scan a receipt"
+          onPress={() => router.push("/(app)/receipt-scan")}
+          variant="secondary"
+        >
+          Scan receipt
+        </Button>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Set up accounts and categories"
+        hitSlop={8}
+        onPress={() => router.push("/(app)/money-setup")}
+        style={styles.setupLink}
+      >
+        <MaterialCommunityIcons name="cog-outline" size={16} color={theme.colors.brand} />
+        <Text style={[typography.label, { color: theme.colors.brand }]}>
+          Set up accounts &amp; categories
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const dashboard = useDashboardData();
   const sync = useSyncState();
@@ -427,10 +519,7 @@ export default function HomeScreen() {
           <BudgetCard summary={view.summary} />
         </View>
       ) : (
-        <EmptyState
-          title={sync.status === "syncing" ? "Checking your workspace…" : "No transactions yet"}
-          description="Add a transaction or wait for your records to synchronize. Synchronized data is read from encrypted local storage."
-        />
+        <HomeEmptyView syncing={sync.status === "syncing"} />
       )}
     </Screen>
   );
@@ -526,5 +615,48 @@ const styles = StyleSheet.create({
   fill: {
     height: 6,
     borderRadius: radii.round,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xxl,
+    gap: spacing.sm,
+  },
+  emptyIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+  },
+  emptyTitle: {
+    textAlign: "center",
+    fontSize: 20,
+    lineHeight: 26,
+  },
+  emptyDescription: {
+    textAlign: "center",
+    maxWidth: 340,
+    lineHeight: 22,
+    marginBottom: spacing.xs,
+  },
+  emptyActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  setupLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
 });

@@ -1,5 +1,18 @@
 ALTER TABLE categories ADD COLUMN icon_emoji TEXT;
 --> statement-breakpoint
+UPDATE categories
+SET icon_emoji = CASE
+  WHEN id LIKE '%:category:salary' THEN '💼'
+  WHEN id LIKE '%:category:housing' THEN '🏠'
+  WHEN id LIKE '%:category:food' THEN '🍔'
+  WHEN id LIKE '%:category:transport' THEN '🚗'
+  WHEN id LIKE '%:category:utilities' THEN '💡'
+  WHEN id LIKE '%:category:leisure' THEN '🎁'
+  WHEN id LIKE '%:category:savings-transfer' THEN '💰'
+  ELSE icon_emoji
+END
+WHERE origin = 'starter' AND icon_emoji IS NULL;
+--> statement-breakpoint
 DROP VIEW mobile_sync_category_rows;
 --> statement-breakpoint
 CREATE VIEW mobile_sync_category_rows AS

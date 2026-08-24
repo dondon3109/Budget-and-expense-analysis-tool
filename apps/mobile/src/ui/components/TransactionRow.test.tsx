@@ -40,4 +40,14 @@ describe("TransactionRow", () => {
     expect(screen.getByText(/Sync needs repair/)).toBeOnTheScreen();
     expect(screen.queryByText(/Pending sync/)).not.toBeOnTheScreen();
   });
+
+  it("renders the category emoji icon when present", async () => {
+    await render(
+      <TransactionRow
+        transaction={{ ...transaction, categoryIconEmoji: "🍔" }}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(screen.getByText("🍔", { includeHiddenElements: true })).toBeOnTheScreen();
+  });
 });

@@ -59,9 +59,20 @@ export function TransactionRow({
     >
       <View
         accessibilityElementsHidden
-        style={[styles.categoryBadge, { backgroundColor: transaction.categoryColor + "22" }]}
+        style={[
+          styles.categoryBadge,
+          {
+            backgroundColor: transaction.categoryIconEmoji
+              ? "transparent"
+              : transaction.categoryColor + "22",
+          },
+        ]}
       >
-        <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
+        {transaction.categoryIconEmoji ? (
+          <Text style={styles.categoryEmoji}>{transaction.categoryIconEmoji}</Text>
+        ) : (
+          <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
+        )}
       </View>
       <View className="min-w-0 flex-1">
         <Text numberOfLines={1} style={[typography.headline, { color: theme.colors.text }]}>
@@ -111,4 +122,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   categoryDot: { width: 10, height: 10, borderRadius: radii.round },
+  categoryEmoji: { fontSize: 16, textAlign: "center" },
 });

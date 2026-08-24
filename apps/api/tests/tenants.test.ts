@@ -108,6 +108,19 @@ describe("tenant bootstrap", () => {
       "Food & dining",
       "expense",
       "#e87ba4",
+      "🍔",
+      null,
+      "starter",
+    ]);
+    expect(
+      captured.find((statement) => statement.values.includes("user:user-1:category:salary"))?.values,
+    ).toEqual([
+      "user:user-1:category:salary",
+      "user:user-1",
+      "Salary",
+      "income",
+      "#2a78d6",
+      "💼",
       null,
       "starter",
     ]);
@@ -121,6 +134,7 @@ describe("tenant bootstrap", () => {
       "Uncategorized",
       "expense",
       "#6b7280",
+      null,
       "uncategorized:expense",
       "system",
     ]);

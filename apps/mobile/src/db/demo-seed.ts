@@ -18,16 +18,16 @@ export async function seedDummyWorkspaceData(database: SQLiteDatabase): Promise<
     // 2. Seed Categories
     await database.runAsync(`
       INSERT OR REPLACE INTO categories (
-        id, name, kind, color, archived, system, origin, required_plan, locked, server_revision, sync_state
+        id, name, kind, color, icon_emoji, archived, system, origin, required_plan, locked, server_revision, sync_state
       ) VALUES
-        ('category-salary', 'Salary', 'income', '#0F6B5B', 0, 0, 'starter', 'free', 0, 1, 'synced'),
-        ('category-groceries', 'Groceries', 'expense', '#3B82F6', 0, 0, 'starter', 'free', 0, 1, 'synced'),
-        ('category-dining', 'Dining & Food', 'expense', '#F59E0B', 0, 0, 'starter', 'free', 0, 1, 'synced'),
-        ('category-utilities', 'Utilities & Bills', 'expense', '#8B5CF6', 0, 0, 'starter', 'free', 0, 1, 'synced'),
-        ('category-shopping', 'Shopping', 'expense', '#EC4899', 0, 0, 'starter', 'free', 0, 1, 'synced'),
-        ('category-transport', 'Transportation', 'expense', '#10B981', 0, 0, 'starter', 'free', 0, 1, 'synced'),
-        ('category-healthcare', 'Healthcare', 'expense', '#EF4444', 0, 0, 'starter', 'free', 0, 1, 'synced'),
-        ('category-transfer', 'Transfer', 'transfer', '#008877', 0, 1, 'system', 'free', 0, 1, 'synced');
+        ('category-salary', 'Salary', 'income', '#0F6B5B', '💼', 0, 0, 'starter', 'free', 0, 1, 'synced'),
+        ('category-groceries', 'Groceries', 'expense', '#3B82F6', '🛒', 0, 0, 'starter', 'free', 0, 1, 'synced'),
+        ('category-dining', 'Dining & Food', 'expense', '#F59E0B', '🍔', 0, 0, 'starter', 'free', 0, 1, 'synced'),
+        ('category-utilities', 'Utilities & Bills', 'expense', '#8B5CF6', '💡', 0, 0, 'starter', 'free', 0, 1, 'synced'),
+        ('category-shopping', 'Shopping', 'expense', '#EC4899', '🎁', 0, 0, 'starter', 'free', 0, 1, 'synced'),
+        ('category-transport', 'Transportation', 'expense', '#10B981', '🚗', 0, 0, 'starter', 'free', 0, 1, 'synced'),
+        ('category-healthcare', 'Healthcare', 'expense', '#EF4444', '💊', 0, 0, 'starter', 'free', 0, 1, 'synced'),
+        ('category-transfer', 'Transfer', 'transfer', '#008877', NULL, 0, 1, 'system', 'free', 0, 1, 'synced');
     `);
 
     // 3. Seed Budgets for current & previous months

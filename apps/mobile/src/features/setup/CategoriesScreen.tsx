@@ -3,32 +3,13 @@ import { Stack, router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useLocalReferenceData } from "@/db/local-workspace-state";
-import type { LocalAccountItem } from "@/db/repository";
+import type { LocalCategoryItem } from "@/db/repository";
 import { Button, EmptyState, ErrorState, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, touchTarget, typography } from "@/ui/tokens";
 
-const accountTypeLabel: Record<LocalAccountItem["type"], string> = {
-  cash: "Cash",
-  checking: "Checking",
-  savings: "Savings",
-  credit: "Credit",
-  other: "Other",
-};
-
-const accountTypeIcon: Record<
-  LocalAccountItem["type"],
-  keyof typeof MaterialCommunityIcons.glyphMap
-> = {
-  cash: "cash-multiple",
-  checking: "bank-outline",
-  savings: "piggy-bank-outline",
-  credit: "credit-card-outline",
-  other: "wallet-outline",
-};
-
-function statusText(state: LocalAccountItem["syncState"]): string | null {
+function statusText(state: LocalCategoryItem["syncState"]): string | null {
   switch (state) {
     case "pending":
       return "Pending sync";
@@ -41,41 +22,30 @@ function statusText(state: LocalAccountItem["syncState"]): string | null {
   }
 }
 
-function SetupRow({
-  title,
-  detail,
-  state,
-  icon,
-  iconColor,
-  emoji,
-  disabled,
+function CategoryRow({
+  category,
   onPress,
 }: {
-  title: string;
-  detail: string;
-  state: LocalAccountItem["syncState"];
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  iconColor?: string;
-  emoji?: string | null;
-  disabled?: boolean;
+  category: LocalCategoryItem;
   onPress: () => void;
 }) {
   const theme = useZoptionTheme();
-  const status = statusText(state);
-  // Keep structural layout on the Pressable itself: Android's NativeWind
-  // interop can drop flex-direction from callback-composed style arrays.
+  const status = statusText(category.syncState);
+  const disabled = category.system || category.syncState === "failed";
+  const detail = `${category.kind[0]!.toUpperCase()}${category.kind.slice(1)}${category.requiredPlan === "zoption_pro" ? " · Pro" : ""}${category.locked ? " · Locked" : ""}${category.system ? " · Permanent" : ""}`;
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${detail}${status ? `, ${status}` : ""}`}
+      accessibilityLabel={`${category.name}, ${detail}${status ? `, ${status}` : ""}`}
       accessibilityHint={
         disabled
-          ? "This item cannot be edited"
-          : state === "conflicted"
+          ? "This category cannot be edited"
+          : category.syncState === "conflicted"
             ? "Opens conflict review"
-            : "Opens item details"
+            : "Opens category details"
       }
-      accessibilityState={{ disabled: Boolean(disabled) }}
+      accessibilityState={{ disabled }}
       android_ripple={
         disabled ? undefined : { color: "rgba(15, 107, 91, 0.12)", borderless: false }
       }
@@ -91,15 +61,15 @@ function SetupRow({
       ]}
     >
       <View accessibilityElementsHidden style={styles.leading}>
-        {emoji ? (
-          <Text style={styles.leadingEmoji}>{emoji}</Text>
+        {category.iconEmoji ? (
+          <Text style={styles.leadingEmoji}>{category.iconEmoji}</Text>
         ) : (
-          <MaterialCommunityIcons color={iconColor ?? theme.colors.brand} name={icon} size={24} />
+          <View style={[styles.colorDot, { backgroundColor: category.color }]} />
         )}
       </View>
       <View style={styles.rowText}>
         <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
-          {title}
+          {category.name}
         </Text>
         <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
           {detail}
@@ -111,7 +81,7 @@ function SetupRow({
             typography.caption,
             {
               color:
-                state === "failed" || state === "conflicted"
+                category.syncState === "failed" || category.syncState === "conflicted"
                   ? theme.colors.danger
                   : theme.colors.warning,
             },
@@ -134,12 +104,10 @@ function SetupRow({
 
 function SectionHeader({
   title,
-  singular,
   onAdd,
 }: {
   title: string;
-  singular: string;
-  onAdd: () => void;
+  onAdd?: () => void;
 }) {
   const theme = useZoptionTheme();
   return (
@@ -147,35 +115,43 @@ function SectionHeader({
       <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
         {title}
       </Text>
-      <Button accessibilityLabel={`Add ${singular}`} variant="quiet" onPress={onAdd}>
-        Add
-      </Button>
+      {onAdd ? (
+        <Button accessibilityLabel="Add category" variant="quiet" onPress={onAdd}>
+          Add
+        </Button>
+      ) : null}
     </View>
   );
 }
 
-export function MoneySetupScreen() {
+export function CategoriesScreen() {
   const references = useLocalReferenceData();
   const theme = useZoptionTheme();
-  const open = (entityType: "account" | "category", id?: string): void => {
+
+  const open = (id?: string): void => {
     router.push({
       pathname: "/(app)/reference",
-      params: { entityType, ...(id ? { id } : {}) },
+      params: { entityType: "category", ...(id ? { id } : {}) },
     });
   };
-  const openConflict = (entityType: "account" | "category", id: string): void => {
-    router.push({ pathname: "/(app)/reference-conflict", params: { entityType, id } });
+
+  const openConflict = (id: string): void => {
+    router.push({ pathname: "/(app)/reference-conflict", params: { entityType: "category", id } });
   };
+
+  const expenseCategories = references.data?.categories.filter((c) => c.kind === "expense") ?? [];
+  const incomeCategories = references.data?.categories.filter((c) => c.kind === "income") ?? [];
+  const transferCategories = references.data?.categories.filter((c) => c.kind === "transfer") ?? [];
 
   return (
     <Screen
-      title="Accounts & categories"
-      description="Changes save to encrypted storage first and synchronize when Zoption is reachable."
+      title="Categories"
+      description="Customize category names, colors, and emoji icons. Changes sync automatically."
     >
-      <Stack.Screen options={{ title: "Money setup" }} />
+      <Stack.Screen options={{ title: "Categories" }} />
       {references.error ? (
         <ErrorState
-          title="Money setup unavailable"
+          title="Categories unavailable"
           message={references.error}
           onRetry={references.retry}
         />
@@ -184,75 +160,94 @@ export function MoneySetupScreen() {
           <Skeleton height={112} />
           <Skeleton height={180} />
         </View>
+      ) : references.data.categories.length === 0 ? (
+        <EmptyState
+          title="No active categories"
+          description="Add a category to organize transactions and budgets."
+          action={
+            <Button onPress={() => open()} variant="primary">
+              Add category
+            </Button>
+          }
+        />
       ) : (
         <>
           <View className="gap-3">
-            <SectionHeader title="Accounts" singular="account" onAdd={() => open("account")} />
-            {references.data.accounts.length === 0 ? (
-              <EmptyState
-                title="No active accounts"
-                description="Add an account before recording income or expenses."
-              />
-            ) : (
+            <SectionHeader title="Expense Categories" onAdd={() => open()} />
+            {expenseCategories.length > 0 ? (
               <View style={styles.listContainer}>
-                {references.data.accounts.map((account, index) => (
-                  <View key={account.id}>
-                    {index > 0 ? (
-                      <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-                    ) : null}
-                    <SetupRow
-                      title={account.name}
-                      detail={`${accountTypeLabel[account.type]} · ${account.currency}${account.system ? " · Permanent" : ""}`}
-                      state={account.syncState}
-                      icon={accountTypeIcon[account.type]}
-                      onPress={() =>
-                        account.syncState === "conflicted"
-                          ? openConflict("account", account.id)
-                          : open("account", account.id)
-                      }
-                    />
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-
-          <View className="gap-3">
-            <SectionHeader title="Categories" singular="category" onAdd={() => open("category")} />
-            {references.data.categories.length === 0 ? (
-              <EmptyState
-                title="No active categories"
-                description="Add a category to organize financial activity."
-              />
-            ) : (
-              <View style={styles.listContainer}>
-                {references.data.categories.map((category, index) => (
+                {expenseCategories.map((category, index) => (
                   <View key={category.id}>
                     {index > 0 ? (
                       <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
                     ) : null}
-                    <SetupRow
-                      title={category.name}
-                      detail={`${category.kind[0]!.toUpperCase()}${category.kind.slice(1)}${category.requiredPlan === "zoption_pro" ? " · Pro" : ""}${category.locked ? " · Locked" : ""}${category.system ? " · Permanent" : ""}`}
-                      state={category.syncState}
-                      icon="tag-outline"
-                      iconColor={category.color}
-                      emoji={category.iconEmoji}
-                      disabled={category.system || category.syncState === "failed"}
+                    <CategoryRow
+                      category={category}
                       onPress={() =>
                         category.syncState === "conflicted"
-                          ? openConflict("category", category.id)
-                          : open("category", category.id)
+                          ? openConflict(category.id)
+                          : open(category.id)
                       }
                     />
                   </View>
                 ))}
               </View>
+            ) : (
+              <EmptyState
+                title="No expense categories"
+                description="Add an expense category for daily spending."
+              />
             )}
           </View>
+
+          {incomeCategories.length > 0 ? (
+            <View className="gap-3">
+              <SectionHeader title="Income Categories" />
+              <View style={styles.listContainer}>
+                {incomeCategories.map((category, index) => (
+                  <View key={category.id}>
+                    {index > 0 ? (
+                      <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+                    ) : null}
+                    <CategoryRow
+                      category={category}
+                      onPress={() =>
+                        category.syncState === "conflicted"
+                          ? openConflict(category.id)
+                          : open(category.id)
+                      }
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {transferCategories.length > 0 ? (
+            <View className="gap-3">
+              <SectionHeader title="Transfer Categories" />
+              <View style={styles.listContainer}>
+                {transferCategories.map((category, index) => (
+                  <View key={category.id}>
+                    {index > 0 ? (
+                      <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+                    ) : null}
+                    <CategoryRow
+                      category={category}
+                      onPress={() =>
+                        category.syncState === "conflicted"
+                          ? openConflict(category.id)
+                          : open(category.id)
+                      }
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            New accounts and categories can be used in a transaction immediately. Zoption keeps the
-            pending setup and transaction together so they synchronize as one atomic group.
+            Categories organize your transactions, monthly spending breakdown, and budgets.
           </Text>
         </>
       )}
@@ -275,6 +270,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   leadingEmoji: { fontSize: 24, lineHeight: 30 },
+  colorDot: { width: 14, height: 14, borderRadius: 7 },
   rowText: { minWidth: 0, flex: 1, gap: 2 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 48 },
 });

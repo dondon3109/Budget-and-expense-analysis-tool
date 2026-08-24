@@ -150,7 +150,7 @@ export default function MoreScreen() {
         <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
           FINANCIAL TOOLS
         </Text>
-        <Card style={styles.groupedCard}>
+        <View style={styles.menuGroup}>
           <MenuItem
             icon="wallet-outline"
             title="Accounts & categories"
@@ -192,14 +192,14 @@ export default function MoreScreen() {
             subtitle="Combined financial agenda and due dates"
             onPress={() => router.push("/(app)/calendar")}
           />
-        </Card>
+        </View>
       </View>
 
       <View style={styles.section}>
         <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
           ACCOUNT & SERVICES
         </Text>
-        <Card style={styles.groupedCard}>
+        <View style={styles.menuGroup}>
           <MenuItem
             icon="star-outline"
             title="Plan & billing"
@@ -221,7 +221,7 @@ export default function MoreScreen() {
             subtitle="Identity, email, and deletion options"
             onPress={() => router.push("/(app)/account")}
           />
-        </Card>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -343,14 +343,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     fontSize: 12,
   },
-  groupedCard: {
-    padding: 0,
-    gap: 0,
+  menuGroup: {
     overflow: "hidden",
   },
   menuItem: {
     minHeight: touchTarget + spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xs,
     flexDirection: "row",
     alignItems: "center",
@@ -374,7 +372,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: 56,
+    marginLeft: 48,
   },
   assistantCard: {
     borderWidth: 1,

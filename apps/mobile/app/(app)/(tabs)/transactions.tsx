@@ -35,12 +35,10 @@ import {
 import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
-  EmptyState,
   ErrorState,
   MoneyValue,
   OfflineBanner,
   Skeleton,
-  SyncStatus,
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -53,22 +51,13 @@ const kindLabels: Record<TransactionKindFilter, string> = {
 };
 
 const currencies: Currency[] = ["PHP", "USD"];
-type ViewMode = "daily" | "monthly" | "summary" | "description";
+type ViewMode = "daily" | "monthly" | "summary";
 
-const viewTabs: Array<{ key: ViewMode | "calendar"; label: string }> = [
+const viewTabs: Array<{ key: ViewMode; label: string }> = [
   { key: "daily", label: "Daily" },
-  { key: "calendar", label: "Calendar" },
   { key: "monthly", label: "Monthly" },
   { key: "summary", label: "Summary" },
-  { key: "description", label: "Description" },
 ];
-
-function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
-  if (status === "syncing") return "syncing" as const;
-  if (status === "synced") return "synced" as const;
-  if (status === "waiting") return "waiting" as const;
-  return "failed" as const;
-}
 
 function HeaderIcon({
   icon,
@@ -187,7 +176,7 @@ function TransactionItemRow({
       <View style={styles.descriptionColumn}>
         <Text
           numberOfLines={1}
-          style={[typography.body, { color: theme.colors.text, fontWeight: "600" }]}
+          style={[styles.descriptionText, { color: theme.colors.text }]}
         >
           {transaction.description}
         </Text>
@@ -282,11 +271,126 @@ function categorySummary(items: readonly LocalTransactionItem[]): CategorySummar
   );
 }
 
+function TransactionsEmptyView({
+  filtering,
+  search,
+  kind,
+  month,
+  onResetFilters,
+  onGoToCurrentMonth,
+}: {
+  filtering: boolean;
+  search: string;
+  kind: TransactionKindFilter;
+  month: string;
+  onResetFilters: () => void;
+  onGoToCurrentMonth: () => void;
+}) {
+  const theme = useZoptionTheme();
+  const isCurrentMonth = month === monthStartForDate(new Date());
+
+  if (filtering) {
+    return (
+      <View style={styles.emptyContainer}>
+        <View
+          accessibilityElementsHidden
+          style={[
+            styles.emptyIconBox,
+            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="magnify-remove-outline"
+            size={32}
+            color={theme.colors.brand}
+          />
+        </View>
+        <Text
+          accessibilityRole="header"
+          style={[typography.title, styles.emptyTitle, { color: theme.colors.text }]}
+        >
+          No matching transactions
+        </Text>
+        <Text
+          style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}
+        >
+          {search.trim().length > 0 && kind !== "all"
+            ? `No ${kindLabels[kind].toLowerCase()} transactions match "${search.trim()}".`
+            : search.trim().length > 0
+              ? `No transactions match "${search.trim()}".`
+              : `No ${kindLabels[kind].toLowerCase()} transactions recorded in ${monthLabel(month)}.`}
+        </Text>
+        <Button variant="secondary" onPress={onResetFilters}>
+          Clear filters
+        </Button>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.emptyContainer}>
+      <View
+        accessibilityElementsHidden
+        style={[
+          styles.emptyIconBox,
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+        ]}
+      >
+        <MaterialCommunityIcons
+          name="receipt-text-outline"
+          size={34}
+          color={theme.colors.brand}
+        />
+      </View>
+      <Text
+        accessibilityRole="header"
+        style={[typography.title, styles.emptyTitle, { color: theme.colors.text }]}
+      >
+        No transactions in {monthLabel(month)}
+      </Text>
+      <Text
+        style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}
+      >
+        Record your spending, income, or scan a paper receipt to track this month&apos;s activity.
+      </Text>
+      <View style={styles.emptyActions}>
+        <Button
+          accessibilityHint="Opens the new transaction form"
+          onPress={() => router.push("/(app)/transaction")}
+          variant="primary"
+        >
+          Add transaction
+        </Button>
+        <Button
+          accessibilityHint="Opens camera to scan a receipt"
+          onPress={() => router.push("/(app)/receipt-scan")}
+          variant="secondary"
+        >
+          Scan receipt
+        </Button>
+      </View>
+      {!isCurrentMonth ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Jump to ${monthLabel(monthStartForDate(new Date()))}`}
+          hitSlop={8}
+          onPress={onGoToCurrentMonth}
+          style={styles.currentMonthLink}
+        >
+          <MaterialCommunityIcons name="calendar-today" size={16} color={theme.colors.brand} />
+          <Text style={[typography.label, { color: theme.colors.brand }]}>
+            Jump to {monthLabel(monthStartForDate(new Date()))}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 export default function TransactionsScreen() {
   const [month, setMonth] = useState(() => monthStartForDate(new Date()));
   const [search, setSearch] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
-  const [filtersVisible, setFiltersVisible] = useState(false);
   const [kind, setKind] = useState<TransactionKindFilter>("all");
   const [view, setView] = useState<ViewMode>("daily");
   const deferredSearch = useDeferredValue(search);
@@ -298,41 +402,19 @@ export default function TransactionsScreen() {
   const items = local.items ?? [];
   const totals = useMemo(() => summarizeTransactions(items), [items]);
   const dateGroups = useMemo(() => groupTransactionsByDate(items), [items]);
-  const monthlyItems = useMemo(
-    () =>
-      view === "description"
-        ? [...items].sort((left, right) =>
-            left.transaction.description.localeCompare(right.transaction.description),
-          )
-        : items,
-    [items, view],
-  );
   const summaryItems = useMemo(() => categorySummary(items), [items]);
 
-  const chooseView = (next: ViewMode | "calendar") => {
-    if (next === "calendar") {
-      router.push("/(app)/calendar");
-      return;
-    }
-    setView(next);
-  };
-
   const emptyState = (
-    <EmptyState
-      icon={filtering ? "magnify" : "swap-vertical"}
-      title={filtering ? "No matching transactions" : "No transactions this month"}
-      description={
-        filtering
-          ? "Try a different search or filter."
-          : "Choose another month or add your first transaction."
-      }
-      action={
-        !filtering ? (
-          <Button onPress={() => router.push("/(app)/transaction")} variant="secondary">
-            Add transaction
-          </Button>
-        ) : undefined
-      }
+    <TransactionsEmptyView
+      filtering={filtering}
+      kind={kind}
+      month={month}
+      onGoToCurrentMonth={() => setMonth(monthStartForDate(new Date()))}
+      onResetFilters={() => {
+        setSearch("");
+        setKind("all");
+      }}
+      search={search}
     />
   );
 
@@ -360,10 +442,9 @@ export default function TransactionsScreen() {
             onPress={() => router.push("/(app)/receipt-scan")}
           />
           <HeaderIcon
-            icon="tune-variant"
-            label={filtersVisible ? "Hide transaction filters" : "Filter transactions"}
-            selected={filtersVisible || kind !== "all"}
-            onPress={() => setFiltersVisible((visible) => !visible)}
+            icon="tag-outline"
+            label="Manage categories"
+            onPress={() => router.push("/(app)/categories")}
           />
         </View>
       </View>
@@ -429,11 +510,10 @@ export default function TransactionsScreen() {
         />
       </View>
 
-      <ScrollView
+      <View
         accessibilityLabel="Transaction views"
-        horizontal
-        contentContainerStyle={styles.viewTabs}
-        showsHorizontalScrollIndicator={false}
+        accessibilityRole="tablist"
+        style={[styles.viewTabsContainer, { borderBottomColor: theme.colors.border }]}
       >
         {viewTabs.map((tab) => {
           const selected = tab.key === view;
@@ -442,7 +522,7 @@ export default function TransactionsScreen() {
               key={tab.key}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              onPress={() => chooseView(tab.key)}
+              onPress={() => setView(tab.key)}
               style={[styles.viewTab, selected && { borderBottomColor: theme.colors.brand }]}
             >
               <Text
@@ -459,7 +539,7 @@ export default function TransactionsScreen() {
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       <View
         style={[
@@ -481,40 +561,37 @@ export default function TransactionsScreen() {
         </View>
       </View>
 
-      {filtersVisible ? (
-        <View style={[styles.filterPanel, { borderColor: theme.colors.border }]}>
-          <View accessibilityLabel="Filter by transaction type" style={styles.chips}>
-            {transactionKindFilters.map((filter) => {
-              const selected = filter === kind;
-              return (
-                <Pressable
-                  key={filter}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => setKind(filter)}
+      <View style={[styles.filterPanel, { borderColor: theme.colors.border }]}>
+        <View accessibilityLabel="Filter by transaction type" style={styles.chips}>
+          {transactionKindFilters.map((filter) => {
+            const selected = filter === kind;
+            return (
+              <Pressable
+                key={filter}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => setKind(filter)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: selected ? theme.colors.brand : theme.colors.surface,
+                    borderColor: selected ? theme.colors.brand : theme.colors.border,
+                  },
+                ]}
+              >
+                <Text
                   style={[
-                    styles.chip,
-                    {
-                      backgroundColor: selected ? theme.colors.brand : theme.colors.surface,
-                      borderColor: selected ? theme.colors.brand : theme.colors.border,
-                    },
+                    typography.label,
+                    { color: selected ? theme.colors.onBrand : theme.colors.text },
                   ]}
                 >
-                  <Text
-                    style={[
-                      typography.label,
-                      { color: selected ? theme.colors.onBrand : theme.colors.text },
-                    ]}
-                  >
-                    {kindLabels[filter]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <SyncStatus state={visibleSyncState(sync.status)} />
+                  {kindLabels[filter]}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
-      ) : null}
+      </View>
 
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
@@ -607,9 +684,9 @@ export default function TransactionsScreen() {
         <FlatList
           contentContainerStyle={[
             styles.listContent,
-            monthlyItems.length === 0 && styles.emptyList,
+            items.length === 0 && styles.emptyList,
           ]}
-          data={monthlyItems}
+          data={items}
           keyExtractor={(item) => item.transaction.id}
           ListEmptyComponent={emptyState}
           refreshControl={
@@ -683,19 +760,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   monthTitle: { ...typography.headline, textAlign: "center" },
-  viewTabs: { minWidth: "100%", paddingHorizontal: spacing.xs },
+  viewTabsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   viewTab: {
-    minHeight: touchTarget,
-    paddingHorizontal: spacing.xs,
+    flex: 1,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderBottomWidth: 3,
     borderBottomColor: "transparent",
+    marginBottom: -StyleSheet.hairlineWidth,
   },
   monthTotals: {
     minHeight: 72,
     flexDirection: "row",
-    borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   monthTotalColumn: {
@@ -763,16 +844,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(127, 127, 127, 0.18)",
   },
-  categoryColumn: { width: 76, flexShrink: 0 },
-  categoryLine: { minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  categoryColumn: { width: 72, flexShrink: 0 },
+  categoryLine: { minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.xxs },
   categoryText: { flex: 1, minWidth: 0 },
   categoryDot: { width: 9, height: 9, borderRadius: radii.round, flexShrink: 0 },
-  categoryEmoji: { width: 20, fontSize: 17, lineHeight: 21, flexShrink: 0 },
+  categoryEmoji: { width: 20, fontSize: 16, lineHeight: 20, flexShrink: 0 },
   descriptionColumn: { flex: 1, minWidth: 0, gap: 2 },
+  descriptionText: { fontSize: 13, lineHeight: 18, fontWeight: "600" },
   rowMoney: {
-    width: 108,
-    fontSize: 17,
-    lineHeight: 22,
+    width: 96,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "600",
     flexShrink: 0,
     textAlign: "right",
@@ -808,5 +890,48 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xxl,
+    gap: spacing.sm,
+  },
+  emptyIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+  },
+  emptyTitle: {
+    textAlign: "center",
+    fontSize: 20,
+    lineHeight: 26,
+  },
+  emptyDescription: {
+    textAlign: "center",
+    maxWidth: 320,
+    lineHeight: 22,
+    marginBottom: spacing.xs,
+  },
+  emptyActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  currentMonthLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
 });

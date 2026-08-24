@@ -665,7 +665,24 @@ export const migrations: readonly Migration[] = [
   {
     version: 11,
     name: "category_emoji_icons",
-    sql: `ALTER TABLE categories ADD COLUMN icon_emoji TEXT;`,
+    sql: `
+      ALTER TABLE categories ADD COLUMN icon_emoji TEXT;
+
+      UPDATE categories
+      SET icon_emoji = CASE
+        WHEN id = 'category-salary' OR id LIKE '%:category:salary' THEN '💼'
+        WHEN id = 'category-groceries' THEN '🛒'
+        WHEN id = 'category-dining' OR id = 'category-food' OR id LIKE '%:category:food' THEN '🍔'
+        WHEN id = 'category-housing' OR id LIKE '%:category:housing' THEN '🏠'
+        WHEN id = 'category-transport' OR id LIKE '%:category:transport' THEN '🚗'
+        WHEN id = 'category-utilities' OR id LIKE '%:category:utilities' THEN '💡'
+        WHEN id = 'category-leisure' OR id = 'category-shopping' OR id LIKE '%:category:leisure' THEN '🎁'
+        WHEN id = 'category-healthcare' THEN '💊'
+        WHEN id = 'category-savings-transfer' OR id LIKE '%:category:savings-transfer' THEN '💰'
+        ELSE icon_emoji
+      END
+      WHERE origin = 'starter' AND icon_emoji IS NULL;
+    `,
   },
 ] as const;
 
