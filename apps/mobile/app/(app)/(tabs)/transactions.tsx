@@ -8,10 +8,9 @@ import {
   ScrollView,
   SectionList,
   StyleSheet,
-  Text as NativeText,
+  Text,
   TextInput,
   View,
-  type TextProps,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -63,12 +62,6 @@ const viewTabs: Array<{ key: ViewMode | "calendar"; label: string }> = [
   { key: "summary", label: "Summary" },
   { key: "description", label: "Description" },
 ];
-
-// Dense ledger columns need a bounded scale to remain distinguishable when a
-// device uses very large display text. Screen readers still receive full copy.
-function Text(props: TextProps) {
-  return <NativeText maxFontSizeMultiplier={1.2} {...props} />;
-}
 
 function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
   if (status === "syncing") return "syncing" as const;
@@ -169,19 +162,21 @@ function TransactionItemRow({
       accessibilityHint="Opens transaction details"
       accessibilityRole="button"
       android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
-      className="w-full flex-row items-center"
       onPress={() =>
         router.push({ pathname: "/(app)/transaction", params: { id: transaction.id } })
       }
-      style={({ pressed }) => [
+      style={[
         styles.transactionRow,
-        { backgroundColor: pressed ? theme.colors.canvasMuted : theme.colors.surface },
+        { backgroundColor: theme.colors.surface },
       ]}
     >
       <View style={styles.categoryColumn}>
         <View style={styles.categoryLine}>
           <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
-          <Text numberOfLines={2} style={[typography.caption, { color: theme.colors.textMuted }]}>
+          <Text
+            numberOfLines={1}
+            style={[typography.caption, styles.categoryText, { color: theme.colors.textMuted }]}
+          >
             {transaction.categoryName}
           </Text>
         </View>
@@ -201,8 +196,9 @@ function TransactionItemRow({
       </View>
       <MoneyValue
         amountMinor={transaction.amountMinor}
+        adjustsFontSizeToFit
         currency={transaction.currency}
-        maxFontSizeMultiplier={1.2}
+        minimumFontScale={0.8}
         numberOfLines={1}
         style={styles.rowMoney}
         tone={tone}
@@ -531,6 +527,7 @@ export default function TransactionsScreen() {
             dateGroups.length === 0 && styles.emptyList,
           ]}
           sections={dateGroups.map((group) => ({ ...group, data: group.items }))}
+          style={styles.ledgerList}
           keyExtractor={(item) => item.transaction.id}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={emptyState}
@@ -553,6 +550,7 @@ export default function TransactionsScreen() {
             summaryItems.length === 0 && styles.emptyList,
           ]}
           data={summaryItems}
+          style={styles.ledgerList}
           keyExtractor={(item) => item.key}
           ListEmptyComponent={emptyState}
           refreshControl={
@@ -606,6 +604,7 @@ export default function TransactionsScreen() {
             monthlyItems.length === 0 && styles.emptyList,
           ]}
           data={monthlyItems}
+          style={styles.ledgerList}
           keyExtractor={(item) => item.transaction.id}
           ListEmptyComponent={emptyState}
           refreshControl={
@@ -719,7 +718,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   loading: { gap: spacing.xs, padding: spacing.md },
-  listContent: { paddingBottom: 96 },
+  ledgerList: { marginBottom: 84 },
+  listContent: { paddingBottom: spacing.sm },
   emptyList: { flexGrow: 1 },
   dateHeader: {
     minHeight: 62,
@@ -750,17 +750,28 @@ const styles = StyleSheet.create({
   dayTotalLabel: { fontSize: 10, lineHeight: 13, fontWeight: "700", letterSpacing: 0.4 },
   transactionRow: {
     minHeight: 72,
-    paddingHorizontal: spacing.md,
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    gap: spacing.sm,
+    gap: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(127, 127, 127, 0.18)",
   },
-  categoryColumn: { width: 88, flexShrink: 0 },
-  categoryLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  categoryColumn: { width: 76, flexShrink: 0 },
+  categoryLine: { minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  categoryText: { flex: 1, minWidth: 0 },
   categoryDot: { width: 9, height: 9, borderRadius: radii.round, flexShrink: 0 },
   descriptionColumn: { flex: 1, minWidth: 0, gap: 2 },
-  rowMoney: { fontSize: 17, lineHeight: 22, fontWeight: "600", flexShrink: 0 },
+  rowMoney: {
+    width: 108,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "600",
+    flexShrink: 0,
+    textAlign: "right",
+  },
   summaryRow: {
     minHeight: 64,
     flexDirection: "row",
@@ -773,8 +784,8 @@ const styles = StyleSheet.create({
   summaryName: { flex: 1, minWidth: 0 },
   fabPosition: {
     position: "absolute",
-    right: spacing.lg,
-    bottom: spacing.lg,
+    right: spacing.md,
+    bottom: spacing.md,
   },
   fabButton: {
     width: 58,
