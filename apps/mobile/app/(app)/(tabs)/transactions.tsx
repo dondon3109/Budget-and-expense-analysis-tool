@@ -5,7 +5,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  ScrollView,
   SectionList,
   StyleSheet,
   Text,

@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Released Android Beta `0.2.12-beta` (`versionCode` 20312) with custom category emoji icons, redesigned Transactions ledger, native outline iconography, and cashflow chart polish.
 - Added optional emoji icons for custom categories across the web and mobile apps, including default emojis for starter categories and a dedicated mobile categories management screen.
 
 ### Fixed
