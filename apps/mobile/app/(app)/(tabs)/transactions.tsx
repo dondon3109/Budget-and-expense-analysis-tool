@@ -15,6 +15,7 @@ import { useLocalTransactions } from "@/db/local-workspace-state";
 import { transactionKindFilters, type TransactionKindFilter } from "@/db/repository";
 import { useSyncState } from "@/sync/sync-state";
 import {
+  Button,
   EmptyState,
   ErrorState,
   OfflineBanner,
@@ -42,6 +43,7 @@ function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
 
 export default function TransactionsScreen() {
   const [search, setSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [kind, setKind] = useState<TransactionKindFilter>("all");
   const deferredSearch = useDeferredValue(search);
   const local = useLocalTransactions(deferredSearch, kind);
@@ -58,6 +60,7 @@ export default function TransactionsScreen() {
             accessibilityLabel="Scan receipt"
             accessibilityHint="Takes a photo of a receipt and reads the merchant, date and total"
             accessibilityRole="button"
+            android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
             onPress={() => router.push("/(app)/receipt-scan")}
             style={({ pressed }) => [
               styles.scan,
@@ -78,12 +81,11 @@ export default function TransactionsScreen() {
             accessibilityLabel="Add transaction"
             accessibilityHint="Opens the new transaction form"
             accessibilityRole="button"
+            android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
             onPress={() => router.push("/(app)/transaction")}
             style={({ pressed }) => [
               styles.add,
               {
-                // A clearly outlined surface box so the button is obvious
-                // in every theme; pressing fills it with the soft brand tint.
                 backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surfaceRaised,
                 borderColor: theme.colors.brand,
               },
@@ -109,12 +111,16 @@ export default function TransactionsScreen() {
         <View
           style={[
             styles.searchBox,
-            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: searchFocused ? theme.colors.brand : theme.colors.border,
+              borderWidth: searchFocused ? 1.5 : 1,
+            },
           ]}
         >
           <MaterialCommunityIcons
             accessibilityElementsHidden
-            color={theme.colors.textMuted}
+            color={searchFocused ? theme.colors.brand : theme.colors.textMuted}
             name="magnify"
             size={20}
           />
@@ -123,6 +129,8 @@ export default function TransactionsScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             onChangeText={setSearch}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             placeholder="Search description or category"
             placeholderTextColor={theme.colors.textMuted}
             style={[styles.searchInput, { color: theme.colors.text }]}
@@ -153,6 +161,10 @@ export default function TransactionsScreen() {
                 accessibilityLabel={kindLabels[filter]}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
+                android_ripple={{
+                  color: selected ? "rgba(255, 255, 255, 0.2)" : "rgba(15, 107, 91, 0.12)",
+                  borderless: false,
+                }}
                 onPress={() => setKind(filter)}
                 style={[
                   styles.chip,
@@ -192,11 +204,22 @@ export default function TransactionsScreen() {
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <EmptyState
+              icon={filtering ? "magnify" : "swap-vertical"}
               title={filtering ? "No matching transactions" : "No transactions yet"}
               description={
                 filtering
                   ? "Try a different search or filter."
                   : "Pull down to check for records. Synchronized records are read from encrypted local storage."
+              }
+              action={
+                !filtering ? (
+                  <Button
+                    onPress={() => router.push("/(app)/transaction")}
+                    variant="secondary"
+                  >
+                    Add transaction
+                  </Button>
+                ) : undefined
               }
             />
           }

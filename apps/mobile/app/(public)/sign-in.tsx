@@ -11,7 +11,8 @@ import { typography } from "@/ui/tokens";
 
 export default function SignInScreen() {
   const theme = useZoptionTheme();
-  const { configured, signInWithGoogle, signInWithPassword, status } = useSessionSnapshot();
+  const { configured, signInWithGoogle, signInWithPassword, signInWithDummyAccount, status } =
+    useSessionSnapshot();
   const passwordRef = useRef<TextInput>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,10 +20,29 @@ export default function SignInScreen() {
   const [formError, setFormError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [dummyBusy, setDummyBusy] = useState(false);
 
   useEffect(() => {
     if (status === "signed-in") router.replace("/(app)/(tabs)");
   }, [status]);
+
+  async function handleDummySignIn(): Promise<void> {
+    if (dummyBusy) return;
+    setDummyBusy(true);
+    setFormError(undefined);
+    try {
+      if (signInWithDummyAccount) {
+        await signInWithDummyAccount();
+      } else {
+        await signInWithPassword("dummy@zoption.local", "dummy-password");
+      }
+      router.replace("/(app)/(tabs)");
+    } catch (error) {
+      setFormError(authErrorMessage(error, "Zoption could not sign in with dummy account."));
+    } finally {
+      setDummyBusy(false);
+    }
+  }
 
   async function handleGoogleSignIn(): Promise<void> {
     if (!configured || googleBusy) return;
@@ -38,7 +58,11 @@ export default function SignInScreen() {
   }
 
   async function submit(): Promise<void> {
-    if (busy || !configured) return;
+    if (busy) return;
+    if (!configured) {
+      await handleDummySignIn();
+      return;
+    }
     const parsedEmail = emailSchema.safeParse(email);
     if (!parsedEmail.success) {
       setEmailError(parsedEmail.error.issues[0]?.message ?? "Enter a valid email address.");
@@ -73,7 +97,7 @@ export default function SignInScreen() {
           textContentType="username"
           value={email}
           error={emailError}
-          editable={!busy}
+          editable={!busy && !dummyBusy}
           onChangeText={(value) => {
             setEmail(value);
             setEmailError(undefined);
@@ -90,7 +114,7 @@ export default function SignInScreen() {
           secureTextEntry
           textContentType="password"
           value={password}
-          editable={!busy}
+          editable={!busy && !dummyBusy}
           onChangeText={(value) => {
             setPassword(value);
             setFormError(undefined);
@@ -110,8 +134,8 @@ export default function SignInScreen() {
             accessibilityRole="alert"
             style={[typography.callout, { color: theme.colors.warning }]}
           >
-            This development build is missing its Supabase public configuration. Restart it after
-            adding the mobile environment values.
+            This development build is missing its Supabase public configuration. You can sign in
+            with a dummy account below for local development.
           </Text>
         ) : null}
         <Button
@@ -123,8 +147,17 @@ export default function SignInScreen() {
           Sign in
         </Button>
         <Button
+          accessibilityLabel="Sign in with dummy account"
+          disabled={dummyBusy || busy}
+          loading={dummyBusy}
+          variant="secondary"
+          onPress={() => void handleDummySignIn()}
+        >
+          Sign in with dummy account
+        </Button>
+        <Button
           variant="quiet"
-          disabled={busy}
+          disabled={busy || dummyBusy}
           onPress={() => router.push("/(public)/forgot-password")}
         >
           Forgot password?
@@ -140,6 +173,7 @@ export default function SignInScreen() {
         <Button
           accessibilityHint="Opens Google in the system browser and links the same Zoption identity"
           disabled={!configured || googleBusy}
+          icon="google"
           loading={googleBusy}
           variant="secondary"
           onPress={() => void handleGoogleSignIn()}

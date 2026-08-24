@@ -51,8 +51,14 @@ export function SubscriptionsScreen() {
         </View>
       ) : state.subscriptions.length === 0 ? (
         <EmptyState
+          icon="calendar-sync-outline"
           title="No subscriptions yet"
           description="Add streaming, software, or membership charges to see their monthly cost."
+          action={
+            <Button disabled={!local.workspace} onPress={addSubscription} variant="secondary">
+              Add your first subscription
+            </Button>
+          }
         />
       ) : (
         <View style={styles.stack}>
@@ -116,7 +122,11 @@ function SubscriptionRow({
   const conflicted = subscription.syncState === "conflicted";
   const failed = subscription.syncState === "failed";
   return (
-    <Pressable accessibilityRole="button" onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+      onPress={onPress}
+    >
       <Card
         accessibilityLabel={subscription.name + ", " + subscription.amountMinor + " minor"}
         style={{

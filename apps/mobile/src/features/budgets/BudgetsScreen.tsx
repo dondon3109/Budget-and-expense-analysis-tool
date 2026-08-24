@@ -181,6 +181,7 @@ export function BudgetsScreen() {
           />
           {view.rows.length === 0 ? (
             <EmptyState
+              icon="chart-donut"
               title="No budgets for this month"
               description="Add a monthly limit for an expense category to start tracking your spending against it."
             />
@@ -238,11 +239,15 @@ function MonthNavigator({ month, onChange }: { month: string; onChange: (month: 
     <View
       accessibilityRole="adjustable"
       accessibilityLabel={`Budget month, ${monthLabel(month)}`}
-      style={[styles.monthNav, { backgroundColor: theme.colors.canvasMuted }]}
+      style={[
+        styles.monthNav,
+        { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+      ]}
     >
       <Pressable
         accessibilityLabel="Previous month"
         accessibilityRole="button"
+        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
         onPress={() => onChange(shiftMonth(month, -1))}
         style={[styles.monthButton, { borderColor: theme.colors.border }]}
       >
@@ -257,6 +262,7 @@ function MonthNavigator({ month, onChange }: { month: string; onChange: (month: 
       <Pressable
         accessibilityLabel="Next month"
         accessibilityRole="button"
+        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
         onPress={() => onChange(shiftMonth(month, 1))}
         style={[styles.monthButton, { borderColor: theme.colors.border }]}
       >
@@ -543,6 +549,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderRadius: radii.md,
+    borderWidth: 1,
     padding: spacing.xs,
   },
   monthButton: {

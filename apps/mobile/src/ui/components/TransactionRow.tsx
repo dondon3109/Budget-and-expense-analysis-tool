@@ -28,11 +28,27 @@ export function TransactionRow({
       : pending
         ? "Pending sync"
         : null;
+  const statusColor = conflicted
+    ? theme.colors.warning
+    : failed
+      ? theme.colors.danger
+      : pending
+        ? theme.colors.warning
+        : undefined;
+
   return (
     <Pressable
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={`${transaction.description}, ${transaction.categoryName}, ${transaction.date}, ${moneyAccessibilityLabel(transaction.amountMinor, transaction.currency)}`}
       accessibilityHint={stateLabel ?? (onPress ? "Opens transaction details" : undefined)}
+      android_ripple={
+        onPress
+          ? {
+              color: "rgba(15, 107, 91, 0.12)",
+              borderless: false,
+            }
+          : undefined
+      }
       disabled={!onPress}
       onPress={onPress}
       className="w-full flex-row items-center gap-3"
@@ -43,16 +59,27 @@ export function TransactionRow({
     >
       <View
         accessibilityElementsHidden
-        style={[styles.category, { backgroundColor: transaction.categoryColor }]}
-      />
+        style={[styles.categoryBadge, { backgroundColor: transaction.categoryColor + "22" }]}
+      >
+        <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
+      </View>
       <View className="min-w-0 flex-1">
         <Text numberOfLines={1} style={[typography.headline, { color: theme.colors.text }]}>
           {transaction.description}
         </Text>
-        <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {transaction.categoryName} · {transaction.date}
-          {stateLabel ? ` · ${stateLabel}` : ""}
-        </Text>
+        <View style={styles.metaRow}>
+          <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
+            {transaction.categoryName} · {transaction.date}
+          </Text>
+          {stateLabel ? (
+            <Text
+              numberOfLines={1}
+              style={[typography.caption, { color: statusColor, fontWeight: "600" }]}
+            >
+              · {stateLabel}
+            </Text>
+          ) : null}
+        </View>
       </View>
       <MoneyValue
         amountMinor={transaction.amountMinor}
@@ -65,6 +92,23 @@ export function TransactionRow({
 }
 
 const styles = StyleSheet.create({
-  row: { minHeight: touchTarget, paddingVertical: spacing.sm, borderRadius: radii.sm },
-  category: { width: 10, height: 10, borderRadius: radii.round },
+  row: {
+    minHeight: touchTarget,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radii.md,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xxs,
+  },
+  categoryBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryDot: { width: 10, height: 10, borderRadius: radii.round },
 });

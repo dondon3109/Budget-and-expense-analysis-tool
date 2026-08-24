@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { readPlan, type Plan } from "@/api/plan";
 
-import { useSessionSnapshot } from "./session-state";
+import { DUMMY_DEV_SUBJECT, useSessionSnapshot } from "./session-state";
 
 export type PlanStatus = "loading" | "ready" | "unknown";
 
@@ -31,6 +31,11 @@ export function usePlan(): { plan: Plan | null; status: PlanStatus; retry: () =>
     if (sessionStatus !== "signed-in" || !subject) {
       setPlan(null);
       setStatus("unknown");
+      return;
+    }
+    if (subject === DUMMY_DEV_SUBJECT) {
+      setPlan("zoption_pro");
+      setStatus("ready");
       return;
     }
     if (cachedSubject === subject) {

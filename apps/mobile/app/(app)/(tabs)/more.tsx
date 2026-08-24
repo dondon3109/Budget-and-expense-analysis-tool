@@ -1,9 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { seedDummyWorkspaceData } from "@/db/demo-seed";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
 import { OtaUpdateSettingsCard } from "@/features/ota-updates";
 import { UpdateSettingsCard } from "@/features/updates";
@@ -11,16 +13,85 @@ import { Button, Card, ConfirmationDialog } from "@/ui/components";
 import { ThemePicker } from "@/ui/theme-picker";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { typography } from "@/ui/tokens";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+
+interface MenuItemProps {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  title: string;
+  subtitle: string;
+  badge?: string;
+  onPress: () => void;
+}
+
+function MenuItem({ icon, title, subtitle, badge, onPress }: MenuItemProps) {
+  const theme = useZoptionTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${subtitle}`}
+      android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+      className="w-full flex-row items-center gap-3"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.menuItem,
+        { backgroundColor: pressed ? theme.colors.canvasMuted : "transparent" },
+      ]}
+    >
+      <View
+        accessibilityElementsHidden
+        style={[styles.menuIconWrap, { backgroundColor: theme.colors.brandSoft }]}
+      >
+        <MaterialCommunityIcons name={icon} size={20} color={theme.colors.brand} />
+      </View>
+      <View style={styles.menuTextWrap}>
+        <Text numberOfLines={1} style={[typography.headline, { color: theme.colors.text }]}>
+          {title}
+        </Text>
+        <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
+          {subtitle}
+        </Text>
+      </View>
+      {badge ? (
+        <View style={[styles.badge, { backgroundColor: theme.colors.brandSoft }]}>
+          <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+            {badge}
+          </Text>
+        </View>
+      ) : null}
+      <MaterialCommunityIcons
+        accessibilityElementsHidden
+        name="chevron-right"
+        size={20}
+        color={theme.colors.textMuted}
+      />
+    </Pressable>
+  );
+}
 
 export default function MoreScreen() {
   const session = useSessionSnapshot();
+  const planState = usePlan();
   const local = useLocalWorkspace();
   const localStats = useLocalWorkspaceStats();
   const theme = useZoptionTheme();
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedSuccess, setSeedSuccess] = useState(false);
+
+  const handleSeedData = async (): Promise<void> => {
+    if (!local.workspace || seeding) return;
+    setSeeding(true);
+    try {
+      await seedDummyWorkspaceData(local.workspace.database);
+      setSeedSuccess(true);
+      setTimeout(() => setSeedSuccess(false), 3000);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const unsyncedCount =
     (localStats.stats?.unsyncedOperationCount ?? 0) +
     (localStats.stats?.unresolvedConflictCount ?? 0);
@@ -38,10 +109,12 @@ export default function MoreScreen() {
     }
   };
 
+  const isPro = planState.plan === "zoption_pro";
+
   return (
     <Screen
       title="More"
-      description="Appearance is device-local and never contains financial records."
+      description="Settings, financial tools, and offline device controls."
     >
       <Card
         accessibilityLabel="AI Financial Assistant"
@@ -75,125 +148,178 @@ export default function MoreScreen() {
           Open AI Assistant
         </Button>
       </Card>
-      <Card accessibilityLabel="Financial setup">
-        <View className="gap-3">
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Money setup</Text>
-          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-            Manage accounts and categories from encrypted local data, including while offline.
-          </Text>
-          <Button
-            accessibilityHint="Opens native account and category management"
-            variant="secondary"
+
+      <View style={styles.section}>
+        <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
+          FINANCIAL TOOLS
+        </Text>
+        <Card style={styles.groupedCard}>
+          <MenuItem
+            icon="wallet-outline"
+            title="Accounts & categories"
+            subtitle="Manage ledger accounts and category rules"
             onPress={() => router.push("/(app)/money-setup")}
-          >
-            Accounts & categories
-          </Button>
-          <Button
-            accessibilityHint="Opens the preview-first transaction importer"
-            variant="secondary"
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <MenuItem
+            icon="file-document-outline"
+            title="Import transactions"
+            subtitle="Preview-first CSV and Excel file imports"
             onPress={() => router.push("/(app)/import")}
-          >
-            Import transactions
-          </Button>
-          <Button
-            accessibilityHint="Opens savings goals"
-            variant="secondary"
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <MenuItem
+            icon="target"
+            title="Savings goals"
+            subtitle="Track progress toward target funds"
             onPress={() => router.push("/(app)/goals")}
-          >
-            Savings goals
-          </Button>
-          <Button
-            accessibilityHint="Opens debt payoff planning"
-            variant="secondary"
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <MenuItem
+            icon="credit-card-refund-outline"
+            title="Debts"
+            subtitle="Payoff schedules with avalanche & snowball"
             onPress={() => router.push("/(app)/debts")}
-          >
-            Debts
-          </Button>
-          <Button
-            accessibilityHint="Opens subscription tracking"
-            variant="secondary"
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <MenuItem
+            icon="calendar-sync-outline"
+            title="Subscriptions"
+            subtitle="Recurring bills and renewal schedules"
             onPress={() => router.push("/(app)/subscriptions")}
-          >
-            Subscriptions
-          </Button>
-          <Button
-            accessibilityHint="Opens the combined agenda calendar"
-            variant="secondary"
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <MenuItem
+            icon="calendar-month-outline"
+            title="Calendar"
+            subtitle="Combined financial agenda and due dates"
             onPress={() => router.push("/(app)/calendar")}
-          >
-            Calendar
-          </Button>
-        </View>
-      </Card>
-      <Card accessibilityLabel="Online capabilities">
-        <View className="gap-3">
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Online</Text>
-          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-            Billing, support and account tools always talk to the Zoption server.
-          </Text>
-          <Button
-            accessibilityHint="Opens plan usage and PayPal billing"
-            variant="secondary"
+          />
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
+          ACCOUNT & SERVICES
+        </Text>
+        <Card style={styles.groupedCard}>
+          <MenuItem
+            icon="star-outline"
+            title="Plan & billing"
+            subtitle="Subscription entitlements and usage"
+            badge={isPro ? "PRO" : "FREE"}
             onPress={() => router.push("/(app)/plan-billing")}
-          >
-            Plan and billing
-          </Button>
-          <Button
-            accessibilityHint="Opens support chat and bug reports"
-            variant="secondary"
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <MenuItem
+            icon="help-circle-outline"
+            title="Help & support"
+            subtitle="Get assistance and report issues"
             onPress={() => router.push("/(app)/support")}
-          >
-            Help and support
-          </Button>
-          <Button
-            accessibilityHint="Opens account management and permanent deletion"
-            variant="secondary"
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <MenuItem
+            icon="account-cog-outline"
+            title="Account"
+            subtitle="Identity, email, and deletion options"
             onPress={() => router.push("/(app)/account")}
-          >
-            Account
-          </Button>
-        </View>
-      </Card>
-      <Card accessibilityLabel="Local data protection status">
-        <View className="gap-1">
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Local data</Text>
-          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-            Encrypted with SQLCipher
-          </Text>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Local schema version {local.workspace?.schemaVersion ?? "unavailable"}
-          </Text>
-        </View>
-      </Card>
-      <ThemePicker />
+          />
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
+          APPEARANCE
+        </Text>
+        <Card>
+          <ThemePicker />
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
+          DEMO DATA
+        </Text>
+        <Card accessibilityLabel="Developer demo data generator">
+          <View className="gap-3">
+            <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+              Populate realistic dummy transactions, accounts, budgets, goals, debts, and
+              subscriptions into the local encrypted workspace.
+            </Text>
+            {seedSuccess ? (
+              <Text style={[typography.body, { color: theme.colors.brand, fontWeight: "600" }]}>
+                ✓ Demo transactions & data populated successfully!
+              </Text>
+            ) : null}
+            <Button
+              accessibilityHint="Inserts demo transactions and accounts into local encrypted database"
+              disabled={!local.workspace || seeding}
+              loading={seeding}
+              variant="secondary"
+              onPress={handleSeedData}
+            >
+              Seed dummy transactions & data
+            </Button>
+          </View>
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
+          STORAGE & SECURITY
+        </Text>
+        <Card accessibilityLabel="Local data protection status">
+          <View style={styles.securityRow}>
+            <View
+              accessibilityElementsHidden
+              style={[styles.securityIconBox, { backgroundColor: theme.colors.brandSoft }]}
+            >
+              <MaterialCommunityIcons name="shield-lock-outline" size={22} color={theme.colors.brand} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[typography.headline, { color: theme.colors.text }]}>Local data encrypted</Text>
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                SQLCipher database · Schema version {local.workspace?.schemaVersion ?? "ready"}
+              </Text>
+            </View>
+          </View>
+        </Card>
+      </View>
+
       <OtaUpdateSettingsCard />
       <UpdateSettingsCard />
-      <Card accessibilityLabel="Account session controls">
-        <View className="gap-3">
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Session</Text>
-          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-            Signing out removes this account&apos;s encrypted local copy from this device after a
-            safety check. Synced records remain in your Zoption workspace.
-          </Text>
-          {signOutError ? (
-            <Text
-              accessibilityRole="alert"
-              style={[typography.body, { color: theme.colors.danger }]}
-            >
-              {signOutError}
+
+      <View style={styles.section}>
+        <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
+          SESSION
+        </Text>
+        <Card accessibilityLabel="Account session controls">
+          <View className="gap-3">
+            <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+              Signing out removes this device&apos;s encrypted local copy after verifying sync
+              status. Synced records remain safe in your workspace.
             </Text>
-          ) : null}
-          <Button
-            accessibilityHint="Checks for unsynchronized changes before removing the local workspace"
-            disabled={!localStats.stats || signingOut}
-            loading={signingOut}
-            variant="secondary"
-            onPress={() => setConfirmingSignOut(true)}
-          >
-            Sign out
-          </Button>
-        </View>
-      </Card>
+            {signOutError ? (
+              <Text
+                accessibilityRole="alert"
+                style={[typography.body, { color: theme.colors.danger }]}
+              >
+                {signOutError}
+              </Text>
+            ) : null}
+            <Button
+              accessibilityHint="Checks for unsynchronized changes before removing the local workspace"
+              disabled={!localStats.stats || signingOut}
+              loading={signingOut}
+              variant="secondary"
+              onPress={() => setConfirmingSignOut(true)}
+            >
+              Sign out
+            </Button>
+          </View>
+        </Card>
+      </View>
+
       <ConfirmationDialog
         confirmLabel={unsyncedCount > 0 ? "Discard and sign out" : "Sign out"}
         destructive={unsyncedCount > 0}
@@ -212,13 +338,67 @@ export default function MoreScreen() {
 }
 
 const styles = StyleSheet.create({
+  section: {
+    gap: spacing.xs,
+  },
+  sectionHeader: {
+    paddingHorizontal: spacing.xs,
+    letterSpacing: 0.8,
+    fontSize: 12,
+  },
+  groupedCard: {
+    padding: 0,
+    gap: 0,
+    overflow: "hidden",
+  },
+  menuItem: {
+    minHeight: touchTarget + spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  menuIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuTextWrap: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  badge: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: radii.sm,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 58,
+  },
   assistantCard: {
     borderWidth: 1.5,
   },
   assistantIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  securityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  securityIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
   },

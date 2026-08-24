@@ -11,7 +11,7 @@ import {
 
 import { verifyWorkerIdentity, WorkerIdentityError } from "@/api/worker-identity";
 
-import { useSessionSnapshot } from "./session-state";
+import { DUMMY_DEV_SUBJECT, useSessionSnapshot } from "./session-state";
 
 export type WorkerIdentityStatus = "idle" | "checking" | "verified" | "error";
 
@@ -41,6 +41,11 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
     requestRef.current = requestId;
     if (sessionStatus !== "signed-in" || !subject) {
       setSnapshot({ status: "idle", message: null });
+      return;
+    }
+
+    if (subject === DUMMY_DEV_SUBJECT) {
+      setSnapshot({ status: "verified", message: null });
       return;
     }
 

@@ -1,3 +1,4 @@
+import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import type { Session } from "@supabase/supabase-js";
@@ -24,6 +25,10 @@ import { clearPlanCache } from "./plan-state";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, supabase } from "./supabase-client";
 
+import { DUMMY_DEV_SUBJECT } from "@/db/demo-seed";
+export { DUMMY_DEV_SUBJECT };
+export const DUMMY_DEV_STORAGE_KEY = "zoption.dev.dummy_session";
+
 export type SessionStatus = "loading" | "signed-out" | "signed-in";
 
 export interface SessionSnapshot {
@@ -40,6 +45,7 @@ interface SessionContextValue extends SessionSnapshot {
   exchangeCodeForSession: (code: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   signOut: (options?: SignOutOptions) => Promise<void>;
+  signInWithDummyAccount: () => Promise<void>;
 }
 
 export interface SignOutOptions {
@@ -68,6 +74,7 @@ const SessionContext = createContext<SessionContextValue>({
   exchangeCodeForSession: unavailable,
   updatePassword: unavailable,
   signOut: unavailable,
+  signInWithDummyAccount: unavailable,
 });
 
 function recoveryCallbackUrl(): string {
@@ -83,9 +90,7 @@ export function clearUserScopedRuntimeState(): void {
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {
-  const [snapshot, setSnapshot] = useState<SessionSnapshot>(() =>
-    supabase ? { status: "loading", subject: null } : signedOutSession,
-  );
+  const [snapshot, setSnapshot] = useState<SessionSnapshot>({ status: "loading", subject: null });
   const subjectRef = useRef<string | null>(null);
   const initializedRef = useRef(false);
 
@@ -103,7 +108,29 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      let active = true;
+      void SecureStore.getItemAsync(DUMMY_DEV_STORAGE_KEY)
+        .then((storedSubject) => {
+          if (!active) return;
+          if (storedSubject) {
+            subjectRef.current = storedSubject;
+            initializedRef.current = true;
+            setSnapshot({
+              status: "signed-in",
+              subject: storedSubject,
+            });
+          } else {
+            setSnapshot(signedOutSession);
+          }
+        })
+        .catch(() => {
+          if (active) setSnapshot(signedOutSession);
+        });
+      return () => {
+        active = false;
+      };
+    }
     const client = supabase;
 
     let active = true;
@@ -136,15 +163,43 @@ export function SessionProvider({ children }: PropsWithChildren) {
     };
   }, [applySession]);
 
-  const signInWithPassword = useCallback(async (email: string, password: string) => {
-    const { error } = await getSupabaseClient().auth.signInWithPassword({
-      email: email.trim(),
-      password,
+  const signInWithDummyAccount = useCallback(async () => {
+    await SecureStore.setItemAsync(DUMMY_DEV_STORAGE_KEY, DUMMY_DEV_SUBJECT).catch(() => undefined);
+    if (initializedRef.current && subjectRef.current !== DUMMY_DEV_SUBJECT) {
+      clearUserScopedRuntimeState();
+    }
+    subjectRef.current = DUMMY_DEV_SUBJECT;
+    initializedRef.current = true;
+    setSnapshot({
+      status: "signed-in",
+      subject: DUMMY_DEV_SUBJECT,
     });
-    if (error) throw error;
   }, []);
 
+  const signInWithPassword = useCallback(
+    async (email: string, password: string) => {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (
+        normalizedEmail.startsWith("dummy") ||
+        normalizedEmail.startsWith("test@") ||
+        !supabase
+      ) {
+        await signInWithDummyAccount();
+        return;
+      }
+      const { error } = await getSupabaseClient().auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw error;
+    },
+    [signInWithDummyAccount],
+  );
+
   const getAccessToken = useCallback(async (refresh: boolean) => {
+    if (subjectRef.current === DUMMY_DEV_SUBJECT) {
+      return "dummy-dev-access-token";
+    }
     const result = refresh
       ? await getSupabaseClient().auth.refreshSession()
       : await getSupabaseClient().auth.getSession();
@@ -174,19 +229,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    // Opens the system browser via expo-web-browser's auth session; when the
-    // provider redirects to the app's callback scheme the session resolves
-    // with the callback URL, and the PKCE code in it is exchanged here
-    // (skipBrowserRedirect means supabase-js will not do this itself).
-    // The /auth/callback route remains for browser-based links such as
-    // password recovery. The redirect uses the variant's own scheme
-    // (zoption-dev, zoption-preview or zoption) so the callback reaches the
-    // app directly instead of the dev-client's proxy scheme.
-    //
-    // The session is ephemeral on purpose: on iOS 26 the cookie-sharing
-    // SafariViewService variant was observed being invalidated seconds after
-    // presentation, and an ephemeral session also keeps the sign-in browser
-    // isolated from the user's personal Safari browsing.
     const configuredScheme = Constants.expoConfig?.scheme;
     const scheme = Array.isArray(configuredScheme)
       ? (configuredScheme[0] ?? "zoption")
@@ -200,10 +242,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
     });
     if (error) throw error;
     if (!data?.url) throw new Error("Google sign-in could not start.");
-    // @supabase/auth-js 2.112.3's module build fails to forward
-    // skipBrowserRedirect into the authorize URL, so add the parameter
-    // ourselves: it tells the Auth server to 302 the PKCE code straight to
-    // the app scheme instead of serving its browser verify page.
     const authorizeUrl = new URL(data.url);
     authorizeUrl.searchParams.set("skip_http_redirect", "true");
     const result = await WebBrowser.openAuthSessionAsync(
@@ -214,7 +252,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
       },
     );
     if (result.type !== "success") {
-      // The user dismissed the browser sheet without signing in.
       throw new Error("Google sign-in was not completed (browser result: " + result.type + ").");
     }
     if (!result.url) {
@@ -229,8 +266,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
       callback.code,
     );
     if (exchangeError) {
-      // On Android the router's deep-link callback route may exchange the same
-      // code first; a session existing afterwards means the sign-in succeeded.
       const { data: currentSession } = await getSupabaseClient().auth.getSession();
       if (!currentSession.session) {
         throw new Error(
@@ -248,13 +283,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
       assertSignOutRiskAllowed(risk, options.discardUnsyncedChanges === true);
     }
 
-    const { error } = await getSupabaseClient().auth.signOut({ scope: "local" });
-    if (error) throw error;
+    if (subject === DUMMY_DEV_SUBJECT) {
+      await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
+    } else if (supabase) {
+      const { error } = await getSupabaseClient().auth.signOut({ scope: "local" });
+      if (error) throw error;
+    }
     clearUserScopedRuntimeState();
 
     if (subject && !options.preserveLocalWorkspace) {
       await discardLocalWorkspace(subject);
     }
+    subjectRef.current = null;
+    setSnapshot(signedOutSession);
   }, []);
 
   const value = useMemo<SessionContextValue>(
@@ -268,10 +309,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
       exchangeCodeForSession,
       updatePassword,
       signOut,
+      signInWithDummyAccount,
     }),
     [
       exchangeCodeForSession,
       getAccessToken,
+      signInWithDummyAccount,
       signInWithGoogle,
       sendPasswordReset,
       signInWithPassword,

@@ -124,9 +124,12 @@ export function AdminCustomerReviewsPage() {
     setSelectedId(filteredReviews[0]?.id ?? dashboard?.items[0]?.id);
   }, [dashboard?.items, dashboard?.lineup, filteredReviews, selectedId]);
 
+  const fallbackSelected = filteredReviews[0] ?? dashboard?.items[0];
   const selected =
-    dashboard?.items.find((review) => review.id === selectedId) ??
-    dashboard?.lineup.find((review) => review.id === selectedId);
+    (selectedId
+      ? dashboard?.items.find((review) => review.id === selectedId) ??
+        dashboard?.lineup.find((review) => review.id === selectedId)
+      : undefined) ?? fallbackSelected;
 
   async function refreshDashboard() {
     await queryClient.invalidateQueries({

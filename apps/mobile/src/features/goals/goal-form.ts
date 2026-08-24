@@ -69,8 +69,9 @@ export function parseGoalForm(
   }
 
   let currentAmountMinor: number | null = null;
+  const currentAmountRaw = values.currentAmount.trim();
   try {
-    currentAmountMinor = parseAmountToMinor(values.currentAmount);
+    currentAmountMinor = parseAmountToMinor(currentAmountRaw === "" ? "0" : currentAmountRaw);
   } catch (error) {
     errors.currentAmount =
       error instanceof MoneyParseError

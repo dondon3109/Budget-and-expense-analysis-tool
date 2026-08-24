@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, router } from "expo-router";
 import { useMemo, useState } from "react";
 import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from "react-native";
@@ -15,7 +16,7 @@ import {
   Skeleton,
   SyncStatus,
 } from "@/ui/components";
-import { spacing, typography } from "@/ui/tokens";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { monthLabel, todayIso } from "./event-form";
 
@@ -62,6 +63,7 @@ function DayCard({ day }: { day: LocalCalendarDay }) {
           accessibilityHint="Opens the event editor"
           accessibilityRole="button"
           accessibilityLabel={"Event " + event.title}
+          android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
           onPress={() => router.push({ pathname: "/(app)/event", params: { id: event.id } })}
           style={styles.row}
         >
@@ -115,28 +117,47 @@ export function CalendarScreen() {
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
       <Stack.Screen options={{ title: "Calendar" }} />
-      <View style={styles.monthRow}>
-        <Button
+      <View
+        style={[
+          styles.monthNav,
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+        ]}
+      >
+        <Pressable
           accessibilityLabel="Previous month"
-          accessibilityHint="Shows the previous month"
+          accessibilityRole="button"
+          android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
           onPress={() => setMonth((value) => shiftMonth(value, -1))}
-          variant="secondary"
+          style={[styles.monthButton, { borderColor: theme.colors.border }]}
         >
-          ‹
-        </Button>
-        <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.text}
+            name="chevron-left"
+            size={22}
+          />
+        </Pressable>
+        <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
           {monthLabel(month)}
         </Text>
-        <Button
+        <Pressable
           accessibilityLabel="Next month"
-          accessibilityHint="Shows the next month"
+          accessibilityRole="button"
+          android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
           onPress={() => setMonth((value) => shiftMonth(value, 1))}
-          variant="secondary"
+          style={[styles.monthButton, { borderColor: theme.colors.border }]}
         >
-          ›
-        </Button>
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.text}
+            name="chevron-right"
+            size={22}
+          />
+        </Pressable>
       </View>
-      <SyncStatus state={visibleSyncState(sync.status)} />
+      <View style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.xxs }}>
+        <SyncStatus state={visibleSyncState(sync.status)} />
+      </View>
       {state.error ? (
         <ErrorState title="Calendar unavailable" message={state.error} onRetry={state.retry} />
       ) : state.loading ? (
@@ -149,6 +170,7 @@ export function CalendarScreen() {
           keyExtractor={(day) => day.date}
           ListEmptyComponent={
             <EmptyState
+              icon="calendar-month-outline"
               title="Nothing planned this month"
               description="Events, subscription bills, and transactions for this month will appear here."
             />
@@ -174,14 +196,24 @@ export function CalendarScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   padded: { padding: spacing.md },
-  monthRow: {
+  monthNav: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    padding: spacing.xs,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  monthButton: {
+    minWidth: touchTarget,
+    minHeight: touchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.sm,
+    borderWidth: 1,
   },
   list: {
     width: "100%",

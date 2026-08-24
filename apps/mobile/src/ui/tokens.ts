@@ -42,7 +42,7 @@ export const spacing = {
   xxl: 48,
 } as const;
 
-export const radii = { sm: 8, md: 12, lg: 16, sheet: 24, round: 999 } as const;
+export const radii = { sm: 8, md: 12, lg: 16, xl: 20, sheet: 24, round: 999 } as const;
 export const touchTarget = Platform.OS === "ios" ? 44 : 48;
 
 export const typography = {
