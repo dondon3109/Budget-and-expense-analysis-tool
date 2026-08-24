@@ -9,11 +9,12 @@ import {
 const apiUrl = "https://api.preview.example.com";
 const expectedSupabaseUrl = "https://preview-ref.supabase.co";
 const forbiddenSupabaseUrl = "https://production-ref.supabase.co";
+const expectedPosthogHost = "https://us.i.posthog.com";
 const csp = [
   "default-src 'self'",
   "script-src 'self'",
   `img-src 'self' data: blob: ${expectedSupabaseUrl}`,
-  `connect-src 'self' ${expectedSupabaseUrl} ${apiUrl}`,
+  `connect-src 'self' ${expectedSupabaseUrl} ${apiUrl} ${expectedPosthogHost}`,
   "object-src 'none'",
 ].join("; ");
 
@@ -23,6 +24,7 @@ describe("deployment smoke origin checks", () => {
       assertDeploymentContentSecurityPolicy(csp, {
         apiUrl,
         expectedSupabaseUrl,
+        expectedPosthogHost,
         forbiddenSupabaseOrigins: [forbiddenSupabaseUrl],
       }),
     ).not.toThrow();
@@ -38,9 +40,20 @@ describe("deployment smoke origin checks", () => {
       assertDeploymentContentSecurityPolicy(invalidCsp, {
         apiUrl,
         expectedSupabaseUrl,
+        expectedPosthogHost,
         forbiddenSupabaseOrigins: [forbiddenSupabaseUrl],
       }),
     ).toThrow();
+  });
+
+  it("rejects a deployment CSP without the configured PostHog origin", () => {
+    expect(() =>
+      assertDeploymentContentSecurityPolicy(csp.replace(` ${expectedPosthogHost}`, ""), {
+        apiUrl,
+        expectedSupabaseUrl,
+        expectedPosthogHost,
+      }),
+    ).toThrow("connect-src PostHog origin");
   });
 
   it("verifies expected and forbidden origins in frontend assets", () => {

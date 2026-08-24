@@ -34,12 +34,13 @@ export function parseContentSecurityPolicy(value) {
 
 export function assertDeploymentContentSecurityPolicy(
   value,
-  { apiUrl, expectedSupabaseUrl, forbiddenSupabaseOrigins = [] },
+  { apiUrl, expectedSupabaseUrl, expectedPosthogHost, forbiddenSupabaseOrigins = [] },
 ) {
   if (!value?.trim()) throw new Error("Frontend response is missing Content-Security-Policy.");
 
   const apiOrigin = asOrigin(apiUrl, "API_URL");
   const expectedSupabaseOrigin = asOrigin(expectedSupabaseUrl, "EXPECTED_SUPABASE_URL");
+  const expectedPosthogOrigin = asOrigin(expectedPosthogHost, "EXPECTED_POSTHOG_HOST");
   const forbiddenOrigins = forbiddenSupabaseOrigins.map((origin) =>
     asOrigin(origin, "FORBIDDEN_SUPABASE_ORIGINS"),
   );
@@ -50,6 +51,7 @@ export function assertDeploymentContentSecurityPolicy(
   for (const [sources, expected, label] of [
     [connectSources, apiOrigin, "connect-src API origin"],
     [connectSources, expectedSupabaseOrigin, "connect-src Supabase origin"],
+    [connectSources, expectedPosthogOrigin, "connect-src PostHog origin"],
     [imageSources, expectedSupabaseOrigin, "img-src Supabase origin"],
   ]) {
     if (!sources.includes(expected)) throw new Error(`CSP is missing the expected ${label}.`);
@@ -109,12 +111,7 @@ export function assertFrontendAssetOrigins(
  * reached the same edge, so release propagation and smoke verification share
  * this availability check.
  */
-export async function fetchFrontendScriptGraph(
-  html,
-  webUrl,
-  fetchImpl = fetch,
-  options = {},
-) {
+export async function fetchFrontendScriptGraph(html, webUrl, fetchImpl = fetch, options = {}) {
   const maxAttempts = options.maxAttempts ?? (fetchImpl === fetch ? 4 : 1);
   const retryDelayMs = options.retryDelayMs ?? 1500;
   const pending = [...html.matchAll(/<script[^>]+src=["']([^"']+\.js)["']/g)].map(

@@ -86,6 +86,23 @@ describe("deployment build validation", () => {
     ).toThrow("Production builds must use the production API");
   });
 
+  it("requires PostHog for production Pages builds", () => {
+    expect(() =>
+      validateDeploymentConfigForBuild({
+        ...validInput(),
+        requirePosthog: true,
+      }),
+    ).toThrow("VITE_POSTHOG_KEY is required for production Pages builds");
+
+    expect(
+      validateDeploymentConfigForBuild({
+        ...validInput(),
+        posthogKey: "phc_production_public_key",
+        requirePosthog: true,
+      }),
+    ).toMatchObject({ posthogEnabled: true });
+  });
+
   it.each([
     ["VITE_API_URL", "http://api.example.com"],
     ["VITE_API_URL", "https://api.example.com/v1"],

@@ -73,6 +73,7 @@ export default defineConfig(({ command, mode, isSsrBuild }) => {
     explicitSupabasePublishableKey: process.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     posthogKey: env.VITE_POSTHOG_KEY,
     posthogHost: env.VITE_POSTHOG_HOST,
+    requirePosthog: env.CF_PAGES === "1" && deployEnvironment === "production",
   });
 
   return {

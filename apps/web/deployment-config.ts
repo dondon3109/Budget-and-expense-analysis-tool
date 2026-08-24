@@ -14,6 +14,7 @@ export interface DeploymentConfigInput {
   explicitSupabasePublishableKey?: string;
   posthogKey?: string;
   posthogHost?: string;
+  requirePosthog?: boolean;
 }
 
 export interface ResolvedDeploymentConfig {
@@ -149,8 +150,15 @@ export function validateDeploymentConfigForBuild(
   }
 
   const posthogKey = input.posthogKey?.trim();
+  if (input.requirePosthog && !posthogKey) {
+    throw new Error("VITE_POSTHOG_KEY is required for production Pages builds.");
+  }
   const rawPosthogHost = input.posthogHost?.trim() || "https://us.i.posthog.com";
-  const posthogHost = deploymentOrigin(rawPosthogHost, "VITE_POSTHOG_HOST", input.deployEnvironment);
+  const posthogHost = deploymentOrigin(
+    rawPosthogHost,
+    "VITE_POSTHOG_HOST",
+    input.deployEnvironment,
+  );
 
   return {
     deployEnvironment: input.deployEnvironment,

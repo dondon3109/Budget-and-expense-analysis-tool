@@ -8,6 +8,7 @@ import {
 const webUrl = requiredUrl("WEB_URL");
 const apiUrl = requiredUrl("API_URL");
 const expectedSupabaseUrl = requiredUrl("EXPECTED_SUPABASE_URL");
+const expectedPosthogHost = requiredUrl("EXPECTED_POSTHOG_HOST");
 const forbiddenSupabaseOrigins = optionalOrigins("FORBIDDEN_SUPABASE_ORIGINS");
 const origin = new URL(webUrl).origin;
 const seoOrigin = "https://zoption.site";
@@ -86,6 +87,7 @@ for (const [label, path, heading] of publicPages) {
     assertDeploymentContentSecurityPolicy(response.headers.get("content-security-policy"), {
       apiUrl,
       expectedSupabaseUrl,
+      expectedPosthogHost,
       forbiddenSupabaseOrigins,
     });
     const html = await response.text();

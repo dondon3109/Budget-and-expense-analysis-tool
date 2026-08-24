@@ -49,4 +49,6 @@ jobs:
           VITE_API_URL: https://api.zoption.site
           VITE_SUPABASE_URL: https://ci-dummy.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_dummy
+          VITE_POSTHOG_KEY: phc_ci_dummy
+          VITE_POSTHOG_HOST: https://us.i.posthog.com
       - run: pnpm lighthouse
