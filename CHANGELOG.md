@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Excluded spending in categories without a monthly limit from budget totals and over-budget amounts.
+
 ## 2.12.1 — 2026-08-24
 
 ### Fixed

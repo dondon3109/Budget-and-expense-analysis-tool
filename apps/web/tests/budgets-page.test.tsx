@@ -81,4 +81,37 @@ describe("BudgetsPage", () => {
       },
     );
   });
+
+  it("does not show unbudgeted category spending as over budget", async () => {
+    vi.mocked(getBudgets).mockResolvedValue({
+      ...budgetPlan,
+      totalLimitMinor: 0,
+      totalSpentMinor: 0,
+      remainingMinor: 0,
+      usedPercent: 0,
+      items: [
+        {
+          ...budgetPlan.items[0]!,
+          limitMinor: 0,
+          spentMinor: 246_500,
+          remainingMinor: 0,
+          usedPercent: 0,
+        },
+      ],
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/app/budgets?month=2026-07"]}>
+          <QueryClientProvider client={queryClient}>
+            <BudgetsPage />
+          </QueryClientProvider>
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText("Not budgeted")).toBeInTheDocument();
+    expect(screen.queryByText("Over by")).not.toBeInTheDocument();
+  });
 });

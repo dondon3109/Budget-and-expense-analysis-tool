@@ -27,7 +27,7 @@ export const budgetRepository: BudgetRepository = {
   async list(env, tenantId, month) {
     const db = drizzle(env.DB);
     const end = nextMonth(month);
-    const [categoryRows, budgetRows, spendingRows, totalRows] = await Promise.all([
+    const [categoryRows, budgetRows, spendingRows] = await Promise.all([
       db
         .select({
           id: categories.id,
@@ -64,21 +64,6 @@ export const budgetRepository: BudgetRepository = {
           ),
         )
         .groupBy(transactions.categoryId),
-      db
-        .select({
-          spentMinor: sql<number>`coalesce(sum(abs(${transactions.amountMinor})), 0)`.mapWith(
-            Number,
-          ),
-        })
-        .from(transactions)
-        .where(
-          and(
-            eq(transactions.tenantId, tenantId),
-            eq(transactions.kind, "expense"),
-            gte(transactions.date, month),
-            lt(transactions.date, end),
-          ),
-        ),
     ]);
 
     const limits = new Map(budgetRows.map((row) => [row.categoryId, row.limitMinor]));
@@ -92,12 +77,15 @@ export const budgetRepository: BudgetRepository = {
         categoryColor: category.color,
         limitMinor,
         spentMinor,
-        remainingMinor: limitMinor - spentMinor,
+        remainingMinor: limitMinor === 0 ? 0 : limitMinor - spentMinor,
         usedPercent: limitMinor === 0 ? 0 : roundPercent((spentMinor / limitMinor) * 100),
       };
     });
     const totalLimitMinor = items.reduce((sum, item) => sum + item.limitMinor, 0);
-    const totalSpentMinor = totalRows[0]?.spentMinor ?? 0;
+    const totalSpentMinor = items.reduce(
+      (sum, item) => sum + (item.limitMinor > 0 ? item.spentMinor : 0),
+      0,
+    );
     return {
       month,
       currency: "PHP",

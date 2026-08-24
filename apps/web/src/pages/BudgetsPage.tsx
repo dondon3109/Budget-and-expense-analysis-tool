@@ -19,7 +19,6 @@ function toAmountText(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2);
 }
 
-
 export function BudgetsPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
@@ -116,7 +115,7 @@ export function BudgetsPage() {
               </article>
               <article>
                 <TrendingDown size={19} />
-                <span>Spent</span>
+                <span>Budgeted spend</span>
                 <strong>{formatMoney(data.totalSpentMinor)}</strong>
               </article>
               <article className={data.remainingMinor < 0 ? "over" : ""}>
@@ -149,9 +148,10 @@ export function BudgetsPage() {
                 <div className="budget-editor-list">
                   {data.items.map((item) => {
                     const width = Math.min(item.usedPercent, 100);
+                    const hasLimit = item.limitMinor > 0;
                     return (
                       <article
-                        className={`budget-editor-row ${item.remainingMinor < 0 ? "over" : ""}`}
+                        className={`budget-editor-row ${hasLimit && item.remainingMinor < 0 ? "over" : ""}`}
                         key={item.categoryId}
                       >
                         <div className="budget-category-title">
@@ -187,8 +187,14 @@ export function BudgetsPage() {
                           </div>
                         </label>
                         <div className="budget-remaining">
-                          <span>{item.remainingMinor < 0 ? "Over by" : "Available"}</span>
-                          <strong>{formatMoney(Math.abs(item.remainingMinor))}</strong>
+                          {hasLimit ? (
+                            <>
+                              <span>{item.remainingMinor < 0 ? "Over by" : "Available"}</span>
+                              <strong>{formatMoney(Math.abs(item.remainingMinor))}</strong>
+                            </>
+                          ) : (
+                            <span>Not budgeted</span>
+                          )}
                         </div>
                       </article>
                     );
