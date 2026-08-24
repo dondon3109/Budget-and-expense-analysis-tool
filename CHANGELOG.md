@@ -4,6 +4,18 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.11.2 — 2026-08-24
+
+### Fixed
+
+- Restored production PostHog web analytics by wiring the public project token into release builds, failing closed when it is missing, and verifying the ingestion origin during production smoke checks.
+
+## 2.11.1 — 2026-08-24
+
+### Fixed
+
+- Refreshed the public Android install metadata snapshot for the 0.2.10 beta APK.
+
 ## 2.11.0 — 2026-08-24
 
 ### Added
