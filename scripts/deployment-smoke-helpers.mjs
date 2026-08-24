@@ -107,7 +107,14 @@ export function assertFrontendAssetOrigins(
  * reached the same edge, so release propagation and smoke verification share
  * this availability check.
  */
-export async function fetchFrontendScriptGraph(html, webUrl, fetchImpl = fetch) {
+export async function fetchFrontendScriptGraph(
+  html,
+  webUrl,
+  fetchImpl = fetch,
+  options = {},
+) {
+  const maxAttempts = options.maxAttempts ?? (fetchImpl === fetch ? 4 : 1);
+  const retryDelayMs = options.retryDelayMs ?? 1500;
   const pending = [...html.matchAll(/<script[^>]+src=["']([^"']+\.js)["']/g)].map(
     (match) => new URL(match[1], webUrl).href,
   );
@@ -118,9 +125,16 @@ export async function fetchFrontendScriptGraph(html, webUrl, fetchImpl = fetch) 
     const assetUrl = pending.pop();
     if (!assetUrl || visited.has(assetUrl)) continue;
     visited.add(assetUrl);
-    const response = await fetchImpl(assetUrl, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`Frontend asset ${assetUrl} failed with HTTP ${response.status}.`);
+    let response;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      response = await fetchImpl(assetUrl, { cache: "no-store" });
+      if (response.ok) break;
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
+    if (!response || !response.ok) {
+      throw new Error(`Frontend asset ${assetUrl} failed with HTTP ${response?.status}.`);
     }
     const source = await response.text();
     sources.push(source);
