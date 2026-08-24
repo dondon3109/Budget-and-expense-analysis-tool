@@ -7,7 +7,7 @@ import type { LocalAccountItem } from "@/db/repository";
 import { Button, Card, EmptyState, ErrorState, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { spacing, touchTarget, typography } from "@/ui/tokens";
 
 const accountTypeLabel: Record<LocalAccountItem["type"], string> = {
   cash: "Cash",
@@ -15,6 +15,17 @@ const accountTypeLabel: Record<LocalAccountItem["type"], string> = {
   savings: "Savings",
   credit: "Credit",
   other: "Other",
+};
+
+const accountTypeIcon: Record<
+  LocalAccountItem["type"],
+  keyof typeof MaterialCommunityIcons.glyphMap
+> = {
+  cash: "cash-multiple",
+  checking: "bank-outline",
+  savings: "piggy-bank-outline",
+  credit: "credit-card-outline",
+  other: "wallet-outline",
 };
 
 function statusText(state: LocalAccountItem["syncState"]): string | null {
@@ -34,14 +45,16 @@ function SetupRow({
   title,
   detail,
   state,
-  color,
+  icon,
+  iconColor,
   disabled,
   onPress,
 }: {
   title: string;
   detail: string;
   state: LocalAccountItem["syncState"];
-  color?: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  iconColor?: string;
   disabled?: boolean;
   onPress: () => void;
 }) {
@@ -77,14 +90,11 @@ function SetupRow({
         },
       ]}
     >
-      <View
-        accessibilityElementsHidden
-        style={[styles.leading, { backgroundColor: color ?? theme.colors.brandSoft }]}
-      >
+      <View accessibilityElementsHidden style={styles.leading}>
         <MaterialCommunityIcons
-          color={color ? theme.colors.onBrand : theme.colors.brand}
-          name={color ? "shape-outline" : "wallet-outline"}
-          size={22}
+          color={iconColor ?? theme.colors.brand}
+          name={icon}
+          size={24}
         />
       </View>
       <View style={styles.rowText}>
@@ -194,6 +204,7 @@ export function MoneySetupScreen() {
                       title={account.name}
                       detail={`${accountTypeLabel[account.type]} · ${account.currency}${account.system ? " · Permanent" : ""}`}
                       state={account.syncState}
+                      icon={accountTypeIcon[account.type]}
                       onPress={() =>
                         account.syncState === "conflicted"
                           ? openConflict("account", account.id)
@@ -224,7 +235,8 @@ export function MoneySetupScreen() {
                       title={category.name}
                       detail={`${category.kind[0]!.toUpperCase()}${category.kind.slice(1)}${category.requiredPlan === "zoption_pro" ? " · Pro" : ""}${category.locked ? " · Locked" : ""}${category.system ? " · Permanent" : ""}`}
                       state={category.syncState}
-                      color={category.color}
+                      icon="tag-outline"
+                      iconColor={category.color}
                       disabled={category.system || category.syncState === "failed"}
                       onPress={() =>
                         category.syncState === "conflicted"
@@ -256,13 +268,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   leading: {
-    width: 44,
-    height: 44,
+    width: 28,
     flexShrink: 0,
-    borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
   },
   rowText: { minWidth: 0, flex: 1, gap: 2 },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 56 },
 });

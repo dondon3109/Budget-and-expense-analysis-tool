@@ -1,10 +1,10 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { Platform, StyleSheet, View, type ColorValue } from "react-native";
+import { Platform, StyleSheet, type ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { radii, typography } from "@/ui/tokens";
+import { typography } from "@/ui/tokens";
 
 function TabIcon({
   name,
@@ -22,20 +22,11 @@ function TabIcon({
   const theme = useZoptionTheme();
   const iconColor = typeof color === "string" ? color : theme.colors.textMuted;
   return (
-    <View
-      style={[
-        styles.iconPill,
-        {
-          backgroundColor: focused ? theme.colors.brandSoft : "transparent",
-        },
-      ]}
-    >
-      <MaterialCommunityIcons
-        name={focused ? activeName : name}
-        color={focused ? theme.colors.brand : iconColor}
-        size={size}
-      />
-    </View>
+    <MaterialCommunityIcons
+      name={focused ? activeName : name}
+      color={focused ? theme.colors.brand : iconColor}
+      size={size}
+    />
   );
 }
 
@@ -117,10 +108,10 @@ export default function TabLayout() {
           title: "More",
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon
-              activeName="dots-horizontal-circle"
+              activeName="dots-horizontal"
               color={color}
               focused={focused}
-              name="dots-horizontal-circle-outline"
+              name="dots-horizontal"
               size={size}
             />
           ),
@@ -129,13 +120,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  iconPill: {
-    width: 44,
-    height: 28,
-    borderRadius: radii.round,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});

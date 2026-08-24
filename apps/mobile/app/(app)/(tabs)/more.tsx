@@ -37,11 +37,8 @@ function MenuItem({ icon, title, subtitle, badge, onPress }: MenuItemProps) {
         { backgroundColor: pressed ? theme.colors.canvasMuted : "transparent" },
       ]}
     >
-      <View
-        accessibilityElementsHidden
-        style={[styles.menuIconWrap, { backgroundColor: theme.colors.brandSoft }]}
-      >
-        <MaterialCommunityIcons name={icon} size={22} color={theme.colors.brand} />
+      <View accessibilityElementsHidden style={styles.menuIconColumn}>
+        <MaterialCommunityIcons name={icon} size={24} color={theme.colors.brand} />
       </View>
       <View style={styles.menuTextWrap}>
         <Text numberOfLines={1} style={[typography.headline, { color: theme.colors.text }]}>
@@ -352,18 +349,16 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   menuItem: {
-    minHeight: touchTarget + spacing.xs,
+    minHeight: touchTarget + spacing.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
   },
-  menuIconWrap: {
-    width: 44,
-    height: 44,
+  menuIconColumn: {
+    width: 28,
     flexShrink: 0,
-    borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -379,7 +374,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: 72,
+    marginLeft: 56,
   },
   assistantCard: {
     borderWidth: 1,
