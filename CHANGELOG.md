@@ -4,6 +4,29 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.12.1 — 2026-08-24
+
+### Fixed
+
+- Refreshed the public Android install metadata snapshot for the signed `0.2.11-beta` APK.
+
+## 2.12.0 — 2026-08-24
+
+### Added
+
+- Released Android Beta `0.2.11-beta` (`versionCode` 20311) with a redesigned home dashboard and More hub, Material 3-inspired interaction polish, and refreshed in-app and launcher icons.
+- Added a development workflow and demo workspace path for faster native UI iteration without affecting production account data.
+
+### Changed
+
+- Refined Android navigation, cards, forms, transaction rows, empty states, and theme controls for clearer hierarchy and touch feedback.
+
+### Fixed
+
+- Enforced valid PostHog crash telemetry configuration in signed APK and production OTA workflows, while preserving explicit local and remote kill switches and sanitized crash-only reporting.
+- Hardened React Native Screens Fabric initialization when its UI manager is unavailable, and fixed merged icon imports and tab icon sizing so the Android release passes strict type and lint checks.
+- Kept the admin customer-review selection stable when filtered results change.
+
 ## 2.11.2 — 2026-08-24
 
 ### Fixed
