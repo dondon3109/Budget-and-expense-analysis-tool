@@ -1,6 +1,6 @@
 # Mobile build instructions
 
-Last updated: 2026-08-20. All commands run from `apps/mobile` in the repository.
+Last updated: 2026-08-24. All commands run from `apps/mobile` in the repository.
 Nothing here registers, publishes, or replaces any store artifact; those
 actions require explicit approval.
 
@@ -110,3 +110,27 @@ an approved rollback must additionally pass `--allow-downgrade`.
 Local release builds remain compile proofs and must never be distributed. iOS
 production signing is still unconfigured and requires an Apple Developer
 distribution certificate, provisioning profile, and App Store Connect record.
+
+### One-time PostHog setup for Android crash telemetry
+
+From the repository root, store the PostHog **project API key** (the public
+`phc_...` token for the same project as the web app) and its regional ingestion
+host in GitHub Actions:
+
+```bash
+gh secret set EXPO_PUBLIC_POSTHOG_KEY
+gh variable set EXPO_PUBLIC_POSTHOG_HOST --body https://us.i.posthog.com
+```
+
+Paste the project API key when the first command prompts. Do not use a PostHog
+personal API key. If the project is in the EU region, use
+`https://eu.i.posthog.com` instead. Then create a PostHog boolean feature flag
+with the key `crash-telemetry-enabled` and enable it for all Android Beta
+installations. The app sends nothing while that flag is absent, unresolved, or
+false.
+
+The signed APK and production OTA workflows validate these values before they
+build or publish, so a missing key or host now fails the workflow. To
+intentionally ship an inert artifact, set the repository variable
+`EXPO_PUBLIC_TELEMETRY_DISABLED=1`; remove it before re-enabling telemetry. A
+new APK or OTA is required whenever the embedded build-time values change.

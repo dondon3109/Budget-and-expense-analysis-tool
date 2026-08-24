@@ -169,7 +169,7 @@ export function parseTelemetryConfig(
   disabled: string | undefined,
 ): TelemetryConfig {
   const key = environmentValue(apiKey);
-  const disabledValue = environmentValue(disabled);
+  const disabledValue = environmentValue(disabled)?.toLowerCase();
   return {
     enabled: Boolean(key) && disabledValue !== "1" && disabledValue !== "true",
     apiKey: key,
@@ -269,12 +269,17 @@ export function createTelemetryService(
     async sendTestCrash(source = "developer-test-action"): Promise<boolean> {
       if (!config.enabled) return false;
       await this.init();
+      if (!transport || !gateResolved || !gateOpen) return false;
       const testError = Object.assign(new Error("Zoption diagnostic test event"), {
         name: "TestDiagnosticsError",
       });
-      await this.captureException(testError, source);
-      await this.flush();
-      return true;
+      try {
+        transport.captureCrash(sanitizeError(testError, source));
+        await transport.flush();
+        return true;
+      } catch {
+        return false;
+      }
     },
   };
 }

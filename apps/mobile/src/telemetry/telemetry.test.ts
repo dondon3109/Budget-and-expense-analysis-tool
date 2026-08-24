@@ -48,6 +48,7 @@ describe("parseTelemetryConfig", () => {
   it("lets the explicit build-time kill switch win over a present key", () => {
     expect(parseTelemetryConfig("phc_key", undefined, "1").enabled).toBe(false);
     expect(parseTelemetryConfig("phc_key", undefined, "true").enabled).toBe(false);
+    expect(parseTelemetryConfig("phc_key", undefined, "TRUE").enabled).toBe(false);
     expect(parseTelemetryConfig("phc_key", undefined, "0").enabled).toBe(true);
   });
 });
@@ -149,7 +150,9 @@ describe("createTelemetryService", () => {
     flushCalls: number;
   }
 
-  function createHarness(options: { gated?: boolean; failDelivery?: boolean } = {}): Harness {
+  function createHarness(
+    options: { gated?: boolean; failDelivery?: boolean; failFlush?: boolean } = {},
+  ): Harness {
     const transports: GateableTransport[] = [];
     const captured: SanitizedCrashReport[] = [];
     let flushCalls = 0;
@@ -165,7 +168,7 @@ describe("createTelemetryService", () => {
             },
         flush: () => {
           flushCalls += 1;
-          return Promise.reject(new Error("network gone"));
+          return options.failFlush ? Promise.reject(new Error("network gone")) : Promise.resolve();
         },
         ...(options.gated
           ? {
@@ -236,7 +239,7 @@ describe("createTelemetryService", () => {
   });
 
   it("swallows delivery failures so telemetry never compounds errors", async () => {
-    const harness = createHarness({ failDelivery: true });
+    const harness = createHarness({ failDelivery: true, failFlush: true });
     await harness.service.init();
     // Sync throw from captureCrash plus a rejected flush must both stay
     // swallowed; captureException still resolves.
@@ -319,11 +322,41 @@ describe("createTelemetryService", () => {
   });
 
   it("returns false from sendTestCrash when telemetry is disabled", async () => {
-    const disabledService = createTelemetryService({ ...enabledConfig, enabled: false }, async () => {
-      throw new Error("must not be called");
-    });
+    const disabledService = createTelemetryService(
+      { ...enabledConfig, enabled: false },
+      async () => {
+        throw new Error("must not be called");
+      },
+    );
     const sent = await disabledService.sendTestCrash();
     expect(sent).toBe(false);
+  });
+
+  it("returns false from sendTestCrash until the remote gate opens", async () => {
+    const harness = createHarness({ gated: true });
+    expect(await harness.service.sendTestCrash()).toBe(false);
+    expect(harness.captured).toHaveLength(0);
+
+    harness.transports[0]?.notifyGate(false);
+    expect(await harness.service.sendTestCrash()).toBe(false);
+    expect(harness.captured).toHaveLength(0);
+
+    harness.transports[0]?.notifyGate(true);
+    expect(await harness.service.sendTestCrash()).toBe(true);
+    expect(harness.captured).toHaveLength(1);
+  });
+
+  it("returns false from sendTestCrash when delivery or initialization fails", async () => {
+    const failedCapture = createHarness({ failDelivery: true });
+    expect(await failedCapture.service.sendTestCrash()).toBe(false);
+
+    const failedFlush = createHarness({ failFlush: true });
+    expect(await failedFlush.service.sendTestCrash()).toBe(false);
+
+    const failedInit = createTelemetryService(enabledConfig, async () => {
+      throw new Error("PostHog unavailable");
+    });
+    expect(await failedInit.sendTestCrash()).toBe(false);
   });
 
   it("keeps the documented event name and flag constant in sync", () => {

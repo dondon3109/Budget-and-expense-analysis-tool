@@ -74,8 +74,10 @@ embedded `EXPO_PUBLIC_POSTHOG_KEY` reports crashes unless the operator
 disables the pipeline. Properties:
 
 - **Inert without a key.** Without `EXPO_PUBLIC_POSTHOG_KEY` at build time no
-  client is constructed and no network calls are made; local and CI builds are
-  unaffected.
+  client is constructed and no network calls are made. Local builds remain
+  inert, while signed APK and production OTA workflows fail closed when the
+  key or approved regional host is missing unless the build-time kill switch
+  explicitly disables telemetry.
 - **Sanitized crash fields only.** The SDK's exception autocapture stays fully
   disabled because it would transmit raw errors and stacks, which can embed
   transaction text, identifiers, or server responses. Zoption's custom fields
@@ -99,7 +101,8 @@ disables the pipeline. Properties:
   update.
 - **Fail-safe initialization.** The PostHog module loads lazily inside a
   caught initializer; a telemetry failure can never prevent startup or
-  compound the failure being reported.
+  compound the failure being reported. The developer diagnostic reports
+  success only after the remote gate is open and capture plus flush complete.
 - **JS-only dependency.** posthog-react-native has no required native module,
   so adding it does not change the expo-updates native fingerprint or require
   a new signed APK bootstrap.

@@ -80,6 +80,13 @@ jobs:
       - name: Export validated production public configuration
         run: node scripts/export-production-deployment-env.mjs
 
+      - name: Validate mobile crash telemetry configuration
+        run: node scripts/validate-mobile-telemetry-env.mjs
+        env:
+          EXPO_PUBLIC_POSTHOG_KEY: ${{ secrets.EXPO_PUBLIC_POSTHOG_KEY }}
+          EXPO_PUBLIC_POSTHOG_HOST: ${{ vars.EXPO_PUBLIC_POSTHOG_HOST }}
+          EXPO_PUBLIC_TELEMETRY_DISABLED: ${{ vars.EXPO_PUBLIC_TELEMETRY_DISABLED }}
+
       - name: Validate mobile implementation
         run: |
           pnpm --filter @zoption/mobile typecheck

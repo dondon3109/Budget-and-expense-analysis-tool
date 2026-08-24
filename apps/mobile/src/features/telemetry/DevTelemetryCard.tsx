@@ -33,12 +33,16 @@ export function DevTelemetryCard() {
         );
         setResultOk(true);
       } else {
-        setResultMessage("Failed to send test crash event. Telemetry configuration is not enabled.");
+        setResultMessage(
+          "Test event was not sent. Confirm 'crash-telemetry-enabled' is on in PostHog, wait for feature flags to load, and try again.",
+        );
         setResultOk(false);
       }
     } catch (error) {
       setResultMessage(
-        error instanceof Error ? error.message : "An unexpected error occurred while sending test crash.",
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while sending test crash.",
       );
       setResultOk(false);
     } finally {
@@ -53,7 +57,8 @@ export function DevTelemetryCard() {
           Crash telemetry (dev only)
         </Text>
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Triggers a sanitized diagnostic test event through the mobile crash pipeline without crashing the app.
+          Triggers a sanitized diagnostic test event through the mobile crash pipeline without
+          crashing the app.
         </Text>
         <View className="gap-1">
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
