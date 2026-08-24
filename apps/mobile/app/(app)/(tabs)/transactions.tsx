@@ -1,14 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import {
-  AccessibilityInfo,
-  Animated,
-  Easing,
   FlatList,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
   Pressable,
   RefreshControl,
   SectionList,
@@ -30,7 +24,6 @@ import { monthLabel } from "@/features/calendar/event-form";
 import {
   groupTransactionsByDate,
   monthStartForDate,
-  nextTransactionFilterScrollState,
   shiftMonthStart,
   summarizeTransactions,
   transactionDayLabel,
@@ -407,11 +400,6 @@ export default function TransactionsScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [kind, setKind] = useState<TransactionKindFilter>("all");
   const [view, setView] = useState<ViewMode>("daily");
-  const [filterHeight, setFilterHeight] = useState(0);
-  const [filtersAccessible, setFiltersAccessible] = useState(true);
-  const [reduceMotion, setReduceMotion] = useState(false);
-  const filterProgress = useRef(new Animated.Value(1)).current;
-  const filterScrollState = useRef({ anchorOffset: 0, filtersVisible: true });
   const deferredSearch = useDeferredValue(search);
   const local = useLocalTransactions(deferredSearch, kind, month);
   const sync = useSyncState();
@@ -422,67 +410,6 @@ export default function TransactionsScreen() {
   const totals = useMemo(() => summarizeTransactions(items), [items]);
   const dateGroups = useMemo(() => groupTransactionsByDate(items), [items]);
   const summaryItems = useMemo(() => categorySummary(items), [items]);
-
-  useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const subscription = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      setReduceMotion,
-    );
-    return () => subscription.remove();
-  }, []);
-
-  const setFiltersVisible = useCallback(
-    (visible: boolean) => {
-      setFiltersAccessible(visible);
-      filterProgress.stopAnimation();
-      if (reduceMotion) {
-        filterProgress.setValue(visible ? 1 : 0);
-        return;
-      }
-      Animated.timing(filterProgress, {
-        toValue: visible ? 1 : 0,
-        duration: visible ? 210 : 160,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
-    },
-    [filterProgress, reduceMotion],
-  );
-
-  const resetFilterScroll = useCallback(() => {
-    filterScrollState.current = { anchorOffset: 0, filtersVisible: true };
-    setFiltersVisible(true);
-  }, [setFiltersVisible]);
-
-  useEffect(() => {
-    resetFilterScroll();
-  }, [month, resetFilterScroll, searchVisible, view]);
-
-  const handleListScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const previous = filterScrollState.current;
-      const next = nextTransactionFilterScrollState(
-        previous,
-        event.nativeEvent.contentOffset.y,
-      );
-      filterScrollState.current = next;
-      if (previous.filtersVisible !== next.filtersVisible) {
-        setFiltersVisible(next.filtersVisible);
-      }
-    },
-    [setFiltersVisible],
-  );
-
-  const handleFilterLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      const measuredHeight = event.nativeEvent.layout.height;
-      if (measuredHeight > 0 && measuredHeight !== filterHeight) {
-        setFilterHeight(measuredHeight);
-      }
-    },
-    [filterHeight],
-  );
 
   const emptyState = (
     <TransactionsEmptyView
@@ -496,6 +423,40 @@ export default function TransactionsScreen() {
       }}
       search={search}
     />
+  );
+
+  const filterPanel = (
+    <View style={[styles.filterPanel, { borderColor: theme.colors.border }]}>
+      <View accessibilityLabel="Filter by transaction type" style={styles.chips}>
+        {transactionKindFilters.map((filter) => {
+          const selected = filter === kind;
+          return (
+            <Pressable
+              key={filter}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              onPress={() => setKind(filter)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: selected ? theme.colors.brand : theme.colors.surface,
+                  borderColor: selected ? theme.colors.brand : theme.colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  typography.label,
+                  { color: selected ? theme.colors.onBrand : theme.colors.text },
+                ]}
+              >
+                {kindLabels[filter]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
   );
 
   return (
@@ -641,65 +602,6 @@ export default function TransactionsScreen() {
         </View>
       </View>
 
-      <Animated.View
-        accessibilityElementsHidden={!filtersAccessible}
-        importantForAccessibility={filtersAccessible ? "auto" : "no-hide-descendants"}
-        pointerEvents={filtersAccessible ? "auto" : "none"}
-        style={[
-          styles.filterClip,
-          filterHeight > 0 && {
-            height: filterProgress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, filterHeight],
-            }),
-            opacity: filterProgress,
-            transform: [
-              {
-                translateY: filterProgress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-filterHeight, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <View
-          onLayout={handleFilterLayout}
-          style={[styles.filterPanel, { borderColor: theme.colors.border }]}
-        >
-          <View accessibilityLabel="Filter by transaction type" style={styles.chips}>
-            {transactionKindFilters.map((filter) => {
-              const selected = filter === kind;
-              return (
-                <Pressable
-                  key={filter}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => setKind(filter)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: selected ? theme.colors.brand : theme.colors.surface,
-                      borderColor: selected ? theme.colors.brand : theme.colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      typography.label,
-                      { color: selected ? theme.colors.onBrand : theme.colors.text },
-                    ]}
-                  >
-                    {kindLabels[filter]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-      </Animated.View>
-
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
         <ErrorState message={sync.message} onRetry={sync.retry} title="Sync paused" />
@@ -720,7 +622,7 @@ export default function TransactionsScreen() {
           keyExtractor={(item) => item.transaction.id}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={emptyState}
-          onScroll={handleListScroll}
+          ListHeaderComponent={filterPanel}
           refreshControl={
             <RefreshControl
               refreshing={sync.status === "syncing"}
@@ -732,7 +634,6 @@ export default function TransactionsScreen() {
           renderSectionHeader={({ section }) => <DateHeader section={section} />}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled
-          scrollEventThrottle={16}
         />
       ) : view === "summary" ? (
         <FlatList
@@ -743,7 +644,7 @@ export default function TransactionsScreen() {
           data={summaryItems}
           keyExtractor={(item) => item.key}
           ListEmptyComponent={emptyState}
-          onScroll={handleListScroll}
+          ListHeaderComponent={filterPanel}
           refreshControl={
             <RefreshControl
               refreshing={sync.status === "syncing"}
@@ -789,7 +690,6 @@ export default function TransactionsScreen() {
             </View>
           )}
           showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
         />
       ) : (
         <FlatList
@@ -800,7 +700,7 @@ export default function TransactionsScreen() {
           data={items}
           keyExtractor={(item) => item.transaction.id}
           ListEmptyComponent={emptyState}
-          onScroll={handleListScroll}
+          ListHeaderComponent={filterPanel}
           refreshControl={
             <RefreshControl
               refreshing={sync.status === "syncing"}
@@ -810,7 +710,6 @@ export default function TransactionsScreen() {
           }
           renderItem={({ item }) => <TransactionItemRow item={item} showDate />}
           showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
         />
       )}
 
@@ -908,7 +807,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  filterClip: { overflow: "hidden" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   chip: {
     minHeight: 36,

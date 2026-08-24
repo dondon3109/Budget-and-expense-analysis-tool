@@ -14,6 +14,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Prevented the mobile transaction-type filters from becoming stuck as a partially clipped strip during scrolling.
 - Added default emoji icon fallback resolution and local SQLite migration 12 for mobile starter categories so default emojis appear reliably across all mobile views and existing databases.
 - Added D1 migration 0045 to backfill starter category emojis and increment sync revisions for connected mobile clients.
 - Formatted mobile in-app update patch notes as a bullet list and displayed release highlights in the web install page and release dialogs.

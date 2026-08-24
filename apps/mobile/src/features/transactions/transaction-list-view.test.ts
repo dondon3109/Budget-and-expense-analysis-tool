@@ -4,7 +4,6 @@ import type { LocalTransactionItem } from "@/db/repository";
 import {
   groupTransactionsByDate,
   monthStartForDate,
-  nextTransactionFilterScrollState,
   shiftMonthStart,
   summarizeTransactions,
   transactionDayLabel,
@@ -37,31 +36,6 @@ function item(
 }
 
 describe("transaction list view", () => {
-  it("hides filters after deliberate downward scrolling and reveals them sooner on return", () => {
-    let state = { anchorOffset: 0, filtersVisible: true };
-
-    state = nextTransactionFilterScrollState(state, 10);
-    expect(state.filtersVisible).toBe(true);
-
-    state = nextTransactionFilterScrollState(state, 25);
-    expect(state.filtersVisible).toBe(false);
-
-    state = nextTransactionFilterScrollState(state, 18);
-    expect(state.filtersVisible).toBe(false);
-
-    state = nextTransactionFilterScrollState(state, 12);
-    expect(state.filtersVisible).toBe(true);
-  });
-
-  it("always reveals filters when the list returns to the top", () => {
-    expect(
-      nextTransactionFilterScrollState(
-        { anchorOffset: 100, filtersVisible: false },
-        -12,
-      ),
-    ).toEqual({ anchorOffset: 0, filtersVisible: true });
-  });
-
   it("groups transactions by newest date and calculates each day independently", () => {
     const groups = groupTransactionsByDate([
       item("older-expense", "2026-08-13", -2_500, "expense"),

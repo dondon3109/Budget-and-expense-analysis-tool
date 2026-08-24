@@ -16,41 +16,6 @@ export interface TransactionDateGroup {
   totals: TransactionTotalsByCurrency;
 }
 
-export interface TransactionFilterScrollState {
-  anchorOffset: number;
-  filtersVisible: boolean;
-}
-
-const FILTER_HIDE_DISTANCE = 24;
-const FILTER_SHOW_DISTANCE = 12;
-const FILTER_TOP_OFFSET = 8;
-
-/**
- * Uses separate hide/show thresholds so small direction changes do not make the
- * transaction filters flicker while a user is reading the list.
- */
-export function nextTransactionFilterScrollState(
-  state: TransactionFilterScrollState,
-  rawOffset: number,
-): TransactionFilterScrollState {
-  const offset = Math.max(0, rawOffset);
-  if (offset <= FILTER_TOP_OFFSET) {
-    return { anchorOffset: offset, filtersVisible: true };
-  }
-
-  if (state.filtersVisible) {
-    const anchorOffset = Math.min(state.anchorOffset, offset);
-    return offset - anchorOffset >= FILTER_HIDE_DISTANCE
-      ? { anchorOffset: offset, filtersVisible: false }
-      : { anchorOffset, filtersVisible: true };
-  }
-
-  const anchorOffset = Math.max(state.anchorOffset, offset);
-  return anchorOffset - offset >= FILTER_SHOW_DISTANCE
-    ? { anchorOffset: offset, filtersVisible: true }
-    : { anchorOffset, filtersVisible: false };
-}
-
 function emptyTotals(): TransactionTotals {
   return { incomeMinor: 0, expenseMinor: 0, netMinor: 0 };
 }
