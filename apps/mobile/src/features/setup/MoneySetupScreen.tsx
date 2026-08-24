@@ -47,6 +47,8 @@ function SetupRow({
 }) {
   const theme = useZoptionTheme();
   const status = statusText(state);
+  // Keep structural layout on the Pressable itself: Android's NativeWind
+  // interop can drop flex-direction from callback-composed style arrays.
   return (
     <Pressable
       accessibilityRole="button"
@@ -64,6 +66,7 @@ function SetupRow({
           ? undefined
           : { color: "rgba(15, 107, 91, 0.12)", borderless: false }
       }
+      className="flex-row items-center"
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -250,8 +253,6 @@ const styles = StyleSheet.create({
     minHeight: touchTarget + spacing.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    flexDirection: "row",
-    alignItems: "center",
     gap: spacing.sm,
   },
   leading: {
