@@ -38,6 +38,7 @@ const localTransactionRowSchema = z.object({
   category_id: z.string(),
   category_name: z.string(),
   category_color: z.string(),
+  category_icon_emoji: z.string().nullable().optional(),
   account_id: z.string().nullable(),
   account_name: z.string().nullable(),
   notes: z.string().nullable(),
@@ -73,6 +74,7 @@ const localCategoryOptionSchema = z.object({
   name: z.string(),
   kind: z.enum(["income", "expense", "transfer"]),
   color: z.string(),
+  iconEmoji: z.string().nullable().optional(),
   pending: z
     .number()
     .int()
@@ -294,6 +296,7 @@ const localCategoryItemSchema = z.object({
   name: z.string(),
   kind: z.enum(["income", "expense", "transfer"]),
   color: z.string(),
+  iconEmoji: z.string().nullable().optional(),
   system: z.number().int().min(0).max(1),
   required_plan: z.enum(["free", "zoption_pro"]),
   locked: z.number().int().min(0).max(1),
@@ -316,6 +319,7 @@ export interface LocalCategoryItem {
   name: string;
   kind: z.infer<typeof localCategoryItemSchema>["kind"];
   color: string;
+  iconEmoji?: string | null;
   system: boolean;
   requiredPlan: z.infer<typeof localCategoryItemSchema>["required_plan"];
   locked: boolean;
@@ -344,6 +348,7 @@ const dashboardTransactionRowSchema = z.object({
   category_id: z.string(),
   category_name: z.string(),
   category_color: z.string(),
+  category_icon_emoji: z.string().nullable().optional(),
   account_name: z.string(),
 });
 
@@ -405,6 +410,7 @@ const transactionListSelect = `SELECT
   transaction_row.category_id,
   category.name AS category_name,
   category.color AS category_color,
+  category.icon_emoji AS category_icon_emoji,
   transaction_row.account_id,
   account.name AS account_name,
   transaction_row.notes,
@@ -442,6 +448,7 @@ function mapTransactionRows(rows: unknown[]): LocalTransactionItem[] {
         categoryId: row.category_id,
         categoryName: row.category_name,
         categoryColor: row.category_color,
+        categoryIconEmoji: row.category_icon_emoji ?? null,
         accountId: row.account_id,
         accountName: row.account_name ?? "Unassigned",
         notes: row.notes,
@@ -545,7 +552,7 @@ LIMIT ?`;
          ORDER BY name COLLATE NOCASE, id`,
       ),
       this.database.getAllAsync(
-        `SELECT id, name, kind, color, system, required_plan, locked,
+        `SELECT id, name, kind, color, icon_emoji AS iconEmoji, system, required_plan, locked,
           server_revision, sync_state
          FROM categories
          WHERE deleted_at IS NULL AND archived = 0
@@ -573,6 +580,7 @@ LIMIT ?`;
           name: row.name,
           kind: row.kind,
           color: row.color,
+          iconEmoji: row.iconEmoji,
           system: row.system === 1,
           requiredPlan: row.required_plan,
           locked: row.locked === 1,
@@ -600,7 +608,7 @@ LIMIT ?`;
          ORDER BY name COLLATE NOCASE, id`,
       ),
       this.database.getAllAsync(
-        `SELECT id, name, kind, color,
+        `SELECT id, name, kind, color, icon_emoji AS iconEmoji,
           CASE WHEN server_revision = 0 THEN 1 ELSE 0 END AS pending
          FROM categories
          WHERE deleted_at IS NULL AND archived = 0 AND locked = 0
@@ -748,6 +756,7 @@ LIMIT ?`;
         t.category_id,
         c.name AS category_name,
         c.color AS category_color,
+        c.icon_emoji AS category_icon_emoji,
         COALESCE(a.name, 'Unassigned') AS account_name
       FROM transactions t
       INNER JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
@@ -806,6 +815,7 @@ LIMIT ?`;
           categoryId: decoded.category_id,
           categoryName: decoded.category_name,
           categoryColor: decoded.category_color,
+          categoryIconEmoji: decoded.category_icon_emoji ?? null,
           accountName: decoded.account_name,
         };
       }),
@@ -864,7 +874,7 @@ LIMIT ?`;
         monthStart,
       ),
       this.database.getAllAsync(
-        `SELECT id, name, kind, color,
+        `SELECT id, name, kind, color, icon_emoji AS iconEmoji,
           CASE WHEN server_revision = 0 THEN 1 ELSE 0 END AS pending
          FROM categories
          WHERE deleted_at IS NULL AND archived = 0 AND locked = 0 AND kind = 'expense'

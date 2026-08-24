@@ -411,7 +411,7 @@
 .category-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 12px 0;
@@ -456,6 +456,12 @@
   color: var(--subtle);
   font-size: 10.5px;
   line-height: 1.35;
+}
+
+.category-row > .category-chip-emoji {
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
 }
 
 /* Trend Panel */
@@ -1020,7 +1026,9 @@
   font-weight: 750;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: background 0.16s ease, transform 0.16s ease;
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
 }
 
 .dashboard-account-add:hover {
@@ -1153,7 +1161,9 @@
   border-radius: 8px;
   background: transparent;
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .dashboard-account-actions button:hover {

@@ -113,6 +113,7 @@ export async function loadDashboard(
         categoryId: categories.id,
         categoryName: categories.name,
         categoryColor: categories.color,
+        categoryIconEmoji: categories.iconEmoji,
         accountName: accounts.name,
       })
       .from(transactions)

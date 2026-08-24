@@ -130,6 +130,7 @@ export const categories = sqliteTable(
     name: text("name").notNull(),
     kind: text("kind", { enum: ["income", "expense", "transfer"] }).notNull(),
     color: text("color").notNull(),
+    iconEmoji: text("icon_emoji"),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
     systemKey: text("system_key"),
     origin: text("origin", { enum: ["starter", "custom", "system"] })

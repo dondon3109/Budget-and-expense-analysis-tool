@@ -257,12 +257,12 @@ describe("durable local transaction mutations", () => {
     ).rejects.toMatchObject({ code: "invalid_reference" });
 
     await mutations.setBudgetLimit("2026-08-01", "category-1", 0);
-    expect(
-      database.native.prepare("SELECT count(*) AS count FROM budgets").get(),
-    ).toEqual({ count: 0 });
-    expect(
-      database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get(),
-    ).toEqual({ count: 0 });
+    expect(database.native.prepare("SELECT count(*) AS count FROM budgets").get()).toEqual({
+      count: 0,
+    });
+    expect(database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get()).toEqual({
+      count: 0,
+    });
   });
 
   it("replaces a conflicting budget create with the preserved server budget", async () => {
@@ -314,9 +314,9 @@ describe("durable local transaction mutations", () => {
       server_revision: 4,
       sync_state: "synced",
     });
-    expect(
-      database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get(),
-    ).toEqual({ count: 0 });
+    expect(database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get()).toEqual({
+      count: 0,
+    });
   });
 
   it("re-queues a keep-mine budget edit against the latest server revision", async () => {
@@ -391,10 +391,15 @@ describe("durable local transaction mutations", () => {
       name: "Draft category",
       kind: "expense",
       color: "#123456",
+      iconEmoji: "🍔",
     });
 
     await mutations.updateAccount(accountId, { name: "Edited wallet", type: "savings" });
-    await mutations.updateCategory(categoryId, { name: "Edited category", color: "#654321" });
+    await mutations.updateCategory(categoryId, {
+      name: "Edited category",
+      color: "#654321",
+      iconEmoji: "🎁",
+    });
     const batch = await mutations.getPushBatch();
     expect(batch?.operations).toMatchObject([
       {
@@ -405,7 +410,7 @@ describe("durable local transaction mutations", () => {
       {
         entityType: "category",
         operationType: "create",
-        payload: { name: "Edited category", color: "#654321" },
+        payload: { name: "Edited category", color: "#654321", iconEmoji: "🎁" },
       },
     ]);
 
@@ -557,6 +562,7 @@ describe("durable local transaction mutations", () => {
             name: "Web dining",
             kind: "expense",
             color: "#ABCDEF",
+            iconEmoji: null,
             archived: false,
             system: false,
             origin: "custom",
@@ -1275,9 +1281,9 @@ describe("durable local financial goal mutations", () => {
       targetDate: "2027-01-01",
       status: "active",
     });
-    await expect(
-      mutations.updateGoal(id, { currentAmountMinor: 200_000 }),
-    ).rejects.toMatchObject({ code: "mutation_blocked" });
+    await expect(mutations.updateGoal(id, { currentAmountMinor: 200_000 })).rejects.toMatchObject({
+      code: "mutation_blocked",
+    });
   });
 
   it("preserves and resolves a stale goal update conflict", async () => {
@@ -1368,7 +1374,12 @@ describe("durable local debt mutations", () => {
       database.native
         .prepare("SELECT name, balance_minor, server_revision, sync_state FROM debts WHERE id = ?")
         .get(id),
-    ).toEqual({ name: "Car Loan", balance_minor: 500_000, server_revision: 0, sync_state: "pending" });
+    ).toEqual({
+      name: "Car Loan",
+      balance_minor: 500_000,
+      server_revision: 0,
+      sync_state: "pending",
+    });
 
     await mutations.updateDebt(id, { balanceMinor: 450_000, aprBasisPoints: 800 });
     expect(
@@ -1378,9 +1389,7 @@ describe("durable local debt mutations", () => {
     ).toEqual({ balance_minor: 450_000, apr_basis_points: 800, sync_state: "pending" });
 
     await mutations.deleteDebt(id);
-    expect(
-      database.native.prepare("SELECT id FROM debts WHERE id = ?").get(id),
-    ).toBeUndefined();
+    expect(database.native.prepare("SELECT id FROM debts WHERE id = ?").get(id)).toBeUndefined();
     expect(
       database.native
         .prepare("SELECT count(*) AS count FROM sync_outbox WHERE entity_id = ?")
@@ -1425,9 +1434,7 @@ describe("durable local debt mutations", () => {
     });
     await mutations.updateDebt(id, { balanceMinor: 0, status: "paid" });
     expect(
-      database.native
-        .prepare("SELECT balance_minor, status FROM debts WHERE id = ?")
-        .get(id),
+      database.native.prepare("SELECT balance_minor, status FROM debts WHERE id = ?").get(id),
     ).toEqual({ balance_minor: 0, status: "paid" });
   });
 
@@ -1435,9 +1442,9 @@ describe("durable local debt mutations", () => {
     const mutations = repository(database);
     database.native.exec(
       "INSERT INTO debts (id, name, type, balance_minor, apr_basis_points, minimum_payment_minor, " +
-      "balance_as_of, status, server_revision, server_updated_at, sync_state) VALUES (" +
-      "'debt-server', 'Server Loan', 'personal_loan', 100000, 1200, 5000, " +
-      "'2026-08-14', 'active', 3, '2026-08-13 15:00:00', 'synced');",
+        "balance_as_of, status, server_revision, server_updated_at, sync_state) VALUES (" +
+        "'debt-server', 'Server Loan', 'personal_loan', 100000, 1200, 5000, " +
+        "'2026-08-14', 'active', 3, '2026-08-13 15:00:00', 'synced');",
     );
     await mutations.updateDebt("debt-server", { balanceMinor: 80_000 });
     const request = (await mutations.getPushBatch())!;
@@ -1584,9 +1591,9 @@ describe("durable local subscription mutations", () => {
     const mutations = repository(database);
     database.native.exec(
       "INSERT INTO subscriptions (id, name, amount_minor, currency, billing_cycle, next_billing_date, " +
-      "status, category_id, account_id, server_revision, server_updated_at, sync_state) VALUES (" +
-      "'subscription-server', 'Server Sub', 9900, 'PHP', 'monthly', '2026-09-01', 'active', " +
-      "'category-1', 'account-1', 3, '2026-08-13 15:00:00', 'synced');",
+        "status, category_id, account_id, server_revision, server_updated_at, sync_state) VALUES (" +
+        "'subscription-server', 'Server Sub', 9900, 'PHP', 'monthly', '2026-09-01', 'active', " +
+        "'category-1', 'account-1', 3, '2026-08-13 15:00:00', 'synced');",
     );
     await mutations.updateSubscription("subscription-server", {
       name: "Device Sub",
@@ -1639,7 +1646,12 @@ describe("durable local subscription mutations", () => {
           "SELECT name, amount_minor, server_revision, sync_state FROM subscriptions WHERE id = 'subscription-server'",
         )
         .get(),
-    ).toEqual({ name: "Server Sub", amount_minor: 9_900, server_revision: 4, sync_state: "synced" });
+    ).toEqual({
+      name: "Server Sub",
+      amount_minor: 9_900,
+      server_revision: 4,
+      sync_state: "synced",
+    });
   });
 });
 describe("durable local savings-interest mutations", () => {
@@ -1835,9 +1847,7 @@ describe("durable local savings-interest mutations", () => {
     });
     expect(
       database.native
-        .prepare(
-          "SELECT interest_json, server_revision, sync_state FROM accounts WHERE id = ?",
-        )
+        .prepare("SELECT interest_json, server_revision, sync_state FROM accounts WHERE id = ?")
         .get(id),
     ).toEqual({
       interest_json: JSON.stringify({
@@ -1993,9 +2003,9 @@ describe("durable local calendar event mutations", () => {
         notes: null,
       }),
     ).toThrow();
-    expect(
-      database.native.prepare("SELECT count(*) AS count FROM calendar_events").get(),
-    ).toEqual({ count: 0 });
+    expect(database.native.prepare("SELECT count(*) AS count FROM calendar_events").get()).toEqual({
+      count: 0,
+    });
   });
 
   it("preserves and resolves a stale event update conflict", async () => {
@@ -2056,4 +2066,3 @@ describe("durable local calendar event mutations", () => {
     ).toEqual({ title: "Server Event", server_revision: 4, sync_state: "synced" });
   });
 });
-

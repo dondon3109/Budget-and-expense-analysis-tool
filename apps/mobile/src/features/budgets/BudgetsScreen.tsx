@@ -137,7 +137,7 @@ export function BudgetsScreen() {
         .filter((category) => !budgetedCategoryIds.has(category.id))
         .map((category) => ({
           id: category.id,
-          label: category.name,
+          label: category.iconEmoji ? `${category.iconEmoji} ${category.name}` : category.name,
           color: category.color,
           detail: category.pending ? "Pending setup" : undefined,
         })),
@@ -302,14 +302,17 @@ function SummaryCard({
       </View>
       <View style={styles.summaryRow}>
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>Remaining</Text>
-        <MoneyValue amountMinor={remainingMinor} tone={remainingMinor >= 0 ? "income" : "expense"} />
+        <MoneyValue
+          amountMinor={remainingMinor}
+          tone={remainingMinor >= 0 ? "income" : "expense"}
+        />
       </View>
       <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
         <View
           style={[
             styles.fill,
             {
-              width: (`${Math.min(100, usedPercent)}%` as DimensionValue),
+              width: `${Math.min(100, usedPercent)}%` as DimensionValue,
               backgroundColor: usedPercent > 100 ? theme.colors.danger : theme.colors.brand,
             },
           ]}
@@ -360,7 +363,9 @@ function BudgetRow({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityHint={syncState === "conflicted" ? "Review this budget conflict" : "Edit this budget"}
+        accessibilityHint={
+          syncState === "conflicted" ? "Review this budget conflict" : "Edit this budget"
+        }
         disabled={syncState === "conflicted" || syncState === "failed"}
         onPress={onPress}
         style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
@@ -391,7 +396,7 @@ function BudgetRow({
             style={[
               styles.fill,
               {
-                width: (`${Math.min(100, usedPercent)}%` as DimensionValue),
+                width: `${Math.min(100, usedPercent)}%` as DimensionValue,
                 backgroundColor: overBudget ? theme.colors.danger : color,
               },
             ]}
@@ -411,9 +416,7 @@ function BudgetRow({
           </Text>
           <Button
             accessibilityLabel={`Review conflict for ${name}`}
-            onPress={() =>
-              router.push({ pathname: "/(app)/budget-conflict", params: { id } })
-            }
+            onPress={() => router.push({ pathname: "/(app)/budget-conflict", params: { id } })}
             variant="secondary"
           >
             Review
@@ -511,13 +514,14 @@ function BudgetEditorSheet({
         maxLength={18}
         onChangeText={onAmountChange}
         placeholder="0.00"
-        trailing={
-          <Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>
-        }
+        trailing={<Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>}
         value={value.amount}
       />
       {message ? (
-        <Text accessibilityRole="alert" style={[typography.callout, { color: theme.colors.danger }]}>
+        <Text
+          accessibilityRole="alert"
+          style={[typography.callout, { color: theme.colors.danger }]}
+        >
           {message}
         </Text>
       ) : null}

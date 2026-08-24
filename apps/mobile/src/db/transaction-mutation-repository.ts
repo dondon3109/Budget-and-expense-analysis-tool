@@ -396,13 +396,14 @@ export class LocalTransactionMutationRepository {
         entityId = uuidSchema.parse(this.randomUuid());
         await this.database.runAsync(
           `INSERT INTO categories (
-            id, name, kind, color, archived, system, origin, required_plan, locked,
+            id, name, kind, color, icon_emoji, archived, system, origin, required_plan, locked,
             server_revision, server_updated_at, deleted_at, sync_state
-          ) VALUES (?, ?, ?, ?, 0, 0, 'custom', 'free', 0, 0, NULL, NULL, 'pending')`,
+          ) VALUES (?, ?, ?, ?, ?, 0, 0, 'custom', 'free', 0, 0, NULL, NULL, 'pending')`,
           entityId,
           input.name,
           input.kind,
           input.color,
+          input.iconEmoji ?? null,
         );
         await this.database.runAsync(
           `INSERT INTO sync_outbox (
@@ -438,6 +439,7 @@ export class LocalTransactionMutationRepository {
         const next: CategoryUpdate = {
           ...(update.name !== undefined ? { name: update.name } : {}),
           ...(update.color !== undefined ? { color: update.color } : {}),
+          ...(update.iconEmoji !== undefined ? { iconEmoji: update.iconEmoji } : {}),
           ...(update.archived !== undefined ? { archived: update.archived } : {}),
         };
         if (next.name) await this.store.assertUniqueName("category", next.name, id);
@@ -458,6 +460,7 @@ export class LocalTransactionMutationRepository {
           name: next.name ?? current.name,
           kind: current.kind,
           color: next.color ?? current.color,
+          iconEmoji: next.iconEmoji !== undefined ? next.iconEmoji : current.icon_emoji,
         };
         if (outbox) {
           await this.database.runAsync(
@@ -469,6 +472,7 @@ export class LocalTransactionMutationRepository {
                 : {
                     name: merged.name,
                     color: merged.color,
+                    iconEmoji: merged.iconEmoji ?? null,
                     archived: next.archived ?? current.archived === 1,
                   },
             ),
@@ -487,6 +491,7 @@ export class LocalTransactionMutationRepository {
             JSON.stringify({
               name: merged.name,
               color: merged.color,
+              iconEmoji: merged.iconEmoji ?? null,
               archived: next.archived ?? current.archived === 1,
             }),
             JSON.stringify(categorySnapshot(current)),
@@ -494,10 +499,11 @@ export class LocalTransactionMutationRepository {
           );
         }
         await this.database.runAsync(
-          `UPDATE categories SET name = ?, color = ?, archived = ?, sync_state = 'pending'
+          `UPDATE categories SET name = ?, color = ?, icon_emoji = ?, archived = ?, sync_state = 'pending'
            WHERE id = ?`,
           merged.name,
           merged.color,
+          merged.iconEmoji ?? null,
           (next.archived ?? current.archived === 1) ? 1 : 0,
           id,
         );

@@ -47,6 +47,7 @@ function SetupRow({
   state,
   icon,
   iconColor,
+  emoji,
   disabled,
   onPress,
 }: {
@@ -55,6 +56,7 @@ function SetupRow({
   state: LocalAccountItem["syncState"];
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   iconColor?: string;
+  emoji?: string | null;
   disabled?: boolean;
   onPress: () => void;
 }) {
@@ -75,9 +77,7 @@ function SetupRow({
       }
       accessibilityState={{ disabled: Boolean(disabled) }}
       android_ripple={
-        disabled
-          ? undefined
-          : { color: "rgba(15, 107, 91, 0.12)", borderless: false }
+        disabled ? undefined : { color: "rgba(15, 107, 91, 0.12)", borderless: false }
       }
       className="flex-row items-center"
       disabled={disabled}
@@ -91,11 +91,11 @@ function SetupRow({
       ]}
     >
       <View accessibilityElementsHidden style={styles.leading}>
-        <MaterialCommunityIcons
-          color={iconColor ?? theme.colors.brand}
-          name={icon}
-          size={24}
-        />
+        {emoji ? (
+          <Text style={styles.leadingEmoji}>{emoji}</Text>
+        ) : (
+          <MaterialCommunityIcons color={iconColor ?? theme.colors.brand} name={icon} size={24} />
+        )}
       </View>
       <View style={styles.rowText}>
         <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
@@ -237,6 +237,7 @@ export function MoneySetupScreen() {
                       state={category.syncState}
                       icon="tag-outline"
                       iconColor={category.color}
+                      emoji={category.iconEmoji}
                       disabled={category.system || category.syncState === "failed"}
                       onPress={() =>
                         category.syncState === "conflicted"
@@ -273,6 +274,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  leadingEmoji: { fontSize: 24, lineHeight: 30 },
   rowText: { minWidth: 0, flex: 1, gap: 2 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 56 },
 });

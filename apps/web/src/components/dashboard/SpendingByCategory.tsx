@@ -125,7 +125,13 @@ export function SpendingByCategory({
             >
               {data.map((item) => (
                 <div className="category-row" key={item.categoryId}>
-                  <span className="color-dot" style={{ backgroundColor: item.color }} />
+                  {item.iconEmoji ? (
+                    <span className="category-chip-emoji" aria-hidden="true">
+                      {item.iconEmoji}
+                    </span>
+                  ) : (
+                    <span className="color-dot" style={{ backgroundColor: item.color }} />
+                  )}
                   <div>
                     <strong>{item.name}</strong>
                     <span>{item.sharePercent}% of spending</span>

@@ -20,6 +20,7 @@ export interface TransactionRecord {
   categoryId: string;
   categoryName: string;
   categoryColor: string;
+  categoryIconEmoji?: string | null;
   accountName: string;
 }
 
@@ -120,6 +121,7 @@ export interface CategoryRecord {
   name: string;
   kind: TransactionKind;
   color: string;
+  iconEmoji?: string | null;
   archived: boolean;
   system: boolean;
   origin: CategoryOrigin;
@@ -316,6 +318,7 @@ export interface DashboardSummary {
     categoryId: string;
     name: string;
     color: string;
+    iconEmoji?: string | null;
     amountMinor: number;
     sharePercent: number;
   }>;

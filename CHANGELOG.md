@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Added optional emoji icons for custom categories across the web and mobile apps.
+
 ### Fixed
 
 - Excluded spending in categories without a monthly limit from budget totals and over-budget amounts.

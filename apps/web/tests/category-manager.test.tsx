@@ -30,6 +30,7 @@ const category: CategoryRecord = {
   name: "Food & dining",
   kind: "expense",
   color: "#dc8b3f",
+  iconEmoji: null,
   archived: false,
   system: false,
   origin: "custom",
@@ -78,12 +79,14 @@ describe("CategoryManager", () => {
     renderManager();
 
     await user.type(screen.getByLabelText("New category"), "Health");
+    await user.click(screen.getByRole("button", { name: "Use 💊 as category icon" }));
     await user.click(screen.getByRole("button", { name: "Add" }));
     await waitFor(() => expect(createCategory).toHaveBeenCalledOnce());
     expect(vi.mocked(createCategory)).toHaveBeenCalledWith(workspace, {
       name: "Health",
       kind: "expense",
       color: "#2a78d6",
+      iconEmoji: "💊",
     });
 
     await user.click(screen.getByRole("button", { name: "Archive Food & dining" }));
@@ -129,6 +132,23 @@ describe("CategoryManager", () => {
     expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Restore Archived custom" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Restore Starter" })).toBeEnabled();
+  });
+
+  it("updates a category emoji icon", async () => {
+    const user = userEvent.setup();
+    renderManager();
+
+    await user.click(screen.getByRole("button", { name: "Rename Food & dining" }));
+    const giftButtons = screen.getAllByRole("button", { name: "Use 🎁 as category icon" });
+    await user.click(giftButtons.at(-1)!);
+    await user.click(screen.getByRole("button", { name: "Save category name" }));
+
+    await waitFor(() =>
+      expect(updateCategory).toHaveBeenCalledWith(workspace, {
+        id: "food",
+        input: { name: "Food & dining", iconEmoji: "🎁" },
+      }),
+    );
   });
 
   it("shows unlimited categories and keeps creation available on Pro", async () => {

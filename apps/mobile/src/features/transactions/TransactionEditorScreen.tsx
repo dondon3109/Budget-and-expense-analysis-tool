@@ -183,7 +183,7 @@ export function TransactionEditorScreen() {
       })) ?? [];
   const categoryOptions = categories.map((category) => ({
     id: category.id,
-    label: category.name,
+    label: category.iconEmoji ? `${category.iconEmoji} ${category.name}` : category.name,
     color: category.color,
     detail: category.pending ? "Pending setup" : undefined,
   }));

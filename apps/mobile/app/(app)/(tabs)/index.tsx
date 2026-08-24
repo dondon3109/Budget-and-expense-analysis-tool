@@ -56,7 +56,11 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
                   accessibilityElementsHidden
                   style={[styles.accountIconBox, { backgroundColor: theme.colors.brandSoft }]}
                 >
-                  <MaterialCommunityIcons name="wallet-outline" size={18} color={theme.colors.brand} />
+                  <MaterialCommunityIcons
+                    name="wallet-outline"
+                    size={18}
+                    color={theme.colors.brand}
+                  />
                 </View>
                 <Text
                   numberOfLines={1}
@@ -125,7 +129,11 @@ function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
             accessibilityElementsHidden
             style={[styles.metricIconWrap, { backgroundColor: theme.colors.canvasMuted }]}
           >
-            <MaterialCommunityIcons name="piggy-bank-outline" size={18} color={theme.colors.brand} />
+            <MaterialCommunityIcons
+              name="piggy-bank-outline"
+              size={18}
+              color={theme.colors.brand}
+            />
           </View>
           <Text style={[typography.body, { color: theme.colors.textMuted }]}>Savings rate</Text>
         </View>
@@ -166,7 +174,13 @@ function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
               accessibilityLabel={item.name + ": " + item.sharePercent + " percent of spending"}
             >
               <View style={styles.categoryRow}>
-                <View style={[styles.dot, { backgroundColor: item.color }]} />
+                {item.iconEmoji ? (
+                  <Text accessibilityElementsHidden style={styles.categoryEmoji}>
+                    {item.iconEmoji}
+                  </Text>
+                ) : (
+                  <View style={[styles.dot, { backgroundColor: item.color }]} />
+                )}
                 <Text
                   numberOfLines={1}
                   style={[typography.body, { color: theme.colors.text, flex: 1 }]}
@@ -314,10 +328,7 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
           title="No monthly budget yet"
           description="Set spending limits by category to keep your monthly money goals on track."
           action={
-            <Button
-              variant="secondary"
-              onPress={() => router.push("/(app)/(tabs)/budgets")}
-            >
+            <Button variant="secondary" onPress={() => router.push("/(app)/(tabs)/budgets")}>
               Set up budgets
             </Button>
           }
@@ -331,7 +342,10 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
               <View key={item.categoryId} style={{ gap: spacing.xxs }}>
                 <View style={styles.budgetRowHeader}>
                   <View style={[styles.dot, { backgroundColor: item.color }]} />
-                  <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text, flex: 1 }]}>
+                  <Text
+                    numberOfLines={1}
+                    style={[typography.body, { color: theme.colors.text, flex: 1 }]}
+                  >
                     {item.name}
                   </Text>
                   <Text
@@ -351,7 +365,7 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
                     style={[
                       styles.fill,
                       {
-                        width: (`${percent}%` as DimensionValue),
+                        width: `${percent}%` as DimensionValue,
                         backgroundColor: overBudget ? theme.colors.danger : item.color,
                       },
                     ]}
@@ -502,6 +516,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: radii.round,
   },
+  categoryEmoji: { width: 24, fontSize: 19, lineHeight: 24 },
   track: {
     height: 6,
     borderRadius: radii.round,

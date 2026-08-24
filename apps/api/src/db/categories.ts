@@ -74,6 +74,7 @@ export const categoryRepository: CategoryRepository = {
           name: categories.name,
           kind: categories.kind,
           color: categories.color,
+          iconEmoji: categories.iconEmoji,
           archived: categories.archived,
           systemKey: categories.systemKey,
           origin: categories.origin,
@@ -98,8 +99,8 @@ export const categoryRepository: CategoryRepository = {
     let createdId: string | null;
     try {
       createdId = await env.DB.prepare(
-        `INSERT INTO categories (id, tenant_id, name, kind, color, origin, required_plan)
-         SELECT ?, ?, ?, ?, ?, 'custom',
+        `INSERT INTO categories (id, tenant_id, name, kind, color, icon_emoji, origin, required_plan)
+         SELECT ?, ?, ?, ?, ?, ?, 'custom',
            CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN 'zoption_pro' ELSE 'free' END
          WHERE ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} OR (
            SELECT COUNT(*) FROM categories
@@ -113,6 +114,7 @@ export const categoryRepository: CategoryRepository = {
           input.name,
           input.kind,
           input.color,
+          input.iconEmoji ?? null,
           tenantId,
           tenantId,
           tenantId,
@@ -130,6 +132,7 @@ export const categoryRepository: CategoryRepository = {
           name: categories.name,
           kind: categories.kind,
           color: categories.color,
+          iconEmoji: categories.iconEmoji,
           archived: categories.archived,
           systemKey: categories.systemKey,
           origin: categories.origin,
@@ -153,6 +156,7 @@ export const categoryRepository: CategoryRepository = {
         name: categories.name,
         kind: categories.kind,
         color: categories.color,
+        iconEmoji: categories.iconEmoji,
         archived: categories.archived,
         systemKey: categories.systemKey,
         origin: categories.origin,
@@ -173,6 +177,7 @@ export const categoryRepository: CategoryRepository = {
 
     const nextName = input.name ?? existing.name;
     const nextColor = input.color ?? existing.color;
+    const nextIconEmoji = input.iconEmoji !== undefined ? input.iconEmoji : existing.iconEmoji;
     const nextArchived = input.archived ?? existing.archived;
     const restoringCustom =
       existing.origin === "custom" && existing.archived && input.archived === false;
@@ -181,7 +186,7 @@ export const categoryRepository: CategoryRepository = {
     try {
       updatedId = await env.DB.prepare(
         `UPDATE categories
-         SET name = ?, color = ?, archived = ?, updated_at = datetime('now')
+         SET name = ?, color = ?, icon_emoji = ?, archived = ?, updated_at = datetime('now')
          WHERE id = ? AND tenant_id = ?
            AND (
              ? = 0
@@ -202,6 +207,7 @@ export const categoryRepository: CategoryRepository = {
         .bind(
           nextName,
           nextColor,
+          nextIconEmoji,
           nextArchived ? 1 : 0,
           id,
           tenantId,
@@ -234,6 +240,7 @@ export const categoryRepository: CategoryRepository = {
         name: nextName,
         kind: existing.kind,
         color: nextColor,
+        iconEmoji: nextIconEmoji,
         archived: nextArchived,
         systemKey: existing.systemKey,
         origin: existing.origin,

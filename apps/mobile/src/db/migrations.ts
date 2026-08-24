@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 10;
+export const LOCAL_SCHEMA_VERSION = 11;
 
 export const migrations: readonly Migration[] = [
   {
@@ -661,6 +661,11 @@ export const migrations: readonly Migration[] = [
       CREATE INDEX sync_tombstones_revision_idx
         ON sync_tombstones(entity_type, server_revision);
     `,
+  },
+  {
+    version: 11,
+    name: "category_emoji_icons",
+    sql: `ALTER TABLE categories ADD COLUMN icon_emoji TEXT;`,
   },
 ] as const;
 

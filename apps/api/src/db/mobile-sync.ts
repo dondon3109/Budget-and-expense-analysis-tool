@@ -851,9 +851,9 @@ function createGraphMutation(
     const payload = categoryInputSchema.parse(operation.payload);
     return env.DB.prepare(
       `INSERT INTO categories (
-         id, tenant_id, name, kind, color, origin, required_plan, revision, updated_at
+         id, tenant_id, name, kind, color, icon_emoji, origin, required_plan, revision, updated_at
        )
-       SELECT ?, ?, ?, ?, ?, 'custom',
+       SELECT ?, ?, ?, ?, ?, ?, 'custom',
          CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION}
            THEN 'zoption_pro' ELSE 'free' END,
          1, ?
@@ -874,6 +874,7 @@ function createGraphMutation(
       payload.name,
       payload.kind,
       payload.color,
+      payload.iconEmoji ?? null,
       tenantId,
       timestamp,
       tenantId,
@@ -1739,9 +1740,9 @@ export function createMobileSyncRepository(
             const payload = operation.payload;
             mutation = env.DB.prepare(
               `INSERT INTO categories (
-                 id, tenant_id, name, kind, color, origin, required_plan, revision, updated_at
+                 id, tenant_id, name, kind, color, icon_emoji, origin, required_plan, revision, updated_at
                )
-               SELECT ?, ?, ?, ?, ?, 'custom',
+               SELECT ?, ?, ?, ?, ?, ?, 'custom',
                  CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION}
                    THEN 'zoption_pro' ELSE 'free' END,
                  1, ?
@@ -1762,6 +1763,7 @@ export function createMobileSyncRepository(
               payload.name,
               payload.kind,
               payload.color,
+              payload.iconEmoji ?? null,
               tenantId,
               timestamp,
               tenantId,
@@ -1776,7 +1778,7 @@ export function createMobileSyncRepository(
             const restoring = category.archived && payload.archived === false;
             mutation = env.DB.prepare(
               `UPDATE categories
-               SET name = ?, color = ?, archived = ?, updated_at = ?
+               SET name = ?, color = ?, icon_emoji = ?, archived = ?, updated_at = ?
                WHERE id = ? AND tenant_id = ? AND revision = ? AND system_key IS NULL
                  AND NOT EXISTS (
                    SELECT 1 FROM categories AS other
@@ -1794,6 +1796,7 @@ export function createMobileSyncRepository(
             ).bind(
               payload.name ?? category.name,
               payload.color ?? category.color,
+              payload.iconEmoji !== undefined ? payload.iconEmoji : category.iconEmoji,
               (payload.archived ?? category.archived) ? 1 : 0,
               timestamp,
               operation.entityId,

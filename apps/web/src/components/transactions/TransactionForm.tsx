@@ -372,6 +372,7 @@ export function TransactionForm({
               )}
               {availableCategories.map((category) => (
                 <option key={category.id} value={category.id} disabled={category.locked}>
+                  {category.iconEmoji ? `${category.iconEmoji} ` : ""}
                   {category.name}
                   {category.locked ? " — Pro required" : ""}
                 </option>

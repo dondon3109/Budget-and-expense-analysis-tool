@@ -83,6 +83,7 @@ const bootstrapPage: MobileSyncPullResponse = {
         name: "Dining",
         kind: "expense",
         color: "#123456",
+        iconEmoji: null,
         archived: false,
         system: false,
         origin: "custom",
@@ -242,7 +243,9 @@ describe("atomic encrypted pull application", () => {
 
     expect(
       database.native
-        .prepare("SELECT server_revision, sync_state, deleted_at FROM financial_goals WHERE id = 'goal-1'")
+        .prepare(
+          "SELECT server_revision, sync_state, deleted_at FROM financial_goals WHERE id = 'goal-1'",
+        )
         .get(),
     ).toEqual({ server_revision: 2, sync_state: "synced", deleted_at: timestamp });
   });
@@ -385,11 +388,12 @@ describe("atomic encrypted pull application", () => {
 
     expect(
       database.native
-        .prepare("SELECT server_revision, sync_state, deleted_at FROM subscriptions WHERE id = 'subscription-1'")
+        .prepare(
+          "SELECT server_revision, sync_state, deleted_at FROM subscriptions WHERE id = 'subscription-1'",
+        )
         .get(),
     ).toEqual({ server_revision: 2, sync_state: "synced", deleted_at: timestamp });
   });
-
 
   it("applies a calendar event upsert and deletion tombstone", async () => {
     const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
@@ -454,11 +458,12 @@ describe("atomic encrypted pull application", () => {
 
     expect(
       database.native
-        .prepare("SELECT server_revision, sync_state, deleted_at FROM calendar_events WHERE id = 'event-1'")
+        .prepare(
+          "SELECT server_revision, sync_state, deleted_at FROM calendar_events WHERE id = 'event-1'",
+        )
         .get(),
     ).toEqual({ server_revision: 2, sync_state: "synced", deleted_at: timestamp });
   });
-
 
   it("records a server acknowledgement only for the currently committed cursor", async () => {
     const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);

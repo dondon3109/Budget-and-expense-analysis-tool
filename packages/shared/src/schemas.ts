@@ -615,11 +615,25 @@ export const transactionExportQuerySchema = z
 
 export type TransactionExportQuery = z.infer<typeof transactionExportQuerySchema>;
 
+export const categoryIconEmojiSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .refine(
+    (value) =>
+      /^(?:\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*|\p{Regional_Indicator}{2}|[0-9#*]\uFE0F?\u20E3)$/u.test(
+        value,
+      ),
+    "Choose one emoji.",
+  );
+
 export const categoryInputSchema = z
   .object({
     name: z.string().trim().min(1).max(80),
     kind: z.enum(transactionKinds),
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a six-digit hex color."),
+    iconEmoji: categoryIconEmojiSchema.nullable().optional(),
   })
   .strict();
 
@@ -632,6 +646,7 @@ export const categoryUpdateSchema = z
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/)
       .optional(),
+    iconEmoji: categoryIconEmojiSchema.nullable().optional(),
     archived: z.boolean().optional(),
   })
   .strict()

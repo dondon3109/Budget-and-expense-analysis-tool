@@ -1,6 +1,14 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -33,7 +41,7 @@ import {
   Skeleton,
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { spacing, typography } from "@/ui/tokens";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 
 const accountOptions: Array<{ id: AccountType; label: string }> = [
   { id: "cash", label: "Cash" },
@@ -48,6 +56,8 @@ const categoryOptions: Array<{ id: TransactionKind; label: string }> = [
   { id: "income", label: "Income" },
   { id: "transfer", label: "Transfer" },
 ];
+
+const emojiPalette = ["🍔", "🛒", "🏠", "🚗", "💡", "🎁", "💊", "✈️", "💼", "💰"];
 
 const frequencyOptions: Array<{ id: InterestFrequency; label: string }> = interestFrequencies.map(
   (frequency) => ({
@@ -145,6 +155,7 @@ export function ReferenceEditorScreen() {
   const [accountType, setAccountType] = useState<AccountType>("cash");
   const [categoryKind, setCategoryKind] = useState<TransactionKind>("expense");
   const [color, setColor] = useState("#0F766E");
+  const [iconEmoji, setIconEmoji] = useState("");
   const [interestEnabled, setInterestEnabled] = useState(false);
   const [interestRate, setInterestRate] = useState("");
   const [interestFrequency, setInterestFrequency] = useState<InterestFrequency>("monthly");
@@ -171,6 +182,7 @@ export function ReferenceEditorScreen() {
     setAccountType(account?.type ?? "cash");
     setCategoryKind(category?.kind ?? "expense");
     setColor(category?.color ?? "#0F766E");
+    setIconEmoji(category?.iconEmoji ?? "");
     initialized.current = true;
   }, [account, category, id, references.data]);
 
@@ -244,15 +256,21 @@ export function ReferenceEditorScreen() {
           await local.workspace.transactionMutations.createAccount(parsed.data);
         }
       } else if (entityType === "category") {
-        const parsed = categoryInputSchema.safeParse({ name, kind: categoryKind, color });
+        const parsed = categoryInputSchema.safeParse({
+          name,
+          kind: categoryKind,
+          color,
+          iconEmoji: iconEmoji.trim() || null,
+        });
         if (!parsed.success) {
-          setMessage("Enter a category name and a six-digit color such as #0F766E.");
+          setMessage("Enter a name, a six-digit color, and no more than one emoji icon.");
           return;
         }
         if (id) {
           await local.workspace.transactionMutations.updateCategory(id, {
             name: parsed.data.name,
             color: parsed.data.color,
+            iconEmoji: parsed.data.iconEmoji ?? null,
           });
         } else {
           await local.workspace.transactionMutations.createCategory(parsed.data);
@@ -540,7 +558,7 @@ export function ReferenceEditorScreen() {
                   value={color}
                   autoCapitalize="characters"
                   autoCorrect={false}
-                  editable={!saving && !blocked}
+                  editable={!saving && !blocked && !permanent}
                   hint="Six-digit hex color, for example #0F766E"
                   maxLength={7}
                   onChangeText={(value) => {
@@ -548,6 +566,68 @@ export function ReferenceEditorScreen() {
                     setMessage(null);
                   }}
                 />
+                <View className="gap-2">
+                  <FormField
+                    label="Emoji icon (optional)"
+                    value={iconEmoji}
+                    autoCorrect={false}
+                    editable={!saving && !blocked && !permanent}
+                    hint="Choose one below or enter any emoji from your keyboard."
+                    maxLength={32}
+                    onChangeText={(value) => {
+                      setIconEmoji(value);
+                      setMessage(null);
+                    }}
+                    trailing={
+                      iconEmoji && !permanent ? (
+                        <Pressable
+                          accessibilityLabel="Clear category emoji icon"
+                          accessibilityRole="button"
+                          hitSlop={8}
+                          onPress={() => setIconEmoji("")}
+                          style={styles.clearEmoji}
+                        >
+                          <Text style={[typography.caption, { color: theme.colors.brand }]}>
+                            Clear
+                          </Text>
+                        </Pressable>
+                      ) : null
+                    }
+                  />
+                  <View accessibilityLabel="Suggested category icons" style={styles.emojiPicker}>
+                    {emojiPalette.map((emoji) => {
+                      const selected = emoji === iconEmoji;
+                      return (
+                        <Pressable
+                          key={emoji}
+                          accessibilityLabel={`Use ${emoji} as category icon`}
+                          accessibilityRole="button"
+                          accessibilityState={{
+                            disabled: saving || blocked || permanent,
+                            selected,
+                          }}
+                          disabled={saving || blocked || permanent}
+                          onPress={() => {
+                            setIconEmoji(emoji);
+                            setMessage(null);
+                          }}
+                          style={({ pressed }) => [
+                            styles.emojiOption,
+                            {
+                              backgroundColor: pressed
+                                ? theme.colors.canvasMuted
+                                : theme.colors.surface,
+                              borderColor: selected ? theme.colors.brand : theme.colors.border,
+                              opacity: saving || blocked || permanent ? 0.5 : 1,
+                            },
+                          ]}
+                        >
+                          <Text style={styles.emojiOptionText}>{emoji}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
               </>
             )}
             {message ? (
@@ -589,4 +669,20 @@ export function ReferenceEditorScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { gap: spacing.md, padding: spacing.md, paddingBottom: spacing.xl },
+  clearEmoji: {
+    minWidth: touchTarget,
+    minHeight: touchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emojiPicker: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  emojiOption: {
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderRadius: radii.md,
+  },
+  emojiOptionText: { fontSize: 24, lineHeight: 30 },
 });

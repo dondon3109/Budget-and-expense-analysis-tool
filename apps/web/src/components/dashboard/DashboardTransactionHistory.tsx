@@ -112,7 +112,13 @@ export function DashboardTransactionHistory({
                     </td>
                     <td data-label="Category">
                       <span className="dashboard-history-category">
-                        <i style={{ backgroundColor: item.categoryColor }} />
+                        {item.categoryIconEmoji ? (
+                          <span className="category-chip-emoji" aria-hidden="true">
+                            {item.categoryIconEmoji}
+                          </span>
+                        ) : (
+                          <i style={{ backgroundColor: item.categoryColor }} />
+                        )}
                         {item.categoryName}
                       </span>
                     </td>

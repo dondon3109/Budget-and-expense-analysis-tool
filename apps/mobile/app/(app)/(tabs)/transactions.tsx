@@ -165,14 +165,17 @@ function TransactionItemRow({
       onPress={() =>
         router.push({ pathname: "/(app)/transaction", params: { id: transaction.id } })
       }
-      style={[
-        styles.transactionRow,
-        { backgroundColor: theme.colors.surface },
-      ]}
+      style={[styles.transactionRow, { backgroundColor: theme.colors.surface }]}
     >
       <View style={styles.categoryColumn}>
         <View style={styles.categoryLine}>
-          <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
+          {transaction.categoryIconEmoji ? (
+            <Text accessibilityElementsHidden style={styles.categoryEmoji}>
+              {transaction.categoryIconEmoji}
+            </Text>
+          ) : (
+            <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
+          )}
           <Text
             numberOfLines={1}
             style={[typography.caption, styles.categoryText, { color: theme.colors.textMuted }]}
@@ -242,6 +245,7 @@ interface CategorySummaryItem {
   key: string;
   name: string;
   color: string;
+  iconEmoji: string | null;
   currency: Currency;
   incomeMinor: number;
   expenseMinor: number;
@@ -257,6 +261,7 @@ function categorySummary(items: readonly LocalTransactionItem[]): CategorySummar
       key,
       name: transaction.categoryName,
       color: transaction.categoryColor,
+      iconEmoji: transaction.categoryIconEmoji ?? null,
       currency: transaction.currency,
       incomeMinor: 0,
       expenseMinor: 0,
@@ -269,7 +274,9 @@ function categorySummary(items: readonly LocalTransactionItem[]): CategorySummar
   }
   return [...rows.values()].sort(
     (left, right) =>
-      right.expenseMinor + right.incomeMinor + right.transferMinor -
+      right.expenseMinor +
+        right.incomeMinor +
+        right.transferMinor -
         (left.expenseMinor + left.incomeMinor + left.transferMinor) ||
       left.name.localeCompare(right.name),
   );
@@ -343,7 +350,9 @@ export default function TransactionsScreen() {
             onPress={() => setSearchVisible((visible) => !visible)}
           />
         </View>
-        <Text numberOfLines={1} style={[styles.toolbarTitle, { color: theme.colors.text }]}>Transactions</Text>
+        <Text numberOfLines={1} style={[styles.toolbarTitle, { color: theme.colors.text }]}>
+          Transactions
+        </Text>
         <View style={[styles.toolbarSide, styles.toolbarRight]}>
           <HeaderIcon
             icon="line-scan"
@@ -522,10 +531,7 @@ export default function TransactionsScreen() {
       ) : view === "daily" ? (
         <SectionList
           alwaysBounceVertical
-          contentContainerStyle={[
-            styles.listContent,
-            dateGroups.length === 0 && styles.emptyList,
-          ]}
+          contentContainerStyle={[styles.listContent, dateGroups.length === 0 && styles.emptyList]}
           sections={dateGroups.map((group) => ({ ...group, data: group.items }))}
           keyExtractor={(item) => item.transaction.id}
           keyboardShouldPersistTaps="handled"
@@ -565,7 +571,13 @@ export default function TransactionsScreen() {
                 { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
               ]}
             >
-              <View style={[styles.summaryDot, { backgroundColor: item.color }]} />
+              {item.iconEmoji ? (
+                <Text accessibilityElementsHidden style={styles.summaryEmoji}>
+                  {item.iconEmoji}
+                </Text>
+              ) : (
+                <View style={[styles.summaryDot, { backgroundColor: item.color }]} />
+              )}
               <Text
                 numberOfLines={1}
                 style={[typography.body, styles.summaryName, { color: theme.colors.text }]}
@@ -583,11 +595,7 @@ export default function TransactionsScreen() {
                 currency={item.currency}
                 maxFontSizeMultiplier={1.2}
                 tone={
-                  item.incomeMinor > 0
-                    ? "income"
-                    : item.expenseMinor > 0
-                      ? "expense"
-                      : "default"
+                  item.incomeMinor > 0 ? "income" : item.expenseMinor > 0 ? "expense" : "default"
                 }
                 style={styles.rowMoney}
               />
@@ -759,6 +767,7 @@ const styles = StyleSheet.create({
   categoryLine: { minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.xs },
   categoryText: { flex: 1, minWidth: 0 },
   categoryDot: { width: 9, height: 9, borderRadius: radii.round, flexShrink: 0 },
+  categoryEmoji: { width: 20, fontSize: 17, lineHeight: 21, flexShrink: 0 },
   descriptionColumn: { flex: 1, minWidth: 0, gap: 2 },
   rowMoney: {
     width: 108,
@@ -777,6 +786,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   summaryDot: { width: 10, height: 10, borderRadius: radii.round },
+  summaryEmoji: { width: 24, fontSize: 19, lineHeight: 24 },
   summaryName: { flex: 1, minWidth: 0 },
   fabPosition: {
     position: "absolute",

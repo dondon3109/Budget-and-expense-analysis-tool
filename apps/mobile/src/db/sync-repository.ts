@@ -156,13 +156,14 @@ async function applyCategory(database: SQLiteDatabase, change: MobileSyncChange)
   const category = mobileSyncCategorySnapshotSchema.parse(change.payload);
   await database.runAsync(
     `INSERT INTO categories (
-      id, name, kind, color, archived, system, origin, required_plan, locked,
+      id, name, kind, color, icon_emoji, archived, system, origin, required_plan, locked,
       server_revision, server_updated_at, deleted_at, sync_state
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       kind = excluded.kind,
       color = excluded.color,
+      icon_emoji = excluded.icon_emoji,
       archived = excluded.archived,
       system = excluded.system,
       origin = excluded.origin,
@@ -176,6 +177,7 @@ async function applyCategory(database: SQLiteDatabase, change: MobileSyncChange)
     category.name,
     category.kind,
     category.color,
+    category.iconEmoji,
     category.archived ? 1 : 0,
     category.system ? 1 : 0,
     category.origin,
@@ -322,7 +324,10 @@ async function applyDebt(database: SQLiteDatabase, change: MobileSyncChange): Pr
   );
 }
 
-async function applySubscription(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
+async function applySubscription(
+  database: SQLiteDatabase,
+  change: MobileSyncChange,
+): Promise<void> {
   if (change.entityType !== "subscription" || !change.payload) {
     throw new Error("invalid_subscription_change");
   }

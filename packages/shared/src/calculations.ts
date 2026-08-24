@@ -198,13 +198,17 @@ export function buildDashboardSummary(
     }
   }
 
-  const spending = new Map<string, { name: string; color: string; amountMinor: number }>();
+  const spending = new Map<
+    string,
+    { name: string; color: string; iconEmoji?: string | null; amountMinor: number }
+  >();
   for (const transaction of inPeriod) {
     if (transaction.kind !== "expense") continue;
     const existing = spending.get(transaction.categoryId);
     spending.set(transaction.categoryId, {
       name: transaction.categoryName,
       color: transaction.categoryColor,
+      ...(transaction.categoryIconEmoji ? { iconEmoji: transaction.categoryIconEmoji } : {}),
       amountMinor: (existing?.amountMinor ?? 0) + Math.abs(transaction.amountMinor),
     });
   }

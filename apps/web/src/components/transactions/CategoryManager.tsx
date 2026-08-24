@@ -1,4 +1,9 @@
-import type { CategoryInput, CategoryRecord, TransactionKind } from "@zoption/shared";
+import {
+  categoryIconEmojiSchema,
+  type CategoryInput,
+  type CategoryRecord,
+  type TransactionKind,
+} from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Check, Pencil, Plus, RotateCcw, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
@@ -29,6 +34,15 @@ const palette = [
   "#e34948",
 ];
 
+const emojiPalette = ["🍔", "🛒", "🏠", "🚗", "💡", "🎁", "💊", "✈️", "💼", "💰"];
+
+function emojiValue(value: string): string | null | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = categoryIconEmojiSchema.safeParse(trimmed);
+  return parsed.success ? parsed.data : undefined;
+}
+
 export function CategoryManager({ workspace, categories, onClose }: CategoryManagerProps) {
   const queryClient = useQueryClient();
   const billingQuery = useBillingSummary(workspace);
@@ -39,8 +53,10 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
   const [name, setName] = useState("");
   const [kind, setKind] = useState<TransactionKind>("expense");
   const [color, setColor] = useState(palette[0]!);
+  const [iconEmoji, setIconEmoji] = useState("");
   const [editingId, setEditingId] = useState<string>();
   const [editingName, setEditingName] = useState("");
+  const [editingIconEmoji, setEditingIconEmoji] = useState("");
   const [error, setError] = useState<Error>();
 
   useRootLock(true);
@@ -68,6 +84,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
     mutationFn: (input: CategoryInput) => createCategory(workspace, input),
     onSuccess: async () => {
       setName("");
+      setIconEmoji("");
       setError(undefined);
       await refresh();
     },
@@ -108,7 +125,14 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
   function handleCreate(event: FormEvent) {
     event.preventDefault();
     if (createDisabled) return;
-    const input: CategoryInput = { name, kind, color };
+    const parsedIcon = categoryIconEmojiSchema
+      .nullable()
+      .safeParse(iconEmoji.trim() ? iconEmoji.trim() : null);
+    if (!parsedIcon.success) {
+      setError(new Error("Choose one emoji for the category icon."));
+      return;
+    }
+    const input: CategoryInput = { name, kind, color, iconEmoji: parsedIcon.data };
     createMutation.mutate(input);
   }
 
@@ -236,6 +260,45 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
               ))}
             </div>
           </fieldset>
+          <fieldset className="emoji-fieldset">
+            <legend>
+              Icon <span>Optional</span>
+            </legend>
+            <div className="emoji-input-row">
+              <input
+                aria-label="Custom category emoji"
+                value={iconEmoji}
+                inputMode="text"
+                maxLength={32}
+                placeholder="Add one emoji"
+                disabled={createDisabled}
+                onChange={(event) => {
+                  setIconEmoji(event.target.value);
+                  setError(undefined);
+                }}
+              />
+              {iconEmoji ? (
+                <button type="button" onClick={() => setIconEmoji("")} disabled={createDisabled}>
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <div className="emoji-picker" aria-label="Suggested category icons">
+              {emojiPalette.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  disabled={createDisabled}
+                  className={iconEmoji === emoji ? "selected" : ""}
+                  aria-label={`Use ${emoji} as category icon`}
+                  aria-pressed={iconEmoji === emoji}
+                  onClick={() => setIconEmoji(emoji)}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </fieldset>
           <button
             className={categoryAtLimit ? "button secondary category-limit-add" : "button primary"}
             type="submit"
@@ -256,14 +319,51 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
               className={`manager-category${category.archived ? " archived" : ""}${category.locked ? " locked" : ""}`}
               key={category.id}
             >
-              <i style={{ backgroundColor: category.color }} />
+              <span
+                className={`category-icon-preview${category.iconEmoji ? " has-emoji" : ""}`}
+                style={{ backgroundColor: category.iconEmoji ? undefined : category.color }}
+                aria-hidden="true"
+              >
+                {category.iconEmoji}
+              </span>
               {editingId === category.id ? (
-                <input
-                  value={editingName}
-                  onChange={(event) => setEditingName(event.target.value)}
-                  maxLength={80}
-                  autoFocus
-                />
+                <div className="manager-category-editor">
+                  <input
+                    value={editingName}
+                    onChange={(event) => setEditingName(event.target.value)}
+                    maxLength={80}
+                    autoFocus
+                    aria-label="Category name"
+                  />
+                  <div className="emoji-input-row compact">
+                    <input
+                      value={editingIconEmoji}
+                      onChange={(event) => setEditingIconEmoji(event.target.value)}
+                      maxLength={32}
+                      placeholder="Emoji icon (optional)"
+                      aria-label="Category emoji icon"
+                    />
+                    {editingIconEmoji ? (
+                      <button type="button" onClick={() => setEditingIconEmoji("")}>
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="emoji-picker compact" aria-label="Suggested category icons">
+                    {emojiPalette.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        className={editingIconEmoji === emoji ? "selected" : ""}
+                        aria-label={`Use ${emoji} as category icon`}
+                        aria-pressed={editingIconEmoji === emoji}
+                        onClick={() => setEditingIconEmoji(emoji)}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <div>
                   <strong>{category.name}</strong>
@@ -287,9 +387,17 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                     <>
                       <button
                         type="button"
-                        onClick={() =>
-                          updateMutation.mutate({ id: category.id, input: { name: editingName } })
-                        }
+                        onClick={() => {
+                          const nextIconEmoji = emojiValue(editingIconEmoji);
+                          if (nextIconEmoji === undefined) {
+                            setError(new Error("Choose one emoji for the category icon."));
+                            return;
+                          }
+                          updateMutation.mutate({
+                            id: category.id,
+                            input: { name: editingName, iconEmoji: nextIconEmoji },
+                          });
+                        }}
                         aria-label="Save category name"
                       >
                         <Check size={15} />
@@ -309,6 +417,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                         onClick={() => {
                           setEditingId(category.id);
                           setEditingName(category.name);
+                          setEditingIconEmoji(category.iconEmoji ?? "");
                         }}
                         aria-label={`Rename ${category.name}`}
                       >

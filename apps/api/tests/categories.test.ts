@@ -117,6 +117,25 @@ function grantActivePaypalPro(
 }
 
 describe("categoryRepository entitlement enforcement", () => {
+  it("persists and clears a custom emoji icon", async () => {
+    const { binding, database } = createD1TestDatabase();
+    const tenantId = "emoji-category-tenant";
+    createTenant(database, tenantId);
+    const env = categoryEnvironment(binding);
+
+    const created = await categoryRepository.create(env, tenantId, {
+      name: "Dining",
+      kind: "expense",
+      color: "#e87ba4",
+      iconEmoji: "🍔",
+    });
+    expect(created.iconEmoji).toBe("🍔");
+
+    await expect(
+      categoryRepository.update(env, tenantId, created.id, { iconEmoji: null }),
+    ).resolves.toMatchObject({ iconEmoji: null });
+  });
+
   it("creates another custom category for a platform-admin Pro tenant already at the Free limit", async () => {
     const { binding, database } = createD1TestDatabase();
     const tenantId = "pro-tenant";

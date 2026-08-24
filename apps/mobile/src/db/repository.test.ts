@@ -408,6 +408,7 @@ describe("encrypted local workspace repository", () => {
         categoryId: "category-1",
         categoryName: "Dining",
         categoryColor: "#123456",
+        categoryIconEmoji: null,
         accountName: "Wallet",
       },
     ]);

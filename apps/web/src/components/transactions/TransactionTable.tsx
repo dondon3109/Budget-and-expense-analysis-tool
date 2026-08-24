@@ -129,7 +129,13 @@ export function TransactionTable({
               </td>
               <td data-label="Category">
                 <span className="category-chip">
-                  <i style={{ backgroundColor: item.categoryColor }} />
+                  {item.categoryIconEmoji ? (
+                    <span className="category-chip-emoji" aria-hidden="true">
+                      {item.categoryIconEmoji}
+                    </span>
+                  ) : (
+                    <i style={{ backgroundColor: item.categoryColor }} />
+                  )}
                   {item.categoryName}
                 </span>
               </td>

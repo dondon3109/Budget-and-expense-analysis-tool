@@ -6,6 +6,7 @@ import {
   interestUpdateSchema,
   calendarEventInputSchema,
   calendarEventUpdateSchema,
+  categoryIconEmojiSchema,
   categoryInputSchema,
   categoryUpdateSchema,
   debtInputSchema,
@@ -33,7 +34,17 @@ import {
 } from "./types";
 
 export const MOBILE_SYNC_PROTOCOL_VERSION = 1 as const;
-export const mobileSyncEntityTypes = ["account", "category", "transaction", "transfer", "budget", "goal", "debt", "subscription", "event"] as const;
+export const mobileSyncEntityTypes = [
+  "account",
+  "category",
+  "transaction",
+  "transfer",
+  "budget",
+  "goal",
+  "debt",
+  "subscription",
+  "event",
+] as const;
 export const mobileSyncOperationTypes = ["create", "update", "delete"] as const;
 
 const uuidSchema = z.string().uuid();
@@ -90,6 +101,9 @@ export const mobileSyncCategorySnapshotSchema = z
     name: z.string().min(1).max(80),
     kind: z.enum(transactionKinds),
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    // Older sync change-log rows predate category icons; default them without
+    // forcing an otherwise unnecessary full resynchronization.
+    iconEmoji: categoryIconEmojiSchema.nullable().default(null),
     archived: z.boolean(),
     system: z.boolean(),
     origin: z.enum(categoryOrigins),
