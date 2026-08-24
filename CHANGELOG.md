@@ -4,10 +4,23 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.13.1 — 2026-08-24
+
+### Fixed
+
+- Refreshed the public Android install metadata snapshot for the signed `0.2.12-beta` APK.
+
+## 2.13.0 — 2026-08-24
+
 ### Added
 
 - Released Android Beta `0.2.12-beta` (`versionCode` 20312) with custom category emoji icons, redesigned Transactions ledger, native outline iconography, and cashflow chart polish.
 - Added optional emoji icons for custom categories across the web and mobile apps, including default emojis for starter categories and a dedicated mobile categories management screen.
+
+### Changed
+
+- Refined mobile navigation and setup lists with flatter native-style outline icons, clean borderless list layouts, and quieter row spacing.
+- Rebuilt the mobile Transactions tab around month navigation, daily date groups, monthly totals, streamlined tab views (Daily, Monthly, Summary), and actionable empty states for empty months and the home dashboard.
 
 ### Fixed
 
@@ -15,11 +28,6 @@ All notable product changes are documented here.
 - Kept dashboard cards compact with a scrollable category list and rendered overlapping mobile cashflow series as unfilled solid and dashed lines.
 - Restored the mobile month calendar and fixed cramped icon alignment in More, account, and category lists.
 - Prevented Android transaction row text from collapsing into undersized columns and corrected the bottom spacing and circular add action.
-
-### Changed
-
-- Refined mobile navigation and setup lists with flatter native-style outline icons, clean borderless list layouts, and quieter row spacing.
-- Rebuilt the mobile Transactions tab around month navigation, daily date groups, monthly totals, streamlined tab views (Daily, Monthly, Summary), and actionable empty states for empty months and the home dashboard.
 
 ## 2.12.1 — 2026-08-24
 
