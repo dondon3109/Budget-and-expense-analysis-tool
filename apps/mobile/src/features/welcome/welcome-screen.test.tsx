@@ -67,7 +67,7 @@ describe("WelcomeScreen", () => {
     await render(<WelcomeScreen />);
 
     const signInButton = screen.getByRole("button", { name: "Sign in to Zoption" });
-    fireEvent.press(signInButton);
+    await fireEvent.press(signInButton);
 
     expect(router.push).toHaveBeenCalledWith("/(public)/sign-in");
   });
@@ -78,7 +78,7 @@ describe("WelcomeScreen", () => {
     const dummyButton = screen.getByRole("button", {
       name: "Sign in with dummy account",
     });
-    fireEvent.press(dummyButton);
+    await fireEvent.press(dummyButton);
 
     expect(mockSignInWithDummyAccount).toHaveBeenCalledTimes(1);
   });
