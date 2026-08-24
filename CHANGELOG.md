@@ -11,6 +11,7 @@ All notable product changes are documented here.
 ### Changed
 
 - Made the mobile transaction-type filters collapse while scrolling and kept each daily date header visible until the next date group arrives.
+- Limited dummy account sign-in and demo-data seeding to Zoption Dev, removing both capabilities from Zoption Beta and Preview builds.
 
 ### Fixed
 

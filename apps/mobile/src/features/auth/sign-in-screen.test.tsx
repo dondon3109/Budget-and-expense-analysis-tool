@@ -5,6 +5,11 @@ import SignInScreen from "../../../app/(public)/sign-in";
 const mockSignInWithGoogle = jest.fn(async () => undefined);
 const mockSignInWithPassword = jest.fn(async () => undefined);
 const mockSignInWithDummyAccount = jest.fn(async () => undefined);
+let mockDevelopmentVariant = true;
+
+jest.mock("@/config/app-variant", () => ({
+  isDevelopmentAppVariant: () => mockDevelopmentVariant,
+}));
 
 jest.mock("@/auth/session-state", () => ({
   useSessionSnapshot: () => ({
@@ -24,6 +29,7 @@ jest.mock("@/auth/session-state", () => ({
 describe("sign-in screen social options", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockDevelopmentVariant = true;
   });
 
   it("exposes a working dummy account sign-in action", async () => {
@@ -32,6 +38,12 @@ describe("sign-in screen social options", () => {
     expect(button).not.toBeDisabled();
     await fireEvent.press(button);
     expect(mockSignInWithDummyAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not expose dummy account sign-in outside Zoption Dev", async () => {
+    mockDevelopmentVariant = false;
+    await render(<SignInScreen />);
+    expect(screen.queryByRole("button", { name: "Sign in with dummy account" })).toBeNull();
   });
 
   it("exposes a working Continue with Google action", async () => {

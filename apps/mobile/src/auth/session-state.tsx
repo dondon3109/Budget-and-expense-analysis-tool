@@ -16,6 +16,7 @@ import {
 import { AppState, Platform } from "react-native";
 
 import { isSupabaseConfigured } from "@/config/public-config";
+import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
@@ -90,6 +91,7 @@ export function clearUserScopedRuntimeState(): void {
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {
+  const demoEnabled = isDevelopmentAppVariant();
   const [snapshot, setSnapshot] = useState<SessionSnapshot>({ status: "loading", subject: null });
   const subjectRef = useRef<string | null>(null);
   const initializedRef = useRef(false);
@@ -109,6 +111,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!supabase) {
+      if (!demoEnabled) {
+        void SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
+        setSnapshot(signedOutSession);
+        return;
+      }
       let active = true;
       void SecureStore.getItemAsync(DUMMY_DEV_STORAGE_KEY)
         .then((storedSubject) => {
@@ -161,9 +168,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
       appStateListener?.remove();
       if (Platform.OS !== "web") void client.auth.stopAutoRefresh();
     };
-  }, [applySession]);
+  }, [applySession, demoEnabled]);
 
   const signInWithDummyAccount = useCallback(async () => {
+    if (!demoEnabled) {
+      throw new Error("Dummy account sign-in is available only in Zoption Dev.");
+    }
     await SecureStore.setItemAsync(DUMMY_DEV_STORAGE_KEY, DUMMY_DEV_SUBJECT).catch(() => undefined);
     if (initializedRef.current && subjectRef.current !== DUMMY_DEV_SUBJECT) {
       clearUserScopedRuntimeState();
@@ -174,15 +184,16 @@ export function SessionProvider({ children }: PropsWithChildren) {
       status: "signed-in",
       subject: DUMMY_DEV_SUBJECT,
     });
-  }, []);
+  }, [demoEnabled]);
 
   const signInWithPassword = useCallback(
     async (email: string, password: string) => {
       const normalizedEmail = email.trim().toLowerCase();
       if (
-        normalizedEmail.startsWith("dummy") ||
-        normalizedEmail.startsWith("test@") ||
-        !supabase
+        demoEnabled &&
+        (normalizedEmail.startsWith("dummy") ||
+          normalizedEmail.startsWith("test@") ||
+          !supabase)
       ) {
         await signInWithDummyAccount();
         return;
@@ -193,11 +204,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
       });
       if (error) throw error;
     },
-    [signInWithDummyAccount],
+    [demoEnabled, signInWithDummyAccount],
   );
 
   const getAccessToken = useCallback(async (refresh: boolean) => {
     if (subjectRef.current === DUMMY_DEV_SUBJECT) {
+      if (!demoEnabled) {
+        throw new Error("Dummy sessions are not available in this Zoption build.");
+      }
       return "dummy-dev-access-token";
     }
     const result = refresh
@@ -209,7 +223,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       throw new Error("Your session expired. Sign in again to open your workspace.");
     }
     return session.access_token;
-  }, []);
+  }, [demoEnabled]);
 
   const sendPasswordReset = useCallback(async (email: string) => {
     const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email.trim(), {

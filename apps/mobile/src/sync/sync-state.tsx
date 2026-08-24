@@ -18,7 +18,8 @@ import {
   pullMobileSync,
   pushMobileSync,
 } from "@/api/mobile-sync";
-import { DUMMY_DEV_SUBJECT, useSessionSnapshot } from "@/auth/session-state";
+import { useSessionSnapshot } from "@/auth/session-state";
+import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
 import { LocalSyncApplyError } from "@/db/sync-repository";
 import { recoverLocalWorkspace } from "@/db/workspace";
@@ -161,7 +162,7 @@ export function SyncProvider({
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     if (!workspace || session.status !== "signed-in") return;
-    if (session.subject === DUMMY_DEV_SUBJECT) {
+    if (isDummyDevelopmentSubject(session.subject)) {
       setSnapshot({
         status: "synced",
         message: null,

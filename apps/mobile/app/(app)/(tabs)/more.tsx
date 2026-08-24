@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { seedDummyWorkspaceData } from "@/db/demo-seed";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
 import { OtaUpdateSettingsCard } from "@/features/ota-updates";
@@ -66,6 +67,7 @@ function MenuItem({ icon, title, subtitle, badge, onPress }: MenuItemProps) {
 }
 
 export default function MoreScreen() {
+  const demoEnabled = isDevelopmentAppVariant();
   const session = useSessionSnapshot();
   const planState = usePlan();
   const local = useLocalWorkspace();
@@ -78,7 +80,7 @@ export default function MoreScreen() {
   const [seedSuccess, setSeedSuccess] = useState(false);
 
   const handleSeedData = async (): Promise<void> => {
-    if (!local.workspace || seeding) return;
+    if (!demoEnabled || !local.workspace || seeding) return;
     setSeeding(true);
     try {
       await seedDummyWorkspaceData(local.workspace.database);
@@ -233,33 +235,35 @@ export default function MoreScreen() {
         </Card>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
-          DEMO DATA
-        </Text>
-        <Card accessibilityLabel="Developer demo data generator">
-          <View className="gap-3">
-            <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-              Populate realistic dummy transactions, accounts, budgets, goals, debts, and
-              subscriptions into the local encrypted workspace.
-            </Text>
-            {seedSuccess ? (
-              <Text style={[typography.body, { color: theme.colors.brand, fontWeight: "600" }]}>
-                ✓ Demo transactions & data populated successfully!
+      {demoEnabled ? (
+        <View style={styles.section}>
+          <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
+            DEMO DATA
+          </Text>
+          <Card accessibilityLabel="Developer demo data generator">
+            <View className="gap-3">
+              <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+                Populate realistic dummy transactions, accounts, budgets, goals, debts, and
+                subscriptions into the local encrypted workspace.
               </Text>
-            ) : null}
-            <Button
-              accessibilityHint="Inserts demo transactions and accounts into local encrypted database"
-              disabled={!local.workspace || seeding}
-              loading={seeding}
-              variant="secondary"
-              onPress={handleSeedData}
-            >
-              Seed dummy transactions & data
-            </Button>
-          </View>
-        </Card>
-      </View>
+              {seedSuccess ? (
+                <Text style={[typography.body, { color: theme.colors.brand, fontWeight: "600" }]}>
+                  ✓ Demo transactions & data populated successfully!
+                </Text>
+              ) : null}
+              <Button
+                accessibilityHint="Inserts demo transactions and accounts into local encrypted database"
+                disabled={!local.workspace || seeding}
+                loading={seeding}
+                variant="secondary"
+                onPress={handleSeedData}
+              >
+                Seed dummy transactions & data
+              </Button>
+            </View>
+          </Card>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>

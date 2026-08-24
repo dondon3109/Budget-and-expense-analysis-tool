@@ -10,8 +10,9 @@ import {
 } from "react";
 
 import { verifyWorkerIdentity, WorkerIdentityError } from "@/api/worker-identity";
+import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 
-import { DUMMY_DEV_SUBJECT, useSessionSnapshot } from "./session-state";
+import { useSessionSnapshot } from "./session-state";
 
 export type WorkerIdentityStatus = "idle" | "checking" | "verified" | "error";
 
@@ -44,7 +45,7 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    if (subject === DUMMY_DEV_SUBJECT) {
+    if (isDummyDevelopmentSubject(subject)) {
       setSnapshot({ status: "verified", message: null });
       return;
     }

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { readPlan, type Plan } from "@/api/plan";
+import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 
-import { DUMMY_DEV_SUBJECT, useSessionSnapshot } from "./session-state";
+import { useSessionSnapshot } from "./session-state";
 
 export type PlanStatus = "loading" | "ready" | "unknown";
 
@@ -33,7 +34,7 @@ export function usePlan(): { plan: Plan | null; status: PlanStatus; retry: () =>
       setStatus("unknown");
       return;
     }
-    if (subject === DUMMY_DEV_SUBJECT) {
+    if (isDummyDevelopmentSubject(subject)) {
       setPlan("zoption_pro");
       setStatus("ready");
       return;

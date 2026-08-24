@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, type TextInput } from "react-native";
 
 import { authErrorMessage, emailSchema } from "@/auth/auth-validation";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { Button, FormField } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -11,6 +12,7 @@ import { typography } from "@/ui/tokens";
 
 export default function SignInScreen() {
   const theme = useZoptionTheme();
+  const demoEnabled = isDevelopmentAppVariant();
   const { configured, signInWithGoogle, signInWithPassword, signInWithDummyAccount, status } =
     useSessionSnapshot();
   const passwordRef = useRef<TextInput>(null);
@@ -60,7 +62,11 @@ export default function SignInScreen() {
   async function submit(): Promise<void> {
     if (busy) return;
     if (!configured) {
-      await handleDummySignIn();
+      if (demoEnabled) {
+        await handleDummySignIn();
+      } else {
+        setFormError("Authentication is unavailable in this Zoption build.");
+      }
       return;
     }
     const parsedEmail = emailSchema.safeParse(email);
@@ -129,7 +135,7 @@ export default function SignInScreen() {
             {formError}
           </Text>
         ) : null}
-        {!configured ? (
+        {!configured && demoEnabled ? (
           <Text
             accessibilityRole="alert"
             style={[typography.callout, { color: theme.colors.warning }]}
@@ -146,15 +152,17 @@ export default function SignInScreen() {
         >
           Sign in
         </Button>
-        <Button
-          accessibilityLabel="Sign in with dummy account"
-          disabled={dummyBusy || busy}
-          loading={dummyBusy}
-          variant="secondary"
-          onPress={() => void handleDummySignIn()}
-        >
-          Sign in with dummy account
-        </Button>
+        {demoEnabled ? (
+          <Button
+            accessibilityLabel="Sign in with dummy account"
+            disabled={dummyBusy || busy}
+            loading={dummyBusy}
+            variant="secondary"
+            onPress={() => void handleDummySignIn()}
+          >
+            Sign in with dummy account
+          </Button>
+        ) : null}
         <Button
           variant="quiet"
           disabled={busy || dummyBusy}

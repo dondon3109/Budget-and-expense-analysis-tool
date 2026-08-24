@@ -1,8 +1,15 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
+import { assertDevelopmentAppVariant, isDevelopmentAppVariant } from "@/config/app-variant";
+
 export const DUMMY_DEV_SUBJECT = "00000000-0000-4000-8000-000000000001";
 
+export function isDummyDevelopmentSubject(subject: string | null | undefined): boolean {
+  return isDevelopmentAppVariant() && subject === DUMMY_DEV_SUBJECT;
+}
+
 export async function seedDummyWorkspaceData(database: SQLiteDatabase): Promise<void> {
+  assertDevelopmentAppVariant();
   await database.withTransactionAsync(async () => {
     // 1. Seed Accounts
     await database.runAsync(`

@@ -1,7 +1,7 @@
 import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 
 import { snapshotMobileSync } from "@/api/mobile-sync";
-import { DUMMY_DEV_SUBJECT, seedDummyWorkspaceData } from "./demo-seed";
+import { isDummyDevelopmentSubject, seedDummyWorkspaceData } from "./demo-seed";
 import {
   getOrCreateWorkspaceKey,
   getWorkspaceGeneration,
@@ -135,7 +135,7 @@ async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
     try {
       schemaVersion = await applyLocalMigrations(asMigrationDatabase(database));
       await assertWorkspaceSubject(database, subject);
-      if (subject === DUMMY_DEV_SUBJECT) {
+      if (isDummyDevelopmentSubject(subject)) {
         const existing = await database.getFirstAsync<{ count: number }>(
           "SELECT count(*) AS count FROM accounts WHERE deleted_at IS NULL",
         );
