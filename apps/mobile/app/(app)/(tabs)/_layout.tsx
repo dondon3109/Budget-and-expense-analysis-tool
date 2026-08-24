@@ -33,7 +33,7 @@ function TabIcon({
       <MaterialCommunityIcons
         name={focused ? activeName : name}
         color={focused ? theme.colors.brand : iconColor}
-        size={23}
+        size={size}
       />
     </View>
   );

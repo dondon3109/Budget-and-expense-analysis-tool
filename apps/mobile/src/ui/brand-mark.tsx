@@ -1,5 +1,6 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 
+import brandIcon from "../../assets/zoption-icon.png";
 import { radii, typography } from "./tokens";
 import { useZoptionTheme } from "./theme-provider";
 
@@ -11,11 +12,7 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       accessibilityRole="text"
       className="flex-row items-center gap-3"
     >
-      <Image
-        accessibilityElementsHidden
-        source={require("../../assets/zoption-icon.png")}
-        style={styles.mark}
-      />
+      <Image accessibilityElementsHidden source={brandIcon} style={styles.mark} />
       {!compact ? (
         <Text style={[typography.title, { color: theme.colors.text }]}>Zoption</Text>
       ) : null}
