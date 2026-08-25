@@ -606,7 +606,7 @@ export function AssistantScreen() {
 
   if (phase === "loading") {
     return (
-      <Screen title="AI Assistant" description="Grounded in your recorded finances">
+      <Screen title="AI Assistant">
         <SkeletonLines lines={5} />
       </Screen>
     );
@@ -614,7 +614,7 @@ export function AssistantScreen() {
 
   if (phase === "error" || isOffline) {
     return (
-      <Screen title="AI Assistant" description="Grounded in your recorded finances">
+      <Screen title="AI Assistant">
         <AssistantUnavailableView
           errorMessage={fatalError}
           isOffline={isOffline}
@@ -628,7 +628,7 @@ export function AssistantScreen() {
 
   if (showConsent || showIdentity) {
     return (
-      <Screen title="AI Assistant" description="Read-only and grounded in your records" scroll>
+      <Screen title="AI Assistant" scroll>
         {showConsent ? (
           <AssistantConsentCard
             retentionDays={preferences?.retentionDays ?? 90}
@@ -656,7 +656,7 @@ export function AssistantScreen() {
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
       <View style={styles.header}>
-        <View className="flex-1">
+        <View className="flex-1" style={styles.headerLeading}>
           <View className="flex-row items-center gap-2">
             {view === "chat" ? (
               <Pressable
@@ -675,48 +675,46 @@ export function AssistantScreen() {
             <Text
               accessibilityRole="header"
               numberOfLines={1}
-              style={[typography.display, styles.headerTitle, { color: theme.colors.text }]}
+              style={[typography.title, styles.headerTitle, { color: theme.colors.text }]}
             >
               {view === "chat"
                 ? activeThreadId
                   ? "Conversation"
                   : preferences?.assistantName
                     ? `Chat with ${preferences.assistantName}`
-                    : "New conversation"
+                    : "New chat"
                 : "AI Assistant"}
             </Text>
             {view === "threads" ? (
               <AssistantStatusBadge label="Online" status="available" />
             ) : null}
           </View>
-          {view === "threads" ? (
-            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-              Read-only answers grounded in your records
-            </Text>
-          ) : (
+          {view === "chat" ? (
             <View style={styles.chatStatusRow}>
               <View style={[styles.chatStatusDot, { backgroundColor: theme.colors.income }]} />
               <Text style={[typography.caption, { color: theme.colors.income, fontWeight: "600" }]}>
-                Available · Grounded in your records
+                Online · Read-only
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
-        {view === "threads" && threads.length > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              managingThreads ? "Done managing conversations" : "Manage conversations"
-            }
-            onPress={() => setManagingThreads((current) => !current)}
-            style={styles.iconButton}
-          >
-            <Text style={[typography.label, { color: theme.colors.brand }]}>
-              {managingThreads ? "Done" : "Select"}
-            </Text>
-          </Pressable>
-        ) : null}
-        {settingsAction}
+        <View style={styles.headerActions}>
+          {view === "threads" && threads.length > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                managingThreads ? "Done managing conversations" : "Manage conversations"
+              }
+              onPress={() => setManagingThreads((current) => !current)}
+              style={styles.iconButton}
+            >
+              <Text style={[typography.label, { color: theme.colors.brand }]}>
+                {managingThreads ? "Done" : "Select"}
+              </Text>
+            </Pressable>
+          ) : null}
+          {settingsAction}
+        </View>
       </View>
 
       {inlineError && view === "threads" ? (
@@ -1114,12 +1112,21 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
+  headerLeading: {
+    minWidth: 0,
+    gap: 2,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xxs,
   },
   iconButton: { padding: spacing.xs },
   headerTitle: { flexShrink: 1 },

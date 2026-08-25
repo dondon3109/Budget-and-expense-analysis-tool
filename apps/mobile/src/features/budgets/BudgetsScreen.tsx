@@ -174,7 +174,6 @@ export function BudgetsScreen() {
           Add budget
         </Button>
       }
-      description="Set monthly limits per expense category. Changes sync when you reconnect."
       title="Budgets"
     >
       <MonthNavigator
@@ -293,30 +292,26 @@ function MonthNavigator({
     <View
       accessibilityLabel={`Budget month, ${monthLabel(month)}`}
       accessibilityRole="adjustable"
-      style={[
-        styles.monthNav,
-        elevation.card,
-        { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
-      ]}
+      style={styles.monthNav}
     >
       <Pressable
         accessibilityLabel="Previous month"
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: true }}
-        hitSlop={8}
+        android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: true }}
+        hitSlop={4}
         onPress={() => onChange(shiftMonth(month, -1))}
-        style={[styles.monthNavButton, { borderColor: theme.colors.border }]}
+        style={styles.iconButton}
       >
         <MaterialCommunityIcons
           accessibilityElementsHidden
           color={theme.colors.text}
           name="chevron-left"
-          size={22}
+          size={26}
         />
       </Pressable>
 
       <View style={styles.monthCenterBlock}>
-        <Text style={[typography.headline, { color: theme.colors.text, fontWeight: "700" }]}>
+        <Text accessibilityRole="header" style={[styles.monthTitle, { color: theme.colors.text }]}>
           {monthLabel(month)}
         </Text>
         {!isCurrentMonth ? (
@@ -336,16 +331,16 @@ function MonthNavigator({
       <Pressable
         accessibilityLabel="Next month"
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: true }}
-        hitSlop={8}
+        android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: true }}
+        hitSlop={4}
         onPress={() => onChange(shiftMonth(month, 1))}
-        style={[styles.monthNavButton, { borderColor: theme.colors.border }]}
+        style={styles.iconButton}
       >
         <MaterialCommunityIcons
           accessibilityElementsHidden
           color={theme.colors.text}
           name="chevron-right"
-          size={22}
+          size={26}
         />
       </Pressable>
     </View>
@@ -1017,25 +1012,28 @@ function BudgetEditorSheet({
 }
 
 const styles = StyleSheet.create({
-  monthNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    padding: spacing.xs,
-  },
-  monthNavButton: {
+  iconButton: {
     width: touchTarget,
     height: touchTarget,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.md,
-    borderWidth: 1,
+    borderRadius: radii.round,
+  },
+  monthNav: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xs,
+  },
+  monthTitle: {
+    ...typography.headline,
+    textAlign: "center",
   },
   monthCenterBlock: {
     alignItems: "center",
-    gap: spacing.xxs,
+    justifyContent: "center",
+    gap: 2,
   },
   currentMonthPill: {
     paddingHorizontal: spacing.xs,

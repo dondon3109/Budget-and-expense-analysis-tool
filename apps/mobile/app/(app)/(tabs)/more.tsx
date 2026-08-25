@@ -115,10 +115,7 @@ export default function MoreScreen() {
   const isOffline = netInfo.isConnected === false || netInfo.isInternetReachable === false;
 
   return (
-    <Screen
-      title="More"
-      description="Settings, financial tools, and offline device controls."
-    >
+    <Screen title="More">
       <Card
         accessibilityLabel="AI Financial Assistant"
         style={[

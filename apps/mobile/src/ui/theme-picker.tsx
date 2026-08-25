@@ -12,10 +12,10 @@ const options: Array<{
   swatchDot?: string;
   icon?: keyof typeof MaterialCommunityIcons.glyphMap;
 }> = [
-  { value: "system", label: "System (follows device)", icon: "theme-light-dark" },
-  { value: "light", label: "Light (warm paper)", swatchBg: "#f4f1e9", swatchDot: "#0f6b5b" },
-  { value: "dark", label: "Dark (neutral black)", swatchBg: "#0f1115", swatchDot: "#67e0bc" },
-  { value: "coffee", label: "Coffee (warm tan)", swatchBg: "#efe4d2", swatchDot: "#0f6b5b" },
+  { value: "system", label: "System", icon: "theme-light-dark" },
+  { value: "light", label: "Light", swatchBg: "#ffffff", swatchDot: "#0f6b5b" },
+  { value: "dark", label: "Dark", swatchBg: "#0f1115", swatchDot: "#67e0bc" },
+  { value: "coffee", label: "Coffee", swatchBg: "#efe4d2", swatchDot: "#0f6b5b" },
 ];
 
 export function ThemePicker() {

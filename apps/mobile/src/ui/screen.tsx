@@ -25,7 +25,12 @@ export function Screen({
   const body = (
     <View className="w-full gap-6 px-4 pb-8 pt-3" style={[styles.content, !scroll && styles.fill]}>
       {showHeading ? (
-        <View className="flex-row items-start justify-between gap-4">
+        <View
+          style={[
+            styles.headingRow,
+            description ? styles.headingRowWithDescription : styles.headingRowCentered,
+          ]}
+        >
           <View className="gap-1" style={styles.titleBlock}>
             <Text
               accessibilityRole="header"
@@ -40,7 +45,7 @@ export function Screen({
               </Text>
             ) : null}
           </View>
-          <View style={styles.actionBlock}>{action}</View>
+          {action ? <View style={styles.actionBlock}>{action}</View> : null}
         </View>
       ) : null}
       {children}
@@ -72,6 +77,17 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, alignItems: "center" },
   content: { maxWidth: 760, gap: spacing.lg },
   fill: { flex: 1, alignSelf: "center" },
+  headingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  headingRowCentered: {
+    alignItems: "center",
+  },
+  headingRowWithDescription: {
+    alignItems: "flex-start",
+  },
   // The title keeps its width on a single line; the action (sync status,
   // add button) is the one allowed to compress when the row is tight.
   titleBlock: { flexGrow: 1, flexShrink: 0, minWidth: 0 },

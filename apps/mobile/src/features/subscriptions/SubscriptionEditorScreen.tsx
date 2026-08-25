@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { SubscriptionBillingCycle, SubscriptionStatus } from "@zoption/shared";
+import { resolveCategoryEmoji } from "@zoption/shared";
 
 import { useLocalReferenceData, useLocalWorkspace, useSubscription } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
@@ -72,19 +73,41 @@ export function SubscriptionEditorScreen() {
       setCategoryId(subscriptionState.subscription.categoryId ?? "");
       setAccountId(subscriptionState.subscription.accountId ?? "");
       setStatus(subscriptionState.subscription.status);
+      initialized.current = true;
+    } else if (!editing && referenceState.data) {
+      const availableCategories = (referenceState.data.categories ?? []).filter(
+        (c) => c.kind === "expense" && !c.locked,
+      );
+      const activeAccounts = referenceState.data.accounts ?? [];
+      if (availableCategories.length > 0 && !categoryId) {
+        setCategoryId(availableCategories[0]!.id);
+      }
+      if (activeAccounts.length > 0 && !accountId) {
+        setAccountId(activeAccounts[0]!.id);
+      }
+      initialized.current = true;
     }
-    initialized.current = true;
-  }, [editing, subscriptionState.subscription]);
+  }, [editing, subscriptionState.subscription, referenceState.data, categoryId, accountId]);
 
   const categoryOptions = useMemo(
     () =>
       (referenceState.data?.categories ?? [])
         .filter((category) => category.kind === "expense" && !category.locked)
-        .map((category) => ({ id: category.id, label: category.name })),
+        .map((category) => {
+          const emoji = resolveCategoryEmoji(category);
+          return {
+            id: category.id,
+            label: emoji ? `${emoji} ${category.name}` : category.name,
+          };
+        }),
     [referenceState.data],
   );
   const accountOptions = useMemo(
-    () => (referenceState.data?.accounts ?? []).map((account) => ({ id: account.id, label: account.name })),
+    () =>
+      (referenceState.data?.accounts ?? []).map((account) => ({
+        id: account.id,
+        label: account.currency === "USD" ? `${account.name} (USD)` : account.name,
+      })),
     [referenceState.data],
   );
 

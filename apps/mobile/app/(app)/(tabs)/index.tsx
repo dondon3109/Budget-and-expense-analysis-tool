@@ -33,13 +33,6 @@ function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
   return "failed" as const;
 }
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-}
-
 function SectionLabel({ children }: { children: string }) {
   const theme = useZoptionTheme();
   return <Text style={[typography.headline, { color: theme.colors.text }]}>{children}</Text>;
@@ -835,7 +828,6 @@ export default function HomeScreen() {
   const sync = useSyncState();
   const planState = usePlan();
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
-  const greeting = useMemo(() => getGreeting(), []);
   const view = useMemo(
     () =>
       dashboard.data
@@ -854,7 +846,6 @@ export default function HomeScreen() {
   return (
     <Screen
       action={<SyncStatus state={visibleSyncState(sync.status)} />}
-      description={greeting}
       title="Home"
     >
       <OfflineBanner />

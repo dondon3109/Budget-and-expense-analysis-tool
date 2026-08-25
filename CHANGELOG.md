@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Added prominent header and floating add buttons, status filter chips, category emojis, payment account badges, and enhanced monthly cost metrics to the mobile Subscriptions tab.
 - Added a quick action bar to the mobile home dashboard for 1-tap transaction entry, receipt scanning, category budget reviews, and AI assistant queries.
 - Added a recent activity card to the mobile home screen displaying the latest transactions with quick editor navigation.
 - Added a structured 3-step onboarding guide to the mobile home screen for new workspaces.
@@ -16,6 +17,9 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Updated the mobile light theme to a crisp pure white palette instead of warm paper, and cleaned up theme labels in the mobile theme picker.
+- Updated the mobile Budget tab month selector UI to match the Transactions tab design.
+- Streamlined mobile tab header layouts and typography scales for compact screens.
 - Increased Free plan limits to 10 AI assistant questions per 14-day cycle (was 4) and 4 active custom categories (was 1), with Pro unchanged at 100 questions and unlimited categories.
 - Renamed the mobile Transactions tab cash flow header label from `Net` to `Balance`.
 - Redesigned the mobile Budgets screen with interactive month navigation, a comprehensive summary card, category spending progress bars, and emoji avatar badges.
