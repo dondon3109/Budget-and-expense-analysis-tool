@@ -10,11 +10,17 @@ All notable product changes are documented here.
 - Added a recent activity card to the mobile home screen displaying the latest transactions with quick editor navigation.
 - Added a structured 3-step onboarding guide to the mobile home screen for new workspaces.
 - Added capability badges, interactive workspace preview, and value pillars to the mobile welcome landing screen.
+- Added an interactive zero-budget state with 1-tap category quick-start limits on mobile.
+- Added live assistant status indicators (Online/Available vs Offline/Unavailable) across the mobile More tab and Assistant screens with offline fallback navigation.
+- Added explanatory debt payoff cards, response style summary, and rich fact source indicators to the web AI Assistant Memory panel.
 
 ### Changed
 
+- Renamed the mobile Transactions tab cash flow header label from `Net` to `Balance`.
+- Redesigned the mobile Budgets screen with interactive month navigation, a comprehensive summary card, category spending progress bars, and emoji avatar badges.
 - Redesigned the mobile home balance card with a monthly net momentum indicator and per-account breakdown.
 - Updated the mobile home month summary to a 2x2 grid layout with semantic icon badges and high-contrast tone styling.
+- Redesigned the web AI Assistant Memory panel with clearer privacy messaging, strategy cards with interest vs momentum badges, and a safe clear-memory confirmation flow.
 
 ### Fixed
 

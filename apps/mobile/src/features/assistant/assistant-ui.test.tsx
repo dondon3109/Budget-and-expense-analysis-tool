@@ -4,7 +4,9 @@ import {
   AssistantConsentCard,
   AssistantIdentityCard,
   AssistantMessageBubble,
+  AssistantStatusBadge,
   AssistantThreadRow,
+  AssistantUnavailableView,
   AssistantUpgradeBanner,
   formatRecordingElapsed,
   VoiceModelField,
@@ -203,5 +205,57 @@ describe("voice model selection", () => {
     await fireEvent.press(screen.getByRole("button", { name: /Voice and gender/ }));
     await fireEvent.press(screen.getByRole("radio", { name: "Energetic · Female" }));
     expect(onSelect).toHaveBeenCalledWith("energetic");
+  });
+});
+
+describe("assistant status and unavailable UI", () => {
+  it("renders status badges for available, offline, and custom labels", async () => {
+    const { rerender } = await render(<AssistantStatusBadge status="available" />);
+    expect(screen.getByText("Available")).toBeTruthy();
+
+    await rerender(<AssistantStatusBadge status="offline" />);
+    expect(screen.getByText("Offline")).toBeTruthy();
+
+    await rerender(<AssistantStatusBadge status="available" label="Connected · Read-only" />);
+    expect(screen.getByText("Connected · Read-only")).toBeTruthy();
+  });
+
+  it("renders offline and server unavailable states with retry and fallback actions", async () => {
+    const onRetry = jest.fn();
+    const onOpenTransactions = jest.fn();
+    const onOpenBudgets = jest.fn();
+
+    const { rerender } = await render(
+      <AssistantUnavailableView
+        isOffline
+        onRetry={onRetry}
+        onOpenTransactions={onOpenTransactions}
+        onOpenBudgets={onOpenBudgets}
+      />,
+    );
+
+    expect(screen.getByRole("header", { name: "AI Assistant is offline" })).toBeTruthy();
+    expect(screen.getByText("Available offline features")).toBeTruthy();
+
+    const retry = screen.getByRole("button", { name: "Check connection & retry" });
+    await fireEvent.press(retry);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    const txButton = screen.getByRole("button", { name: "View transactions" });
+    await fireEvent.press(txButton);
+    expect(onOpenTransactions).toHaveBeenCalledTimes(1);
+
+    await rerender(
+      <AssistantUnavailableView
+        isOffline={false}
+        errorMessage="Custom gateway error"
+        onRetry={onRetry}
+        onOpenTransactions={onOpenTransactions}
+        onOpenBudgets={onOpenBudgets}
+      />,
+    );
+
+    expect(screen.getByRole("header", { name: "AI Assistant is unavailable" })).toBeTruthy();
+    expect(screen.getByText("Custom gateway error")).toBeTruthy();
   });
 });

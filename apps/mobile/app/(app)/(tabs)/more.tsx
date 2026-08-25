@@ -3,11 +3,13 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useNetInfo } from "@react-native-community/netinfo";
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { seedDummyWorkspaceData } from "@/db/demo-seed";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
+import { AssistantStatusBadge } from "@/features/assistant/assistant-ui";
 import { OtaUpdateSettingsCard } from "@/features/ota-updates";
 import { UpdateSettingsCard } from "@/features/updates";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
@@ -109,6 +111,8 @@ export default function MoreScreen() {
   };
 
   const isPro = planState.plan === "zoption_pro";
+  const netInfo = useNetInfo();
+  const isOffline = netInfo.isConnected === false || netInfo.isInternetReachable === false;
 
   return (
     <Screen
@@ -119,32 +123,46 @@ export default function MoreScreen() {
         accessibilityLabel="AI Financial Assistant"
         style={[
           styles.assistantCard,
-          { backgroundColor: theme.colors.brandSoft, borderColor: theme.colors.brand },
+          {
+            backgroundColor: isOffline ? theme.colors.surfaceRaised : theme.colors.brandSoft,
+            borderColor: isOffline ? theme.colors.border : theme.colors.brand,
+          },
         ]}
       >
         <View className="flex-row items-center gap-3">
-          <View style={[styles.assistantIcon, { backgroundColor: theme.colors.brand }]}>
+          <View
+            style={[
+              styles.assistantIcon,
+              { backgroundColor: isOffline ? theme.colors.textMuted : theme.colors.brand },
+            ]}
+          >
             <MaterialCommunityIcons
               accessibilityElementsHidden
               color={theme.colors.onBrand}
-              name="robot-happy-outline"
+              name={isOffline ? "robot-off-outline" : "robot-happy-outline"}
               size={22}
             />
           </View>
           <View className="flex-1 gap-1">
-            <Text style={[typography.headline, { color: theme.colors.text }]}>
-              AI Financial Assistant
-            </Text>
+            <View className="flex-row items-center justify-between gap-2">
+              <Text style={[typography.headline, { color: theme.colors.text }]}>
+                AI Financial Assistant
+              </Text>
+              <AssistantStatusBadge status={isOffline ? "offline" : "available"} />
+            </View>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Read-only answers grounded in your records.
+              {isOffline
+                ? "Offline — requires connection to query records."
+                : "Read-only answers grounded in your records."}
             </Text>
           </View>
         </View>
         <Button
           accessibilityHint="Opens the consent-gated AI Financial Assistant"
           onPress={() => router.push("/(app)/assistant")}
+          variant={isOffline ? "secondary" : "primary"}
         >
-          Open AI Assistant
+          {isOffline ? "View offline status" : "Open AI Assistant"}
         </Button>
       </Card>
 

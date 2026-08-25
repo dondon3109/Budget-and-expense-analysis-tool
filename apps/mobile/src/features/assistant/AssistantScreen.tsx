@@ -37,6 +37,7 @@ import {
   type AssistantWireMessage,
 } from "@/api/assistant";
 import { getAssistantVoicePreferences, grantAssistantVoiceConsent } from "@/api/assistant-voice";
+import { useNetInfo } from "@react-native-community/netinfo";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import {
@@ -64,7 +65,9 @@ import {
   AssistantConsentCard,
   AssistantIdentityCard,
   AssistantMessageBubble,
+  AssistantStatusBadge,
   AssistantThreadRow,
+  AssistantUnavailableView,
   AssistantUpgradeBanner,
   formatRecordingElapsed,
   MemoryPreferencesBlock,
@@ -94,6 +97,8 @@ export function AssistantScreen() {
   const theme = useZoptionTheme();
   const session = useSessionSnapshot();
   const voiceOptions = useAssistantVoiceOptionsStore();
+  const netInfo = useNetInfo();
+  const isOffline = netInfo.isConnected === false || netInfo.isInternetReachable === false;
 
   const [phase, setPhase] = useState<"loading" | "error" | "ready">("loading");
   const [fatalError, setFatalError] = useState<string | null>(null);
@@ -608,12 +613,14 @@ export function AssistantScreen() {
     );
   }
 
-  if (phase === "error") {
+  if (phase === "error" || (phase !== "loading" && isOffline)) {
     return (
-      <Screen title="AI Assistant">
-        <ErrorState
-          title="The assistant is unavailable"
-          message={fatalError ?? "Zoption could not be reached."}
+      <Screen title="AI Assistant" description="Grounded in your recorded finances">
+        <AssistantUnavailableView
+          errorMessage={fatalError}
+          isOffline={isOffline}
+          onOpenBudgets={() => router.push("/(app)/(tabs)/budgets")}
+          onOpenTransactions={() => router.push("/(app)/(tabs)/transactions")}
           onRetry={() => void loadPreferences()}
         />
       </Screen>
@@ -671,14 +678,30 @@ export function AssistantScreen() {
               numberOfLines={1}
               style={[typography.display, styles.headerTitle, { color: theme.colors.text }]}
             >
-              {view === "chat" ? "New conversation" : "AI Assistant"}
+              {view === "chat"
+                ? activeThreadId
+                  ? "Conversation"
+                  : preferences?.assistantName
+                    ? `Chat with ${preferences.assistantName}`
+                    : "New conversation"
+                : "AI Assistant"}
             </Text>
+            {view === "threads" ? (
+              <AssistantStatusBadge label="Online" status="available" />
+            ) : null}
           </View>
           {view === "threads" ? (
             <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
               Read-only answers grounded in your records
             </Text>
-          ) : null}
+          ) : (
+            <View style={styles.chatStatusRow}>
+              <View style={[styles.chatStatusDot, { backgroundColor: theme.colors.income }]} />
+              <Text style={[typography.caption, { color: theme.colors.income, fontWeight: "600" }]}>
+                Available · Grounded in your records
+              </Text>
+            </View>
+          )}
         </View>
         {view === "threads" && threads.length > 0 ? (
           <Pressable
@@ -1149,5 +1172,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xs,
+  },
+  chatStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xxs,
+    marginTop: 2,
+  },
+  chatStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: radii.round,
   },
 });

@@ -1,3 +1,4 @@
+import { resolveCategoryEmoji } from "@zoption/shared";
 import type { LocalBudgetMonthData } from "@/db/repository";
 
 export interface BudgetMonthRow {
@@ -5,6 +6,7 @@ export interface BudgetMonthRow {
   categoryId: string;
   categoryName: string;
   categoryColor: string;
+  categoryIconEmoji?: string | null;
   limitMinor: number;
   spentMinor: number;
   remainingMinor: number;
@@ -26,15 +28,20 @@ function roundPercent(value: number): number {
 }
 
 export function buildBudgetMonthView(data: LocalBudgetMonthData): BudgetMonthView {
+  const categoryMap = new Map((data.categories ?? []).map((cat) => [cat.id, cat]));
   const rows: BudgetMonthRow[] = data.budgets
     .filter((budget) => budget.limitMinor > 0)
     .map((budget) => {
+      const category = categoryMap.get(budget.categoryId);
       const remainingMinor = budget.limitMinor - budget.spentMinor;
       return {
         id: budget.id,
         categoryId: budget.categoryId,
         categoryName: budget.categoryName,
         categoryColor: budget.categoryColor,
+        categoryIconEmoji:
+          category?.iconEmoji ??
+          resolveCategoryEmoji({ name: budget.categoryName, kind: "expense" }),
         limitMinor: budget.limitMinor,
         spentMinor: budget.spentMinor,
         remainingMinor,

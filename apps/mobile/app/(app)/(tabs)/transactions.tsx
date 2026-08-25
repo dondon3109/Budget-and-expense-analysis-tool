@@ -597,7 +597,7 @@ export default function TransactionsScreen() {
           <TotalsValue totals={totals} field="expenseMinor" tone="expense" />
         </View>
         <View style={styles.monthTotalColumn}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Net</Text>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Balance</Text>
           <TotalsValue totals={totals} field="netMinor" tone="default" />
         </View>
       </View>

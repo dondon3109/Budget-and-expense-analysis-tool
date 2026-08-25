@@ -11,12 +11,137 @@ import { Button } from "@/ui/components/Button";
 import { Card } from "@/ui/components/Card";
 import { FormField } from "@/ui/components/FormField";
 import { SelectionField, type SelectionOption } from "@/ui/components/SelectionField";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 import type { RecordingPhase } from "./assistant-voice-hooks";
 
 import { formatThreadTime, validateIdentityName } from "./assistant-forms";
+
+export function AssistantStatusBadge({
+  status = "available",
+  label,
+}: {
+  status: "available" | "unavailable" | "offline";
+  label?: string;
+}) {
+  const theme = useZoptionTheme();
+  const isAvailable = status === "available";
+  const isOffline = status === "offline";
+
+  const backgroundColor = isAvailable
+    ? theme.colors.brandSoft
+    : isOffline
+      ? theme.colors.warningSoft
+      : theme.colors.dangerSoft;
+
+  const textColor = isAvailable
+    ? theme.colors.income
+    : isOffline
+      ? theme.colors.warning
+      : theme.colors.danger;
+
+  const defaultText = isAvailable ? "Available" : isOffline ? "Offline" : "Unavailable";
+
+  return (
+    <View style={[styles.statusBadge, { backgroundColor }]}>
+      <View style={[styles.statusDot, { backgroundColor: textColor }]} />
+      <Text style={[styles.statusBadgeText, { color: textColor }]}>
+        {label ?? defaultText}
+      </Text>
+    </View>
+  );
+}
+
+export function AssistantUnavailableView({
+  isOffline,
+  errorMessage,
+  onRetry,
+  onOpenTransactions,
+  onOpenBudgets,
+}: {
+  isOffline: boolean;
+  errorMessage?: string | null;
+  onRetry: () => void;
+  onOpenTransactions: () => void;
+  onOpenBudgets: () => void;
+}) {
+  const theme = useZoptionTheme();
+  return (
+    <View style={styles.unavailableContainer}>
+      <Card accessibilityLabel="AI Assistant unavailable" style={styles.unavailableCard}>
+        <View
+          accessibilityElementsHidden
+          style={[
+            styles.unavailableIconWrap,
+            {
+              backgroundColor: isOffline ? theme.colors.warningSoft : theme.colors.dangerSoft,
+              borderColor: isOffline ? theme.colors.warning : theme.colors.danger,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={isOffline ? "cloud-off-outline" : "robot-off-outline"}
+            size={32}
+            color={isOffline ? theme.colors.warning : theme.colors.danger}
+          />
+        </View>
+
+        <View style={styles.unavailableTextWrap}>
+          <Text
+            accessibilityRole="header"
+            style={[typography.title, { color: theme.colors.text, textAlign: "center" }]}
+          >
+            {isOffline ? "AI Assistant is offline" : "AI Assistant is unavailable"}
+          </Text>
+          <Text
+            style={[
+              typography.body,
+              { color: theme.colors.textMuted, textAlign: "center", maxWidth: 340 },
+            ]}
+          >
+            {isOffline
+              ? "The assistant requires an active internet connection to securely analyze your financial records in the cloud."
+              : errorMessage ?? "Zoption AI services could not be reached. Your records remain stored safely on this device."}
+          </Text>
+        </View>
+
+        <View style={styles.unavailableActions}>
+          <Button onPress={onRetry} variant="primary">
+            {isOffline ? "Check connection & retry" : "Try reconnecting"}
+          </Button>
+        </View>
+      </Card>
+
+      <View
+        style={[
+          styles.offlineToolsCard,
+          elevation.card,
+          {
+            backgroundColor: theme.colors.surfaceRaised,
+            borderColor: theme.colors.border,
+          },
+        ]}
+      >
+        <Text style={[typography.headline, { color: theme.colors.text }]}>
+          Available offline features
+        </Text>
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+          While disconnected, you can continue managing your finances locally:
+        </Text>
+
+        <View style={styles.offlineButtonsRow}>
+          <Button onPress={onOpenTransactions} variant="secondary">
+            View transactions
+          </Button>
+          <Button onPress={onOpenBudgets} variant="secondary">
+            Check budgets
+          </Button>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 export function AssistantConsentCard({
   retentionDays,
@@ -460,6 +585,61 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xxs,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 3,
+    borderRadius: radii.round,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: radii.round,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "700",
+  },
+  unavailableContainer: {
+    gap: spacing.lg,
+  },
+  unavailableCard: {
+    alignItems: "center",
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.md,
+    gap: spacing.md,
+  },
+  unavailableIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unavailableTextWrap: {
+    alignItems: "center",
+    gap: spacing.xxs,
+  },
+  unavailableActions: {
+    width: "100%",
+    maxWidth: 280,
+    marginTop: spacing.xxs,
+  },
+  offlineToolsCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  offlineButtonsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.xxs,
   },
 });
 
