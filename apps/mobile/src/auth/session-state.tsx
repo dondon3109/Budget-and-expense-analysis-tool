@@ -20,6 +20,7 @@ import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
+import { telemetry } from "@/telemetry/telemetry";
 
 import { parseOAuthCallbackUrl } from "./oauth-callback";
 import { clearPlanCache } from "./plan-state";
@@ -98,8 +99,16 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   const applySession = useCallback((session: Session | null) => {
     const nextSubject = session?.user.id ?? null;
-    if (initializedRef.current && subjectRef.current !== nextSubject) {
+    const previousSubject = subjectRef.current;
+    if (initializedRef.current && previousSubject !== nextSubject) {
       clearUserScopedRuntimeState();
+    }
+    if (nextSubject && previousSubject !== nextSubject) {
+      // Supabase user.id is a stable authenticated primary key. Email remains
+      // a person property and is never attached to crash-event properties.
+      void telemetry.identify(nextSubject, { email: session?.user.email });
+    } else if (!nextSubject && previousSubject) {
+      void telemetry.reset();
     }
     subjectRef.current = nextSubject;
     initializedRef.current = true;
@@ -121,6 +130,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         .then((storedSubject) => {
           if (!active) return;
           if (storedSubject) {
+            void telemetry.identify(storedSubject);
             subjectRef.current = storedSubject;
             initializedRef.current = true;
             setSnapshot({
@@ -178,6 +188,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (initializedRef.current && subjectRef.current !== DUMMY_DEV_SUBJECT) {
       clearUserScopedRuntimeState();
     }
+    void telemetry.identify(DUMMY_DEV_SUBJECT);
     subjectRef.current = DUMMY_DEV_SUBJECT;
     initializedRef.current = true;
     setSnapshot({
@@ -304,6 +315,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
       if (error) throw error;
     }
     clearUserScopedRuntimeState();
+    // Supabase may already have emitted SIGNED_OUT while auth.signOut awaited.
+    // Reset here only when that listener did not already clear PostHog.
+    if (subjectRef.current === subject) void telemetry.reset();
 
     if (subject && !options.preserveLocalWorkspace) {
       await discardLocalWorkspace(subject);

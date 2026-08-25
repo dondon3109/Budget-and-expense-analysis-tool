@@ -8,6 +8,7 @@ import { resolveCategoryEmoji } from "@zoption/shared";
 
 import { useLocalReferenceData, useLocalWorkspace, useSubscription } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
+import { telemetry } from "@/telemetry/telemetry";
 import {
   Button,
   ConfirmationDialog,
@@ -142,6 +143,10 @@ export function SubscriptionEditorScreen() {
       } else {
         await local.workspace.transactionMutations.createSubscription(parsed.input);
       }
+      void telemetry.capture(editing ? "subscription_updated" : "subscription_created", {
+        billing_cycle: billingCycle,
+        status,
+      });
       router.back();
       sync.retry();
     } catch (error) {
@@ -161,6 +166,7 @@ export function SubscriptionEditorScreen() {
     setMessage(null);
     try {
       await local.workspace.transactionMutations.deleteSubscription(id);
+      void telemetry.capture("subscription_deleted");
       setConfirmDelete(false);
       router.back();
       sync.retry();

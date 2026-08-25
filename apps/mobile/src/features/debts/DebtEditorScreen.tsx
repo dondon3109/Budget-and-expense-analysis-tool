@@ -7,6 +7,7 @@ import type { DebtStatus, DebtType } from "@zoption/shared";
 
 import { useDebt, useLocalWorkspace } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
+import { telemetry } from "@/telemetry/telemetry";
 import {
   Button,
   ConfirmationDialog,
@@ -93,6 +94,7 @@ export function DebtEditorScreen() {
       } else {
         await local.workspace.transactionMutations.createDebt({ ...parsed.input, status });
       }
+      void telemetry.capture(editing ? "debt_updated" : "debt_created", { debt_type: type, status });
       router.back();
       sync.retry();
     } catch (error) {
@@ -112,6 +114,7 @@ export function DebtEditorScreen() {
     setMessage(null);
     try {
       await local.workspace.transactionMutations.deleteDebt(id);
+      void telemetry.capture("debt_deleted");
       setConfirmDelete(false);
       router.back();
       sync.retry();

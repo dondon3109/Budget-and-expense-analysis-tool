@@ -19,6 +19,7 @@ import {
 
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
+import { telemetry } from "@/telemetry/telemetry";
 import {
   Button,
   Card,
@@ -225,6 +226,9 @@ export function TransactionEditorScreen() {
       } else {
         await local.workspace.transactionMutations.createTransaction(parsed.input);
       }
+      void telemetry.capture(id ? "transaction_updated" : "transaction_created", {
+        transaction_kind: parsed.input.kind,
+      });
       router.back();
       sync.retry();
     } catch (error) {
@@ -245,6 +249,7 @@ export function TransactionEditorScreen() {
     setMessage(null);
     try {
       await local.workspace.transactionMutations.deleteTransaction(id);
+      void telemetry.capture("transaction_deleted", { transaction_kind: transfer ? "transfer" : "transaction" });
       router.back();
       sync.retry();
     } catch (error) {

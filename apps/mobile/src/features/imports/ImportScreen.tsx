@@ -28,6 +28,7 @@ import { ImportTransportError, commitImport, previewImport, previewPdfImport } f
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
+import { telemetry } from "@/telemetry/telemetry";
 import { BottomSheet, Button, Card, FormField, MoneyValue, SelectionField } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -313,6 +314,11 @@ export function ImportScreen() {
           input: { token: preview.token, categoryOverrides, kindOverrides },
         }),
       );
+      void telemetry.capture("import_completed", {
+        file_kind: fileKind ?? "unknown",
+        imported_count: next.importedCount,
+        rejected_count: next.rejectedCount,
+      });
       setResult(next);
       setStep("done");
       sync.retry();

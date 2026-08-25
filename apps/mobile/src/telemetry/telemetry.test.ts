@@ -117,12 +117,12 @@ describe("crashFingerprint and extractErrorName", () => {
 });
 
 describe("createPostHogOptions", () => {
-  it("uses ephemeral, profile-free SDK defaults", () => {
+  it("uses ephemeral SDK defaults with profiles only for identified users", () => {
     const options = createPostHogOptions("https://eu.i.posthog.com");
     expect(options).toMatchObject({
       host: "https://eu.i.posthog.com",
       persistence: "memory",
-      personProfiles: "never",
+      personProfiles: "identified_only",
       setDefaultPersonProperties: false,
       disableSurveys: true,
       captureAppLifecycleEvents: false,
@@ -147,6 +147,8 @@ describe("createTelemetryService", () => {
     service: ReturnType<typeof createTelemetryService>;
     transports: GateableTransport[];
     captured: SanitizedCrashReport[];
+    identified: Array<{ distinctId: string; personProperties?: { email?: string } }>;
+    resetCalls: number;
     flushCalls: number;
   }
 
@@ -155,6 +157,8 @@ describe("createTelemetryService", () => {
   ): Harness {
     const transports: GateableTransport[] = [];
     const captured: SanitizedCrashReport[] = [];
+    const identified: Array<{ distinctId: string; personProperties?: { email?: string } }> = [];
+    let resetCalls = 0;
     let flushCalls = 0;
     const service = createTelemetryService(enabledConfig, async (): Promise<TelemetryTransport> => {
       let listener: ((allowed: boolean) => void) | undefined;
@@ -166,6 +170,12 @@ describe("createTelemetryService", () => {
           : (report) => {
               captured.push(report);
             },
+        identify: (distinctId, personProperties) => {
+          identified.push({ distinctId, personProperties });
+        },
+        reset: () => {
+          resetCalls += 1;
+        },
         flush: () => {
           flushCalls += 1;
           return options.failFlush ? Promise.reject(new Error("network gone")) : Promise.resolve();
@@ -188,6 +198,10 @@ describe("createTelemetryService", () => {
       service,
       transports,
       captured,
+      identified,
+      get resetCalls() {
+        return resetCalls;
+      },
       get flushCalls() {
         return flushCalls;
       },
@@ -227,6 +241,17 @@ describe("createTelemetryService", () => {
     resolveTransport?.({ captureCrash: jest.fn(), flush: async () => undefined });
     await Promise.all([first, second]);
     expect(service.isActive()).toBe(true);
+  });
+
+  it("identifies with a stable id and person email, then resets at sign-out", async () => {
+    const harness = createHarness();
+    await harness.service.identify("auth-user-123", { email: "person@example.test" });
+    expect(harness.identified).toEqual([
+      { distinctId: "auth-user-123", personProperties: { email: "person@example.test" } },
+    ]);
+
+    await harness.service.reset();
+    expect(harness.resetCalls).toBe(1);
   });
 
   it("flushes each sanitized report for immediate delivery", async () => {

@@ -7,6 +7,7 @@ import { resolveCategoryEmoji } from "@zoption/shared";
 import { useBudgetMonth, useLocalWorkspace } from "@/db/local-workspace-state";
 import type { BudgetMonthItem, LocalCategoryOption } from "@/db/repository";
 import { useSyncState } from "@/sync/sync-state";
+import { telemetry } from "@/telemetry/telemetry";
 import {
   BottomSheet,
   Button,
@@ -125,6 +126,7 @@ export function BudgetsScreen() {
         values.categoryId,
         parsed.limitMinor,
       );
+      void telemetry.capture("budget_limit_set", { action: isEditing ? "updated" : "created" });
       setEditor((current) => ({ ...current, open: false }));
       sync.retry();
     } catch (error) {
@@ -144,6 +146,7 @@ export function BudgetsScreen() {
     setMessage(null);
     try {
       await local.workspace.transactionMutations.setBudgetLimit(month, editor.categoryId, 0);
+      void telemetry.capture("budget_removed");
       setEditor((current) => ({ ...current, open: false }));
       sync.retry();
     } catch (error) {

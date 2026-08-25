@@ -7,6 +7,7 @@ import type { FinancialGoalStatus } from "@zoption/shared";
 
 import { useGoal, useLocalWorkspace } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
+import { telemetry } from "@/telemetry/telemetry";
 import {
   Button,
   ConfirmationDialog,
@@ -87,6 +88,7 @@ export function GoalEditorScreen() {
       } else {
         await local.workspace.transactionMutations.createGoal(parsed.input);
       }
+      void telemetry.capture(editing ? "goal_updated" : "goal_created", { status: parsed.input.status });
       router.back();
       sync.retry();
     } catch (error) {
@@ -106,6 +108,7 @@ export function GoalEditorScreen() {
     setMessage(null);
     try {
       await local.workspace.transactionMutations.deleteGoal(id);
+      void telemetry.capture("goal_deleted");
       setConfirmDelete(false);
       router.back();
       sync.retry();
