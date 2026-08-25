@@ -22,10 +22,8 @@ import { AssistantMemoryPanel } from "../src/components/assistant/AssistantMemor
 import type { AuthenticatedWorkspace } from "../src/lib/workspace";
 
 const mockWorkspace: AuthenticatedWorkspace = {
-  id: "ws-1",
-  name: "Personal",
-  role: "owner",
-  accessToken: "token-1",
+  key: "user:ws-1",
+  userId: "ws-1",
 };
 
 function createQueryClient() {

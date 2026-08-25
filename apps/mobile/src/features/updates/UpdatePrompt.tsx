@@ -1,5 +1,4 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import type { ComponentProps } from "react";
 import {
   ActivityIndicator,
   Modal,

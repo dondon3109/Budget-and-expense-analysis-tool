@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Brain, Check, Info, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
+import { ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 

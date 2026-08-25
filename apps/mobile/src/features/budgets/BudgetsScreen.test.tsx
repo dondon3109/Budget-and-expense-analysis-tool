@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { useBudgetMonth, useLocalWorkspace } from "@/db/local-workspace-state";
+import type { LocalWorkspace } from "@/db/workspace";
 import { useSyncState } from "@/sync/sync-state";
 import { BudgetsScreen } from "./BudgetsScreen";
 
@@ -38,9 +39,11 @@ describe("BudgetsScreen", () => {
         transactionMutations: {
           setBudgetLimit: jest.fn().mockResolvedValue(undefined),
         },
-      } as never,
+      } as unknown as LocalWorkspace,
       status: "ready",
       message: null,
+      retry: jest.fn(),
+      reopen: jest.fn(),
     });
   });
 

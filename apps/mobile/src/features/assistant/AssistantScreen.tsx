@@ -45,7 +45,6 @@ import {
   Button,
   ConfirmationDialog,
   EmptyState,
-  ErrorState,
   FormField,
   SelectionField,
   SkeletonLines,
@@ -613,7 +612,7 @@ export function AssistantScreen() {
     );
   }
 
-  if (phase === "error" || (phase !== "loading" && isOffline)) {
+  if (phase === "error" || isOffline) {
     return (
       <Screen title="AI Assistant" description="Grounded in your recorded finances">
         <AssistantUnavailableView

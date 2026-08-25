@@ -71,9 +71,15 @@ function splitSentenceParagraph(text: string): string[] {
   for (let i = 0; i < text.length; i++) {
     current += text[i];
     const char = text[i];
-    if (char === "." || char === "!" || char === "?") {
-      // Look ahead for space + capital letter
-      if (i + 2 < text.length && text[i + 1] === " " && /[A-Z]/.test(text[i + 2])) {
+      if (char === "." || char === "!" || char === "?") {
+        // Look ahead for space + capital letter
+        const afterSpace = text[i + 2];
+        if (
+          i + 2 < text.length &&
+          text[i + 1] === " " &&
+          afterSpace !== undefined &&
+          /[A-Z]/.test(afterSpace)
+        ) {
         const words = current.trim().split(/\s+/);
         const lastWord = (words[words.length - 1] ?? "").toLowerCase();
         // Ignore common abbreviations
