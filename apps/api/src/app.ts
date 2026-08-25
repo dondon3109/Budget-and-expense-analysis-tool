@@ -6,7 +6,7 @@ import {
   type DashboardSummary,
   type TransferFeeInsight,
 } from "@zoption/shared";
-import { Hono, type MiddlewareHandler } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
 import { createAssistantOrchestrator } from "./assistant/orchestrator";
@@ -49,7 +49,7 @@ import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
 import { createAiEntryService, type AiEntryService } from "./entry/ai-entry-service";
 import { HttpError } from "./errors";
-import { d1RateLimiter, type RateLimiter } from "./rate-limit";
+import { d1RateLimiter, type RateLimitPolicy, type RateLimiter } from "./rate-limit";
 import { checkApiReadiness } from "./readiness";
 import { createPlatformAdminService, type PlatformAdminService } from "./platform-admin";
 import { createAccountDeletionRoutes } from "./routes/account-deletion";
@@ -170,6 +170,37 @@ export interface AppOptions {
   bugReports?: BugReportRepository;
   bugReportService?: BugReportService;
   customerReviews?: CustomerReviewRepository;
+}
+
+/**
+ * Consume every rate limit policy in parallel and apply the standard headers.
+ * Returns a 429 response when any policy rejects, otherwise null. On success the
+ * headers reflect the last policy; on rejection they reflect the rejecting policy.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Hono's middleware narrows the context input type beyond what a shared helper can express.
+async function enforceRateLimits<Path extends string, Input extends Record<string, unknown> = any>(
+  context: Context<AppEnvironment, Path, Input>,
+  rateLimiter: RateLimiter,
+  identity: string,
+  policies: RateLimitPolicy[],
+  tooManyMessage: (retryAfterSeconds: number) => string,
+): Promise<Response | null> {
+  const decisions = await Promise.all(
+    policies.map((policy) => rateLimiter.consume(context.env, identity, policy)),
+  );
+  const rejected = decisions.find((decision) => !decision.allowed);
+  const applied = rejected ?? decisions[decisions.length - 1]!;
+  context.header("RateLimit-Limit", String(applied.limit));
+  context.header("RateLimit-Remaining", String(applied.remaining));
+  context.header("RateLimit-Reset", String(applied.retryAfterSeconds));
+  if (rejected) {
+    context.header("Retry-After", String(rejected.retryAfterSeconds));
+    return context.json(
+      { error: "rate_limit_exceeded", message: tooManyMessage(rejected.retryAfterSeconds) },
+      429,
+    );
+  }
+  return null;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -314,22 +345,14 @@ export function createApp(options: AppOptions = {}) {
     }
     const clientIdentifier =
       context.req.header("CF-Connecting-IP")?.trim() || MISSING_SUPPORT_CLIENT;
-    for (const policy of SUPPORT_CHAT_RATE_LIMITS) {
-      const decision = await rateLimiter.consume(context.env, clientIdentifier, policy);
-      context.header("RateLimit-Limit", String(decision.limit));
-      context.header("RateLimit-Remaining", String(decision.remaining));
-      context.header("RateLimit-Reset", String(decision.retryAfterSeconds));
-      if (!decision.allowed) {
-        context.header("Retry-After", String(decision.retryAfterSeconds));
-        return context.json(
-          {
-            error: "rate_limit_exceeded",
-            message: `Too many support messages. Try again in ${decision.retryAfterSeconds} seconds.`,
-          },
-          429,
-        );
-      }
-    }
+    const limited = await enforceRateLimits(
+      context,
+      rateLimiter,
+      clientIdentifier,
+      SUPPORT_CHAT_RATE_LIMITS,
+      (seconds) => `Too many support messages. Try again in ${seconds} seconds.`,
+    );
+    if (limited) return limited;
     await next();
   });
   app.use(
@@ -512,22 +535,14 @@ export function createApp(options: AppOptions = {}) {
         ? context.get("authUser").id
         : context.get("tenant").tenantId;
 
-    for (const policy of policies) {
-      const decision = await rateLimiter.consume(context.env, rateLimitIdentity, policy);
-      context.header("RateLimit-Limit", String(decision.limit));
-      context.header("RateLimit-Remaining", String(decision.remaining));
-      context.header("RateLimit-Reset", String(decision.retryAfterSeconds));
-      if (!decision.allowed) {
-        context.header("Retry-After", String(decision.retryAfterSeconds));
-        return context.json(
-          {
-            error: "rate_limit_exceeded",
-            message: `Too many requests. Try again in ${decision.retryAfterSeconds} seconds.`,
-          },
-          429,
-        );
-      }
-    }
+    const limited = await enforceRateLimits(
+      context,
+      rateLimiter,
+      rateLimitIdentity,
+      policies,
+      (seconds) => `Too many requests. Try again in ${seconds} seconds.`,
+    );
+    if (limited) return limited;
 
     await next();
   });
@@ -611,24 +626,14 @@ export function createApp(options: AppOptions = {}) {
 
     const clientIdentifier =
       context.req.header("CF-Connecting-IP")?.trim() || MISSING_PAYPAL_WEBHOOK_CLIENT;
-    const decision = await rateLimiter.consume(
-      context.env,
+    const limited = await enforceRateLimits(
+      context,
+      rateLimiter,
       clientIdentifier,
-      PAYPAL_WEBHOOK_RATE_LIMIT,
+      [PAYPAL_WEBHOOK_RATE_LIMIT],
+      (seconds) => `Too many webhook deliveries. Try again in ${seconds} seconds.`,
     );
-    context.header("RateLimit-Limit", String(decision.limit));
-    context.header("RateLimit-Remaining", String(decision.remaining));
-    context.header("RateLimit-Reset", String(decision.retryAfterSeconds));
-    if (!decision.allowed) {
-      context.header("Retry-After", String(decision.retryAfterSeconds));
-      return context.json(
-        {
-          error: "rate_limit_exceeded",
-          message: `Too many requests. Try again in ${decision.retryAfterSeconds} seconds.`,
-        },
-        429,
-      );
-    }
+    if (limited) return limited;
 
     await next();
   });
