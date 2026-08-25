@@ -46,13 +46,13 @@ describe("UpgradePrompt", () => {
     renderPrompt(
       new ApiRequestError("Limit reached", 409, "resource_limit_reached", {
         resource: "custom_category",
-        used: 1,
-        limit: 1,
+        used: 4,
+        limit: 4,
       }),
     );
 
     expect(screen.getByRole("alert", { name: "Custom category limit reached" })).toHaveTextContent(
-      "1 of 1 active custom categories",
+      "4 of 4 active custom categories",
     );
   });
 

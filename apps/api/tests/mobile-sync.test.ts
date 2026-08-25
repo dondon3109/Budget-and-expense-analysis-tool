@@ -1345,19 +1345,43 @@ describe("mobile sync account and category push repository", () => {
       database.prepare("SELECT required_plan FROM categories WHERE id = ?").get(freeCategoryId),
     ).toEqual({ required_plan: "free" });
 
+    for (const [name, id, op, key] of [
+      ["Second free", "12000000-0000-4000-8000-000000000006", "12000000-0000-4000-8000-000000000004", "12000000-0000-4000-8000-000000000005"],
+      ["Third free", "12000000-0000-4000-8000-00000000000a", "12000000-0000-4000-8000-00000000000b", "12000000-0000-4000-8000-00000000000c"],
+      ["Fourth free", "12000000-0000-4000-8000-00000000000d", "12000000-0000-4000-8000-00000000000e", "12000000-0000-4000-8000-00000000000f"],
+    ] as const) {
+      const result = await repository.push(env, "tenant-1", {
+        protocolVersion: 1,
+        clientId,
+        operations: [
+          {
+            operationId: op,
+            idempotencyKey: key,
+            entityType: "category",
+            entityId: id,
+            operationType: "create",
+            baseRevision: 0,
+            dependencyIds: [],
+            payload: { name, kind: "expense", color: "#1D4ED8" },
+          },
+        ],
+      });
+      expect(result.results[0]).toMatchObject({ status: "acknowledged" });
+    }
+
     const limited = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
       operations: [
         {
-          operationId: "12000000-0000-4000-8000-000000000004",
-          idempotencyKey: "12000000-0000-4000-8000-000000000005",
+          operationId: "12000000-0000-4000-8000-000000000014",
+          idempotencyKey: "12000000-0000-4000-8000-000000000015",
           entityType: "category",
-          entityId: "12000000-0000-4000-8000-000000000006",
+          entityId: "12000000-0000-4000-8000-000000000016",
           operationType: "create",
           baseRevision: 0,
           dependencyIds: [],
-          payload: { name: "Second free", kind: "expense", color: "#1D4ED8" },
+          payload: { name: "Fifth free", kind: "expense", color: "#1D4ED8" },
         },
       ],
     });

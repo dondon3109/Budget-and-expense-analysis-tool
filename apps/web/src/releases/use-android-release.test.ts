@@ -3,6 +3,7 @@
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import shippedReleaseJson from "./androidRelease.json";
 import { useAndroidRelease } from "./useAndroidRelease";
 
 const VALID_METADATA = {
@@ -76,11 +77,11 @@ describe("useAndroidRelease", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { result, unmount } = renderHook(() => useAndroidRelease());
-    expect(result.current.release?.versionName).toBe("0.2.9-beta");
+    expect(result.current.release?.versionName).toBe(shippedReleaseJson.versionName);
     unmount();
     rejectFirst?.(new DOMException("The operation was aborted.", "AbortError"));
     await Promise.resolve();
-    expect(result.current.release?.downloadPath).toContain("zoption-beta-0.2.9.apk");
+    expect(result.current.release?.downloadPath).toBe(shippedReleaseJson.downloadPath);
   });
 
   it("keeps the shipped R2 snapshot when the live request fails", async () => {
@@ -88,9 +89,7 @@ describe("useAndroidRelease", () => {
     const { result } = renderHook(() => useAndroidRelease());
     await Promise.resolve();
     expect(result.current.status).toBe("remote");
-    expect(result.current.release?.downloadPath).toBe(
-      "https://downloads.zoption.site/android/zoption-beta-0.2.9.apk",
-    );
+    expect(result.current.release?.downloadPath).toBe(shippedReleaseJson.downloadPath);
   });
 });
 

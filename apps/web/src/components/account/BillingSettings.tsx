@@ -160,7 +160,7 @@ function statusCopy(
             label: "Free plan",
             heading: "You’re using the Free plan",
             description:
-              "Core tracking stays free, with one custom category. Pro adds higher AI and import limits plus advanced management and analytics.",
+              "Core tracking stays free, with four custom categories. Pro adds higher AI and import limits plus advanced management and analytics.",
             tone: "neutral",
           };
   }

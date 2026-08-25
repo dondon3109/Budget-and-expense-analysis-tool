@@ -139,7 +139,7 @@ describe("assistant api transport", () => {
         {
           error: "assistant_cycle_limit_reached",
           message: "No AI questions remaining this cycle.",
-          details: { feature: "assistant_question", used: 4, limit: 4 },
+          details: { feature: "assistant_question", used: 10, limit: 10 },
         },
         402,
       ),

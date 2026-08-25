@@ -97,7 +97,7 @@ Memories live in `assistant_memories` (kind `preference`, `fact`, or `summary`),
 
 ## Assistant usage cycles
 
-Free tenants receive 4 provider-backed assistant questions per 14-day cycle, and Pro tenants receive 100. A tenant's first provider-backed question establishes an immutable cycle anchor. Each later period is an exact 14×24-hour interval from that anchor; inactivity can skip elapsed periods but never shifts or restarts the cadence.
+Free tenants receive 10 provider-backed assistant questions per 14-day cycle, and Pro tenants receive 100. A tenant's first provider-backed question establishes an immutable cycle anchor. Each later period is an exact 14×24-hour interval from that anchor; inactivity can skip elapsed periods but never shifts or restarts the cadence.
 
 Deterministic clarifications, date-resolution prompts, and compliance redirects do not consume assistant usage. Provider-backed usage is consumed immediately before the provider call, so an upstream timeout or provider failure still counts. File imports remain on their separate Manila calendar-month allowance.
 

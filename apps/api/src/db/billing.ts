@@ -21,7 +21,7 @@ import { assistantUsageRepository } from "./assistant-usage";
 
 export { EFFECTIVE_PRO_ENTITLEMENT_CONDITION } from "../billing/usage-limits";
 
-export const FREE_CUSTOM_CATEGORY_LIMIT = 1;
+export const FREE_CUSTOM_CATEGORY_LIMIT = 4;
 
 export const PRO_BILLING_STATUSES = ["active", "trialing"] as const;
 export const NON_TERMINAL_BILLING_STATUSES = ["active", "trialing", "past_due", "paused"] as const;

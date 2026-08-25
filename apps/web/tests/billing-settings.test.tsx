@@ -59,7 +59,7 @@ function summary(
       {
         feature: "assistant_question",
         used: 2,
-        limit: paid ? 100 : 4,
+        limit: paid ? 100 : 10,
         periodKind: "anchored_14_day",
         periodStartedAt: "2026-07-18T00:00:00.000Z",
         resetsAt: "2026-08-01T00:00:00.000Z",
@@ -73,7 +73,7 @@ function summary(
         resetsAt: "2026-08-01T00:00:00.000Z",
       },
     ],
-    allowances: [{ resource: "custom_category", used: 1, limit: paid ? null : 1 }],
+    allowances: [{ resource: "custom_category", used: 1, limit: paid ? null : 4 }],
   } satisfies BillingSummary;
   return {
     ...base,
@@ -507,10 +507,10 @@ describe("BillingSettings", () => {
     renderSettings(summary(null));
 
     expect(await screen.findByText("Free and Pro, side by side")).toBeInTheDocument();
-    expect(screen.getByText("4 questions per 14-day cycle")).toBeInTheDocument();
+    expect(screen.getByText("10 questions per 14-day cycle")).toBeInTheDocument();
     expect(screen.getByText("10 committed imports per month")).toBeInTheDocument();
     expect(
-      screen.getByText("1 active custom category, plus included starters"),
+      screen.getByText("4 active custom categories, plus included starters"),
     ).toBeInTheDocument();
     expect(screen.getByText("Unlimited active custom categories")).toBeInTheDocument();
     expect(screen.getByText("Weekly cashflow view")).toBeInTheDocument();

@@ -16,10 +16,12 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Increased Free plan limits to 10 AI assistant questions per 14-day cycle (was 4) and 4 active custom categories (was 1), with Pro unchanged at 100 questions and unlimited categories.
 - Renamed the mobile Transactions tab cash flow header label from `Net` to `Balance`.
 - Redesigned the mobile Budgets screen with interactive month navigation, a comprehensive summary card, category spending progress bars, and emoji avatar badges.
 - Redesigned the mobile home balance card with a monthly net momentum indicator and per-account breakdown.
 - Updated the mobile home month summary to a 2x2 grid layout with semantic icon badges and high-contrast tone styling.
+- Redesigned the mobile update notification dialog with a scrollable changelog container and formatted bullet points for release notes.
 - Redesigned the web AI Assistant Memory panel with clearer privacy messaging, strategy cards with interest vs momentum badges, and a safe clear-memory confirmation flow.
 
 ### Fixed

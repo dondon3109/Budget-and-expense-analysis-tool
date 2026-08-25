@@ -160,10 +160,31 @@ describe("Android update prompt", () => {
     const updates = controller();
     await render(<AndroidUpdateOverlayView updates={updates} />);
     expect(screen.getByRole("header", { name: "Update available" })).toBeTruthy();
+    expect(screen.getByText("WHAT’S NEW")).toBeTruthy();
+    expect(screen.getByText("Receipt scan polish and in-app updates.")).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "Update now" }));
     expect(updates.updateNow).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByRole("button", { name: "Later" }));
     expect(updates.later).toHaveBeenCalledTimes(1);
+  });
+
+  it("splits multi-sentence paragraph notes into individual change items", async () => {
+    const updates = controller({
+      latest: parsedRelease({
+        notes: [
+          "Added a quick action bar to the mobile home dashboard. Added a recent activity card to the mobile home screen. Redesigned the balance card.",
+        ],
+      }),
+    });
+    await render(<AndroidUpdateOverlayView updates={updates} />);
+    expect(screen.getByText("WHAT’S NEW")).toBeTruthy();
+    expect(
+      screen.getByText("Added a quick action bar to the mobile home dashboard."),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("Added a recent activity card to the mobile home screen."),
+    ).toBeTruthy();
+    expect(screen.getByText("Redesigned the balance card.")).toBeTruthy();
   });
 
   it("directs a reinstall-required update to the install page", async () => {
@@ -177,4 +198,39 @@ describe("Android update prompt", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Open install page" }));
     expect(updates.openInstallPage).toHaveBeenCalledTimes(1);
   });
+
+  it("shows download progress in the overlay", async () => {
+    const updates = controller({
+      status: "downloading",
+      progress: { bytesWritten: 50 * 1024 * 1024, totalBytes: 100 * 1024 * 1024 },
+    });
+    await render(<AndroidUpdateOverlayView updates={updates} />);
+    expect(screen.getByRole("header", { name: "Downloading update" })).toBeTruthy();
+    expect(screen.getByText(/Downloading 50.0 MB of 100.0 MB…/)).toBeTruthy();
+    expect(screen.getByRole("progressbar")).toBeTruthy();
+  });
+
+  it("shows verifying state in the overlay", async () => {
+    const updates = controller({
+      status: "verifying",
+    });
+    await render(<AndroidUpdateOverlayView updates={updates} />);
+    expect(screen.getByRole("header", { name: "Verifying update" })).toBeTruthy();
+    expect(
+      screen.getByText("Checking the package, version, checksum, and signing certificate…"),
+    ).toBeTruthy();
+  });
+
+  it("shows failed state with error in the overlay", async () => {
+    const updates = controller({
+      status: "failed",
+      error: "The update package checksum did not match.",
+    });
+    await render(<AndroidUpdateOverlayView updates={updates} />);
+    expect(screen.getByRole("header", { name: "Update could not continue" })).toBeTruthy();
+    expect(screen.getByText("The update package checksum did not match.")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+    expect(updates.updateNow).toHaveBeenCalledTimes(1);
+  });
 });
+

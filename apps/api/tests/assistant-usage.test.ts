@@ -76,10 +76,10 @@ describe("assistant cycle repository", () => {
   it("does not create an anchor while reading unused allowance", async () => {
     const { env, database } = environment();
 
-    await expect(getAssistantCycleUsage(env, TENANT_ID, 4)).resolves.toEqual({
+    await expect(getAssistantCycleUsage(env, TENANT_ID, 10)).resolves.toEqual({
       feature: "assistant_question",
       used: 0,
-      limit: 4,
+      limit: 10,
       periodKind: "anchored_14_day",
       periodStartedAt: null,
       resetsAt: null,
@@ -89,17 +89,17 @@ describe("assistant cycle repository", () => {
     ).toEqual({ count: 0 });
   });
 
-  it("allows four Free uses and rejects the fifth atomically", async () => {
+  it("allows ten Free uses and rejects the eleventh atomically", async () => {
     const { env, database } = environment();
 
-    await Promise.all(Array.from({ length: 4 }, () => assistantUsageRepository.consumeUsage(env, TENANT_ID)));
+    await Promise.all(Array.from({ length: 10 }, () => assistantUsageRepository.consumeUsage(env, TENANT_ID)));
     await expect(assistantUsageRepository.consumeUsage(env, TENANT_ID)).rejects.toMatchObject({
       status: 409,
       code: "assistant_cycle_limit_reached",
       details: {
         feature: "assistant_question",
-        used: 4,
-        limit: 4,
+        used: 10,
+        limit: 10,
         periodKind: "anchored_14_day",
       },
     });
@@ -107,7 +107,7 @@ describe("assistant cycle repository", () => {
       database
         .prepare("SELECT count, allowance FROM billing_assistant_cycle_usage WHERE tenant_id = ?")
         .get(TENANT_ID),
-    ).toEqual({ count: 4, allowance: 4 });
+    ).toEqual({ count: 10, allowance: 10 });
   });
 
   it("allows one hundred Pro uses and rejects the 101st", async () => {
@@ -130,7 +130,7 @@ describe("assistant cycle repository", () => {
     const anchor = Math.floor(Date.now() / 1_000) - ASSISTANT_CYCLE_SECONDS * 3;
     database
       .prepare(
-        "INSERT INTO billing_assistant_cycle_usage (tenant_id, anchor_at_epoch, period_index, count, allowance) VALUES (?, ?, 0, 4, 4)",
+        "INSERT INTO billing_assistant_cycle_usage (tenant_id, anchor_at_epoch, period_index, count, allowance) VALUES (?, ?, 0, 10, 10)",
       )
       .run(TENANT_ID, anchor);
 
@@ -160,7 +160,7 @@ describe("assistant cycle repository", () => {
     const anchor = 1_000;
     database
       .prepare(
-        "INSERT INTO billing_assistant_cycle_usage (tenant_id, anchor_at_epoch, period_index, count, allowance) VALUES (?, ?, 0, 4, 4)",
+        "INSERT INTO billing_assistant_cycle_usage (tenant_id, anchor_at_epoch, period_index, count, allowance) VALUES (?, ?, 0, 10, 10)",
       )
       .run(TENANT_ID, anchor);
 
@@ -168,10 +168,10 @@ describe("assistant cycle repository", () => {
       getAssistantCycleUsage(
         env,
         TENANT_ID,
-        4,
+        10,
         new Date((anchor + ASSISTANT_CYCLE_SECONDS * 2) * 1_000),
       ),
-    ).resolves.toMatchObject({ used: 0, limit: 4, periodKind: "anchored_14_day" });
+    ).resolves.toMatchObject({ used: 0, limit: 10, periodKind: "anchored_14_day" });
     expect(
       database
         .prepare("SELECT period_index AS periodIndex, count FROM billing_assistant_cycle_usage")
@@ -181,7 +181,7 @@ describe("assistant cycle repository", () => {
 
   it("applies entitlement changes without restarting the cycle", async () => {
     const { env, database } = environment();
-    for (let index = 0; index < 4; index += 1) {
+    for (let index = 0; index < 10; index += 1) {
       await assistantUsageRepository.consumeUsage(env, TENANT_ID);
     }
     const anchor = database
@@ -195,12 +195,12 @@ describe("assistant cycle repository", () => {
     database.prepare("DELETE FROM effective_pro_entitlements WHERE tenant_id = ?").run(TENANT_ID);
 
     await expect(assistantUsageRepository.consumeUsage(env, TENANT_ID)).rejects.toMatchObject({
-      details: { used: 5, limit: 4 },
+      details: { used: 11, limit: 10 },
     });
     expect(
       database
         .prepare("SELECT anchor_at_epoch AS anchorAtEpoch, count FROM billing_assistant_cycle_usage")
         .get(),
-    ).toEqual({ anchorAtEpoch: anchor.anchorAtEpoch, count: 5 });
+    ).toEqual({ anchorAtEpoch: anchor.anchorAtEpoch, count: 11 });
   });
 });

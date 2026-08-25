@@ -137,13 +137,13 @@ describe("custom category allowances", () => {
     };
   }
 
-  it("returns one Free custom category and unlimited Pro categories", async () => {
+  it("returns four Free custom categories and unlimited Pro categories", async () => {
     await expect(
       getCustomCategoryAllowance(categoryEnvironment(0), "user:user-1", false),
     ).resolves.toEqual({
       resource: "custom_category",
       used: 0,
-      limit: 1,
+      limit: 4,
     });
     await expect(
       getCustomCategoryAllowance(categoryEnvironment(8), "user:user-1", true),
@@ -163,7 +163,7 @@ describe("custom category allowances", () => {
       details: {
         resource: "custom_category",
         used: 2,
-        limit: 1,
+        limit: 4,
         billingPath: "/app/settings#plan-and-billing",
       },
     });

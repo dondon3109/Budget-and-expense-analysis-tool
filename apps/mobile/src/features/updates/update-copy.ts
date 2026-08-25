@@ -15,13 +15,103 @@ export function formatDownloadProgress(bytesWritten: number, totalBytes: number)
   return `Downloading ${formatApkSize(bytesWritten)} of ${formatApkSize(total)}…`;
 }
 
+/**
+ * Normalizes release notes from arbitrary inputs (array of items, bulleted markdown,
+ * newline-delimited lists, or single paragraphs containing multiple sentences) into a
+ * clean list of individual change descriptions.
+ */
+export function normalizeReleaseNotes(notes: readonly string[]): string[] {
+  const result: string[] = [];
+
+  for (const rawNote of notes) {
+    if (typeof rawNote !== "string") continue;
+
+    // Split by newlines first
+    const lines = rawNote.split(/\r?\n/);
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      // Remove leading bullet or list markers (•, -, *, +, 1., 1), etc.)
+      const stripped = trimmed
+        .replace(/^[\u2022\u2023\u25E6\u2043\u2219•\-*+]\s*/u, "")
+        .replace(/^\d+[.)]\s*/, "")
+        .trim();
+
+      if (!stripped) continue;
+
+      // If a single note contains multiple sentences in a single paragraph,
+      // split them so each sentence / change becomes its own list item.
+      const sentences = splitSentenceParagraph(stripped);
+      for (const sentence of sentences) {
+        const item = sentence
+          .replace(/^[\u2022\u2023\u25E6\u2043\u2219•\-*+]\s*/u, "")
+          .replace(/^\d+[.)]\s*/, "")
+          .trim();
+        if (item) {
+          result.push(item);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+function splitSentenceParagraph(text: string): string[] {
+  // If short and has no sentence boundaries, keep intact
+  if (text.length < 80 || !/[.!?]\s+[A-Z]/.test(text)) {
+    return [text];
+  }
+
+  const sentences: string[] = [];
+  let current = "";
+
+  for (let i = 0; i < text.length; i++) {
+    current += text[i];
+    const char = text[i];
+    if (char === "." || char === "!" || char === "?") {
+      // Look ahead for space + capital letter
+      if (i + 2 < text.length && text[i + 1] === " " && /[A-Z]/.test(text[i + 2])) {
+        const words = current.trim().split(/\s+/);
+        const lastWord = (words[words.length - 1] ?? "").toLowerCase();
+        // Ignore common abbreviations
+        if (
+          lastWord === "e.g." ||
+          lastWord === "i.e." ||
+          lastWord === "vs." ||
+          lastWord === "mr." ||
+          lastWord === "ms." ||
+          lastWord === "dr." ||
+          lastWord === "etc." ||
+          lastWord === "v." ||
+          lastWord === "ver."
+        ) {
+          continue;
+        }
+        sentences.push(current.trim());
+        current = "";
+        i++; // skip the space
+      }
+    }
+  }
+
+  if (current.trim()) {
+    sentences.push(current.trim());
+  }
+
+  return sentences.length > 0 ? sentences : [text];
+}
+
 export function updateAvailableMessage(
   installed: InstalledAndroidApp,
   latest: ParsedAndroidRelease,
 ): string {
+  const notes = normalizeReleaseNotes(latest.notes);
   const bulletNotes =
-    latest.notes.length > 0
-      ? `\n\n${latest.notes.map((note) => (note.startsWith("•") || note.startsWith("-") ? note : `• ${note}`)).join("\n")}`
+    notes.length > 0
+      ? `\n\n${notes.map((note) => `• ${note}`).join("\n")}`
       : "";
   return `You have ${installed.versionName}. Version ${latest.versionName} is ${formatApkSize(latest.size)}.${bulletNotes}`;
 }

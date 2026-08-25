@@ -70,7 +70,7 @@ describe("CategoryManager", () => {
       canManageSponsoredSeats: false,
       nonTerminalSubscriptionCount: 0,
       usages: [],
-      allowances: [{ resource: "custom_category", used: 0, limit: 1 }],
+      allowances: [{ resource: "custom_category", used: 0, limit: 4 }],
     });
   });
 
@@ -113,7 +113,7 @@ describe("CategoryManager", () => {
       canManageSponsoredSeats: false,
       nonTerminalSubscriptionCount: 0,
       usages: [],
-      allowances: [{ resource: "custom_category", used: 1, limit: 1 }],
+      allowances: [{ resource: "custom_category", used: 4, limit: 4 }],
     });
 
     renderManager([
@@ -125,9 +125,9 @@ describe("CategoryManager", () => {
     const usage = await screen.findByRole("progressbar", {
       name: "Free plan custom categories",
     });
-    expect(usage).toHaveAttribute("aria-valuenow", "1");
-    expect(usage).toHaveAttribute("aria-valuemax", "1");
-    expect(screen.getByText(/Free includes 1 active custom category/)).toBeInTheDocument();
+    expect(usage).toHaveAttribute("aria-valuenow", "4");
+    expect(usage).toHaveAttribute("aria-valuemax", "4");
+    expect(screen.getByText(/Free includes 4 active custom categories/)).toBeInTheDocument();
     expect(screen.getByLabelText("New category")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Restore Archived custom" })).toBeDisabled();

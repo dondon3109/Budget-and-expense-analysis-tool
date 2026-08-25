@@ -205,7 +205,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
               limit={categoryAllowance.limit}
               detail={
                 isFreePlan
-                  ? "Free includes 1 active custom category. Pro-required categories stay visible but cannot be used until you upgrade; archive a Free custom category to free the slot."
+                  ? "Free includes 4 active custom categories. Pro-required categories stay visible but cannot be used until you upgrade; archive a Free custom category to free the slot."
                   : "Starter and protected Uncategorized categories do not count toward this allowance."
               }
               showUpgrade={isFreePlan}

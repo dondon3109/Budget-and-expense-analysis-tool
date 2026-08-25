@@ -142,11 +142,13 @@ describe("categoryRepository entitlement enforcement", () => {
     createTenant(database, tenantId);
     const env = categoryEnvironment(binding);
 
-    await categoryRepository.create(env, tenantId, {
-      name: "Existing free category",
-      kind: "expense",
-      color: "#111111",
-    });
+    for (const name of ["Free A", "Free B", "Free C", "Free D"]) {
+      await categoryRepository.create(env, tenantId, {
+        name,
+        kind: "expense",
+        color: "#111111",
+      });
+    }
     grantPlatformAdminPro(database, tenantId);
 
     await expect(
@@ -169,11 +171,13 @@ describe("categoryRepository entitlement enforcement", () => {
     createTenant(database, tenantId);
     const env = categoryEnvironment(binding);
 
-    await categoryRepository.create(env, tenantId, {
-      name: "Only free category",
-      kind: "expense",
-      color: "#111111",
-    });
+    for (const name of ["Free A", "Free B", "Free C", "Free D"]) {
+      await categoryRepository.create(env, tenantId, {
+        name,
+        kind: "expense",
+        color: "#111111",
+      });
+    }
 
     await expect(
       categoryRepository.create(env, tenantId, {
@@ -186,8 +190,8 @@ describe("categoryRepository entitlement enforcement", () => {
       code: "resource_limit_reached",
       details: {
         resource: "custom_category",
-        used: 1,
-        limit: 1,
+        used: 4,
+        limit: 4,
         billingPath: "/app/settings#plan-and-billing",
       },
     });

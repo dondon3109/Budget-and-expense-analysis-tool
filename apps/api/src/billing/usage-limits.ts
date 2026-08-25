@@ -1,7 +1,7 @@
 import type { BillingFeature } from "@zoption/shared";
 
 export const FREE_LIMITS: Record<BillingFeature, number> = {
-  assistant_question: 4,
+  assistant_question: 10,
   file_import: 1,
 };
 
