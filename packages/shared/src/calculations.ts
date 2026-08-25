@@ -119,11 +119,16 @@ function monthEnd(isoDate: string): string {
   return shiftUtcDays(shiftUtcMonths(isoDate, 1), -1);
 }
 
-export function buildCashflowTrend(
-  transactions: readonly Pick<TransactionRecord, "date" | "kind" | "amountMinor">[],
+interface CashflowPoints {
+  range: { from: string; to: string };
+  granularity: "day" | "month";
+  points: Map<string, { incomeMinor: number; expenseMinor: number }>;
+}
+
+function cashflowPoints(
   view: CashflowTrend["view"],
   anchorDate: string,
-): CashflowTrend {
+): CashflowPoints {
   const range =
     view === "weekly"
       ? { from: shiftUtcDays(anchorDate, -6), to: anchorDate }
@@ -143,9 +148,23 @@ export function buildCashflowTrend(
     }
   }
 
-  const points = new Map(
-    pointDates.map((date) => [date, { date, incomeMinor: 0, expenseMinor: 0 }]),
-  );
+  return {
+    range,
+    granularity,
+    points: new Map(pointDates.map((date) => [date, { date, incomeMinor: 0, expenseMinor: 0 }])),
+  };
+}
+
+function bucketKeyFor(granularity: "day" | "month", isoDate: string): string {
+  return granularity === "day" ? isoDate : monthStart(isoDate);
+}
+
+export function buildCashflowTrend(
+  transactions: readonly Pick<TransactionRecord, "date" | "kind" | "amountMinor">[],
+  view: CashflowTrend["view"],
+  anchorDate: string,
+): CashflowTrend {
+  const { range, granularity, points } = cashflowPoints(view, anchorDate);
 
   for (const transaction of transactions) {
     if (
@@ -156,12 +175,39 @@ export function buildCashflowTrend(
       continue;
     }
 
-    const bucketDate = granularity === "day" ? transaction.date : monthStart(transaction.date);
-    const point = points.get(bucketDate);
+    const point = points.get(bucketKeyFor(granularity, transaction.date));
     if (!point) continue;
 
     if (transaction.kind === "income") point.incomeMinor += Math.abs(transaction.amountMinor);
     if (transaction.kind === "expense") point.expenseMinor += Math.abs(transaction.amountMinor);
+  }
+
+  return { view, granularity, range, points: [...points.values()] };
+}
+
+export interface CashflowDayTotals {
+  /** ISO day whose income/expense sums were already aggregated and normalized. */
+  date: string;
+  incomeMinor: number;
+  expenseMinor: number;
+}
+
+/**
+ * Builds the same trend as buildCashflowTrend from per-day SQL aggregates. The
+ * totals must already exclude transfers and be normalized to a PHP base.
+ */
+export function buildCashflowTrendFromDayTotals(
+  totals: readonly CashflowDayTotals[],
+  view: CashflowTrend["view"],
+  anchorDate: string,
+): CashflowTrend {
+  const { range, granularity, points } = cashflowPoints(view, anchorDate);
+
+  for (const total of totals) {
+    const point = points.get(bucketKeyFor(granularity, total.date));
+    if (!point) continue;
+    point.incomeMinor += total.incomeMinor;
+    point.expenseMinor += total.expenseMinor;
   }
 
   return { view, granularity, range, points: [...points.values()] };

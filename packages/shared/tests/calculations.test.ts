@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCashflowTrend,
+  buildCashflowTrendFromDayTotals,
   buildDashboardSummary,
   buildTransferFeeInsight,
   summarizeAccountBalances,
@@ -132,6 +133,53 @@ describe("cashflow trend calculations", () => {
       "2026-01-01",
       "2026-02-01",
     ]);
+  });
+
+  it("folds per-day SQL totals into the same buckets as raw transactions", () => {
+    const fromTotals = buildCashflowTrendFromDayTotals(
+      [
+        { date: "2026-07-23", incomeMinor: 0, expenseMinor: 2_500 },
+        { date: "2026-07-27", incomeMinor: 8_000, expenseMinor: 0 },
+        // Outside the weekly range is ignored.
+        { date: "2026-07-20", incomeMinor: 999, expenseMinor: 0 },
+      ],
+      "weekly",
+      "2026-07-27",
+    );
+    const fromRaw = buildCashflowTrend(
+      [
+        { date: "2026-07-27", kind: "income", amountMinor: 8_000 },
+        { date: "2026-07-23", kind: "expense", amountMinor: -2_500 },
+      ],
+      "weekly",
+      "2026-07-27",
+    );
+
+    expect(fromTotals).toEqual(fromRaw);
+  });
+
+  it("rolls day-level SQL totals into month buckets for the six-month view", () => {
+    const trend = buildCashflowTrendFromDayTotals(
+      [
+        { date: "2025-12-15", incomeMinor: 1_000, expenseMinor: 400 },
+        { date: "2025-12-31", incomeMinor: 500, expenseMinor: 100 },
+        { date: "2026-02-05", incomeMinor: 0, expenseMinor: 700 },
+      ],
+      "sixMonth",
+      "2026-02-12",
+    );
+
+    expect(trend.granularity).toBe("month");
+    expect(trend.points.find((point) => point.date === "2025-12-01")).toEqual({
+      date: "2025-12-01",
+      incomeMinor: 1_500,
+      expenseMinor: 500,
+    });
+    expect(trend.points.find((point) => point.date === "2026-02-01")).toEqual({
+      date: "2026-02-01",
+      incomeMinor: 0,
+      expenseMinor: 700,
+    });
   });
 });
 

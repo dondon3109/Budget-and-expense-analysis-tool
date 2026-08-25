@@ -1,5 +1,6 @@
 import {
   buildCashflowTrend,
+  buildCashflowTrendFromDayTotals,
   buildDashboardSummary,
   buildTransferFeeInsight,
   summarizeAccountBalances,
@@ -32,37 +33,40 @@ export async function loadCashflowTrend(
   query: { view: CashflowTrendView; anchorDate: string },
 ): Promise<CashflowTrend> {
   const preview = buildCashflowTrend([], query.view, query.anchorDate);
-  const db = drizzle(env.DB);
-  const rows = await db
-    .select({
-      date: transactions.date,
-      amountMinor: transactions.amountMinor,
-      currency: transactions.currency,
-      kind: transactions.kind,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.tenantId, tenantId),
-        gte(transactions.date, preview.range.from),
-        lte(transactions.date, preview.range.to),
-      ),
-    );
-
-  // Convert USD to a common PHP base using the stored daily rate so the
-  // weekly, monthly, and six-month cashflow view is a single consistent
-  // picture rather than silently mixing currencies. Transfers are excluded by
-  // buildCashflowTrend. A missing row falls back to the latest stored rate.
+  // Aggregate per day in SQL and convert USD subtotals to a PHP base with the
+  // stored daily rate. FLOOR(x + 0.5) mirrors Math.round exactly in IEEE
+  // doubles, keeping per-row conversion identical to the JS implementation.
+  // Transfers are excluded by buildCashflowTrendFromDayTotals' input contract.
+  // A missing rate row falls back to the latest stored rate.
   const usdToPhp = await loadUsdToPhp(env);
-  const normalized = rows.map((row) => ({
-    ...row,
-    amountMinor:
-      row.currency === "USD"
-        ? Math.round((row.amountMinor / 100) * usdToPhp) * 100
-        : row.amountMinor,
-  }));
+  const totalsResult = await env.DB.prepare(
+      `SELECT date,
+              COALESCE(SUM(CASE WHEN kind = 'income' THEN convertedMinor ELSE 0 END), 0) AS incomeMinor,
+              COALESCE(SUM(CASE WHEN kind = 'expense' THEN convertedMinor ELSE 0 END), 0) AS expenseMinor
+       FROM (
+         SELECT date,
+                kind,
+                CASE WHEN currency = 'USD'
+                     THEN ABS(CAST(FLOOR((amount_minor / 100.0) * ?1 + 0.5) AS INTEGER) * 100)
+                     ELSE ABS(amount_minor)
+                END AS convertedMinor
+         FROM transactions
+         WHERE tenant_id = ?2 AND kind != 'transfer' AND date >= ?3 AND date <= ?4
+       )
+       GROUP BY date`,
+    )
+      .bind(usdToPhp, tenantId, preview.range.from, preview.range.to)
+      .all<{ date: string; incomeMinor: number; expenseMinor: number }>();
 
-  return buildCashflowTrend(normalized, query.view, query.anchorDate);
+  return buildCashflowTrendFromDayTotals(
+    totalsResult.results.map((row) => ({
+      date: row.date,
+      incomeMinor: Number(row.incomeMinor),
+      expenseMinor: Number(row.expenseMinor),
+    })),
+    query.view,
+    query.anchorDate,
+  );
 }
 
 async function loadBalancesByCurrency(
