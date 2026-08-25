@@ -1,24 +1,23 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.14-beta",
-  "versionCode": 20314,
-  "filename": "zoption-beta-0.2.14.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.14.apk",
-  "sha256": "d05de4651fa4580d768aee38e1b3f17d4a1b898e82c667212e545a7d35833491",
-  "sizeBytes": 142727211,
-  "sizeLabel": "142,727,211 bytes (136.12 MiB)",
-  "releaseDate": "2026-08-24",
-  "releaseDateLabel": "August 24, 2026",
+  "versionName": "0.2.15-beta",
+  "versionCode": 20315,
+  "filename": "zoption-beta-0.2.15.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.15.apk",
+  "sha256": "528a36e6f7264a56e24ed8e2e4ac3e5009bce7eb03fd63c97cd7f482f00c08fb",
+  "sizeBytes": 142746991,
+  "sizeLabel": "142,746,991 bytes (136.13 MiB)",
+  "releaseDate": "2026-08-25",
+  "releaseDateLabel": "August 25, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Added a quick action bar to the mobile home dashboard for 1-tap transaction entry, receipt scanning, category budget reviews, and AI assistant queries.",
-    "Added a recent activity card to the mobile home screen displaying the latest transactions with quick editor navigation.",
-    "Added a structured 3-step onboarding guide to the mobile home screen for new workspaces.",
-    "Added capability badges, interactive workspace preview, and value pillars to the mobile welcome landing screen.",
-    "Redesigned the mobile home balance card with a monthly net momentum indicator and per-account breakdown.",
-    "Updated the mobile home month summary to a 2x2 grid layout with semantic icon badges and high-contrast tone styling."
+    "Redesigned the mobile Budgets screen with interactive month navigation, a comprehensive summary card, category spending progress bars, and emoji avatar badges.",
+    "Added an interactive zero-budget state with 1-tap category quick-start limits on mobile.",
+    "Added live assistant status indicators across the mobile More tab and Assistant screens with offline fallback navigation.",
+    "Redesigned the mobile update notification dialog with a scrollable changelog container and formatted bullet points.",
+    "Increased Free plan limits to 10 AI assistant questions per 14-day cycle and 4 active custom categories."
   ]
 }
