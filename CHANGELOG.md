@@ -4,33 +4,63 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Refreshed the public Android install metadata snapshot for the signed `0.2.16-beta` APK.
+
+## 2.17.0 — 2026-08-25
+
 ### Added
 
 - Added prominent header and floating add buttons, status filter chips, category emojis, payment account badges, and enhanced monthly cost metrics to the mobile Subscriptions tab.
-- Added a quick action bar to the mobile home dashboard for 1-tap transaction entry, receipt scanning, category budget reviews, and AI assistant queries.
-- Added a recent activity card to the mobile home screen displaying the latest transactions with quick editor navigation.
-- Added a structured 3-step onboarding guide to the mobile home screen for new workspaces.
-- Added capability badges, interactive workspace preview, and value pillars to the mobile welcome landing screen.
-- Added an interactive zero-budget state with 1-tap category quick-start limits on mobile.
-- Added live assistant status indicators (Online/Available vs Offline/Unavailable) across the mobile More tab and Assistant screens with offline fallback navigation.
-- Added explanatory debt payoff cards, response style summary, and rich fact source indicators to the web AI Assistant Memory panel.
 
 ### Changed
 
 - Updated the mobile light theme to a crisp pure white palette instead of warm paper, and cleaned up theme labels in the mobile theme picker.
 - Updated the mobile Budget tab month selector UI to match the Transactions tab design.
 - Streamlined mobile tab header layouts and typography scales for compact screens.
-- Increased Free plan limits to 10 AI assistant questions per 14-day cycle (was 4) and 4 active custom categories (was 1), with Pro unchanged at 100 questions and unlimited categories.
-- Renamed the mobile Transactions tab cash flow header label from `Net` to `Balance`.
-- Redesigned the mobile Budgets screen with interactive month navigation, a comprehensive summary card, category spending progress bars, and emoji avatar badges.
-- Redesigned the mobile home balance card with a monthly net momentum indicator and per-account breakdown.
-- Updated the mobile home month summary to a 2x2 grid layout with semantic icon badges and high-contrast tone styling.
-- Redesigned the mobile update notification dialog with a scrollable changelog container and formatted bullet points for release notes.
-- Redesigned the web AI Assistant Memory panel with clearer privacy messaging, strategy cards with interest vs momentum badges, and a safe clear-memory confirmation flow.
+
+## 2.16.1 — 2026-08-25
 
 ### Fixed
 
-- Refreshed the public Android install metadata snapshot for the signed `0.2.13-beta` APK.
+- Refreshed the public Android install metadata snapshot for the signed `0.2.15-beta` APK.
+
+## 2.16.0 — 2026-08-25
+
+### Added
+
+- Added an interactive zero-budget state with 1-tap category quick-start limits on mobile.
+- Added live assistant status indicators (Online/Available vs Offline/Unavailable) across the mobile More tab and Assistant screens with offline fallback navigation.
+- Added explanatory debt payoff cards, response style summary, and rich fact source indicators to the web AI Assistant Memory panel.
+
+### Changed
+
+- Increased Free plan limits to 10 AI assistant questions per 14-day cycle (was 4) and 4 active custom categories (was 1), with Pro unchanged at 100 questions and unlimited categories.
+- Renamed the mobile Transactions tab cash flow header label from `Net` to `Balance`.
+- Redesigned the mobile Budgets screen with interactive month navigation, a comprehensive summary card, category spending progress bars, and emoji avatar badges.
+- Redesigned the mobile update notification dialog with a scrollable changelog container and formatted bullet points for release notes.
+- Redesigned the web AI Assistant Memory panel with clearer privacy messaging, strategy cards with interest vs momentum badges, and a safe clear-memory confirmation flow.
+
+## 2.15.1 — 2026-08-24
+
+### Fixed
+
+- Refreshed the public Android install metadata snapshot for the signed `0.2.14-beta` APK.
+
+## 2.15.0 — 2026-08-24
+
+### Added
+
+- Added a quick action bar to the mobile home dashboard for 1-tap transaction entry, receipt scanning, category budget reviews, and AI assistant queries.
+- Added a recent activity card to the mobile home screen displaying the latest transactions with quick editor navigation.
+- Added a structured 3-step onboarding guide to the mobile home screen for new workspaces.
+- Added capability badges, interactive workspace preview, and value pillars to the mobile welcome landing screen.
+
+### Changed
+
+- Redesigned the mobile home balance card with a monthly net momentum indicator and per-account breakdown.
+- Updated the mobile home month summary to a 2x2 grid layout with semantic icon badges and high-contrast tone styling.
 
 ## 2.14.0 — 2026-08-24
 
