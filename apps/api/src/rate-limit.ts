@@ -36,6 +36,8 @@ export const d1RateLimiter: RateLimiter = {
     const id = `${policy.scope}:${clientHash}:${windowStart}`;
     const expiresAt = new Date((windowStart + policy.windowSeconds * 2) * 1000).toISOString();
 
+    // Expired rows are removed by the maintenance cron (deleteExpiredRateLimits),
+    // never on the request path.
     const row = await env.DB.prepare(
       `INSERT INTO rate_limits (id, scope, client_hash, window_start, count, expires_at)
        VALUES (?, ?, ?, ?, 1, ?)
@@ -46,11 +48,6 @@ export const d1RateLimiter: RateLimiter = {
       .first<{ count: number }>();
 
     if (!row) throw new Error("The rate limit counter could not be updated.");
-    if (row.count === 1) {
-      await env.DB.prepare("DELETE FROM rate_limits WHERE expires_at < ?")
-        .bind(new Date(nowSeconds * 1000).toISOString())
-        .run();
-    }
 
     return {
       allowed: row.count <= policy.limit,
@@ -60,3 +57,11 @@ export const d1RateLimiter: RateLimiter = {
     };
   },
 };
+
+/** Maintenance entry point: delete counters whose window has fully expired. */
+export async function deleteExpiredRateLimits(env: Bindings): Promise<number> {
+  const result = await env.DB.prepare("DELETE FROM rate_limits WHERE expires_at < ?")
+    .bind(new Date().toISOString())
+    .run();
+  return result.meta.changes ?? 0;
+}

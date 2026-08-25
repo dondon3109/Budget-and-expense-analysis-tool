@@ -6,6 +6,7 @@ import { billingRepository } from "./db/billing";
 import { compactMobileSyncChanges } from "./db/mobile-sync";
 import { refreshDailyFxRate } from "./fx/rates";
 import { creditDueInterest } from "./interest/scheduled-credit";
+import { deleteExpiredRateLimits } from "./rate-limit";
 import { validateRequiredApiBindings } from "./readiness";
 import { bugReportService } from "./support/bug-reports";
 import type { Bindings } from "./types";
@@ -30,6 +31,10 @@ export default {
         console.log(
           JSON.stringify({ message: "Bug report notifications retried", ...notifications }),
         );
+      }
+      const expiredCounters = await deleteExpiredRateLimits(env);
+      if (expiredCounters > 0) {
+        console.log(JSON.stringify({ message: "Expired rate limit counters deleted", expiredCounters }));
       }
       return;
     }
