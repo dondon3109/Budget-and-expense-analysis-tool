@@ -32,6 +32,9 @@ function createCapturingDatabase(
         },
       };
     },
+    async batch(batchStatements: D1PreparedStatement[]) {
+      return batchStatements.map(() => ({ results: options.allResults ?? [] }));
+    },
   } as unknown as D1Database;
 }
 
@@ -439,7 +442,7 @@ describe("transactionRepository unpaged reads", () => {
     expect(statements[0]?.query).not.toContain("OFFSET");
   });
 
-  it("keeps calendar unpaged and enforces its 5,000-row guard", async () => {
+  it("keeps calendar unpaged, excludes the month boundary, and batches its exists probe", async () => {
     const statements: CapturedStatement[] = [];
     const env: Bindings = {
       DB: createCapturingDatabase(statements, {
@@ -450,9 +453,14 @@ describe("transactionRepository unpaged reads", () => {
     await expect(
       transactionRepository.calendar(env, "tenant-1", { month: "2026-07-01" }),
     ).rejects.toMatchObject({ status: 413, code: "calendar_month_too_large" });
-    expect(statements).toHaveLength(1);
-    expect(statements[0]?.query).not.toContain("LIMIT");
-    expect(statements[0]?.query).not.toContain("OFFSET");
+    // One round trip: the month query and the has-any probe share a single batch.
+    expect(statements).toHaveLength(2);
+    const [monthQuery, existsQuery] = statements;
+    expect(monthQuery?.query).not.toContain("LIMIT");
+    expect(monthQuery?.query).not.toContain("OFFSET");
+    expect(monthQuery?.query).toContain("t.date < ?");
+    expect(monthQuery?.bindings).toContain("2026-08-01");
+    expect(existsQuery?.query).toContain("FROM transactions WHERE tenant_id = ?");
   });
 });
 

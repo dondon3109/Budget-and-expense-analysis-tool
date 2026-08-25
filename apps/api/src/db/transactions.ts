@@ -124,6 +124,7 @@ function logicalRowsSqlParts(
   query: TransactionExportQuery,
   tenantId: string,
   transactionId?: string,
+  options?: { toAsExclusive?: boolean },
 ): LogicalRowsSqlParts {
   const where = [
     "t.tenant_id = ?",
@@ -152,7 +153,7 @@ function logicalRowsSqlParts(
     bindings.push(query.from);
   }
   if (query.to) {
-    where.push("t.date <= ?");
+    where.push(options?.toAsExclusive ? "t.date < ?" : "t.date <= ?");
     bindings.push(query.to);
   }
   if (query.search) {
@@ -344,28 +345,38 @@ export const transactionRepository: TransactionRepository = {
   },
 
   async calendar(env, tenantId, query) {
-    const items = await readLogicalRows(env, tenantId, {
-      sortBy: "date",
-      sortDirection: "asc",
-      from: query.month,
-      to: nextMonthStart(query.month),
-    });
-    const inMonth = items.filter((item) => item.date < nextMonthStart(query.month));
-    if (inMonth.length > 5000) {
+    const monthEnd = nextMonthStart(query.month);
+    const parts = logicalRowsSqlParts(
+      { sortBy: "date", sortDirection: "asc", from: query.month, to: monthEnd },
+      tenantId,
+      undefined,
+      // The upper bound is the first day of the next month, so it must be excluded.
+      { toAsExclusive: true },
+    );
+    const [monthResult, existsResult] = await env.DB.batch([
+      env.DB.prepare(
+        `${LOGICAL_ROWS_SELECT}
+         ${LOGICAL_ROWS_FROM}
+         WHERE ${parts.where}
+         ORDER BY ${parts.orderBy}`,
+      ).bind(...parts.bindings),
+      env.DB.prepare("SELECT 1 AS found FROM transactions WHERE tenant_id = ? LIMIT 1").bind(
+        tenantId,
+      ),
+    ]);
+    const items = (monthResult.results as TransactionRow[]).map(normalizeRow);
+    if (items.length > 5000) {
       throw new HttpError(
         413,
         "calendar_month_too_large",
         "This month has too many records for the calendar. Use Transactions to review it.",
       );
     }
-    const any = await env.DB.prepare("SELECT id FROM transactions WHERE tenant_id = ? LIMIT 1")
-      .bind(tenantId)
-      .first();
     return {
       month: query.month,
       currency: "PHP",
-      hasAnyTransactions: Boolean(any),
-      items: inMonth,
+      hasAnyTransactions: existsResult.results.length > 0,
+      items,
     };
   },
 
