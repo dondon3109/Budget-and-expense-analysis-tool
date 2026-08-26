@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Prevented the mobile Budget tab's Add budget action from reopening and editing an existing category budget.
 - Refreshed the public Android install metadata snapshot for the signed `0.2.16-beta` APK.
 
 ## 2.17.0 — 2026-08-25

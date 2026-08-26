@@ -126,6 +126,43 @@ describe("BudgetsScreen", () => {
     expect(screen.getByText("40% used")).toBeTruthy();
   });
 
+  it("keeps Add budget in create mode when every existing category is already budgeted", async () => {
+    jest.mocked(useBudgetMonth).mockReturnValue({
+      data: {
+        budgets: [
+          {
+            id: "budget-1",
+            categoryId: "cat-1",
+            categoryName: "Dining",
+            categoryColor: "#FF5722",
+            limitMinor: 50_000,
+            spentMinor: 20_000,
+            syncState: "synced",
+          },
+        ],
+        categories: [
+          {
+            id: "cat-1",
+            name: "Dining",
+            kind: "expense",
+            color: "#FF5722",
+            iconEmoji: "🍔",
+            pending: false,
+          },
+        ],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<BudgetsScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Add budget" }));
+
+    expect(screen.getByRole("header", { name: "Add budget" })).toBeTruthy();
+    expect(screen.queryByText("Edit budget")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save new budget" })).toBeDisabled();
+  });
+
   it("navigates months and shows 'This month' quick return pill when shifted", async () => {
     jest.mocked(useBudgetMonth).mockReturnValue({
       data: {

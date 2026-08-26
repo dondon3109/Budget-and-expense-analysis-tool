@@ -34,6 +34,7 @@ import { buildBudgetMonthView, type BudgetMonthRow } from "./budget-month-view";
 
 interface EditorState {
   open: boolean;
+  mode: "add" | "edit";
   categoryId: string | null;
   amount: string;
 }
@@ -47,6 +48,7 @@ export function BudgetsScreen() {
 
   const [editor, setEditor] = useState<EditorState>({
     open: false,
+    mode: "add",
     categoryId: null,
     amount: "",
   });
@@ -87,14 +89,19 @@ export function BudgetsScreen() {
   );
 
   const openAdd = (presetCategoryId?: string): void => {
-    const targetId = presetCategoryId ?? availableCategories[0]?.id ?? budgetMonth.data?.categories[0]?.id ?? null;
-    setEditor({ open: true, categoryId: targetId, amount: "" });
+    const targetId = presetCategoryId ?? availableCategories[0]?.id ?? null;
+    setEditor({ open: true, mode: "add", categoryId: targetId, amount: "" });
     setErrors({});
     setMessage(null);
   };
 
   const openEdit = (categoryId: string, limitMinor: number): void => {
-    setEditor({ open: true, categoryId, amount: formatMinorForInput(limitMinor) });
+    setEditor({
+      open: true,
+      mode: "edit",
+      categoryId,
+      amount: formatMinorForInput(limitMinor),
+    });
     setErrors({});
     setMessage(null);
   };
@@ -160,13 +167,14 @@ export function BudgetsScreen() {
     }
   };
 
-  const editingBudget = budgetMonth.data?.budgets.find(
-    (budget) => budget.categoryId === editor.categoryId,
-  );
+  const editingBudget =
+    editor.mode === "edit"
+      ? budgetMonth.data?.budgets.find((budget) => budget.categoryId === editor.categoryId)
+      : undefined;
   const editingCategoryOption = budgetMonth.data?.categories.find(
     (cat) => cat.id === editor.categoryId,
   );
-  const isEditing = Boolean(editingBudget);
+  const isEditing = editor.mode === "edit";
 
   const theme = useZoptionTheme();
 
