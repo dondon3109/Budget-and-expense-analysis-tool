@@ -44,6 +44,7 @@ import {
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { categoryColorOptions, isPresetCategoryColor } from "./category-colors";
 
 const accountOptions: Array<{ id: AccountType; label: string }> = [
   { id: "cash", label: "Cash" },
@@ -60,17 +61,6 @@ const categoryOptions: Array<{ id: TransactionKind; label: string }> = [
 ];
 
 const emojiPalette = ["🍔", "🛒", "🏠", "🚗", "💡", "🎁", "💊", "✈️", "💼", "💰"];
-
-const categoryColorOptions = [
-  { name: "Emerald", value: "#0F766E" },
-  { name: "Blue", value: "#2563EB" },
-  { name: "Violet", value: "#7C3AED" },
-  { name: "Pink", value: "#DB2777" },
-  { name: "Red", value: "#DC2626" },
-  { name: "Orange", value: "#EA580C" },
-  { name: "Amber", value: "#D97706" },
-  { name: "Slate", value: "#475569" },
-] as const;
 
 const frequencyOptions: Array<{ id: InterestFrequency; label: string }> = interestFrequencies.map(
   (frequency) => ({
@@ -197,11 +187,7 @@ export function ReferenceEditorScreen() {
     setCategoryKind(category?.kind ?? "expense");
     const savedColor = category?.color ?? "#0F766E";
     setColor(savedColor);
-    setCustomColorOpen(
-      !categoryColorOptions.some(
-        (option) => option.value.toLowerCase() === savedColor.toLowerCase(),
-      ),
-    );
+    setCustomColorOpen(!isPresetCategoryColor(savedColor));
     setIconEmoji(resolveCategoryEmoji(category) ?? "");
     initialized.current = true;
   }, [account, category, id, references.data]);
@@ -385,7 +371,7 @@ export function ReferenceEditorScreen() {
     >
       <Stack.Screen options={{ title }} />
       <KeyboardAvoidingView
-        behavior="padding"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 48 : 0}
         style={styles.safe}
       >
@@ -657,6 +643,11 @@ export function ReferenceEditorScreen() {
                   </Pressable>
                   {customColorOpen ? (
                     <FormField
+                      error={
+                        color && !/^#[0-9A-F]{6}$/.test(color)
+                          ? "Use # followed by six characters from 0-9 or A-F."
+                          : undefined
+                      }
                       label="Custom color code"
                       value={color}
                       autoCapitalize="characters"

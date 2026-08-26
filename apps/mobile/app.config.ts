@@ -142,8 +142,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       package: variant.androidPackage,
       versionCode: 20316,
       allowBackup: false,
-      // Keep the activity height stable when the keyboard opens. Scrollable
-      // forms add their own IME clearance instead of reflowing the whole screen.
+      // Keep the activity height stable when the keyboard opens. Android pans
+      // the focused field into view instead of reflowing the whole screen.
       softwareKeyboardLayoutMode: "pan",
       // Predictive back is disabled: with enableOnBackInvokedCallback the
       // system finished the activity instead of popping the native stack,
