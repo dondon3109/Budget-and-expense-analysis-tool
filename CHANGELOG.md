@@ -14,6 +14,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Polished the web Plan pop-up dialog with improved visual hierarchy, dynamic pricing hero headers, distinct tier badges, refined feature checklist indicators with excluded feature contrast, an annual discount badge (Save 27%), enhanced payment trust callouts, and clean solid token-based styling without gradients.
 - Made routine financial edits feel immediate on web with optimistic transactions, accounts, categories, budgets, goals, debts, subscriptions, and calendar updates, including safe rollback and background reconciliation; mobile keeps its existing encrypted local-first writes and background sync behavior.
 - Improved mobile account and category rows with clearer separation between icons, titles, and supporting descriptions.
 - Replaced the category editor's code-first color field with named color choices and an optional custom-code input.

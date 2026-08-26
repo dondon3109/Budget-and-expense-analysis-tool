@@ -3,7 +3,7 @@ import {
   usePayPalSubscriptionPaymentSession,
 } from "@paypal/react-paypal-js/sdk-v6";
 import type { BillingInterval, BillingProviderConfig, BillingSummary } from "@zoption/shared";
-import { Check, CreditCard, LockKeyhole, WalletCards, X } from "lucide-react";
+import { Check, CreditCard, LockKeyhole, Minus, ShieldCheck, WalletCards, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -60,19 +60,41 @@ function FreePlanCard({ busy, initialActionRef, onClose }: FreePlanCardProps) {
   return (
     <section className="pro-checkout-plan pro-checkout-plan-free" aria-label="Free plan">
       <div className="pro-checkout-plan-heading">
-        <strong>Free</strong>
-        <span>Current plan</span>
+        <div className="pro-checkout-plan-title-group">
+          <strong>Free</strong>
+          <span className="pro-checkout-plan-subtitle">Core budgeting tools</span>
+        </div>
+        <span className="pro-checkout-plan-status-badge">Current plan</span>
       </div>
-      <ul>
-        {planFeatures.map((feature) => (
-          <li key={feature.feature}>
-            <Check size={14} aria-hidden="true" />
-            <span>
-              <b>{feature.feature}</b>
-              {feature.free}
-            </span>
-          </li>
-        ))}
+      <div className="pro-checkout-plan-price" aria-label="Price: Free forever">
+        <span className="pro-checkout-amount">₱0</span>
+        <span className="pro-checkout-frequency">forever</span>
+      </div>
+      <ul className="pro-checkout-features" aria-label="Free plan features">
+        {planFeatures.map((feature) => {
+          const isExcluded = feature.free === "Not included";
+          return (
+            <li
+              key={feature.feature}
+              className={isExcluded ? "pro-checkout-feature-excluded" : undefined}
+            >
+              <span
+                className={`pro-checkout-check ${isExcluded ? "excluded" : "included"}`}
+                aria-hidden="true"
+              >
+                {isExcluded ? (
+                  <Minus size={11} strokeWidth={2.5} />
+                ) : (
+                  <Check size={12} strokeWidth={2.5} />
+                )}
+              </span>
+              <span>
+                <b>{feature.feature}</b>
+                {feature.free}
+              </span>
+            </li>
+          );
+        })}
       </ul>
       <button
         ref={initialActionRef}
@@ -105,6 +127,7 @@ function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheck
   } = usePayPalSubscriptionPaymentSession({
     presentationMode: "auto",
     createSubscription,
+    // eslint-disable-next-line @typescript-eslint/require-await
     onApprove: async () => {
       window.location.assign(checkoutStatusUrl("completed"));
     },
@@ -310,12 +333,15 @@ export function ProCheckoutDialog({
         onKeyDown={handleKeyDown}
       >
         <div className="pro-checkout-header">
-          <div>
-            <p className="eyebrow">Zoption plans</p>
+          <div className="pro-checkout-header-copy">
+            <div className="pro-checkout-header-eyebrow-row">
+              <span className="pro-checkout-pill-tag">Membership</span>
+              <p className="eyebrow">Zoption plans</p>
+            </div>
             <h2 id={titleId}>Choose how you want to use Zoption Pro</h2>
           </div>
           <button
-            className="icon-button compact"
+            className="icon-button compact pro-checkout-close-btn"
             type="button"
             aria-label="Close subscription options"
             disabled={Boolean(busy)}
@@ -335,13 +361,32 @@ export function ProCheckoutDialog({
             aria-label="Zoption Pro plan"
           >
             <div className="pro-checkout-plan-heading">
-              <strong>Zoption Pro</strong>
-              <span>More range, more room</span>
+              <div className="pro-checkout-plan-title-group">
+                <strong>Zoption Pro</strong>
+                <span className="pro-checkout-plan-subtitle">More range, more room</span>
+              </div>
+              <span className="pro-checkout-plan-recommended-badge">Recommended</span>
             </div>
-            <ul>
+            <div
+              className="pro-checkout-plan-price"
+              aria-label={`Price: ${selectedInterval === "month" ? "₱149 per month" : "₱1,299 per year"}`}
+            >
+              <span className="pro-checkout-amount">
+                {selectedInterval === "month" ? "₱149" : "₱1,299"}
+              </span>
+              <span className="pro-checkout-frequency">
+                {selectedInterval === "month" ? "/ month" : "/ year"}
+                {selectedInterval === "year" && (
+                  <span className="pro-checkout-effective-rate"> · ₱108.25/mo</span>
+                )}
+              </span>
+            </div>
+            <ul className="pro-checkout-features" aria-label="Zoption Pro features">
               {planFeatures.map((feature) => (
                 <li key={feature.feature}>
-                  <Check size={14} aria-hidden="true" />
+                  <span className="pro-checkout-check included" aria-hidden="true">
+                    <Check size={12} strokeWidth={2.5} />
+                  </span>
                   <span>
                     <b>{feature.feature}</b>
                     {feature.pro}
@@ -372,8 +417,13 @@ export function ProCheckoutDialog({
                           checked={selectedInterval === option.interval}
                           onChange={() => setSelectedInterval(option.interval)}
                         />
-                        <span>
-                          <strong>{option.label}</strong>
+                        <span className="pro-checkout-interval-content">
+                          <span className="pro-checkout-interval-label-row">
+                            <strong>{option.label}</strong>
+                            {option.interval === "year" && (
+                              <span className="pro-checkout-save-badge">Save 27%</span>
+                            )}
+                          </span>
                           <small>{option.price}</small>
                         </span>
                       </label>
@@ -385,8 +435,15 @@ export function ProCheckoutDialog({
                   className="pro-checkout-payment-methods"
                   aria-labelledby="payment-methods-title"
                 >
-                  <div>
-                    <strong id="payment-methods-title">Payment handled by PayPal</strong>
+                  <div className="pro-checkout-payment-methods-header">
+                    <div className="pro-checkout-payment-methods-title-row">
+                      <ShieldCheck
+                        size={15}
+                        className="pro-checkout-shield-icon"
+                        aria-hidden="true"
+                      />
+                      <strong id="payment-methods-title">Payment handled by PayPal</strong>
+                    </div>
                     <span>
                       PayPal will show the methods available to you, which may include debit or
                       credit card.
@@ -394,11 +451,11 @@ export function ProCheckoutDialog({
                   </div>
                   <ul aria-label="Possible payment methods">
                     <li>
-                      <CreditCard size={16} aria-hidden="true" />
+                      <CreditCard size={15} aria-hidden="true" />
                       Debit or credit card when available
                     </li>
                     <li>
-                      <WalletCards size={16} aria-hidden="true" />
+                      <WalletCards size={15} aria-hidden="true" />
                       PayPal
                     </li>
                   </ul>

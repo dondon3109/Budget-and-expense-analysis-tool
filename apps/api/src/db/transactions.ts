@@ -364,6 +364,7 @@ export const transactionRepository: TransactionRepository = {
         tenantId,
       ),
     ]);
+    if (!monthResult || !existsResult) throw new Error("Calendar batch failed.");
     const items = (monthResult.results as TransactionRow[]).map(normalizeRow);
     if (items.length > 5000) {
       throw new HttpError(

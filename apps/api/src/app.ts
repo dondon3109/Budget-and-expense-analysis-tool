@@ -349,7 +349,7 @@ export function createApp(options: AppOptions = {}) {
       context,
       rateLimiter,
       clientIdentifier,
-      SUPPORT_CHAT_RATE_LIMITS,
+      [...SUPPORT_CHAT_RATE_LIMITS],
       (seconds) => `Too many support messages. Try again in ${seconds} seconds.`,
     );
     if (limited) return limited;

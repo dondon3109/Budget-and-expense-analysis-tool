@@ -1,9 +1,32 @@
 /* Monthly plan-limit dialogs own their focused upgrade recovery treatment. */
 .billing-limit-dialog {
   width: min(540px, 100%);
+  padding: 28px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 16px;
+  gap: 18px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  box-shadow: var(--shadow-dialog);
+  animation: billing-limit-pop 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes billing-limit-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.985) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .billing-limit-dialog {
+    animation: none;
+  }
 }
 
 .billing-limit-mark {

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { detectImportSubscriptionCandidates } from "../src/importSubscriptions";
+import type { ImportPreviewRow } from "../src/types";
 
-function row(overrides: Partial<import("../src/types").ImportPreviewRow> = {}): import("../src/types").ImportPreviewRow {
+function row(overrides: Partial<ImportPreviewRow> = {}): ImportPreviewRow {
   return {
     rowNumber: 1,
     status: "ready",
@@ -15,7 +16,7 @@ function row(overrides: Partial<import("../src/types").ImportPreviewRow> = {}): 
     categoryIsUncategorized: false,
     errors: [],
     ...overrides,
-  } as import("../src/types").ImportPreviewRow;
+  };
 }
 
 describe("detectImportSubscriptionCandidates", () => {
@@ -106,8 +107,8 @@ describe("detectImportSubscriptionCandidates", () => {
 
   it("only considers ready expense rows", () => {
     const rows = [
-      row({ date: "2026-05-01", description: "Netflix", status: "invalid" as any }),
-      row({ date: "2026-06-01", description: "Netflix", kind: "income" as any }),
+      row({ date: "2026-05-01", description: "Netflix", status: "invalid" }),
+      row({ date: "2026-06-01", description: "Netflix", kind: "income" }),
       row({ date: "2026-07-01", description: "Netflix" }),
     ];
     const result = detectImportSubscriptionCandidates(rows);

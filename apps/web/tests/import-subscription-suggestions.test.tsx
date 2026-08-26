@@ -3,7 +3,7 @@
  */
 import "@testing-library/jest-dom/vitest";
 
-import type { AccountRecord, CategoryRecord, ImportPreview, SubscriptionMonthSummary } from "@zoption/shared";
+import type { AccountRecord, BillingSummary, CategoryRecord, ImportPreview, SubscriptionMonthSummary, SubscriptionRecord } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -80,7 +80,7 @@ const accounts: AccountRecord[] = [
   { id: "acc-1", name: "Everyday", type: "checking", currency: "PHP", balanceMinor: null, balanceAsOf: null, archived: false },
 ];
 
-const billingSummary: any = {
+const billingSummary: BillingSummary = {
   plan: "free",
   entitlementSource: null,
   provider: null,
@@ -171,7 +171,7 @@ describe("Import auto-detection of recurring charges", () => {
       currency: "PHP",
       totalMonthlyCostMinor: 0,
       items: [],
-    } as SubscriptionMonthSummary);
+    });
     vi.mocked(createSubscription).mockResolvedValue({
       id: "sub-1",
       name: "Netflix",
@@ -185,7 +185,7 @@ describe("Import auto-detection of recurring charges", () => {
       categoryColor: "#7363a6",
       accountId: "acc-1",
       accountName: "Everyday",
-    } as any);
+    } satisfies SubscriptionRecord);
   });
 
   it("shows suggestion banner when recurring charges are detected in CSV", async () => {
@@ -242,7 +242,7 @@ describe("Import auto-detection of recurring charges", () => {
           monthlyCostMinor: 54900,
         },
       ],
-    } as any);
+    } satisfies SubscriptionMonthSummary);
     const user = userEvent.setup();
     const { container } = renderPage();
     const csv = ["Date,Description,Amount,Category", "2026-05-15,Netflix,-549.00,Entertainment", "2026-06-15,Netflix,-549.00,Entertainment", "2026-07-15,Netflix,-549.00,Entertainment"].join("\n");
