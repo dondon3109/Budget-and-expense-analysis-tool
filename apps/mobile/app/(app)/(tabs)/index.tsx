@@ -17,6 +17,7 @@ import {
   MoneyValue,
   OfflineBanner,
   Skeleton,
+  SyncPausedBanner,
   SyncStatus,
   TransactionRow,
 } from "@/ui/components";
@@ -850,7 +851,7 @@ export default function HomeScreen() {
     >
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
-        <ErrorState message={sync.message} onRetry={sync.retry} title="Sync paused" />
+        <SyncPausedBanner message={sync.message} onRetry={sync.retry} />
       ) : null}
       {dashboard.error ? (
         <ErrorState

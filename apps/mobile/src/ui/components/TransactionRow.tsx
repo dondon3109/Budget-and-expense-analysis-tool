@@ -31,7 +31,7 @@ export function TransactionRow({
     : failed
       ? "Sync needs repair"
       : pending
-        ? "Pending sync"
+        ? "Saved on this device"
         : undefined;
   const statusColor =
     failed || conflicted ? theme.colors.danger : theme.colors.warning;

@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Clarified mobile transaction sync states and replaced the oversized sync-paused error with a compact retry banner that confirms local changes are safe.
 - Prevented the mobile Budget tab's Add budget action from reopening and editing an existing category budget.
 - Refreshed the public Android install metadata snapshot for the signed `0.2.16-beta` APK.
 

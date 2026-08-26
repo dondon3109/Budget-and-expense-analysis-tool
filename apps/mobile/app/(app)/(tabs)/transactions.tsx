@@ -38,6 +38,7 @@ import {
   MoneyValue,
   OfflineBanner,
   Skeleton,
+  SyncPausedBanner,
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -136,7 +137,7 @@ function TransactionItemRow({
       : item.syncState === "failed"
         ? "Sync failed"
         : item.syncState === "pending"
-          ? "Pending"
+          ? "Saved on this device"
           : null;
   const tone =
     transaction.kind === "income"
@@ -604,7 +605,9 @@ export default function TransactionsScreen() {
 
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
-        <ErrorState message={sync.message} onRetry={sync.retry} title="Sync paused" />
+        <View style={styles.syncBannerInset}>
+          <SyncPausedBanner message={sync.message} onRetry={sync.retry} />
+        </View>
       ) : null}
       {local.error ? (
         <ErrorState message={local.error} onRetry={local.retry} title="Local data unavailable" />
@@ -816,6 +819,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   loading: { gap: spacing.xs, padding: spacing.md },
+  syncBannerInset: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   listContent: { paddingBottom: 96 },
   emptyList: { flexGrow: 1 },
   dateHeader: {

@@ -28,6 +28,7 @@ import {
   FormField,
   SelectionField,
   Skeleton,
+  SyncStatus,
 } from "@/ui/components";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -371,17 +372,7 @@ export function TransactionEditorScreen() {
               </Text>
             </Card>
           ) : blockedState === "pending" ? (
-            <View className="flex-row items-center gap-2">
-              <MaterialCommunityIcons
-                accessibilityElementsHidden
-                color={theme.colors.warning}
-                name="cloud-upload-outline"
-                size={18}
-              />
-              <Text style={[typography.caption, { color: theme.colors.warning }]}>
-                Pending sync
-              </Text>
-            </View>
+            <SyncStatus state="pending" />
           ) : null}
 
           {!hasChoices ? (

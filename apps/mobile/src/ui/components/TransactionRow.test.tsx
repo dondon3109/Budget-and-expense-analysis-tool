@@ -33,12 +33,13 @@ describe("TransactionRow", () => {
         name: "Lunch, Food & dining, 2026-08-14, negative 123.45 Philippine pesos",
       }),
     ).toBeOnTheScreen();
+    expect(screen.getByText(/Saved on this device/)).toBeOnTheScreen();
   });
 
   it("distinguishes a failed operation from ordinary pending sync", async () => {
     await render(<TransactionRow transaction={transaction} failed onPress={jest.fn()} />);
     expect(screen.getByText(/Sync needs repair/)).toBeOnTheScreen();
-    expect(screen.queryByText(/Pending sync/)).not.toBeOnTheScreen();
+    expect(screen.queryByText(/Saved on this device/)).not.toBeOnTheScreen();
   });
 
   it("renders the category emoji icon when present", async () => {
