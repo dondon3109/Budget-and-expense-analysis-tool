@@ -13,20 +13,26 @@ const apiMocks = vi.hoisted(() => ({
   startBillingCheckout: vi.fn(),
 }));
 const openBillingCheckout = vi.hoisted(() => vi.fn());
+const paypalMocks = vi.hoisted(() => ({
+  providerProps: vi.fn(),
+  usePayPal: vi.fn(),
+  useSubscriptionSession: vi.fn(),
+}));
 
 vi.mock("../src/lib/api", () => apiMocks);
 vi.mock("../src/lib/billingCheckout", () => ({ openBillingCheckout }));
 vi.mock("@paypal/react-paypal-js/sdk-v6", () => ({
-  PayPalProvider: ({ children }: { children: ReactNode }) => children,
-  usePayPalSubscriptionPaymentSession: (options: {
-    createSubscription: () => Promise<{ subscriptionId: string }>;
-  }) => ({
-    error: null,
-    isPending: false,
-    handleClick: options.createSubscription,
-    handleCancel: vi.fn(),
-    handleDestroy: vi.fn(),
-  }),
+  INSTANCE_LOADING_STATE: {
+    PENDING: "pending",
+    RESOLVED: "resolved",
+    REJECTED: "rejected",
+  },
+  PayPalProvider: ({ children, ...props }: { children: ReactNode }) => {
+    paypalMocks.providerProps(props);
+    return children;
+  },
+  usePayPal: paypalMocks.usePayPal,
+  usePayPalSubscriptionPaymentSession: paypalMocks.useSubscriptionSession,
 }));
 
 import { ProCheckoutDialog } from "../src/components/billing/ProCheckoutDialog";
@@ -70,6 +76,20 @@ function renderDialog(value = summary(), onClose = vi.fn()) {
 
 describe("ProCheckoutDialog", () => {
   beforeEach(() => {
+    paypalMocks.usePayPal.mockReturnValue({
+      sdkInstance: {},
+      loadingStatus: "resolved",
+      error: null,
+    });
+    paypalMocks.useSubscriptionSession.mockImplementation(
+      (options: { createSubscription: () => Promise<{ subscriptionId: string }> }) => ({
+        error: null,
+        isPending: false,
+        handleClick: options.createSubscription,
+        handleCancel: vi.fn(),
+        handleDestroy: vi.fn(),
+      }),
+    );
     apiMocks.getBillingProviderConfig.mockResolvedValue({
       provider: "paypal",
       clientId: "public-client-id",
@@ -101,9 +121,18 @@ describe("ProCheckoutDialog", () => {
     expect(screen.getByText("Debit or credit card when available")).toBeInTheDocument();
     expect(screen.getByText(/PayPal will show the methods available to you/i)).toBeInTheDocument();
     expect(screen.getByText("PayPal")).toBeInTheDocument();
+    const continueSecurely = await screen.findByRole("button", { name: "Continue securely" });
+    expect(paypalMocks.providerProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: "public-client-id",
+        components: ["paypal-subscriptions"],
+        environment: "sandbox",
+      }),
+    );
+    expect(paypalMocks.providerProps.mock.calls.at(-1)?.[0]).not.toHaveProperty("locale");
 
     fireEvent.click(screen.getByRole("radio", { name: "Annual, ₱1,299/year" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Continue securely" }));
+    fireEvent.click(continueSecurely);
 
     expect(apiMocks.startBillingCheckout).toHaveBeenCalledWith(workspace, "year");
     expect(openBillingCheckout).not.toHaveBeenCalled();
@@ -142,6 +171,40 @@ describe("ProCheckoutDialog", () => {
     renderDialog();
 
     fireEvent.click(await screen.findByRole("button", { name: "Continue securely on PayPal" }));
+
+    expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "month");
+    expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
+  });
+
+  it("keeps SDK initialization pending without creating a subscription session early", async () => {
+    paypalMocks.usePayPal.mockReturnValue({
+      sdkInstance: null,
+      loadingStatus: "pending",
+      error: null,
+    });
+    renderDialog();
+
+    expect(
+      await screen.findByRole("button", { name: "Preparing secure checkout…" }),
+    ).toBeDisabled();
+    expect(paypalMocks.useSubscriptionSession).not.toHaveBeenCalled();
+    expect(screen.queryByText("no sdk instance available")).not.toBeInTheDocument();
+  });
+
+  it("offers hosted checkout when the PayPal SDK provider fails", async () => {
+    paypalMocks.usePayPal.mockReturnValue({
+      sdkInstance: null,
+      loadingStatus: "rejected",
+      error: new Error("no sdk instance available"),
+    });
+    openBillingCheckout.mockResolvedValue(undefined);
+    renderDialog();
+
+    expect(
+      await screen.findByText(/PayPal's secure payment window could not be prepared/i),
+    ).toBeVisible();
+    expect(screen.queryByText("no sdk instance available")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue on PayPal" }));
 
     expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "month");
     expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();

@@ -1,5 +1,7 @@
 import {
+  INSTANCE_LOADING_STATE,
   PayPalProvider,
+  usePayPal,
   usePayPalSubscriptionPaymentSession,
 } from "@paypal/react-paypal-js/sdk-v6";
 import type { BillingInterval, BillingProviderConfig, BillingSummary } from "@zoption/shared";
@@ -203,6 +205,61 @@ function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheck
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function PayPalCheckoutBoundary({ interval, workspace, onBusyChange }: PayPalCheckoutActionProps) {
+  const { sdkInstance, loadingStatus } = usePayPal();
+  const [fallbackBusy, setFallbackBusy] = useState(false);
+  const [fallbackError, setFallbackError] = useState<string>();
+  const sdkReady = loadingStatus === INSTANCE_LOADING_STATE.RESOLVED && Boolean(sdkInstance);
+  const sdkFailed = loadingStatus === INSTANCE_LOADING_STATE.REJECTED;
+
+  async function continueOnPayPal() {
+    setFallbackBusy(true);
+    setFallbackError(undefined);
+    onBusyChange(true);
+    try {
+      await openBillingCheckout(workspace, interval);
+    } catch (cause) {
+      setFallbackError(checkoutErrorMessage(cause));
+    } finally {
+      setFallbackBusy(false);
+      onBusyChange(false);
+    }
+  }
+
+  if (sdkReady) {
+    return (
+      <PayPalCheckoutAction interval={interval} workspace={workspace} onBusyChange={onBusyChange} />
+    );
+  }
+
+  if (!sdkFailed) {
+    return (
+      <button className="button primary pro-checkout-continue" type="button" disabled>
+        <LockKeyhole size={15} aria-hidden="true" />
+        Preparing secure checkout…
+      </button>
+    );
+  }
+
+  return (
+    <div className="pro-checkout-payment-error" role="alert">
+      <p>
+        PayPal&apos;s secure payment window could not be prepared. Continue on PayPal to finish
+        subscribing.
+      </p>
+      {fallbackError && <p>{fallbackError}</p>}
+      <button
+        className="button secondary compact"
+        type="button"
+        disabled={fallbackBusy}
+        onClick={() => void continueOnPayPal()}
+      >
+        {fallbackBusy ? "Opening PayPal…" : "Continue on PayPal"}
+      </button>
     </div>
   );
 }
@@ -471,9 +528,8 @@ export function ProCheckoutDialog({
                     environment={providerConfig.environment}
                     components={["paypal-subscriptions"]}
                     pageType="checkout"
-                    locale="en_PH"
                   >
-                    <PayPalCheckoutAction
+                    <PayPalCheckoutBoundary
                       interval={selectedInterval}
                       workspace={workspace}
                       onBusyChange={setBusy}

@@ -31,7 +31,13 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock("../src/lib/api", () => apiMocks);
 vi.mock("@paypal/react-paypal-js/sdk-v6", () => ({
+  INSTANCE_LOADING_STATE: {
+    PENDING: "pending",
+    RESOLVED: "resolved",
+    REJECTED: "rejected",
+  },
   PayPalProvider: ({ children }: { children: ReactNode }) => children,
+  usePayPal: () => ({ sdkInstance: {}, loadingStatus: "resolved", error: null }),
   usePayPalSubscriptionPaymentSession: () => ({
     error: null,
     isPending: false,
