@@ -240,4 +240,57 @@ describe("SubscriptionsPage", () => {
     expect(deleteSubscription).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
   });
+
+  it("switches to the visual renewal calendar interface and displays month grid, cash-flow impact, and payment schedule", async () => {
+    const today = new Date();
+    const testMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    const billingDate = `${testMonth}-25`;
+    const summary: SubscriptionMonthSummary = {
+      month: `${testMonth}-01`,
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [{ ...record, billingDate, monthlyCostMinor: 199_00 }],
+    };
+    vi.mocked(getSubscriptions).mockResolvedValue(summary);
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: "Renewal calendar" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Renewal calendar" }));
+
+    // Verify Cash-flow impact summary
+    expect(screen.getByText("Total outflow this month")).toBeInTheDocument();
+    expect(screen.getByText("Paid to date")).toBeInTheDocument();
+    expect(screen.getByText("Remaining to be paid")).toBeInTheDocument();
+
+    // Verify Calendar Grid
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Renewal Calendar Grid" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("grid", { name: /^Renewals in/ })).toBeInTheDocument();
+
+    // Verify Payment Schedule & Upcoming Billing Cycles timeline
+    expect(
+      screen.getByRole("heading", {
+        level: 3,
+        name: "Payment Schedule & Upcoming Billing Cycles",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Debited from:")).toBeInTheDocument();
+    expect(screen.getByText("Monthly billing")).toBeInTheDocument();
+
+    // Select date cell to filter
+    const renewalCell = screen.getByRole("button", { name: /25, 2026/ });
+    await user.click(renewalCell);
+    expect(screen.getByText(/Filtered to/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear filter" })).toBeInTheDocument();
+
+    // Clear filter
+    await user.click(screen.getByRole("button", { name: "Clear filter" }));
+    expect(screen.queryByRole("button", { name: "Clear filter" })).not.toBeInTheDocument();
+
+    // Click edit in timeline
+    await user.click(screen.getByRole("button", { name: "Edit Music streaming" }));
+    expect(screen.getByRole("dialog", { name: "Edit subscription" })).toBeInTheDocument();
+  });
 });

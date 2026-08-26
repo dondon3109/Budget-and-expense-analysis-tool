@@ -7,6 +7,7 @@ import { PrivacyPolicyPage } from "./pages/legal/PrivacyPolicyPage";
 import { TermsOfServicePage } from "./pages/legal/TermsOfServicePage";
 import { LandingPage } from "./pages/LandingPage";
 import { InstallPage } from "./pages/InstallPage";
+import { ChangelogPage } from "./pages/changelog/ChangelogPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PUBLIC_ROUTE_PATHS, type PublicRoutePath } from "./seo/siteMetadata";
 
@@ -17,6 +18,7 @@ const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
   "/cookie-policy": <CookiePolicyPage />,
   "/faq": <FaqPage />,
   "/install": <InstallPage />,
+  "/changelog": <ChangelogPage />,
 };
 
 export function publicRouteElements(rootElement = PUBLIC_ROUTE_ELEMENTS["/"]) {

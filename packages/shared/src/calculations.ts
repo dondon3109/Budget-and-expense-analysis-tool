@@ -122,13 +122,10 @@ function monthEnd(isoDate: string): string {
 interface CashflowPoints {
   range: { from: string; to: string };
   granularity: "day" | "month";
-  points: Map<string, { incomeMinor: number; expenseMinor: number }>;
+  points: Map<string, { date: string; incomeMinor: number; expenseMinor: number }>;
 }
 
-function cashflowPoints(
-  view: CashflowTrend["view"],
-  anchorDate: string,
-): CashflowPoints {
+function cashflowPoints(view: CashflowTrend["view"], anchorDate: string): CashflowPoints {
   const range =
     view === "weekly"
       ? { from: shiftUtcDays(anchorDate, -6), to: anchorDate }

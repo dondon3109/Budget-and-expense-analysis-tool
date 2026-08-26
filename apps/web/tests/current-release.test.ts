@@ -5,6 +5,7 @@ import { currentRelease, releaseHistory } from "../src/releases/currentRelease";
 describe("current release notes", () => {
   it("highlights category emojis, mobile transaction ledger, and Android Beta", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Visual Renewal Calendar for Subscriptions",
       "Category emojis across web and mobile",
       "Redesigned mobile transaction ledger",
       "Android Beta 0.2.12",
@@ -14,6 +15,7 @@ describe("current release notes", () => {
     const notes = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
+    expect(notes).toMatch(/visual renewal calendar/i);
     expect(notes).toMatch(/category emojis/i);
     expect(notes).toMatch(/transaction ledger/i);
     expect(notes).toMatch(/Android Beta/i);
@@ -47,9 +49,8 @@ describe("current release notes", () => {
     ]);
 
     const notes =
-      receiptRelease?.changes
-        .map((change) => `${change.title} ${change.description}`)
-        .join(" ") ?? "";
+      receiptRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ??
+      "";
     expect(notes).toMatch(/scan receipt/i);
     expect(notes).toMatch(/merchant, date, amount, transaction type, and category/i);
     expect(notes).toMatch(/nothing is added.+until you explicitly commit/i);

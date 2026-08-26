@@ -4,13 +4,22 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Added a Visual Renewal Calendar Interface on the Subscriptions page (`/app/subscriptions`) featuring a Table vs. Renewal Calendar view switcher, cash-flow impact summary metrics (total outflow, paid to date, remaining to be paid), an interactive month-by-month grid with daily outflow pills and renewal badges, and a chronological payment schedule and upcoming billing cycles timeline.
+- Added a dedicated, prerendered public Changelog and Release Notes page (`/changelog`) with full version history, feature highlights, and structured Schema.org metadata so automated crawlers and AI search engines can index shipped capabilities without client-side authentication.
+- Added a direct Google Preferred Source link and FAQ guidance enabling users to prioritize Zoption with Google's Preferred trust badge in Google Search, Top Stories, and AI Overviews.
+- Expanded `llms.txt` and `robots.txt` with explicit AI crawler permissions (Google-Extended, GPTBot, PerplexityBot, ClaudeBot, Applebot-Extended) and direct routes for FAQ, Android APK install, and product release notes.
+
 ### Changed
 
 - Made routine financial edits feel immediate on web with optimistic transactions, accounts, categories, budgets, goals, debts, subscriptions, and calendar updates, including safe rollback and background reconciliation; mobile keeps its existing encrypted local-first writes and background sync behavior.
 - Improved mobile account and category rows with clearer separation between icons, titles, and supporting descriptions.
+- Replaced the category editor's code-first color field with named color choices and an optional custom-code input.
 
 ### Fixed
 
+- Prevented Android category editing from resizing the entire screen when the keyboard opens.
 - Clarified mobile transaction sync states and replaced the oversized sync-paused error with a compact retry banner that confirms local changes are safe.
 - Prevented the mobile Budget tab's Add budget action from reopening and editing an existing category budget.
 - Refreshed the public Android install metadata snapshot for the signed `0.2.16-beta` APK.

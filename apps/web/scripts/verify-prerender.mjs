@@ -341,7 +341,14 @@ export async function verifyPrerenderArtifacts({
   verifyNoindexDocument(notFound, "404.html");
 
   const redirects = await readFile(resolve(distDirectory, "_redirects"), "utf8");
-  for (const path of ["/terms-of-service", "/privacy-policy", "/cookie-policy", "/faq"]) {
+  for (const path of [
+    "/terms-of-service",
+    "/privacy-policy",
+    "/cookie-policy",
+    "/faq",
+    "/install",
+    "/changelog",
+  ]) {
     assert(
       redirects.includes(`${path}/ ${path} 301`),
       `${path} must redirect its trailing-slash variant to the canonical URL.`,

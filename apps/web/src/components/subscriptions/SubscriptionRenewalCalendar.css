@@ -1,0 +1,511 @@
+/* Visual Renewal Calendar Interface styles */
+
+.renewal-calendar-interface {
+  display: grid;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+/* 1. Cash-flow impact summary */
+.renewal-impact-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.renewal-stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.renewal-stat-card .stat-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.renewal-stat-card .stat-card-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+}
+
+.renewal-stat-card .stat-card-icon.paid {
+  color: #15803d;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+:root[data-theme="dark"] .renewal-stat-card .stat-card-icon.paid {
+  color: #4ade80;
+  background: #14532d33;
+  border-color: #15803d;
+}
+
+.renewal-stat-card .stat-card-icon.upcoming {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+:root[data-theme="dark"] .renewal-stat-card .stat-card-icon.upcoming {
+  color: #fbbf24;
+  background: #78350f33;
+  border-color: #b45309;
+}
+
+.renewal-stat-card .stat-card-title {
+  font-size: 12px;
+  color: var(--subtle);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.renewal-stat-card .stat-card-value {
+  font-size: 24px;
+  font-weight: 750;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+.renewal-stat-card .stat-card-caption {
+  font-size: 12px;
+  color: var(--subtle);
+  line-height: 1.4;
+}
+
+/* 2. Month Grid Section */
+.renewal-grid-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.renewal-grid-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.renewal-grid-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.renewal-grid-title h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.renewal-grid-hint {
+  font-size: 12px;
+  color: var(--subtle);
+}
+
+.renewal-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.renewal-weekday {
+  text-align: center;
+  padding: 8px 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.renewal-day-placeholder {
+  min-height: 80px;
+  background: var(--surface-soft);
+  opacity: 0.4;
+  border-radius: var(--radius-sm);
+}
+
+.renewal-day-cell {
+  min-height: 80px;
+  display: flex;
+}
+
+.renewal-day {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease;
+  overflow: hidden;
+}
+
+.renewal-day:hover {
+  background: var(--surface-soft);
+  border-color: var(--line-strong);
+}
+
+.renewal-day.selected {
+  border-color: var(--ink);
+  background: var(--surface-soft);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.renewal-day.today {
+  border-color: var(--accent, #10b981);
+}
+
+.renewal-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.renewal-day-number {
+  font-variant-numeric: tabular-nums;
+}
+
+.renewal-today-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--accent, #10b981);
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.renewal-day-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.renewal-outflow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 2px 5px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+:root[data-theme="dark"] .renewal-outflow-pill {
+  color: #f87171;
+  background: #450a0a33;
+  border-color: #991b1b;
+}
+
+.renewal-day-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.renewal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.renewal-badge.paid {
+  border-color: #bbf7d0;
+}
+
+:root[data-theme="dark"] .renewal-badge.paid {
+  border-color: #15803d;
+}
+
+.renewal-badge.due {
+  border-color: #fde68a;
+}
+
+:root[data-theme="dark"] .renewal-badge.due {
+  border-color: #b45309;
+}
+
+.renewal-cat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.renewal-badge-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 3. Timeline / Payment Schedule Section */
+.renewal-timeline-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.renewal-timeline-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+
+.renewal-timeline-heading h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.renewal-timeline-heading p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--subtle);
+}
+
+.renewal-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.renewal-timeline-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.14s ease;
+}
+
+.renewal-timeline-item:hover {
+  border-color: var(--line-strong);
+}
+
+.timeline-date-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 90px;
+  gap: 2px;
+}
+
+.timeline-date-label {
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-relative-badge {
+  font-size: 10.5px;
+  font-weight: 650;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.timeline-relative-badge.paid {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+:root[data-theme="dark"] .timeline-relative-badge.paid {
+  color: #4ade80;
+  background: #14532d44;
+}
+
+.timeline-relative-badge.upcoming {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+:root[data-theme="dark"] .timeline-relative-badge.upcoming {
+  color: #fbbf24;
+  background: #78350f44;
+}
+
+.timeline-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timeline-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.timeline-sub-name {
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--ink);
+}
+
+.timeline-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--subtle);
+}
+
+.timeline-cycle-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.timeline-amount-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-family: var(--font-mono);
+}
+
+.timeline-amount-label {
+  font-size: 10px;
+  color: var(--subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timeline-amount-val {
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-action-block {
+  display: flex;
+  align-items: center;
+}
+
+.renewal-timeline-empty {
+  text-align: center;
+  padding: 36px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--subtle);
+}
+
+.renewal-timeline-empty p {
+  margin: 0;
+  font-size: 13.5px;
+}
+
+.renewal-unbilled-note {
+  font-size: 12px;
+  color: var(--subtle);
+  background: var(--surface-soft);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  line-height: 1.4;
+}
+
+.renewal-unbilled-note p {
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .renewal-calendar-grid {
+    gap: 3px;
+  }
+
+  .renewal-day-cell,
+  .renewal-day-placeholder {
+    min-height: 60px;
+  }
+
+  .renewal-day {
+    padding: 4px;
+  }
+
+  .renewal-badge-name {
+    display: none;
+  }
+
+  .renewal-timeline-item {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+  }
+
+  .timeline-date-block {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .timeline-amount-block {
+    align-items: flex-start;
+  }
+}

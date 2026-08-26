@@ -67,6 +67,14 @@
   text-underline-offset: 3px;
 }
 
+.legal-footer a.legal-footer-preferred {
+  color: var(--accent);
+}
+
+.legal-footer a.legal-footer-preferred:hover {
+  color: var(--ink);
+}
+
 .app-main > .legal-footer {
   width: calc(100% - 48px);
 }

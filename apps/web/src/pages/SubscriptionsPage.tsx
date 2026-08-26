@@ -6,7 +6,7 @@ import type {
   SubscriptionStatus,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RefreshCw, Repeat2 } from "lucide-react";
+import { CalendarDays, LayoutList, Plus, RefreshCw, Repeat2 } from "lucide-react";
 import { useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -15,6 +15,7 @@ import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
 import { MonthSelector } from "../components/month/MonthSelector";
 import { SubscriptionForm } from "../components/subscriptions/SubscriptionForm";
+import { SubscriptionRenewalCalendar } from "../components/subscriptions/SubscriptionRenewalCalendar";
 import { SubscriptionTable } from "../components/subscriptions/SubscriptionTable";
 import {
   createSubscription,
@@ -56,6 +57,7 @@ export function SubscriptionsPage() {
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth);
+  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SubscriptionRecord | null>(null);
   const monthStart = `${month}-01`;
@@ -287,18 +289,46 @@ export function SubscriptionsPage() {
                   </strong>
                   <span>{formatFullMonth(month)} · Philippine pesos</span>
                 </div>
-                <button
-                  className="refresh-button"
-                  type="button"
-                  onClick={() => void subscriptionsQuery.refetch()}
-                  disabled={subscriptionsQuery.isFetching}
-                >
-                  <RefreshCw
-                    size={15}
-                    className={subscriptionsQuery.isFetching ? "spinning" : ""}
-                  />{" "}
-                  Refresh
-                </button>
+                <div className="subscriptions-panel-actions">
+                  <div
+                    className="subscriptions-view-toggle"
+                    role="group"
+                    aria-label="Subscriptions view"
+                  >
+                    <button
+                      className={`view-toggle-button ${viewMode === "table" ? "active" : ""}`}
+                      type="button"
+                      onClick={() => setViewMode("table")}
+                      aria-pressed={viewMode === "table"}
+                      title="Table view"
+                    >
+                      <LayoutList size={14} aria-hidden="true" />
+                      <span>Table</span>
+                    </button>
+                    <button
+                      className={`view-toggle-button ${viewMode === "calendar" ? "active" : ""}`}
+                      type="button"
+                      onClick={() => setViewMode("calendar")}
+                      aria-pressed={viewMode === "calendar"}
+                      title="Visual Renewal Calendar"
+                    >
+                      <CalendarDays size={14} aria-hidden="true" />
+                      <span>Renewal calendar</span>
+                    </button>
+                  </div>
+                  <button
+                    className="refresh-button"
+                    type="button"
+                    onClick={() => void subscriptionsQuery.refetch()}
+                    disabled={subscriptionsQuery.isFetching}
+                  >
+                    <RefreshCw
+                      size={15}
+                      className={subscriptionsQuery.isFetching ? "spinning" : ""}
+                    />{" "}
+                    Refresh
+                  </button>
+                </div>
               </div>
 
               {data.items.length === 0 ? (
@@ -313,6 +343,8 @@ export function SubscriptionsPage() {
                     <Plus size={16} aria-hidden="true" /> Add a subscription
                   </button>
                 </div>
+              ) : viewMode === "calendar" ? (
+                <SubscriptionRenewalCalendar month={month} items={data.items} onEdit={openEdit} />
               ) : (
                 <SubscriptionTable
                   items={data.items}

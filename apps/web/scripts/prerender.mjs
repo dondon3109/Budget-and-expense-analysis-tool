@@ -112,7 +112,32 @@ function sitemapXml(entries, siteOrigin) {
 
 function robotsText(siteOrigin, indexingEnabled) {
   if (!indexingEnabled) return "User-agent: *\nAllow: /\n";
-  return `User-agent: *\nAllow: /\n\nSitemap: ${siteOrigin}/sitemap.xml\n`;
+  return [
+    "User-agent: *",
+    "Allow: /",
+    "",
+    "# Assistive AI and search crawlers",
+    "User-agent: Google-Extended",
+    "Allow: /",
+    "",
+    "User-agent: GoogleOther",
+    "Allow: /",
+    "",
+    "User-agent: GPTBot",
+    "Allow: /",
+    "",
+    "User-agent: PerplexityBot",
+    "Allow: /",
+    "",
+    "User-agent: ClaudeBot",
+    "Allow: /",
+    "",
+    "User-agent: Applebot-Extended",
+    "Allow: /",
+    "",
+    `Sitemap: ${siteOrigin}/sitemap.xml`,
+    "",
+  ].join("\n");
 }
 
 function previewHeaders(headers) {

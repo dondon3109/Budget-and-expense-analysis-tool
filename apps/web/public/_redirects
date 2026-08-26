@@ -13,6 +13,7 @@
 /cookie-policy/ /cookie-policy 301
 /faq/ /faq 301
 /install/ /install 301
+/changelog/ /changelog 301
 
 /login /spa 200
 /signup /spa 200

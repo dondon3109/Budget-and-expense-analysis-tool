@@ -14,6 +14,11 @@ export const currentRelease: ProductRelease = {
   releasedOn: "August 24, 2026",
   changes: [
     {
+      title: "Visual Renewal Calendar for Subscriptions",
+      description:
+        "Switch between table and renewal calendar views to inspect upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.",
+    },
+    {
       title: "Category emojis across web and mobile",
       description:
         "Give custom categories their own emoji icons with starter category presets, clear visual badges in transaction lists, and a dedicated mobile category editor.",

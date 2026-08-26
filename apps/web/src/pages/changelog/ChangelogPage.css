@@ -1,0 +1,144 @@
+.changelog-page-list {
+  display: grid;
+  gap: 20px;
+  margin-block: 24px 32px;
+}
+
+.changelog-release-card {
+  padding: 24px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.changelog-release-card.current-release {
+  border-color: var(--accent);
+}
+
+.changelog-release-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.changelog-release-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.changelog-version-tag {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+
+.changelog-latest-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.changelog-release-date {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.changelog-changes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.changelog-change-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 12px;
+}
+
+.changelog-check-icon {
+  margin-top: 3px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.changelog-change-body h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.changelog-change-body p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted-strong);
+  margin: 0;
+}
+
+.changelog-page-cta {
+  padding: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--surface-raised, var(--surface));
+  text-align: center;
+  margin-top: 32px;
+}
+
+.changelog-page-cta h2 {
+  font-size: 1.25rem;
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.changelog-page-cta p {
+  max-width: 58ch;
+  margin: 0 auto 20px;
+  color: var(--muted-strong);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.changelog-cta-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .changelog-release-card {
+    padding: 18px 16px;
+  }
+
+  .changelog-release-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .changelog-cta-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .changelog-cta-actions .button {
+    width: 100%;
+  }
+}

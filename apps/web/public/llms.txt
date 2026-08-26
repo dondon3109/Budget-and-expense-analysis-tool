@@ -4,18 +4,29 @@
 
 ## Public pages
 
-- [Home](https://zoption.site/): Product overview and account creation.
+- [Home](https://zoption.site/): Product overview, voice & receipt entry, statement imports, and account creation.
+- [Changelog & Updates](https://zoption.site/changelog): Version release notes, new features, and product improvements.
+- [FAQ](https://zoption.site/faq): Plain-language answers about tracking expenses, imports, budgets, AI assistant, privacy, and billing.
+- [Download Android Beta APK](https://zoption.site/install): Official native Android Beta APK with on-device receipt scanning and offline support.
 - [Terms of Service](https://zoption.site/terms-of-service): Terms governing the service.
 - [Privacy Policy](https://zoption.site/privacy-policy): Account, financial-data, assistant, and provider processing practices.
 - [Cookie Policy](https://zoption.site/cookie-policy): Necessary browser storage and privacy-preserving, cookieless web analytics.
 
+## Search and verification
+
+- Google Preferred Source: Users can add Zoption as a preferred source in Google Search and AI experiences via https://www.google.com/preferences/source?q=zoption.site
+
 ## Product facts
 
-- Users can manually record transactions or import CSV, XLS, and XLSX files.
-- Users review imported rows before saving them.
-- Zoption does not connect directly to banks and does not ask for banking credentials.
+- Users can speak naturally to log expenses via voice entry (speech-to-transaction parsing).
+- Users can snap receipt photos or screenshots to automatically draft expense line items.
+- Users can manually record transactions or import PDF bank statements, CSV, XLS, and XLSX files.
+- Users review imported rows and verify duplicate warnings before saving them.
+- Calculations use exact integer centavo accuracy to avoid floating-point drift.
+- Users can track recurring charges using a Visual Renewal Calendar Interface displaying upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.
+- Zoption does not connect directly to banks and never asks for banking credentials.
 - Each workspace begins empty and contains only records the user chooses to add.
-- The optional AI assistant uses a separate consent flow.
+- The optional AI assistant uses a separate consent flow and is strictly read-only.
 
 ## Boundaries
 

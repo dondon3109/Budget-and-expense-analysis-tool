@@ -141,11 +141,15 @@ export function LandingPage() {
 
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(5);
   const [savingsEnabled, setSavingsEnabled] = useState<boolean>(true);
-  const [activeSavingsCadence, setActiveSavingsCadence] = useState<"monthly" | "daily" | "yearly">("monthly");
+  const [activeSavingsCadence, setActiveSavingsCadence] = useState<"monthly" | "daily" | "yearly">(
+    "monthly",
+  );
   const [activeBudgetId, setActiveBudgetId] = useState<string>("groceries");
 
   // Fast Entry Spotlight State
-  const [activeSpotlightTab, setActiveSpotlightTab] = useState<"voice" | "receipt" | "files" | "assistant">("voice");
+  const [activeSpotlightTab, setActiveSpotlightTab] = useState<
+    "voice" | "receipt" | "files" | "assistant"
+  >("voice");
   const [activeVoiceSampleIndex, setActiveVoiceSampleIndex] = useState<number>(0);
   const [isRecordingSimulated, setIsRecordingSimulated] = useState<boolean>(false);
   const [activeReceiptSampleIndex, setActiveReceiptSampleIndex] = useState<number>(0);
@@ -153,7 +157,8 @@ export function LandingPage() {
 
   const activeVoiceSample = voiceSamples[activeVoiceSampleIndex] ?? voiceSamples[0]!;
   const activeReceiptSample = receiptSamples[activeReceiptSampleIndex] ?? receiptSamples[0]!;
-  const activeAssistantPrompt = assistantPromptSamples[activeAssistantPromptIndex] ?? assistantPromptSamples[0]!;
+  const activeAssistantPrompt =
+    assistantPromptSamples[activeAssistantPromptIndex] ?? assistantPromptSamples[0]!;
 
   // Interactive Marketing & Budget Planner State
   const [monthlyBudget, setMonthlyBudget] = useState<number>(50000);
@@ -273,18 +278,10 @@ export function LandingPage() {
               </a>
             </nav>
             <div className="landing-mobile-actions">
-              <Link
-                className="landing-sign-in"
-                to="/login"
-                onClick={() => setMobileNavOpen(false)}
-              >
+              <Link className="landing-sign-in" to="/login" onClick={() => setMobileNavOpen(false)}>
                 Sign in
               </Link>
-              <Link
-                className="button primary"
-                to="/signup"
-                onClick={() => setMobileNavOpen(false)}
-              >
+              <Link className="button primary" to="/signup" onClick={() => setMobileNavOpen(false)}>
                 Start free
               </Link>
             </div>
@@ -308,7 +305,9 @@ export function LandingPage() {
         <section className="hero">
           <div className="hero-copy">
             <p className="hero-eyebrow">
-              <Mic size={15} aria-hidden="true" /> Voice Entry &middot; <Camera size={15} aria-hidden="true" /> Scan Receipt &middot; <Sparkles size={15} aria-hidden="true" /> AI Assistant &middot; 100% Private
+              <Mic size={15} aria-hidden="true" /> Voice Entry &middot;{" "}
+              <Camera size={15} aria-hidden="true" /> Scan Receipt &middot;{" "}
+              <Sparkles size={15} aria-hidden="true" /> AI Assistant &middot; 100% Private
             </p>
             <h1>
               Zoption makes your money clear. Decide <em>what comes next.</em>
@@ -453,8 +452,8 @@ export function LandingPage() {
             <h2 id="spotlight-title">Never type a transaction again. Talk, snap, or import.</h2>
             <p className="section-lead">
               Manual entry is tedious. Zoption lets you capture spending on the go with your voice,
-              digitize paper receipts with your camera, drop multi-format bank PDFs and spreadsheets,
-              or consult your private AI assistant.
+              digitize paper receipts with your camera, drop multi-format bank PDFs and
+              spreadsheets, or consult your private AI assistant.
             </p>
           </div>
 
@@ -528,19 +527,26 @@ export function LandingPage() {
                   </div>
                   <h3>Just talk to log your spending. Zero typing required.</h3>
                   <p>
-                    Tap the microphone on the go and speak in your natural voice. Zoption transcribes
-                    your sentence in real-time, extracts the exact amount and currency, auto-detects
-                    the merchant, and assigns the right budget envelope for a seamless one-tap confirmation.
+                    Tap the microphone on the go and speak in your natural voice. Zoption
+                    transcribes your sentence in real-time, extracts the exact amount and currency,
+                    auto-detects the merchant, and assigns the right budget envelope for a seamless
+                    one-tap confirmation.
                   </p>
                   <ul className="spotlight-benefits">
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Multi-accent speech AI:</strong> Works reliably in noisy street or cafe environments.
+                      <Check size={16} aria-hidden="true" />{" "}
+                      <strong>Multi-accent speech AI:</strong> Works reliably in noisy street or
+                      cafe environments.
                     </li>
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Automatic envelope tagging:</strong> Matches category targets like Groceries, Fuel, or Dining.
+                      <Check size={16} aria-hidden="true" />{" "}
+                      <strong>Automatic envelope tagging:</strong> Matches category targets like
+                      Groceries, Fuel, or Dining.
                     </li>
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>One-tap review &amp; save:</strong> You review the draft before it touches your ledger.
+                      <Check size={16} aria-hidden="true" />{" "}
+                      <strong>One-tap review &amp; save:</strong> You review the draft before it
+                      touches your ledger.
                     </li>
                   </ul>
                   <div className="sample-selector-label">Try interactive voice examples:</div>
@@ -562,7 +568,10 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                <div className="spotlight-interactive-card voice-card" aria-label="Interactive voice entry simulation">
+                <div
+                  className="spotlight-interactive-card voice-card"
+                  aria-label="Interactive voice entry simulation"
+                >
                   <div className="demo-header">
                     <span className="demo-badge">Live Voice Simulator</span>
                     <span className="demo-status">
@@ -585,7 +594,14 @@ export function LandingPage() {
                       <Mic size={28} aria-hidden="true" />
                     </button>
                     <div className="voice-waves" aria-hidden="true">
-                      <span /><span /><span /><span /><span /><span /><span /><span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
                     </div>
                   </div>
 
@@ -596,7 +612,9 @@ export function LandingPage() {
                   <div className="extracted-transaction-card">
                     <div className="extracted-card-top">
                       <span className="extracted-tag">Auto-Parsed Transaction</span>
-                      <span className="extracted-status in-soft"><Check size={13} /> Verified Draft</span>
+                      <span className="extracted-status in-soft">
+                        <Check size={13} /> Verified Draft
+                      </span>
                     </div>
                     <div className="extracted-fields-grid">
                       <div className="extracted-field">
@@ -641,19 +659,24 @@ export function LandingPage() {
                   <h3>Take a picture of any receipt. Skip the keypad.</h3>
                   <p>
                     Paper receipts and digital checkout screenshots hold valuable purchase data.
-                    Take a quick photo with the Android Beta or upload a receipt image: Zoption’s smart
-                    vision engine detects the merchant name, date, subtotal, sales tax, and line items
-                    automatically.
+                    Take a quick photo with the Android Beta or upload a receipt image: Zoption’s
+                    smart vision engine detects the merchant name, date, subtotal, sales tax, and
+                    line items automatically.
                   </p>
                   <ul className="spotlight-benefits">
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Paper &amp; digital formats:</strong> Supermarket bills, dining receipts, pharmacy invoices &amp; e-commerce slips.
+                      <Check size={16} aria-hidden="true" />{" "}
+                      <strong>Paper &amp; digital formats:</strong> Supermarket bills, dining
+                      receipts, pharmacy invoices &amp; e-commerce slips.
                     </li>
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Line item preservation:</strong> Detailed breakdown without manual transcription.
+                      <Check size={16} aria-hidden="true" />{" "}
+                      <strong>Line item preservation:</strong> Detailed breakdown without manual
+                      transcription.
                     </li>
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Offline-first option:</strong> Available directly on the native Android Beta app.
+                      <Check size={16} aria-hidden="true" /> <strong>Offline-first option:</strong>{" "}
+                      Available directly on the native Android Beta app.
                     </li>
                   </ul>
                   <div className="sample-selector-label">Choose sample receipt:</div>
@@ -671,10 +694,15 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                <div className="spotlight-interactive-card receipt-card" aria-label="Interactive receipt scanner preview">
+                <div
+                  className="spotlight-interactive-card receipt-card"
+                  aria-label="Interactive receipt scanner preview"
+                >
                   <div className="demo-header">
                     <span className="demo-badge">Smart OCR Scanner</span>
-                    <span className="demo-status in-soft"><Check size={13} /> {activeReceiptSample.accuracy}</span>
+                    <span className="demo-status in-soft">
+                      <Check size={13} /> {activeReceiptSample.accuracy}
+                    </span>
                   </div>
 
                   <div className="receipt-viewfinder">
@@ -688,7 +716,9 @@ export function LandingPage() {
                         <div className="receipt-merchant-header">
                           <h4>{activeReceiptSample.merchant}</h4>
                           <small>{activeReceiptSample.branch}</small>
-                          <span className="receipt-date">{activeReceiptSample.date} &middot; {activeReceiptSample.time}</span>
+                          <span className="receipt-date">
+                            {activeReceiptSample.date} &middot; {activeReceiptSample.time}
+                          </span>
                         </div>
                         <div className="receipt-items-list">
                           {activeReceiptSample.items.map((item, idx) => (
@@ -718,9 +748,15 @@ export function LandingPage() {
 
                   <div className="receipt-detected-summary">
                     <div className="detected-pill-group">
-                      <span className="detected-pill"><Check size={12} /> Merchant: {activeReceiptSample.merchant}</span>
-                      <span className="detected-pill"><Check size={12} /> Category: {activeReceiptSample.category}</span>
-                      <span className="detected-pill"><Check size={12} /> Total: {activeReceiptSample.total}</span>
+                      <span className="detected-pill">
+                        <Check size={12} /> Merchant: {activeReceiptSample.merchant}
+                      </span>
+                      <span className="detected-pill">
+                        <Check size={12} /> Category: {activeReceiptSample.category}
+                      </span>
+                      <span className="detected-pill">
+                        <Check size={12} /> Total: {activeReceiptSample.total}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -737,47 +773,73 @@ export function LandingPage() {
               >
                 <div className="spotlight-copy">
                   <div className="spotlight-kicker">
-                    <FileSpreadsheet size={15} aria-hidden="true" /> Universal Bank Statement &amp; Spreadsheet Parser
+                    <FileSpreadsheet size={15} aria-hidden="true" /> Universal Bank Statement &amp;
+                    Spreadsheet Parser
                   </div>
                   <h3>Import PDF, CSV, and Excel Files with Zero Friction.</h3>
                   <p>
-                    Never get locked into one bank or format. Drag and drop e-statements directly from
-                    BPI, BDO, MariBank, Chase, or Bank of America. Work with custom Excel workbooks
-                    (.xlsx, .xls) and CSVs with instant column mapping and smart duplicate detection.
+                    Never get locked into one bank or format. Drag and drop e-statements directly
+                    from BPI, BDO, MariBank, Chase, or Bank of America. Work with custom Excel
+                    workbooks (.xlsx, .xls) and CSVs with instant column mapping and smart duplicate
+                    detection.
                   </p>
                   <ul className="spotlight-benefits">
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Bank PDF e-statements:</strong> Parse statement tables directly into transactions without copy-pasting.
+                      <Check size={16} aria-hidden="true" /> <strong>Bank PDF e-statements:</strong>{" "}
+                      Parse statement tables directly into transactions without copy-pasting.
                     </li>
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Excel &amp; CSV workbooks:</strong> Choose sheets, map columns, and preview every single row.
+                      <Check size={16} aria-hidden="true" />{" "}
+                      <strong>Excel &amp; CSV workbooks:</strong> Choose sheets, map columns, and
+                      preview every single row.
                     </li>
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Smart deduplication:</strong> Never double-count transactions across multiple monthly uploads.
+                      <Check size={16} aria-hidden="true" /> <strong>Smart deduplication:</strong>{" "}
+                      Never double-count transactions across multiple monthly uploads.
                     </li>
                   </ul>
                   <div className="file-badge-strip">
-                    <span className="format-badge pdf"><FileText size={14} /> PDF Statements</span>
-                    <span className="format-badge xlsx"><FileSpreadsheet size={14} /> Excel XLSX / XLS</span>
-                    <span className="format-badge csv"><Upload size={14} /> CSV Spreadsheets</span>
+                    <span className="format-badge pdf">
+                      <FileText size={14} /> PDF Statements
+                    </span>
+                    <span className="format-badge xlsx">
+                      <FileSpreadsheet size={14} /> Excel XLSX / XLS
+                    </span>
+                    <span className="format-badge csv">
+                      <Upload size={14} /> CSV Spreadsheets
+                    </span>
                   </div>
                 </div>
 
-                <div className="spotlight-interactive-card files-card" aria-label="Interactive file import visualizer">
+                <div
+                  className="spotlight-interactive-card files-card"
+                  aria-label="Interactive file import visualizer"
+                >
                   <div className="demo-header">
                     <span className="demo-badge">Multi-Format Dropzone</span>
-                    <span className="demo-status in-soft"><Check size={13} /> 3 Formats Supported</span>
+                    <span className="demo-status in-soft">
+                      <Check size={13} /> 3 Formats Supported
+                    </span>
                   </div>
 
                   <div className="file-upload-mockup">
                     <div className="dropzone-box">
                       <div className="dropzone-icon-stack">
-                        <span className="icon-badge pdf"><FileText size={22} /></span>
-                        <span className="icon-badge xls"><FileSpreadsheet size={22} /></span>
-                        <span className="icon-badge csv"><Upload size={22} /></span>
+                        <span className="icon-badge pdf">
+                          <FileText size={22} />
+                        </span>
+                        <span className="icon-badge xls">
+                          <FileSpreadsheet size={22} />
+                        </span>
+                        <span className="icon-badge csv">
+                          <Upload size={22} />
+                        </span>
                       </div>
                       <strong>Drop your PDF, Excel, or CSV statement</strong>
-                      <small>Instant column auto-mapping &middot; Centavo precision &middot; Duplicate filter</small>
+                      <small>
+                        Instant column auto-mapping &middot; Centavo precision &middot; Duplicate
+                        filter
+                      </small>
                     </div>
 
                     <div className="file-preview-table-wrap">
@@ -825,19 +887,24 @@ export function LandingPage() {
                   </div>
                   <h3>Ask your numbers, not a generic chatbot.</h3>
                   <p>
-                    The Zoption AI Assistant provides conversational intelligence grounded strictly in
-                    your verified transactions and budgets. It answers complex multi-month queries with
-                    exact evidence and explanations, offering spoken replies without ever modifying your data.
+                    The Zoption AI Assistant provides conversational intelligence grounded strictly
+                    in your verified transactions and budgets. It answers complex multi-month
+                    queries with exact evidence and explanations, offering spoken replies without
+                    ever modifying your data.
                   </p>
                   <ul className="spotlight-benefits">
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Zero hallucination:</strong> Calculations are computed mathematically from your ledger facts.
+                      <Check size={16} aria-hidden="true" /> <strong>Zero hallucination:</strong>{" "}
+                      Calculations are computed mathematically from your ledger facts.
                     </li>
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Strict read-only safety:</strong> Operates strictly with your consent; cannot edit records.
+                      <Check size={16} aria-hidden="true" />{" "}
+                      <strong>Strict read-only safety:</strong> Operates strictly with your consent;
+                      cannot edit records.
                     </li>
                     <li>
-                      <Check size={16} aria-hidden="true" /> <strong>Spoken voice replies:</strong> Listen to spoken financial summaries with natural voice synthesis.
+                      <Check size={16} aria-hidden="true" /> <strong>Spoken voice replies:</strong>{" "}
+                      Listen to spoken financial summaries with natural voice synthesis.
                     </li>
                   </ul>
                   <div className="sample-selector-label">Test financial questions:</div>
@@ -855,10 +922,15 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                <div className="spotlight-interactive-card assistant-card" aria-label="Interactive AI Assistant preview">
+                <div
+                  className="spotlight-interactive-card assistant-card"
+                  aria-label="Interactive AI Assistant preview"
+                >
                   <div className="demo-header">
                     <span className="demo-badge">Grounded AI Assistant</span>
-                    <span className="demo-status in-soft"><ShieldCheck size={13} /> Read-Only &amp; Private</span>
+                    <span className="demo-status in-soft">
+                      <ShieldCheck size={13} /> Read-Only &amp; Private
+                    </span>
                   </div>
 
                   <div className="chat-conversation-box">
@@ -869,7 +941,9 @@ export function LandingPage() {
                       <div className="assistant-msg-header">
                         <Sparkles size={14} aria-hidden="true" />
                         <strong>Zoption Assistant</strong>
-                        <span className="spoken-pill"><Volume2 size={12} /> Spoken audio ready</span>
+                        <span className="spoken-pill">
+                          <Volume2 size={12} /> Spoken audio ready
+                        </span>
                       </div>
                       <p>{activeAssistantPrompt.answer}</p>
                       <div className="evidence-footer">
@@ -1024,13 +1098,14 @@ export function LandingPage() {
                 <p className="facet-kicker">Subscription tracking</p>
                 <h3>Name the bills that quietly repeat.</h3>
                 <p>
-                  Log a subscription and Zoption records its next charge as an expense, so your
-                  balance already reflects what&rsquo;s coming. Edit, cancel, or delete it and the
-                  charge stays in sync.
+                  Log a subscription and Zoption records its next charge as an expense. Switch to
+                  the visual renewal calendar to track payment schedules, upcoming billing cycles,
+                  and cash-flow impact on an interactive month-by-month grid.
                 </p>
                 <div className="facet-tags">
-                  <span>Next-charge forecasting</span>
-                  <span>Edit &amp; cancel in sync</span>
+                  <span>Visual renewal calendar</span>
+                  <span>Payment schedules</span>
+                  <span>Cash-flow impact</span>
                   <span>Annual plans</span>
                 </div>
               </div>
@@ -1313,8 +1388,8 @@ export function LandingPage() {
                 Build your first budget — Start free <ArrowRight size={16} aria-hidden="true" />
               </Link>
               <small className="calculator-disclaimer">
-                Based on an average 10% budget margin achieved through active category envelope targets
-                and duplicate expense prevention.
+                Based on an average 10% budget margin achieved through active category envelope
+                targets and duplicate expense prevention.
               </small>
             </div>
           </div>
@@ -1720,32 +1795,43 @@ export function LandingPage() {
             <p className="eyebrow">Common questions</p>
             <h2 id="faq-title">Budget and expense tracking, plainly answered.</h2>
             <p className="section-lead">
-              How Zoption handles voice entry, receipt scanning, file imports, privacy, and money math.
+              How Zoption handles voice entry, receipt scanning, file imports, privacy, and money
+              math.
             </p>
           </div>
           <dl className="faq-list">
             <details className="faq-item">
               <summary>How does Voice Entry work?</summary>
               <dd>
-                Tap the microphone and speak naturally in English or Taglish, such as &ldquo;Spent ₱540 for groceries at Robinsons Supermarket today&rdquo;. Zoption transcribes your speech, extracts the amount, auto-detects the merchant, and assigns the correct budget envelope. You review and save with a single tap — no typing required.
+                Tap the microphone and speak naturally in English or Taglish, such as &ldquo;Spent
+                ₱540 for groceries at Robinsons Supermarket today&rdquo;. Zoption transcribes your
+                speech, extracts the amount, auto-detects the merchant, and assigns the correct
+                budget envelope. You review and save with a single tap — no typing required.
               </dd>
             </details>
             <details className="faq-item">
               <summary>How does Receipt Photo Scanning work?</summary>
               <dd>
-                Snap a picture of any paper receipt or upload a digital invoice screenshot. Zoption&rsquo;s vision engine extracts the store name, date, subtotal, sales tax, and line items automatically, then suggests the appropriate category envelope for your review.
+                Snap a picture of any paper receipt or upload a digital invoice screenshot.
+                Zoption&rsquo;s vision engine extracts the store name, date, subtotal, sales tax,
+                and line items automatically, then suggests the appropriate category envelope for
+                your review.
               </dd>
             </details>
             <details className="faq-item">
               <summary>What file formats can I import?</summary>
               <dd>
-                PDF bank statements, multi-sheet Excel workbooks (.xlsx, .xls), and CSV files. Pick a document, map columns, filter duplicates, and preview every single row before committing it to your private ledger.
+                PDF bank statements, multi-sheet Excel workbooks (.xlsx, .xls), and CSV files. Pick
+                a document, map columns, filter duplicates, and preview every single row before
+                committing it to your private ledger.
               </dd>
             </details>
             <details className="faq-item">
               <summary>How does the AI Financial Assistant work?</summary>
               <dd>
-                The assistant answers questions about your real numbers with grounded evidence and verified mathematical calculations. It is strictly read-only, operates only with your explicit consent, and never modifies your balances or records.
+                The assistant answers questions about your real numbers with grounded evidence and
+                verified mathematical calculations. It is strictly read-only, operates only with
+                your explicit consent, and never modifies your balances or records.
               </dd>
             </details>
             <details className="faq-item">

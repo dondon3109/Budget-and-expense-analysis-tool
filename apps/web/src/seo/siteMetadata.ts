@@ -12,7 +12,13 @@ const searchIndexingEnabled =
   typeof __SEARCH_INDEXING_ENABLED__ === "undefined" || __SEARCH_INDEXING_ENABLED__;
 
 export type PublicRoutePath =
-  "/" | "/terms-of-service" | "/privacy-policy" | "/cookie-policy" | "/faq" | "/install";
+  | "/"
+  | "/terms-of-service"
+  | "/privacy-policy"
+  | "/cookie-policy"
+  | "/faq"
+  | "/install"
+  | "/changelog";
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/",
@@ -21,6 +27,7 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/cookie-policy",
   "/faq",
   "/install",
+  "/changelog",
 ];
 
 type StructuredDataNode = Record<string, unknown>;
@@ -138,7 +145,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Can I track subscriptions and recurring charges?",
     answer:
-      "Yes. Log a subscription and Zoption records its next charge as an expense, so your balance reflects what's paid. Canceling a subscription stops recurring tracking without refunding or removing recorded charges.",
+      "Yes. Log a subscription and Zoption records its next charge as an expense, so your balance reflects what's paid. You can also switch to the Visual Renewal Calendar Interface to view upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.",
   },
   {
     question: "How does automatic savings interest work?",
@@ -159,6 +166,11 @@ const FAQ_ITEMS: FaqItem[] = [
     question: "How does Zoption billing work?",
     answer:
       "Zoption offers monthly and annual paid subscription options through PayPal. Prices are charged in Philippine pesos, and subscriptions renew automatically for the selected interval unless you cancel renewal. You can request cancellation through Plan and billing in Zoption.",
+  },
+  {
+    question: "How do I add Zoption as a Preferred Source in Google Search and AI results?",
+    answer:
+      "You can set Zoption as your preferred source by visiting Google's preferences at https://www.google.com/preferences/source?q=zoption.site. When chosen, Google highlights Zoption content with a 'Preferred' trust badge and prioritizes verified budgeting guides and release updates in your Google Search, AI Overviews, and Top Stories.",
   },
 ];
 
@@ -220,8 +232,7 @@ function installPageStructuredData(): StructuredDataGraph {
       "@type": "WebPage",
       "@id": `${url}#webpage`,
       name: "Download Zoption Beta for Android",
-      description:
-        "Download the official Zoption Beta Android APK from the Zoption website.",
+      description: "Download the official Zoption Beta Android APK from the Zoption website.",
       url,
       dateModified: ANDROID_RELEASE.releaseDate,
       inLanguage: "en",
@@ -250,6 +261,22 @@ function installPageStructuredData(): StructuredDataGraph {
 const PUBLIC_CONTENT_LAST_MODIFIED = "2026-08-11";
 const TERMS_AND_PRIVACY_LAST_MODIFIED = "2026-08-11";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-08-10";
+const CHANGELOG_LAST_MODIFIED = "2026-08-24";
+
+function changelogPageStructuredData(): StructuredDataGraph {
+  const url = `${SITE_ORIGIN}/changelog`;
+  return structuredDataGraph(websiteNode(), {
+    "@type": "WebPage",
+    "@id": `${url}#webpage`,
+    name: "Changelog & Product Updates — Zoption",
+    description:
+      "A complete record of new features, enhancements, and improvements across the Zoption web workspace and Android apps.",
+    url,
+    dateModified: CHANGELOG_LAST_MODIFIED,
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+  });
+}
 
 export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata> = {
   "/": {
@@ -343,6 +370,19 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       lastModified: ANDROID_RELEASE.releaseDate,
       changeFrequency: "monthly",
       priority: 0.7,
+    },
+  },
+  "/changelog": {
+    title: "Changelog & Release Notes — Zoption",
+    description:
+      "See what's new in Zoption: visual renewal calendar for subscriptions, voice expense entry, receipt scanning, transaction deduplication, Android Beta APK updates, and private budgeting tools.",
+    canonical: `${SITE_ORIGIN}/changelog`,
+    robots: "index,follow",
+    structuredData: changelogPageStructuredData(),
+    sitemap: {
+      lastModified: CHANGELOG_LAST_MODIFIED,
+      changeFrequency: "weekly",
+      priority: 0.8,
     },
   },
 };
