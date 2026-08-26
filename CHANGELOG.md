@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Changed
 
 - Made routine financial edits feel immediate on web with optimistic transactions, accounts, categories, budgets, goals, debts, subscriptions, and calendar updates, including safe rollback and background reconciliation; mobile keeps its existing encrypted local-first writes and background sync behavior.
+- Improved mobile account and category rows with clearer separation between icons, titles, and supporting descriptions.
 
 ### Fixed
 

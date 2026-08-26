@@ -262,16 +262,19 @@ const styles = StyleSheet.create({
     minHeight: touchTarget + spacing.md,
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xs,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   leading: {
-    width: 28,
+    width: spacing.xl,
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
   },
   leadingEmoji: { fontSize: 24, lineHeight: 30 },
   colorDot: { width: 14, height: 14, borderRadius: 7 },
-  rowText: { minWidth: 0, flex: 1, gap: 2 },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: 48 },
+  rowText: { minWidth: 0, flex: 1, gap: spacing.xxs },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: spacing.xs + spacing.xl + spacing.md,
+  },
 });
