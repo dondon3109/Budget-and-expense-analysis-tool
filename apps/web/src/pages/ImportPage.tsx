@@ -39,11 +39,14 @@ import { emptyImportMapping, localToday, useImportDraft } from "../import/Import
 import "../import/import.css";
 import {
   commitImport,
+  getAccounts,
   getCategories,
+  getSubscriptions,
   isBillingEnforcementError,
   isMonthlyLimitReachedError,
   previewImport,
 } from "../lib/api";
+import { ImportSubscriptionSuggestions } from "../components/import/ImportSubscriptionSuggestions";
 import { formatMoney } from "../lib/formatters";
 import {
   detectImportPreset,
@@ -213,6 +216,16 @@ export function ImportPage() {
     queryFn: () => getCategories(workspace),
   });
   const categories = categoriesQuery.data ?? [];
+  const accountsQuery = useQuery({
+    queryKey: queryKeys.accounts(workspace),
+    queryFn: () => getAccounts(workspace),
+  });
+  const accounts = accountsQuery.data ?? [];
+  const subscriptionsQuery = useQuery({
+    queryKey: queryKeys.subscriptions(workspace, `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`),
+    queryFn: () => getSubscriptions(workspace, `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`),
+    enabled: Boolean(preview),
+  });
 
   const previewMutation = useMutation({
     mutationFn: ({ input }: { input: Parameters<typeof previewImport>[1]; generation: number }) =>
@@ -1053,6 +1066,14 @@ export function ImportPage() {
                         <span>Duplicates</span>
                       </div>
                     </div>
+
+                    <ImportSubscriptionSuggestions
+                      preview={preview}
+                      categories={categories}
+                      accounts={accounts}
+                      workspace={workspace}
+                      existingSubscriptions={subscriptionsQuery.data?.items}
+                    />
 
                     {eligibleRows.length > 0 && (
                       <div className="bulk-category-toolbar">

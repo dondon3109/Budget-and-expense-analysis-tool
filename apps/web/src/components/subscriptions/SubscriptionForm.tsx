@@ -18,6 +18,8 @@ interface SubscriptionFormProps {
   initial?: SubscriptionRecord;
   onSubmit: (input: SubscriptionInput) => Promise<void>;
   onClose: () => void;
+  title?: string;
+  submitLabel?: string;
 }
 
 function today(): string {
@@ -40,6 +42,8 @@ export function SubscriptionForm({
   initial,
   onSubmit,
   onClose,
+  title,
+  submitLabel,
 }: SubscriptionFormProps) {
   const [name, setName] = useState(initial?.name ?? "");
   const [amount, setAmount] = useState(initial ? minorToInput(initial.amountMinor) : "");
@@ -129,7 +133,7 @@ export function SubscriptionForm({
           <div>
             <p className="eyebrow">Recurring charge</p>
             <h2 id="subscription-form-title">
-              {editing ? "Edit subscription" : "Add subscription"}
+              {title ?? (editing ? "Edit subscription" : "Add subscription")}
             </h2>
           </div>
           <button
@@ -248,13 +252,14 @@ export function SubscriptionForm({
               Cancel
             </button>
             <button className="button primary" type="submit" disabled={busy || !categoryId || !accountId}>
-              {busy
-                ? editing
-                  ? "Saving…"
-                  : "Adding…"
-                : editing
-                  ? "Save changes"
-                  : "Add subscription"}
+              {submitLabel ??
+                (busy
+                  ? editing
+                    ? "Saving…"
+                    : "Adding…"
+                  : editing
+                    ? "Save changes"
+                    : "Add subscription")}
             </button>
           </div>
         </form>

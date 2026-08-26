@@ -11,3 +11,4 @@ export * from "./sync";
 export * from "./transactions";
 export * from "./types";
 export * from "./importPresets";
+export * from "./importSubscriptions";
