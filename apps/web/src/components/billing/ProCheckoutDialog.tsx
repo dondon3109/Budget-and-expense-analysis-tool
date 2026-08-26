@@ -260,7 +260,11 @@ export function ProCheckoutDialog({
       openerRef.current = activeElement;
     }
     const preferProAction = window.matchMedia?.("(max-width: 700px)").matches;
-    (preferProAction ? initialProActionRef.current : initialActionRef.current)?.focus();
+    const targetAction = preferProAction ? initialProActionRef.current : initialActionRef.current;
+    targetAction?.focus({ preventScroll: true });
+    if (dialogRef.current) {
+      dialogRef.current.scrollTop = 0;
+    }
 
     return () => {
       if (openerRef.current?.isConnected) openerRef.current.focus();
