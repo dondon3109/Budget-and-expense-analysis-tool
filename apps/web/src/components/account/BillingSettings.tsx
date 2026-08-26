@@ -200,6 +200,7 @@ export function BillingSettings({ user }: { user: User }) {
   const reconciliationAttemptRef = useRef<{ checkoutKey: string; attemptedAt: number } | undefined>(
     undefined,
   );
+  const cancelledAbortRef = useRef<string | undefined>(undefined);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [paymentRefreshBusy, setPaymentRefreshBusy] = useState(false);
@@ -213,6 +214,7 @@ export function BillingSettings({ user }: { user: User }) {
 
   useEffect(() => {
     const pendingCheckoutKey = summary?.pendingCheckout?.createdAt;
+    if (checkoutCancelled) return;
     if (!checkoutCompleted && !pendingCheckoutKey) return;
     if (isConfirmedPayPalSummary(summary)) {
       const nextSearch = new URLSearchParams(location.search);
@@ -357,6 +359,7 @@ export function BillingSettings({ user }: { user: User }) {
       if (timer) clearTimeout(timer);
     };
   }, [
+    checkoutCancelled,
     checkoutCompleted,
     location.hash,
     location.pathname,
@@ -388,13 +391,79 @@ export function BillingSettings({ user }: { user: User }) {
       },
       { replace: true },
     );
-  }, [checkoutCancelled, location.hash, location.pathname, location.search, navigate]);
+
+    // PayPal redirects here when the buyer cancels the approval. The pending
+    // checkout remains as APPROVAL_PENDING until it expires, which otherwise
+    // leaves Plan and billing stuck in "Confirming your payment". Abort the
+    // unpaid checkout immediately so the user can start a fresh one.
+    if (summary?.pendingCheckout) {
+      const checkoutKey = summary.pendingCheckout.createdAt;
+      if (cancelledAbortRef.current !== checkoutKey) {
+        cancelledAbortRef.current = checkoutKey;
+        void (async () => {
+          try {
+            const reconciliation = await reconcileBillingCheckout(workspace, {
+              abortPendingCheckout: true,
+            });
+            queryClient.setQueryData(queryKeys.billing(workspace), reconciliation.summary);
+            await refetchBilling();
+          } catch {
+            // Fall back to a summary refetch so the pending state can resolve
+            // even if the abort reconciliation fails.
+            try {
+              await refetchBilling();
+            } catch {
+              // Ignore secondary refresh errors; the banner still explains the
+              // cancelled checkout.
+            }
+          }
+        })();
+      }
+    }
+  }, [
+    checkoutCancelled,
+    location.hash,
+    location.pathname,
+    location.search,
+    navigate,
+    queryClient,
+    refetchBilling,
+    summary?.pendingCheckout,
+    workspace,
+  ]);
 
   useEffect(() => {
     if (!checkoutCancelledNotice) return;
     const timer = setTimeout(() => setCheckoutCancelledNotice(false), 7_000);
     return () => clearTimeout(timer);
   }, [checkoutCancelledNotice]);
+
+  // Handle the case where the billing summary loads after the cancel redirect
+  // has already cleared the URL. The pending checkout is still stuck until we
+  // abort it, so trigger the abort when the summary arrives during the notice
+  // window.
+  useEffect(() => {
+    if (!checkoutCancelledNotice) return;
+    if (!summary?.pendingCheckout) return;
+    const checkoutKey = summary.pendingCheckout.createdAt;
+    if (cancelledAbortRef.current === checkoutKey) return;
+    cancelledAbortRef.current = checkoutKey;
+    void (async () => {
+      try {
+        const reconciliation = await reconcileBillingCheckout(workspace, {
+          abortPendingCheckout: true,
+        });
+        queryClient.setQueryData(queryKeys.billing(workspace), reconciliation.summary);
+        await refetchBilling();
+      } catch {
+        try {
+          await refetchBilling();
+        } catch {
+          // Ignore secondary errors.
+        }
+      }
+    })();
+  }, [checkoutCancelledNotice, queryClient, refetchBilling, summary?.pendingCheckout, workspace]);
 
   useEffect(() => {
     if (!confirmingCancellation) return;
@@ -567,7 +636,10 @@ export function BillingSettings({ user }: { user: User }) {
     }
   }, [reconcileBillingCheckout, refetchBilling, workspace]);
 
-  const paymentPending = Boolean(checkoutCompleted || summary?.pendingCheckout);
+  const paymentPending = Boolean(
+    checkoutCompleted ||
+      (summary?.pendingCheckout && !checkoutCancelled && !checkoutCancelledNotice),
+  );
   useEffect(() => {
     if (!paymentPending || !paymentPollingExhausted) return;
 

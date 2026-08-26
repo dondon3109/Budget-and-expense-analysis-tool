@@ -526,7 +526,12 @@ export function ProCheckoutDialog({
                   <PayPalProvider
                     clientId={providerConfig.clientId}
                     environment={providerConfig.environment}
-                    components={["paypal-subscriptions"]}
+                    components={[
+                      "paypal-payments",
+                      "paypal-subscriptions",
+                      "paypal-guest-payments",
+                      "card-fields",
+                    ]}
                     pageType="checkout"
                   >
                     <PayPalCheckoutBoundary

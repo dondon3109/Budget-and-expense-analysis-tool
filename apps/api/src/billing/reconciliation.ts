@@ -58,6 +58,7 @@ export async function reconcilePayPalCheckout(
   repository: BillingRepository,
   env: Bindings,
   tenantId: string,
+  options: { abortPendingCheckout?: boolean } = {},
 ): Promise<BillingCheckoutReconciliation> {
   const checkout = await repository.getPendingCheckout(env, tenantId);
   if (!checkout?.providerSubscriptionId) {
@@ -106,10 +107,12 @@ export async function reconcilePayPalCheckout(
     // window has already expired, treat it as abandoned: cancel the unpaid subscription and
     // close the checkout so the tenant can start a fresh one. An APPROVED subscription (the
     // buyer approved and payment may be settling) stays under review until PayPal finalizes it.
-    if (
+    // When the buyer explicitly cancels the PayPal approval (cancel_url), allow the frontend
+    // to abort the pending checkout immediately without waiting for expiry.
+    const shouldAbortPending =
       subscription.status === "APPROVAL_PENDING" &&
-      pendingOutcome(checkout) === "review_required"
-    ) {
+      (pendingOutcome(checkout) === "review_required" || options.abortPendingCheckout === true);
+    if (shouldAbortPending) {
       await cancelPayPalSubscription(env, checkout.providerSubscriptionId).catch(() => {});
       await repository.supersedePendingCheckout(env, tenantId, checkout.reference);
       return {

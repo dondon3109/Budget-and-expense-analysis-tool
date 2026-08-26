@@ -24,11 +24,18 @@ export function createBillingRoutes(repository: BillingRepository) {
     context.json({ provider: "paypal" as const, ...getPayPalBrowserConfiguration(context.env) }),
   );
 
-  routes.post("/reconcile", async (context) =>
-    context.json(
-      await reconcilePayPalCheckout(repository, context.env, context.get("tenant").tenantId),
-    ),
-  );
+  routes.post("/reconcile", async (context) => {
+    const body = (await readJson(context).catch(() => ({}))) as {
+      abortPendingCheckout?: boolean;
+      checkoutCancelled?: boolean;
+    };
+    const abortPendingCheckout = Boolean(body.abortPendingCheckout ?? body.checkoutCancelled);
+    return context.json(
+      await reconcilePayPalCheckout(repository, context.env, context.get("tenant").tenantId, {
+        abortPendingCheckout,
+      }),
+    );
+  });
 
   routes.post("/checkout", async (context) => {
     const parsed = billingCheckoutRequestSchema.safeParse(await readJson(context));

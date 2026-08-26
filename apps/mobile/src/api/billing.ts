@@ -57,12 +57,13 @@ export function cancelBillingSubscription(
 
 export function reconcileBillingCheckout(
   api: BillingApi,
+  options: { abortPendingCheckout?: boolean } = {},
 ): Promise<BillingCheckoutReconciliation> {
   return apiRequest({
     ...api,
     path: "/api/app/billing/reconcile",
     method: "POST",
-    body: {},
+    body: options.abortPendingCheckout ? { abortPendingCheckout: true } : {},
     fallback: billingFallback,
     decode: (value) => billingReconciliationResponseSchema.parse(value),
   });

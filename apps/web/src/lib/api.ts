@@ -576,10 +576,13 @@ export function getBillingSummary(workspace: AuthenticatedWorkspace): Promise<Bi
 
 export function reconcileBillingCheckout(
   workspace: AuthenticatedWorkspace,
+  options: { abortPendingCheckout?: boolean } = {},
 ): Promise<BillingCheckoutReconciliation> {
   return requestJson(workspace, "/api/app/billing/reconcile", {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify(
+      options.abortPendingCheckout ? { abortPendingCheckout: true } : {},
+    ),
   });
 }
 

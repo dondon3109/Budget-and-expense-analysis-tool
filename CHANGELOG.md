@@ -4,6 +4,11 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Billing now clears a `PayPal` `APPROVAL_PENDING` checkout immediately when the buyer cancels via `?checkout=cancelled` instead of remaining stuck on `Confirming your payment` until the 15-minute expiry. `POST /api/app/billing/reconcile` accepts `abortPendingCheckout` and supersedes the pending checkout without granting Pro.
+- Pro checkout now loads all required PayPal JS v6 components (`paypal-payments`, `paypal-subscriptions`, `paypal-guest-payments`, `card-fields` per https://docs.paypal.ai/developer/how-to/sdk/js/v6/configuration) so the Debit or credit card guest option correctly appears inside the PayPal window when the buyer/merchant is eligible (previously only `paypal-subscriptions` was loaded, hiding card).
+
 ## 2.18.0 — 2026-08-26
 
 ### Added

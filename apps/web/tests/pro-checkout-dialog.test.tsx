@@ -125,7 +125,12 @@ describe("ProCheckoutDialog", () => {
     expect(paypalMocks.providerProps).toHaveBeenCalledWith(
       expect.objectContaining({
         clientId: "public-client-id",
-        components: ["paypal-subscriptions"],
+        components: [
+          "paypal-payments",
+          "paypal-subscriptions",
+          "paypal-guest-payments",
+          "card-fields",
+        ],
         environment: "sandbox",
       }),
     );
