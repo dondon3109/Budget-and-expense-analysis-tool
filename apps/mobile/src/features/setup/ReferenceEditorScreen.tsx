@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -59,6 +60,17 @@ const categoryOptions: Array<{ id: TransactionKind; label: string }> = [
 ];
 
 const emojiPalette = ["🍔", "🛒", "🏠", "🚗", "💡", "🎁", "💊", "✈️", "💼", "💰"];
+
+const categoryColorOptions = [
+  { name: "Emerald", value: "#0F766E" },
+  { name: "Blue", value: "#2563EB" },
+  { name: "Violet", value: "#7C3AED" },
+  { name: "Pink", value: "#DB2777" },
+  { name: "Red", value: "#DC2626" },
+  { name: "Orange", value: "#EA580C" },
+  { name: "Amber", value: "#D97706" },
+  { name: "Slate", value: "#475569" },
+] as const;
 
 const frequencyOptions: Array<{ id: InterestFrequency; label: string }> = interestFrequencies.map(
   (frequency) => ({
@@ -156,6 +168,7 @@ export function ReferenceEditorScreen() {
   const [accountType, setAccountType] = useState<AccountType>("cash");
   const [categoryKind, setCategoryKind] = useState<TransactionKind>("expense");
   const [color, setColor] = useState("#0F766E");
+  const [customColorOpen, setCustomColorOpen] = useState(false);
   const [iconEmoji, setIconEmoji] = useState("");
   const [interestEnabled, setInterestEnabled] = useState(false);
   const [interestRate, setInterestRate] = useState("");
@@ -182,7 +195,13 @@ export function ReferenceEditorScreen() {
     setName(account?.name ?? category?.name ?? "");
     setAccountType(account?.type ?? "cash");
     setCategoryKind(category?.kind ?? "expense");
-    setColor(category?.color ?? "#0F766E");
+    const savedColor = category?.color ?? "#0F766E";
+    setColor(savedColor);
+    setCustomColorOpen(
+      !categoryColorOptions.some(
+        (option) => option.value.toLowerCase() === savedColor.toLowerCase(),
+      ),
+    );
     setIconEmoji(resolveCategoryEmoji(category) ?? "");
     initialized.current = true;
   }, [account, category, id, references.data]);
@@ -366,13 +385,15 @@ export function ReferenceEditorScreen() {
     >
       <Stack.Screen options={{ title }} />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         keyboardVerticalOffset={Platform.OS === "ios" ? 48 : 0}
         style={styles.safe}
       >
         <ScrollView
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
           contentContainerStyle={styles.content}
           contentInsetAdjustmentBehavior="automatic"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           keyboardShouldPersistTaps="handled"
         >
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
@@ -554,19 +575,102 @@ export function ReferenceEditorScreen() {
                     setMessage(null);
                   }}
                 />
-                <FormField
-                  label="Color"
-                  value={color}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  editable={!saving && !blocked && !permanent}
-                  hint="Six-digit hex color, for example #0F766E"
-                  maxLength={7}
-                  onChangeText={(value) => {
-                    setColor(value.toUpperCase());
-                    setMessage(null);
-                  }}
-                />
+                <View className="gap-2">
+                  <View className="gap-1">
+                    <Text style={[typography.label, { color: theme.colors.text }]}>Color</Text>
+                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                      Choose a color that makes this category easy to recognize.
+                    </Text>
+                  </View>
+                  <View accessibilityLabel="Category colors" style={styles.colorPicker}>
+                    {categoryColorOptions.map((option) => {
+                      const selected = option.value.toLowerCase() === color.toLowerCase();
+                      return (
+                        <Pressable
+                          key={option.value}
+                          accessibilityLabel={`Use ${option.name} for this category`}
+                          accessibilityRole="button"
+                          accessibilityState={{
+                            disabled: saving || blocked || permanent,
+                            selected,
+                          }}
+                          disabled={saving || blocked || permanent}
+                          onPress={() => {
+                            setColor(option.value);
+                            setCustomColorOpen(false);
+                            setMessage(null);
+                          }}
+                          style={({ pressed }) => [
+                            styles.colorOption,
+                            {
+                              backgroundColor: pressed
+                                ? theme.colors.canvasMuted
+                                : theme.colors.surface,
+                              borderColor: selected ? theme.colors.brand : theme.colors.border,
+                              opacity: saving || blocked || permanent ? 0.5 : 1,
+                            },
+                          ]}
+                        >
+                          <View
+                            accessibilityElementsHidden
+                            style={[styles.colorSwatch, { backgroundColor: option.value }]}
+                          >
+                            {selected ? (
+                              <MaterialCommunityIcons color="#FFFFFF" name="check" size={17} />
+                            ) : null}
+                          </View>
+                          <Text
+                            numberOfLines={1}
+                            style={[typography.label, { color: theme.colors.text }]}
+                          >
+                            {option.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{
+                      disabled: saving || blocked || permanent,
+                      expanded: customColorOpen,
+                    }}
+                    disabled={saving || blocked || permanent}
+                    onPress={() => setCustomColorOpen((open) => !open)}
+                    style={({ pressed }) => [
+                      styles.customColorToggle,
+                      {
+                        backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
+                        opacity: saving || blocked || permanent ? 0.5 : 1,
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      accessibilityElementsHidden
+                      color={theme.colors.brand}
+                      name="palette-outline"
+                      size={19}
+                    />
+                    <Text style={[typography.label, { color: theme.colors.brand }]}>
+                      {customColorOpen ? "Hide custom color" : "Use a custom color"}
+                    </Text>
+                  </Pressable>
+                  {customColorOpen ? (
+                    <FormField
+                      label="Custom color code"
+                      value={color}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      editable={!saving && !blocked && !permanent}
+                      hint="Enter a six-digit code, such as #0F766E."
+                      maxLength={7}
+                      onChangeText={(value) => {
+                        setColor(value.toUpperCase());
+                        setMessage(null);
+                      }}
+                    />
+                  ) : null}
+                </View>
                 <View className="gap-2">
                   <FormField
                     label="Emoji icon (optional)"
@@ -675,6 +779,37 @@ const styles = StyleSheet.create({
     minHeight: touchTarget,
     alignItems: "center",
     justifyContent: "center",
+  },
+  colorPicker: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  colorOption: {
+    minHeight: touchTarget + spacing.xs,
+    minWidth: 136,
+    flexBasis: "46%",
+    flexGrow: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: 1.5,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  colorSwatch: {
+    width: 30,
+    height: 30,
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 15,
+  },
+  customColorToggle: {
+    minHeight: touchTarget,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.xs,
   },
   emojiPicker: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   emojiOption: {

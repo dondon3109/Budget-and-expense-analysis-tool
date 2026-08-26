@@ -40,7 +40,10 @@ describe("mobile OTA app configuration", () => {
     // single source of truth - not a separately maintained literal.
     expect(config.version).toBe(packageJson.version);
     expect(config.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
-    expect(config.android).toMatchObject({ package: "site.zoption.android" });
+    expect(config.android).toMatchObject({
+      package: "site.zoption.android",
+      softwareKeyboardLayoutMode: "pan",
+    });
     expect(config.android?.versionCode).toBeGreaterThan(0);
     expect(config.runtimeVersion).toEqual({ policy: "appVersion" });
   });
