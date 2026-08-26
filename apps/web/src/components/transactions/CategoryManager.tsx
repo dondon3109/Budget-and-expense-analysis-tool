@@ -14,6 +14,11 @@ import { useRootLock } from "../../hooks/useRootLock";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { createCategory, isBillingEnforcementError, updateCategory } from "../../lib/api";
+import {
+  optimisticId,
+  restoreOptimisticSnapshot,
+  updateOptimistically,
+} from "../../lib/optimistic";
 import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 
@@ -82,34 +87,102 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
   };
   const createMutation = useMutation({
     mutationFn: (input: CategoryInput) => createCategory(workspace, input),
-    onSuccess: async () => {
+    onMutate: async (input) => {
+      const id = optimisticId("category");
+      const category: CategoryRecord = {
+        ...input,
+        id,
+        iconEmoji: input.iconEmoji ?? null,
+        archived: false,
+        system: false,
+        origin: "custom",
+        requiredPlan: "free",
+        locked: false,
+      };
+      const snapshot = await updateOptimistically<CategoryRecord[]>(
+        queryClient,
+        queryKeys.allCategories(workspace),
+        (current) => (current ? [...current, category] : current),
+        false,
+      );
       setName("");
       setIconEmoji("");
       setError(undefined);
-      await refresh();
+      return { id, input, snapshot };
     },
-    onError: (mutationError) =>
+    onSuccess: (saved, _input, context) => {
+      queryClient.setQueriesData<CategoryRecord[]>(
+        { queryKey: queryKeys.allCategories(workspace) },
+        (current) => current?.map((item) => (item.id === context.id ? saved : item)),
+      );
+    },
+    onSettled: () => {
+      void refresh();
+    },
+    onError: (mutationError, _input, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+      if (context) {
+        setName(context.input.name);
+        setKind(context.input.kind);
+        setColor(context.input.color);
+        setIconEmoji(context.input.iconEmoji ?? "");
+      }
       setError(
         mutationError instanceof Error
           ? mutationError
           : new Error("The category could not be saved."),
-      ),
+      );
+    },
   });
   const updateMutation = useMutation({
     mutationFn: (args: Parameters<typeof updateCategory>[1]) => updateCategory(workspace, args),
-    onSuccess: async () => {
+    onMutate: async ({ id, input }) => {
+      const form = { id: editingId, name: editingName, iconEmoji: editingIconEmoji };
+      const snapshot = await updateOptimistically<CategoryRecord[]>(
+        queryClient,
+        queryKeys.allCategories(workspace),
+        (current) =>
+          current?.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  ...input,
+                  iconEmoji: input.iconEmoji === undefined ? item.iconEmoji : input.iconEmoji,
+                }
+              : item,
+          ),
+        false,
+      );
       setEditingId(undefined);
       setError(undefined);
-      await refresh();
-      await queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
+      return { form, snapshot };
     },
-    onError: (mutationError) =>
+    onSuccess: (saved) => {
+      queryClient.setQueriesData<CategoryRecord[]>(
+        { queryKey: queryKeys.allCategories(workspace) },
+        (current) => current?.map((item) => (item.id === saved.id ? saved : item)),
+      );
+    },
+    onSettled: () => {
+      void Promise.all([
+        refresh(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
+      ]);
+    },
+    onError: (mutationError, _args, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+      if (context) {
+        setEditingId(context.form.id);
+        setEditingName(context.form.name);
+        setEditingIconEmoji(context.form.iconEmoji);
+      }
       setError(
         mutationError instanceof Error
           ? mutationError
           : new Error("The category could not be saved."),
-      ),
+      );
+    },
   });
 
   const categoryAllowance = billingQuery.data?.allowances.find(

@@ -1,6 +1,7 @@
 import type {
   AccountBalanceSummaryItem,
   AccountInput,
+  AccountRecord,
   CashflowTrend,
   CashflowTrendView,
   DashboardSummary,
@@ -58,6 +59,12 @@ import {
 } from "../lib/calendar";
 import { formatFullMonth, formatMoney, formatMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
+import {
+  optimisticId,
+  restoreOptimisticSnapshot,
+  updateOptimistically,
+  type OptimisticCacheSnapshot,
+} from "../lib/optimistic";
 import { userWorkspace } from "../lib/workspace";
 import "./DashboardPage.css";
 
@@ -90,6 +97,29 @@ const accountTypes: Array<{ value: AccountInput["type"]; label: string }> = [
 const dashboardHistoryPageSize = 8;
 
 type TrendState = "positive" | "negative" | "neutral";
+
+interface AccountOptimisticContext {
+  accountSnapshot: OptimisticCacheSnapshot;
+  dashboardSnapshot: OptimisticCacheSnapshot;
+}
+
+function dashboardAccountFromRecord(
+  account: AccountRecord,
+  current?: AccountBalanceSummaryItem,
+): AccountBalanceSummaryItem {
+  return {
+    id: account.id,
+    name: account.name,
+    type: account.type,
+    currency: account.currency,
+    balanceMinor: current?.balanceMinor ?? account.balanceMinor ?? 0,
+    balancesByCurrency: current?.balancesByCurrency ??
+      account.balancesByCurrency ?? { PHP: 0, USD: 0 },
+    archived: account.archived,
+    system: account.system ?? false,
+    interest: account.interest,
+  };
+}
 
 export function calculatePercentageChange(current: number, previous: number): number {
   if (previous === 0) return current === 0 ? 0 : current > 0 ? 100 : -100;
@@ -265,12 +295,87 @@ export function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
     ]);
   };
+  const dashboardSummaryKey = [...queryKeys.dashboard(workspace), "summary"] as const;
+
+  const updateAccountOptimistically = async (
+    updateAccounts: (current: AccountRecord[] | undefined) => AccountRecord[] | undefined,
+    updateDashboard: (current: DashboardSummary | undefined) => DashboardSummary | undefined,
+  ): Promise<AccountOptimisticContext> => {
+    const accountSnapshot = await updateOptimistically<AccountRecord[]>(
+      queryClient,
+      queryKeys.accounts(workspace),
+      updateAccounts,
+    );
+    const dashboardSnapshot = await updateOptimistically<DashboardSummary>(
+      queryClient,
+      dashboardSummaryKey,
+      updateDashboard,
+      false,
+    );
+    return { accountSnapshot, dashboardSnapshot };
+  };
+
+  const restoreAccountContext = (context?: AccountOptimisticContext) => {
+    restoreOptimisticSnapshot(queryClient, context?.accountSnapshot);
+    restoreOptimisticSnapshot(queryClient, context?.dashboardSnapshot);
+  };
+
   const createAccountMutation = useMutation({
     mutationFn: (input: AccountInput) => createAccount(workspace, input),
-    onSuccess: async () => {
+    onMutate: async (input) => {
+      const id = optimisticId("account");
+      const account: AccountRecord = {
+        ...input,
+        id,
+        currency: "PHP",
+        balanceMinor: 0,
+        balancesByCurrency: { PHP: 0, USD: 0 },
+        archived: false,
+        system: false,
+      };
+      const cache = await updateAccountOptimistically(
+        (current) => (current ? [...current, account] : current),
+        (current) =>
+          current?.accountBalances
+            ? {
+                ...current,
+                accountBalances: {
+                  ...current.accountBalances,
+                  items: [...current.accountBalances.items, dashboardAccountFromRecord(account)],
+                },
+              }
+            : current,
+      );
       setAccountName("");
       setIsAddingAccount(false);
-      await refreshAccountData();
+      return { cache, id, input };
+    },
+    onError: (_error, _input, context) => {
+      restoreAccountContext(context?.cache);
+      setAccountName(context?.input.name ?? "");
+      setAccountType(context?.input.type ?? "checking");
+      setIsAddingAccount(true);
+    },
+    onSuccess: (saved, _input, context) => {
+      queryClient.setQueryData<AccountRecord[]>(queryKeys.accounts(workspace), (current) =>
+        current?.map((account) => (account.id === context.id ? saved : account)),
+      );
+      queryClient.setQueriesData<DashboardSummary>({ queryKey: dashboardSummaryKey }, (current) =>
+        current?.accountBalances
+          ? {
+              ...current,
+              accountBalances: {
+                ...current.accountBalances,
+                items: current.accountBalances.items.map((account) =>
+                  account.id === context.id ? dashboardAccountFromRecord(saved, account) : account,
+                ),
+              },
+            }
+          : current,
+      );
+    },
+    onSettled: () => {
+      void refreshAccountData();
     },
   });
   const updateAccountMutation = useMutation({
@@ -293,16 +398,97 @@ export function DashboardPage() {
           ...(args.interest !== undefined && { interest: args.interest }),
         },
       }),
-    onSuccess: async () => {
+    onMutate: async (args) => {
+      const form = editingAccount;
+      const cache = await updateAccountOptimistically(
+        (current) =>
+          current?.map((account) =>
+            account.id === args.id
+              ? {
+                  ...account,
+                  name: args.name,
+                  type: args.type,
+                  ...(args.interest && {
+                    interest: {
+                      enabled: args.interest.enabled,
+                      annualRateBasisPoints: args.interest.enabled
+                        ? args.interest.annualRateBasisPoints
+                        : null,
+                      frequency: args.interest.enabled ? args.interest.frequency : null,
+                      payDay: args.interest.enabled ? args.interest.payDay : null,
+                    },
+                  }),
+                }
+              : account,
+          ),
+        (current) =>
+          current?.accountBalances
+            ? {
+                ...current,
+                accountBalances: {
+                  ...current.accountBalances,
+                  items: current.accountBalances.items.map((account) =>
+                    account.id === args.id
+                      ? {
+                          ...account,
+                          name: args.name,
+                          type: args.type,
+                          ...(args.interest && {
+                            interest: {
+                              enabled: args.interest.enabled,
+                              annualRateBasisPoints: args.interest.enabled
+                                ? args.interest.annualRateBasisPoints
+                                : null,
+                              frequency: args.interest.enabled ? args.interest.frequency : null,
+                              payDay: args.interest.enabled ? args.interest.payDay : null,
+                            },
+                          }),
+                        }
+                      : account,
+                  ),
+                },
+              }
+            : current,
+      );
       setEditingAccount(undefined);
-      await refreshAccountData();
+      return { cache, form };
+    },
+    onError: (_error, _args, context) => {
+      restoreAccountContext(context?.cache);
+      setEditingAccount(context?.form);
+    },
+    onSettled: () => {
+      void refreshAccountData();
     },
   });
   const removeAccountMutation = useMutation({
     mutationFn: (accountId: string) => deleteAccount(workspace, accountId),
-    onSuccess: async () => {
+    onMutate: async (accountId) => {
+      const form = removingAccount;
+      const cache = await updateAccountOptimistically(
+        (current) => current?.filter((account) => account.id !== accountId),
+        (current) =>
+          current?.accountBalances
+            ? {
+                ...current,
+                accountBalances: {
+                  ...current.accountBalances,
+                  items: current.accountBalances.items.filter(
+                    (account) => account.id !== accountId,
+                  ),
+                },
+              }
+            : current,
+      );
       setRemovingAccount(undefined);
-      await refreshAccountData();
+      return { cache, form };
+    },
+    onError: (_error, _id, context) => {
+      restoreAccountContext(context?.cache);
+      setRemovingAccount(context?.form);
+    },
+    onSettled: () => {
+      void refreshAccountData();
     },
   });
   if (isError) {
@@ -576,6 +762,7 @@ export function DashboardPage() {
                             <button
                               type="button"
                               onClick={() => {
+                                updateAccountMutation.reset();
                                 setEditingAccount(account);
                                 setEditName(account.name);
                                 setEditType(account.type);
@@ -597,7 +784,10 @@ export function DashboardPage() {
                             {canRemove && (
                               <button
                                 type="button"
-                                onClick={() => setRemovingAccount(account)}
+                                onClick={() => {
+                                  removeAccountMutation.reset();
+                                  setRemovingAccount(account);
+                                }}
                                 aria-label={`Remove ${account.name}`}
                               >
                                 <Trash2 size={14} aria-hidden="true" />
@@ -813,6 +1003,13 @@ export function DashboardPage() {
                     )}
                   </fieldset>
                 )}
+                <UpgradePrompt error={updateAccountMutation.error} />
+                {updateAccountMutation.error &&
+                  !isBillingEnforcementError(updateAccountMutation.error) && (
+                    <p className="form-error" role="alert">
+                      {updateAccountMutation.error.message}
+                    </p>
+                  )}
                 <div className="modal-actions">
                   <button
                     className="button secondary"
@@ -851,6 +1048,11 @@ export function DashboardPage() {
                 It will no longer appear when adding new transactions. Your existing transactions
                 and its calculated balance will remain in your history.
               </p>
+              {removeAccountMutation.error && (
+                <p className="form-error" role="alert">
+                  {removeAccountMutation.error.message}
+                </p>
+              )}
               <div className="modal-actions">
                 <button
                   className="button secondary"

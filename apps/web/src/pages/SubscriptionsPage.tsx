@@ -1,4 +1,10 @@
-import type { SubscriptionInput, SubscriptionRecord, SubscriptionStatus } from "@zoption/shared";
+import type {
+  SubscriptionInput,
+  SubscriptionMonthItem,
+  SubscriptionMonthSummary,
+  SubscriptionRecord,
+  SubscriptionStatus,
+} from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, RefreshCw, Repeat2 } from "lucide-react";
 import { useState } from "react";
@@ -21,9 +27,29 @@ import {
 } from "../lib/api";
 import { currentMonth } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
+import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import "./SubscriptionsPage.css";
+
+function subscriptionMonthlyCost(item: Pick<SubscriptionRecord, "amountMinor" | "billingCycle">) {
+  return item.billingCycle === "yearly" ? Math.round(item.amountMinor / 12) : item.amountMinor;
+}
+
+function updateSubscriptionSummary(
+  current: SubscriptionMonthSummary | undefined,
+  items: SubscriptionMonthItem[],
+): SubscriptionMonthSummary | undefined {
+  if (!current) return current;
+  return {
+    ...current,
+    items,
+    totalMonthlyCostMinor: items.reduce(
+      (total, item) => total + (item.status === "active" ? item.monthlyCostMinor : 0),
+      0,
+    ),
+  };
+}
 
 export function SubscriptionsPage() {
   const { user } = useAuth();
@@ -52,28 +78,134 @@ export function SubscriptionsPage() {
 
   const createMutation = useMutation({
     mutationFn: (input: SubscriptionInput) => createSubscription(workspace, input),
-    onSuccess: async () => {
+    onMutate: async (input) => {
+      const id = optimisticId("subscription");
+      const category = categoriesQuery.data?.find((item) => item.id === input.categoryId);
+      const account = accountsQuery.data?.find((item) => item.id === input.accountId);
+      const item: SubscriptionMonthItem = {
+        ...input,
+        id,
+        currency: "PHP",
+        status: "active",
+        categoryName: category?.name ?? "Category",
+        categoryColor: category?.color ?? "#64748b",
+        accountId: input.accountId,
+        accountName: account?.name ?? null,
+        billingDate: input.nextBillingDate.startsWith(month) ? input.nextBillingDate : null,
+        monthlyCostMinor: subscriptionMonthlyCost(input),
+      };
+      const snapshot = await updateOptimistically<SubscriptionMonthSummary>(
+        queryClient,
+        queryKeys.subscriptions(workspace, monthStart),
+        (current) => updateSubscriptionSummary(current, [item, ...(current?.items ?? [])]),
+      );
       setFormOpen(false);
-      await refreshSubscriptions();
+      setEditing(null);
+      return { id, item, snapshot };
+    },
+    onError: (_error, _input, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+      setEditing(context?.item ?? null);
+      setFormOpen(true);
+    },
+    onSuccess: (saved, _input, context) => {
+      queryClient.setQueryData<SubscriptionMonthSummary>(
+        queryKeys.subscriptions(workspace, monthStart),
+        (current) =>
+          updateSubscriptionSummary(
+            current,
+            (current?.items ?? []).map((item) =>
+              item.id === context.id
+                ? {
+                    ...item,
+                    ...saved,
+                    monthlyCostMinor: subscriptionMonthlyCost(saved),
+                  }
+                : item,
+            ),
+          ),
+      );
+    },
+    onSettled: () => {
+      void refreshSubscriptions();
     },
   });
   const statusMutation = useMutation({
     mutationFn: (args: { id: string; status: SubscriptionStatus }) =>
       setSubscriptionStatus(workspace, { id: args.id, input: { status: args.status } }),
-    onSuccess: refreshSubscriptions,
+    onMutate: async ({ id, status }) => ({
+      snapshot: await updateOptimistically<SubscriptionMonthSummary>(
+        queryClient,
+        queryKeys.subscriptions(workspace, monthStart),
+        (current) =>
+          updateSubscriptionSummary(
+            current,
+            (current?.items ?? []).map((item) => (item.id === id ? { ...item, status } : item)),
+          ),
+      ),
+    }),
+    onError: (_error, _args, context) => restoreOptimisticSnapshot(queryClient, context?.snapshot),
+    onSettled: () => {
+      void refreshSubscriptions();
+    },
   });
   const updateMutation = useMutation({
     mutationFn: (args: { id: string; input: SubscriptionInput }) =>
       updateSubscription(workspace, { id: args.id, input: args.input }),
-    onSuccess: async () => {
+    onMutate: async ({ id, input }) => {
+      const form = editing;
+      const category = categoriesQuery.data?.find((item) => item.id === input.categoryId);
+      const account = accountsQuery.data?.find((item) => item.id === input.accountId);
+      const snapshot = await updateOptimistically<SubscriptionMonthSummary>(
+        queryClient,
+        queryKeys.subscriptions(workspace, monthStart),
+        (current) =>
+          updateSubscriptionSummary(
+            current,
+            (current?.items ?? []).map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    ...input,
+                    categoryName: category?.name ?? item.categoryName,
+                    categoryColor: category?.color ?? item.categoryColor,
+                    accountName: account?.name ?? item.accountName,
+                    monthlyCostMinor: subscriptionMonthlyCost(input),
+                  }
+                : item,
+            ),
+          ),
+      );
       setFormOpen(false);
       setEditing(null);
-      await refreshSubscriptions();
+      return { form, snapshot };
+    },
+    onError: (_error, _args, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+      setEditing(context?.form ?? null);
+      setFormOpen(true);
+    },
+    onSettled: () => {
+      void refreshSubscriptions();
     },
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteSubscription(workspace, id),
-    onSuccess: refreshSubscriptions,
+    onMutate: async (id) => ({
+      snapshot: await updateOptimistically<SubscriptionMonthSummary>(
+        queryClient,
+        queryKeys.subscriptions(workspace, monthStart),
+        (current) =>
+          updateSubscriptionSummary(
+            current,
+            (current?.items ?? []).filter((item) => item.id !== id),
+          ),
+      ),
+    }),
+    onError: (_error, _id, context) => restoreOptimisticSnapshot(queryClient, context?.snapshot),
+    onSettled: () => {
+      void refreshSubscriptions();
+    },
   });
 
   const formInitial = editing ?? undefined;
@@ -220,7 +352,7 @@ export function SubscriptionsPage() {
           busy={formBusy}
           serverError={formError}
           onSubmit={async (input) => {
-            if (editing) {
+            if (editing && !editing.id.startsWith("optimistic:")) {
               await updateMutation.mutateAsync({ id: editing.id, input });
             } else {
               await createMutation.mutateAsync(input);

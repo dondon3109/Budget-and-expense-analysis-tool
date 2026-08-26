@@ -3,6 +3,7 @@ import type {
   TransactionInput,
   TransactionListItem,
   TransactionListQuery,
+  TransactionPage,
 } from "@zoption/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -35,6 +36,12 @@ import {
   updateTransaction,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
+import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
+import {
+  deleteOptimisticTransaction,
+  optimisticTransaction,
+  saveOptimisticTransaction,
+} from "../lib/optimisticTransactions";
 import { userWorkspace } from "../lib/workspace";
 import {
   DEFAULT_TRANSACTION_SORT,
@@ -173,18 +180,55 @@ export function TransactionsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (input: TransactionInput) =>
-      editing
+      editing && !editing.id.startsWith("optimistic:")
         ? updateTransaction(workspace, { id: editing.id, input })
         : createTransaction(workspace, input),
-    onSuccess: async () => {
+    onMutate: async (input) => {
+      const form = editing;
+      const id = form?.id ?? optimisticId("transaction");
+      const item = optimisticTransaction(
+        id,
+        input,
+        categoriesQuery.data ?? [],
+        accountsQuery.data ?? [],
+      );
+      const snapshot = await updateOptimistically<TransactionPage>(
+        queryClient,
+        queryKeys.transactions(workspace, query),
+        (current) => saveOptimisticTransaction(current, query, item, form?.id),
+      );
       setFormOpen(false);
       setEditing(undefined);
-      await refreshProductData();
+      return { form, id, item, snapshot };
+    },
+    onError: (_error, _input, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+      setEditing(context?.form ?? context?.item);
+      setFormOpen(true);
+    },
+    onSuccess: (saved, _input, context) => {
+      queryClient.setQueryData<TransactionPage>(
+        queryKeys.transactions(workspace, query),
+        (current) => saveOptimisticTransaction(current, query, saved, context.id),
+      );
+    },
+    onSettled: () => {
+      void refreshProductData();
     },
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteTransaction(workspace, id),
-    onSuccess: refreshProductData,
+    onMutate: async (id) => ({
+      snapshot: await updateOptimistically<TransactionPage>(
+        queryClient,
+        queryKeys.transactions(workspace, query),
+        (current) => deleteOptimisticTransaction(current, id),
+      ),
+    }),
+    onError: (_error, _id, context) => restoreOptimisticSnapshot(queryClient, context?.snapshot),
+    onSettled: () => {
+      void refreshProductData();
+    },
   });
 
   const categories = categoriesQuery.data ?? [];

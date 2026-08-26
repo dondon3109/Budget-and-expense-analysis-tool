@@ -1,7 +1,7 @@
-import { parseAmountToMinor, type BudgetUpsert } from "@zoption/shared";
+import { parseAmountToMinor, type BudgetMonthPlan, type BudgetUpsert } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleDollarSign, PiggyBank, TrendingDown } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -11,6 +11,7 @@ import { MonthSelector } from "../components/month/MonthSelector";
 import { getBudgets, saveBudgets } from "../lib/api";
 import { currentMonth, isMonth } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
+import { restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import "./BudgetsPage.css";
@@ -28,6 +29,7 @@ export function BudgetsPage() {
   const month = isMonth(requestedMonth) ? requestedMonth : currentMonth();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [clientError, setClientError] = useState<string>();
+  const initializedDraftShapeRef = useRef<string | undefined>(undefined);
   const monthStart = `${month}-01`;
   const budgetQuery = useQuery({
     queryKey: queryKeys.budgets(workspace, monthStart),
@@ -36,6 +38,11 @@ export function BudgetsPage() {
 
   useEffect(() => {
     if (!budgetQuery.data) return;
+    const draftShape = `${budgetQuery.data.month}:${budgetQuery.data.items
+      .map((item) => item.categoryId)
+      .join(",")}`;
+    if (initializedDraftShapeRef.current === draftShape) return;
+    initializedDraftShapeRef.current = draftShape;
     setDrafts(
       Object.fromEntries(
         budgetQuery.data.items.map((item) => [item.categoryId, toAmountText(item.limitMinor)]),
@@ -46,9 +53,50 @@ export function BudgetsPage() {
 
   const saveMutation = useMutation({
     mutationFn: (input: BudgetUpsert) => saveBudgets(workspace, input),
-    onSuccess: async (data) => {
+    onMutate: async (input) => {
+      const snapshot = await updateOptimistically<BudgetMonthPlan>(
+        queryClient,
+        queryKeys.budgets(workspace, input.month),
+        (current) => {
+          if (!current) return current;
+          const limits = new Map(input.items.map((item) => [item.categoryId, item.limitMinor]));
+          const items = current.items.map((item) => {
+            const limitMinor = limits.get(item.categoryId) ?? item.limitMinor;
+            const remainingMinor = limitMinor - item.spentMinor;
+            return {
+              ...item,
+              limitMinor,
+              remainingMinor,
+              usedPercent:
+                limitMinor > 0 ? Math.round((item.spentMinor / limitMinor) * 10_000) / 100 : 0,
+            };
+          });
+          const totalLimitMinor = items.reduce((total, item) => total + item.limitMinor, 0);
+          return {
+            ...current,
+            items,
+            totalLimitMinor,
+            remainingMinor: totalLimitMinor - current.totalSpentMinor,
+            usedPercent:
+              totalLimitMinor > 0
+                ? Math.round((current.totalSpentMinor / totalLimitMinor) * 10_000) / 100
+                : 0,
+          };
+        },
+      );
+      return { snapshot };
+    },
+    onError: (_error, _input, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+    },
+    onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.budgets(workspace, data.month), data);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
+    },
+    onSettled: () => {
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.budgets(workspace, monthStart) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
+      ]);
     },
   });
 

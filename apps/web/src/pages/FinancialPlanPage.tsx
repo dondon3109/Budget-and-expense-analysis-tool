@@ -39,6 +39,7 @@ import {
   updateFinancialGoal,
 } from "../lib/api";
 import { formatMoney } from "../lib/formatters";
+import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import "./FinancialPlanPage.css";
@@ -97,35 +98,131 @@ export function FinancialPlanPage() {
 
   const saveGoalMutation = useMutation({
     mutationFn: async (input: FinancialGoalInput) => {
-      if (goalForm && goalForm !== "new") {
+      if (goalForm && goalForm !== "new" && !goalForm.id.startsWith("optimistic:")) {
         return updateFinancialGoal(workspace, { id: goalForm.id, input: goalUpdate(input) });
       }
       return createFinancialGoal(workspace, input);
     },
-    onSuccess: async () => {
+    onMutate: async (input) => {
+      const form = goalForm;
+      const id = form && form !== "new" ? form.id : optimisticId("goal");
+      const now = new Date().toISOString();
+      const optimisticGoal: FinancialGoal = {
+        ...(form && form !== "new" ? form : { id, createdAt: now, updatedAt: now }),
+        ...input,
+        id,
+        updatedAt: now,
+      };
+      const snapshot = await updateOptimistically<{ items: FinancialGoal[] }>(
+        queryClient,
+        queryKeys.financialGoals(workspace),
+        (current) => {
+          if (!current) return current;
+          const exists = current.items.some((goal) => goal.id === id);
+          return {
+            items: exists
+              ? current.items.map((goal) => (goal.id === id ? optimisticGoal : goal))
+              : [optimisticGoal, ...current.items],
+          };
+        },
+      );
       setGoalForm(null);
-      await refreshGoals();
+      return { form, id, optimisticGoal, snapshot };
+    },
+    onError: (_error, _input, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+      setGoalForm(context?.form === "new" ? context.optimisticGoal : (context?.form ?? null));
+    },
+    onSuccess: (saved, _input, context) => {
+      queryClient.setQueryData<{ items: FinancialGoal[] }>(
+        queryKeys.financialGoals(workspace),
+        (current) =>
+          current
+            ? { items: current.items.map((goal) => (goal.id === context.id ? saved : goal)) }
+            : current,
+      );
+    },
+    onSettled: () => {
+      void refreshGoals();
     },
   });
   const saveDebtMutation = useMutation({
     mutationFn: async (input: DebtInput | DebtUpdate) => {
-      if (debtForm && debtForm !== "new") {
+      if (debtForm && debtForm !== "new" && !debtForm.id.startsWith("optimistic:")) {
         return updateDebt(workspace, { id: debtForm.id, input: debtUpdateInput(input) });
       }
       return createDebt(workspace, input as DebtInput);
     },
-    onSuccess: async () => {
+    onMutate: async (input) => {
+      const form = debtForm;
+      const id = form && form !== "new" ? form.id : optimisticId("debt");
+      const now = new Date().toISOString();
+      const optimisticDebt: Debt = {
+        ...(form && form !== "new" ? form : { id, createdAt: now, updatedAt: now }),
+        ...input,
+        id,
+        updatedAt: now,
+      } as Debt;
+      const snapshot = await updateOptimistically<{ items: Debt[] }>(
+        queryClient,
+        queryKeys.debts(workspace),
+        (current) => {
+          if (!current) return current;
+          const exists = current.items.some((debt) => debt.id === id);
+          return {
+            items: exists
+              ? current.items.map((debt) => (debt.id === id ? optimisticDebt : debt))
+              : [optimisticDebt, ...current.items],
+          };
+        },
+      );
       setDebtForm(null);
-      await refreshDebts();
+      return { form, id, optimisticDebt, snapshot };
+    },
+    onError: (_error, _input, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+      setDebtForm(context?.form === "new" ? context.optimisticDebt : (context?.form ?? null));
+    },
+    onSuccess: (saved, _input, context) => {
+      queryClient.setQueryData<{ items: Debt[] }>(queryKeys.debts(workspace), (current) =>
+        current
+          ? { items: current.items.map((debt) => (debt.id === context.id ? saved : debt)) }
+          : current,
+      );
+    },
+    onSettled: () => {
+      void refreshDebts();
     },
   });
   const deleteGoalMutation = useMutation({
     mutationFn: (id: string) => deleteFinancialGoal(workspace, id),
-    onSuccess: refreshGoals,
+    onMutate: async (id) => ({
+      snapshot: await updateOptimistically<{ items: FinancialGoal[] }>(
+        queryClient,
+        queryKeys.financialGoals(workspace),
+        (current) =>
+          current ? { items: current.items.filter((goal) => goal.id !== id) } : current,
+      ),
+    }),
+    onError: (_error, _id, context) => restoreOptimisticSnapshot(queryClient, context?.snapshot),
+    onSettled: () => {
+      void refreshGoals();
+    },
   });
   const deleteDebtMutation = useMutation({
     mutationFn: (id: string) => deleteDebt(workspace, id),
-    onSuccess: refreshDebts,
+    onMutate: async (id) => ({
+      snapshot: await updateOptimistically<{ items: Debt[] }>(
+        queryClient,
+        queryKeys.debts(workspace),
+        (current) =>
+          current ? { items: current.items.filter((debt) => debt.id !== id) } : current,
+      ),
+    }),
+    onError: (_error, _id, context) => restoreOptimisticSnapshot(queryClient, context?.snapshot),
+    onSettled: () => {
+      void refreshDebts();
+    },
   });
   const preferencesMutation = useMutation({
     mutationFn: (input: {

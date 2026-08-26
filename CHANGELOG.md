@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Made routine financial edits feel immediate on web with optimistic transactions, accounts, categories, budgets, goals, debts, subscriptions, and calendar updates, including safe rollback and background reconciliation; mobile keeps its existing encrypted local-first writes and background sync behavior.
+
 ### Fixed
 
 - Clarified mobile transaction sync states and replaced the oversized sync-paused error with a compact retry banner that confirms local changes are safe.

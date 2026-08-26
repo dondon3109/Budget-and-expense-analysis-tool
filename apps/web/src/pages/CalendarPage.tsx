@@ -1,7 +1,9 @@
 import type {
   CalendarEventInput,
+  CalendarEventMonth,
   CalendarEventRecord,
   SubscriptionMonthItem,
+  TransactionCalendarMonth,
   TransactionInput,
   TransactionListItem,
 } from "@zoption/shared";
@@ -39,6 +41,8 @@ import {
   upcomingCalendarSubscriptions,
 } from "../lib/calendar";
 import { formatFullMonth } from "../lib/formatters";
+import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
+import { optimisticTransaction } from "../lib/optimisticTransactions";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import "./CalendarPage.css";
@@ -107,6 +111,7 @@ export function CalendarPage() {
     visibleMonth === currentMonth() ? today : monthStart(visibleMonth),
   );
   const [formOpen, setFormOpen] = useState(false);
+  const [retryTransaction, setRetryTransaction] = useState<TransactionListItem>();
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEventRecord>();
   const [nextMonthOpen, setNextMonthOpen] = useState(false);
@@ -156,9 +161,44 @@ export function CalendarPage() {
 
   const saveMutation = useMutation({
     mutationFn: (input: TransactionInput) => createTransaction(workspace, input),
-    onSuccess: async () => {
+    onMutate: async (input) => {
+      const id = optimisticId("transaction");
+      const item = optimisticTransaction(
+        id,
+        input,
+        categoriesQuery.data ?? [],
+        accountsQuery.data ?? [],
+      );
+      const key = queryKeys.transactionCalendar(workspace, monthStart(input.date.slice(0, 7)));
+      const snapshot = await updateOptimistically<TransactionCalendarMonth>(
+        queryClient,
+        key,
+        (current) =>
+          current
+            ? { ...current, items: [item, ...current.items], hasAnyTransactions: true }
+            : current,
+      );
       setFormOpen(false);
-      await Promise.all([
+      setRetryTransaction(undefined);
+      return { id, item, key, snapshot };
+    },
+    onError: (_error, _input, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+      setRetryTransaction(context?.item);
+      setFormOpen(true);
+    },
+    onSuccess: (saved, _input, context) => {
+      queryClient.setQueryData<TransactionCalendarMonth>(context.key, (current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.map((item) => (item.id === context.id ? saved : item)),
+            }
+          : current,
+      );
+    },
+    onSettled: () => {
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
@@ -167,22 +207,76 @@ export function CalendarPage() {
   });
   const saveEventMutation = useMutation({
     mutationFn: ({ item, input }: { item?: CalendarEventRecord; input: CalendarEventInput }) =>
-      item
+      item && !item.id.startsWith("optimistic:")
         ? updateCalendarEvent(workspace, { id: item.id, input })
         : createCalendarEvent(workspace, input),
-    onSuccess: async (event) => {
+    onMutate: async ({ item, input }) => {
+      const id = item?.id ?? optimisticId("event");
+      const optimisticEvent: CalendarEventRecord = {
+        ...item,
+        ...input,
+        id,
+        startTime: input.startTime ?? null,
+        endTime: input.endTime ?? null,
+        notes: input.notes ?? null,
+      };
+      const snapshot = await updateOptimistically<CalendarEventMonth>(
+        queryClient,
+        queryKeys.allEvents(workspace),
+        (current) =>
+          current
+            ? { ...current, items: current.items.filter((event) => event.id !== id) }
+            : current,
+        false,
+      );
+      const targetKey = queryKeys.events(workspace, monthStart(input.date.slice(0, 7)));
+      queryClient.setQueryData<CalendarEventMonth>(targetKey, (current) =>
+        current ? { ...current, items: [...current.items, optimisticEvent] } : current,
+      );
       setEventFormOpen(false);
       setEditingEvent(undefined);
+      return { form: item, id, optimisticEvent, snapshot };
+    },
+    onError: (_error, _args, context) => {
+      restoreOptimisticSnapshot(queryClient, context?.snapshot);
+      setEditingEvent(context?.form ?? context?.optimisticEvent);
+      setEventFormOpen(true);
+    },
+    onSuccess: (event, _args, context) => {
+      queryClient.setQueriesData<CalendarEventMonth>(
+        { queryKey: queryKeys.allEvents(workspace) },
+        (current) =>
+          current
+            ? {
+                ...current,
+                items: current.items.map((item) => (item.id === context.id ? event : item)),
+              }
+            : current,
+      );
       const eventMonth = event.date.slice(0, 7);
       if (eventMonth === visibleMonth || eventMonth === nextMonth) setSelectedDate(event.date);
       else showMonth(eventMonth, event.date);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.allEvents(workspace) });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.allEvents(workspace) });
     },
   });
   const deleteEventMutation = useMutation({
     mutationFn: (id: string) => deleteCalendarEvent(workspace, id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.allEvents(workspace) });
+    onMutate: async (id) => ({
+      snapshot: await updateOptimistically<CalendarEventMonth>(
+        queryClient,
+        queryKeys.allEvents(workspace),
+        (current) =>
+          current
+            ? { ...current, items: current.items.filter((event) => event.id !== id) }
+            : current,
+        false,
+      ),
+    }),
+    onError: (_error, _id, context) => restoreOptimisticSnapshot(queryClient, context?.snapshot),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.allEvents(workspace) });
     },
   });
 
@@ -376,7 +470,10 @@ export function CalendarPage() {
                   <button
                     className="button secondary"
                     type="button"
-                    onClick={() => setFormOpen(true)}
+                    onClick={() => {
+                      setRetryTransaction(undefined);
+                      setFormOpen(true);
+                    }}
                   >
                     <Plus size={16} aria-hidden="true" /> Add transaction
                   </button>
@@ -460,7 +557,10 @@ export function CalendarPage() {
                 deleteEventMutation.isPending ? deleteEventMutation.variables : undefined
               }
               deleteError={deleteEventMutation.error?.message}
-              onAddTransaction={() => setFormOpen(true)}
+              onAddTransaction={() => {
+                setRetryTransaction(undefined);
+                setFormOpen(true);
+              }}
               onAddEvent={openNewEvent}
               onEditEvent={openEvent}
               onDeleteEvent={async (id) => {
@@ -489,6 +589,7 @@ export function CalendarPage() {
       {formOpen && (
         <TransactionForm
           workspace={workspace}
+          item={retryTransaction}
           initialDate={selectedDate}
           categories={categoriesQuery.data ?? []}
           accounts={accountsQuery.data ?? []}
@@ -498,7 +599,10 @@ export function CalendarPage() {
             await saveMutation.mutateAsync(input);
           }}
           onClose={() => {
-            if (!saveMutation.isPending) setFormOpen(false);
+            if (!saveMutation.isPending) {
+              setRetryTransaction(undefined);
+              setFormOpen(false);
+            }
           }}
         />
       )}
