@@ -30,6 +30,20 @@ describe("deployment smoke origin checks", () => {
     ).not.toThrow();
   });
 
+  it("accepts only the documented PayPal payment host wildcards", () => {
+    const paymentCsp = `${csp.replace(
+      "script-src 'self'",
+      "script-src 'self' https://*.paypal.com https://*.paypalobjects.com",
+    )}; frame-src https://*.paypal.com https://*.venmo.com`;
+    expect(() =>
+      assertDeploymentContentSecurityPolicy(paymentCsp, {
+        apiUrl,
+        expectedSupabaseUrl,
+        expectedPosthogHost,
+      }),
+    ).not.toThrow();
+  });
+
   it.each([
     csp.replace(expectedSupabaseUrl, forbiddenSupabaseUrl),
     `${csp}; connect-src https://*.supabase.co`,

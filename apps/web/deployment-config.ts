@@ -171,19 +171,30 @@ export function validateDeploymentConfigForBuild(
 
 /**
  * Exact origin of the public R2 Android download bucket. The install page
- * fetches android/latest.json from this origin, so connect-src must include
- * it; no wildcard sources are ever emitted.
+ * fetches android/latest.json from this origin, so connect-src must include it.
  */
 export const ANDROID_DOWNLOAD_ORIGIN = "https://downloads.zoption.site";
+const PAYPAL_CSP_SOURCES = [
+  "https://www.paypal.com",
+  "https://www.sandbox.paypal.com",
+  "https://*.paypal.com",
+  "https://www.paypalobjects.com",
+  "https://*.paypalobjects.com",
+  "https://*.venmo.com",
+] as const;
+const APPROVED_CSP_WILDCARD_SOURCES = new Set<string>(
+  PAYPAL_CSP_SOURCES.filter((source) => source.includes("*")),
+);
 
 export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): string {
-  const scriptSources = ["'self'"];
-  const imageSources = ["'self'", "data:", "blob:", config.supabaseOrigin];
+  const scriptSources = ["'self'", ...PAYPAL_CSP_SOURCES];
+  const imageSources = ["'self'", "data:", "blob:", config.supabaseOrigin, ...PAYPAL_CSP_SOURCES];
   const connectSources = [
     "'self'",
     config.supabaseOrigin,
     config.apiOrigin,
     ANDROID_DOWNLOAD_ORIGIN,
+    ...PAYPAL_CSP_SOURCES,
   ];
 
   if (config.posthogEnabled) {
@@ -193,13 +204,14 @@ export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): s
   return [
     "default-src 'self'",
     `script-src ${scriptSources.join(" ")}`,
-    "style-src 'self' 'unsafe-inline'",
+    `style-src 'self' 'unsafe-inline' ${PAYPAL_CSP_SOURCES.join(" ")}`,
     `img-src ${imageSources.join(" ")}`,
     `connect-src ${connectSources.join(" ")}`,
     ...(config.deployEnvironment === "preview" || config.deployEnvironment === "production"
       ? ["media-src 'self' blob:"]
       : []),
-    "frame-src 'none'",
+    `frame-src ${PAYPAL_CSP_SOURCES.join(" ")}`,
+    `child-src ${PAYPAL_CSP_SOURCES.join(" ")}`,
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
@@ -241,8 +253,10 @@ export function verifyContentSecurityPolicy(headers: string, expectedPolicy: str
   if (policies.length !== 1 || policies[0] !== expectedPolicy) {
     throw new Error("Generated _headers must contain exactly the environment-derived CSP.");
   }
-  const wildcardSource = expectedPolicy.split(/[;\s]+/).some((source) => source.includes("*"));
-  if (wildcardSource) {
-    throw new Error("Generated CSP must use exact origins and must not contain wildcard sources.");
+  const unexpectedWildcardSource = expectedPolicy
+    .split(/[;\s]+/)
+    .find((source) => source.includes("*") && !APPROVED_CSP_WILDCARD_SOURCES.has(source));
+  if (unexpectedWildcardSource) {
+    throw new Error("Generated CSP contains an unapproved wildcard source.");
   }
 }

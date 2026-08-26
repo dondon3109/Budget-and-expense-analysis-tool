@@ -10,12 +10,14 @@ import type {
   BillingSummary,
 } from "@zoption/shared";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
   addSponsoredProSeat: vi.fn(),
   cancelBillingSubscription: vi.fn(),
+  getBillingProviderConfig: vi.fn(),
   getBillingSummary: vi.fn(),
   getSponsoredProSeats: vi.fn(),
   inviteSponsoredProRecipient: vi.fn(),
@@ -28,6 +30,16 @@ const apiMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../src/lib/api", () => apiMocks);
+vi.mock("@paypal/react-paypal-js/sdk-v6", () => ({
+  PayPalProvider: ({ children }: { children: ReactNode }) => children,
+  usePayPalSubscriptionPaymentSession: () => ({
+    error: null,
+    isPending: false,
+    handleClick: vi.fn(),
+    handleCancel: vi.fn(),
+    handleDestroy: vi.fn(),
+  }),
+}));
 import { BillingSettings } from "../src/components/account/BillingSettings";
 
 const user = {
@@ -131,6 +143,11 @@ describe("BillingSettings", () => {
     vi.clearAllMocks();
     apiMocks.addSponsoredProSeat.mockResolvedValue({});
     apiMocks.cancelBillingSubscription.mockResolvedValue({ cancellationRequested: true });
+    apiMocks.getBillingProviderConfig.mockResolvedValue({
+      provider: "paypal",
+      clientId: "public-client-id",
+      environment: "sandbox",
+    });
     apiMocks.getSponsoredProSeats.mockResolvedValue({
       activeCount: 0,
       availableCount: 5,
@@ -139,6 +156,7 @@ describe("BillingSettings", () => {
     });
     apiMocks.startBillingCheckout.mockResolvedValue({
       approvalUrl: "https://www.sandbox.paypal.com/checkoutnow?token=test",
+      subscriptionId: "I-test",
     });
   });
 
@@ -441,8 +459,9 @@ describe("BillingSettings", () => {
       name: "Choose how you want to use Zoption Pro",
     });
     expect(screen.getByRole("button", { name: "Continue using free plan" })).toHaveFocus();
-    expect(screen.getByRole("button", { name: "Subscribe Monthly · ₱149/month" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Subscribe Annual · ₱1,299/year" })).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Monthly, ₱149/month" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Annual, ₱1,299/year" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Continue securely" })).toBeVisible();
 
     fireEvent.keyDown(dialog, { key: "Escape" });
     expect(

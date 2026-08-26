@@ -19,9 +19,11 @@ import type {
   ReceiptDraft,
   ReceiptPreferences,
   BillingCapability,
+  BillingCheckoutResponse,
   BillingCheckoutReconciliation,
   BillingFeature,
   BillingInterval,
+  BillingProviderConfig,
   BillingResource,
   BillingSummary,
   AdminBugReport,
@@ -584,11 +586,17 @@ export function reconcileBillingCheckout(
 export function startBillingCheckout(
   workspace: AuthenticatedWorkspace,
   interval: BillingInterval,
-): Promise<{ approvalUrl: string }> {
+): Promise<BillingCheckoutResponse> {
   return requestJson(workspace, "/api/app/billing/checkout", {
     method: "POST",
     body: JSON.stringify({ interval }),
   });
+}
+
+export function getBillingProviderConfig(
+  workspace: AuthenticatedWorkspace,
+): Promise<BillingProviderConfig> {
+  return requestJson(workspace, "/api/app/billing/checkout/config");
 }
 
 export function cancelBillingSubscription(

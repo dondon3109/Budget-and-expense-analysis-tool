@@ -4,6 +4,7 @@ import {
   cancelPayPalSubscription,
   clearPayPalAccessTokenCacheForTesting,
   createPayPalSubscription,
+  getPayPalBrowserConfiguration,
   getPayPalSubscription,
   isPayPalCheckoutPending,
   normalizePayPalSubscriptionStatus,
@@ -70,6 +71,14 @@ afterEach(() => {
 });
 
 describe("PayPal subscription gateway", () => {
+  it("exposes only the public browser SDK configuration", () => {
+    expect(getPayPalBrowserConfiguration(bindings())).toEqual({
+      clientId: "client-id",
+      environment: "sandbox",
+    });
+    expect(getPayPalBrowserConfiguration(bindings())).not.toHaveProperty("clientSecret");
+  });
+
   it("creates a server-owned sandbox checkout with fixed return URLs", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

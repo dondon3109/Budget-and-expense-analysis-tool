@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Added a Zoption-hosted Pro checkout with monthly and annual plan selection, PayPal-secured card or wallet authorization, and a hosted PayPal fallback when the embedded payment session is unavailable.
 - Added a Visual Renewal Calendar Interface on the Subscriptions page (`/app/subscriptions`) featuring a Table vs. Renewal Calendar view switcher, cash-flow impact summary metrics (total outflow, paid to date, remaining to be paid), an interactive month-by-month grid with daily outflow pills and renewal badges, and a chronological payment schedule and upcoming billing cycles timeline.
 - Added a dedicated, prerendered public Changelog and Release Notes page (`/changelog`) with full version history, feature highlights, and structured Schema.org metadata so automated crawlers and AI search engines can index shipped capabilities without client-side authentication.
 - Added a direct Google Preferred Source link and FAQ guidance enabling users to prioritize Zoption with Google's Preferred trust badge in Google Search, Top Stories, and AI Overviews.

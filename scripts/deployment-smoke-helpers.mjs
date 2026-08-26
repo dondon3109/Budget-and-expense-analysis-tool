@@ -1,5 +1,12 @@
 import { setTimeout as delay } from "node:timers/promises";
 
+// PayPal documents these host families for SDK resources and eligible wallet flows.
+const APPROVED_CSP_WILDCARD_SOURCES = new Set([
+  "https://*.paypal.com",
+  "https://*.paypalobjects.com",
+  "https://*.venmo.com",
+]);
+
 function asOrigin(value, label) {
   let url;
   try {
@@ -58,7 +65,9 @@ export function assertDeploymentContentSecurityPolicy(
   }
 
   const allSources = [...directives.values()].flat();
-  if (allSources.some((source) => source.includes("*"))) {
+  if (
+    allSources.some((source) => source.includes("*") && !APPROVED_CSP_WILDCARD_SOURCES.has(source))
+  ) {
     throw new Error("CSP contains a forbidden wildcard source.");
   }
   for (const forbiddenOrigin of forbiddenOrigins) {

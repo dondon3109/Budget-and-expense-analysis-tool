@@ -1172,7 +1172,24 @@ export const billingSummaryResponseSchema = z
   })
   .strict();
 
-export const billingCheckoutResponseSchema = z.object({ approvalUrl: z.string().url() }).strict();
+export const billingProviderConfigResponseSchema = z
+  .object({
+    provider: z.literal("paypal"),
+    clientId: z.string().trim().min(1).max(512),
+    environment: z.enum(["sandbox", "production"]),
+  })
+  .strict();
+
+export type BillingProviderConfig = z.infer<typeof billingProviderConfigResponseSchema>;
+
+export const billingCheckoutResponseSchema = z
+  .object({
+    approvalUrl: z.string().url(),
+    subscriptionId: z.string().trim().min(1).max(128),
+  })
+  .strict();
+
+export type BillingCheckoutResponse = z.infer<typeof billingCheckoutResponseSchema>;
 
 export const billingCancelResponseSchema = z
   .object({ cancellationRequested: z.literal(true) })

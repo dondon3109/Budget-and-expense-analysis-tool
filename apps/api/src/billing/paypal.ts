@@ -45,6 +45,11 @@ export interface PayPalSubscription {
   approvalUrl: string | null;
 }
 
+export interface PayPalBrowserConfiguration {
+  clientId: string;
+  environment: "sandbox" | "production";
+}
+
 const accessTokenCache = new Map<string, CachedAccessToken>();
 const pendingAccessTokens = new Map<string, Promise<CachedAccessToken>>();
 
@@ -107,6 +112,16 @@ function credentials(env: Bindings): { clientId: string; clientSecret: string } 
     throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
   }
   return { clientId, clientSecret };
+}
+
+/** Public SDK configuration only. The client secret remains Worker-side. */
+export function getPayPalBrowserConfiguration(env: Bindings): PayPalBrowserConfiguration {
+  const { clientId } = credentials(env);
+  const environment = env.PAYPAL_ENVIRONMENT;
+  if (environment !== "sandbox" && environment !== "production") {
+    throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
+  }
+  return { clientId, environment };
 }
 
 function webhookId(env: Bindings): string {

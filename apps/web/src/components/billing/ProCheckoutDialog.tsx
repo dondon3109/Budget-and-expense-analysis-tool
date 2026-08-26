@@ -1,10 +1,23 @@
-import type { BillingInterval, BillingSummary } from "@zoption/shared";
-import { Check, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  PayPalProvider,
+  usePayPalSubscriptionPaymentSession,
+} from "@paypal/react-paypal-js/sdk-v6";
+import type { BillingInterval, BillingProviderConfig, BillingSummary } from "@zoption/shared";
+import { Check, CreditCard, LockKeyhole, WalletCards, X } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 
 import { useRootLock } from "../../hooks/useRootLock";
+import { getBillingProviderConfig, startBillingCheckout } from "../../lib/api";
 import { openBillingCheckout } from "../../lib/billingCheckout";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { paymentDisclosure, planFeatures, proCheckoutOptions } from "./billingPlans";
@@ -18,6 +31,159 @@ interface ProCheckoutDialogProps {
   onClose: () => void;
 }
 
+function checkoutStatusUrl(status: "completed" | "cancelled"): string {
+  const url = new URL("/app/settings", window.location.origin);
+  url.searchParams.set("checkout", status);
+  url.hash = "plan-and-billing";
+  return url.toString();
+}
+
+function checkoutErrorMessage(cause: unknown): string {
+  return cause instanceof Error
+    ? cause.message
+    : "Secure payment could not be opened. Continue on PayPal to finish subscribing.";
+}
+
+interface PayPalCheckoutActionProps {
+  interval: BillingInterval;
+  workspace: AuthenticatedWorkspace;
+  onBusyChange: (busy: boolean) => void;
+}
+
+interface FreePlanCardProps {
+  busy: boolean;
+  initialActionRef: RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
+}
+
+function FreePlanCard({ busy, initialActionRef, onClose }: FreePlanCardProps) {
+  return (
+    <section className="pro-checkout-plan pro-checkout-plan-free" aria-label="Free plan">
+      <div className="pro-checkout-plan-heading">
+        <strong>Free</strong>
+        <span>Current plan</span>
+      </div>
+      <ul>
+        {planFeatures.map((feature) => (
+          <li key={feature.feature}>
+            <Check size={14} aria-hidden="true" />
+            <span>
+              <b>{feature.feature}</b>
+              {feature.free}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <button
+        ref={initialActionRef}
+        className="button secondary pro-checkout-free-action"
+        type="button"
+        disabled={busy}
+        onClick={onClose}
+      >
+        Continue using free plan
+      </button>
+    </section>
+  );
+}
+
+function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheckoutActionProps) {
+  const approvalUrlRef = useRef<string | undefined>(undefined);
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  const createSubscription = useCallback(async () => {
+    const checkout = await startBillingCheckout(workspace, interval);
+    approvalUrlRef.current = checkout.approvalUrl;
+    return { subscriptionId: checkout.subscriptionId };
+  }, [interval, workspace]);
+
+  const {
+    error: sdkError,
+    isPending,
+    handleClick,
+  } = usePayPalSubscriptionPaymentSession({
+    presentationMode: "auto",
+    createSubscription,
+    onApprove: async () => {
+      window.location.assign(checkoutStatusUrl("completed"));
+    },
+    onCancel: () => {
+      window.location.assign(checkoutStatusUrl("cancelled"));
+    },
+    onError: (cause) => {
+      setError(checkoutErrorMessage(cause));
+    },
+  });
+
+  async function handleSecureCheckout() {
+    setError(undefined);
+    setBusy(true);
+    onBusyChange(true);
+    try {
+      const result = await handleClick();
+      if (result?.redirectURL) window.location.assign(result.redirectURL);
+    } catch (cause) {
+      setError(checkoutErrorMessage(cause));
+    } finally {
+      setBusy(false);
+      onBusyChange(false);
+    }
+  }
+
+  async function continueOnPayPal() {
+    const approvalUrl = approvalUrlRef.current;
+    if (approvalUrl) {
+      window.location.assign(approvalUrl);
+      return;
+    }
+
+    setBusy(true);
+    onBusyChange(true);
+    try {
+      await openBillingCheckout(workspace, interval);
+    } catch (cause) {
+      setError(checkoutErrorMessage(cause));
+    } finally {
+      setBusy(false);
+      onBusyChange(false);
+    }
+  }
+
+  const visibleError = error ?? sdkError?.message;
+
+  return (
+    <div className="pro-checkout-secure-action" aria-live="polite">
+      <button
+        className="button primary pro-checkout-continue"
+        type="button"
+        disabled={isPending || busy}
+        onClick={() => void handleSecureCheckout()}
+      >
+        <LockKeyhole size={15} aria-hidden="true" />
+        {isPending
+          ? "Preparing secure checkout…"
+          : busy
+            ? "Opening secure payment…"
+            : "Continue securely"}
+      </button>
+      {visibleError && (
+        <div className="pro-checkout-payment-error" role="alert">
+          <p>{visibleError}</p>
+          <button
+            className="button secondary compact"
+            type="button"
+            disabled={busy}
+            onClick={() => void continueOnPayPal()}
+          >
+            {busy ? "Opening PayPal…" : "Continue on PayPal"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ProCheckoutDialog({
   open,
   summary,
@@ -27,9 +193,12 @@ export function ProCheckoutDialog({
 }: ProCheckoutDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const initialActionRef = useRef<HTMLButtonElement>(null);
+  const initialProActionRef = useRef<HTMLInputElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
-  const [busy, setBusy] = useState<BillingInterval>();
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [selectedInterval, setSelectedInterval] = useState<BillingInterval>("month");
+  const [providerConfig, setProviderConfig] = useState<BillingProviderConfig>();
   const canCheckout = summary.canCheckout && !summary.pendingCheckout;
   const checkoutUnavailable = summary.pendingCheckout
     ? "Payment confirmation is already in progress. Check Plan and billing for the latest PayPal verification status."
@@ -38,6 +207,25 @@ export function ProCheckoutDialog({
       : "Checkout is temporarily unavailable for this account.";
 
   useRootLock(open);
+
+  useEffect(() => {
+    if (!open || !canCheckout) return;
+
+    let cancelled = false;
+    setError(undefined);
+    setProviderConfig(undefined);
+    void getBillingProviderConfig(workspace)
+      .then((config) => {
+        if (!cancelled) setProviderConfig(config);
+      })
+      .catch((cause) => {
+        if (!cancelled) setError(checkoutErrorMessage(cause));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canCheckout, open, workspace]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -48,7 +236,8 @@ export function ProCheckoutDialog({
     else if (activeElement instanceof HTMLElement && activeElement !== document.body) {
       openerRef.current = activeElement;
     }
-    initialActionRef.current?.focus();
+    const preferProAction = window.matchMedia?.("(max-width: 700px)").matches;
+    (preferProAction ? initialProActionRef.current : initialActionRef.current)?.focus();
 
     return () => {
       if (openerRef.current?.isConnected) openerRef.current.focus();
@@ -84,17 +273,17 @@ export function ProCheckoutDialog({
     }
   }
 
-  async function handleCheckout(interval: BillingInterval) {
+  async function handleFallbackCheckout() {
     if (!canCheckout) return;
 
-    setBusy(interval);
+    setBusy(true);
     setError(undefined);
     try {
-      await openBillingCheckout(workspace, interval);
+      await openBillingCheckout(workspace, selectedInterval);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Checkout could not be opened.");
     } finally {
-      setBusy(undefined);
+      setBusy(false);
     }
   }
 
@@ -141,32 +330,6 @@ export function ProCheckoutDialog({
         </p>
 
         <div className="pro-checkout-plans">
-          <section className="pro-checkout-plan" aria-label="Free plan">
-            <div className="pro-checkout-plan-heading">
-              <strong>Free</strong>
-              <span>Current plan</span>
-            </div>
-            <ul>
-              {planFeatures.map((feature) => (
-                <li key={feature.feature}>
-                  <Check size={14} aria-hidden="true" />
-                  <span>
-                    <b>{feature.feature}</b>
-                    {feature.free}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <button
-              ref={initialActionRef}
-              className="button secondary pro-checkout-free-action"
-              type="button"
-              disabled={Boolean(busy)}
-              onClick={onClose}
-            >
-              Continue using free plan
-            </button>
-          </section>
           <section
             className="pro-checkout-plan pro-checkout-plan-pro"
             aria-label="Zoption Pro plan"
@@ -187,20 +350,89 @@ export function ProCheckoutDialog({
               ))}
             </ul>
             {canCheckout ? (
-              <div className="pro-checkout-actions" aria-live="polite">
-                {proCheckoutOptions.map((option, index) => (
-                  <button
-                    key={option.interval}
-                    className={`button ${index === 0 ? "primary" : "secondary"}`}
-                    type="button"
-                    disabled={Boolean(busy)}
-                    onClick={() => void handleCheckout(option.interval)}
+              <div className="pro-checkout-payment">
+                <fieldset className="pro-checkout-intervals" disabled={busy}>
+                  <legend>Billing interval</legend>
+                  <div className="pro-checkout-interval-options">
+                    {proCheckoutOptions.map((option) => (
+                      <label
+                        key={option.interval}
+                        className={
+                          selectedInterval === option.interval
+                            ? "pro-checkout-interval selected"
+                            : "pro-checkout-interval"
+                        }
+                      >
+                        <input
+                          ref={option.interval === "month" ? initialProActionRef : undefined}
+                          type="radio"
+                          name="pro-billing-interval"
+                          value={option.interval}
+                          aria-label={`${option.label}, ${option.price}`}
+                          checked={selectedInterval === option.interval}
+                          onChange={() => setSelectedInterval(option.interval)}
+                        />
+                        <span>
+                          <strong>{option.label}</strong>
+                          <small>{option.price}</small>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <section
+                  className="pro-checkout-payment-methods"
+                  aria-labelledby="payment-methods-title"
+                >
+                  <div>
+                    <strong id="payment-methods-title">Payment handled by PayPal</strong>
+                    <span>
+                      PayPal will show the methods available to you, which may include debit or
+                      credit card.
+                    </span>
+                  </div>
+                  <ul aria-label="Possible payment methods">
+                    <li>
+                      <CreditCard size={16} aria-hidden="true" />
+                      Debit or credit card when available
+                    </li>
+                    <li>
+                      <WalletCards size={16} aria-hidden="true" />
+                      PayPal
+                    </li>
+                  </ul>
+                </section>
+
+                {providerConfig ? (
+                  <PayPalProvider
+                    clientId={providerConfig.clientId}
+                    environment={providerConfig.environment}
+                    components={["paypal-subscriptions"]}
+                    pageType="checkout"
+                    locale="en_PH"
                   >
-                    {busy === option.interval
-                      ? "Opening checkout…"
-                      : `Subscribe ${option.label} · ${option.price}`}
+                    <PayPalCheckoutAction
+                      interval={selectedInterval}
+                      workspace={workspace}
+                      onBusyChange={setBusy}
+                    />
+                  </PayPalProvider>
+                ) : (
+                  <button
+                    className="button primary pro-checkout-continue"
+                    type="button"
+                    disabled={!error || busy}
+                    onClick={() => void handleFallbackCheckout()}
+                  >
+                    <LockKeyhole size={15} aria-hidden="true" />
+                    {busy
+                      ? "Opening PayPal…"
+                      : error
+                        ? "Continue securely on PayPal"
+                        : "Preparing secure checkout…"}
                   </button>
-                ))}
+                )}
               </div>
             ) : (
               <div className="pro-checkout-unavailable">
@@ -212,6 +444,11 @@ export function ProCheckoutDialog({
               </div>
             )}
           </section>
+          <FreePlanCard
+            busy={Boolean(busy)}
+            initialActionRef={initialActionRef}
+            onClose={onClose}
+          />
         </div>
 
         {error && (

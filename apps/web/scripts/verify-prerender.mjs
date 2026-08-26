@@ -3,6 +3,13 @@ import { resolve } from "node:path";
 
 import release from "../src/releases/androidRelease.json" with { type: "json" };
 
+// Keep this narrow list aligned with PAYPAL_CSP_SOURCES in deployment-config.ts.
+const APPROVED_CSP_WILDCARD_SOURCES = new Set([
+  "https://*.paypal.com",
+  "https://*.paypalobjects.com",
+  "https://*.venmo.com",
+]);
+
 function assert(condition, message) {
   if (!condition) throw new Error(`Prerender verification failed: ${message}`);
 }
@@ -368,10 +375,10 @@ export async function verifyPrerenderArtifacts({
       expectedContentSecurityPolicy.includes(expectedSupabaseOrigin),
     "CSP must include the exact API and Supabase origins for this build.",
   );
-  assert(
-    !expectedContentSecurityPolicy.split(/[;\s]+/).some((source) => source.includes("*")),
-    "CSP must use exact origins and must not contain wildcard sources.",
-  );
+  const unexpectedWildcardSource = expectedContentSecurityPolicy
+    .split(/[;\s]+/)
+    .find((source) => source.includes("*") && !APPROVED_CSP_WILDCARD_SOURCES.has(source));
+  assert(!unexpectedWildcardSource, "CSP contains an unapproved wildcard source.");
   const hasGlobalNoindex = headers.startsWith("/*\n  X-Robots-Tag: noindex, nofollow\n");
   assert(
     hasGlobalNoindex === !indexingEnabled,

@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import {
   cancelPayPalSubscription,
   createPayPalSubscription,
+  getPayPalBrowserConfiguration,
   getPayPalSubscription,
 } from "../billing/paypal";
 import { reconcilePayPalCheckout } from "../billing/reconciliation";
@@ -19,8 +20,14 @@ export function createBillingRoutes(repository: BillingRepository) {
     context.json(await repository.getSummary(context.env, context.get("tenant").tenantId)),
   );
 
+  routes.get("/checkout/config", (context) =>
+    context.json({ provider: "paypal" as const, ...getPayPalBrowserConfiguration(context.env) }),
+  );
+
   routes.post("/reconcile", async (context) =>
-    context.json(await reconcilePayPalCheckout(repository, context.env, context.get("tenant").tenantId)),
+    context.json(
+      await reconcilePayPalCheckout(repository, context.env, context.get("tenant").tenantId),
+    ),
   );
 
   routes.post("/checkout", async (context) => {
@@ -86,7 +93,10 @@ export function createBillingRoutes(repository: BillingRepository) {
         { billingPath: "/app/settings#plan-and-billing" },
       );
     }
-    return context.json({ approvalUrl: subscription.approvalUrl }, 201);
+    return context.json(
+      { approvalUrl: subscription.approvalUrl, subscriptionId: subscription.id },
+      201,
+    );
   });
 
   routes.post("/cancel", async (context) => {

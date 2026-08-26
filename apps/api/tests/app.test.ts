@@ -451,6 +451,29 @@ describe("API foundation", () => {
     await expect(response.json()).resolves.toMatchObject({ status: "ok" });
   });
 
+  it("returns authenticated public PayPal SDK configuration without exposing its secret", async () => {
+    const app = createTestApp();
+    const response = await app.request(
+      "/api/app/billing/checkout/config",
+      { headers: AUTHORIZATION },
+      {
+        DB: {} as D1Database,
+        PAYPAL_ENVIRONMENT: "sandbox",
+        PAYPAL_CLIENT_ID: "public-client-id",
+        PAYPAL_CLIENT_SECRET: "private-client-secret",
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload).toEqual({
+      provider: "paypal",
+      clientId: "public-client-id",
+      environment: "sandbox",
+    });
+    expect(JSON.stringify(payload)).not.toContain("private-client-secret");
+  });
+
   it("does not expose the retired public dashboard", async () => {
     const loader = vi.fn().mockResolvedValue(dashboardFixture);
     const app = createTestApp({ dashboardLoader: loader });

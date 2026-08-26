@@ -4,12 +4,30 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { BillingSummary } from "@zoption/shared";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const apiMocks = vi.hoisted(() => ({
+  getBillingProviderConfig: vi.fn(),
+  startBillingCheckout: vi.fn(),
+}));
 const openBillingCheckout = vi.hoisted(() => vi.fn());
 
+vi.mock("../src/lib/api", () => apiMocks);
 vi.mock("../src/lib/billingCheckout", () => ({ openBillingCheckout }));
+vi.mock("@paypal/react-paypal-js/sdk-v6", () => ({
+  PayPalProvider: ({ children }: { children: ReactNode }) => children,
+  usePayPalSubscriptionPaymentSession: (options: {
+    createSubscription: () => Promise<{ subscriptionId: string }>;
+  }) => ({
+    error: null,
+    isPending: false,
+    handleClick: options.createSubscription,
+    handleCancel: vi.fn(),
+    handleDestroy: vi.fn(),
+  }),
+}));
 
 import { ProCheckoutDialog } from "../src/components/billing/ProCheckoutDialog";
 
@@ -51,12 +69,25 @@ function renderDialog(value = summary(), onClose = vi.fn()) {
 }
 
 describe("ProCheckoutDialog", () => {
+  beforeEach(() => {
+    apiMocks.getBillingProviderConfig.mockResolvedValue({
+      provider: "paypal",
+      clientId: "public-client-id",
+      environment: "sandbox",
+    });
+    apiMocks.startBillingCheckout.mockResolvedValue({
+      approvalUrl: "https://www.sandbox.paypal.com/checkoutnow?token=test",
+      subscriptionId: "I-test",
+    });
+  });
+
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it("shows current plan facts and opens the selected checkout interval", async () => {
+  it("shows current plan and payment facts, then starts the selected secure subscription", async () => {
     renderDialog();
 
     expect(
@@ -67,9 +98,15 @@ describe("ProCheckoutDialog", () => {
     expect(
       screen.getByText(/does not add or move transactions into the week/i),
     ).toBeInTheDocument();
+    expect(screen.getByText("Debit or credit card when available")).toBeInTheDocument();
+    expect(screen.getByText(/PayPal will show the methods available to you/i)).toBeInTheDocument();
+    expect(screen.getByText("PayPal")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Subscribe Annual · ₱1,299/year" }));
-    expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "year");
+    fireEvent.click(screen.getByRole("radio", { name: "Annual, ₱1,299/year" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Continue securely" }));
+
+    expect(apiMocks.startBillingCheckout).toHaveBeenCalledWith(workspace, "year");
+    expect(openBillingCheckout).not.toHaveBeenCalled();
   });
 
   it("starts at the free-plan action and lets the user continue without checkout", () => {
@@ -85,6 +122,29 @@ describe("ProCheckoutDialog", () => {
 
     expect(onClose).toHaveBeenCalledOnce();
     expect(openBillingCheckout).not.toHaveBeenCalled();
+    expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
+  });
+
+  it("puts Pro first and focuses its selected interval on narrow screens", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
+    renderDialog();
+
+    const plans = screen.getByRole("region", { name: "Zoption Pro plan" }).parentElement;
+    expect(plans?.firstElementChild).toHaveAccessibleName("Zoption Pro plan");
+    expect(screen.getByRole("radio", { name: "Monthly, ₱149/month" })).toHaveFocus();
+  });
+
+  it("keeps the hosted PayPal checkout available when the embedded SDK cannot initialize", async () => {
+    apiMocks.getBillingProviderConfig.mockRejectedValue(
+      new Error("Secure checkout is unavailable."),
+    );
+    openBillingCheckout.mockResolvedValue(undefined);
+    renderDialog();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Continue securely on PayPal" }));
+
+    expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "month");
+    expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
   });
 
   it("explains when payment confirmation is already pending", () => {
@@ -101,7 +161,7 @@ describe("ProCheckoutDialog", () => {
     );
 
     expect(screen.getByText(/Payment confirmation is already in progress/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Subscribe Monthly/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue securely" })).not.toBeInTheDocument();
   });
 
   it("closes on Escape and explains unavailable checkout", () => {
@@ -112,7 +172,7 @@ describe("ProCheckoutDialog", () => {
       "href",
       "/app/settings#plan-and-billing",
     );
-    expect(screen.queryByRole("button", { name: /Subscribe Monthly/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue securely" })).not.toBeInTheDocument();
 
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();

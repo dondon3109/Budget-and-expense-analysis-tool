@@ -159,6 +159,11 @@ describe("environment-derived CSP", () => {
     expect(policy).toContain(`connect-src 'self' ${supabaseUrl} ${productionApiUrl}`);
     expect(policy).toContain("connect-src");
     expect(policy).toContain("https://downloads.zoption.site");
+    expect(policy).toContain(
+      "script-src 'self' https://www.paypal.com https://www.sandbox.paypal.com https://*.paypal.com https://www.paypalobjects.com https://*.paypalobjects.com https://*.venmo.com",
+    );
+    expect(policy).toContain("frame-src https://www.paypal.com https://www.sandbox.paypal.com");
+    expect(policy).toContain("style-src 'self' 'unsafe-inline' https://www.paypal.com");
     expect(policy).toContain("media-src 'self' blob:");
     expect(policy).not.toContain("*.supabase.co");
     expect(policy).not.toContain("*.workers.dev");
@@ -226,7 +231,7 @@ describe("environment-derived CSP", () => {
     ).toThrow("must use HTTPS");
   });
 
-  it("rejects static, mismatched, or wildcard CSP headers", () => {
+  it("rejects static, mismatched, or unapproved wildcard CSP headers", () => {
     expect(() =>
       addContentSecurityPolicy(
         "/*\n  Content-Security-Policy: default-src 'self'\n",
@@ -245,6 +250,6 @@ describe("environment-derived CSP", () => {
         `/*\n  Content-Security-Policy: ${wildcardPolicy}\n`,
         wildcardPolicy,
       ),
-    ).toThrow("must not contain wildcard sources");
+    ).toThrow("contains an unapproved wildcard source");
   });
 });

@@ -18,6 +18,7 @@ describe("openBillingCheckout", () => {
     vi.clearAllMocks();
     apiMocks.startBillingCheckout.mockResolvedValue({
       approvalUrl: "https://www.sandbox.paypal.com/checkoutnow?token=example",
+      subscriptionId: "I-example",
     });
     Object.defineProperty(window, "location", {
       configurable: true,
