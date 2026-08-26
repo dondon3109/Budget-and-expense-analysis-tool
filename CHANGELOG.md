@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.18.0 — 2026-08-26
+
 ### Added
 
 - Added a Zoption-hosted Pro checkout with monthly and annual plan selection, PayPal-secured card or wallet authorization, and a hosted PayPal fallback when the embedded payment session is unavailable.
