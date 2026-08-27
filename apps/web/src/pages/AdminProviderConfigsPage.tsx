@@ -262,8 +262,8 @@ export function AdminProviderConfigsPage() {
   }, [credentialsQuery.data?.credentials]);
 
   const healthByService = useMemo(() => {
-    const map = new Map<ProviderService, { hasCredential: boolean; details: string; last4?: string | null; source?: string }>();
-    for (const h of healthQuery.data?.health ?? []) map.set(h.service, h);
+    const map = new Map<ProviderService, { hasCredential: boolean; details: string; apiKeyLast4?: string | null; source?: string }>();
+    for (const h of healthQuery.data?.health ?? []) map.set(h.service, h as unknown as { hasCredential: boolean; details: string; apiKeyLast4?: string | null; source?: string });
     return map;
   }, [healthQuery.data?.health]);
 
