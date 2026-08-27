@@ -111,7 +111,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     // OPTION A: Google Gemini Multimodal Live API
     // ==========================================
     if (isGeminiLive) {
-      const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(token)}`;
+      const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(token)}`;
       let geminiWs: WebSocket | null = null;
 
       try {
@@ -175,6 +175,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         if (typeof raw === "string" && raw.startsWith("{")) {
           try {
             const msg = JSON.parse(raw) as {
+              error?: { code?: number; message?: string };
               serverContent?: {
                 modelTurn?: {
                   parts?: Array<{ text?: string }>;
@@ -182,6 +183,18 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                 turnComplete?: boolean;
               };
             };
+            if (msg.error) {
+              console.error("[voice-stream] Gemini Live error:", msg.error);
+              trySend(
+                server,
+                JSON.stringify({
+                  type: "error",
+                  code: "gemini_error",
+                  message: msg.error.message || "Gemini Live session error",
+                }),
+              );
+              return;
+            }
             const parts = msg.serverContent?.modelTurn?.parts;
             if (parts && parts.length > 0) {
               for (const part of parts) {

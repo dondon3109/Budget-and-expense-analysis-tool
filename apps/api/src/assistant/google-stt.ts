@@ -85,18 +85,24 @@ export function createGoogleSttProvider(
       let binary = "";
       for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
       const b64 = btoa(binary);
-      const audioMime = audio.type?.trim() || "audio/webm";
+      // Strip codec parameters like ';codecs=opus' which Google Generative Language inlineData rejects
+      const audioMime =
+        (audio.type || "audio/webm").split(";")[0]?.trim().toLowerCase() || "audio/webm";
 
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs(env));
 
       try {
-        // Gemini transcription path (e.g. gemini-3.5-transcribe, gemini-3.5-transcribe-live)
+        // Gemini transcription path (e.g. gemini-2.0-flash, gemini-3.5-transcribe, gemini-3.5-transcribe-live)
         if (effectiveModel.startsWith("gemini")) {
+          // gemini-3.5-transcribe-live is a Multimodal Live API WebSocket model.
+          // For batch REST generateContent requests, use gemini-2.0-flash.
+          const restModel =
+            effectiveModel === "gemini-3.5-transcribe-live" ? "gemini-2.0-flash" : effectiveModel;
           const isApiKey = token.startsWith("AIza") || !token.startsWith("ya29");
           const endpoint = isApiKey
-            ? `https://generativelanguage.googleapis.com/v1beta/models/${effectiveModel}:generateContent?key=${encodeURIComponent(token)}`
-            : `https://generativelanguage.googleapis.com/v1beta/models/${effectiveModel}:generateContent`;
+            ? `https://generativelanguage.googleapis.com/v1beta/models/${restModel}:generateContent?key=${encodeURIComponent(token)}`
+            : `https://generativelanguage.googleapis.com/v1beta/models/${restModel}:generateContent`;
 
           const headers: Record<string, string> = { "Content-Type": "application/json" };
           if (!isApiKey) {
@@ -123,8 +129,20 @@ export function createGoogleSttProvider(
           });
 
           if (!res.ok) {
-            if (res.status === 401 || res.status === 403)
+            const errJson = (await res.json().catch(() => null)) as {
+              error?: { message?: string; details?: Array<{ reason?: string }> };
+            } | null;
+            const reason = errJson?.error?.details?.[0]?.reason;
+            const errMsg = errJson?.error?.message;
+
+            if (
+              res.status === 401 ||
+              res.status === 403 ||
+              reason === "API_KEY_INVALID" ||
+              errMsg?.toLowerCase().includes("api key")
+            ) {
               throw new AssistantVoiceProviderError("google" as any, "configuration", res.status);
+            }
             if (res.status === 429)
               throw new AssistantVoiceProviderError("google" as any, "rate_limit", res.status);
             if (res.status >= 500)

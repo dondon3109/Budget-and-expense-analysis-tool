@@ -23,6 +23,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Fixed "Voice processing returned an invalid response" on Google STT batch transcriptions by sanitizing the audio MIME type (stripping browser codec parameters like `;codecs=opus` which Google Generative Language `inlineData` rejected with HTTP 400), mapping Live-only model configurations (`gemini-3.5-transcribe-live`) to `gemini-2.0-flash` for batch REST fallback, classifying Google `API_KEY_INVALID` errors as configuration errors with actionable UI guidance, and upgrading the Gemini Multimodal Live WebSocket endpoint to `v1beta` (`apps/api/src/assistant/google-stt.ts:88`, `apps/api/src/routes/voice-stream.ts:114`).
 - Billing now clears a `PayPal` `APPROVAL_PENDING` checkout immediately when the buyer cancels via `?checkout=cancelled` instead of remaining stuck on `Confirming your payment` until the 15-minute expiry. `POST /api/app/billing/reconcile` accepts `abortPendingCheckout` and supersedes the pending checkout without granting Pro.
 - Pro checkout now loads all required PayPal JS v6 components (`paypal-payments`, `paypal-subscriptions`, `paypal-guest-payments`, `card-fields` per https://docs.paypal.ai/developer/how-to/sdk/js/v6/configuration) so the Debit or credit card guest option correctly appears inside the PayPal window when the buyer/merchant is eligible (previously only `paypal-subscriptions` was loaded, hiding card).
 

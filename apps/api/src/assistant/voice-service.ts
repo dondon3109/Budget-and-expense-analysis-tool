@@ -71,6 +71,13 @@ function requireEnabled(env: Bindings): void {
 function mapProviderError(error: unknown, reporter: AssistantVoiceDiagnosticReporter): never {
   if (!(error instanceof AssistantVoiceProviderError)) throw error;
   reportProviderFailure(error, reporter);
+  if (error.kind === "configuration") {
+    throw new HttpError(
+      502,
+      "assistant_voice_misconfigured",
+      "Voice provider configuration or API key is invalid. Please check your credentials in AI & Voice Models.",
+    );
+  }
   if (error.kind === "timeout") {
     throw new HttpError(
       504,

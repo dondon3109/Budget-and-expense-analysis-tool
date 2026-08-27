@@ -692,3 +692,206 @@
 .button.danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--danger, #e11d48) 90%, black);
 }
+
+/* Hero Active Card */
+.admin-active-hero-card {
+  margin-top: 14px;
+  padding: 16px 18px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.admin-active-hero-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.active-glow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.active-dot-pulsing {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.streaming-capability-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.streaming-capability-pill.supported {
+  background: color-mix(in srgb, #10b981 18%, var(--paper));
+  color: #047857;
+  border: 1px solid color-mix(in srgb, #10b981 40%, transparent);
+}
+
+.streaming-capability-pill.unsupported {
+  background: color-mix(in srgb, #f59e0b 15%, var(--paper));
+  color: #b45309;
+  border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+}
+
+.admin-active-hero-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-active-hero-info {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-active-hero-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.admin-active-hero-meta {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-sep {
+  color: var(--line-strong);
+}
+
+.admin-active-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch-to-live-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--action);
+  color: #fff;
+  font-weight: 600;
+}
+
+.admin-active-hero-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--surface) 70%, var(--paper));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.admin-active-hero-callout svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--action);
+}
+
+/* Table Capability Badges */
+.table-cap-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.table-cap-pill.live {
+  background: color-mix(in srgb, #10b981 16%, var(--paper));
+  color: #065f46;
+  border: 1px solid color-mix(in srgb, #10b981 35%, transparent);
+}
+
+.table-cap-pill.batch {
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.active-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, #10b981 16%, var(--paper));
+  color: #065f46;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid color-mix(in srgb, #10b981 35%, transparent);
+}
+
+.activate-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+}
+
+/* Checkbox Row in Add Modal */
+.add-activate-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.add-activate-row input[type="checkbox"] {
+  margin-top: 3px;
+  cursor: pointer;
+}
+
+.add-activate-row div {
+  display: grid;
+  gap: 2px;
+}
+
+.add-activate-row strong {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.add-activate-row small {
+  font-size: 11px;
+  color: var(--muted);
+}

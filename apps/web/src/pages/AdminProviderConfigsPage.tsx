@@ -14,6 +14,9 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
+  Zap,
+  Check,
+  Info,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -109,6 +112,7 @@ export function AdminProviderConfigsPage() {
   const [addNewCredName, setAddNewCredName] = useState<string>("");
   const [addNewCredSecret, setAddNewCredSecret] = useState<string>("");
   const [showAddSecret, setShowAddSecret] = useState<boolean>(false);
+  const [addActivateImmediately, setAddActivateImmediately] = useState<boolean>(true);
   const [isSubmittingConfig, setIsSubmittingConfig] = useState<boolean>(false);
 
   // Credential dialog state
@@ -307,7 +311,16 @@ export function AdminProviderConfigsPage() {
         credentialId,
       });
 
-      setFeedback(`Added ${created.service} → ${created.displayName}`);
+      if (addActivateImmediately) {
+        try {
+          await activateProviderConfig(workspace, created.id);
+          setFeedback(`Added and activated ${created.service} → ${created.displayName}`);
+        } catch {
+          setFeedback(`Added ${created.service} → ${created.displayName} (activation pending)`);
+        }
+      } else {
+        setFeedback(`Added ${created.service} → ${created.displayName}`);
+      }
       setAddFor(null);
       setAddProvider("");
       setAddModel("");
@@ -316,6 +329,7 @@ export function AdminProviderConfigsPage() {
       setAddNewCredName("");
       setAddNewCredSecret("");
       setAddCredMode("new");
+      setAddActivateImmediately(true);
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
       void queryClient.invalidateQueries({
@@ -522,11 +536,21 @@ export function AdminProviderConfigsPage() {
   }
 
   function openAdd(service: ProviderService) {
+    setAddActivateImmediately(true);
     const providers = availableProviders(service);
-    const firstProvider = providers[0] ?? "";
     const existing = configsByService.get(service) ?? [];
-    const models = firstProvider ? remainingModels(service, firstProvider, existing) : [];
-    let provider = firstProvider;
+
+    // For STT, prefer "google" if it has remaining models because cloudflare is already configured by default
+    let preferredProvider = providers[0] ?? "";
+    if (service === "stt" && providers.includes("google")) {
+      const googleRem = remainingModels(service, "google", existing);
+      if (googleRem.length > 0) {
+        preferredProvider = "google";
+      }
+    }
+
+    const models = preferredProvider ? remainingModels(service, preferredProvider, existing) : [];
+    let provider = preferredProvider;
     let model = models[0] ?? "";
     if (!model) {
       for (const p of providers) {
@@ -540,7 +564,13 @@ export function AdminProviderConfigsPage() {
     }
     setAddProvider(provider);
     setAddModel(model);
-    setAddDisplayName(provider && model ? `${provider} / ${model}` : "");
+    setAddDisplayName(
+      provider === "google" && model.includes("live")
+        ? "Google Gemini 3.5 Transcribe Live"
+        : provider && model
+          ? `${provider} / ${model}`
+          : "",
+    );
     const creds = credentialsByProvider.get(provider) ?? [];
     setAddCredentialId(creds[0]?.id ?? "");
     setAddCredMode(
@@ -815,26 +845,92 @@ export function AdminProviderConfigsPage() {
                       <h2>{svc.label}</h2>
                       <p>{svc.description}</p>
                     </div>
-                    <span>
-                      Active:{" "}
-                      {active
-                        ? `${active.displayName} (${active.provider} / ${active.model})`
-                        : "none"}
-                      {health ? (
-                        <small
-                          className={`health-badge ${health.hasCredential ? "ok" : "missing"}`}
-                          title={health.details}
+                  </div>
+
+                  {/* Prominent Active Provider Card */}
+                  <div className="admin-active-hero-card">
+                    <div className="admin-active-hero-badge-row">
+                      <span className="active-glow-pill">
+                        <span className="active-dot-pulsing" /> Currently Active
+                      </span>
+                      {svc.id === "stt" && (
+                        <span
+                          className={`streaming-capability-pill ${
+                            active?.provider === "google" ? "supported" : "unsupported"
+                          }`}
                         >
+                          {active?.provider === "google" ? (
+                            <>
+                              <Zap size={12} /> Realtime Live Streaming Active
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle size={12} /> Batch Only (Live Stream Disabled)
+                            </>
+                          )}
+                        </span>
+                      )}
+                      {health && (
+                        <span className={`health-badge ${health.hasCredential ? "ok" : "missing"}`}>
                           {svc.id === "stt" && active?.provider === "cloudflare_workers_ai"
                             ? health.hasCredential
-                              ? "● Binding ready"
+                              ? "● Workers AI binding ready"
                               : "○ Binding missing"
                             : health.hasCredential
-                              ? `● Credential ••••${health.apiKeyLast4 ?? ""}`
+                              ? `● Key ••••${health.apiKeyLast4 ?? ""}`
                               : "○ Credential missing"}
-                        </small>
-                      ) : null}
-                    </span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="admin-active-hero-content">
+                      <div className="admin-active-hero-info">
+                        <h3 className="admin-active-hero-title">
+                          Active: {active ? active.displayName : "No configuration active"}
+                        </h3>
+                        <div className="admin-active-hero-meta">
+                          Provider: <strong>{active ? active.provider : "—"}</strong>
+                          <span className="meta-sep">·</span>
+                          Model: <code>{active ? active.model : "—"}</code>
+                        </div>
+                      </div>
+
+                      <div className="admin-active-hero-actions">
+                        {svc.id === "stt" && active?.provider === "cloudflare_workers_ai" && (() => {
+                          const googleConfig = list.find((c) => c.provider === "google" && !c.isActive);
+                          if (googleConfig) {
+                            return (
+                              <button
+                                type="button"
+                                className="button compact switch-to-live-btn"
+                                onClick={() => setConfirmActivate(googleConfig)}
+                                title="Switch to Google Gemini Live for instant voice streaming"
+                              >
+                                <Zap size={13} /> Switch to Gemini Live
+                              </button>
+                            );
+                          }
+                          return (
+                            <button
+                              type="button"
+                              className="button compact switch-to-live-btn"
+                              onClick={() => openAdd("stt")}
+                            >
+                              <Plus size={13} /> Add Google Live Key
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {svc.id === "stt" && active?.provider === "cloudflare_workers_ai" && (
+                      <div className="admin-active-hero-callout">
+                        <Info size={14} />
+                        <span>
+                          <strong>Cloudflare Whisper is currently active.</strong> It only transcribes audio after you finish speaking and tap stop. To see words transcribed live in real time as you speak, switch to <strong>Google Gemini Live</strong> below.
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="admin-provider-section-actions">
@@ -897,7 +993,22 @@ export function AdminProviderConfigsPage() {
                                   <small className="mono">{shortId(cfg.id)}</small>
                                 </td>
                                 <td>
-                                  <strong>{cfg.provider}</strong> / <code>{cfg.model}</code>
+                                  <div>
+                                    <strong>{cfg.provider}</strong> / <code>{cfg.model}</code>
+                                  </div>
+                                  {svc.id === "stt" && (
+                                    <div style={{ marginTop: 4 }}>
+                                      {cfg.provider === "google" ? (
+                                        <span className="table-cap-pill live">
+                                          <Zap size={10} /> Realtime Live
+                                        </span>
+                                      ) : (
+                                        <span className="table-cap-pill batch">
+                                          Batch Only
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </td>
                                 <td>
                                   {cfg.provider === "cloudflare_workers_ai" ? (
@@ -928,14 +1039,21 @@ export function AdminProviderConfigsPage() {
                                 </td>
                                 <td>
                                   <div className="provider-actions">
-                                    <button
-                                      type="button"
-                                      className="button small"
-                                      disabled={cfg.isActive || activateMutation.isPending}
-                                      onClick={() => setConfirmActivate(cfg)}
-                                    >
-                                      Activate
-                                    </button>
+                                    {cfg.isActive ? (
+                                      <span className="active-tag-chip" title="This model is currently active">
+                                        <Check size={12} /> Active
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="button small activate-row-btn"
+                                        disabled={activateMutation.isPending}
+                                        onClick={() => setConfirmActivate(cfg)}
+                                        title="Make this the active model"
+                                      >
+                                        <Zap size={12} /> Activate
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
                                       className="button small secondary"
@@ -1514,6 +1632,21 @@ export function AdminProviderConfigsPage() {
                             )}
                           </div>
                         )}
+
+                        <label className="add-activate-row">
+                          <input
+                            type="checkbox"
+                            checked={addActivateImmediately}
+                            onChange={(e) => setAddActivateImmediately(e.target.checked)}
+                          />
+                          <div>
+                            <strong>Make this model active immediately</strong>
+                            <small>
+                              Directly switches {addFor?.toUpperCase()} to this configuration upon saving
+                            </small>
+                          </div>
+                        </label>
+
                         <div className="confirm-actions">
                           <button
                             type="button"

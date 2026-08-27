@@ -617,7 +617,12 @@ export const providerAllowlist: Record<ProviderService, Record<string, readonly 
   assistant: { deepseek: ["deepseek-v4-flash"] as const },
   stt: {
     cloudflare_workers_ai: ["@cf/openai/whisper-large-v3-turbo"] as const,
-    google: ["gemini-3.5-transcribe", "gemini-3.5-transcribe-live", "chirp_3"] as const,
+    google: [
+      "gemini-3.5-transcribe",
+      "gemini-3.5-transcribe-live",
+      "gemini-2.0-flash",
+      "chirp_3",
+    ] as const,
   },
   tts: { fish_audio: ["s2.1-pro-free"] as const },
 } as const;
