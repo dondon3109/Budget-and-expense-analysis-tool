@@ -14,11 +14,21 @@ const CACHE_TTL_MS = 30_000;
 
 type CacheEntry = { value: ProviderConfig | null; expiresAt: number };
 
+export interface ProviderHealthStatus {
+  service: ProviderService;
+  provider: string;
+  model: string;
+  hasCredential: boolean;
+  credentialName: string | null;
+  details: string;
+}
+
 export interface ProviderRegistry {
   getActive(env: Bindings, service: ProviderService): Promise<ProviderConfig | null>;
   getAll(env: Bindings, service?: ProviderService): Promise<ProviderConfig[]>;
   getAssistantProvider(env: Bindings): Promise<{ provider: AssistantProvider; config: ProviderConfig | null }>;
   getVoiceProviders(env: Bindings): Promise<{ providers: AssistantVoiceProviders; sttConfig: ProviderConfig | null; ttsConfig: ProviderConfig | null }>;
+  getHealth(env: Bindings): Promise<ProviderHealthStatus[]>;
   invalidate(service?: ProviderService): void;
   validateAllowlist(service: ProviderService, provider: string, model: string): boolean;
 }
@@ -102,6 +112,40 @@ export function createProviderRegistry(
         sttConfig: sttCfg,
         ttsConfig: ttsCfg,
       };
+    },
+
+    async getHealth(env: Bindings): Promise<ProviderHealthStatus[]> {
+      const [assistantCfg, sttCfg, ttsCfg] = await Promise.all([
+        this.getActive(env, "assistant"),
+        this.getActive(env, "stt"),
+        this.getActive(env, "tts"),
+      ]);
+      return [
+        {
+          service: "assistant",
+          provider: assistantCfg?.provider ?? "deepseek",
+          model: assistantCfg?.model ?? "deepseek-v4-flash",
+          hasCredential: Boolean(env.DEEPSEEK_API_KEY?.trim()),
+          credentialName: "DEEPSEEK_API_KEY",
+          details: env.DEEPSEEK_API_KEY?.trim() ? "Secret configured in Cloudflare" : "Missing — add via wrangler secret put DEEPSEEK_API_KEY",
+        },
+        {
+          service: "stt",
+          provider: sttCfg?.provider ?? "cloudflare_workers_ai",
+          model: sttCfg?.model ?? "@cf/openai/whisper-large-v3-turbo",
+          hasCredential: Boolean(env.AI),
+          credentialName: null,
+          details: env.AI ? "Workers AI binding available" : "Workers AI binding missing — check wrangler.jsonc ai binding",
+        },
+        {
+          service: "tts",
+          provider: ttsCfg?.provider ?? "fish_audio",
+          model: ttsCfg?.model ?? "s2.1-pro-free",
+          hasCredential: Boolean(env.FISH_AUDIO_API_KEY?.trim()),
+          credentialName: "FISH_AUDIO_API_KEY",
+          details: env.FISH_AUDIO_API_KEY?.trim() ? "Secret configured in Cloudflare" : "Missing — add via wrangler secret put FISH_AUDIO_API_KEY",
+        },
+      ];
     },
 
     invalidate(service?: ProviderService): void {

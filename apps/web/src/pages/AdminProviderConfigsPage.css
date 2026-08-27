@@ -390,6 +390,110 @@
   gap: 10px;
 }
 
+.admin-provider-section-heading > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.health-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.health-badge.ok {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.health-badge.missing {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.admin-provider-section-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.add-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.add-field span {
+  color: var(--subtle);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.add-field select {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 11px;
+}
+
+.api-key-commands {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.api-key-commands > div {
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+
+.api-key-commands span {
+  color: var(--subtle);
+  font-size: 9px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.api-key-commands code {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.mono.small {
+  display: block;
+  margin-top: 8px;
+  color: var(--subtle);
+  font-size: 10px;
+}
+
+.add-dialog {
+  width: min(520px, 92vw);
+}
+
+.api-key-dialog {
+  width: min(560px, 92vw);
+}
+
+.api-key-dialog code {
+  font-size: 10px;
+}
+
 @media (max-width: 820px) {
   .admin-provider-header {
     display: grid;

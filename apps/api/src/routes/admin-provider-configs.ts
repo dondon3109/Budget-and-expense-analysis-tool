@@ -60,6 +60,12 @@ export function createAdminProviderConfigRoutes(
     return context.json({ audits });
   });
 
+  routes.get("/health", async (context) => {
+    await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
+    const health = await registry.getHealth(context.env);
+    return context.json({ health });
+  });
+
   routes.get("/:id", async (context) => {
     await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
     const id = context.req.param("id");

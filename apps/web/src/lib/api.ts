@@ -690,6 +690,22 @@ export function getProviderConfigAudits(
   return requestJson(workspace, `/api/app/admin/provider-configs/audits${qs}`);
 }
 
+export function getProviderHealth(
+  workspace: AuthenticatedWorkspace,
+): Promise<{ health: Array<{ service: ProviderService; provider: string; model: string; hasCredential: boolean; credentialName: string | null; details: string }> }> {
+  return requestJson(workspace, "/api/app/admin/provider-configs/health");
+}
+
+export function createProviderConfig(
+  workspace: AuthenticatedWorkspace,
+  input: { service: ProviderService; provider: string; model: string; enabled?: boolean },
+): Promise<ProviderConfig> {
+  return requestJson(workspace, "/api/app/admin/provider-configs", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export function updateProviderConfig(
   workspace: AuthenticatedWorkspace,
   id: string,
