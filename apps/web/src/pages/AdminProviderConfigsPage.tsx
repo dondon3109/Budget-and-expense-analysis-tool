@@ -39,9 +39,21 @@ import type { ProviderConfig, ProviderCredentialWithUsage, ProviderService } fro
 import "./AdminProviderConfigsPage.css";
 
 const SERVICES: { id: ProviderService; label: string; description: string }[] = [
-  { id: "assistant", label: "AI Assistant", description: "Primary conversational assistant model used for all Zoption AI answers." },
-  { id: "stt", label: "Voice Input · STT", description: "Speech-to-text model for voice recordings." },
-  { id: "tts", label: "Voice Output · TTS", description: "Text-to-speech model for spoken replies and previews." },
+  {
+    id: "assistant",
+    label: "AI Assistant",
+    description: "Primary conversational assistant model used for all Zoption AI answers.",
+  },
+  {
+    id: "stt",
+    label: "Voice Input · STT",
+    description: "Speech-to-text model for voice recordings.",
+  },
+  {
+    id: "tts",
+    label: "Voice Output · TTS",
+    description: "Text-to-speech model for spoken replies and previews.",
+  },
 ];
 
 const SERVICE_CREDENTIALS: Record<ProviderService, { label: string; expectsKey: boolean }> = {
@@ -96,6 +108,11 @@ export function AdminProviderConfigsPage() {
   const [editCredSecret, setEditCredSecret] = useState<string>("");
   const [deleteCred, setDeleteCred] = useState<ProviderCredentialWithUsage | null>(null);
 
+  // Configuration edit dialog state
+  const [editConfig, setEditConfig] = useState<ProviderConfig | null>(null);
+  const [editConfigDisplayName, setEditConfigDisplayName] = useState<string>("");
+  const [editConfigCredentialId, setEditConfigCredentialId] = useState<string>("");
+
   const configsQuery = useQuery({
     queryKey: queryKeys.providerConfigs(workspace),
     queryFn: () => getProviderConfigs(workspace),
@@ -126,14 +143,19 @@ export function AdminProviderConfigsPage() {
   const activateMutation = useMutation({
     mutationFn: (id: string) => activateProviderConfig(workspace, id),
     onSuccess: (updated) => {
-      setFeedback(`Activated ${updated.service} → ${updated.displayName ?? `${updated.provider} / ${updated.model}`}`);
+      setFeedback(
+        `Activated ${updated.service} → ${updated.displayName ?? `${updated.provider} / ${updated.model}`}`,
+      );
       setErrorMsg(undefined);
       setConfirmActivate(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const });
+      void queryClient.invalidateQueries({
+        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+      });
     },
-    onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Activation failed."),
+    onError: (err: unknown) =>
+      setErrorMsg(err instanceof Error ? err.message : "Activation failed."),
   });
 
   const toggleMutation = useMutation({
@@ -161,8 +183,13 @@ export function AdminProviderConfigsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: { service: ProviderService; provider: string; model: string; displayName: string; credentialId?: string | null }) =>
-      createProviderConfig(workspace, input),
+    mutationFn: (input: {
+      service: ProviderService;
+      provider: string;
+      model: string;
+      displayName: string;
+      credentialId?: string | null;
+    }) => createProviderConfig(workspace, input),
     onSuccess: (created) => {
       setFeedback(`Added ${created.service} → ${created.displayName}`);
       setErrorMsg(undefined);
@@ -173,9 +200,34 @@ export function AdminProviderConfigsPage() {
       setAddCredentialId("");
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const });
+      void queryClient.invalidateQueries({
+        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+      });
     },
     onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Create failed."),
+  });
+
+  const updateConfigMutation = useMutation({
+    mutationFn: (input: { id: string; displayName?: string; credentialId?: string | null }) =>
+      updateProviderConfig(workspace, input.id, {
+        displayName: input.displayName,
+        credentialId: input.credentialId,
+      }),
+    onSuccess: (updated) => {
+      setFeedback(`Updated configuration: ${updated.displayName}`);
+      setErrorMsg(undefined);
+      setEditConfig(null);
+      setEditConfigDisplayName("");
+      setEditConfigCredentialId("");
+      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
+      void queryClient.invalidateQueries({
+        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+      });
+    },
+    onError: (err: unknown) =>
+      setErrorMsg(err instanceof Error ? err.message : "Update configuration failed."),
   });
 
   const createCredMutation = useMutation({
@@ -188,14 +240,20 @@ export function AdminProviderConfigsPage() {
       setCredName("");
       setCredSecret("");
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const });
+      void queryClient.invalidateQueries({
+        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+      });
     },
-    onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Create credential failed."),
+    onError: (err: unknown) =>
+      setErrorMsg(err instanceof Error ? err.message : "Create credential failed."),
   });
 
   const updateCredMutation = useMutation({
     mutationFn: (input: { id: string; name?: string; secret?: string }) =>
-      updateProviderCredential(workspace, input.id, { ...(input.name ? { name: input.name } : {}), ...(input.secret ? { secret: input.secret } : {}) }),
+      updateProviderCredential(workspace, input.id, {
+        ...(input.name ? { name: input.name } : {}),
+        ...(input.secret ? { secret: input.secret } : {}),
+      }),
     onSuccess: (c) => {
       setFeedback(`Updated credential ${c.name} ••••${c.apiKeyLast4}`);
       setErrorMsg(undefined);
@@ -203,10 +261,13 @@ export function AdminProviderConfigsPage() {
       setEditCredName("");
       setEditCredSecret("");
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const });
+      void queryClient.invalidateQueries({
+        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+      });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
     },
-    onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Update credential failed."),
+    onError: (err: unknown) =>
+      setErrorMsg(err instanceof Error ? err.message : "Update credential failed."),
   });
 
   const deleteCredMutation = useMutation({
@@ -217,7 +278,8 @@ export function AdminProviderConfigsPage() {
       setDeleteCred(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
     },
-    onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Delete credential failed."),
+    onError: (err: unknown) =>
+      setErrorMsg(err instanceof Error ? err.message : "Delete credential failed."),
   });
 
   const testCredMutation = useMutation({
@@ -226,10 +288,16 @@ export function AdminProviderConfigsPage() {
       setFeedback(`Credential test ok: ${res.provider} ••••${res.last4}`);
       setErrorMsg(undefined);
     },
-    onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Credential test failed."),
+    onError: (err: unknown) =>
+      setErrorMsg(err instanceof Error ? err.message : "Credential test failed."),
   });
 
-  function move(service: ProviderService, configs: ProviderConfig[], fromIndex: number, direction: -1 | 1) {
+  function move(
+    service: ProviderService,
+    configs: ProviderConfig[],
+    fromIndex: number,
+    direction: -1 | 1,
+  ) {
     const toIndex = fromIndex + direction;
     if (toIndex < 0 || toIndex >= configs.length) return;
     const ordered = [...configs];
@@ -262,8 +330,20 @@ export function AdminProviderConfigsPage() {
   }, [credentialsQuery.data?.credentials]);
 
   const healthByService = useMemo(() => {
-    const map = new Map<ProviderService, { hasCredential: boolean; details: string; apiKeyLast4?: string | null; source?: string }>();
-    for (const h of healthQuery.data?.health ?? []) map.set(h.service, h as unknown as { hasCredential: boolean; details: string; apiKeyLast4?: string | null; source?: string });
+    const map = new Map<
+      ProviderService,
+      { hasCredential: boolean; details: string; apiKeyLast4?: string | null; source?: string }
+    >();
+    for (const h of healthQuery.data?.health ?? [])
+      map.set(
+        h.service,
+        h as unknown as {
+          hasCredential: boolean;
+          details: string;
+          apiKeyLast4?: string | null;
+          source?: string;
+        },
+      );
     return map;
   }, [healthQuery.data?.health]);
 
@@ -272,11 +352,17 @@ export function AdminProviderConfigsPage() {
   }
 
   function availableModels(service: ProviderService, provider: string): string[] {
-    const models = (providerAllowlist[service] as Record<string, readonly string[]> | undefined)?.[provider] as readonly string[] | undefined;
+    const models = (providerAllowlist[service] as Record<string, readonly string[]> | undefined)?.[
+      provider
+    ] as readonly string[] | undefined;
     return models ? [...models] : [];
   }
 
-  function remainingModels(service: ProviderService, provider: string, existing: ProviderConfig[]): string[] {
+  function remainingModels(
+    service: ProviderService,
+    provider: string,
+    existing: ProviderConfig[],
+  ): string[] {
     const all = availableModels(service, provider);
     const used = new Set(existing.filter((c) => c.provider === provider).map((c) => c.model));
     return all.filter((m) => !used.has(m));
@@ -316,7 +402,10 @@ export function AdminProviderConfigsPage() {
             <p>Platform Administration</p>
             <h1>AI & Voice Models</h1>
             <span>
-              Manage reusable credentials and provider configurations. Credentials are encrypted with AES-256-GCM and never shown in full. Configurations reuse credentials by provider. Active changes affect all users immediately (registry cache invalidated) with ~30s TTL as fallback. Manual switching only — no automatic fallback.
+              Manage reusable credentials and provider configurations. Credentials are encrypted
+              with AES-256-GCM and never shown in full. Configurations reuse credentials by
+              provider. Active changes affect all users immediately (registry cache invalidated)
+              with ~30s TTL as fallback. Manual switching only — no automatic fallback.
             </span>
           </div>
           <div className="admin-provider-header-actions">
@@ -342,7 +431,9 @@ export function AdminProviderConfigsPage() {
         {billing.isPending ? (
           <div className="admin-provider-state">Checking platform administrator access…</div>
         ) : billing.isError ? (
-          <div className="admin-provider-state">Administrator access could not be checked. Try again.</div>
+          <div className="admin-provider-state">
+            Administrator access could not be checked. Try again.
+          </div>
         ) : !isAdmin ? (
           <div className="admin-provider-access">
             <ShieldCheck size={28} />
@@ -362,8 +453,9 @@ export function AdminProviderConfigsPage() {
             {errorMsg && <div className="admin-provider-feedback error">{errorMsg}</div>}
 
             <div className="admin-provider-notice">
-              <AlertTriangle size={16} /> Fallback order is displayed for operational visibility only. This release
-              does not auto-retry across providers — switch the active model manually if a provider has an outage.
+              <AlertTriangle size={16} /> Fallback order is displayed for operational visibility
+              only. This release does not auto-retry across providers — switch the active model
+              manually if a provider has an outage.
             </div>
 
             {/* Credentials section */}
@@ -371,10 +463,17 @@ export function AdminProviderConfigsPage() {
               <div className="admin-provider-section-heading">
                 <div>
                   <h2>Credentials</h2>
-                  <p>Reusable encrypted secrets. Name + ••••last4 shown only. One credential can be reused by multiple configurations of the same provider.</p>
+                  <p>
+                    Reusable encrypted secrets. Name + ••••last4 shown only. One credential can be
+                    reused by multiple configurations of the same provider.
+                  </p>
                 </div>
                 <span>
-                  <button type="button" className="button secondary compact" onClick={() => setShowAddCred(true)}>
+                  <button
+                    type="button"
+                    className="button secondary compact"
+                    onClick={() => setShowAddCred(true)}
+                  >
                     <Plus size={14} /> Add credential
                   </button>
                 </span>
@@ -382,7 +481,10 @@ export function AdminProviderConfigsPage() {
               {credentialsQuery.isPending ? (
                 <div className="admin-provider-state">Loading credentials…</div>
               ) : (credentialsQuery.data?.credentials.length ?? 0) === 0 ? (
-                <div className="admin-provider-empty">No credentials yet. Add a credential to create provider configurations that require secrets.</div>
+                <div className="admin-provider-empty">
+                  No credentials yet. Add a credential to create provider configurations that
+                  require secrets.
+                </div>
               ) : (
                 <div className="admin-provider-table-wrap">
                   <table className="admin-provider-table">
@@ -399,28 +501,63 @@ export function AdminProviderConfigsPage() {
                     <tbody>
                       {(credentialsQuery.data?.credentials ?? []).map((cred) => (
                         <tr key={cred.id}>
-                          <td><strong>{cred.provider}</strong><small className="mono">{shortId(cred.id)}</small></td>
+                          <td>
+                            <strong>{cred.provider}</strong>
+                            <small className="mono">{shortId(cred.id)}</small>
+                          </td>
                           <td>{cred.name}</td>
-                          <td><code>••••{cred.apiKeyLast4}</code></td>
+                          <td>
+                            <code>••••{cred.apiKeyLast4}</code>
+                          </td>
                           <td>
                             {cred.usedBy.length === 0 ? (
                               <small>unused</small>
                             ) : (
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                                 {cred.usedBy.map((u) => (
-                                  <span key={u.configId} className={`provider-status ${u.isActive ? "enabled" : "disabled"}`} title={`${u.service} • ${u.displayName} • ${u.provider}/${u.model}`}>
+                                  <span
+                                    key={u.configId}
+                                    className={`provider-status ${u.isActive ? "enabled" : "disabled"}`}
+                                    title={`${u.service} • ${u.displayName} • ${u.provider}/${u.model}`}
+                                  >
                                     {u.displayName} {u.isActive ? "●" : ""}
                                   </span>
                                 ))}
                               </div>
                             )}
                           </td>
-                          <td><span>{formatDate(cred.updatedAt)}</span></td>
+                          <td>
+                            <span>{formatDate(cred.updatedAt)}</span>
+                          </td>
                           <td>
                             <div className="provider-actions">
-                              <button type="button" className="button small secondary" onClick={() => testCredMutation.mutate(cred.id)} disabled={testCredMutation.isPending} title="Test credential (decrypt + cheap provider check)"><TestTube size={12} /> Test</button>
-                              <button type="button" className="button small secondary" onClick={() => { setEditCred(cred); setEditCredName(cred.name); setEditCredSecret(""); }}><Pencil size={12} /> Edit</button>
-                              <button type="button" className="button small secondary" onClick={() => setDeleteCred(cred)}><Trash2 size={12} /> Delete</button>
+                              <button
+                                type="button"
+                                className="button small secondary"
+                                onClick={() => testCredMutation.mutate(cred.id)}
+                                disabled={testCredMutation.isPending}
+                                title="Test credential (decrypt + cheap provider check)"
+                              >
+                                <TestTube size={12} /> Test
+                              </button>
+                              <button
+                                type="button"
+                                className="button small secondary"
+                                onClick={() => {
+                                  setEditCred(cred);
+                                  setEditCredName(cred.name);
+                                  setEditCredSecret("");
+                                }}
+                              >
+                                <Pencil size={12} /> Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="button small secondary"
+                                onClick={() => setDeleteCred(cred)}
+                              >
+                                <Trash2 size={12} /> Delete
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -444,7 +581,10 @@ export function AdminProviderConfigsPage() {
                       <p>{svc.description}</p>
                     </div>
                     <span>
-                      Active: {active ? `${active.displayName} (${active.provider} / ${active.model})` : "none"}
+                      Active:{" "}
+                      {active
+                        ? `${active.displayName} (${active.provider} / ${active.model})`
+                        : "none"}
                       {health ? (
                         <small
                           className={`health-badge ${health.hasCredential ? "ok" : "missing"}`}
@@ -463,15 +603,26 @@ export function AdminProviderConfigsPage() {
                   </div>
 
                   <div className="admin-provider-section-actions">
-                    <button type="button" className="button secondary compact" onClick={() => openAdd(svc.id)}>
+                    <button
+                      type="button"
+                      className="button secondary compact"
+                      onClick={() => openAdd(svc.id)}
+                    >
                       <Plus size={14} /> Add configuration
                     </button>
-                    {cred.expectsKey ? (
+                    {svc.id === "stt" ? (
                       <span style={{ fontSize: 12, opacity: 0.7 }}>
-                        Configurations require a {svc.id === "stt" ? "STT" : svc.label} credential of matching provider.
+                        Cloudflare uses Workers AI edge binding; Google uses API key credential or
+                        Cloud Run bridge.
+                      </span>
+                    ) : cred.expectsKey ? (
+                      <span style={{ fontSize: 12, opacity: 0.7 }}>
+                        Configurations require a {svc.label} credential of matching provider.
                       </span>
                     ) : (
-                      <span style={{ fontSize: 12, opacity: 0.7 }}><Cpu size={14} /> Binding info</span>
+                      <span style={{ fontSize: 12, opacity: 0.7 }}>
+                        <Cpu size={14} /> Binding info
+                      </span>
                     )}
                   </div>
 
@@ -493,12 +644,18 @@ export function AdminProviderConfigsPage() {
                         </thead>
                         <tbody>
                           {list.map((cfg, idx) => {
-                            const linkedCred = (credentialsQuery.data?.credentials ?? []).find((c) => c.id === cfg.credentialId);
+                            const linkedCred = (credentialsQuery.data?.credentials ?? []).find(
+                              (c) => c.id === cfg.credentialId,
+                            );
                             return (
                               <tr key={cfg.id} className={cfg.isActive ? "is-active" : ""}>
                                 <td>
                                   <span className="priority-badge">{cfg.priority}</span>
-                                  {cfg.isActive && <span className="active-dot" title="Active">● Active</span>}
+                                  {cfg.isActive && (
+                                    <span className="active-dot" title="Active">
+                                      ● Active
+                                    </span>
+                                  )}
                                 </td>
                                 <td>
                                   <strong>{cfg.displayName}</strong>
@@ -511,19 +668,28 @@ export function AdminProviderConfigsPage() {
                                   {cfg.provider === "cloudflare_workers_ai" ? (
                                     <small>Workers AI binding</small>
                                   ) : linkedCred ? (
-                                    <span><KeyRound size={12} /> {linkedCred.name} ••••{linkedCred.apiKeyLast4}</span>
+                                    <span>
+                                      <KeyRound size={12} /> {linkedCred.name} ••••
+                                      {linkedCred.apiKeyLast4}
+                                    </span>
+                                  ) : cfg.provider === "google" ? (
+                                    <small>Bridge ADC (no key linked)</small>
                                   ) : (
                                     <span className="provider-status disabled">Missing</span>
                                   )}
                                 </td>
                                 <td>
-                                  <span className={`provider-status ${cfg.enabled ? "enabled" : "disabled"}`}>
+                                  <span
+                                    className={`provider-status ${cfg.enabled ? "enabled" : "disabled"}`}
+                                  >
                                     {cfg.enabled ? "Enabled" : "Disabled"}
                                   </span>
                                 </td>
                                 <td>
                                   <span>{formatDate(cfg.updatedAt)}</span>
-                                  <small>{cfg.updatedBy ? `by ${shortId(cfg.updatedBy)}` : "system"}</small>
+                                  <small>
+                                    {cfg.updatedBy ? `by ${shortId(cfg.updatedBy)}` : "system"}
+                                  </small>
                                 </td>
                                 <td>
                                   <div className="provider-actions">
@@ -535,13 +701,28 @@ export function AdminProviderConfigsPage() {
                                     >
                                       Activate
                                     </button>
+                                    <button
+                                      type="button"
+                                      className="button small secondary"
+                                      onClick={() => {
+                                        setEditConfig(cfg);
+                                        setEditConfigDisplayName(cfg.displayName);
+                                        setEditConfigCredentialId(cfg.credentialId ?? "");
+                                      }}
+                                      title="Edit display name or linked credential"
+                                    >
+                                      <Pencil size={12} /> Edit
+                                    </button>
                                     <label className="toggle">
                                       <input
                                         type="checkbox"
                                         checked={cfg.enabled}
                                         disabled={cfg.isActive}
                                         onChange={(e) =>
-                                          toggleMutation.mutate({ id: cfg.id, enabled: e.target.checked })
+                                          toggleMutation.mutate({
+                                            id: cfg.id,
+                                            enabled: e.target.checked,
+                                          })
                                         }
                                       />
                                       <span>Enabled</span>
@@ -558,7 +739,9 @@ export function AdminProviderConfigsPage() {
                                       <button
                                         type="button"
                                         aria-label="Move down"
-                                        disabled={idx === list.length - 1 || reorderMutation.isPending}
+                                        disabled={
+                                          idx === list.length - 1 || reorderMutation.isPending
+                                        }
                                         onClick={() => move(svc.id, list, idx, 1)}
                                       >
                                         <ArrowDown size={14} />
@@ -580,7 +763,9 @@ export function AdminProviderConfigsPage() {
             <section className="admin-provider-section">
               <div className="admin-provider-section-heading">
                 <h2>Recent changes</h2>
-                <p>Audit trail: what changed, when, and by which admin. Secrets are never recorded.</p>
+                <p>
+                  Audit trail: what changed, when, and by which admin. Secrets are never recorded.
+                </p>
               </div>
               {auditsQuery.isPending ? (
                 <div className="admin-provider-state">Loading audits…</div>
@@ -607,12 +792,18 @@ export function AdminProviderConfigsPage() {
                   <p>
                     Switch active <strong>{confirmActivate.service}</strong> to{" "}
                     <strong>
-                      {confirmActivate.displayName} ({confirmActivate.provider} / {confirmActivate.model})
+                      {confirmActivate.displayName} ({confirmActivate.provider} /{" "}
+                      {confirmActivate.model})
                     </strong>
-                    ? This affects production traffic immediately (cache invalidated) with ~30s TTL as fallback.
+                    ? This affects production traffic immediately (cache invalidated) with ~30s TTL
+                    as fallback.
                   </p>
                   <div className="confirm-actions">
-                    <button type="button" className="button secondary" onClick={() => setConfirmActivate(null)}>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      onClick={() => setConfirmActivate(null)}
+                    >
                       Cancel
                     </button>
                     <button
@@ -628,6 +819,90 @@ export function AdminProviderConfigsPage() {
               </div>
             )}
 
+            {editConfig && (
+              <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
+                <div className="admin-provider-confirm add-dialog">
+                  <h3>Edit configuration — {editConfig.displayName}</h3>
+                  <p>
+                    Provider: <strong>{editConfig.provider}</strong> · Model:{" "}
+                    <code>{editConfig.model}</code>
+                  </p>
+                  <label className="add-field">
+                    <span>Display name</span>
+                    <input
+                      value={editConfigDisplayName}
+                      onChange={(e) => setEditConfigDisplayName(e.target.value)}
+                      maxLength={40}
+                    />
+                  </label>
+                  {editConfig.provider === "cloudflare_workers_ai" ? (
+                    <small>Workers AI binding is managed by Cloudflare configuration.</small>
+                  ) : (
+                    <label className="add-field">
+                      <span>Credential</span>
+                      {(() => {
+                        const creds = credentialsByProvider.get(editConfig.provider) ?? [];
+                        const isGoogle = editConfig.provider === "google";
+                        if (creds.length === 0 && !isGoogle) {
+                          return (
+                            <small>
+                              No credentials for {editConfig.provider}. Create a credential first.
+                            </small>
+                          );
+                        }
+                        return (
+                          <select
+                            value={editConfigCredentialId}
+                            onChange={(e) => setEditConfigCredentialId(e.target.value)}
+                          >
+                            {isGoogle && <option value="">None (Cloud Run ADC bridge)</option>}
+                            {creds.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name} ••••{c.apiKeyLast4}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
+                    </label>
+                  )}
+                  <div className="confirm-actions">
+                    <button
+                      type="button"
+                      className="button secondary"
+                      onClick={() => {
+                        setEditConfig(null);
+                        setEditConfigDisplayName("");
+                        setEditConfigCredentialId("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="button"
+                      disabled={
+                        !editConfigDisplayName.trim() ||
+                        (editConfig.provider !== "cloudflare_workers_ai" &&
+                          editConfig.provider !== "google" &&
+                          !editConfigCredentialId) ||
+                        updateConfigMutation.isPending
+                      }
+                      onClick={() =>
+                        updateConfigMutation.mutate({
+                          id: editConfig.id,
+                          displayName: editConfigDisplayName.trim(),
+                          credentialId: editConfigCredentialId || null,
+                        })
+                      }
+                    >
+                      {updateConfigMutation.isPending ? "Saving…" : "Save configuration"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {addFor && (
               <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
                 <div className="admin-provider-confirm add-dialog">
@@ -635,18 +910,27 @@ export function AdminProviderConfigsPage() {
                   {(() => {
                     const existing = configsByService.get(addFor) ?? [];
                     const providers = availableProviders(addFor);
-                    const models = addProvider ? remainingModels(addFor, addProvider, existing) : [];
-                    const hasRemaining = providers.some((p) => remainingModels(addFor, p, existing).length > 0);
+                    const models = addProvider
+                      ? remainingModels(addFor, addProvider, existing)
+                      : [];
+                    const hasRemaining = providers.some(
+                      (p) => remainingModels(addFor, p, existing).length > 0,
+                    );
                     if (!hasRemaining) {
                       return (
                         <>
                           <p>
-                            All allowlisted models for <strong>{addFor}</strong> are already configured. Expand{" "}
-                            <code>providerAllowlist</code> in <code>packages/shared/src/types.ts</code> to add more
-                            providers/models, then redeploy.
+                            All allowlisted models for <strong>{addFor}</strong> are already
+                            configured. Expand <code>providerAllowlist</code> in{" "}
+                            <code>packages/shared/src/types.ts</code> to add more providers/models,
+                            then redeploy.
                           </p>
                           <div className="confirm-actions">
-                            <button type="button" className="button secondary" onClick={() => setAddFor(null)}>
+                            <button
+                              type="button"
+                              className="button secondary"
+                              onClick={() => setAddFor(null)}
+                            >
                               Close
                             </button>
                           </div>
@@ -654,12 +938,14 @@ export function AdminProviderConfigsPage() {
                       );
                     }
                     const credsForProvider = credentialsByProvider.get(addProvider) ?? [];
-                    // google via Cloud Run bridge uses ADC — no credential required at runtime
-                    const needsCred = addProvider !== "cloudflare_workers_ai" && addProvider !== "google";
+                    const isCloudflare = addProvider === "cloudflare_workers_ai";
+                    const isGoogle = addProvider === "google";
+                    const requiresCred = !isCloudflare && !isGoogle;
                     return (
                       <>
                         <p>
-                          Choose a provider and model. Give it a display name. Link a credential of matching provider. Duplicates are rejected.
+                          Choose a provider and model. Give it a display name. Link a credential of
+                          matching provider. Duplicates are rejected.
                         </p>
                         <label className="add-field">
                           <span>Provider</span>
@@ -694,19 +980,36 @@ export function AdminProviderConfigsPage() {
                               </option>
                             ))}
                           </select>
-                          {models.length === 0 && <small>No remaining models for this provider.</small>}
+                          {models.length === 0 && (
+                            <small>No remaining models for this provider.</small>
+                          )}
                         </label>
                         <label className="add-field">
                           <span>Display name</span>
-                          <input value={addDisplayName} onChange={(e) => setAddDisplayName(e.target.value)} placeholder="e.g. Google Chirp 3" maxLength={40} />
+                          <input
+                            value={addDisplayName}
+                            onChange={(e) => setAddDisplayName(e.target.value)}
+                            placeholder="e.g. Google Gemini 3.5 Transcribe"
+                            maxLength={40}
+                          />
                         </label>
-                        {needsCred ? (
+                        {isCloudflare ? (
+                          <small>No credential required for Workers AI binding.</small>
+                        ) : isGoogle ? (
                           <label className="add-field">
-                            <span>Credential (must match provider)</span>
+                            <span>Credential (Google API key or OAuth)</span>
                             {credsForProvider.length === 0 ? (
-                              <small>No credentials for {addProvider}. Create a credential first.</small>
+                              <small>
+                                No Google credentials created yet. You can create a named credential
+                                with your API key under Credentials above, or proceed with None to
+                                use Cloud Run ADC bridge.
+                              </small>
                             ) : (
-                              <select value={addCredentialId} onChange={(e) => setAddCredentialId(e.target.value)}>
+                              <select
+                                value={addCredentialId}
+                                onChange={(e) => setAddCredentialId(e.target.value)}
+                              >
+                                <option value="">None (Cloud Run ADC bridge)</option>
                                 {credsForProvider.map((c) => (
                                   <option key={c.id} value={c.id}>
                                     {c.name} ••••{c.apiKeyLast4}
@@ -715,20 +1018,54 @@ export function AdminProviderConfigsPage() {
                               </select>
                             )}
                           </label>
-                        ) : addProvider === "google" ? (
-                          <small>Google Chirp 3 uses Cloud Run bridge ADC — no credential required. Set STT_BRIDGE_URL in Worker vars.</small>
                         ) : (
-                          <small>No credential required for Workers AI binding.</small>
+                          <label className="add-field">
+                            <span>Credential (must match provider)</span>
+                            {credsForProvider.length === 0 ? (
+                              <small>
+                                No credentials for {addProvider}. Create a credential first.
+                              </small>
+                            ) : (
+                              <select
+                                value={addCredentialId}
+                                onChange={(e) => setAddCredentialId(e.target.value)}
+                              >
+                                {credsForProvider.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name} ••••{c.apiKeyLast4}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </label>
                         )}
                         <div className="confirm-actions">
-                          <button type="button" className="button secondary" onClick={() => setAddFor(null)}>
+                          <button
+                            type="button"
+                            className="button secondary"
+                            onClick={() => setAddFor(null)}
+                          >
                             Cancel
                           </button>
                           <button
                             type="button"
                             className="button"
-                            disabled={!addProvider || !addModel || !addDisplayName.trim() || (needsCred && !addCredentialId) || createMutation.isPending}
-                            onClick={() => createMutation.mutate({ service: addFor, provider: addProvider, model: addModel, displayName: addDisplayName.trim(), credentialId: needsCred ? addCredentialId : null })}
+                            disabled={
+                              !addProvider ||
+                              !addModel ||
+                              !addDisplayName.trim() ||
+                              (requiresCred && !addCredentialId) ||
+                              createMutation.isPending
+                            }
+                            onClick={() =>
+                              createMutation.mutate({
+                                service: addFor,
+                                provider: addProvider,
+                                model: addModel,
+                                displayName: addDisplayName.trim(),
+                                credentialId: addCredentialId || null,
+                              })
+                            }
                           >
                             {createMutation.isPending ? "Adding…" : "Add configuration"}
                           </button>
@@ -744,7 +1081,10 @@ export function AdminProviderConfigsPage() {
               <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
                 <div className="admin-provider-confirm add-dialog">
                   <h3>Add credential</h3>
-                  <p>Provider + human name + secret. Secret is encrypted (AES-256-GCM) and only ••••last4 is ever shown.</p>
+                  <p>
+                    Provider + human name + secret. Secret is encrypted (AES-256-GCM) and only
+                    ••••last4 is ever shown.
+                  </p>
                   <label className="add-field">
                     <span>Provider</span>
                     <select value={credProvider} onChange={(e) => setCredProvider(e.target.value)}>
@@ -755,22 +1095,55 @@ export function AdminProviderConfigsPage() {
                   </label>
                   <label className="add-field">
                     <span>Name</span>
-                    <input value={credName} onChange={(e) => setCredName(e.target.value)} placeholder="e.g. Google STT Production" maxLength={40} />
+                    <input
+                      value={credName}
+                      onChange={(e) => setCredName(e.target.value)}
+                      placeholder="e.g. Google Gemini Voice Key"
+                      maxLength={40}
+                    />
                   </label>
                   <label className="add-field">
                     <span>Secret</span>
-                    <input type="password" value={credSecret} onChange={(e) => setCredSecret(e.target.value)} placeholder="Paste secret (never shown again)" />
-                    <small>For Google Speech-to-Text V2, paste service-account JSON or OAuth token as opaque secret; project info is derived at test time.</small>
+                    <input
+                      type="password"
+                      value={credSecret}
+                      onChange={(e) => setCredSecret(e.target.value)}
+                      placeholder="Paste API key (e.g. AIzaSy...) or secret"
+                    />
+                    <small>
+                      For Google, paste your Google AI Studio API key (AIza...), OAuth token, or
+                      service account JSON. Secrets are encrypted with AES-256-GCM and only
+                      ••••last4 is ever displayed.
+                    </small>
                   </label>
                   <div className="confirm-actions">
-                    <button type="button" className="button secondary" onClick={() => { setShowAddCred(false); setCredName(""); setCredSecret(""); }}>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      onClick={() => {
+                        setShowAddCred(false);
+                        setCredName("");
+                        setCredSecret("");
+                      }}
+                    >
                       Cancel
                     </button>
                     <button
                       type="button"
                       className="button"
-                      disabled={!credProvider || credName.trim().length < 2 || credSecret.trim().length < 8 || createCredMutation.isPending}
-                      onClick={() => createCredMutation.mutate({ provider: credProvider, name: credName.trim(), secret: credSecret })}
+                      disabled={
+                        !credProvider ||
+                        credName.trim().length < 2 ||
+                        credSecret.trim().length < 8 ||
+                        createCredMutation.isPending
+                      }
+                      onClick={() =>
+                        createCredMutation.mutate({
+                          provider: credProvider,
+                          name: credName.trim(),
+                          secret: credSecret,
+                        })
+                      }
                     >
                       {createCredMutation.isPending ? "Creating…" : "Create credential"}
                     </button>
@@ -782,25 +1155,57 @@ export function AdminProviderConfigsPage() {
             {editCred && (
               <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
                 <div className="admin-provider-confirm add-dialog">
-                  <h3>Edit credential — {editCred.provider} / {editCred.name}</h3>
-                  <p>Current: ••••{editCred.apiKeyLast4} — {editCred.usedBy.length} configuration(s) using this credential.</p>
+                  <h3>
+                    Edit credential — {editCred.provider} / {editCred.name}
+                  </h3>
+                  <p>
+                    Current: ••••{editCred.apiKeyLast4} — {editCred.usedBy.length} configuration(s)
+                    using this credential.
+                  </p>
                   <label className="add-field">
                     <span>Name</span>
-                    <input value={editCredName} onChange={(e) => setEditCredName(e.target.value)} maxLength={40} />
+                    <input
+                      value={editCredName}
+                      onChange={(e) => setEditCredName(e.target.value)}
+                      maxLength={40}
+                    />
                   </label>
                   <label className="add-field">
                     <span>Rotate secret (leave blank to keep)</span>
-                    <input type="password" value={editCredSecret} onChange={(e) => setEditCredSecret(e.target.value)} placeholder="Paste new secret to rotate" />
+                    <input
+                      type="password"
+                      value={editCredSecret}
+                      onChange={(e) => setEditCredSecret(e.target.value)}
+                      placeholder="Paste new secret to rotate"
+                    />
                   </label>
                   <div className="confirm-actions">
-                    <button type="button" className="button secondary" onClick={() => { setEditCred(null); setEditCredName(""); setEditCredSecret(""); }}>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      onClick={() => {
+                        setEditCred(null);
+                        setEditCredName("");
+                        setEditCredSecret("");
+                      }}
+                    >
                       Cancel
                     </button>
                     <button
                       type="button"
                       className="button"
-                      disabled={updateCredMutation.isPending || (editCredName.trim() === editCred.name && !editCredSecret.trim())}
-                      onClick={() => updateCredMutation.mutate({ id: editCred.id, name: editCredName.trim() !== editCred.name ? editCredName.trim() : undefined, secret: editCredSecret.trim() || undefined })}
+                      disabled={
+                        updateCredMutation.isPending ||
+                        (editCredName.trim() === editCred.name && !editCredSecret.trim())
+                      }
+                      onClick={() =>
+                        updateCredMutation.mutate({
+                          id: editCred.id,
+                          name:
+                            editCredName.trim() !== editCred.name ? editCredName.trim() : undefined,
+                          secret: editCredSecret.trim() || undefined,
+                        })
+                      }
                     >
                       {updateCredMutation.isPending ? "Saving…" : "Save"}
                     </button>
@@ -814,18 +1219,29 @@ export function AdminProviderConfigsPage() {
                 <div className="admin-provider-confirm">
                   <h3>Delete credential</h3>
                   <p>
-                    Delete <strong>{deleteCred.provider} / {deleteCred.name} ••••{deleteCred.apiKeyLast4}</strong>?
+                    Delete{" "}
+                    <strong>
+                      {deleteCred.provider} / {deleteCred.name} ••••{deleteCred.apiKeyLast4}
+                    </strong>
+                    ?
                   </p>
                   {deleteCred.usedBy.length > 0 ? (
                     <p style={{ color: "#a00" }}>
                       Blocked — still used by {deleteCred.usedBy.length} configuration(s):
-                      {deleteCred.usedBy.map((u) => ` ${u.displayName} (${u.provider}/${u.model})`).join(", ")}. Unlink first.
+                      {deleteCred.usedBy
+                        .map((u) => ` ${u.displayName} (${u.provider}/${u.model})`)
+                        .join(", ")}
+                      . Unlink first.
                     </p>
                   ) : (
                     <p>This cannot be undone.</p>
                   )}
                   <div className="confirm-actions">
-                    <button type="button" className="button secondary" onClick={() => setDeleteCred(null)}>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      onClick={() => setDeleteCred(null)}
+                    >
                       Cancel
                     </button>
                     <button

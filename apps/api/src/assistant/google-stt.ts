@@ -1,5 +1,8 @@
 import type { Bindings } from "../types";
-import { AssistantVoiceProviderError, type AssistantVoiceTranscriptionProvider } from "./voice-provider";
+import {
+  AssistantVoiceProviderError,
+  type AssistantVoiceTranscriptionProvider,
+} from "./voice-provider";
 
 /**
  * Google Cloud Speech-to-Text V2 - REST Recognize (short audio, <60s)
@@ -22,19 +25,39 @@ import { AssistantVoiceProviderError, type AssistantVoiceTranscriptionProvider }
 const DEFAULT_LOCATION = "us";
 const REST_RECOGNIZE_TIMEOUT_MS = 30_000;
 
-function parseGoogleSecret(secret: string): { projectId: string | null; location: string; token: string } {
+function parseGoogleSecret(secret: string): {
+  projectId: string | null;
+  location: string;
+  token: string;
+} {
   const trimmed = secret.trim();
   // Try JSON
   try {
     const obj = JSON.parse(trimmed);
     if (obj && typeof obj === "object") {
-      const projectId = typeof obj.projectId === "string" ? obj.projectId : typeof obj.project_id === "string" ? obj.project_id : null;
-      const token = typeof obj.accessToken === "string" ? obj.accessToken : typeof obj.token === "string" ? obj.token : trimmed;
+      const projectId =
+        typeof obj.projectId === "string"
+          ? obj.projectId
+          : typeof obj.project_id === "string"
+            ? obj.project_id
+            : null;
+      const token =
+        typeof obj.apiKey === "string"
+          ? obj.apiKey
+          : typeof obj.api_key === "string"
+            ? obj.api_key
+            : typeof obj.key === "string"
+              ? obj.key
+              : typeof obj.accessToken === "string"
+                ? obj.accessToken
+                : typeof obj.token === "string"
+                  ? obj.token
+                  : trimmed;
       const location = typeof obj.location === "string" ? obj.location : DEFAULT_LOCATION;
       return { projectId, location, token };
     }
   } catch {
-    // not JSON, treat as raw token
+    // not JSON, treat as raw token or API key
   }
   return { projectId: null, location: DEFAULT_LOCATION, token: trimmed };
 }
@@ -44,65 +67,173 @@ function timeoutMs(env: Bindings): number {
   return Number.isFinite(v) && v >= 5_000 && v <= 60_000 ? v : REST_RECOGNIZE_TIMEOUT_MS;
 }
 
-export function createGoogleSttProvider(model: string = "chirp_3", apiKeyOverride?: string): AssistantVoiceTranscriptionProvider {
+export function createGoogleSttProvider(
+  model: string = "gemini-3.5-transcribe",
+  apiKeyOverride?: string,
+): AssistantVoiceTranscriptionProvider {
   return {
     async transcribe(env, audio) {
       const secret = apiKeyOverride?.trim() || "";
       if (!secret) throw new AssistantVoiceProviderError("google" as any, "configuration");
 
       const { projectId, location, token } = parseGoogleSecret(secret);
-      if (!projectId) {
-        // Without projectId we cannot form V2 Recognizer path; fail as configuration
-        throw new AssistantVoiceProviderError("google" as any, "configuration");
-      }
       if (!token) throw new AssistantVoiceProviderError("google" as any, "configuration");
 
-      // V2 REST Recognize expects base64 audio and config
+      const effectiveModel = model?.trim() || "gemini-3.5-transcribe";
       const arrayBuf = await audio.arrayBuffer();
       const bytes = new Uint8Array(arrayBuf);
       let binary = "";
       for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
       const b64 = btoa(binary);
-      // Use model from param, fallback to env or chirp_3
-      const effectiveModel = model?.trim() || "chirp_3";
-
-      const endpoint = `https://speech.googleapis.com/v2/projects/${projectId}/locations/${location}/recognizers/_:recognize`;
+      const audioMime = audio.type?.trim() || "audio/webm";
 
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs(env));
-      try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-            "x-goog-user-project": projectId,
-          },
-          body: JSON.stringify({
-            config: {
-              autoDecodingConfig: {},
-              languageCodes: ["en-US"],
-              model: effectiveModel,
-            },
-            content: b64,
-          }),
-          signal: controller.signal,
-        });
 
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403) throw new AssistantVoiceProviderError("google" as any, "configuration", res.status);
-          if (res.status === 429) throw new AssistantVoiceProviderError("google" as any, "rate_limit", res.status);
-          if (res.status >= 500) throw new AssistantVoiceProviderError("google" as any, "unavailable", res.status);
-          throw new AssistantVoiceProviderError("google" as any, "invalid_response", res.status);
+      try {
+        // Gemini transcription path (e.g. gemini-3.5-transcribe, gemini-3.5-transcribe-live)
+        if (effectiveModel.startsWith("gemini")) {
+          const isApiKey = token.startsWith("AIza") || !token.startsWith("ya29");
+          const endpoint = isApiKey
+            ? `https://generativelanguage.googleapis.com/v1beta/models/${effectiveModel}:generateContent?key=${encodeURIComponent(token)}`
+            : `https://generativelanguage.googleapis.com/v1beta/models/${effectiveModel}:generateContent`;
+
+          const headers: Record<string, string> = { "Content-Type": "application/json" };
+          if (!isApiKey) {
+            headers["Authorization"] = `Bearer ${token}`;
+          }
+
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: "Transcribe this audio verbatim. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
+                    },
+                    { inlineData: { mimeType: audioMime, data: b64 } },
+                  ],
+                },
+              ],
+              generationConfig: { temperature: 0.0 },
+            }),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            if (res.status === 401 || res.status === 403)
+              throw new AssistantVoiceProviderError("google" as any, "configuration", res.status);
+            if (res.status === 429)
+              throw new AssistantVoiceProviderError("google" as any, "rate_limit", res.status);
+            if (res.status >= 500)
+              throw new AssistantVoiceProviderError("google" as any, "unavailable", res.status);
+            throw new AssistantVoiceProviderError("google" as any, "invalid_response", res.status);
+          }
+
+          const data = (await res.json().catch(() => null)) as {
+            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+          } | null;
+          const transcript = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+          if (!transcript)
+            throw new AssistantVoiceProviderError("google" as any, "invalid_response");
+          return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
         }
-        const data = (await res.json().catch(() => null)) as { results?: Array<{ alternatives?: Array<{ transcript?: string }> }> } | null;
-        const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
-        if (!transcript) throw new AssistantVoiceProviderError("google" as any, "invalid_response");
-        // duration not returned in REST Recognize; estimate from audio
-        return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
+
+        // Speech-to-Text V2 / chirp_3 path
+        const effectiveProjectId =
+          projectId ||
+          (env as unknown as Record<string, string | undefined>).GOOGLE_CLOUD_PROJECT ||
+          (env as unknown as Record<string, string | undefined>).GCP_PROJECT_ID ||
+          null;
+
+        if (effectiveProjectId) {
+          const isApiKey = token.startsWith("AIza");
+          const endpoint = isApiKey
+            ? `https://speech.googleapis.com/v2/projects/${effectiveProjectId}/locations/${location}/recognizers/_:recognize?key=${encodeURIComponent(token)}`
+            : `https://speech.googleapis.com/v2/projects/${effectiveProjectId}/locations/${location}/recognizers/_:recognize`;
+
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+            "x-goog-user-project": effectiveProjectId,
+          };
+          if (!isApiKey) {
+            headers["Authorization"] = `Bearer ${token}`;
+          }
+
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              config: {
+                autoDecodingConfig: {},
+                languageCodes: ["en-US"],
+                model: effectiveModel,
+              },
+              content: b64,
+            }),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            if (res.status === 401 || res.status === 403)
+              throw new AssistantVoiceProviderError("google" as any, "configuration", res.status);
+            if (res.status === 429)
+              throw new AssistantVoiceProviderError("google" as any, "rate_limit", res.status);
+            if (res.status >= 500)
+              throw new AssistantVoiceProviderError("google" as any, "unavailable", res.status);
+            throw new AssistantVoiceProviderError("google" as any, "invalid_response", res.status);
+          }
+          const data = (await res.json().catch(() => null)) as {
+            results?: Array<{ alternatives?: Array<{ transcript?: string }> }>;
+          } | null;
+          const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
+          if (!transcript)
+            throw new AssistantVoiceProviderError("google" as any, "invalid_response");
+          return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
+        }
+
+        // Fallback for raw API key without projectId using Speech V1
+        if (token.startsWith("AIza")) {
+          const endpoint = `https://speech.googleapis.com/v1/speech:recognize?key=${encodeURIComponent(token)}`;
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              config: {
+                languageCode: "en-US",
+                model: "latest_long",
+              },
+              audio: { content: b64 },
+            }),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            if (res.status === 401 || res.status === 403)
+              throw new AssistantVoiceProviderError("google" as any, "configuration", res.status);
+            if (res.status === 429)
+              throw new AssistantVoiceProviderError("google" as any, "rate_limit", res.status);
+            if (res.status >= 500)
+              throw new AssistantVoiceProviderError("google" as any, "unavailable", res.status);
+            throw new AssistantVoiceProviderError("google" as any, "invalid_response", res.status);
+          }
+          const data = (await res.json().catch(() => null)) as {
+            results?: Array<{ alternatives?: Array<{ transcript?: string }> }>;
+          } | null;
+          const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
+          if (!transcript)
+            throw new AssistantVoiceProviderError("google" as any, "invalid_response");
+          return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
+        }
+
+        // Without projectId or valid API key, fail as configuration error
+        throw new AssistantVoiceProviderError("google" as any, "configuration");
       } catch (e) {
         if (e instanceof AssistantVoiceProviderError) throw e;
-        if (controller.signal.aborted) throw new AssistantVoiceProviderError("google" as any, "timeout");
+        if (controller.signal.aborted)
+          throw new AssistantVoiceProviderError("google" as any, "timeout");
         throw new AssistantVoiceProviderError("google" as any, "unavailable");
       } finally {
         clearTimeout(timer);

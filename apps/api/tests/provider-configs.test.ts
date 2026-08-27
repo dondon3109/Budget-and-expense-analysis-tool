@@ -24,7 +24,15 @@ function createTenantResolver() {
 }
 
 function createAllowedRateLimiter() {
-  return { consume: vi.fn(async () => ({ allowed: true, limit: 100, remaining: 99, retryAfterSeconds: 0, resetAt: 0 })) };
+  return {
+    consume: vi.fn(async () => ({
+      allowed: true,
+      limit: 100,
+      remaining: 99,
+      retryAfterSeconds: 0,
+      resetAt: 0,
+    })),
+  };
 }
 
 const mockConfig: ProviderConfig = {
@@ -78,7 +86,11 @@ describe("admin provider-configs authorization", () => {
     const res = await app.request(
       "/api/app/admin/provider-configs",
       { headers: authHeaders("user-2") },
-      { DB: {} as D1Database, SUPABASE_URL: "https://x.supabase.co", SUPABASE_PUBLISHABLE_KEY: "k" } as any,
+      {
+        DB: {} as D1Database,
+        SUPABASE_URL: "https://x.supabase.co",
+        SUPABASE_PUBLISHABLE_KEY: "k",
+      } as any,
     );
     expect(res.status).toBe(403);
   });
@@ -112,19 +124,40 @@ describe("admin provider-configs authorization", () => {
       tenantResolver: createTenantResolver(),
       rateLimiter: createAllowedRateLimiter(),
       platformAdminService: platformAdminService as any,
-      assistantProvider: { complete: vi.fn(async () => ({ model: "deepseek-v4-flash", message: { role: "assistant", content: "hi" }, finishReason: "stop" })) } as any,
+      assistantProvider: {
+        complete: vi.fn(async () => ({
+          model: "deepseek-v4-flash",
+          message: { role: "assistant", content: "hi" },
+          finishReason: "stop",
+        })),
+      } as any,
     });
 
     // Inject mocked repo via direct route test
-    const { createAdminProviderConfigRoutes: createRoutes } = await import("../src/routes/admin-provider-configs");
-    const routesApp = createRoutes(platformAdminService as any, repo as any, {
-      getActive: vi.fn(async () => mockConfig),
-      getAll: vi.fn(async () => [mockConfig]),
-      getAssistantProvider: vi.fn(async () => ({ provider: { complete: vi.fn() } as any, config: mockConfig })),
-      getVoiceProviders: vi.fn(async () => ({ providers: { transcription: { transcribe: vi.fn() } as any, speech: { synthesize: vi.fn() } as any }, sttConfig: mockConfig, ttsConfig: mockConfig })),
-      invalidate: vi.fn(),
-      validateAllowlist: vi.fn(() => true),
-    } as any);
+    const { createAdminProviderConfigRoutes: createRoutes } =
+      await import("../src/routes/admin-provider-configs");
+    const routesApp = createRoutes(
+      platformAdminService as any,
+      repo as any,
+      {
+        getActive: vi.fn(async () => mockConfig),
+        getAll: vi.fn(async () => [mockConfig]),
+        getAssistantProvider: vi.fn(async () => ({
+          provider: { complete: vi.fn() } as any,
+          config: mockConfig,
+        })),
+        getVoiceProviders: vi.fn(async () => ({
+          providers: {
+            transcription: { transcribe: vi.fn() } as any,
+            speech: { synthesize: vi.fn() } as any,
+          },
+          sttConfig: mockConfig,
+          ttsConfig: mockConfig,
+        })),
+        invalidate: vi.fn(),
+        validateAllowlist: vi.fn(() => true),
+      } as any,
+    );
 
     // Use the main app but override the provider-configs route by testing via createApp with mocked platform admin
     // Instead, test the integrated app's ability to list when repository is mocked globally? For simplicity, test via direct routes
@@ -163,8 +196,15 @@ describe("admin provider-configs authorization", () => {
     const registry = {
       getActive: vi.fn(async () => null),
       getAll: vi.fn(async () => []),
-      getAssistantProvider: vi.fn(async () => ({ provider: { complete: vi.fn() } as any, config: null })),
-      getVoiceProviders: vi.fn(async () => ({ providers: { transcription: {} as any, speech: {} as any }, sttConfig: null, ttsConfig: null })),
+      getAssistantProvider: vi.fn(async () => ({
+        provider: { complete: vi.fn() } as any,
+        config: null,
+      })),
+      getVoiceProviders: vi.fn(async () => ({
+        providers: { transcription: {} as any, speech: {} as any },
+        sttConfig: null,
+        ttsConfig: null,
+      })),
       invalidate: vi.fn(),
       validateAllowlist: vi.fn(() => false),
     };
@@ -178,10 +218,15 @@ describe("admin provider-configs authorization", () => {
     // Directly test route validation via createAdminProviderConfigRoutes
     const { Hono } = await import("hono");
     const { HttpError: TestHttpError } = await import("../src/errors");
-    const routes = createAdminProviderConfigRoutes(platformAdminService as any, repo as any, registry as any);
+    const routes = createAdminProviderConfigRoutes(
+      platformAdminService as any,
+      repo as any,
+      registry as any,
+    );
     const testApp = new Hono();
     testApp.onError((err, c) => {
-      if (err instanceof TestHttpError) return c.json({ error: err.code, message: err.message }, err.status);
+      if (err instanceof TestHttpError)
+        return c.json({ error: err.code, message: err.message }, err.status);
       return c.json({ error: "internal" }, 500);
     });
     testApp.use("*", async (c: any, next: any) => {
@@ -193,7 +238,11 @@ describe("admin provider-configs authorization", () => {
     const res = await testApp.request("/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ service: "assistant", provider: "evil_provider", model: "evil-model" }),
+      body: JSON.stringify({
+        service: "assistant",
+        provider: "evil_provider",
+        model: "evil-model",
+      }),
     });
     expect(res.status).toBe(400);
     const body = (await res.json()) as any;
@@ -215,19 +264,42 @@ describe("admin provider-configs authorization", () => {
       complete: vi.fn(async (env: any, req: any) => {
         // Simulate that provider was created with active model
         capturedModel.push(env.DEEPSEEK_MODEL || "deepseek-v4-flash");
-        return { model: "deepseek-v4-flash", message: { role: "assistant", content: "ok" }, finishReason: "stop" };
+        return {
+          model: "deepseek-v4-flash",
+          message: { role: "assistant", content: "ok" },
+          finishReason: "stop",
+        };
       }),
     };
     // Registry that returns custom active model
-    const customConfig: ProviderConfig = { ...mockConfig, model: "deepseek-v4-flash", provider: "deepseek" };
+    const customConfig: ProviderConfig = {
+      ...mockConfig,
+      model: "deepseek-v4-flash",
+      provider: "deepseek",
+    };
     const registry = {
-      getActive: vi.fn(async (env: any, service: string) => (service === "assistant" ? customConfig : null)),
+      getActive: vi.fn(async (env: any, service: string) =>
+        service === "assistant" ? customConfig : null,
+      ),
       getAll: vi.fn(async () => [customConfig]),
       getAssistantProvider: vi.fn(async (env: any) => ({
-        provider: { complete: vi.fn(async (e: any, r: any) => ({ model: customConfig.model, message: { role: "assistant", content: "ok" }, finishReason: "stop" })) } as any,
+        provider: {
+          complete: vi.fn(async (e: any, r: any) => ({
+            model: customConfig.model,
+            message: { role: "assistant", content: "ok" },
+            finishReason: "stop",
+          })),
+        } as any,
         config: customConfig,
       })),
-      getVoiceProviders: vi.fn(async () => ({ providers: { transcription: { transcribe: vi.fn() } as any, speech: { synthesize: vi.fn() } as any }, sttConfig: null, ttsConfig: null })),
+      getVoiceProviders: vi.fn(async () => ({
+        providers: {
+          transcription: { transcribe: vi.fn() } as any,
+          speech: { synthesize: vi.fn() } as any,
+        },
+        sttConfig: null,
+        ttsConfig: null,
+      })),
       invalidate: vi.fn(),
       validateAllowlist: vi.fn(() => true),
     };
@@ -240,8 +312,14 @@ describe("admin provider-configs authorization", () => {
   it("voice preferences reflect active DB config", async () => {
     const { createAssistantVoiceService } = await import("../src/assistant/voice-service");
     const repo = {
-      getPreferences: vi.fn(async () => ({ consentedAt: "2026-01-01T00:00:00.000Z", consentVersion: 5 })),
-      getVoiceConsent: vi.fn(async () => ({ consentedAt: "2026-01-01T00:00:00.000Z", consentVersion: 3 })),
+      getPreferences: vi.fn(async () => ({
+        consentedAt: "2026-01-01T00:00:00.000Z",
+        consentVersion: 5,
+      })),
+      getVoiceConsent: vi.fn(async () => ({
+        consentedAt: "2026-01-01T00:00:00.000Z",
+        consentVersion: 3,
+      })),
       getCompletedAssistantMessage: vi.fn(),
     };
     const providers = {
@@ -253,8 +331,100 @@ describe("admin provider-configs authorization", () => {
       getActiveTtsModel: vi.fn(async () => "s2.1-pro-free"),
     };
     const service = createAssistantVoiceService(repo as any, providers, undefined, resolver);
-    const prefs = await service.getPreferences({ ASSISTANT_VOICE_ENABLED: "true", FISH_AUDIO_API_KEY: "key" } as any, "tenant-1");
+    const prefs = await service.getPreferences(
+      { ASSISTANT_VOICE_ENABLED: "true", FISH_AUDIO_API_KEY: "key" } as any,
+      "tenant-1",
+    );
     expect(prefs.transcriptionModel).toBe("@cf/openai/whisper-large-v3-turbo");
     expect(prefs.ttsModel).toBe("s2.1-pro-free");
+  });
+
+  it("validates gemini-3.5-transcribe and gemini-3.5-transcribe-live in STT allowlist", async () => {
+    const { providerRegistry } = await import("../src/provider-registry");
+    expect(providerRegistry.validateAllowlist("stt", "google", "gemini-3.5-transcribe")).toBe(true);
+    expect(providerRegistry.validateAllowlist("stt", "google", "gemini-3.5-transcribe-live")).toBe(
+      true,
+    );
+    expect(providerRegistry.validateAllowlist("stt", "google", "chirp_3")).toBe(true);
+    expect(providerRegistry.validateAllowlist("stt", "google", "unsupported-model")).toBe(false);
+  });
+
+  it("allows creating Google STT config with a linked Google credential", async () => {
+    const platformAdmins = { requireAdmin: vi.fn(async () => undefined) };
+    const credId = "44444444-4444-4444-8444-444444444444";
+    const credRepo = {
+      getById: vi.fn(async (_env, id) =>
+        id === credId
+          ? { id: credId, provider: "google", name: "Google Voice Key", apiKeyLast4: "1234" }
+          : null,
+      ),
+    };
+    const configRepo = {
+      create: vi.fn(async (_env, input, actorId) => ({
+        id: "cfg-google-1",
+        service: input.service,
+        provider: input.provider,
+        model: input.model,
+        displayName: input.displayName,
+        credentialId: input.credentialId,
+        enabled: true,
+        priority: 1,
+        isActive: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: actorId,
+      })),
+      list: vi.fn(async () => []),
+      getById: vi.fn(),
+      getActive: vi.fn(),
+      update: vi.fn(),
+      setActive: vi.fn(),
+      reorder: vi.fn(),
+      listAudits: vi.fn(async () => []),
+    };
+    const { providerRegistry } = await import("../src/provider-registry");
+    const { createAdminProviderConfigRoutes } =
+      await import("../src/routes/admin-provider-configs");
+    const routes = createAdminProviderConfigRoutes(
+      platformAdmins as any,
+      configRepo as any,
+      providerRegistry as any,
+      credRepo as any,
+    );
+    const app = new (await import("hono")).Hono();
+    app.use("*", async (c: any, next: any) => {
+      c.set("authUser", { id: "admin-1" });
+      c.env = { DB: {} as any };
+      await next();
+    });
+    app.route("/configs", routes);
+
+    const res = await app.request("/configs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        service: "stt",
+        provider: "google",
+        model: "gemini-3.5-transcribe",
+        displayName: "Google Gemini 3.5 Transcribe",
+        credentialId: credId,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.provider).toBe("google");
+    expect(body.model).toBe("gemini-3.5-transcribe");
+    expect(body.credentialId).toBe(credId);
+    expect(configRepo.create).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        service: "stt",
+        provider: "google",
+        model: "gemini-3.5-transcribe",
+        credentialId: credId,
+      }),
+      "admin-1",
+    );
   });
 });

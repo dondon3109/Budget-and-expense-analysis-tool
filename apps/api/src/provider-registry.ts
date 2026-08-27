@@ -52,8 +52,20 @@ export interface ResolvedCredential {
 export interface ProviderRegistry {
   getActive(env: Bindings, service: ProviderService): Promise<ProviderConfig | null>;
   getAll(env: Bindings, service?: ProviderService): Promise<ProviderConfig[]>;
-  getAssistantProvider(env: Bindings): Promise<{ provider: AssistantProvider; config: ProviderConfig | null; credential: ResolvedCredential | null }>;
-  getVoiceProviders(env: Bindings): Promise<{ providers: AssistantVoiceProviders; sttConfig: ProviderConfig | null; ttsConfig: ProviderConfig | null }>;
+  getAssistantProvider(
+    env: Bindings,
+  ): Promise<{
+    provider: AssistantProvider;
+    config: ProviderConfig | null;
+    credential: ResolvedCredential | null;
+  }>;
+  getVoiceProviders(
+    env: Bindings,
+  ): Promise<{
+    providers: AssistantVoiceProviders;
+    sttConfig: ProviderConfig | null;
+    ttsConfig: ProviderConfig | null;
+  }>;
   getHealth(env: Bindings): Promise<ProviderHealthStatus[]>;
   getDecryptedSecret(env: Bindings, config: ProviderConfig | null): Promise<ResolvedCredential>;
   invalidate(service?: ProviderService): void;
@@ -75,7 +87,10 @@ export function createProviderRegistry(
     return models.includes(model);
   }
 
-  async function resolveCredential(env: Bindings, config: ProviderConfig | null): Promise<ResolvedCredential> {
+  async function resolveCredential(
+    env: Bindings,
+    config: ProviderConfig | null,
+  ): Promise<ResolvedCredential> {
     if (!config) return { secret: null, last4: null, source: "none" };
     // Cloudflare Workers AI binding has no secret
     if (config.provider === "cloudflare_workers_ai") {
@@ -157,11 +172,20 @@ export function createProviderRegistry(
       return repository.list(env, service);
     },
 
-    async getDecryptedSecret(env: Bindings, config: ProviderConfig | null): Promise<ResolvedCredential> {
+    async getDecryptedSecret(
+      env: Bindings,
+      config: ProviderConfig | null,
+    ): Promise<ResolvedCredential> {
       return resolveCredential(env, config);
     },
 
-    async getAssistantProvider(env: Bindings): Promise<{ provider: AssistantProvider; config: ProviderConfig | null; credential: ResolvedCredential | null }> {
+    async getAssistantProvider(
+      env: Bindings,
+    ): Promise<{
+      provider: AssistantProvider;
+      config: ProviderConfig | null;
+      credential: ResolvedCredential | null;
+    }> {
       const cfg = await this.getActive(env, "assistant");
       const cred = await resolveCredential(env, cfg);
       const model = cfg?.model;
@@ -235,10 +259,13 @@ export function createProviderRegistry(
               credentialId: null,
               apiKeyLast4: null,
               credentialSource: hasBinding ? "binding" : "none",
-              details: hasBinding ? "Workers AI binding available" : "Workers AI binding missing — check wrangler.jsonc ai binding",
+              details: hasBinding
+                ? "Workers AI binding available"
+                : "Workers AI binding missing — check wrangler.jsonc ai binding",
             };
           }
-          const legacyKey = service === "assistant" ? env.DEEPSEEK_API_KEY?.trim() : env.FISH_AUDIO_API_KEY?.trim();
+          const legacyKey =
+            service === "assistant" ? env.DEEPSEEK_API_KEY?.trim() : env.FISH_AUDIO_API_KEY?.trim();
           const legacyName = service === "assistant" ? "DEEPSEEK_API_KEY" : "FISH_AUDIO_API_KEY";
           return {
             service,
@@ -251,7 +278,9 @@ export function createProviderRegistry(
             credentialId: null,
             apiKeyLast4: legacyKey ? legacyKey.slice(-4) : null,
             credentialSource: legacyKey ? "legacy" : "none",
-            details: legacyKey ? "Secret configured via legacy Worker secret (fallback, migrate to credential)" : `Missing — create a credential in admin UI`,
+            details: legacyKey
+              ? "Secret configured via legacy Worker secret (fallback, migrate to credential)"
+              : `Missing — create a credential in admin UI`,
           };
         }
         const expects = expectsCredential(cfg.service, cfg.provider);
@@ -261,10 +290,23 @@ export function createProviderRegistry(
           hasCredential = cred.source === "binding";
           details = hasCredential ? "Workers AI binding available" : "Workers AI binding missing";
         } else if (cfg.provider === "google") {
-          // Google via Cloud Run bridge uses ADC — bridge URL is the credential signal, not admin credential
-          const bridgeUrl = (env as unknown as Record<string, string | undefined>).STT_BRIDGE_URL?.trim() ?? (env as Bindings & { STT_BRIDGE_URL?: string }).STT_BRIDGE_URL?.trim();
-          hasCredential = Boolean(bridgeUrl);
-          details = hasCredential ? "Bridge configured (ADC in Cloud Run, chirp_3)" : "STT_BRIDGE_URL not configured — bridge required for chirp_3 streaming";
+          // Google can use an encrypted DB credential (API key / token) and/or Cloud Run bridge ADC
+          const bridgeUrl =
+            (env as unknown as Record<string, string | undefined>).STT_BRIDGE_URL?.trim() ??
+            (env as Bindings & { STT_BRIDGE_URL?: string }).STT_BRIDGE_URL?.trim();
+          if (cred.source === "db") {
+            hasCredential = true;
+            details = bridgeUrl
+              ? `Credential ••••${cred.last4} (encrypted) · Bridge connected`
+              : `Credential ••••${cred.last4} (encrypted)`;
+          } else if (bridgeUrl) {
+            hasCredential = true;
+            details = "Bridge configured (ADC in Cloud Run)";
+          } else {
+            hasCredential = false;
+            details =
+              "Missing credential — add a Google API key credential and link it to this configuration";
+          }
         } else if (!expects) {
           hasCredential = true;
           details = "No credential required";
@@ -288,7 +330,14 @@ export function createProviderRegistry(
           credentialName: cred.last4 ? `••••${cred.last4}` : null,
           credentialId: cfg.credentialId,
           apiKeyLast4: cred.last4,
-          credentialSource: cred.source === "db" ? "db" : cred.source === "legacy" ? "legacy" : cred.source === "binding" ? "binding" : "none",
+          credentialSource:
+            cred.source === "db"
+              ? "db"
+              : cred.source === "legacy"
+                ? "legacy"
+                : cred.source === "binding"
+                  ? "binding"
+                  : "none",
           details,
         };
       };
