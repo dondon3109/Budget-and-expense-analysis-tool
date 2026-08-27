@@ -16,6 +16,10 @@ import {
   transcribeVoice,
   type AssistantSpeechVoice,
 } from "@/api/assistant-voice";
+import {
+  startMobileVoiceStream,
+  type MobileVoiceStreamSession,
+} from "@/api/voice-stream";
 import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 
 import {
@@ -57,11 +61,15 @@ export function useVoiceRecorder<Result>({
   onTranscribed,
   onError,
   transcribe,
+  onPartialTranscript,
+  liveTranscribeResult,
 }: {
   getAccessToken: (refresh: boolean) => Promise<string>;
   onTranscribed: (result: Result) => void;
   onError: (error: ApiTransportError) => void;
   transcribe: (accessToken: string, recording: VoiceRecording) => Promise<Result>;
+  onPartialTranscript?: (partial: string) => void;
+  liveTranscribeResult?: (transcript: string, elapsedSeconds: number) => Result | null;
 }) {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [phase, setPhase] = useState<RecordingPhase>("idle");
@@ -69,6 +77,7 @@ export function useVoiceRecorder<Result>({
   const phaseRef = useRef<RecordingPhase>("idle");
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveStreamRef = useRef<MobileVoiceStreamSession | null>(null);
   const currentPhase = (): RecordingPhase => phaseRef.current;
 
   const setPhaseBoth = useCallback((next: RecordingPhase) => {
@@ -106,6 +115,10 @@ export function useVoiceRecorder<Result>({
     () => () => {
       clearElapsedTimer();
       clearRecordingTimeout();
+      if (liveStreamRef.current) {
+        liveStreamRef.current.cancel();
+        liveStreamRef.current = null;
+      }
       if (phaseRef.current === "recording") {
         const uri = recorder.uri;
         void recorder
@@ -124,15 +137,38 @@ export function useVoiceRecorder<Result>({
 
   const stopAndTranscribe = useCallback(async () => {
     if (currentPhase() !== "recording") return;
+    const recordedElapsed = elapsedSeconds;
     stopElapsedTimer();
     clearRecordingTimeout();
     setPhaseBoth("transcribing");
+
+    let streamTranscript: string | null = null;
+    if (liveStreamRef.current) {
+      try {
+        streamTranscript = await liveStreamRef.current.stop();
+      } catch {}
+      liveStreamRef.current = null;
+    }
+
     let recordingUri = recorder.uri;
     let uploadStarted = false;
     try {
       await recorder.stop();
       const uri = recorder.uri ?? recordingUri;
       recordingUri = uri;
+
+      if (liveTranscribeResult && streamTranscript && streamTranscript.trim().length > 0) {
+        const liveResult = liveTranscribeResult(streamTranscript.trim(), recordedElapsed);
+        if (liveResult !== null) {
+          discardTemporarySourceFile(uri);
+          await restorePlaybackAudioMode();
+          setPhaseBoth("idle");
+          if (currentPhase() !== "transcribing") return;
+          onTranscribed(liveResult);
+          return;
+        }
+      }
+
       if (!uri) {
         onError(new ApiTransportError("Nothing was recorded. Try again.", "invalid_request", 0));
         setPhaseBoth("idle");
@@ -162,6 +198,8 @@ export function useVoiceRecorder<Result>({
     onError,
     onTranscribed,
     transcribe,
+    liveTranscribeResult,
+    elapsedSeconds,
     setPhaseBoth,
     stopElapsedTimer,
     clearRecordingTimeout,
@@ -188,6 +226,35 @@ export function useVoiceRecorder<Result>({
       await armAssistantRecorder(recorder, setAudioModeAsync);
       setPhaseBoth("recording");
       startElapsedTimer();
+
+      if (onPartialTranscript || liveTranscribeResult) {
+        void getAccessToken(false)
+          .then((token) => {
+            if (phaseRef.current !== "recording") return;
+            void startMobileVoiceStream(token, {
+              onPartial: (partial) => {
+                if (phaseRef.current === "recording") {
+                  onPartialTranscript?.(partial);
+                }
+              },
+              onFinal: (final) => {
+                if (phaseRef.current === "recording") {
+                  onPartialTranscript?.(final);
+                }
+              },
+            })
+              .then((session) => {
+                if (phaseRef.current !== "recording") {
+                  session.cancel();
+                } else {
+                  liveStreamRef.current = session;
+                }
+              })
+              .catch(() => {});
+          })
+          .catch(() => {});
+      }
+
       // A hard stop when the user keeps recording past the cap.
       clearRecordingTimeout();
       recordingTimeoutRef.current = setTimeout(() => {
@@ -206,6 +273,9 @@ export function useVoiceRecorder<Result>({
   }, [
     onError,
     recorder,
+    getAccessToken,
+    onPartialTranscript,
+    liveTranscribeResult,
     setPhaseBoth,
     startElapsedTimer,
     stopAndTranscribe,
@@ -214,6 +284,10 @@ export function useVoiceRecorder<Result>({
   ]);
 
   const cancelRecording = useCallback(async () => {
+    if (liveStreamRef.current) {
+      liveStreamRef.current.cancel();
+      liveStreamRef.current = null;
+    }
     const recordingUri = recorder.uri;
     if (currentPhase() === "recording") {
       try {
@@ -243,15 +317,19 @@ export function useAssistantRecorder({
   getAccessToken,
   onTranscribed,
   onError,
+  onPartialTranscript,
 }: {
   getAccessToken: (refresh: boolean) => Promise<string>;
   onTranscribed: (text: string) => void;
   onError: (error: ApiTransportError) => void;
+  onPartialTranscript?: (text: string) => void;
 }) {
   return useVoiceRecorder<AssistantVoiceTranscription>({
     getAccessToken,
     onTranscribed: (result) => onTranscribed(result.text),
     onError,
+    onPartialTranscript,
+    liveTranscribeResult: (text, elapsed) => ({ text, durationSeconds: elapsed }),
     transcribe: (accessToken, recording) =>
       transcribeVoice({ accessToken }, { ...recording, mimeType: "audio/mp4" }),
   });

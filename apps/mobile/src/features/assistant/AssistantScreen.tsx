@@ -330,12 +330,15 @@ export function AssistantScreen() {
 
   const recorder = useAssistantRecorder({
     getAccessToken: session.getAccessToken,
+    onPartialTranscript: (partial) => {
+      setDraft(partial);
+    },
     onTranscribed: (text) => {
       const canAutoSend = voiceOptions.autoSend && voicePreferences?.reviewRequired !== true;
       if (canAutoSend) {
         void handleSend(text);
       } else {
-        setDraft((previous) => (previous ? previous + " " + text : text));
+        setDraft((previous) => (previous && previous !== text ? previous + " " + text : text));
       }
     },
     onError: handleVoiceError,

@@ -255,7 +255,8 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         } else if (typeof data === "string" && data.startsWith("{")) {
           try {
             const parsed = JSON.parse(data);
-            if (parsed.type === "audio" && parsed.data) {
+            const pcmData = parsed.data || parsed.pcm;
+            if (parsed.type === "audio" && pcmData) {
               trySend(
                 geminiWs,
                 JSON.stringify({
@@ -263,7 +264,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                     mediaChunks: [
                       {
                         mimeType: "audio/pcm;rate=16000",
-                        data: parsed.data,
+                        data: pcmData,
                       },
                     ],
                   },

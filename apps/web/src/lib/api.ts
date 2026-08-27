@@ -1061,9 +1061,10 @@ export async function openVoiceStreamWebSocket(
   workspace: AuthenticatedWorkspace,
 ): Promise<WebSocket> {
   const token = await accessToken(workspace, false);
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const host = window.location.host;
-  const wsUrl = `${protocol}//${host}/api/app/assistant/voice/stream?token=${encodeURIComponent(token)}`;
+  const base = apiUrl
+    ? apiUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:")
+    : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+  const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(token)}`;
   return new WebSocket(wsUrl);
 }
 

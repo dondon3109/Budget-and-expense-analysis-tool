@@ -77,6 +77,9 @@ export function TransactionVoiceEntry({
   const recorder = useVoiceRecorder({
     getAccessToken: session.getAccessToken,
     transcribe: extractVoiceTransaction,
+    onPartialTranscript: (partial) => {
+      setMessage(`Listening: “${partial}”`);
+    },
     onTranscribed: (draft) => {
       onDraft(draft);
       setMessage(`Draft filled from: “${draft.transcript}”`);

@@ -88,11 +88,14 @@ export default defineConfig(({ command, mode, isSsrBuild }) => {
       __ASSISTANT_VOICE_ENABLED__: JSON.stringify(
         deployEnvironment === "preview" || deployEnvironment === "production",
       ),
-      __ASSISTANT_VOICE_REVIEW_REQUIRED__: JSON.stringify(deployEnvironment !== "production"),
+      __ASSISTANT_VOICE_REVIEW_REQUIRED__: JSON.stringify(false),
     },
     server: {
       proxy: {
-        "/api": "http://localhost:8787",
+        "/api": {
+          target: "http://localhost:8787",
+          ws: true,
+        },
         "/health": "http://localhost:8787",
       },
     },

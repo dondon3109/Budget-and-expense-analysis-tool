@@ -158,6 +158,8 @@ export function AssistantVoiceControl({
   const chunksRef = useRef<Blob[]>([]);
   const microphoneButtonRef = useRef<HTMLButtonElement | null>(null);
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const pointerDownTimeRef = useRef<number>(0);
+  const isPointerRecordingRef = useRef<boolean>(false);
   const noticeRef = useRef<HTMLDivElement | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewUrlRef = useRef<string | undefined>(undefined);
@@ -539,6 +541,56 @@ export function AssistantVoiceControl({
     !showNotice &&
     !showOptions;
 
+  function handlePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0) return;
+    if (busy) return;
+    pointerDownTimeRef.current = Date.now();
+
+    if (status === "recording") {
+      return;
+    }
+
+    if (!consented) {
+      clearPreview();
+      setShowOptions(false);
+      setShowNotice(true);
+      return;
+    }
+
+    clearPreview();
+    setShowOptions(false);
+    isPointerRecordingRef.current = true;
+    void startRecording();
+  }
+
+  function handlePointerUp(event: React.PointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0) return;
+    const elapsed = Date.now() - pointerDownTimeRef.current;
+
+    if (!isPointerRecordingRef.current) {
+      if (status === "recording") {
+        stopRecording("manual");
+      }
+      return;
+    }
+
+    isPointerRecordingRef.current = false;
+
+    // Push-to-talk: If held for >= 400ms, stop recording on release
+    if (elapsed >= 400) {
+      if (status === "recording" || recorderRef.current?.state === "recording") {
+        stopRecording("manual");
+      }
+    }
+  }
+
+  function handlePointerCancel() {
+    if (isPointerRecordingRef.current) {
+      isPointerRecordingRef.current = false;
+      stopRecording("manual");
+    }
+  }
+
   return (
     <div className="assistant-voice-control">
       <button
@@ -574,16 +626,30 @@ export function AssistantVoiceControl({
               : "Start voice recording"
         }
         aria-pressed={status === "recording"}
+        title={
+          status === "recording"
+            ? "Click to stop recording"
+            : "Click to record or press and hold to speak"
+        }
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onClick={() => {
-          if (status === "recording") stopRecording("manual");
-          else if (!consented) {
-            clearPreview();
-            setShowOptions(false);
-            setShowNotice(true);
-          } else {
-            clearPreview();
-            setShowOptions(false);
-            void startRecording();
+          const elapsed = Date.now() - pointerDownTimeRef.current;
+          if (pointerDownTimeRef.current > 0 && elapsed >= 400) {
+            return;
+          }
+          if (pointerDownTimeRef.current === 0 || Date.now() - pointerDownTimeRef.current > 500) {
+            if (status === "recording") stopRecording("manual");
+            else if (!consented) {
+              clearPreview();
+              setShowOptions(false);
+              setShowNotice(true);
+            } else {
+              clearPreview();
+              setShowOptions(false);
+              void startRecording();
+            }
           }
         }}
       >
