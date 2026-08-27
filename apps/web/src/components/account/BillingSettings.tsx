@@ -8,6 +8,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
+import { Link } from "react-router-dom";
+
 import { useBillingSummary } from "../../hooks/useBillingSummary";
 import { cancelBillingSubscription, reconcileBillingCheckout } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
@@ -956,6 +958,27 @@ export function BillingSettings({ user }: { user: User }) {
         onConfirm={() => void requestCancellation()}
       />
       {summary?.canManageSponsoredSeats && <SponsoredProSeatsSettings workspace={workspace} />}
+      {summary?.canManageSponsoredSeats && (
+        <section
+          className="settings-section"
+          aria-labelledby="admin-provider-configs-title"
+          tabIndex={-1}
+        >
+          <div className="settings-section-heading">
+            <div>
+              <h2 id="admin-provider-configs-title">AI & Voice Models</h2>
+              <p>
+                Change the active assistant, speech-to-text and text-to-speech models without
+                redeploying. Manual activation only — switch quickly during a provider outage.
+              </p>
+            </div>
+            <span>Platform admin</span>
+          </div>
+          <Link to="/app/admin/provider-configs" className="button secondary compact">
+            Manage AI & Voice models
+          </Link>
+        </section>
+      )}
     </>
   );
 }
