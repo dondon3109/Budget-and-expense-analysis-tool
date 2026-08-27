@@ -19,6 +19,8 @@ import { cloudflareWhisperProvider } from "./assistant/cloudflare-whisper";
 import { fishAudioProvider } from "./assistant/fish-audio";
 import { createAssistantVoiceService, type AssistantVoiceService } from "./assistant/voice-service";
 import type { AssistantVoiceProviders } from "./assistant/voice-provider";
+import { providerRegistry } from "./provider-registry";
+import { createAdminProviderConfigRoutes } from "./routes/admin-provider-configs";
 import { createAccountDeletionService, type AccountDeletionService } from "./account-deletion";
 import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from "./auth";
 import { accountRepository, type AccountRepository } from "./db/accounts";
@@ -226,7 +228,17 @@ export function createApp(options: AppOptions = {}) {
   const assistantUsage = options.assistantUsage ?? assistantUsageRepository;
   const assistantModelMemoryUsage =
     options.assistantModelMemoryUsage ?? assistantModelMemoryUsageRepository;
-  const assistantProvider = options.assistantProvider ?? deepSeekProvider;
+  // Dynamic provider that resolves the active DB config on every request (with 30s cache).
+  // Falls back to env-based deepSeekProvider when DB is unavailable or before migration.
+  const dynamicAssistantProvider: AssistantProvider =
+    options.assistantProvider ??
+    ({
+      async complete(env, request) {
+        const { provider } = await providerRegistry.getAssistantProvider(env);
+        return provider.complete(env, request);
+      },
+    } satisfies AssistantProvider);
+  const assistantProvider = dynamicAssistantProvider;
   const supportProvider = options.supportProvider ?? assistantProvider;
   const assistantService =
     options.assistantService ??
@@ -250,6 +262,22 @@ export function createApp(options: AppOptions = {}) {
       assistantModelMemoryUsage,
       options.assistantTelemetryFactory,
     );
+  const dynamicVoiceProviders: AssistantVoiceProviders =
+    options.assistantVoiceProviders ??
+    ({
+      transcription: {
+        async transcribe(env, audio) {
+          const { providers } = await providerRegistry.getVoiceProviders(env);
+          return providers.transcription.transcribe(env, audio);
+        },
+      },
+      speech: {
+        async synthesize(env, text, voice) {
+          const { providers } = await providerRegistry.getVoiceProviders(env);
+          return providers.speech.synthesize(env, text, voice);
+        },
+      },
+    } satisfies AssistantVoiceProviders);
   const assistantVoiceService =
     options.assistantVoiceService ??
     createAssistantVoiceService(
@@ -257,9 +285,17 @@ export function createApp(options: AppOptions = {}) {
         getPreferences: assistantStore.getPreferences.bind(assistantStore),
         ...(options.assistantVoiceRepository ?? assistantRepository),
       },
-      options.assistantVoiceProviders ?? {
-        transcription: cloudflareWhisperProvider,
-        speech: fishAudioProvider,
+      dynamicVoiceProviders,
+      undefined,
+      {
+        getActiveSttModel: async (env) => {
+          const cfg = await providerRegistry.getActive(env, "stt");
+          return cfg?.model ?? "@cf/openai/whisper-large-v3-turbo";
+        },
+        getActiveTtsModel: async (env) => {
+          const cfg = await providerRegistry.getActive(env, "tts");
+          return cfg?.model ?? "s2.1-pro-free";
+        },
       },
     );
   const receiptService =
@@ -666,6 +702,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/account", createAccountDeletionRoutes(accountDeletionService));
   app.route("/api/app/identity", createIdentityRoutes(platformAdminService));
   app.route("/api/app/admin", createPlatformAdminRoutes(platformAdminService));
+  app.route("/api/app/admin/provider-configs", createAdminProviderConfigRoutes(platformAdminService));
   app.route("/api/app/assistant/voice", createAssistantVoiceRoutes(assistantVoiceService));
   app.route("/api/app/assistant", createAssistantRoutes(assistantService));
   app.route("/api/app/transactions", createTransactionRoutes(transactionStore));

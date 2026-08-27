@@ -64,4 +64,8 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "subscriptions", month] as const,
   allSubscriptions: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "subscriptions"] as const,
+  providerConfigs: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "admin", "provider-configs"] as const,
+  providerConfigAudits: (workspace: AuthenticatedWorkspace, service?: string) =>
+    [...queryKeys.workspace(workspace), "admin", "provider-config-audits", service] as const,
 };

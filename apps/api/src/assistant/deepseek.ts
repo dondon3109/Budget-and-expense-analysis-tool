@@ -69,7 +69,10 @@ function configuredNumber(value: string | undefined, fallback: number): number {
 }
 
 export class DeepSeekProvider implements AssistantProvider {
-  constructor(private readonly fetcher: typeof fetch = fetch) {}
+  constructor(
+    private readonly fetcher: typeof fetch = fetch,
+    private readonly modelOverride?: string,
+  ) {}
 
   async complete(env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion> {
     const apiKey = env.DEEPSEEK_API_KEY?.trim();
@@ -98,7 +101,7 @@ export class DeepSeekProvider implements AssistantProvider {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
+          model: this.modelOverride?.trim() || env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
           messages: request.messages,
           tools: request.tools,
           tool_choice: request.toolChoice ?? "auto",
@@ -190,3 +193,7 @@ export class DeepSeekProvider implements AssistantProvider {
 }
 
 export const deepSeekProvider = new DeepSeekProvider();
+
+export function createDeepSeekProvider(model?: string, fetcher: typeof fetch = fetch): AssistantProvider {
+  return new DeepSeekProvider(fetcher, model);
+}

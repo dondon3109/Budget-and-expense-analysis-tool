@@ -53,23 +53,39 @@ async function fishFetch(env: Bindings, path: string, init: RequestInit): Promis
   }
 }
 
-export const fishAudioProvider: AssistantVoiceSpeechProvider = {
-  async synthesize(env, text, voice) {
-    const model = env.FISH_AUDIO_TTS_MODEL?.trim() || FREE_TTS_MODEL;
-    if (model !== FREE_TTS_MODEL) {
-      throw new AssistantVoiceProviderError("fish_audio", "configuration");
-    }
-    const voiceReferenceId = referenceId(voice);
-    return fishFetch(env, "/v1/tts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", model },
-      body: JSON.stringify({
-        text,
-        format: "mp3",
-        latency: "balanced",
-        normalize: true,
-        ...(voiceReferenceId ? { reference_id: voiceReferenceId } : {}),
-      }),
-    });
-  },
-};
+function createFishProvider(modelOverride?: string): AssistantVoiceSpeechProvider {
+  return {
+    async synthesize(env, text, voice) {
+      const model = modelOverride?.trim() || env.FISH_AUDIO_TTS_MODEL?.trim() || FREE_TTS_MODEL;
+      // Model is validated at the provider-registry layer via allowlist; keep a
+      // safe guard here for empty strings but allow future models without code change.
+      if (!model) {
+        throw new AssistantVoiceProviderError("fish_audio", "configuration");
+      }
+      // Preserve existing strict pin for env-only paths: if no override and env requests non-free model, reject.
+      if (!modelOverride && model !== FREE_TTS_MODEL) {
+        throw new AssistantVoiceProviderError("fish_audio", "configuration");
+      }
+      const voiceReferenceId = referenceId(voice);
+      return fishFetch(env, "/v1/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", model },
+        body: JSON.stringify({
+          text,
+          format: "mp3",
+          latency: "balanced",
+          normalize: true,
+          ...(voiceReferenceId ? { reference_id: voiceReferenceId } : {}),
+        }),
+      });
+    },
+  };
+}
+
+export const fishAudioProvider = createFishProvider();
+
+export function createFishAudioProvider(model?: string): AssistantVoiceSpeechProvider {
+  return createFishProvider(model);
+}
+
+export { FREE_TTS_MODEL };

@@ -999,3 +999,57 @@ export const customerReviews = sqliteTable(
     ),
   ],
 );
+
+export const providerConfigs = sqliteTable(
+  "provider_configs",
+  {
+    id: text("id").primaryKey(),
+    service: text("service", { enum: ["assistant", "stt", "tts"] }).notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    priority: integer("priority").notNull(),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(false),
+    updatedBy: text("updated_by"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("provider_configs_service_active_unique")
+      .on(table.service)
+      .where(sql`${table.isActive} = 1`),
+    uniqueIndex("provider_configs_service_provider_model_unique").on(
+      table.service,
+      table.provider,
+      table.model,
+    ),
+    index("provider_configs_service_priority_idx").on(table.service, table.priority),
+    check("provider_configs_priority_check", sql`${table.priority} >= 1 AND ${table.priority} <= 100`),
+    check("provider_configs_service_check", sql`${table.service} IN ('assistant', 'stt', 'tts')`),
+  ],
+);
+
+export const providerConfigAudits = sqliteTable(
+  "provider_config_audits",
+  {
+    id: text("id").primaryKey(),
+    configId: text("config_id"),
+    service: text("service", { enum: ["assistant", "stt", "tts"] }).notNull(),
+    action: text("action", {
+      enum: ["create", "update", "activate", "deactivate", "delete", "reorder"],
+    }).notNull(),
+    oldValueJson: text("old_value_json"),
+    newValueJson: text("new_value_json"),
+    changedBy: text("changed_by").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("provider_config_audits_service_created_idx").on(table.service, table.createdAt),
+    index("provider_config_audits_config_idx").on(table.configId),
+    check(
+      "provider_config_audits_action_check",
+      sql`${table.action} IN ('create', 'update', 'activate', 'deactivate', 'delete', 'reorder')`,
+    ),
+  ],
+);

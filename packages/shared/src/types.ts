@@ -599,6 +599,50 @@ export interface AssistantVoiceTranscription {
   languageCode?: string;
 }
 
+export const providerServices = ["assistant", "stt", "tts"] as const;
+export type ProviderService = (typeof providerServices)[number];
+
+export const assistantProviders = ["deepseek"] as const;
+export type AssistantProviderName = (typeof assistantProviders)[number];
+
+export const sttProviders = ["cloudflare_workers_ai"] as const;
+export type SttProviderName = (typeof sttProviders)[number];
+
+export const ttsProviders = ["fish_audio"] as const;
+export type TtsProviderName = (typeof ttsProviders)[number];
+
+export type ProviderName = AssistantProviderName | SttProviderName | TtsProviderName;
+
+export const providerAllowlist: Record<ProviderService, Record<string, readonly string[]>> = {
+  assistant: { deepseek: ["deepseek-v4-flash"] as const },
+  stt: { cloudflare_workers_ai: ["@cf/openai/whisper-large-v3-turbo"] as const },
+  tts: { fish_audio: ["s2.1-pro-free"] as const },
+} as const;
+
+export interface ProviderConfig {
+  id: string;
+  service: ProviderService;
+  provider: string;
+  model: string;
+  enabled: boolean;
+  priority: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+
+export interface ProviderConfigAudit {
+  id: string;
+  configId: string | null;
+  service: ProviderService;
+  action: "create" | "update" | "activate" | "deactivate" | "delete" | "reorder";
+  oldValue: ProviderConfig | null;
+  newValue: ProviderConfig | null;
+  changedBy: string;
+  createdAt: string;
+}
+
 /** Covers in-flight AI processing of receipt photos, statement PDFs, and voice entries. */
 export const CURRENT_RECEIPT_CONSENT_VERSION = 2;
 

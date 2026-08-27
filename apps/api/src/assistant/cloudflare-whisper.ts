@@ -47,17 +47,18 @@ function providerStatus(error: unknown): number | undefined {
   return undefined;
 }
 
-export const cloudflareWhisperProvider: AssistantVoiceTranscriptionProvider = {
-  async transcribe(env, audio) {
-    if (!env.AI) {
-      throw new AssistantVoiceProviderError("cloudflare_workers_ai", "configuration");
-    }
+function createWhisperProvider(model: string = CLOUDFLARE_WHISPER_MODEL): AssistantVoiceTranscriptionProvider {
+  return {
+    async transcribe(env, audio) {
+      if (!env.AI) {
+        throw new AssistantVoiceProviderError("cloudflare_workers_ai", "configuration");
+      }
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs(env));
     try {
       const result = await env.AI.run(
-        CLOUDFLARE_WHISPER_MODEL,
+        model,
         {
           audio: encodeBase64(await audio.arrayBuffer()),
           task: "transcribe",
@@ -93,5 +94,12 @@ export const cloudflareWhisperProvider: AssistantVoiceTranscriptionProvider = {
     } finally {
       clearTimeout(timer);
     }
-  },
-};
+    },
+  };
+}
+
+export const cloudflareWhisperProvider = createWhisperProvider();
+
+export function createCloudflareWhisperProvider(model?: string): AssistantVoiceTranscriptionProvider {
+  return createWhisperProvider(model ?? CLOUDFLARE_WHISPER_MODEL);
+}

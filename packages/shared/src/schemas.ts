@@ -13,6 +13,7 @@ import {
   customerReviewModerationStatuses,
   financialGoalStatuses,
   interestFrequencies,
+  providerServices,
   subscriptionBillingCycles,
   subscriptionStatuses,
   transactionKinds,
@@ -1230,3 +1231,70 @@ export const bugReportResponseSchema = z
 export const accountDeletionResponseSchema = z
   .object({ status: z.enum(["deleted", "cleanup_pending"]) })
   .strict();
+
+export const providerServiceSchema = z.enum(providerServices);
+
+export const providerConfigSchema = z
+  .object({
+    id: z.string().uuid(),
+    service: providerServiceSchema,
+    provider: z.string().min(1).max(80),
+    model: z.string().min(1).max(200),
+    enabled: z.boolean(),
+    priority: z.number().int().min(1).max(100),
+    isActive: z.boolean(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+    updatedBy: z.string().uuid().nullable(),
+  })
+  .strict();
+
+export const providerConfigAuditsResponseSchema = z.array(
+  z
+    .object({
+      id: z.string().uuid(),
+      configId: z.string().uuid().nullable(),
+      service: providerServiceSchema,
+      action: z.enum(["create", "update", "activate", "deactivate", "delete", "reorder"]),
+      oldValue: providerConfigSchema.nullable(),
+      newValue: providerConfigSchema.nullable(),
+      changedBy: z.string().uuid(),
+      createdAt: z.iso.datetime(),
+    })
+    .strict(),
+);
+
+export const providerConfigCreateSchema = z
+  .object({
+    service: providerServiceSchema,
+    provider: z.string().min(1).max(80),
+    model: z.string().min(1).max(200),
+    enabled: z.boolean().optional().default(true),
+    priority: z.number().int().min(1).max(100).optional(),
+  })
+  .strict();
+
+export const providerConfigUpdateSchema = z
+  .object({
+    provider: z.string().min(1).max(80).optional(),
+    model: z.string().min(1).max(200).optional(),
+    enabled: z.boolean().optional(),
+    priority: z.number().int().min(1).max(100).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
+
+export const providerConfigReorderSchema = z
+  .object({
+    service: providerServiceSchema,
+    orderedIds: z.array(z.string().uuid()).min(1).max(50),
+  })
+  .strict()
+  .refine((value) => new Set(value.orderedIds).size === value.orderedIds.length, {
+    path: ["orderedIds"],
+    message: "Each config may appear only once.",
+  });
+
+export type ProviderConfigCreateInput = z.infer<typeof providerConfigCreateSchema>;
+export type ProviderConfigUpdateInput = z.infer<typeof providerConfigUpdateSchema>;
+export type ProviderConfigReorderInput = z.infer<typeof providerConfigReorderSchema>;

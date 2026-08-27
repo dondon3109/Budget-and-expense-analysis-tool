@@ -60,6 +60,9 @@ import type {
   ImportPreview,
   ImportPreviewRequest,
   PublicCustomerReview,
+  ProviderConfig,
+  ProviderConfigAudit,
+  ProviderService,
   SubscriptionInput,
   SubscriptionMonthSummary,
   SubscriptionRecord,
@@ -668,6 +671,53 @@ export function resendSponsoredProInvitation(
   return requestJson(workspace, `/api/app/admin/sponsored-seats/${slotNumber}/invitation`, {
     method: "POST",
     body: JSON.stringify({}),
+  });
+}
+
+export function getProviderConfigs(
+  workspace: AuthenticatedWorkspace,
+  service?: ProviderService,
+): Promise<{ configs: ProviderConfig[] }> {
+  const qs = service ? `?service=${encodeURIComponent(service)}` : "";
+  return requestJson(workspace, `/api/app/admin/provider-configs${qs}`);
+}
+
+export function getProviderConfigAudits(
+  workspace: AuthenticatedWorkspace,
+  service?: ProviderService,
+): Promise<{ audits: ProviderConfigAudit[] }> {
+  const qs = service ? `?service=${encodeURIComponent(service)}` : "";
+  return requestJson(workspace, `/api/app/admin/provider-configs/audits${qs}`);
+}
+
+export function updateProviderConfig(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+  patch: Partial<Pick<ProviderConfig, "provider" | "model" | "enabled" | "priority">>,
+): Promise<ProviderConfig> {
+  return requestJson(workspace, `/api/app/admin/provider-configs/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export function activateProviderConfig(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+): Promise<ProviderConfig> {
+  return requestJson(workspace, `/api/app/admin/provider-configs/${encodeURIComponent(id)}/activate`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function reorderProviderConfigs(
+  workspace: AuthenticatedWorkspace,
+  args: { service: ProviderService; orderedIds: string[] },
+): Promise<{ configs: ProviderConfig[] }> {
+  return requestJson(workspace, "/api/app/admin/provider-configs/reorder", {
+    method: "POST",
+    body: JSON.stringify(args),
   });
 }
 

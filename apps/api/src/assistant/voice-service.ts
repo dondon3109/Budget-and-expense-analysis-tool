@@ -10,9 +10,10 @@ import type { AssistantRepository, AssistantVoiceRepository } from "../db/assist
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { CLOUDFLARE_WHISPER_MODEL } from "./cloudflare-whisper";
+import { FREE_TTS_MODEL as FISH_FREE_MODEL } from "./fish-audio";
 import { AssistantVoiceProviderError, type AssistantVoiceProviders } from "./voice-provider";
 
-const FREE_TTS_MODEL = "s2.1-pro-free" as const;
+const FREE_TTS_MODEL = FISH_FREE_MODEL;
 const MAX_SPEECH_CHARACTERS = 6_000;
 const VOICE_PREVIEW_TEXT = "Your total spending is 70 pesos.";
 const PHILIPPINE_PESO_AMOUNT =
@@ -135,10 +136,42 @@ export function assistantSpeechText(markdown: string): string {
     .slice(0, MAX_SPEECH_CHARACTERS);
 }
 
+export type VoiceModelResolver = {
+  getActiveSttModel(env: Bindings): Promise<string>;
+  getActiveTtsModel(env: Bindings): Promise<string>;
+};
+
+async function defaultSttModelResolver(env: Bindings): Promise<string> {
+  // Try DB-backed provider config, fallback to constant.
+  try {
+    const { providerConfigRepository } = await import("../db/provider-configs");
+    const active = await providerConfigRepository.getActive(env, "stt");
+    if (active?.model) return active.model;
+  } catch {
+    // D1 unavailable before migration or on error — keep current behavior.
+  }
+  return CLOUDFLARE_WHISPER_MODEL;
+}
+
+async function defaultTtsModelResolver(env: Bindings): Promise<string> {
+  try {
+    const { providerConfigRepository } = await import("../db/provider-configs");
+    const active = await providerConfigRepository.getActive(env, "tts");
+    if (active?.model) return active.model;
+  } catch {
+    // ignore
+  }
+  return FREE_TTS_MODEL;
+}
+
 export function createAssistantVoiceService(
   repository: Pick<AssistantRepository, "getPreferences"> & AssistantVoiceRepository,
   providers: AssistantVoiceProviders,
   reporter: AssistantVoiceDiagnosticReporter = defaultDiagnosticReporter,
+  modelResolver: VoiceModelResolver = {
+    getActiveSttModel: defaultSttModelResolver,
+    getActiveTtsModel: defaultTtsModelResolver,
+  },
 ): AssistantVoiceService {
   async function requireConsent(env: Bindings, tenantId: string): Promise<void> {
     requireEnabled(env);
@@ -164,15 +197,19 @@ export function createAssistantVoiceService(
 
   async function preferences(env: Bindings, tenantId: string): Promise<AssistantVoicePreferences> {
     requireEnabled(env);
-    const consent = await repository.getVoiceConsent(env, tenantId);
+    const [consent, sttModel, ttsModel] = await Promise.all([
+      repository.getVoiceConsent(env, tenantId),
+      modelResolver.getActiveSttModel(env),
+      modelResolver.getActiveTtsModel(env),
+    ]);
     return {
       enabled: true,
       speechAvailable: Boolean(env.FISH_AUDIO_API_KEY?.trim()),
       reviewRequired: env.ASSISTANT_VOICE_REVIEW_REQUIRED !== "false",
       consentedAt: consent.consentedAt,
       consentVersion: consent.consentVersion,
-      transcriptionModel: CLOUDFLARE_WHISPER_MODEL,
-      ttsModel: FREE_TTS_MODEL,
+      transcriptionModel: sttModel as "@cf/openai/whisper-large-v3-turbo",
+      ttsModel: ttsModel as "s2.1-pro-free",
     };
   }
 
