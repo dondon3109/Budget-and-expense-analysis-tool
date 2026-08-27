@@ -173,5 +173,13 @@ export function createAdminProviderConfigRoutes(
     return context.json({ configs: reordered });
   });
 
+  routes.delete("/:id", async (context) => {
+    await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
+    const id = context.req.param("id");
+    const deleted = await repository.delete(context.env, id, context.get("authUser").id);
+    registry.invalidate(deleted.service);
+    return context.json(deleted);
+  });
+
   return routes;
 }

@@ -427,4 +427,91 @@ describe("admin provider-configs authorization", () => {
       "admin-1",
     );
   });
+
+  it("DELETE /configs/:id deletes an inactive configuration and invalidates registry", async () => {
+    const platformAdminService = {
+      requireAdmin: vi.fn(async () => {}),
+    };
+    const configRepo = {
+      delete: vi.fn(async (_env, id) => ({
+        id,
+        service: "stt",
+        provider: "google",
+        model: "gemini-3.5-transcribe",
+        displayName: "Google Gemini 3.5 Transcribe",
+        credentialId: "cred-1",
+        enabled: true,
+        priority: 2,
+        isActive: false,
+      })),
+    };
+    const registry = {
+      invalidate: vi.fn(),
+    };
+
+    const routes = createAdminProviderConfigRoutes(
+      platformAdminService as any,
+      configRepo as any,
+      registry as any,
+    );
+    const { Hono } = await import("hono");
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("authUser", { id: "admin-1" });
+      await next();
+    });
+    app.route("/configs", routes);
+
+    const res = await app.request("/configs/cfg-to-delete", {
+      method: "DELETE",
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.id).toBe("cfg-to-delete");
+    expect(configRepo.delete).toHaveBeenCalledWith(undefined, "cfg-to-delete", "admin-1");
+    expect(registry.invalidate).toHaveBeenCalledWith("stt");
+  });
+
+  it("DELETE /configs/:id returns 409 when attempting to delete an active configuration", async () => {
+    const { HttpError } = await import("../src/errors");
+    const platformAdminService = {
+      requireAdmin: vi.fn(async () => {}),
+    };
+    const configRepo = {
+      delete: vi.fn(async () => {
+        throw new HttpError(
+          409,
+          "cannot_delete_active_config",
+          "Activate a different configuration before deleting this active one.",
+        );
+      }),
+    };
+    const registry = { invalidate: vi.fn() };
+
+    const routes = createAdminProviderConfigRoutes(
+      platformAdminService as any,
+      configRepo as any,
+      registry as any,
+    );
+    const { Hono } = await import("hono");
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("authUser", { id: "admin-1" });
+      await next();
+    });
+    app.onError((err, c) => {
+      if (err instanceof HttpError) return c.json({ error: err.code, message: err.message }, err.status);
+      return c.json({ error: "internal" }, 500);
+    });
+    app.route("/configs", routes);
+
+    const res = await app.request("/configs/cfg-active", {
+      method: "DELETE",
+    });
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe("cannot_delete_active_config");
+  });
 });

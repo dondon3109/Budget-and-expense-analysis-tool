@@ -25,7 +25,7 @@ import {
 const DEFAULT_LOCATION = "us";
 const REST_RECOGNIZE_TIMEOUT_MS = 30_000;
 
-function parseGoogleSecret(secret: string): {
+export function parseGoogleSecret(secret: string): {
   projectId: string | null;
   location: string;
   token: string;

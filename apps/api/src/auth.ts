@@ -90,18 +90,24 @@ export function createAuthMiddleware(
   return async (context, next) => {
     const authorization = context.req.header("Authorization");
     const match = authorization?.match(/^Bearer\s+(\S+)$/i);
-    if (!match) return unauthorized(context, "authentication_required");
+    let token = match?.[1];
+    if (!token && context.req.header("Upgrade")?.toLowerCase() === "websocket") {
+      token =
+        context.req.query("token") ||
+        context.req.header("Sec-WebSocket-Protocol")?.split(",")[0]?.trim();
+    }
+    if (!token) return unauthorized(context, "authentication_required");
 
     let user: AuthUser;
     try {
-      user = await verifier.verify(context.env, match[1]!);
+      user = await verifier.verify(context.env, token);
     } catch (error) {
       if (error instanceof AuthConfigurationError) throw error;
       return unauthorized(context, "invalid_access_token");
     }
 
     context.set("authUser", user);
-    context.set("accessToken", match[1]!);
+    context.set("accessToken", token);
     if (!skipTenantResolution(context.req.path, context.req.method)) {
       context.set("tenant", await tenantResolver.resolve(context.env, user));
     }

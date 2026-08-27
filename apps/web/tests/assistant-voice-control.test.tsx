@@ -79,6 +79,25 @@ function installRecordingMocks() {
   return { stopTrack };
 }
 
+const storageMap = new Map<string, string>();
+const mockStorage = {
+  getItem: vi.fn((key: string) => storageMap.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    storageMap.set(key, String(value));
+  }),
+  removeItem: vi.fn((key: string) => {
+    storageMap.delete(key);
+  }),
+  clear: vi.fn(() => {
+    storageMap.clear();
+  }),
+  key: vi.fn((index: number) => Array.from(storageMap.keys())[index] ?? null),
+  get length() {
+    return storageMap.size;
+  },
+};
+Object.defineProperty(window, "localStorage", { value: mockStorage, writable: true });
+
 beforeEach(() => {
   window.localStorage.clear();
   sampleLevel = 128;

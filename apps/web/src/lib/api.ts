@@ -585,9 +585,7 @@ export function reconcileBillingCheckout(
 ): Promise<BillingCheckoutReconciliation> {
   return requestJson(workspace, "/api/app/billing/reconcile", {
     method: "POST",
-    body: JSON.stringify(
-      options.abortPendingCheckout ? { abortPendingCheckout: true } : {},
-    ),
+    body: JSON.stringify(options.abortPendingCheckout ? { abortPendingCheckout: true } : {}),
   });
 }
 
@@ -692,9 +690,7 @@ export function getProviderConfigAudits(
   return requestJson(workspace, `/api/app/admin/provider-configs/audits${qs}`);
 }
 
-export function getProviderHealth(
-  workspace: AuthenticatedWorkspace,
-): Promise<{
+export function getProviderHealth(workspace: AuthenticatedWorkspace): Promise<{
   health: Array<{
     service: ProviderService;
     provider: string;
@@ -714,7 +710,14 @@ export function getProviderHealth(
 
 export function createProviderConfig(
   workspace: AuthenticatedWorkspace,
-  input: { service: ProviderService; provider: string; model: string; displayName: string; credentialId?: string | null; enabled?: boolean },
+  input: {
+    service: ProviderService;
+    provider: string;
+    model: string;
+    displayName: string;
+    credentialId?: string | null;
+    enabled?: boolean;
+  },
 ): Promise<ProviderConfig> {
   return requestJson(workspace, "/api/app/admin/provider-configs", {
     method: "POST",
@@ -725,7 +728,12 @@ export function createProviderConfig(
 export function updateProviderConfig(
   workspace: AuthenticatedWorkspace,
   id: string,
-  patch: Partial<Pick<ProviderConfig, "provider" | "model" | "displayName" | "credentialId" | "enabled" | "priority">>,
+  patch: Partial<
+    Pick<
+      ProviderConfig,
+      "provider" | "model" | "displayName" | "credentialId" | "enabled" | "priority"
+    >
+  >,
 ): Promise<ProviderConfig> {
   return requestJson(workspace, `/api/app/admin/provider-configs/${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -737,10 +745,27 @@ export function activateProviderConfig(
   workspace: AuthenticatedWorkspace,
   id: string,
 ): Promise<ProviderConfig> {
-  return requestJson(workspace, `/api/app/admin/provider-configs/${encodeURIComponent(id)}/activate`, {
-    method: "POST",
-    body: JSON.stringify({}),
-  });
+  return requestJson(
+    workspace,
+    `/api/app/admin/provider-configs/${encodeURIComponent(id)}/activate`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export function deleteProviderConfig(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+): Promise<ProviderConfig> {
+  return requestJson(
+    workspace,
+    `/api/app/admin/provider-configs/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 export function reorderProviderConfigs(
@@ -780,7 +805,10 @@ export function updateProviderCredential(
   });
 }
 
-export function deleteProviderCredential(workspace: AuthenticatedWorkspace, id: string): Promise<{ deleted: true }> {
+export function deleteProviderCredential(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+): Promise<{ deleted: true }> {
   return requestJson(workspace, `/api/app/admin/provider-credentials/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
@@ -790,10 +818,14 @@ export function testProviderCredential(
   workspace: AuthenticatedWorkspace,
   id: string,
 ): Promise<{ ok: true; provider: string; last4: string }> {
-  return requestJson(workspace, `/api/app/admin/provider-credentials/${encodeURIComponent(id)}/test`, {
-    method: "POST",
-    body: JSON.stringify({}),
-  });
+  return requestJson(
+    workspace,
+    `/api/app/admin/provider-credentials/${encodeURIComponent(id)}/test`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
 }
 
 export function getDashboard(
@@ -1023,6 +1055,16 @@ export async function transcribeAssistantVoice(
     );
   }
   return (await response.json()) as AssistantVoiceTranscription;
+}
+
+export async function openVoiceStreamWebSocket(
+  workspace: AuthenticatedWorkspace,
+): Promise<WebSocket> {
+  const token = await accessToken(workspace, false);
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.host;
+  const wsUrl = `${protocol}//${host}/api/app/assistant/voice/stream?token=${encodeURIComponent(token)}`;
+  return new WebSocket(wsUrl);
 }
 
 export async function getAssistantVoiceSpeech(

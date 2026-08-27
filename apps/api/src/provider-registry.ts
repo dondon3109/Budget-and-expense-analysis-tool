@@ -52,16 +52,12 @@ export interface ResolvedCredential {
 export interface ProviderRegistry {
   getActive(env: Bindings, service: ProviderService): Promise<ProviderConfig | null>;
   getAll(env: Bindings, service?: ProviderService): Promise<ProviderConfig[]>;
-  getAssistantProvider(
-    env: Bindings,
-  ): Promise<{
+  getAssistantProvider(env: Bindings): Promise<{
     provider: AssistantProvider;
     config: ProviderConfig | null;
     credential: ResolvedCredential | null;
   }>;
-  getVoiceProviders(
-    env: Bindings,
-  ): Promise<{
+  getVoiceProviders(env: Bindings): Promise<{
     providers: AssistantVoiceProviders;
     sttConfig: ProviderConfig | null;
     ttsConfig: ProviderConfig | null;
@@ -179,9 +175,7 @@ export function createProviderRegistry(
       return resolveCredential(env, config);
     },
 
-    async getAssistantProvider(
-      env: Bindings,
-    ): Promise<{
+    async getAssistantProvider(env: Bindings): Promise<{
       provider: AssistantProvider;
       config: ProviderConfig | null;
       credential: ResolvedCredential | null;

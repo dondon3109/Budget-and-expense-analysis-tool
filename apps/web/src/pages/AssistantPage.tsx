@@ -523,6 +523,10 @@ export function AssistantPage() {
                     workspace={workspace}
                     disabled={sendMutation.isPending}
                     reviewRequired={__ASSISTANT_VOICE_REVIEW_REQUIRED__}
+                    onPartialTranscript={(partial) => {
+                      setDraft(partial);
+                      setSendError(undefined);
+                    }}
                     onTranscript={(transcript, voiceOptions) => {
                       voiceTurnRef.current = {
                         replyMode: voiceOptions.replyMode,

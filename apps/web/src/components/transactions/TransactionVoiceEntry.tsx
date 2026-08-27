@@ -5,6 +5,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { extractVoiceTransaction, getReceiptPreferences, grantReceiptConsent } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
+import {
+  startLiveTranscriptionSession,
+  type LiveTranscriptionSession,
+} from "../../lib/voiceStream";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 
 const MAX_RECORDING_MS = 60_000;
@@ -39,9 +43,11 @@ export function TransactionVoiceEntry({
   const elapsedTimerRef = useRef<number | undefined>(undefined);
   const mountedRef = useRef(true);
   const [status, setStatus] = useState<RecorderStatus>("idle");
+  const [liveTranscript, setLiveTranscript] = useState<string>("");
   const [message, setMessage] = useState<string>();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [showConsent, setShowConsent] = useState(false);
+  const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
 
   const preferencesQuery = useQuery({
     queryKey: queryKeys.receiptPreferences(workspace),
@@ -58,6 +64,10 @@ export function TransactionVoiceEntry({
   function clearRecordingResources() {
     window.clearTimeout(stopTimerRef.current);
     window.clearInterval(elapsedTimerRef.current);
+    if (liveSessionRef.current) {
+      liveSessionRef.current.stop();
+      liveSessionRef.current = null;
+    }
     stopTimerRef.current = undefined;
     elapsedTimerRef.current = undefined;
     setElapsedSeconds(0);
@@ -130,6 +140,24 @@ export function TransactionVoiceEntry({
       recorder.start(250);
       setStatus("recording");
       setElapsedSeconds(0);
+      setLiveTranscript("");
+
+      void startLiveTranscriptionSession(workspace, activeStream, {
+        onPartial: (partial) => {
+          if (!mountedRef.current) return;
+          setLiveTranscript(partial);
+        },
+        onFinal: (final) => {
+          if (!mountedRef.current) return;
+          setLiveTranscript(final);
+        },
+        onError: () => {},
+      })
+        .then((session) => {
+          liveSessionRef.current = session;
+        })
+        .catch(() => {});
+
       elapsedTimerRef.current = window.setInterval(() => {
         setElapsedSeconds((seconds) => seconds + 1);
       }, 1000);
@@ -248,9 +276,9 @@ export function TransactionVoiceEntry({
       >
         {recording ? <Square size={16} /> : <Mic size={16} />} {label}
       </button>
-      {message && (
+      {(liveTranscript || message) && (
         <small className="transaction-voice-message" role="alert">
-          {message}
+          {recording && liveTranscript ? `“${liveTranscript}”` : message}
         </small>
       )}
       {showConsent && (

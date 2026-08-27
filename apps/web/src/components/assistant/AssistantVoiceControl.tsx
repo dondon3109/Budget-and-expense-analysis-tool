@@ -12,6 +12,10 @@ import {
   grantAssistantVoiceConsent,
   transcribeAssistantVoice,
 } from "../../lib/api";
+import {
+  startLiveTranscriptionSession,
+  type LiveTranscriptionSession,
+} from "../../lib/voiceStream";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 
 const MAX_RECORDING_MS = 60_000;
@@ -64,6 +68,7 @@ interface AssistantVoiceControlProps {
   disabled: boolean;
   reviewRequired: boolean;
   onTranscript: (text: string, options: AssistantVoiceTranscriptOptions) => void;
+  onPartialTranscript?: (text: string) => void;
 }
 
 function storageKey(userId: string): string {
@@ -99,10 +104,14 @@ function readStoredOptions(userId: string): StoredVoiceOptions | undefined {
       (options.submissionMode === "review" || options.submissionMode === "automatic") &&
       (options.replyMode === "spoken" || options.replyMode === "text")
     ) {
-      const speechVoice = SPEECH_VOICES.some((voice) => voice.id === options.speechVoice)
-        ? (options.speechVoice as AssistantSpeechVoice)
-        : "default";
-      return { ...options, speechVoice } as StoredVoiceOptions;
+      return {
+        submissionMode: options.submissionMode,
+        replyMode: options.replyMode,
+        speechVoice:
+          options.speechVoice && SPEECH_VOICES.some((voice) => voice.id === options.speechVoice)
+            ? options.speechVoice
+            : "default",
+      };
     }
   } catch {
     // Storage may be unavailable in hardened browser modes; session defaults still work.
@@ -119,10 +128,8 @@ function saveStoredOptions(userId: string, options: StoredVoiceOptions): void {
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof DOMException && error.name === "NotAllowedError") {
-    return "Microphone access was blocked. Allow it in your browser settings and try again.";
-  }
-  return error instanceof Error ? error.message : "Voice mode could not start.";
+  if (error instanceof Error && error.message.trim().length > 0) return error.message;
+  return "The voice recording could not be processed.";
 }
 
 function formatElapsed(seconds: number): string {
@@ -136,6 +143,7 @@ export function AssistantVoiceControl({
   disabled,
   reviewRequired,
   onTranscript,
+  onPartialTranscript,
 }: AssistantVoiceControlProps) {
   const recorderRef = useRef<MediaRecorder | undefined>(undefined);
   const streamRef = useRef<MediaStream | undefined>(undefined);
@@ -143,6 +151,8 @@ export function AssistantVoiceControl({
   const activityTimerRef = useRef<number | undefined>(undefined);
   const elapsedTimerRef = useRef<number | undefined>(undefined);
   const audioContextRef = useRef<AudioContext | undefined>(undefined);
+  const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
+  const liveTranscriptRef = useRef<string>("");
   const stopReasonRef = useRef<StopReason>("manual");
   const mountedRef = useRef(true);
   const chunksRef = useRef<Blob[]>([]);
@@ -156,6 +166,7 @@ export function AssistantVoiceControl({
   const [showNotice, setShowNotice] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [status, setStatus] = useState<"idle" | "recording" | "transcribing">("idle");
+  const [liveTranscript, setLiveTranscript] = useState<string>("");
   const [message, setMessage] = useState<string>();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [previewing, setPreviewing] = useState(false);
@@ -187,6 +198,10 @@ export function AssistantVoiceControl({
     window.clearInterval(elapsedTimerRef.current);
     elapsedTimerRef.current = undefined;
     setElapsedSeconds(0);
+    if (liveSessionRef.current) {
+      liveSessionRef.current.stop();
+      liveSessionRef.current = null;
+    }
     const audioContext = audioContextRef.current;
     audioContextRef.current = undefined;
     if (audioContext && audioContext.state !== "closed") void audioContext.close();
@@ -396,6 +411,26 @@ export function AssistantVoiceControl({
           setMessage("I didn’t hear anything. Tap the microphone and try again.");
           return;
         }
+
+        // If live stream produced a transcript, use it directly!
+        const liveText = liveTranscriptRef.current.trim();
+        if (liveText) {
+          const transcriptOptions =
+            preferences?.speechAvailable === false
+              ? { ...options, replyMode: "text" as const }
+              : options;
+          onTranscript(liveText, transcriptOptions);
+          setMessage(
+            transcriptOptions.submissionMode === "review"
+              ? "Transcript ready — review or edit it, then press Send."
+              : "Transcript ready — sending now.",
+          );
+          setStatus("idle");
+          setLiveTranscript("");
+          return;
+        }
+
+        // Fall back to batch audio transcription
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
         if (blob.size) void transcribe(blob);
         else {
@@ -406,6 +441,34 @@ export function AssistantVoiceControl({
       recorder.start(250);
       setStatus("recording");
       setElapsedSeconds(0);
+      liveTranscriptRef.current = "";
+      setLiveTranscript("");
+
+      // Attempt live streaming session concurrently (Option A: Gemini Live API)
+      void startLiveTranscriptionSession(workspace, activeStream, {
+        onPartial: (partial) => {
+          if (!mountedRef.current) return;
+          liveTranscriptRef.current = partial;
+          setLiveTranscript(partial);
+          onPartialTranscript?.(partial);
+        },
+        onFinal: (final) => {
+          if (!mountedRef.current) return;
+          liveTranscriptRef.current = final;
+          setLiveTranscript(final);
+          onPartialTranscript?.(final);
+        },
+        onError: () => {
+          // Graceful fallback to batch MediaRecorder
+        },
+      })
+        .then((session) => {
+          liveSessionRef.current = session;
+        })
+        .catch(() => {
+          // Graceful fallback to batch MediaRecorder
+        });
+
       window.clearInterval(elapsedTimerRef.current);
       elapsedTimerRef.current = window.setInterval(() => {
         setElapsedSeconds((seconds) => seconds + 1);
@@ -428,6 +491,10 @@ export function AssistantVoiceControl({
 
   function stopRecording(reason: StopReason = "manual") {
     stopReasonRef.current = reason;
+    if (liveSessionRef.current) {
+      liveSessionRef.current.stop();
+      liveSessionRef.current = null;
+    }
     clearRecordingResources();
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
   }
@@ -722,7 +789,9 @@ export function AssistantVoiceControl({
       {!disabled && !showNotice && (message || status !== "idle") && (
         <span className="assistant-voice-status" role="status" aria-live="polite">
           {status === "recording"
-            ? `Listening · ${formatElapsed(elapsedSeconds)} — I’ll stop after you finish speaking.`
+            ? liveTranscript
+              ? `“${liveTranscript}”`
+              : `Listening · ${formatElapsed(elapsedSeconds)} — I’ll stop after you finish speaking.`
             : status === "transcribing"
               ? "Transcribing…"
               : message}

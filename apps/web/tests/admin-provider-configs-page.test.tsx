@@ -11,6 +11,7 @@ const apiMocks = vi.hoisted(() => ({
   activateProviderConfig: vi.fn(),
   createProviderConfig: vi.fn(),
   createProviderCredential: vi.fn(),
+  deleteProviderConfig: vi.fn(),
   deleteProviderCredential: vi.fn(),
   getProviderConfigAudits: vi.fn(),
   getProviderConfigs: vi.fn(),
@@ -67,6 +68,20 @@ describe("AdminProviderConfigsPage", () => {
           enabled: true,
           priority: 1,
           isActive: true,
+          createdAt: "2026-08-27T00:00:00Z",
+          updatedAt: "2026-08-27T00:00:00Z",
+          updatedBy: null,
+        },
+        {
+          id: "cfg-google-inactive",
+          service: "stt",
+          provider: "google",
+          model: "gemini-3.5-transcribe-live",
+          displayName: "Google Gemini 3.5 Transcribe Live",
+          credentialId: "cred-google-1",
+          enabled: true,
+          priority: 2,
+          isActive: false,
           createdAt: "2026-08-27T00:00:00Z",
           updatedAt: "2026-08-27T00:00:00Z",
           updatedBy: null,
@@ -218,6 +233,130 @@ describe("AdminProviderConfigsPage", () => {
       expect.objectContaining({
         displayName: "Cloudflare Whisper Turbo",
       }),
+    );
+  });
+
+  it("allows entering a new API key directly when adding a configuration", async () => {
+    renderPage();
+    await screen.findByText("Voice Input · STT");
+
+    // Click "Add configuration" in STT section
+    const addButtons = screen.getAllByRole("button", { name: /Add configuration/i });
+    fireEvent.click(addButtons[1]!);
+
+    expect(await screen.findByText("Add stt configuration")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+
+    // Select provider = google
+    const providerSelect = within(dialog).getByLabelText(/^Provider/i);
+    fireEvent.change(providerSelect, { target: { value: "google" } });
+
+    // Click "Enter API key" tab button
+    const enterKeyTab = within(dialog).getByRole("button", { name: /Enter API key/i });
+    fireEvent.click(enterKeyTab);
+
+    // Fill in Key Name and API Key / Secret
+    const keyNameInput = within(dialog).getByLabelText(/Key Name \/ Label/i);
+    fireEvent.change(keyNameInput, { target: { value: "Google Realtime Key" } });
+
+    const secretInput = within(dialog).getByPlaceholderText(/AIzaSy\.\.\./i);
+    fireEvent.change(secretInput, { target: { value: "AIzaSySecretVoiceKey12345" } });
+
+    apiMocks.createProviderCredential.mockResolvedValue({
+      id: "cred-google-new",
+      provider: "google",
+      name: "Google Realtime Key",
+      apiKeyLast4: "2345",
+      usedBy: [],
+      createdAt: "2026-08-27T00:00:00Z",
+      updatedAt: "2026-08-27T00:00:00Z",
+      updatedBy: "admin-1",
+    });
+
+    apiMocks.createProviderConfig.mockResolvedValue({
+      id: "cfg-google-stream",
+      service: "stt",
+      provider: "google",
+      model: "gemini-3.5-transcribe-live",
+      displayName: "google / gemini-3.5-transcribe-live",
+      credentialId: "cred-google-new",
+      enabled: true,
+      priority: 3,
+      isActive: false,
+      createdAt: "2026-08-27T00:00:00Z",
+      updatedAt: "2026-08-27T00:00:00Z",
+      updatedBy: "admin-1",
+    });
+
+    const submitBtn = within(dialog).getByRole("button", { name: "Add configuration" });
+    expect(submitBtn).not.toBeDisabled();
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(apiMocks.createProviderCredential).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        provider: "google",
+        name: "Google Realtime Key",
+        secret: "AIzaSySecretVoiceKey12345",
+      }),
+    );
+
+    expect(apiMocks.createProviderConfig).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        service: "stt",
+        provider: "google",
+        credentialId: "cred-google-new",
+      }),
+    );
+  });
+
+  it("allows deleting an inactive configuration and protects active configuration", async () => {
+    renderPage();
+    await screen.findByText("Cloudflare Whisper");
+    await screen.findByText("Google Gemini 3.5 Transcribe Live");
+
+    const deleteButtons = screen.getAllByRole("button", { name: /^Delete$/i });
+    // cfg-whisper is active (first config row delete button should be disabled)
+    // Note: credentials table also has a delete button for cred-google-1
+    const configDeleteButtons = screen.getAllByRole("button", {
+      name: /Delete configuration/i,
+    });
+    expect(configDeleteButtons.length).toBe(2);
+
+    // Active configuration delete button must be disabled
+    expect(configDeleteButtons[0]).toBeDisabled();
+    expect(configDeleteButtons[0]).toHaveAttribute(
+      "title",
+      "Cannot delete active configuration. Activate another one first.",
+    );
+
+    // Inactive configuration delete button must be enabled
+    expect(configDeleteButtons[1]).not.toBeDisabled();
+    fireEvent.click(configDeleteButtons[1]!);
+
+    // Confirmation dialog should open
+    expect(
+      await screen.findByRole("heading", { name: "Delete configuration" }),
+    ).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/Google Gemini 3.5 Transcribe Live/i)).toBeInTheDocument();
+
+    apiMocks.deleteProviderConfig.mockResolvedValue({
+      id: "cfg-google-inactive",
+      displayName: "Google Gemini 3.5 Transcribe Live",
+    });
+
+    const confirmDeleteBtn = within(dialog).getByRole("button", { name: "Delete configuration" });
+    await act(async () => {
+      fireEvent.click(confirmDeleteBtn);
+    });
+
+    expect(apiMocks.deleteProviderConfig).toHaveBeenCalledWith(
+      expect.anything(),
+      "cfg-google-inactive",
     );
   });
 });

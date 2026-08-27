@@ -83,6 +83,7 @@ export interface ProviderConfigRepository {
     orderedIds: string[],
     actorId: string,
   ): Promise<ProviderConfig[]>;
+  delete(env: Bindings, id: string, actorId: string): Promise<ProviderConfig>;
   listAudits(env: Bindings, service?: ProviderService, limit?: number): Promise<ProviderConfigAuditRow[]>;
 }
 
@@ -370,6 +371,24 @@ export const providerConfigRepository: ProviderConfigRepository = {
       changedBy: actorId,
     });
     return reordered;
+  },
+
+  async delete(env, id, actorId) {
+    const existing = await this.getById(env, id);
+    if (!existing) throw new HttpError(404, "provider_config_not_found", "Provider configuration was not found.");
+    if (existing.isActive) {
+      throw new HttpError(409, "cannot_delete_active_config", "Activate a different configuration before deleting this active one.");
+    }
+    await env.DB.prepare(`DELETE FROM provider_configs WHERE id = ?`).bind(id).run();
+    await insertAudit(env, {
+      configId: id,
+      service: existing.service,
+      action: "delete",
+      oldValue: existing,
+      newValue: null,
+      changedBy: actorId,
+    });
+    return existing;
   },
 
   async listAudits(env, service, limit = 50) {
