@@ -22,8 +22,8 @@ function timeoutMs(env: Bindings): number {
     : DEFAULT_TIMEOUT_MS;
 }
 
-async function fishFetch(env: Bindings, path: string, init: RequestInit): Promise<Response> {
-  const apiKey = env.FISH_AUDIO_API_KEY?.trim();
+async function fishFetch(env: Bindings, path: string, init: RequestInit, apiKeyOverride?: string): Promise<Response> {
+  const apiKey = apiKeyOverride?.trim() || env.FISH_AUDIO_API_KEY?.trim();
   if (!apiKey) throw new AssistantVoiceProviderError("fish_audio", "configuration");
 
   const controller = new AbortController();
@@ -53,7 +53,7 @@ async function fishFetch(env: Bindings, path: string, init: RequestInit): Promis
   }
 }
 
-function createFishProvider(modelOverride?: string): AssistantVoiceSpeechProvider {
+function createFishProvider(modelOverride?: string, apiKeyOverride?: string): AssistantVoiceSpeechProvider {
   return {
     async synthesize(env, text, voice) {
       const model = modelOverride?.trim() || env.FISH_AUDIO_TTS_MODEL?.trim() || FREE_TTS_MODEL;
@@ -67,25 +67,30 @@ function createFishProvider(modelOverride?: string): AssistantVoiceSpeechProvide
         throw new AssistantVoiceProviderError("fish_audio", "configuration");
       }
       const voiceReferenceId = referenceId(voice);
-      return fishFetch(env, "/v1/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", model },
-        body: JSON.stringify({
-          text,
-          format: "mp3",
-          latency: "balanced",
-          normalize: true,
-          ...(voiceReferenceId ? { reference_id: voiceReferenceId } : {}),
-        }),
-      });
+      return fishFetch(
+        env,
+        "/v1/tts",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", model },
+          body: JSON.stringify({
+            text,
+            format: "mp3",
+            latency: "balanced",
+            normalize: true,
+            ...(voiceReferenceId ? { reference_id: voiceReferenceId } : {}),
+          }),
+        },
+        apiKeyOverride,
+      );
     },
   };
 }
 
 export const fishAudioProvider = createFishProvider();
 
-export function createFishAudioProvider(model?: string): AssistantVoiceSpeechProvider {
-  return createFishProvider(model);
+export function createFishAudioProvider(model?: string, apiKey?: string): AssistantVoiceSpeechProvider {
+  return createFishProvider(model, apiKey);
 }
 
 export { FREE_TTS_MODEL };

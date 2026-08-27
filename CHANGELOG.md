@@ -4,6 +4,14 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Separated AI/voice provider configuration from credentials: new `provider_credentials` table (`apps/api/src/db/provider-credentials.ts:1`) with `AES-256-GCM` encryption (`apps/api/src/provider-credentials/crypto.ts:1`, master key `PROVIDER_CREDENTIAL_ENCRYPTION_KEY`), reusable named credentials (`Name` + `••••last4`), per-provider reuse, manual global `Activate` with immediate `providerRegistry.invalidate()` (`apps/api/src/provider-registry.ts:303`) and provider-match validation (`apps/api/src/routes/admin-provider-configs.ts:27`).
+- Added admin UI for credentials at `/app/admin/provider-configs` (`apps/web/src/pages/AdminProviderConfigsPage.tsx:1`): create/rotate/test/delete with `••••last4` only, `Used by` chips, `Display name` + `Credential` on configs, `Credential/Secret` terminology, `STT Bridge` health via `STT_BRIDGE_URL` for `google/chirp_3` (`packages/shared/src/types.ts:616`).
+- Added Google Chirp 3 STT provider (`stt.google chirp_3`) dedicated to `Speech-to-Text V2` (`apps/api/src/assistant/google-stt.ts:1`); REST kept only as health-check, not realtime. Gemini Live kept separate future architecture.
+- Added Cloud Run bridge spike for realtime STT (`apps/stt-bridge/server.js:1`, `ws` + `@google-cloud/speech@7.1.0` excluded from workspace `pnpm-workspace.yaml:3`) — `WebSocket` → `gRPC` `StreamingRecognize` `isFinal:false` partials with latency instrumentation (`t_mic_start`→`t_stream_open`→`t_first_partial`→`t_final`), auth stays in Cloud Run via `ADC` (`docs/realtime-stt-bridge.md:1`), no secret forwarded to browser/logs/PostHog/audit/D1. Worker proxy `GET /api/app/assistant/voice/stream` (`apps/api/src/routes/voice-stream.ts:1`).
+- Added `STT_BRIDGE_URL` var (`apps/api/src/types.ts:40`, `wrangler.deploy.example.jsonc:40`) and `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` dev var (`apps/api/.dev.vars.example:3`).
+
 ### Fixed
 
 - Billing now clears a `PayPal` `APPROVAL_PENDING` checkout immediately when the buyer cancels via `?checkout=cancelled` instead of remaining stuck on `Confirming your payment` until the 15-minute expiry. `POST /api/app/billing/reconcile` accepts `abortPendingCheckout` and supersedes the pending checkout without granting Pro.

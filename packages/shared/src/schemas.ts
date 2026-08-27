@@ -1240,6 +1240,8 @@ export const providerConfigSchema = z
     service: providerServiceSchema,
     provider: z.string().min(1).max(80),
     model: z.string().min(1).max(200),
+    displayName: z.string().trim().min(2).max(40),
+    credentialId: z.string().uuid().nullable(),
     enabled: z.boolean(),
     priority: z.number().int().min(1).max(100),
     isActive: z.boolean(),
@@ -1248,6 +1250,33 @@ export const providerConfigSchema = z
     updatedBy: z.string().uuid().nullable(),
   })
   .strict();
+
+export const providerCredentialSchema = z
+  .object({
+    id: z.string().uuid(),
+    provider: z.string().min(1).max(80),
+    name: z.string().trim().min(2).max(40),
+    apiKeyLast4: z.string().length(4),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+    updatedBy: z.string().uuid().nullable(),
+  })
+  .strict();
+
+export const providerCredentialWithUsageSchema = providerCredentialSchema.extend({
+  usedBy: z.array(
+    z
+      .object({
+        configId: z.string().uuid(),
+        service: providerServiceSchema,
+        provider: z.string().min(1).max(80),
+        model: z.string().min(1).max(200),
+        displayName: z.string().trim().min(2).max(40),
+        isActive: z.boolean(),
+      })
+      .strict(),
+  ),
+});
 
 export const providerConfigAuditsResponseSchema = z.array(
   z
@@ -1269,6 +1298,8 @@ export const providerConfigCreateSchema = z
     service: providerServiceSchema,
     provider: z.string().min(1).max(80),
     model: z.string().min(1).max(200),
+    displayName: z.string().trim().min(2).max(40).optional(),
+    credentialId: z.string().uuid().nullable().optional(),
     enabled: z.boolean().optional().default(true),
     priority: z.number().int().min(1).max(100).optional(),
   })
@@ -1278,8 +1309,26 @@ export const providerConfigUpdateSchema = z
   .object({
     provider: z.string().min(1).max(80).optional(),
     model: z.string().min(1).max(200).optional(),
+    displayName: z.string().trim().min(2).max(40).optional(),
+    credentialId: z.string().uuid().nullable().optional(),
     enabled: z.boolean().optional(),
     priority: z.number().int().min(1).max(100).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
+
+export const providerCredentialCreateSchema = z
+  .object({
+    provider: z.string().min(1).max(80),
+    name: z.string().trim().min(2).max(40),
+    secret: z.string().trim().min(8).max(8192),
+  })
+  .strict();
+
+export const providerCredentialUpdateSchema = z
+  .object({
+    name: z.string().trim().min(2).max(40).optional(),
+    secret: z.string().trim().min(8).max(8192).optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");
@@ -1298,3 +1347,5 @@ export const providerConfigReorderSchema = z
 export type ProviderConfigCreateInput = z.infer<typeof providerConfigCreateSchema>;
 export type ProviderConfigUpdateInput = z.infer<typeof providerConfigUpdateSchema>;
 export type ProviderConfigReorderInput = z.infer<typeof providerConfigReorderSchema>;
+export type ProviderCredentialCreateInput = z.infer<typeof providerCredentialCreateSchema>;
+export type ProviderCredentialUpdateInput = z.infer<typeof providerCredentialUpdateSchema>;

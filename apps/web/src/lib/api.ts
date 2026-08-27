@@ -62,6 +62,8 @@ import type {
   PublicCustomerReview,
   ProviderConfig,
   ProviderConfigAudit,
+  ProviderCredential,
+  ProviderCredentialWithUsage,
   ProviderService,
   SubscriptionInput,
   SubscriptionMonthSummary,
@@ -692,13 +694,27 @@ export function getProviderConfigAudits(
 
 export function getProviderHealth(
   workspace: AuthenticatedWorkspace,
-): Promise<{ health: Array<{ service: ProviderService; provider: string; model: string; hasCredential: boolean; credentialName: string | null; details: string }> }> {
+): Promise<{
+  health: Array<{
+    service: ProviderService;
+    provider: string;
+    model: string;
+    displayName?: string;
+    configId?: string | null;
+    hasCredential: boolean;
+    credentialName: string | null;
+    credentialId?: string | null;
+    apiKeyLast4?: string | null;
+    credentialSource?: "db" | "legacy" | "binding" | "none";
+    details: string;
+  }>;
+}> {
   return requestJson(workspace, "/api/app/admin/provider-configs/health");
 }
 
 export function createProviderConfig(
   workspace: AuthenticatedWorkspace,
-  input: { service: ProviderService; provider: string; model: string; enabled?: boolean },
+  input: { service: ProviderService; provider: string; model: string; displayName: string; credentialId?: string | null; enabled?: boolean },
 ): Promise<ProviderConfig> {
   return requestJson(workspace, "/api/app/admin/provider-configs", {
     method: "POST",
@@ -709,7 +725,7 @@ export function createProviderConfig(
 export function updateProviderConfig(
   workspace: AuthenticatedWorkspace,
   id: string,
-  patch: Partial<Pick<ProviderConfig, "provider" | "model" | "enabled" | "priority">>,
+  patch: Partial<Pick<ProviderConfig, "provider" | "model" | "displayName" | "credentialId" | "enabled" | "priority">>,
 ): Promise<ProviderConfig> {
   return requestJson(workspace, `/api/app/admin/provider-configs/${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -734,6 +750,49 @@ export function reorderProviderConfigs(
   return requestJson(workspace, "/api/app/admin/provider-configs/reorder", {
     method: "POST",
     body: JSON.stringify(args),
+  });
+}
+
+export function getProviderCredentials(
+  workspace: AuthenticatedWorkspace,
+): Promise<{ credentials: ProviderCredentialWithUsage[] }> {
+  return requestJson(workspace, "/api/app/admin/provider-credentials");
+}
+
+export function createProviderCredential(
+  workspace: AuthenticatedWorkspace,
+  input: { provider: string; name: string; secret: string },
+): Promise<ProviderCredentialWithUsage> {
+  return requestJson(workspace, "/api/app/admin/provider-credentials", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateProviderCredential(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+  patch: { name?: string; secret?: string },
+): Promise<ProviderCredentialWithUsage> {
+  return requestJson(workspace, `/api/app/admin/provider-credentials/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteProviderCredential(workspace: AuthenticatedWorkspace, id: string): Promise<{ deleted: true }> {
+  return requestJson(workspace, `/api/app/admin/provider-credentials/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function testProviderCredential(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+): Promise<{ ok: true; provider: string; last4: string }> {
+  return requestJson(workspace, `/api/app/admin/provider-credentials/${encodeURIComponent(id)}/test`, {
+    method: "POST",
+    body: JSON.stringify({}),
   });
 }
 

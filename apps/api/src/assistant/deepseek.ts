@@ -72,10 +72,11 @@ export class DeepSeekProvider implements AssistantProvider {
   constructor(
     private readonly fetcher: typeof fetch = fetch,
     private readonly modelOverride?: string,
+    private readonly apiKeyOverride?: string,
   ) {}
 
   async complete(env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion> {
-    const apiKey = env.DEEPSEEK_API_KEY?.trim();
+    const apiKey = this.apiKeyOverride?.trim() || env.DEEPSEEK_API_KEY?.trim();
     if (!apiKey) {
       throw new DeepSeekError(
         "configuration",
@@ -194,6 +195,10 @@ export class DeepSeekProvider implements AssistantProvider {
 
 export const deepSeekProvider = new DeepSeekProvider();
 
-export function createDeepSeekProvider(model?: string, fetcher: typeof fetch = fetch): AssistantProvider {
-  return new DeepSeekProvider(fetcher, model);
+export function createDeepSeekProvider(
+  model?: string,
+  fetcher: typeof fetch = fetch,
+  apiKey?: string,
+): AssistantProvider {
+  return new DeepSeekProvider(fetcher, model, apiKey);
 }

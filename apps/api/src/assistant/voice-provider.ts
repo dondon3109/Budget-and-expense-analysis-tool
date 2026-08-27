@@ -2,7 +2,7 @@ import type { AssistantSpeechVoice } from "@zoption/shared";
 
 import type { Bindings } from "../types";
 
-export type AssistantVoiceProviderName = "cloudflare_workers_ai" | "fish_audio";
+export type AssistantVoiceProviderName = "cloudflare_workers_ai" | "fish_audio" | "google";
 export type AssistantVoiceProviderErrorKind =
   "configuration" | "timeout" | "rate_limit" | "unavailable" | "invalid_response";
 

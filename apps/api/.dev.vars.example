@@ -14,6 +14,11 @@ FISH_AUDIO_API_KEY=
 # token is supplied; never expose this token through VITE_* browser variables.
 POSTHOG_PROJECT_TOKEN=
 
+# Encrypted provider credential storage. Generate with: openssl rand -base64 32
+# Must match the Worker secret PROVIDER_CREDENTIAL_ENCRYPTION_KEY in preview/production.
+# The key never lives in D1; only ciphertext does.
+PROVIDER_CREDENTIAL_ENCRYPTION_KEY=
+
 # PayPal is the active subscription provider. Keep the client secret and webhook ID
 # in this ignored file or Worker secrets; plan IDs and environment are non-secret.
 PAYPAL_ENVIRONMENT=sandbox

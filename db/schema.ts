@@ -1000,6 +1000,30 @@ export const customerReviews = sqliteTable(
   ],
 );
 
+export const providerCredentials = sqliteTable(
+  "provider_credentials",
+  {
+    id: text("id").primaryKey(),
+    provider: text("provider").notNull(),
+    name: text("name").notNull(),
+    encryptedSecret: text("encrypted_secret").notNull(),
+    apiKeyLast4: text("api_key_last4").notNull(),
+    updatedBy: text("updated_by"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("provider_credentials_provider_name_unique").on(table.provider, table.name),
+    index("provider_credentials_provider_idx").on(table.provider),
+    index("provider_credentials_updated_at_idx").on(table.updatedAt),
+    check(
+      "provider_credentials_provider_check",
+      sql`${table.provider} IN ('deepseek', 'google', 'cloudflare_workers_ai', 'fish_audio')`,
+    ),
+    check("provider_credentials_name_len_check", sql`length(${table.name}) >= 2 AND length(${table.name}) <= 40`),
+    check("provider_credentials_last4_len_check", sql`length(${table.apiKeyLast4}) = 4`),
+  ],
+);
+
 export const providerConfigs = sqliteTable(
   "provider_configs",
   {
@@ -1007,6 +1031,8 @@ export const providerConfigs = sqliteTable(
     service: text("service", { enum: ["assistant", "stt", "tts"] }).notNull(),
     provider: text("provider").notNull(),
     model: text("model").notNull(),
+    displayName: text("display_name").notNull(),
+    credentialId: text("credential_id").references(() => providerCredentials.id, { onDelete: "restrict" }),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     priority: integer("priority").notNull(),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(false),
@@ -1023,6 +1049,7 @@ export const providerConfigs = sqliteTable(
       table.model,
     ),
     index("provider_configs_service_priority_idx").on(table.service, table.priority),
+    index("provider_configs_credential_idx").on(table.credentialId),
     check("provider_configs_priority_check", sql`${table.priority} >= 1 AND ${table.priority} <= 100`),
     check("provider_configs_service_check", sql`${table.service} IN ('assistant', 'stt', 'tts')`),
   ],

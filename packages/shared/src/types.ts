@@ -605,7 +605,7 @@ export type ProviderService = (typeof providerServices)[number];
 export const assistantProviders = ["deepseek"] as const;
 export type AssistantProviderName = (typeof assistantProviders)[number];
 
-export const sttProviders = ["cloudflare_workers_ai"] as const;
+export const sttProviders = ["cloudflare_workers_ai", "google"] as const;
 export type SttProviderName = (typeof sttProviders)[number];
 
 export const ttsProviders = ["fish_audio"] as const;
@@ -615,7 +615,10 @@ export type ProviderName = AssistantProviderName | SttProviderName | TtsProvider
 
 export const providerAllowlist: Record<ProviderService, Record<string, readonly string[]>> = {
   assistant: { deepseek: ["deepseek-v4-flash"] as const },
-  stt: { cloudflare_workers_ai: ["@cf/openai/whisper-large-v3-turbo"] as const },
+  stt: {
+    cloudflare_workers_ai: ["@cf/openai/whisper-large-v3-turbo"] as const,
+    google: ["chirp_3"] as const,
+  },
   tts: { fish_audio: ["s2.1-pro-free"] as const },
 } as const;
 
@@ -624,12 +627,35 @@ export interface ProviderConfig {
   service: ProviderService;
   provider: string;
   model: string;
+  displayName: string;
+  credentialId: string | null;
   enabled: boolean;
   priority: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
   updatedBy: string | null;
+}
+
+export interface ProviderCredential {
+  id: string;
+  provider: string;
+  name: string;
+  apiKeyLast4: string;
+  createdAt: string;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+
+export interface ProviderCredentialWithUsage extends ProviderCredential {
+  usedBy: Array<{
+    configId: string;
+    service: ProviderService;
+    provider: string;
+    model: string;
+    displayName: string;
+    isActive: boolean;
+  }>;
 }
 
 export interface ProviderConfigAudit {

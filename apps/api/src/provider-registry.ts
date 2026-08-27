@@ -4,11 +4,15 @@ import { providerAllowlist } from "@zoption/shared";
 import { createDeepSeekProvider } from "./assistant/deepseek";
 import { createCloudflareWhisperProvider } from "./assistant/cloudflare-whisper";
 import { createFishAudioProvider } from "./assistant/fish-audio";
+import { createGoogleSttProvider } from "./assistant/google-stt";
 import type { AssistantProvider } from "./assistant/provider";
 import type { AssistantVoiceProviders } from "./assistant/voice-provider";
 import type { Bindings } from "./types";
 import type { ProviderConfigRepository } from "./db/provider-configs";
 import { providerConfigRepository } from "./db/provider-configs";
+import type { ProviderCredentialRepository } from "./db/provider-credentials";
+import { providerCredentialRepository } from "./db/provider-credentials";
+import { decryptSecret } from "./provider-credentials/crypto";
 
 const CACHE_TTL_MS = 30_000;
 
@@ -18,23 +22,47 @@ export interface ProviderHealthStatus {
   service: ProviderService;
   provider: string;
   model: string;
+  displayName?: string;
+  configId?: string | null;
   hasCredential: boolean;
   credentialName: string | null;
+  credentialId?: string | null;
+  apiKeyLast4?: string | null;
+  credentialSource?: "db" | "legacy" | "binding" | "none";
   details: string;
+}
+
+const CREDENTIAL_EXPECTATION: Record<ProviderService, Record<string, boolean>> = {
+  assistant: { deepseek: true },
+  // google via Cloud Run bridge uses ADC (attached SA) — no admin credential forwarded at runtime; REST health check can use admin credential optionally
+  stt: { cloudflare_workers_ai: false, google: false },
+  tts: { fish_audio: true },
+};
+
+function expectsCredential(service: ProviderService, provider: string): boolean {
+  return CREDENTIAL_EXPECTATION[service]?.[provider] ?? true;
+}
+
+export interface ResolvedCredential {
+  secret: string | null;
+  last4: string | null;
+  source: "db" | "legacy" | "binding" | "none";
 }
 
 export interface ProviderRegistry {
   getActive(env: Bindings, service: ProviderService): Promise<ProviderConfig | null>;
   getAll(env: Bindings, service?: ProviderService): Promise<ProviderConfig[]>;
-  getAssistantProvider(env: Bindings): Promise<{ provider: AssistantProvider; config: ProviderConfig | null }>;
+  getAssistantProvider(env: Bindings): Promise<{ provider: AssistantProvider; config: ProviderConfig | null; credential: ResolvedCredential | null }>;
   getVoiceProviders(env: Bindings): Promise<{ providers: AssistantVoiceProviders; sttConfig: ProviderConfig | null; ttsConfig: ProviderConfig | null }>;
   getHealth(env: Bindings): Promise<ProviderHealthStatus[]>;
+  getDecryptedSecret(env: Bindings, config: ProviderConfig | null): Promise<ResolvedCredential>;
   invalidate(service?: ProviderService): void;
   validateAllowlist(service: ProviderService, provider: string, model: string): boolean;
 }
 
 export function createProviderRegistry(
   repository: ProviderConfigRepository = providerConfigRepository,
+  credentialRepository: ProviderCredentialRepository = providerCredentialRepository,
 ): ProviderRegistry {
   const cache = new Map<ProviderService, CacheEntry>();
 
@@ -45,6 +73,48 @@ export function createProviderRegistry(
     const models = (serviceMap as Record<string, readonly string[]>)[provider];
     if (!models) return false;
     return models.includes(model);
+  }
+
+  async function resolveCredential(env: Bindings, config: ProviderConfig | null): Promise<ResolvedCredential> {
+    if (!config) return { secret: null, last4: null, source: "none" };
+    // Cloudflare Workers AI binding has no secret
+    if (config.provider === "cloudflare_workers_ai") {
+      const hasBinding = Boolean(env.AI);
+      return { secret: null, last4: null, source: hasBinding ? "binding" : "none" };
+    }
+    // Try DB credential
+    if (config.credentialId) {
+      try {
+        const row = await credentialRepository.getEncryptedById(env, config.credentialId);
+        if (row?.encrypted_secret) {
+          const master = env.PROVIDER_CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "";
+          if (!master) {
+            return { secret: null, last4: row.api_key_last4 ?? null, source: "none" };
+          }
+          try {
+            const plain = await decryptSecret(row.encrypted_secret, master);
+            return { secret: plain, last4: row.api_key_last4, source: "db" };
+          } catch {
+            return { secret: null, last4: row.api_key_last4, source: "none" };
+          }
+        }
+      } catch {
+        // fall through to legacy
+      }
+    }
+    // Legacy env fallback for one release
+    if (expectsCredential(config.service, config.provider)) {
+      const legacyMap: Record<string, string | undefined> = {
+        deepseek: env.DEEPSEEK_API_KEY?.trim(),
+        fish_audio: env.FISH_AUDIO_API_KEY?.trim(),
+        google: (env as unknown as Record<string, string | undefined>)["GOOGLE_STT_API_KEY"],
+      };
+      const legacy = legacyMap[config.provider]?.trim();
+      if (legacy) {
+        return { secret: legacy, last4: legacy.slice(-4), source: "legacy" };
+      }
+    }
+    return { secret: null, last4: null, source: "none" };
   }
 
   return {
@@ -87,12 +157,17 @@ export function createProviderRegistry(
       return repository.list(env, service);
     },
 
-    async getAssistantProvider(env: Bindings): Promise<{ provider: AssistantProvider; config: ProviderConfig | null }> {
+    async getDecryptedSecret(env: Bindings, config: ProviderConfig | null): Promise<ResolvedCredential> {
+      return resolveCredential(env, config);
+    },
+
+    async getAssistantProvider(env: Bindings): Promise<{ provider: AssistantProvider; config: ProviderConfig | null; credential: ResolvedCredential | null }> {
       const cfg = await this.getActive(env, "assistant");
+      const cred = await resolveCredential(env, cfg);
       const model = cfg?.model;
-      // Only deepseek is currently allowlisted; future providers can be switched here.
-      const provider = createDeepSeekProvider(model);
-      return { provider, config: cfg };
+      // Inject decrypted secret when available; provider falls back to env otherwise
+      const provider = createDeepSeekProvider(model, undefined, cred.secret ?? undefined);
+      return { provider, config: cfg, credential: cred };
     },
 
     async getVoiceProviders(env: Bindings): Promise<{
@@ -104,10 +179,22 @@ export function createProviderRegistry(
         this.getActive(env, "stt"),
         this.getActive(env, "tts"),
       ]);
+      const [sttCred, ttsCred] = await Promise.all([
+        resolveCredential(env, sttCfg),
+        resolveCredential(env, ttsCfg),
+      ]);
+      // Cloudflare Whisper needs binding, Google needs secret; Fish needs secret
+      const transcription =
+        sttCfg?.provider === "google"
+          ? createGoogleSttProvider(sttCfg?.model, sttCred.secret ?? undefined)
+          : createCloudflareWhisperProvider(sttCfg?.model);
+      const speech = createFishAudioProvider(ttsCfg?.model, ttsCred.secret ?? undefined);
+      // Attach sttCred for callers that need it (future google)
+      void sttCred;
       return {
         providers: {
-          transcription: createCloudflareWhisperProvider(sttCfg?.model),
-          speech: createFishAudioProvider(ttsCfg?.model),
+          transcription,
+          speech,
         },
         sttConfig: sttCfg,
         ttsConfig: ttsCfg,
@@ -120,31 +207,96 @@ export function createProviderRegistry(
         this.getActive(env, "stt"),
         this.getActive(env, "tts"),
       ]);
+      const [assistantCred, sttCred, ttsCred] = await Promise.all([
+        resolveCredential(env, assistantCfg),
+        resolveCredential(env, sttCfg),
+        resolveCredential(env, ttsCfg),
+      ]);
+
+      const build = (
+        service: ProviderService,
+        cfg: ProviderConfig | null,
+        cred: ResolvedCredential,
+        fallbackProvider: string,
+        fallbackModel: string,
+      ): ProviderHealthStatus => {
+        if (!cfg) {
+          // No DB config — report fallback env/binding
+          if (service === "stt") {
+            const hasBinding = Boolean(env.AI);
+            return {
+              service,
+              provider: fallbackProvider,
+              model: fallbackModel,
+              configId: null,
+              displayName: undefined,
+              hasCredential: hasBinding,
+              credentialName: null,
+              credentialId: null,
+              apiKeyLast4: null,
+              credentialSource: hasBinding ? "binding" : "none",
+              details: hasBinding ? "Workers AI binding available" : "Workers AI binding missing — check wrangler.jsonc ai binding",
+            };
+          }
+          const legacyKey = service === "assistant" ? env.DEEPSEEK_API_KEY?.trim() : env.FISH_AUDIO_API_KEY?.trim();
+          const legacyName = service === "assistant" ? "DEEPSEEK_API_KEY" : "FISH_AUDIO_API_KEY";
+          return {
+            service,
+            provider: fallbackProvider,
+            model: fallbackModel,
+            configId: null,
+            displayName: undefined,
+            hasCredential: Boolean(legacyKey),
+            credentialName: legacyName,
+            credentialId: null,
+            apiKeyLast4: legacyKey ? legacyKey.slice(-4) : null,
+            credentialSource: legacyKey ? "legacy" : "none",
+            details: legacyKey ? "Secret configured via legacy Worker secret (fallback, migrate to credential)" : `Missing — create a credential in admin UI`,
+          };
+        }
+        const expects = expectsCredential(cfg.service, cfg.provider);
+        let hasCredential: boolean;
+        let details: string;
+        if (cfg.provider === "cloudflare_workers_ai") {
+          hasCredential = cred.source === "binding";
+          details = hasCredential ? "Workers AI binding available" : "Workers AI binding missing";
+        } else if (cfg.provider === "google") {
+          // Google via Cloud Run bridge uses ADC — bridge URL is the credential signal, not admin credential
+          const bridgeUrl = (env as unknown as Record<string, string | undefined>).STT_BRIDGE_URL?.trim() ?? (env as Bindings & { STT_BRIDGE_URL?: string }).STT_BRIDGE_URL?.trim();
+          hasCredential = Boolean(bridgeUrl);
+          details = hasCredential ? "Bridge configured (ADC in Cloud Run, chirp_3)" : "STT_BRIDGE_URL not configured — bridge required for chirp_3 streaming";
+        } else if (!expects) {
+          hasCredential = true;
+          details = "No credential required";
+        } else if (cred.source === "db") {
+          hasCredential = true;
+          details = `Credential ••••${cred.last4} (encrypted)`;
+        } else if (cred.source === "legacy") {
+          hasCredential = true;
+          details = `Credential ••••${cred.last4} via legacy Worker secret — migrate to UI credential`;
+        } else {
+          hasCredential = false;
+          details = "Missing credential — add a credential and link it to this configuration";
+        }
+        return {
+          service: cfg.service,
+          provider: cfg.provider,
+          model: cfg.model,
+          displayName: cfg.displayName,
+          configId: cfg.id,
+          hasCredential,
+          credentialName: cred.last4 ? `••••${cred.last4}` : null,
+          credentialId: cfg.credentialId,
+          apiKeyLast4: cred.last4,
+          credentialSource: cred.source === "db" ? "db" : cred.source === "legacy" ? "legacy" : cred.source === "binding" ? "binding" : "none",
+          details,
+        };
+      };
+
       return [
-        {
-          service: "assistant",
-          provider: assistantCfg?.provider ?? "deepseek",
-          model: assistantCfg?.model ?? "deepseek-v4-flash",
-          hasCredential: Boolean(env.DEEPSEEK_API_KEY?.trim()),
-          credentialName: "DEEPSEEK_API_KEY",
-          details: env.DEEPSEEK_API_KEY?.trim() ? "Secret configured in Cloudflare" : "Missing — add via wrangler secret put DEEPSEEK_API_KEY",
-        },
-        {
-          service: "stt",
-          provider: sttCfg?.provider ?? "cloudflare_workers_ai",
-          model: sttCfg?.model ?? "@cf/openai/whisper-large-v3-turbo",
-          hasCredential: Boolean(env.AI),
-          credentialName: null,
-          details: env.AI ? "Workers AI binding available" : "Workers AI binding missing — check wrangler.jsonc ai binding",
-        },
-        {
-          service: "tts",
-          provider: ttsCfg?.provider ?? "fish_audio",
-          model: ttsCfg?.model ?? "s2.1-pro-free",
-          hasCredential: Boolean(env.FISH_AUDIO_API_KEY?.trim()),
-          credentialName: "FISH_AUDIO_API_KEY",
-          details: env.FISH_AUDIO_API_KEY?.trim() ? "Secret configured in Cloudflare" : "Missing — add via wrangler secret put FISH_AUDIO_API_KEY",
-        },
+        build("assistant", assistantCfg, assistantCred, "deepseek", "deepseek-v4-flash"),
+        build("stt", sttCfg, sttCred, "cloudflare_workers_ai", "@cf/openai/whisper-large-v3-turbo"),
+        build("tts", ttsCfg, ttsCred, "fish_audio", "s2.1-pro-free"),
       ];
     },
 
@@ -164,6 +316,8 @@ function envFallback(service: ProviderService, env: Bindings): ProviderConfig | 
       service: "assistant",
       provider: "deepseek",
       model,
+      displayName: `deepseek / ${model}`,
+      credentialId: null,
       enabled: true,
       priority: 1,
       isActive: true,
@@ -178,6 +332,8 @@ function envFallback(service: ProviderService, env: Bindings): ProviderConfig | 
       service: "stt",
       provider: "cloudflare_workers_ai",
       model: "@cf/openai/whisper-large-v3-turbo",
+      displayName: "cloudflare_workers_ai / @cf/openai/whisper-large-v3-turbo",
+      credentialId: null,
       createdAt: nowIso,
       updatedAt: nowIso,
       updatedBy: null,
@@ -193,6 +349,8 @@ function envFallback(service: ProviderService, env: Bindings): ProviderConfig | 
       service: "tts",
       provider: "fish_audio",
       model,
+      displayName: `fish_audio / ${model}`,
+      credentialId: null,
       enabled: true,
       priority: 1,
       isActive: true,

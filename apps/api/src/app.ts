@@ -21,6 +21,8 @@ import { createAssistantVoiceService, type AssistantVoiceService } from "./assis
 import type { AssistantVoiceProviders } from "./assistant/voice-provider";
 import { providerRegistry } from "./provider-registry";
 import { createAdminProviderConfigRoutes } from "./routes/admin-provider-configs";
+import { createProviderCredentialRoutes } from "./routes/provider-credentials";
+import { createVoiceStreamRoutes } from "./routes/voice-stream";
 import { createAccountDeletionService, type AccountDeletionService } from "./account-deletion";
 import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from "./auth";
 import { accountRepository, type AccountRepository } from "./db/accounts";
@@ -703,7 +705,9 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/identity", createIdentityRoutes(platformAdminService));
   app.route("/api/app/admin", createPlatformAdminRoutes(platformAdminService));
   app.route("/api/app/admin/provider-configs", createAdminProviderConfigRoutes(platformAdminService));
+  app.route("/api/app/admin/provider-credentials", createProviderCredentialRoutes(platformAdminService));
   app.route("/api/app/assistant/voice", createAssistantVoiceRoutes(assistantVoiceService));
+  app.route("/api/app/assistant/voice", createVoiceStreamRoutes());
   app.route("/api/app/assistant", createAssistantRoutes(assistantService));
   app.route("/api/app/transactions", createTransactionRoutes(transactionStore));
   app.route("/api/app/reviews", createAuthenticatedCustomerReviewRoutes(customerReviews));

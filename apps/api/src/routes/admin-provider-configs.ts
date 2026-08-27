@@ -11,6 +11,8 @@ import { readJson } from "../request";
 import type { AppEnvironment } from "../types";
 import type { ProviderConfigRepository } from "../db/provider-configs";
 import { providerConfigRepository } from "../db/provider-configs";
+import type { ProviderCredentialRepository } from "../db/provider-credentials";
+import { providerCredentialRepository } from "../db/provider-credentials";
 import type { ProviderRegistry } from "../provider-registry";
 import { providerRegistry } from "../provider-registry";
 import type { PlatformAdminService } from "../platform-admin";
@@ -24,10 +26,22 @@ function parseService(value: string | undefined): ProviderService | undefined {
   return parsed.data;
 }
 
+const CREDENTIAL_REQUIRED: Record<ProviderService, Record<string, boolean>> = {
+  assistant: { deepseek: true },
+  // google via Cloud Run bridge uses ADC — no credential required at runtime
+  stt: { cloudflare_workers_ai: false, google: false },
+  tts: { fish_audio: true },
+};
+
+function expectsCredential(service: ProviderService, provider: string): boolean {
+  return CREDENTIAL_REQUIRED[service]?.[provider] ?? true;
+}
+
 export function createAdminProviderConfigRoutes(
   platformAdmins: PlatformAdminService,
   repository: ProviderConfigRepository = providerConfigRepository,
   registry: ProviderRegistry = providerRegistry,
+  credentialRepository: ProviderCredentialRepository = providerCredentialRepository,
 ) {
   const routes = new Hono<AppEnvironment>();
 
@@ -83,7 +97,23 @@ export function createAdminProviderConfigRoutes(
     if (!registry.validateAllowlist(body.data.service, body.data.provider, body.data.model)) {
       throw new HttpError(400, "invalid_provider_model", "Unsupported provider or model for this service.");
     }
-    const created = await repository.create(context.env, body.data, context.get("authUser").id);
+    const needsCred = expectsCredential(body.data.service, body.data.provider);
+    const credentialId = body.data.credentialId ?? null;
+    if (needsCred && !credentialId) {
+      throw new HttpError(400, "credential_required", "This provider requires a credential.");
+    }
+    // cloudflare binding never uses a credential; google via bridge uses ADC (optional credential for REST health-check only)
+    if (body.data.provider === "cloudflare_workers_ai" && credentialId) {
+      throw new HttpError(400, "credential_not_allowed", "This provider does not use a credential.");
+    }
+    if (credentialId) {
+      const cred = await credentialRepository.getById(context.env, credentialId);
+      if (!cred) throw new HttpError(404, "credential_not_found", "Credential was not found.");
+      if (cred.provider !== body.data.provider) {
+        throw new HttpError(400, "credential_provider_mismatch", "Credential provider must match configuration provider.");
+      }
+    }
+    const created = await repository.create(context.env, body.data as never, context.get("authUser").id);
     registry.invalidate(body.data.service);
     return context.json(created, 201);
   });
@@ -99,11 +129,27 @@ export function createAdminProviderConfigRoutes(
     }
     const nextProvider = body.data.provider ?? existing.provider;
     const nextModel = body.data.model ?? existing.model;
+    const nextCredentialId = body.data.credentialId !== undefined ? body.data.credentialId : existing.credentialId;
     // Validate allowlist if provider or model changes
     if ((body.data.provider !== undefined || body.data.model !== undefined) && !registry.validateAllowlist(existing.service, nextProvider, nextModel)) {
       throw new HttpError(400, "invalid_provider_model", "Unsupported provider or model for this service.");
     }
-    const updated = await repository.update(context.env, id, body.data, context.get("authUser").id);
+    // Validate credential ↔ provider consistency
+    const needsCred = expectsCredential(existing.service, nextProvider);
+    if (needsCred && !nextCredentialId) {
+      throw new HttpError(400, "credential_required", "This provider requires a credential.");
+    }
+    if (nextProvider === "cloudflare_workers_ai" && nextCredentialId) {
+      throw new HttpError(400, "credential_not_allowed", "This provider does not use a credential.");
+    }
+    if (nextCredentialId) {
+      const cred = await credentialRepository.getById(context.env, nextCredentialId);
+      if (!cred) throw new HttpError(404, "credential_not_found", "Credential was not found.");
+      if (cred.provider !== nextProvider) {
+        throw new HttpError(400, "credential_provider_mismatch", "Credential provider must match configuration provider.");
+      }
+    }
+    const updated = await repository.update(context.env, id, body.data as never, context.get("authUser").id);
     registry.invalidate(existing.service);
     return context.json(updated);
   });

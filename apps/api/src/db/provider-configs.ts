@@ -8,6 +8,8 @@ export type ProviderConfigRow = {
   service: ProviderService;
   provider: string;
   model: string;
+  display_name: string;
+  credential_id: string | null;
   enabled: number;
   priority: number;
   is_active: number;
@@ -33,6 +35,8 @@ function toProviderConfig(row: ProviderConfigRow): ProviderConfig {
     service: row.service,
     provider: row.provider,
     model: row.model,
+    displayName: row.display_name ?? `${row.provider} / ${row.model}`,
+    credentialId: row.credential_id ?? null,
     enabled: Boolean(row.enabled),
     priority: row.priority,
     isActive: Boolean(row.is_active),
@@ -48,13 +52,28 @@ export interface ProviderConfigRepository {
   getActive(env: Bindings, service: ProviderService): Promise<ProviderConfig | null>;
   create(
     env: Bindings,
-    input: { service: ProviderService; provider: string; model: string; enabled?: boolean; priority?: number },
+    input: {
+      service: ProviderService;
+      provider: string;
+      model: string;
+      displayName: string;
+      credentialId?: string | null;
+      enabled?: boolean;
+      priority?: number;
+    },
     actorId: string,
   ): Promise<ProviderConfig>;
   update(
     env: Bindings,
     id: string,
-    patch: { provider?: string; model?: string; enabled?: boolean; priority?: number },
+    patch: {
+      provider?: string;
+      model?: string;
+      displayName?: string;
+      credentialId?: string | null;
+      enabled?: boolean;
+      priority?: number;
+    },
     actorId: string,
   ): Promise<ProviderConfig>;
   setActive(env: Bindings, id: string, actorId: string): Promise<ProviderConfig>;
@@ -100,37 +119,76 @@ async function insertAudit(
 
 export const providerConfigRepository: ProviderConfigRepository = {
   async list(env, service) {
-    const query = service
-      ? env.DB.prepare(
-          `SELECT id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at
-           FROM provider_configs WHERE service = ? ORDER BY priority ASC, updated_at DESC`,
-        ).bind(service)
-      : env.DB.prepare(
-          `SELECT id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at
-           FROM provider_configs ORDER BY service ASC, priority ASC`,
-        );
-    const result = await query.all<ProviderConfigRow>();
-    return result.results.map(toProviderConfig);
+    // Fallback for pre-migration DB where display_name/credential_id columns do not yet exist
+    const tryWithNewColumns = async () => {
+      const query = service
+        ? env.DB.prepare(
+            `SELECT id, service, provider, model, display_name, credential_id, enabled, priority, is_active, updated_by, created_at, updated_at
+             FROM provider_configs WHERE service = ? ORDER BY priority ASC, updated_at DESC`,
+          ).bind(service)
+        : env.DB.prepare(
+            `SELECT id, service, provider, model, display_name, credential_id, enabled, priority, is_active, updated_by, created_at, updated_at
+             FROM provider_configs ORDER BY service ASC, priority ASC`,
+          );
+      const result = await query.all<ProviderConfigRow>();
+      return result.results.map(toProviderConfig);
+    };
+    try {
+      return await tryWithNewColumns();
+    } catch {
+      // Legacy: columns missing before migration 0047
+      const query = service
+        ? env.DB.prepare(
+            `SELECT id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at
+             FROM provider_configs WHERE service = ? ORDER BY priority ASC, updated_at DESC`,
+          ).bind(service)
+        : env.DB.prepare(
+            `SELECT id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at
+             FROM provider_configs ORDER BY service ASC, priority ASC`,
+          );
+      const result = await query.all<ProviderConfigRow>();
+      return result.results.map(toProviderConfig);
+    }
   },
 
   async getById(env, id) {
-    const row = await env.DB.prepare(
-      `SELECT id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at
-       FROM provider_configs WHERE id = ? LIMIT 1`,
-    )
-      .bind(id)
-      .first<ProviderConfigRow>();
-    return row ? toProviderConfig(row) : null;
+    try {
+      const row = await env.DB.prepare(
+        `SELECT id, service, provider, model, display_name, credential_id, enabled, priority, is_active, updated_by, created_at, updated_at
+         FROM provider_configs WHERE id = ? LIMIT 1`,
+      )
+        .bind(id)
+        .first<ProviderConfigRow>();
+      return row ? toProviderConfig(row) : null;
+    } catch {
+      const row = await env.DB.prepare(
+        `SELECT id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at
+         FROM provider_configs WHERE id = ? LIMIT 1`,
+      )
+        .bind(id)
+        .first<ProviderConfigRow>();
+      return row ? toProviderConfig(row) : null;
+    }
   },
 
   async getActive(env, service) {
-    const row = await env.DB.prepare(
-      `SELECT id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at
-       FROM provider_configs WHERE service = ? AND is_active = 1 LIMIT 1`,
-    )
-      .bind(service)
-      .first<ProviderConfigRow>();
-    return row ? toProviderConfig(row) : null;
+    try {
+      const row = await env.DB.prepare(
+        `SELECT id, service, provider, model, display_name, credential_id, enabled, priority, is_active, updated_by, created_at, updated_at
+         FROM provider_configs WHERE service = ? AND is_active = 1 LIMIT 1`,
+      )
+        .bind(service)
+        .first<ProviderConfigRow>();
+      return row ? toProviderConfig(row) : null;
+    } catch {
+      const row = await env.DB.prepare(
+        `SELECT id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at
+         FROM provider_configs WHERE service = ? AND is_active = 1 LIMIT 1`,
+      )
+        .bind(service)
+        .first<ProviderConfigRow>();
+      return row ? toProviderConfig(row) : null;
+    }
   },
 
   async create(env, input, actorId) {
@@ -141,13 +199,27 @@ export const providerConfigRepository: ProviderConfigRepository = {
       .first<{ maxPriority: number }>();
     const priority = input.priority ?? (maxPriorityRow ? maxPriorityRow.maxPriority + 1 : 1);
     const id = crypto.randomUUID();
+    const displayName = (input.displayName?.trim() || `${input.provider} / ${input.model}`).slice(0, 40);
     try {
-      await env.DB.prepare(
-        `INSERT INTO provider_configs (id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 0, ?, datetime('now'), datetime('now'))`,
-      )
-        .bind(id, input.service, input.provider, input.model, (input.enabled ?? true) ? 1 : 0, priority, actorId)
-        .run();
+      // Try new columns; fallback to legacy for pre-migration
+      try {
+        await env.DB.prepare(
+          `INSERT INTO provider_configs (id, service, provider, model, display_name, credential_id, enabled, priority, is_active, updated_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, datetime('now'), datetime('now'))`,
+        )
+          .bind(id, input.service, input.provider, input.model, displayName, input.credentialId ?? null, (input.enabled ?? true) ? 1 : 0, priority, actorId)
+          .run();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message.toLowerCase() : "";
+        if (msg.includes("no column named") || msg.includes("has no column named")) {
+          await env.DB.prepare(
+            `INSERT INTO provider_configs (id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 0, ?, datetime('now'), datetime('now'))`,
+          )
+            .bind(id, input.service, input.provider, input.model, (input.enabled ?? true) ? 1 : 0, priority, actorId)
+            .run();
+        } else throw e;
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message.toLowerCase() : "";
       if (msg.includes("provider_configs_service_provider_model_unique") || msg.includes("unique")) {
@@ -176,6 +248,8 @@ export const providerConfigRepository: ProviderConfigRepository = {
     const nextModel = patch.model ?? existing.model;
     const nextEnabled = patch.enabled !== undefined ? patch.enabled : existing.enabled;
     const nextPriority = patch.priority ?? existing.priority;
+    const nextDisplayName = patch.displayName?.trim() ?? existing.displayName;
+    const nextCredentialId = patch.credentialId !== undefined ? patch.credentialId : existing.credentialId;
 
     // Prevent disabling the active config without switching active
     if (existing.isActive && patch.enabled === false) {
@@ -187,11 +261,22 @@ export const providerConfigRepository: ProviderConfigRepository = {
     }
 
     try {
-      await env.DB.prepare(
-        `UPDATE provider_configs SET provider = ?, model = ?, enabled = ?, priority = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`,
-      )
-        .bind(nextProvider, nextModel, nextEnabled ? 1 : 0, nextPriority, actorId, id)
-        .run();
+      try {
+        await env.DB.prepare(
+          `UPDATE provider_configs SET provider = ?, model = ?, display_name = ?, credential_id = ?, enabled = ?, priority = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`,
+        )
+          .bind(nextProvider, nextModel, nextDisplayName, nextCredentialId, nextEnabled ? 1 : 0, nextPriority, actorId, id)
+          .run();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message.toLowerCase() : "";
+        if (msg.includes("no column named") || msg.includes("has no column named")) {
+          await env.DB.prepare(
+            `UPDATE provider_configs SET provider = ?, model = ?, enabled = ?, priority = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`,
+          )
+            .bind(nextProvider, nextModel, nextEnabled ? 1 : 0, nextPriority, actorId, id)
+            .run();
+        } else throw e;
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message.toLowerCase() : "";
       if (msg.includes("provider_configs_service_provider_model_unique") || msg.includes("unique")) {
