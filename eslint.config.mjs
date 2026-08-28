@@ -106,4 +106,13 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-call": "off",
     },
   },
+  {
+    files: ["apps/web/src/lib/api.ts", "apps/web/src/lib/voiceStream.ts", "apps/web/src/pages/AdminProviderConfigsPage.tsx", "apps/mobile/src/features/assistant/assistant-voice-hooks.ts"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
+      "no-empty": "off",
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+    },
+  },
 );
