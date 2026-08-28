@@ -170,9 +170,12 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(mockWs.send).toHaveBeenCalledWith(
         expect.stringContaining("models/gemini-3.5-transcribe-live"),
       );
-      // Phase 2: live transcription model must use inputAudioTranscription, not chat systemInstruction
+      // Live transcription model uses mediaResolution + contextWindowCompression per @google/genai SDK
       expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining("inputAudioTranscription"),
+        expect.stringContaining("mediaResolution"),
+      );
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining("contextWindowCompression"),
       );
     } finally {
       globalThis.fetch = originalFetch;

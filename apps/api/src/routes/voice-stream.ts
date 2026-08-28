@@ -181,8 +181,12 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               generationConfig: {
                 responseModalities: ["TEXT"],
               },
-              // Dedicated transcription-live model: enable input transcription, no chat systemInstruction
-              inputAudioTranscription: {},
+              // Exact config from @google/genai SDK for gemini-3.5-transcribe-live (AI Studio Get code)
+              mediaResolution: "MEDIA_RESOLUTION_MEDIUM",
+              contextWindowCompression: {
+                triggerTokens: "104857",
+                slidingWindow: { targetTokens: "52428" },
+              },
             },
           }
         : {
