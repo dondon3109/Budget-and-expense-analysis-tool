@@ -66,7 +66,7 @@ type StopReason = "manual" | "silence" | "no-speech" | "limit" | "cancelled";
 interface AssistantVoiceControlProps {
   workspace: AuthenticatedWorkspace;
   disabled: boolean;
-  reviewRequired: boolean;
+  reviewRequired?: boolean;
   onTranscript: (text: string, options: AssistantVoiceTranscriptOptions) => void;
   onPartialTranscript?: (text: string) => void;
 }
@@ -141,7 +141,6 @@ function formatElapsed(seconds: number): string {
 export function AssistantVoiceControl({
   workspace,
   disabled,
-  reviewRequired,
   onTranscript,
   onPartialTranscript,
 }: AssistantVoiceControlProps) {

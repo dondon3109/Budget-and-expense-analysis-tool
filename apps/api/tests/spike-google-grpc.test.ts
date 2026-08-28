@@ -29,7 +29,6 @@ describe("spike: Google STT StreamingRecognize gRPC in Worker runtime", () => {
     // This test documents the spike; we expect NOT viable
     expect(conclusion).toContain("NOT viable");
     // Explicitly log for runbook
-    // eslint-disable-next-line no-console
     console.log(`[SPIKE] Google STT gRPC viability: ${conclusion}`);
     console.log(`[SPIKE] hasGrpc=${hasGrpc}, fetchGrpc status=${res.status}`);
   });

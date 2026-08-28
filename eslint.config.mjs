@@ -36,15 +36,18 @@ export default tseslint.config(
       "apps/mobile/*.cjs",
       "apps/mobile/plugins/**/*.js",
       "apps/web/public/**/*.js",
+      "apps/web/src/lib/pcm-worklet.js",
       "release.config.mjs",
     ],
     languageOptions: {
       ...tseslint.configs.disableTypeChecked.languageOptions,
       globals: {
         AbortSignal: "readonly",
+        AudioWorkletProcessor: "readonly",
         console: "readonly",
         fetch: "readonly",
         process: "readonly",
+        registerProcessor: "readonly",
         Response: "readonly",
         document: "readonly",
         localStorage: "readonly",
