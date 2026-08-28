@@ -78,6 +78,7 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked,
     files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "apps/api/tests/**/*.ts", "apps/api/src/spike/**/*.ts"],
     rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
       "@typescript-eslint/require-await": "off",
       "@typescript-eslint/unbound-method": "off",
       "@typescript-eslint/no-explicit-any": "off",
@@ -94,8 +95,10 @@ export default tseslint.config(
     },
   },
   {
+    ...tseslint.configs.disableTypeChecked,
     files: ["apps/mobile/src/api/voice-stream.ts"],
     rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
       "no-empty": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
