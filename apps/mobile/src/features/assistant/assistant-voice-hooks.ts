@@ -242,11 +242,15 @@ export function useVoiceRecorder<Result>({
                   onPartialTranscript?.(final);
                 }
               },
+              onError: () => {
+                // Live WebSocket failed — batch file upload fallback will still run on stop
+              },
             })
               .then((session) => {
                 if (phaseRef.current !== "recording") {
                   session.cancel();
                 } else {
+                  // No-op session (native AudioStream unavailable) yields null on stop, so batch fallback runs
                   liveStreamRef.current = session;
                 }
               })

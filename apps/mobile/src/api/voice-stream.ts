@@ -46,18 +46,30 @@ export function openMobileVoiceStreamWebSocket(accessToken: string): WebSocket {
  * Initiates a real-time live streaming audio session on mobile.
  * Uses native AudioStream (16kHz 16-bit PCM mono) and streams frames
  * over a WebSocket connection to /api/app/assistant/voice/stream.
+ *
+ * If native AudioStream is not available (old Expo Go, web), returns a
+ * no-op session so the caller can fall back to batch file upload without
+ * opening a wasted WebSocket.
  */
 export async function startMobileVoiceStream(
   accessToken: string,
   callbacks: MobileVoiceStreamCallbacks,
 ): Promise<MobileVoiceStreamSession> {
+  // Fast path: no native streaming support — let batch recorder handle it
+  if (typeof AudioModule?.AudioStream !== "function") {
+    return {
+      stop: async () => null,
+      cancel: () => {},
+    };
+  }
+
   let latestTranscript: string | null = null;
   let isStopped = false;
   let ws: WebSocket | null = null;
   let stream: {
     start: () => Promise<void>;
     stop: () => void;
-    addListener: (event: string, cb: (buf: { data: ArrayBuffer }) => void) => { remove: () => void };
+    addListener: (event: string, cb: (buf: { data: ArrayBuffer; sampleRate?: number }) => void) => { remove: () => void };
   } | null = null;
   let bufferSub: { remove: () => void } | null = null;
 
@@ -98,7 +110,7 @@ export async function startMobileVoiceStream(
         removeListeners();
         resolve();
       };
-      const onError = (e: unknown) => {
+      const onError = () => {
         removeListeners();
         reject(new Error("WebSocket connection to voice stream failed."));
       };
@@ -118,7 +130,7 @@ export async function startMobileVoiceStream(
     });
 
     // Listen for incoming transcripts
-    ws.addEventListener("message", (event: { data: unknown }) => {
+    const handleMessage = (event: { data: unknown }) => {
       if (typeof event.data !== "string") return;
       try {
         const msg = JSON.parse(event.data) as {
@@ -133,47 +145,77 @@ export async function startMobileVoiceStream(
         } else if (msg.type === "final" && typeof msg.transcript === "string") {
           latestTranscript = msg.transcript;
           callbacks.onFinal(msg.transcript);
+        } else if (msg.type === "error") {
+          callbacks.onError?.(new Error(msg.message || "Live transcription error."));
         }
       } catch {}
-    });
+    };
+    ws.addEventListener("message", handleMessage as unknown as EventListener);
 
-    // Initialize native AudioStream if supported by the native runtime
-    if (typeof AudioModule?.AudioStream === "function") {
-      try {
-        // 16kHz mono 16-bit integer PCM is optimal for Gemini Live API
-        stream = new (AudioModule.AudioStream as any)({
-          sampleRate: 16000,
-          channels: 1,
-          encoding: "int16",
-        });
+    const handleWsError = () => {
+      callbacks.onError?.(new Error("Voice stream WebSocket error."));
+      cleanup();
+    };
+    const handleWsClose = () => {
+      cleanup();
+    };
+    ws.addEventListener("error", handleWsError as unknown as EventListener);
+    ws.addEventListener("close", handleWsClose as unknown as EventListener);
 
-        bufferSub = stream!.addListener("audioStreamBuffer", (buffer) => {
-          if (isStopped || !ws || ws.readyState !== WebSocket.OPEN) return;
-          if (!buffer?.data) return;
-          const pcmBase64 = arrayBufferToBase64(buffer.data);
-          try {
-            ws.send(JSON.stringify({ type: "audio", pcm: pcmBase64, data: pcmBase64 }));
-          } catch {}
-        });
+    // Initialize native AudioStream (16kHz mono 16-bit PCM is optimal for Gemini Live)
+    try {
+      stream = new (AudioModule.AudioStream as unknown as new (opts: { sampleRate: number; channels: number; encoding: string }) => typeof stream)( {
+        sampleRate: 16000,
+        channels: 1,
+        encoding: "int16",
+      } as never);
 
-        await stream!.start();
-      } catch (err) {
-        // If native AudioStream fails to initialize, stream remains null and
-        // the session gracefully relies on the standard recorder fallback.
-        if (bufferSub) {
-          try {
-            bufferSub.remove();
-          } catch {}
-          bufferSub = null;
+      bufferSub = stream!.addListener("audioStreamBuffer", (buffer) => {
+        if (isStopped || !ws || ws.readyState !== WebSocket.OPEN) return;
+        if (!buffer?.data) return;
+        // Warn if hardware delivered a different sampleRate (some devices ignore 16k request)
+        if (buffer.sampleRate && buffer.sampleRate !== 16000) {
+          // Still send — server declares 16000, but mismatch may affect accuracy
         }
-        stream = null;
+        const pcmBase64 = arrayBufferToBase64(buffer.data);
+        try {
+          ws.send(JSON.stringify({ type: "audio", pcm: pcmBase64, data: pcmBase64 }));
+        } catch {}
+      });
+
+      await stream!.start();
+    } catch (err) {
+      // Native AudioStream failed (permission, hardware busy) — close WS and let batch fallback
+      if (bufferSub) {
+        try {
+          bufferSub.remove();
+        } catch {}
+        bufferSub = null;
       }
+      stream = null;
+      // Don't keep a silent WebSocket open with no audio — close it so caller knows to fallback
+      try {
+        ws.close(1000);
+      } catch {}
+      ws = null;
+      const msg = err instanceof Error ? err.message : String(err);
+      callbacks.onError?.(new Error(`AudioStream failed: ${msg}`));
+      // Return a no-op session that yields no transcript so batch upload will be used
+      return {
+        stop: async () => null,
+        cancel: () => {},
+      };
     }
   } catch (error) {
     cleanup();
     if (callbacks.onError && error instanceof Error) {
       callbacks.onError(error);
     }
+    // Return no-op so batch fallback can proceed without throwing
+    return {
+      stop: async () => latestTranscript,
+      cancel: () => cleanup(),
+    };
   }
 
   return {
@@ -191,9 +233,9 @@ export async function startMobileVoiceStream(
         } catch {}
         stream = null;
       }
-      // Give 150ms for any in-flight final transcript packet
+      // Give 250ms for any in-flight final transcript packet (server grace is 400-600ms)
       if (ws && ws.readyState === WebSocket.OPEN) {
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 250));
         try {
           ws.close(1000);
         } catch {}
