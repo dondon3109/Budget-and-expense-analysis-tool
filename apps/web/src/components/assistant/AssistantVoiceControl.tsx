@@ -153,6 +153,7 @@ export function AssistantVoiceControl({
   const audioContextRef = useRef<AudioContext | undefined>(undefined);
   const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
   const liveTranscriptRef = useRef<string>("");
+  const liveErrorRef = useRef<string | null>(null);
   const liveShouldStopRef = useRef(false);
   const stopReasonRef = useRef<StopReason>("manual");
   const mountedRef = useRef(true);
@@ -206,6 +207,7 @@ export function AssistantVoiceControl({
       liveSessionRef.current = null;
     }
     liveShouldStopRef.current = false;
+    liveErrorRef.current = null;
     const audioContext = audioContextRef.current;
     audioContextRef.current = undefined;
     if (audioContext && audioContext.state !== "closed") void audioContext.close();
@@ -433,8 +435,10 @@ export function AssistantVoiceControl({
           (preferences?.transcriptionModel as string | undefined) === "gemini-3.5-transcribe-live";
         if (isLiveModel) {
           setStatus("idle");
-          // Preserve any live error already shown via onError; otherwise show a generic live failure
-          if (!message || message.includes("Live transcribe")) {
+          const liveErr = liveErrorRef.current;
+          if (liveErr) {
+            setMessage(liveErr);
+          } else if (!message || message.includes("Live transcribe")) {
             setMessage(
               liveShouldStopRef.current
                 ? "Live transcription didn't return any speech. Try again or hold the mic closer."
@@ -442,6 +446,7 @@ export function AssistantVoiceControl({
             );
           }
           setLiveTranscript("");
+          liveErrorRef.current = null;
           return;
         }
 
@@ -457,6 +462,7 @@ export function AssistantVoiceControl({
       setStatus("recording");
       setElapsedSeconds(0);
       liveTranscriptRef.current = "";
+      liveErrorRef.current = null;
       setLiveTranscript("");
       liveShouldStopRef.current = false;
 
@@ -483,10 +489,14 @@ export function AssistantVoiceControl({
           }
         },
         onError: (error) => {
+          liveErrorRef.current = error.message;
           // Surface live error but keep batch fallback — don't hide failures silently
           // 429/503 are surfaced with actionable messages from voiceStream
           if (mountedRef.current) {
             if (!liveTranscriptRef.current) setMessage(error.message);
+          }
+          if (typeof console !== "undefined" && console.warn) {
+            console.warn("[voice] live error", error.message, (error as unknown as Record<string, unknown>).code);
           }
         },
       })

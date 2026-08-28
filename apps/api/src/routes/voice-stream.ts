@@ -204,10 +204,13 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               },
             },
           };
+      console.log(`[voice-stream] Gemini Live setup sent for ${modelName}`);
       trySend(geminiWs, JSON.stringify(setupPayload));
 
       // Handle Gemini -> Browser
       // The transcription-live model sends inputTranscription, chat models send modelTurn
+      // Log the first few messages for debugging live failures
+      let loggedSetupComplete = false;
       let accumulatedTranscript = "";
       const geminiOnMessage = (event: MessageEvent) => {
         const raw = (event as unknown as { data: string | ArrayBuffer }).data;
@@ -226,16 +229,21 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               input_transcription?: { text?: string };
             };
             if (msg.error) {
-              console.error("[voice-stream] Gemini Live error:", msg.error);
+              console.error("[voice-stream] Gemini Live error:", JSON.stringify(msg.error));
               trySend(
                 server,
                 JSON.stringify({
                   type: "error",
                   code: "gemini_error",
-                  message: msg.error.message || "Gemini Live session error",
+                  message: msg.error.message || `Gemini Live error ${msg.error.code || ""}`.trim(),
                 }),
               );
               return;
+            }
+            // Log setupComplete for debugging
+            if ((msg as Record<string, unknown>).setupComplete && !loggedSetupComplete) {
+              console.log("[voice-stream] Gemini Live setupComplete");
+              loggedSetupComplete = true;
             }
             const inputText =
               msg.serverContent?.inputTranscription?.text ||
