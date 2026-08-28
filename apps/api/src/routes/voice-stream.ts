@@ -16,7 +16,7 @@ import { parseGoogleSecret } from "../assistant/google-stt";
  */
 function createWebSocketResponse(client: WebSocket): Response {
   try {
-    return new Response(null, { status: 101, webSocket: client } as unknown as ResponseInit);
+    return new Response(null, { status: 101, webSocket: client });
   } catch {
     const res = new Response(null, { status: 200 });
     (res as unknown as Record<string, unknown>).webSocket = client;
@@ -26,6 +26,7 @@ function createWebSocketResponse(client: WebSocket): Response {
 }
 
 export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) {
+  void _platformAdmins;
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/stream", async (context) => {
@@ -44,7 +45,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const authUser = (context as unknown as { get: (k: string) => { id: string } }).get("authUser");
 
     // Check active STT config (global)
-    const sttCfg = await providerRegistry.getActive(env as Bindings, "stt");
+    const sttCfg = await providerRegistry.getActive(env, "stt");
     if (!sttCfg) {
       return context.json(
         { error: "stt_not_configured", message: "STT provider not configured." },
@@ -63,7 +64,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       );
     }
 
-    const cred = await providerRegistry.getDecryptedSecret(env as Bindings, sttCfg);
+    const cred = await providerRegistry.getDecryptedSecret(env, sttCfg);
     const bridgeUrl =
       (env as unknown as Record<string, string | undefined>).STT_BRIDGE_URL?.trim() ||
       env.STT_BRIDGE_URL?.trim();
@@ -102,7 +103,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const trySend = (ws: WebSocket, data: string | ArrayBuffer) => {
       try {
         if ((ws as unknown as { readyState: number }).readyState === 1) ws.send(data);
-      } catch {}
+      } catch (_e) { void _e; }
     };
 
     const micStart = context.req.header("x-t-mic-start") || String(tWorkerOpen);
@@ -137,7 +138,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         geminiWs = geminiResp.webSocket;
         try {
           (geminiWs as unknown as { accept?: () => void }).accept?.();
-        } catch {}
+        } catch (_e) { void _e; }
       } catch {
         trySend(server, JSON.stringify({ type: "error", code: "gemini_connect_failed" }));
         server.close(1011, "gemini_connect_failed");
@@ -218,20 +219,20 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                 accumulatedTranscript = "";
               }
             }
-          } catch {}
+          } catch (_e) { void _e; }
         }
       };
 
       const geminiOnClose = () => {
         try {
           server.close(1000);
-        } catch {}
+        } catch (_e) { void _e; }
       };
       const geminiOnError = () => {
         trySend(server, JSON.stringify({ type: "error", code: "gemini_error" }));
         try {
           server.close(1011);
-        } catch {}
+        } catch (_e) { void _e; }
       };
 
       geminiWs.addEventListener("message", geminiOnMessage as EventListener);
@@ -267,9 +268,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           );
         } else if (typeof data === "string" && data.startsWith("{")) {
           try {
-            const parsed = JSON.parse(data);
-            const pcmData = parsed.data || parsed.pcm;
-            if (parsed.type === "audio" && pcmData) {
+            const parsed = JSON.parse(data) as Record<string, unknown>;
+            const pcmData = (parsed["data"] as string | undefined) || (parsed["pcm"] as string | undefined);
+            if ((parsed["type"] as string) === "audio" && pcmData) {
               trySend(
                 geminiWs,
                 JSON.stringify({
@@ -283,7 +284,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                   },
                 }),
               );
-            } else if (parsed.type === "stop") {
+            } else if ((parsed["type"] as string) === "stop") {
               trySend(
                 geminiWs,
                 JSON.stringify({
@@ -294,7 +295,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                 }),
               );
             }
-          } catch {}
+          } catch (_e) { void _e; }
         }
       });
 
@@ -302,7 +303,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         if (geminiWs) {
           try {
             geminiWs.close(1000);
-          } catch {}
+          } catch (_e) { void _e; }
         }
       });
 
@@ -341,7 +342,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       bridgeWs = bridgeResp.webSocket;
       try {
         (bridgeWs as unknown as { accept?: () => void }).accept?.();
-      } catch {}
+      } catch (_e) { void _e; }
     } catch {
       trySend(server, JSON.stringify({ type: "error", code: "bridge_connect_failed" }));
       server.close(1011, "bridge_connect_failed");
@@ -356,27 +357,27 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           const msg = JSON.parse(raw) as Record<string, unknown>;
           if (msg.type === "partial" && tFirstPartial === null) {
             tFirstPartial = Date.now();
-            (msg as Record<string, unknown>).t_worker_first_partial = tFirstPartial;
-            (msg as Record<string, unknown>).latency_worker_to_first_partial =
+            (msg).t_worker_first_partial = tFirstPartial;
+            (msg).latency_worker_to_first_partial =
               tFirstPartial - tWorkerOpen;
           }
           trySend(server, JSON.stringify(msg));
           return;
-        } catch {}
+        } catch (_e) { void _e; }
       }
       if (typeof raw === "string") trySend(server, raw);
-      else trySend(server, raw as ArrayBuffer);
+      else trySend(server, raw);
     };
     const bridgeOnClose = () => {
       try {
         server.close(1000);
-      } catch {}
+      } catch (_e) { void _e; }
     };
     const bridgeOnError = () => {
       trySend(server, JSON.stringify({ type: "error", code: "bridge_error" }));
       try {
         server.close(1011);
-      } catch {}
+      } catch (_e) { void _e; }
     };
 
     if (bridgeWs) {
@@ -391,14 +392,14 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       if (bridgeWs && (bridgeWs as unknown as { readyState: number }).readyState === 1) {
         try {
           bridgeWs.send(data as unknown as string);
-        } catch {}
+        } catch (_e) { void _e; }
       }
     });
     server.addEventListener("close", () => {
       if (bridgeWs) {
         try {
           bridgeWs.close();
-        } catch {}
+        } catch (_e) { void _e; }
       }
     });
 

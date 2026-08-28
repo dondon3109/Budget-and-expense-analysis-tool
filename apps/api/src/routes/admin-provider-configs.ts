@@ -149,7 +149,7 @@ export function createAdminProviderConfigRoutes(
         throw new HttpError(400, "credential_provider_mismatch", "Credential provider must match configuration provider.");
       }
     }
-    const updated = await repository.update(context.env, id, body.data as never, context.get("authUser").id);
+    const updated = await repository.update(context.env, id, body.data, context.get("authUser").id);
     registry.invalidate(existing.service);
     return context.json(updated);
   });
