@@ -242,6 +242,11 @@ export function useVoiceRecorder<Result>({
                   onPartialTranscript?.(final);
                 }
               },
+              onLatency: (metrics) => {
+                if (typeof console !== "undefined" && console.debug) {
+                  console.debug("[voice] mobile live latency", metrics);
+                }
+              },
               onError: () => {
                 // Live WebSocket failed — batch file upload fallback will still run on stop
               },

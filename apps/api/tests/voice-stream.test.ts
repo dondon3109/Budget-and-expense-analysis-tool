@@ -170,9 +170,65 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(mockWs.send).toHaveBeenCalledWith(
         expect.stringContaining("models/gemini-3.5-transcribe-live"),
       );
+      // Phase 2: live transcription model must use inputAudioTranscription, not chat systemInstruction
+      expect(mockWs.send).toHaveBeenCalledWith(
+        expect.stringContaining("inputAudioTranscription"),
+      );
     } finally {
       globalThis.fetch = originalFetch;
       delete (globalThis as any).WebSocketPair;
     }
+  });
+
+  it("rejects REST model gemini-3.5-transcribe on streaming endpoint (use POST)", async () => {
+    const sttCfg = {
+      id: "cfg-rest",
+      service: "stt",
+      provider: "google",
+      model: "gemini-3.5-transcribe",
+      displayName: "Gemini REST",
+      credentialId: "cred-google-key",
+      enabled: true,
+      isActive: true,
+    };
+    const app = makeApp(sttCfg, "");
+    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
+      secret: "AIzaSyFakeGoogleApiKey1234567890",
+      last4: "7890",
+      source: "db",
+    });
+    const res = await app.request("/stream", {
+      method: "GET",
+      headers: { Upgrade: "websocket", Connection: "Upgrade" },
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("stt_not_streaming");
+  });
+
+  it("returns gemini_missing_key when live model has no API key", async () => {
+    const sttCfg = {
+      id: "cfg-live-no-key",
+      service: "stt",
+      provider: "google",
+      model: "gemini-3.5-transcribe-live",
+      displayName: "Gemini Live No Key",
+      credentialId: null,
+      enabled: true,
+      isActive: true,
+    };
+    const app = makeApp(sttCfg, "");
+    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
+      secret: null,
+      last4: null,
+      source: "none",
+    });
+    const res = await app.request("/stream", {
+      method: "GET",
+      headers: { Upgrade: "websocket", Connection: "Upgrade" },
+    });
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe("gemini_missing_key");
   });
 });

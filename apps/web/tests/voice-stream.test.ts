@@ -134,4 +134,48 @@ describe("startLiveTranscriptionSession", () => {
       }),
     ).rejects.toThrow("WebSocket connection to voice stream failed.");
   });
+
+  it("forwards latency metrics to onLatency", async () => {
+    const workspace = { key: "user:user-1", userId: "user-1" } as any;
+    const onLatency = vi.fn();
+    await startLiveTranscriptionSession(workspace, mockMediaStream, {
+      onPartial: vi.fn(),
+      onFinal: vi.fn(),
+      onLatency,
+    });
+    mockWs.on_message({
+      data: JSON.stringify({
+        type: "partial",
+        transcript: "hello",
+        t_worker_first_partial: 1234,
+        latency_worker_to_first_partial: 123,
+      }),
+    });
+    expect(onLatency).toHaveBeenCalledWith({
+      t_worker_first_partial: 1234,
+      latency_worker_to_first_partial: 123,
+    });
+  });
+
+  it("surfaces rate_limit and bridge errors via onError with actionable messages", async () => {
+    const workspace = { key: "user:user-1", userId: "user-1" } as any;
+    const onError = vi.fn();
+    await startLiveTranscriptionSession(workspace, mockMediaStream, {
+      onPartial: vi.fn(),
+      onFinal: vi.fn(),
+      onError,
+    });
+    mockWs.on_message({
+      data: JSON.stringify({ type: "error", code: "rate_limit", message: "Too many" }),
+    });
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Voice mode is busy. Try again shortly." }),
+    );
+    mockWs.on_message({
+      data: JSON.stringify({ type: "error", code: "gemini_missing_key", message: "Live transcription not configured" }),
+    });
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("Live transcription not configured") }),
+    );
+  });
 });

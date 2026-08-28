@@ -5,6 +5,7 @@ export interface LiveTranscriptionCallbacks {
   onPartial: (transcript: string) => void;
   onFinal: (transcript: string) => void;
   onError?: (error: Error) => void;
+  onLatency?: (metrics: { t_worker_first_partial: number; latency_worker_to_first_partial: number }) => void;
 }
 
 export interface LiveTranscriptionSession {
@@ -131,10 +132,40 @@ export async function startLiveTranscriptionSession(
 
       if (msg.type === "partial" && typeof msg.transcript === "string") {
         callbacks.onPartial(msg.transcript);
+        if (
+          typeof (msg as Record<string, unknown>).t_worker_first_partial === "number" &&
+          typeof (msg as Record<string, unknown>).latency_worker_to_first_partial === "number"
+        ) {
+          callbacks.onLatency?.({
+            t_worker_first_partial: (msg as Record<string, unknown>).t_worker_first_partial as number,
+            latency_worker_to_first_partial: (msg as Record<string, unknown>).latency_worker_to_first_partial as number,
+          });
+        }
       } else if (msg.type === "final" && typeof msg.transcript === "string") {
         callbacks.onFinal(msg.transcript);
+        if (
+          typeof (msg as Record<string, unknown>).t_worker_first_partial === "number" &&
+          typeof (msg as Record<string, unknown>).latency_worker_to_first_partial === "number"
+        ) {
+          callbacks.onLatency?.({
+            t_worker_first_partial: (msg as Record<string, unknown>).t_worker_first_partial as number,
+            latency_worker_to_first_partial: (msg as Record<string, unknown>).latency_worker_to_first_partial as number,
+          });
+        }
       } else if (msg.type === "error") {
-        callbacks.onError?.(new Error(msg.message || "Live transcription error."));
+        const code = (msg as Record<string, unknown>).code as string | undefined;
+        const message =
+          (msg as Record<string, unknown>).message as string | undefined;
+        // Surface 429/503 with actionable text
+        const errorMessage =
+          code === "rate_limit" || code === "429"
+            ? "Voice mode is busy. Try again shortly."
+            : code === "bridge_not_configured" || code === "gemini_missing_key"
+              ? message || "Live transcription not configured. Activate gemini-3.5-transcribe-live with an API key."
+              : message || "Live transcription error.";
+        const err = new Error(errorMessage);
+        (err as unknown as Record<string, unknown>).code = code;
+        callbacks.onError?.(err);
       }
     } catch {}
   });

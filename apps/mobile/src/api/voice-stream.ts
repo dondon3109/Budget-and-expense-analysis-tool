@@ -5,6 +5,7 @@ export interface MobileVoiceStreamCallbacks {
   onPartial: (transcript: string) => void;
   onFinal: (transcript: string) => void;
   onError?: (error: Error) => void;
+  onLatency?: (metrics: { t_worker_first_partial: number; latency_worker_to_first_partial: number }) => void;
 }
 
 export interface MobileVoiceStreamSession {
@@ -129,7 +130,7 @@ export async function startMobileVoiceStream(
       ws.addEventListener("close", onClose);
     });
 
-    // Listen for incoming transcripts
+    // Listen for incoming transcripts (with latency instrumentation from worker)
     const handleMessage = (event: { data: unknown }) => {
       if (typeof event.data !== "string") return;
       try {
@@ -138,15 +139,44 @@ export async function startMobileVoiceStream(
           transcript?: string;
           isFinal?: boolean;
           message?: string;
+          code?: string;
+          t_worker_first_partial?: number;
+          latency_worker_to_first_partial?: number;
         };
         if (msg.type === "partial" && typeof msg.transcript === "string") {
           latestTranscript = msg.transcript;
           callbacks.onPartial(msg.transcript);
+          if (
+            typeof msg.t_worker_first_partial === "number" &&
+            typeof msg.latency_worker_to_first_partial === "number"
+          ) {
+            callbacks.onLatency?.({
+              t_worker_first_partial: msg.t_worker_first_partial,
+              latency_worker_to_first_partial: msg.latency_worker_to_first_partial,
+            });
+          }
         } else if (msg.type === "final" && typeof msg.transcript === "string") {
           latestTranscript = msg.transcript;
           callbacks.onFinal(msg.transcript);
+          if (
+            typeof msg.t_worker_first_partial === "number" &&
+            typeof msg.latency_worker_to_first_partial === "number"
+          ) {
+            callbacks.onLatency?.({
+              t_worker_first_partial: msg.t_worker_first_partial,
+              latency_worker_to_first_partial: msg.latency_worker_to_first_partial,
+            });
+          }
         } else if (msg.type === "error") {
-          callbacks.onError?.(new Error(msg.message || "Live transcription error."));
+          const errorMessage =
+            msg.code === "rate_limit" || msg.code === "429"
+              ? "Voice mode is busy. Try again shortly."
+              : msg.code === "bridge_not_configured" || msg.code === "gemini_missing_key"
+                ? msg.message || "Live transcription not configured. Activate gemini-3.5-transcribe-live with an API key."
+                : msg.message || "Live transcription error.";
+          const err = new Error(errorMessage);
+          (err as unknown as Record<string, unknown>).code = msg.code;
+          callbacks.onError?.(err);
         }
       } catch {}
     };

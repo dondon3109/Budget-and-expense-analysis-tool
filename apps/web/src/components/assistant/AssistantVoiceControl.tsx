@@ -456,10 +456,17 @@ export function AssistantVoiceControl({
           setLiveTranscript(final);
           onPartialTranscript?.(final);
         },
+        onLatency: (metrics) => {
+          // Latency instrumentation for Phase 2 — forwarded from worker (t_worker_first_partial)
+          // Keep in console for now; could be sent to PostHog later
+          if (typeof console !== "undefined" && console.debug) {
+            console.debug("[voice] live latency", metrics);
+          }
+        },
         onError: (error) => {
           // Surface live error but keep batch fallback — don't hide failures silently
+          // 429/503 are surfaced with actionable messages from voiceStream
           if (mountedRef.current) {
-            // Only show if we still have no transcript; batch will still deliver final result
             if (!liveTranscriptRef.current) setMessage(error.message);
           }
         },
