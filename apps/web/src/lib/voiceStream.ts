@@ -8,8 +8,10 @@ export interface LiveTranscriptionCallbacks {
   onLatency?: (metrics: { t_worker_first_partial: number; latency_worker_to_first_partial: number }) => void;
 }
 
+export const LIVE_FINALIZATION_TIMEOUT_MS = 3000;
+
 export interface LiveTranscriptionSession {
-  stop: () => void;
+  stop: () => Promise<void>;
 }
 
 /**
@@ -55,18 +57,29 @@ export async function startLiveTranscriptionSession(
   const source = audioContext.createMediaStreamSource(mediaStream);
 
   let isStopped = false;
+  let isStopping = false;
+  let hasReceivedFinal = false;
   let workletNode: AudioWorkletNode | null = null;
   let scriptProcessor: ScriptProcessorNode | null = null;
   let gainNode: GainNode | null = null;
   let cleanupTimer: number | undefined;
+  let finalizeTimer: number | undefined;
+  let finalizeResolver: (() => void) | null = null;
+  let stopPromise: Promise<void> | null = null;
 
   const cleanup = () => {
     if (isStopped) return;
     isStopped = true;
+    isStopping = true;
     if (cleanupTimer !== undefined) {
       clearTimeout(cleanupTimer);
       cleanupTimer = undefined;
     }
+    if (finalizeTimer !== undefined) {
+      clearTimeout(finalizeTimer);
+      finalizeTimer = undefined;
+    }
+    finalizeResolver = null;
     try {
       source.disconnect();
     } catch {}
@@ -91,6 +104,18 @@ export async function startLiveTranscriptionSession(
         ws.close(1000);
       } catch {}
     }
+  };
+
+  const triggerFinalization = () => {
+    if (!finalizeResolver) return;
+    const resolver = finalizeResolver;
+    finalizeResolver = null;
+    if (finalizeTimer !== undefined) {
+      clearTimeout(finalizeTimer);
+      finalizeTimer = undefined;
+    }
+    cleanup();
+    resolver();
   };
 
   // Wait for WebSocket open or failure
@@ -142,6 +167,7 @@ export async function startLiveTranscriptionSession(
           });
         }
       } else if (msg.type === "final" && typeof msg.transcript === "string") {
+        hasReceivedFinal = true;
         callbacks.onFinal(msg.transcript);
         if (
           typeof (msg as Record<string, unknown>).t_worker_first_partial === "number" &&
@@ -152,6 +178,7 @@ export async function startLiveTranscriptionSession(
             latency_worker_to_first_partial: (msg as Record<string, unknown>).latency_worker_to_first_partial as number,
           });
         }
+        if (isStopping) triggerFinalization();
       } else if (msg.type === "error") {
         const code = (msg as Record<string, unknown>).code as string | undefined;
         const message =
@@ -166,17 +193,20 @@ export async function startLiveTranscriptionSession(
         const err = new Error(errorMessage);
         (err as unknown as Record<string, unknown>).code = code;
         callbacks.onError?.(err);
+        if (isStopping) triggerFinalization();
       }
     } catch {}
   });
 
   ws.addEventListener("error", () => {
     callbacks.onError?.(new Error("Voice stream WebSocket error."));
-    cleanup();
+    if (isStopping) triggerFinalization();
+    else cleanup();
   });
 
   ws.addEventListener("close", () => {
-    cleanup();
+    if (isStopping) triggerFinalization();
+    else cleanup();
   });
 
   // Try AudioWorklet first, fall back to ScriptProcessor
@@ -187,7 +217,7 @@ export async function startLiveTranscriptionSession(
       await audioContext.audioWorklet.addModule(workletUrl);
       workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
       workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
-        if (isStopped || ws.readyState !== WebSocket.OPEN) return;
+        if (isStopped || isStopping || ws.readyState !== WebSocket.OPEN) return;
         const pcmBuffer = e.data;
         if (!(pcmBuffer instanceof ArrayBuffer) || pcmBuffer.byteLength === 0) return;
         try {
@@ -220,7 +250,7 @@ export async function startLiveTranscriptionSession(
       throw new Error("Web Audio processor not available in this browser.");
     }
     scriptProcessor.onaudioprocess = (event) => {
-      if (isStopped || ws.readyState !== WebSocket.OPEN) return;
+      if (isStopped || isStopping || ws.readyState !== WebSocket.OPEN) return;
       const input = event.inputBuffer.getChannelData(0);
       if (!input || input.length === 0) return;
       const pcm16 = new Int16Array(input.length);
@@ -251,17 +281,92 @@ export async function startLiveTranscriptionSession(
   }
 
   return {
-    stop() {
-      if (isStopped) return;
+    stop(): Promise<void> {
+      if (stopPromise) return stopPromise;
+      if (isStopped) return Promise.resolve();
+      isStopping = true;
+
+      // Stop audio streaming immediately but keep WebSocket open for final transcript
       try {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "stop" }));
-        }
+        source.disconnect();
       } catch {}
-      // Allow a brief grace period for any in-flight final transcript before full teardown
-      cleanupTimer = window.setTimeout(() => {
+      try {
+        workletNode?.disconnect();
+        workletNode?.port.close();
+      } catch {}
+      try {
+        scriptProcessor?.disconnect();
+      } catch {}
+      try {
+        gainNode?.disconnect();
+      } catch {}
+      workletNode = null;
+      scriptProcessor = null;
+      gainNode = null;
+      if (audioContext.state !== "closed") {
+        void audioContext.close().catch(() => {});
+      }
+
+      const trySendStop = () => {
+        try {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "stop" }));
+            return true;
+          }
+        } catch {}
+        return false;
+      };
+
+      if (ws.readyState === WebSocket.OPEN) {
+        trySendStop();
+      } else if (ws.readyState === WebSocket.CONNECTING) {
+        let handled = false;
+        const handleOpen = () => {
+          if (handled) return;
+          handled = true;
+          ws.removeEventListener("open", handleOpen);
+          ws.removeEventListener("close", handleCloseBeforeOpen);
+          ws.removeEventListener("error", handleErrorBeforeOpen);
+          trySendStop();
+        };
+        const handleCloseBeforeOpen = () => {
+          if (handled) return;
+          handled = true;
+          ws.removeEventListener("open", handleOpen);
+          ws.removeEventListener("close", handleCloseBeforeOpen);
+          ws.removeEventListener("error", handleErrorBeforeOpen);
+          triggerFinalization();
+        };
+        const handleErrorBeforeOpen = () => {
+          handleCloseBeforeOpen();
+        };
+        ws.addEventListener("open", handleOpen);
+        ws.addEventListener("close", handleCloseBeforeOpen);
+        ws.addEventListener("error", handleErrorBeforeOpen);
+      } else {
         cleanup();
-      }, 600);
+        return Promise.resolve();
+      }
+
+      if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+        cleanup();
+        return Promise.resolve();
+      }
+
+      // If a final already arrived before stop, we already have a transcript.
+      // Use a shorter grace to allow trailing final without 3s delay.
+      const timeoutMs = hasReceivedFinal ? 800 : LIVE_FINALIZATION_TIMEOUT_MS;
+      stopPromise = new Promise<void>((resolve) => {
+        finalizeResolver = resolve;
+        finalizeTimer = window.setTimeout(() => {
+          finalizeResolver = null;
+          finalizeTimer = undefined;
+          cleanup();
+          resolve();
+        }, timeoutMs);
+      });
+
+      return stopPromise;
     },
   };
 }

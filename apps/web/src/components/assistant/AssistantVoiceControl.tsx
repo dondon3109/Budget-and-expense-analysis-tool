@@ -151,6 +151,7 @@ export function AssistantVoiceControl({
   const elapsedTimerRef = useRef<number | undefined>(undefined);
   const audioContextRef = useRef<AudioContext | undefined>(undefined);
   const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
+  const liveSessionPromiseRef = useRef<Promise<LiveTranscriptionSession> | null>(null);
   const liveTranscriptRef = useRef<string>("");
   const liveErrorRef = useRef<string | null>(null);
   const liveShouldStopRef = useRef(false);
@@ -194,6 +195,18 @@ export function AssistantVoiceControl({
     setPreviewUrl(undefined);
   }
 
+  function clearTimersAndAudioContext() {
+    window.clearTimeout(stopTimerRef.current);
+    window.clearInterval(activityTimerRef.current);
+    activityTimerRef.current = undefined;
+    window.clearInterval(elapsedTimerRef.current);
+    elapsedTimerRef.current = undefined;
+    setElapsedSeconds(0);
+    const audioContext = audioContextRef.current;
+    audioContextRef.current = undefined;
+    if (audioContext && audioContext.state !== "closed") void audioContext.close();
+  }
+
   function clearRecordingResources() {
     window.clearTimeout(stopTimerRef.current);
     window.clearInterval(activityTimerRef.current);
@@ -202,9 +215,10 @@ export function AssistantVoiceControl({
     elapsedTimerRef.current = undefined;
     setElapsedSeconds(0);
     if (liveSessionRef.current) {
-      liveSessionRef.current.stop();
+      void liveSessionRef.current.stop().catch(() => {});
       liveSessionRef.current = null;
     }
+    liveSessionPromiseRef.current = null;
     liveShouldStopRef.current = false;
     liveErrorRef.current = null;
     const audioContext = audioContextRef.current;
@@ -402,60 +416,126 @@ export function AssistantVoiceControl({
         if (event.data.size) chunksRef.current.push(event.data);
       });
       recorder.addEventListener("stop", () => {
-        clearRecordingResources();
-        activeStream.getTracks().forEach((track) => track.stop());
-        streamRef.current = undefined;
-        recorderRef.current = undefined;
-        if (stopReasonRef.current === "cancelled") return;
-        if (stopReasonRef.current === "no-speech") {
-          setStatus("idle");
-          setMessage("I didn’t hear anything. Tap the microphone and try again.");
-          return;
-        }
+        void (async () => {
+          // Capture live session state before clearing
+          const liveSessionAtStop = liveSessionRef.current;
+          const livePromiseAtStop = liveSessionPromiseRef.current;
+          const hasLiveSession = Boolean(liveSessionAtStop || livePromiseAtStop);
 
-        // If live stream produced a transcript, use it directly!
-        const liveText = liveTranscriptRef.current.trim();
-        if (liveText) {
-          const transcriptOptions =
-            preferences?.speechAvailable === false
-              ? { ...options, replyMode: "text" as const }
-              : options;
-          onTranscript(liveText, transcriptOptions);
-          setMessage("Transcript ready — review or edit it, then press Send.");
-          setStatus("idle");
-          setLiveTranscript("");
-          return;
-        }
-
-        // If the active STT model is the dedicated live transcription model, don't fall back to batch
-        // — batch POST /transcriptions rejects gemini-3.5-transcribe-live with 400 and shows a confusing error
-        // even though the user did use the streaming button. Surface the live failure instead.
-        const isLiveModel =
-          (preferences?.transcriptionModel as string | undefined) === "gemini-3.5-transcribe-live";
-        if (isLiveModel) {
-          setStatus("idle");
-          const liveErr = liveErrorRef.current;
-          if (liveErr) {
-            setMessage(liveErr);
+          // Keep UI in transcribing/finalizing state while awaiting live finalization
+          if (hasLiveSession) {
+            setStatus("transcribing");
           } else {
-            setMessage(
-              liveShouldStopRef.current
-                ? "Live transcription didn't return any speech. Try again or hold the mic closer."
-                : "Live transcription did not capture any speech. Try again.",
-            );
+            clearTimersAndAudioContext();
           }
-          setLiveTranscript("");
-          liveErrorRef.current = null;
-          return;
-        }
 
-        // Fall back to batch audio transcription
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        if (blob.size) void transcribe(blob);
-        else {
-          setStatus("idle");
-          setMessage("No audio was captured. Try again.");
-        }
+          // Await live finalization if a session exists or is still connecting
+          let liveFinalization: Promise<void> | null = null;
+          if (liveSessionAtStop) {
+            liveSessionRef.current = null;
+            liveSessionPromiseRef.current = null;
+            liveFinalization = liveSessionAtStop.stop().catch(() => {});
+          } else if (livePromiseAtStop) {
+            liveSessionPromiseRef.current = null;
+            liveFinalization = livePromiseAtStop
+              .then((session) => session.stop().catch(() => {}))
+              .catch((error) => {
+                if (error instanceof Error) liveErrorRef.current = error.message;
+              });
+          }
+
+          if (liveFinalization) {
+            // Clear timers but keep transcribing status during grace period
+            window.clearTimeout(stopTimerRef.current);
+            window.clearInterval(activityTimerRef.current);
+            activityTimerRef.current = undefined;
+            window.clearInterval(elapsedTimerRef.current);
+            elapsedTimerRef.current = undefined;
+            // Close the monitoring audio context early (live stream has its own)
+            const monitoringContext = audioContextRef.current;
+            audioContextRef.current = undefined;
+            if (monitoringContext && monitoringContext.state !== "closed")
+              void monitoringContext.close();
+            try {
+              await liveFinalization;
+            } catch {}
+            // After finalization, ensure monitoring context is closed
+            const remainingContext = audioContextRef.current;
+            audioContextRef.current = undefined;
+            if (remainingContext && remainingContext.state !== "closed")
+              void remainingContext.close();
+            setElapsedSeconds(0);
+          } else {
+            clearTimersAndAudioContext();
+          }
+
+          activeStream.getTracks().forEach((track) => track.stop());
+          streamRef.current = undefined;
+          recorderRef.current = undefined;
+          if (stopReasonRef.current === "cancelled") {
+            setStatus("idle");
+            liveShouldStopRef.current = false;
+            return;
+          }
+          if (stopReasonRef.current === "no-speech") {
+            setStatus("idle");
+            setMessage("I didn’t hear anything. Tap the microphone and try again.");
+            liveShouldStopRef.current = false;
+            liveErrorRef.current = null;
+            setLiveTranscript("");
+            return;
+          }
+
+          // If live stream produced a transcript (including delayed final during grace), use it directly!
+          const liveText = liveTranscriptRef.current.trim();
+          if (liveText) {
+            const transcriptOptions =
+              preferences?.speechAvailable === false
+                ? { ...options, replyMode: "text" as const }
+                : options;
+            onTranscript(liveText, transcriptOptions);
+            setMessage("Transcript ready — review or edit it, then press Send.");
+            setStatus("idle");
+            setLiveTranscript("");
+            liveShouldStopRef.current = false;
+            liveErrorRef.current = null;
+            return;
+          }
+
+          // If the active STT model is the dedicated live transcription model, don't fall back to batch
+          // — batch POST /transcriptions rejects gemini-3.5-transcribe-live with 400 and shows a confusing error
+          // even though the user did use the streaming button. Surface the live failure instead.
+          const isLiveModel =
+            (preferences?.transcriptionModel as string | undefined) === "gemini-3.5-transcribe-live";
+          if (isLiveModel) {
+            setStatus("idle");
+            const liveErr = liveErrorRef.current;
+            if (liveErr) {
+              setMessage(liveErr);
+            } else {
+              setMessage(
+                liveShouldStopRef.current
+                  ? "Live transcription didn't return any speech. Try again or hold the mic closer."
+                  : "Live transcription did not capture any speech. Try again.",
+              );
+            }
+            setLiveTranscript("");
+            liveErrorRef.current = null;
+            liveShouldStopRef.current = false;
+            return;
+          }
+
+          // Fall back to batch audio transcription
+          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+          if (blob.size) {
+            liveShouldStopRef.current = false;
+            void transcribe(blob);
+          } else {
+            setStatus("idle");
+            setMessage("No audio was captured. Try again.");
+            liveShouldStopRef.current = false;
+          }
+        })();
       });
       recorder.start(250);
       setStatus("recording");
@@ -467,7 +547,7 @@ export function AssistantVoiceControl({
 
       // Attempt live streaming session concurrently (Option A: Gemini Live API)
       // If live fails, the batch MediaRecorder still captures audio for POST /transcriptions fallback.
-      void startLiveTranscriptionSession(workspace, activeStream, {
+      const livePromise = startLiveTranscriptionSession(workspace, activeStream, {
         onPartial: (partial) => {
           if (!mountedRef.current) return;
           liveTranscriptRef.current = partial;
@@ -498,15 +578,24 @@ export function AssistantVoiceControl({
             console.warn("[voice] live error", error.message, (error as unknown as Record<string, unknown>).code);
           }
         },
-      })
+      });
+      liveSessionPromiseRef.current = livePromise;
+      void livePromise
         .then((session) => {
-          if (!mountedRef.current || liveShouldStopRef.current) {
-            session.stop();
+          liveSessionPromiseRef.current = null;
+          if (!mountedRef.current) {
+            void session.stop().catch(() => {});
+            return;
+          }
+          if (liveShouldStopRef.current) {
+            // User stopped before session opened — keep for stop handler to finalize
+            liveSessionRef.current = session;
             return;
           }
           liveSessionRef.current = session;
         })
         .catch((error) => {
+          liveSessionPromiseRef.current = null;
           if (mountedRef.current && error instanceof Error) {
             liveErrorRef.current = error.message;
             if (!liveTranscriptRef.current) {
@@ -523,7 +612,7 @@ export function AssistantVoiceControl({
       stopTimerRef.current = window.setTimeout(() => stopRecording("limit"), MAX_RECORDING_MS);
       void monitorVoiceActivity(activeStream).catch(() => {
         // Browsers without Web Audio still retain manual stop and the hard recording limit.
-        clearRecordingResources();
+        clearTimersAndAudioContext();
         stopTimerRef.current = window.setTimeout(() => stopRecording("limit"), MAX_RECORDING_MS);
       });
     } catch (error) {
@@ -538,11 +627,9 @@ export function AssistantVoiceControl({
   function stopRecording(reason: StopReason = "manual") {
     stopReasonRef.current = reason;
     liveShouldStopRef.current = true;
-    if (liveSessionRef.current) {
-      liveSessionRef.current.stop();
-      liveSessionRef.current = null;
-    }
-    clearRecordingResources();
+    // Keep live session open for finalization grace period — recorder stop handler will await it.
+    // Only clear the max-duration timer here; other resources are cleaned after finalization.
+    window.clearTimeout(stopTimerRef.current);
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
   }
 
