@@ -93,12 +93,14 @@ export function createGoogleSttProvider(
       const timer = setTimeout(() => controller.abort(), timeoutMs(env));
 
       try {
-        // Gemini transcription path (e.g. gemini-2.0-flash, gemini-3.5-transcribe, gemini-3.5-transcribe-live)
+        // Gemini transcription path (e.g. gemini-2.0-flash, gemini-3.5-transcribe)
         if (effectiveModel.startsWith("gemini")) {
-          // gemini-3.5-transcribe-live is a Multimodal Live API WebSocket model.
-          // For batch REST generateContent requests, use gemini-2.0-flash.
-          const restModel =
-            effectiveModel === "gemini-3.5-transcribe-live" ? "gemini-2.0-flash" : effectiveModel;
+          // gemini-3.5-transcribe-live is a Multimodal Live API WebSocket-only model —
+          // it cannot be used via REST generateContent. Use the realtime /stream WebSocket instead.
+          if (effectiveModel === "gemini-3.5-transcribe-live") {
+            throw new AssistantVoiceProviderError("google" as any, "configuration", 400);
+          }
+          const restModel = effectiveModel;
           const isApiKey = token.startsWith("AIza") || !token.startsWith("ya29");
           const endpoint = isApiKey
             ? `https://generativelanguage.googleapis.com/v1beta/models/${restModel}:generateContent?key=${encodeURIComponent(token)}`

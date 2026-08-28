@@ -72,6 +72,14 @@ function mapProviderError(error: unknown, reporter: AssistantVoiceDiagnosticRepo
   if (!(error instanceof AssistantVoiceProviderError)) throw error;
   reportProviderFailure(error, reporter);
   if (error.kind === "configuration") {
+    // Live model used on batch endpoint — surface an actionable message
+    if (error.providerStatus === 400) {
+      throw new HttpError(
+        400,
+        "assistant_voice_live_requires_stream",
+        "Live transcribe (gemini-3.5-transcribe-live) only works over realtime streaming. Activate gemini-3.5-transcribe for batch mode, or keep the live model and use the streaming voice button.",
+      );
+    }
     throw new HttpError(
       502,
       "assistant_voice_misconfigured",
