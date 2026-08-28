@@ -130,10 +130,12 @@ describe("GET /api/app/assistant/voice/stream", () => {
 
     let interceptedWsUrl = "";
     const originalFetch = globalThis.fetch;
+    const upstreamHandlers = new Map();
+    const serverHandlers = new Map();
     const mockWs = {
       readyState: 1,
       send: vi.fn(),
-      addEventListener: vi.fn(),
+      addEventListener: vi.fn((event, listener) => upstreamHandlers.set(event, listener)),
       close: vi.fn(),
       accept: vi.fn(),
     };
@@ -149,7 +151,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
     const clientWs = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
     const serverWs = {
       accept: vi.fn(),
-      addEventListener: vi.fn(),
+      addEventListener: vi.fn((event, listener) => serverHandlers.set(event, listener)),
       close: vi.fn(),
       send: vi.fn(),
       readyState: 1,
@@ -170,13 +172,45 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(mockWs.send).toHaveBeenCalledWith(
         expect.stringContaining("models/gemini-3.5-transcribe-live"),
       );
-      // Live transcription model uses mediaResolution + contextWindowCompression per @google/genai SDK
-      expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining("mediaResolution"),
-      );
-      expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining("contextWindowCompression"),
-      );
+      expect(JSON.parse(mockWs.send.mock.calls[0][0])).toEqual({
+        setup: {
+          model: "models/gemini-3.5-transcribe-live",
+          generationConfig: { responseModalities: ["TEXT"] },
+          inputAudioTranscription: { languageCodes: [] },
+        },
+      });
+
+      serverHandlers.get("message")({ data: new Uint8Array([1, 2, 3]).buffer });
+      expect(JSON.parse(mockWs.send.mock.calls.at(-1)[0])).toEqual({
+        realtimeInput: {
+          audio: { mimeType: "audio/pcm;rate=16000", data: "AQID" },
+        },
+      });
+
+      serverHandlers.get("message")({ data: JSON.stringify({ type: "stop" }) });
+      expect(JSON.parse(mockWs.send.mock.calls.at(-1)[0])).toEqual({
+        realtimeInput: { audioStreamEnd: true },
+      });
+
+      upstreamHandlers.get("message")({
+        data: JSON.stringify({
+          serverContent: { interimInputTranscription: { text: "buy groceries" } },
+        }),
+      });
+      expect(JSON.parse(serverWs.send.mock.calls.at(-1)[0])).toMatchObject({
+        type: "partial",
+        transcript: "buy groceries",
+      });
+
+      upstreamHandlers.get("message")({
+        data: JSON.stringify({
+          serverContent: { inputTranscription: { text: "buy groceries today" } },
+        }),
+      });
+      expect(JSON.parse(serverWs.send.mock.calls.at(-1)[0])).toMatchObject({
+        type: "final",
+        transcript: "buy groceries today",
+      });
     } finally {
       globalThis.fetch = originalFetch;
       delete (globalThis as any).WebSocketPair;

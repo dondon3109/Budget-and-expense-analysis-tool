@@ -189,11 +189,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               generationConfig: {
                 responseModalities: ["TEXT"],
               },
-              // Exact config from @google/genai SDK for gemini-3.5-transcribe-live (AI Studio Get code)
-              mediaResolution: "MEDIA_RESOLUTION_MEDIUM",
-              contextWindowCompression: {
-                triggerTokens: "104857",
-                slidingWindow: { targetTokens: "52428" },
+              // This enables the input transcript events returned by the dedicated STT model.
+              inputAudioTranscription: {
+                languageCodes: [],
               },
             },
           }
@@ -216,10 +214,10 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       trySend(geminiWs, JSON.stringify(setupPayload));
 
       // Handle Gemini -> Browser
-      // The transcription-live model sends inputTranscription, chat models send modelTurn
+      // The transcription-live model sends interimInputTranscription and inputTranscription.
       // Log the first few messages for debugging live failures
       let loggedSetupComplete = false;
-      let accumulatedTranscript = "";
+      let finalizedTranscript = "";
       const geminiOnMessage = (event: MessageEvent) => {
         const raw = (event as unknown as { data: string | ArrayBuffer }).data;
         if (typeof raw === "string" && raw.startsWith("{")) {
@@ -231,10 +229,13 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                   parts?: Array<{ text?: string }>;
                 };
                 inputTranscription?: { text?: string };
+                interimInputTranscription?: { text?: string };
                 turnComplete?: boolean;
               };
               inputTranscription?: { text?: string };
               input_transcription?: { text?: string };
+              interimInputTranscription?: { text?: string };
+              interim_input_transcription?: { text?: string };
             };
             if (msg.error) {
               console.error("[voice-stream] Gemini Live error:", JSON.stringify(msg.error));
@@ -253,27 +254,25 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               console.log("[voice-stream] Gemini Live setupComplete");
               loggedSetupComplete = true;
             }
-            const inputText =
+            const finalInputText =
               msg.serverContent?.inputTranscription?.text ||
               (msg as Record<string, unknown>)["inputTranscription"] as string | undefined ||
               (msg as Record<string, unknown>)["input_transcription"] as string | undefined ||
               "";
-            // Handle both object and string forms for input_transcription
-            const inputTranscriptionText =
-              typeof inputText === "string"
-                ? inputText
-                : typeof msg.serverContent?.inputTranscription?.text === "string"
-                  ? msg.serverContent.inputTranscription.text
-                  : typeof (msg as Record<string, unknown>)["inputTranscription"] === "object" &&
-                      (msg as Record<string, unknown>)["inputTranscription"] !== null
-                    ? ((msg as Record<string, unknown>)["inputTranscription"] as { text?: string }).text || ""
-                    : "";
+            const interimInputText =
+              msg.serverContent?.interimInputTranscription?.text ||
+              msg.interimInputTranscription?.text ||
+              msg.interim_input_transcription?.text ||
+              "";
             const modelText =
               msg.serverContent?.modelTurn?.parts?.map((p) => p.text || "").join("") || "";
-            const textChunk = inputTranscriptionText || modelText || (typeof inputText === "string" ? inputText : "");
-            if (textChunk) {
-              accumulatedTranscript += textChunk;
-              const isFinal = Boolean(msg.serverContent?.turnComplete);
+            const finalText = finalInputText || modelText;
+            if (finalText || interimInputText) {
+              if (finalText) {
+                finalizedTranscript = [finalizedTranscript, finalText].filter(Boolean).join(" ").trim();
+              }
+              const transcript = [finalizedTranscript, interimInputText].filter(Boolean).join(" ").trim();
+              const isFinal = Boolean(finalText || msg.serverContent?.turnComplete);
               if (tFirstPartial === null) {
                 tFirstPartial = Date.now();
               }
@@ -281,28 +280,28 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                 server,
                 JSON.stringify({
                   type: isFinal ? "final" : "partial",
-                  transcript: accumulatedTranscript.trim(),
+                  transcript,
                   isFinal,
                   t_worker_first_partial: tFirstPartial,
                   latency_worker_to_first_partial: tFirstPartial - tWorkerOpen,
                 }),
               );
               if (isFinal) {
-                accumulatedTranscript = "";
+                finalizedTranscript = "";
               }
-            } else if (msg.serverContent?.turnComplete && accumulatedTranscript) {
+            } else if (msg.serverContent?.turnComplete && finalizedTranscript) {
               if (tFirstPartial === null) tFirstPartial = Date.now();
               trySend(
                 server,
                 JSON.stringify({
                   type: "final",
-                  transcript: accumulatedTranscript.trim(),
+                  transcript: finalizedTranscript,
                   isFinal: true,
                   t_worker_first_partial: tFirstPartial,
                   latency_worker_to_first_partial: tFirstPartial - tWorkerOpen,
                 }),
               );
-              accumulatedTranscript = "";
+              finalizedTranscript = "";
             }
           } catch (_e) { void _e; }
         }
@@ -349,7 +348,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
             geminiWs,
             JSON.stringify({
               realtimeInput: {
-                mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: b64 }],
+                audio: { mimeType: "audio/pcm;rate=16000", data: b64 },
               },
             }),
           );
@@ -362,7 +361,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                 geminiWs,
                 JSON.stringify({
                   realtimeInput: {
-                    mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: pcmData }],
+                    audio: { mimeType: "audio/pcm;rate=16000", data: pcmData },
                   },
                 }),
               );
@@ -370,9 +369,8 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               trySend(
                 geminiWs,
                 JSON.stringify({
-                  clientContent: {
-                    turns: [],
-                    turnComplete: true,
+                  realtimeInput: {
+                    audioStreamEnd: true,
                   },
                 }),
               );
