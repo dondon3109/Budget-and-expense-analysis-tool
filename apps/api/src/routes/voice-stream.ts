@@ -70,11 +70,36 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       env.STT_BRIDGE_URL?.trim();
 
     // Check if we should use Option A: Gemini Live API
+    // Only the dedicated live transcription model should use the Live WebSocket.
+    // REST models (gemini-3.5-transcribe) use POST /transcriptions and must not be routed here.
     const parsed = cred.secret ? parseGoogleSecret(cred.secret) : null;
     const token = parsed?.token || "";
-    const isGeminiLive = Boolean(
-      token && (token.startsWith("AIza") || sttCfg.model.startsWith("gemini") || !bridgeUrl),
-    );
+    const isGeminiLiveModel = sttCfg.model === "gemini-3.5-transcribe-live";
+    const isGeminiLive = Boolean(token && token.startsWith("AIza") && isGeminiLiveModel);
+
+    // Live model selected but no valid API key — fail fast instead of silently falling through to bridge
+    if (sttCfg.model === "gemini-3.5-transcribe-live" && !token.startsWith("AIza")) {
+      return context.json(
+        {
+          error: "gemini_missing_key",
+          message:
+            "Gemini Live transcription requires a Google API key credential (AIza...). Link a valid API key in AI & Voice Models.",
+        },
+        503,
+      );
+    }
+
+    // REST-only Gemini models should not use the streaming socket — instruct to use POST or activate live model
+    if (sttCfg.model === "gemini-3.5-transcribe" || sttCfg.model === "gemini-2.0-flash") {
+      return context.json(
+        {
+          error: "stt_not_streaming",
+          message:
+            "Active model gemini-3.5-transcribe is REST-only. Activate gemini-3.5-transcribe-live for realtime streaming or use POST /transcriptions.",
+        },
+        400,
+      );
+    }
 
     if (!isGeminiLive && !bridgeUrl) {
       return context.json(
@@ -146,30 +171,39 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       }
 
       // Send initial setup payload to Gemini Live
-      const modelName = sttCfg.model.startsWith("gemini")
-        ? sttCfg.model.includes("/")
-          ? sttCfg.model
-          : `models/${sttCfg.model}`
-        : "models/gemini-2.0-flash-exp";
+      const modelName = sttCfg.model.includes("/") ? sttCfg.model : `models/${sttCfg.model}`;
 
-      const setupPayload = {
-        setup: {
-          model: modelName,
-          generationConfig: {
-            responseModalities: ["TEXT"],
-          },
-          systemInstruction: {
-            parts: [
-              {
-                text: "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech.",
+      const isTranscribeLive = sttCfg.model === "gemini-3.5-transcribe-live";
+      const setupPayload = isTranscribeLive
+        ? {
+            setup: {
+              model: modelName,
+              generationConfig: {
+                responseModalities: ["TEXT"],
               },
-            ],
-          },
-        },
-      };
+              // Dedicated transcription-live model: enable input transcription, no chat systemInstruction
+              inputAudioTranscription: {},
+            },
+          }
+        : {
+            setup: {
+              model: modelName,
+              generationConfig: {
+                responseModalities: ["TEXT"],
+              },
+              systemInstruction: {
+                parts: [
+                  {
+                    text: "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech.",
+                  },
+                ],
+              },
+            },
+          };
       trySend(geminiWs, JSON.stringify(setupPayload));
 
       // Handle Gemini -> Browser
+      // The transcription-live model sends inputTranscription, chat models send modelTurn
       let accumulatedTranscript = "";
       const geminiOnMessage = (event: MessageEvent) => {
         const raw = (event as unknown as { data: string | ArrayBuffer }).data;
@@ -181,8 +215,11 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                 modelTurn?: {
                   parts?: Array<{ text?: string }>;
                 };
+                inputTranscription?: { text?: string };
                 turnComplete?: boolean;
               };
+              inputTranscription?: { text?: string };
+              input_transcription?: { text?: string };
             };
             if (msg.error) {
               console.error("[voice-stream] Gemini Live error:", msg.error);
@@ -196,11 +233,26 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               );
               return;
             }
-            const parts = msg.serverContent?.modelTurn?.parts;
-            if (parts && parts.length > 0) {
-              for (const part of parts) {
-                if (part.text) accumulatedTranscript += part.text;
-              }
+            const inputText =
+              msg.serverContent?.inputTranscription?.text ||
+              (msg as Record<string, unknown>)["inputTranscription"] as string | undefined ||
+              (msg as Record<string, unknown>)["input_transcription"] as string | undefined ||
+              "";
+            // Handle both object and string forms for input_transcription
+            const inputTranscriptionText =
+              typeof inputText === "string"
+                ? inputText
+                : typeof msg.serverContent?.inputTranscription?.text === "string"
+                  ? msg.serverContent.inputTranscription.text
+                  : typeof (msg as Record<string, unknown>)["inputTranscription"] === "object" &&
+                      (msg as Record<string, unknown>)["inputTranscription"] !== null
+                    ? ((msg as Record<string, unknown>)["inputTranscription"] as { text?: string }).text || ""
+                    : "";
+            const modelText =
+              msg.serverContent?.modelTurn?.parts?.map((p) => p.text || "").join("") || "";
+            const textChunk = inputTranscriptionText || modelText || (typeof inputText === "string" ? inputText : "");
+            if (textChunk) {
+              accumulatedTranscript += textChunk;
               const isFinal = Boolean(msg.serverContent?.turnComplete);
               if (tFirstPartial === null) {
                 tFirstPartial = Date.now();
@@ -218,6 +270,19 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               if (isFinal) {
                 accumulatedTranscript = "";
               }
+            } else if (msg.serverContent?.turnComplete && accumulatedTranscript) {
+              if (tFirstPartial === null) tFirstPartial = Date.now();
+              trySend(
+                server,
+                JSON.stringify({
+                  type: "final",
+                  transcript: accumulatedTranscript.trim(),
+                  isFinal: true,
+                  t_worker_first_partial: tFirstPartial,
+                  latency_worker_to_first_partial: tFirstPartial - tWorkerOpen,
+                }),
+              );
+              accumulatedTranscript = "";
             }
           } catch (_e) { void _e; }
         }
@@ -240,6 +305,8 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       geminiWs.addEventListener("error", geminiOnError as EventListener);
 
       // Browser -> Gemini
+      // The Live Bidi API accepts both camelCase (realtimeInput) and snake_case (realtime_input).
+      // We send both for compatibility across model versions. Works for chat and transcription-live.
       server.addEventListener("message", (event) => {
         const data = (event as unknown as { data: string | ArrayBuffer }).data;
         if (!geminiWs || (geminiWs as unknown as { readyState: number }).readyState !== 1) return;
@@ -256,13 +323,11 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           trySend(
             geminiWs,
             JSON.stringify({
+              realtime_input: {
+                media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: b64 }],
+              },
               realtimeInput: {
-                mediaChunks: [
-                  {
-                    mimeType: "audio/pcm;rate=16000",
-                    data: b64,
-                  },
-                ],
+                mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: b64 }],
               },
             }),
           );
@@ -274,13 +339,11 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               trySend(
                 geminiWs,
                 JSON.stringify({
+                  realtime_input: {
+                    media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: pcmData }],
+                  },
                   realtimeInput: {
-                    mediaChunks: [
-                      {
-                        mimeType: "audio/pcm;rate=16000",
-                        data: pcmData,
-                      },
-                    ],
+                    mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: pcmData }],
                   },
                 }),
               );

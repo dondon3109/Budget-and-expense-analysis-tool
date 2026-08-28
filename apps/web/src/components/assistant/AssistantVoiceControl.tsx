@@ -153,6 +153,7 @@ export function AssistantVoiceControl({
   const audioContextRef = useRef<AudioContext | undefined>(undefined);
   const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
   const liveTranscriptRef = useRef<string>("");
+  const liveShouldStopRef = useRef(false);
   const stopReasonRef = useRef<StopReason>("manual");
   const mountedRef = useRef(true);
   const chunksRef = useRef<Blob[]>([]);
@@ -204,6 +205,7 @@ export function AssistantVoiceControl({
       liveSessionRef.current.stop();
       liveSessionRef.current = null;
     }
+    liveShouldStopRef.current = false;
     const audioContext = audioContextRef.current;
     audioContextRef.current = undefined;
     if (audioContext && audioContext.state !== "closed") void audioContext.close();
@@ -437,8 +439,10 @@ export function AssistantVoiceControl({
       setElapsedSeconds(0);
       liveTranscriptRef.current = "";
       setLiveTranscript("");
+      liveShouldStopRef.current = false;
 
       // Attempt live streaming session concurrently (Option A: Gemini Live API)
+      // If live fails, the batch MediaRecorder still captures audio for POST /transcriptions fallback.
       void startLiveTranscriptionSession(workspace, activeStream, {
         onPartial: (partial) => {
           if (!mountedRef.current) return;
@@ -452,15 +456,26 @@ export function AssistantVoiceControl({
           setLiveTranscript(final);
           onPartialTranscript?.(final);
         },
-        onError: () => {
-          // Graceful fallback to batch MediaRecorder
+        onError: (error) => {
+          // Surface live error but keep batch fallback — don't hide failures silently
+          if (mountedRef.current) {
+            // Only show if we still have no transcript; batch will still deliver final result
+            if (!liveTranscriptRef.current) setMessage(error.message);
+          }
         },
       })
         .then((session) => {
+          if (!mountedRef.current || liveShouldStopRef.current) {
+            session.stop();
+            return;
+          }
           liveSessionRef.current = session;
         })
-        .catch(() => {
-          // Graceful fallback to batch MediaRecorder
+        .catch((error) => {
+          if (mountedRef.current && error instanceof Error && !liveTranscriptRef.current) {
+            // Keep the error visible until batch fallback completes
+            setMessage(error.message);
+          }
         });
 
       window.clearInterval(elapsedTimerRef.current);
@@ -485,6 +500,7 @@ export function AssistantVoiceControl({
 
   function stopRecording(reason: StopReason = "manual") {
     stopReasonRef.current = reason;
+    liveShouldStopRef.current = true;
     if (liveSessionRef.current) {
       liveSessionRef.current.stop();
       liveSessionRef.current = null;

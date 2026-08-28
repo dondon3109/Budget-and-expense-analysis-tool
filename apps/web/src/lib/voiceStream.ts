@@ -15,6 +15,11 @@ export interface LiveTranscriptionSession {
  * Starts a real-time live transcription session over WebSocket.
  * Streams 16kHz 16-bit PCM audio chunks to /api/app/assistant/voice/stream
  * and receives real-time partial and final transcripts.
+ *
+ * Uses AudioWorklet when available (Chrome 66+, Safari 14.1+), falls back to
+ * ScriptProcessor for older browsers. Never connects the processor to
+ * destination to avoid feedback — ScriptProcessor fallback uses a zero-gain
+ * stage to keep the node ticking without audible loop.
  */
 export async function startLiveTranscriptionSession(
   workspace: AuthenticatedWorkspace,
@@ -32,21 +37,51 @@ export async function startLiveTranscriptionSession(
     throw new Error("Web Audio API is not supported in this browser.");
   }
 
-  // Use 16kHz sample rate optimal for speech models
-  const audioContext = new AudioContextClass({ sampleRate: 16000 });
+  // Try 16kHz (optimal for Gemini Live), fall back to device default if not supported.
+  let audioContext: AudioContext;
+  try {
+    audioContext = new AudioContextClass({ sampleRate: 16000 });
+  } catch {
+    audioContext = new AudioContextClass();
+  }
+  // Resume if suspended (autoplay policy)
+  if (audioContext.state === "suspended") {
+    try {
+      await audioContext.resume();
+    } catch {}
+  }
+
   const source = audioContext.createMediaStreamSource(mediaStream);
-  // Buffer size 4096 at 16kHz is ~256ms per audio chunk
-  const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
   let isStopped = false;
+  let workletNode: AudioWorkletNode | null = null;
+  let scriptProcessor: ScriptProcessorNode | null = null;
+  let gainNode: GainNode | null = null;
+  let cleanupTimer: number | undefined;
 
   const cleanup = () => {
     if (isStopped) return;
     isStopped = true;
+    if (cleanupTimer !== undefined) {
+      clearTimeout(cleanupTimer);
+      cleanupTimer = undefined;
+    }
     try {
       source.disconnect();
-      processor.disconnect();
     } catch {}
+    try {
+      workletNode?.disconnect();
+      workletNode?.port.close();
+    } catch {}
+    try {
+      scriptProcessor?.disconnect();
+    } catch {}
+    try {
+      gainNode?.disconnect();
+    } catch {}
+    workletNode = null;
+    scriptProcessor = null;
+    gainNode = null;
     if (audioContext.state !== "closed") {
       void audioContext.close().catch(() => {});
     }
@@ -113,22 +148,76 @@ export async function startLiveTranscriptionSession(
     cleanup();
   });
 
-  // Stream PCM chunks
-  processor.onaudioprocess = (event) => {
-    if (isStopped || ws.readyState !== WebSocket.OPEN) return;
-    const input = event.inputBuffer.getChannelData(0);
-    const pcm16 = new Int16Array(input.length);
-    for (let i = 0; i < input.length; i++) {
-      const s = Math.max(-1, Math.min(1, input[i]!));
-      pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-    }
+  // Try AudioWorklet first, fall back to ScriptProcessor
+  let workletReady = false;
+  if (audioContext.audioWorklet) {
     try {
-      ws.send(pcm16.buffer);
-    } catch {}
-  };
+      const workletUrl = new URL("./pcm-worklet.js", import.meta.url);
+      await audioContext.audioWorklet.addModule(workletUrl);
+      workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
+      workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
+        if (isStopped || ws.readyState !== WebSocket.OPEN) return;
+        const pcmBuffer = e.data;
+        if (!(pcmBuffer instanceof ArrayBuffer) || pcmBuffer.byteLength === 0) return;
+        try {
+          ws.send(pcmBuffer);
+        } catch {}
+      };
+      workletNode.port.onmessageerror = () => {
+        callbacks.onError?.(new Error("Audio worklet message error."));
+      };
+      source.connect(workletNode);
+      // Worklet does not need to be connected to destination to tick
+      workletReady = true;
+    } catch (err) {
+      // Worklet failed (e.g. CSP, old browser), fall through to ScriptProcessor
+      try {
+        workletNode?.disconnect();
+      } catch {}
+      workletNode = null;
+      workletReady = false;
+    }
+  }
 
-  source.connect(processor);
-  processor.connect(audioContext.destination);
+  if (!workletReady) {
+    // ScriptProcessor fallback — keep it alive via zero-gain -> destination
+    try {
+      scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+    } catch {
+      // Very old browsers may not have createScriptProcessor
+      cleanup();
+      throw new Error("Web Audio processor not available in this browser.");
+    }
+    scriptProcessor.onaudioprocess = (event) => {
+      if (isStopped || ws.readyState !== WebSocket.OPEN) return;
+      const input = event.inputBuffer.getChannelData(0);
+      if (!input || input.length === 0) return;
+      const pcm16 = new Int16Array(input.length);
+      for (let i = 0; i < input.length; i++) {
+        const s = Math.max(-1, Math.min(1, input[i]!));
+        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+      try {
+        ws.send(pcm16.buffer);
+      } catch {}
+    };
+    source.connect(scriptProcessor);
+    // Keep ScriptProcessor ticking without audible feedback: zero-gain -> destination
+    // Some test mocks lack createGain, so fall back to direct destination.
+    try {
+      const maybeGain = (audioContext as unknown as { createGain?: () => GainNode }).createGain?.();
+      if (maybeGain) {
+        gainNode = maybeGain;
+        gainNode.gain.value = 0;
+        scriptProcessor.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+      } else {
+        throw new Error("no gain");
+      }
+    } catch {
+      scriptProcessor.connect(audioContext.destination);
+    }
+  }
 
   return {
     stop() {
@@ -139,9 +228,9 @@ export async function startLiveTranscriptionSession(
         }
       } catch {}
       // Allow a brief grace period for any in-flight final transcript before full teardown
-      setTimeout(() => {
+      cleanupTimer = window.setTimeout(() => {
         cleanup();
-      }, 400);
+      }, 600);
     },
   };
 }
