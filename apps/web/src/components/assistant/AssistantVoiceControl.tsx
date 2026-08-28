@@ -426,6 +426,25 @@ export function AssistantVoiceControl({
           return;
         }
 
+        // If the active STT model is the dedicated live transcription model, don't fall back to batch
+        // — batch POST /transcriptions rejects gemini-3.5-transcribe-live with 400 and shows a confusing error
+        // even though the user did use the streaming button. Surface the live failure instead.
+        const isLiveModel =
+          (preferences?.transcriptionModel as string | undefined) === "gemini-3.5-transcribe-live";
+        if (isLiveModel) {
+          setStatus("idle");
+          // Preserve any live error already shown via onError; otherwise show a generic live failure
+          if (!message || message.includes("Live transcribe")) {
+            setMessage(
+              liveShouldStopRef.current
+                ? "Live transcription didn't return any speech. Try again or hold the mic closer."
+                : "Live transcription failed. Check your connection and try again. Batch mode is not available for the live model.",
+            );
+          }
+          setLiveTranscript("");
+          return;
+        }
+
         // Fall back to batch audio transcription
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
         if (blob.size) void transcribe(blob);
