@@ -167,8 +167,9 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(res.status).toBe(101);
       expect(interceptedWsUrl).toContain("generativelanguage.googleapis.com");
       expect(interceptedWsUrl).toContain("key=AIzaSyFakeGoogleApiKey1234567890");
+      // Placeholder gemini-3.5-transcribe-live is mapped to real Gemini Live model
       expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining("models/gemini-3.5-transcribe-live"),
+        expect.stringContaining("models/gemini-2.0-flash-live-001"),
       );
       // Phase 2: live transcription model must use inputAudioTranscription, not chat systemInstruction
       expect(mockWs.send).toHaveBeenCalledWith(

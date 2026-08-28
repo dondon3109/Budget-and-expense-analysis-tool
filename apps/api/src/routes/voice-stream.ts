@@ -171,7 +171,12 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       }
 
       // Send initial setup payload to Gemini Live
-      const modelName = sttCfg.model.includes("/") ? sttCfg.model : `models/${sttCfg.model}`;
+      // gemini-3.5-transcribe-live is a Zoption placeholder — map to a real Gemini Live model
+      const modelNameRaw = sttCfg.model.includes("/") ? sttCfg.model : `models/${sttCfg.model}`;
+      const modelName =
+        sttCfg.model === "gemini-3.5-transcribe-live"
+          ? "models/gemini-2.0-flash-live-001"
+          : modelNameRaw;
 
       const isTranscribeLive = sttCfg.model === "gemini-3.5-transcribe-live";
       const setupPayload = isTranscribeLive
