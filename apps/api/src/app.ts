@@ -10,12 +10,15 @@ import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
 import { createAssistantOrchestrator } from "./assistant/orchestrator";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { deepSeekProvider } from "./assistant/deepseek";
 import { createFinancialReader } from "./assistant/financial-reader";
 import type { AssistantAiTelemetryFactory } from "./assistant/posthog-ai";
 import type { AssistantProvider } from "./assistant/provider";
 import { createAssistantService, type AssistantService } from "./assistant/service";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { cloudflareWhisperProvider } from "./assistant/cloudflare-whisper";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { fishAudioProvider } from "./assistant/fish-audio";
 import { createAssistantVoiceService, type AssistantVoiceService } from "./assistant/voice-service";
 import type { AssistantVoiceProviders } from "./assistant/voice-provider";

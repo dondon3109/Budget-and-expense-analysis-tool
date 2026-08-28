@@ -33,27 +33,27 @@ export function parseGoogleSecret(secret: string): {
   const trimmed = secret.trim();
   // Try JSON
   try {
-    const obj = JSON.parse(trimmed);
+    const obj = JSON.parse(trimmed) as Record<string, unknown>;
     if (obj && typeof obj === "object") {
       const projectId =
-        typeof obj.projectId === "string"
-          ? obj.projectId
-          : typeof obj.project_id === "string"
-            ? obj.project_id
+        typeof obj["projectId"] === "string"
+          ? (obj["projectId"])
+          : typeof obj["project_id"] === "string"
+            ? (obj["project_id"])
             : null;
       const token =
-        typeof obj.apiKey === "string"
-          ? obj.apiKey
-          : typeof obj.api_key === "string"
-            ? obj.api_key
-            : typeof obj.key === "string"
-              ? obj.key
-              : typeof obj.accessToken === "string"
-                ? obj.accessToken
-                : typeof obj.token === "string"
-                  ? obj.token
+        typeof obj["apiKey"] === "string"
+          ? (obj["apiKey"])
+          : typeof obj["api_key"] === "string"
+            ? (obj["api_key"])
+            : typeof obj["key"] === "string"
+              ? (obj["key"])
+              : typeof obj["accessToken"] === "string"
+                ? (obj["accessToken"])
+                : typeof obj["token"] === "string"
+                  ? (obj["token"])
                   : trimmed;
-      const location = typeof obj.location === "string" ? obj.location : DEFAULT_LOCATION;
+      const location = typeof obj["location"] === "string" ? (obj["location"]) : DEFAULT_LOCATION;
       return { projectId, location, token };
     }
   } catch {
@@ -74,10 +74,10 @@ export function createGoogleSttProvider(
   return {
     async transcribe(env, audio) {
       const secret = apiKeyOverride?.trim() || "";
-      if (!secret) throw new AssistantVoiceProviderError("google" as any, "configuration");
+      if (!secret) throw new AssistantVoiceProviderError("google", "configuration");
 
       const { projectId, location, token } = parseGoogleSecret(secret);
-      if (!token) throw new AssistantVoiceProviderError("google" as any, "configuration");
+      if (!token) throw new AssistantVoiceProviderError("google", "configuration");
 
       const effectiveModel = model?.trim() || "gemini-3.5-transcribe";
       const arrayBuf = await audio.arrayBuffer();
@@ -98,7 +98,7 @@ export function createGoogleSttProvider(
           // gemini-3.5-transcribe-live is a Multimodal Live API WebSocket-only model —
           // it cannot be used via REST generateContent. Use the realtime /stream WebSocket instead.
           if (effectiveModel === "gemini-3.5-transcribe-live") {
-            throw new AssistantVoiceProviderError("google" as any, "configuration", 400);
+            throw new AssistantVoiceProviderError("google", "configuration", 400);
           }
           const restModel = effectiveModel;
           const isApiKey = token.startsWith("AIza") || !token.startsWith("ya29");
@@ -143,13 +143,13 @@ export function createGoogleSttProvider(
               reason === "API_KEY_INVALID" ||
               errMsg?.toLowerCase().includes("api key")
             ) {
-              throw new AssistantVoiceProviderError("google" as any, "configuration", res.status);
+              throw new AssistantVoiceProviderError("google", "configuration", res.status);
             }
             if (res.status === 429)
-              throw new AssistantVoiceProviderError("google" as any, "rate_limit", res.status);
+              throw new AssistantVoiceProviderError("google", "rate_limit", res.status);
             if (res.status >= 500)
-              throw new AssistantVoiceProviderError("google" as any, "unavailable", res.status);
-            throw new AssistantVoiceProviderError("google" as any, "invalid_response", res.status);
+              throw new AssistantVoiceProviderError("google", "unavailable", res.status);
+            throw new AssistantVoiceProviderError("google", "invalid_response", res.status);
           }
 
           const data = (await res.json().catch(() => null)) as {
@@ -157,7 +157,7 @@ export function createGoogleSttProvider(
           } | null;
           const transcript = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
           if (!transcript)
-            throw new AssistantVoiceProviderError("google" as any, "invalid_response");
+            throw new AssistantVoiceProviderError("google", "invalid_response");
           return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
         }
 
@@ -198,19 +198,19 @@ export function createGoogleSttProvider(
 
           if (!res.ok) {
             if (res.status === 401 || res.status === 403)
-              throw new AssistantVoiceProviderError("google" as any, "configuration", res.status);
+              throw new AssistantVoiceProviderError("google", "configuration", res.status);
             if (res.status === 429)
-              throw new AssistantVoiceProviderError("google" as any, "rate_limit", res.status);
+              throw new AssistantVoiceProviderError("google", "rate_limit", res.status);
             if (res.status >= 500)
-              throw new AssistantVoiceProviderError("google" as any, "unavailable", res.status);
-            throw new AssistantVoiceProviderError("google" as any, "invalid_response", res.status);
+              throw new AssistantVoiceProviderError("google", "unavailable", res.status);
+            throw new AssistantVoiceProviderError("google", "invalid_response", res.status);
           }
           const data = (await res.json().catch(() => null)) as {
             results?: Array<{ alternatives?: Array<{ transcript?: string }> }>;
           } | null;
           const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
           if (!transcript)
-            throw new AssistantVoiceProviderError("google" as any, "invalid_response");
+            throw new AssistantVoiceProviderError("google", "invalid_response");
           return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
         }
 
@@ -232,29 +232,29 @@ export function createGoogleSttProvider(
 
           if (!res.ok) {
             if (res.status === 401 || res.status === 403)
-              throw new AssistantVoiceProviderError("google" as any, "configuration", res.status);
+              throw new AssistantVoiceProviderError("google", "configuration", res.status);
             if (res.status === 429)
-              throw new AssistantVoiceProviderError("google" as any, "rate_limit", res.status);
+              throw new AssistantVoiceProviderError("google", "rate_limit", res.status);
             if (res.status >= 500)
-              throw new AssistantVoiceProviderError("google" as any, "unavailable", res.status);
-            throw new AssistantVoiceProviderError("google" as any, "invalid_response", res.status);
+              throw new AssistantVoiceProviderError("google", "unavailable", res.status);
+            throw new AssistantVoiceProviderError("google", "invalid_response", res.status);
           }
           const data = (await res.json().catch(() => null)) as {
             results?: Array<{ alternatives?: Array<{ transcript?: string }> }>;
           } | null;
           const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
           if (!transcript)
-            throw new AssistantVoiceProviderError("google" as any, "invalid_response");
+            throw new AssistantVoiceProviderError("google", "invalid_response");
           return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
         }
 
         // Without projectId or valid API key, fail as configuration error
-        throw new AssistantVoiceProviderError("google" as any, "configuration");
+        throw new AssistantVoiceProviderError("google", "configuration");
       } catch (e) {
         if (e instanceof AssistantVoiceProviderError) throw e;
         if (controller.signal.aborted)
-          throw new AssistantVoiceProviderError("google" as any, "timeout");
-        throw new AssistantVoiceProviderError("google" as any, "unavailable");
+          throw new AssistantVoiceProviderError("google", "timeout");
+        throw new AssistantVoiceProviderError("google", "unavailable");
       } finally {
         clearTimeout(timer);
       }
