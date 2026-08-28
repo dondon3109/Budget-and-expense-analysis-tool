@@ -17,27 +17,40 @@ const persistedVoiceOptionsSchema = z
     subject: z.string().nullable(),
     replyMode: z.enum(["text", "voice"]),
     voice: z.enum(["default", "bright", "energetic"]),
-    autoSend: z.boolean(),
   })
-  .strict();
+  .passthrough();
 
 const persistedVoiceEnvelopeSchema = z
   .object({
     state: persistedVoiceOptionsSchema,
     version: z.literal(1),
   })
-  .strict();
+  .passthrough();
 
-export type PersistedAssistantVoiceOptions = z.infer<
-  typeof persistedVoiceEnvelopeSchema
->["state"];
+export type PersistedAssistantVoiceOptions = {
+  subject: string | null;
+  replyMode: AssistantReplyMode;
+  voice: AssistantSpeechVoice;
+};
 
 /** Validates rehydrated device-local voice options; malformed state fails closed to defaults. */
 export function parsePersistedAssistantVoiceOptions(
   value: unknown,
 ): PersistedAssistantVoiceOptions | null {
   const parsed = persistedVoiceEnvelopeSchema.safeParse({ state: value, version: 1 });
-  return parsed.success ? parsed.data.state : null;
+  if (!parsed.success) return null;
+  const state = parsed.data.state as Record<string, unknown>;
+  const core = persistedVoiceOptionsSchema.safeParse({
+    subject: state.subject,
+    replyMode: state.replyMode,
+    voice: state.voice,
+  });
+  if (!core.success) return null;
+  return {
+    subject: core.data.subject,
+    replyMode: core.data.replyMode,
+    voice: core.data.voice,
+  };
 }
 
 export const assistantSpeechVoiceOptions: {
@@ -59,10 +72,8 @@ interface AssistantVoiceOptionsState {
   subject: string | null;
   replyMode: AssistantReplyMode;
   voice: AssistantSpeechVoice;
-  autoSend: boolean;
   setReplyMode: (mode: AssistantReplyMode) => void;
   setVoice: (voice: AssistantSpeechVoice) => void;
-  setAutoSend: (autoSend: boolean) => void;
   ensureSubject: (subject: string | null) => void;
 }
 
@@ -70,7 +81,6 @@ const defaults = {
   subject: null,
   replyMode: "text" as const,
   voice: "default" as const,
-  autoSend: true,
 };
 
 export const useAssistantVoiceOptionsStore = create<AssistantVoiceOptionsState>()(
@@ -79,7 +89,6 @@ export const useAssistantVoiceOptionsStore = create<AssistantVoiceOptionsState>(
       ...defaults,
       setReplyMode: (replyMode) => set({ replyMode }),
       setVoice: (voice) => set({ voice }),
-      setAutoSend: (autoSend) => set({ autoSend }),
       ensureSubject: (subject) =>
         set((state) => (state.subject === subject ? state : { ...defaults, subject })),
     }),
@@ -87,11 +96,10 @@ export const useAssistantVoiceOptionsStore = create<AssistantVoiceOptionsState>(
       name: "zoption-mobile-assistant-voice-v1",
       version: 1,
       storage: createJSONStorage(() => secureVoiceStorage),
-      partialize: ({ subject, replyMode, voice, autoSend }) => ({
+      partialize: ({ subject, replyMode, voice }) => ({
         subject,
         replyMode,
         voice,
-        autoSend,
       }),
       merge: (persisted, current) => {
         const result = parsePersistedAssistantVoiceOptions(persisted);

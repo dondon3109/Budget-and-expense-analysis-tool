@@ -50,7 +50,7 @@ const SPEECH_VOICES: ReadonlyArray<{
   },
 ];
 
-export type AssistantVoiceSubmissionMode = "review" | "automatic";
+export type AssistantVoiceSubmissionMode = "review";
 export type AssistantVoiceReplyMode = "spoken" | "text";
 
 export interface AssistantVoiceTranscriptOptions {
@@ -105,7 +105,7 @@ function readStoredOptions(userId: string): StoredVoiceOptions | undefined {
       (options.replyMode === "spoken" || options.replyMode === "text")
     ) {
       return {
-        submissionMode: options.submissionMode,
+        submissionMode: "review",
         replyMode: options.replyMode,
         speechVoice:
           options.speechVoice && SPEECH_VOICES.some((voice) => voice.id === options.speechVoice)
@@ -180,7 +180,7 @@ export function AssistantVoiceControl({
   const [options, setOptions] = useState<StoredVoiceOptions>(() => {
     const stored = readStoredOptions(workspace.userId);
     return {
-      submissionMode: reviewRequired ? "review" : (stored?.submissionMode ?? "automatic"),
+      submissionMode: "review",
       replyMode: stored?.replyMode ?? "spoken",
       speechVoice: stored?.speechVoice ?? "default",
     };
@@ -269,7 +269,7 @@ export function AssistantVoiceControl({
   }, [disabled]);
 
   function updateOptions(next: StoredVoiceOptions) {
-    const enforced = reviewRequired ? { ...next, submissionMode: "review" as const } : next;
+    const enforced = { ...next, submissionMode: "review" as const };
     setOptions(enforced);
     saveStoredOptions(workspace.userId, enforced);
   }
@@ -321,11 +321,7 @@ export function AssistantVoiceControl({
           ? { ...options, replyMode: "text" as const }
           : options;
       onTranscript(result.text, transcriptOptions);
-      setMessage(
-        transcriptOptions.submissionMode === "review"
-          ? "Transcript ready — review or edit it, then press Send."
-          : "Transcript ready — sending now.",
-      );
+      setMessage("Transcript ready — review or edit it, then press Send.");
     } catch (error) {
       if (mountedRef.current) setMessage(errorMessage(error));
     } finally {
@@ -422,11 +418,7 @@ export function AssistantVoiceControl({
               ? { ...options, replyMode: "text" as const }
               : options;
           onTranscript(liveText, transcriptOptions);
-          setMessage(
-            transcriptOptions.submissionMode === "review"
-              ? "Transcript ready — review or edit it, then press Send."
-              : "Transcript ready — sending now.",
-          );
+          setMessage("Transcript ready — review or edit it, then press Send.");
           setStatus("idle");
           setLiveTranscript("");
           return;
@@ -696,34 +688,7 @@ export function AssistantVoiceControl({
               <X size={15} aria-hidden="true" />
             </button>
           </div>
-          <fieldset>
-            <legend>After recording</legend>
-            <label>
-              <input
-                type="radio"
-                name="assistant-voice-submission"
-                checked={options.submissionMode === "review"}
-                onChange={() => updateOptions({ ...options, submissionMode: "review" })}
-              />
-              <span>
-                <strong>Review first</strong>
-                <small>Check or edit the transcript before it is sent.</small>
-              </span>
-            </label>
-            <label className={reviewRequired ? "disabled" : ""}>
-              <input
-                type="radio"
-                name="assistant-voice-submission"
-                checked={options.submissionMode === "automatic"}
-                disabled={reviewRequired}
-                onChange={() => updateOptions({ ...options, submissionMode: "automatic" })}
-              />
-              <span>
-                <strong>Send automatically</strong>
-                <small>Send only after transcription is complete.</small>
-              </span>
-            </label>
-          </fieldset>
+
           <fieldset>
             <legend>Assistant replies</legend>
             <label className={speechAvailable ? "" : "disabled"}>
@@ -821,11 +786,11 @@ export function AssistantVoiceControl({
         >
           <strong>Enable voice mode?</strong>
           <p>
-            Your recording is sent to Cloudflare Workers AI for transcription. You can choose
-            whether to review the finished transcript or send it automatically. When you choose
-            spoken replies, the completed assistant reply text is sent to Fish Audio for speech.
-            Zoption does not store recordings or generated audio. Voice starts with
-            Cloudflare&apos;s and Fish Audio&apos;s free usage options.
+            Your recording is sent to Cloudflare Workers AI for transcription. You can review
+            the finished transcript before sending. When you choose spoken replies, the completed
+            assistant reply text is sent to Fish Audio for speech. Zoption does not store
+            recordings or generated audio. Voice starts with Cloudflare&apos;s and Fish
+            Audio&apos;s free usage options.
           </p>
           <div>
             <button

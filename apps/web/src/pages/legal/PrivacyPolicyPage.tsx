@@ -178,8 +178,7 @@ export function PrivacyPolicyPage() {
           <li>
             <strong>Cloudflare Workers AI and Fish Audio</strong> for the separately enabled voice
             feature. After voice consent, Cloudflare Workers AI receives a user-initiated recording
-            to produce a transcript. Review-first is the default; where configuration permits it,
-            you may instead choose to send automatically only after transcription is complete. Fish
+            to produce a transcript. Transcripts are reviewed before sending. Fish
             Audio may receive the completed assistant reply text when you choose spoken replies.
             Zoption does not send workspace records directly to either voice provider or store
             recordings or generated audio in D1.
@@ -285,8 +284,7 @@ export function PrivacyPolicyPage() {
           Voice mode is a separately consented feature. When you press the microphone control, your
           browser asks for microphone permission and sends the recording through Zoption&apos;s
           authenticated server to Cloudflare Workers AI&apos;s Whisper Large v3 Turbo model for
-          transcription. Review-first is the default. Where configuration permits, you may choose
-          automatic sending, which occurs only after transcription is complete. For a
+          transcription. Transcripts are reviewed before sending. For a
           voice-originated question, Zoption may send the completed assistant reply text to Fish
           Audio when you choose spoken replies. Zoption keeps the recording and generated audio in
           transient processing and browser memory only; it does not save either in D1. Each

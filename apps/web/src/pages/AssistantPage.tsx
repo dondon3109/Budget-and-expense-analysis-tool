@@ -532,12 +532,8 @@ export function AssistantPage() {
                         replyMode: voiceOptions.replyMode,
                         speechVoice: voiceOptions.speechVoice,
                       };
-                      if (voiceOptions.submissionMode === "review") {
-                        setDraft(transcript);
-                        setSendError(undefined);
-                      } else {
-                        sendMessage(transcript, voiceOptions);
-                      }
+                      setDraft(transcript);
+                      setSendError(undefined);
                     }}
                   />
                 ) : undefined

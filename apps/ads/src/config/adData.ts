@@ -85,6 +85,6 @@ export const combinedStoryConfig: CombinedStoryConfig = {
     "Am I still on track with groceries?",
     "Which recurring costs should I review?",
   ],
-  voiceBenefits: ["Speak your question", "Review or send automatically", "Hear a spoken reply"],
+  voiceBenefits: ["Speak your question", "Review before sending", "Hear a spoken reply"],
   theme: zoptionTheme,
 };

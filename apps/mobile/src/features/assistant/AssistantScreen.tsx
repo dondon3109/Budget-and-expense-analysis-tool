@@ -334,12 +334,7 @@ export function AssistantScreen() {
       setDraft(partial);
     },
     onTranscribed: (text) => {
-      const canAutoSend = voiceOptions.autoSend && voicePreferences?.reviewRequired !== true;
-      if (canAutoSend) {
-        void handleSend(text);
-      } else {
-        setDraft((previous) => (previous && previous !== text ? previous + " " + text : text));
-      }
+      setDraft((previous) => (previous && previous !== text ? previous + " " + text : text));
     },
     onError: handleVoiceError,
   });
@@ -862,11 +857,7 @@ export function AssistantScreen() {
                 multiline
                 value={draft}
                 onChangeText={setDraft}
-                placeholder={
-                  voicePreferences?.enabled === true && voiceOptions.autoSend
-                    ? "Ask, or tap the microphone"
-                    : "Ask about your finances"
-                }
+                placeholder="Ask about your finances"
                 placeholderTextColor={theme.colors.textMuted}
                 maxLength={MAX_ASSISTANT_MESSAGE_LENGTH + 200}
                 style={[styles.input, { color: theme.colors.text }]}
@@ -997,23 +988,6 @@ export function AssistantScreen() {
                   voiceOptions.setVoice(voice);
                 }}
                 onPreview={(voice) => void voicePreview.preview(voice)}
-              />
-              <SelectionField
-                label="Voice input"
-                value={voiceOptions.autoSend ? "auto" : "review"}
-                options={[
-                  { id: "auto", label: "Send automatically" },
-                  { id: "review", label: "Review before sending" },
-                ]}
-                placeholder="Send automatically"
-                sheetTitle="Voice input"
-                disabled={voicePreferences.reviewRequired}
-                hint={
-                  voicePreferences.reviewRequired
-                    ? "Transcriptions are reviewed here before sending in this environment."
-                    : undefined
-                }
-                onSelect={(value) => voiceOptions.setAutoSend(value === "auto")}
               />
               <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                 Recordings are transcribed by Cloudflare Workers AI and spoken replies are generated

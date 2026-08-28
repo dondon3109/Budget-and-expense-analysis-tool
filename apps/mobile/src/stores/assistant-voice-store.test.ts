@@ -6,13 +6,25 @@ describe("assistant voice options persistence", () => {
       subject: "user-a",
       replyMode: "voice",
       voice: "energetic",
+    });
+    expect(parsed).toEqual({
+      subject: "user-a",
+      replyMode: "voice",
+      voice: "energetic",
+    });
+  });
+
+  it("migrates legacy autoSend and ignores extra keys", () => {
+    const parsed = parsePersistedAssistantVoiceOptions({
+      subject: "user-a",
+      replyMode: "voice",
+      voice: "energetic",
       autoSend: false,
     });
     expect(parsed).toEqual({
       subject: "user-a",
       replyMode: "voice",
       voice: "energetic",
-      autoSend: false,
     });
   });
 
@@ -30,20 +42,18 @@ describe("assistant voice options persistence", () => {
       subject: "user-a",
       replyMode: "voice",
       voice: "bright",
-      autoSend: false,
     });
     store.getState().ensureSubject("user-b");
     const state = store.getState();
     expect(state.subject).toBe("user-b");
     expect(state.replyMode).toBe("text");
     expect(state.voice).toBe("default");
-    expect(state.autoSend).toBe(true);
     store.getState().ensureSubject(null);
   });
 
   it("keeps options when the same identity re-enters", () => {
     const store = useAssistantVoiceOptionsStore;
-    store.setState({ subject: "user-b", replyMode: "voice", voice: "bright", autoSend: true });
+    store.setState({ subject: "user-b", replyMode: "voice", voice: "bright" });
     store.getState().ensureSubject("user-b");
     expect(store.getState().replyMode).toBe("voice");
     store.getState().ensureSubject(null);

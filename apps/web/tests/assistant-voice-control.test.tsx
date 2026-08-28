@@ -147,7 +147,7 @@ describe("AssistantVoiceControl", () => {
     expect(notice).toHaveTextContent("recording is sent to Cloudflare Workers AI");
     expect(notice).toHaveTextContent("choose spoken replies");
     expect(notice).toHaveTextContent("assistant reply text is sent to Fish Audio");
-    expect(notice).toHaveTextContent("choose whether to review the finished transcript");
+    expect(notice).toHaveTextContent("review the finished transcript before sending");
     expect(getUserMedia).not.toHaveBeenCalled();
     expect(apiMocks.grantAssistantVoiceConsent).not.toHaveBeenCalled();
   });
@@ -242,7 +242,7 @@ describe("AssistantVoiceControl", () => {
     expect(microphone).toHaveFocus();
   });
 
-  it("defaults push-to-talk to automatic submission with a spoken and text reply", async () => {
+  it("defaults push-to-talk to review with a spoken and text reply", async () => {
     render(
       <AssistantVoiceControl
         workspace={workspace}
@@ -256,7 +256,7 @@ describe("AssistantVoiceControl", () => {
     fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
 
     const settings = screen.getByRole("dialog", { name: "Voice settings" });
-    expect(screen.getByRole("radio", { name: /Send automatically/i })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: /Send automatically/i })).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Voice \+ text/i })).toBeChecked();
 
     fireEvent.click(screen.getByRole("radio", { name: /Text only/i }));
@@ -265,7 +265,7 @@ describe("AssistantVoiceControl", () => {
     expect(settings).toHaveTextContent("Recording stops automatically");
     expect(
       JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
-    ).toEqual({ submissionMode: "automatic", replyMode: "text", speechVoice: "default" });
+    ).toEqual({ submissionMode: "review", replyMode: "text", speechVoice: "default" });
   });
 
   it("restores an existing user's saved voice choices", async () => {
@@ -285,7 +285,7 @@ describe("AssistantVoiceControl", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
 
-    expect(screen.getByRole("radio", { name: /Review first/i })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: /Send automatically/i })).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Text only/i })).toBeChecked();
     expect(screen.getByLabelText("Voice and gender")).toHaveValue("default");
   });
@@ -327,7 +327,7 @@ describe("AssistantVoiceControl", () => {
     expect(screen.getByRole("button", { name: "Start voice recording" })).toBeEnabled();
   });
 
-  it("keeps automatic sending unavailable when transcript review is required", async () => {
+  it("always reviews transcript before sending", async () => {
     render(
       <AssistantVoiceControl
         workspace={workspace}
@@ -339,8 +339,8 @@ describe("AssistantVoiceControl", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
 
-    expect(screen.getByRole("radio", { name: /Review first/i })).toBeChecked();
-    expect(screen.getByRole("radio", { name: /Send automatically/i })).toBeDisabled();
+    expect(screen.queryByRole("radio", { name: /Send automatically/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Review first/i })).not.toBeInTheDocument();
   });
 
   it("submits a completed push-to-talk transcript with the Production defaults", async () => {
@@ -376,7 +376,7 @@ describe("AssistantVoiceControl", () => {
 
     await waitFor(() =>
       expect(onTranscript).toHaveBeenCalledWith("Where did my money go?", {
-        submissionMode: "automatic",
+        submissionMode: "review",
         replyMode: "spoken",
         speechVoice: "default",
       }),
@@ -413,7 +413,6 @@ describe("AssistantVoiceControl", () => {
     );
     await act(async () => Promise.resolve());
     fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
-    fireEvent.click(screen.getByRole("radio", { name: /Send automatically/i }));
     fireEvent.click(screen.getByRole("radio", { name: /Text only/i }));
     fireEvent.click(screen.getByRole("button", { name: "Close voice settings" }));
 
@@ -440,7 +439,7 @@ describe("AssistantVoiceControl", () => {
       await Promise.resolve();
     });
     expect(onTranscript).toHaveBeenCalledWith("How much did I spend?", {
-      submissionMode: "automatic",
+      submissionMode: "review",
       replyMode: "text",
       speechVoice: "default",
     });
@@ -479,7 +478,7 @@ describe("AssistantVoiceControl", () => {
     expect(
       JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
     ).toEqual({
-      submissionMode: "automatic",
+      submissionMode: "review",
       replyMode: "spoken",
       speechVoice: "energetic",
     });
