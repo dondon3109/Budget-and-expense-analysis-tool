@@ -22,6 +22,7 @@ export default defineConfig({
       "apps/**/tests/**/*.test.{ts,tsx}",
       "scripts/**/*.test.mjs",
     ],
+    setupFiles: ["./tests/vitest.setup.ts"],
     coverage: {
       reporter: ["text", "html"],
     },

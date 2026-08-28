@@ -65,7 +65,7 @@ export function TransactionVoiceEntry({
     window.clearTimeout(stopTimerRef.current);
     window.clearInterval(elapsedTimerRef.current);
     if (liveSessionRef.current) {
-      liveSessionRef.current.stop();
+      void liveSessionRef.current.stop().catch(() => {});
       liveSessionRef.current = null;
     }
     stopTimerRef.current = undefined;

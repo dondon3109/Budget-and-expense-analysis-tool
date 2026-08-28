@@ -348,11 +348,6 @@ export async function startLiveTranscriptionSession(
         return Promise.resolve();
       }
 
-      if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-        cleanup();
-        return Promise.resolve();
-      }
-
       // If a final already arrived before stop, we already have a transcript.
       // Use a shorter grace to allow trailing final without 3s delay.
       const timeoutMs = hasReceivedFinal ? 800 : LIVE_FINALIZATION_TIMEOUT_MS;

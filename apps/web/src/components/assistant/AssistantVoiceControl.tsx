@@ -458,12 +458,9 @@ export function AssistantVoiceControl({
               void monitoringContext.close();
             try {
               await liveFinalization;
-            } catch {}
-            // After finalization, ensure monitoring context is closed
-            const remainingContext = audioContextRef.current;
-            audioContextRef.current = undefined;
-            if (remainingContext && remainingContext.state !== "closed")
-              void remainingContext.close();
+            } catch {
+              // Ignore live stream errors during finalization shutdown
+            }
             setElapsedSeconds(0);
           } else {
             clearTimersAndAudioContext();

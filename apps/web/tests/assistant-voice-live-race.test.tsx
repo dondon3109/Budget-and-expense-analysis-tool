@@ -46,8 +46,8 @@ const voiceStreamMocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("../src/lib/voiceStream", async () => {
-  const actual = await vi.importActual<typeof import("../src/lib/voiceStream")>("../src/lib/voiceStream");
+vi.mock("../src/lib/voiceStream", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
     startLiveTranscriptionSession: voiceStreamMocks.startLiveTranscriptionSession,
