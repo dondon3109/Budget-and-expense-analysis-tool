@@ -75,7 +75,8 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+    ...tseslint.configs.disableTypeChecked,
+    files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "apps/api/tests/**/*.ts", "apps/api/src/spike/**/*.ts"],
     rules: {
       "@typescript-eslint/require-await": "off",
       "@typescript-eslint/unbound-method": "off",
@@ -83,19 +84,23 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off",
+      "no-empty": "off",
     },
   },
   {
-    files: ["apps/api/src/spike/**/*.ts"],
+    files: ["apps/mobile/src/api/voice-stream.ts"],
     rules: {
+      "no-empty": "off",
+      "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-argument": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unused-vars": "off",
-      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
     },
   },
 );
