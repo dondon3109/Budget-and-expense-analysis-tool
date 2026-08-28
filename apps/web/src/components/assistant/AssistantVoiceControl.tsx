@@ -437,11 +437,11 @@ export function AssistantVoiceControl({
           const liveErr = liveErrorRef.current;
           if (liveErr) {
             setMessage(liveErr);
-          } else if (!message || message.includes("Live transcribe")) {
+          } else {
             setMessage(
               liveShouldStopRef.current
                 ? "Live transcription didn't return any speech. Try again or hold the mic closer."
-                : "Live transcription failed. Check your connection and try again. Batch mode is not available for the live model.",
+                : "Live transcription did not capture any speech. Try again.",
             );
           }
           setLiveTranscript("");
@@ -507,9 +507,11 @@ export function AssistantVoiceControl({
           liveSessionRef.current = session;
         })
         .catch((error) => {
-          if (mountedRef.current && error instanceof Error && !liveTranscriptRef.current) {
-            // Keep the error visible until batch fallback completes
-            setMessage(error.message);
+          if (mountedRef.current && error instanceof Error) {
+            liveErrorRef.current = error.message;
+            if (!liveTranscriptRef.current) {
+              setMessage(error.message);
+            }
           }
         });
 

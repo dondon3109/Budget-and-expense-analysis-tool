@@ -153,6 +153,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
             JSON.stringify({
               type: "error",
               code: "gemini_connect_failed",
+              message: `Failed to connect to Google Gemini Live API (HTTP ${geminiResp.status}). Check Google API key in Provider Configs.`,
               status: geminiResp.status,
             }),
           );
@@ -165,7 +166,14 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           (geminiWs as unknown as { accept?: () => void }).accept?.();
         } catch (_e) { void _e; }
       } catch {
-        trySend(server, JSON.stringify({ type: "error", code: "gemini_connect_failed" }));
+        trySend(
+          server,
+          JSON.stringify({
+            type: "error",
+            code: "gemini_connect_failed",
+            message: "Unable to establish connection to Google Gemini Live API.",
+          }),
+        );
         server.close(1011, "gemini_connect_failed");
         return createWebSocketResponse(client);
       }
@@ -306,7 +314,14 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         } catch (_e) { void _e; }
       };
       const geminiOnError = () => {
-        trySend(server, JSON.stringify({ type: "error", code: "gemini_error" }));
+        trySend(
+          server,
+          JSON.stringify({
+            type: "error",
+            code: "gemini_error",
+            message: "Google Gemini Live session disconnected.",
+          }),
+        );
         try {
           server.close(1011);
         } catch (_e) { void _e; }
@@ -317,8 +332,6 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       geminiWs.addEventListener("error", geminiOnError as EventListener);
 
       // Browser -> Gemini
-      // The Live Bidi API accepts both camelCase (realtimeInput) and snake_case (realtime_input).
-      // We send both for compatibility across model versions. Works for chat and transcription-live.
       server.addEventListener("message", (event) => {
         const data = (event as unknown as { data: string | ArrayBuffer }).data;
         if (!geminiWs || (geminiWs as unknown as { readyState: number }).readyState !== 1) return;
@@ -335,9 +348,6 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           trySend(
             geminiWs,
             JSON.stringify({
-              realtime_input: {
-                media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: b64 }],
-              },
               realtimeInput: {
                 mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: b64 }],
               },
@@ -351,9 +361,6 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               trySend(
                 geminiWs,
                 JSON.stringify({
-                  realtime_input: {
-                    media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: pcmData }],
-                  },
                   realtimeInput: {
                     mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: pcmData }],
                   },
