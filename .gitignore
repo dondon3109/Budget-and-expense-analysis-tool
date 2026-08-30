@@ -4,6 +4,7 @@ dist/
 coverage/
 .wrangler/
 .hermes/
+.workbuddy-ai/
 .dev.vars
 apps/api/wrangler.deploy.jsonc
 .env
@@ -13,6 +14,7 @@ apps/api/wrangler.deploy.jsonc
 playwright-report/
 test-results/
 tmp/
+_tmp_*
 .lighthouseci/
 .DS_Store
 *.log
