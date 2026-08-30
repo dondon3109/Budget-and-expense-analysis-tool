@@ -25,6 +25,9 @@ export function LegalFooter() {
         >
           Google Preferred Source
         </a>
+        <Link to="/pricing">Pricing</Link>
+        <Link to="/faq">FAQ</Link>
+        <Link to="/install">Android Beta</Link>
         <Link to="/changelog">Changelog</Link>
         <Link to="/terms-of-service">Terms of Service</Link>
         <Link to="/privacy-policy">Privacy Policy</Link>

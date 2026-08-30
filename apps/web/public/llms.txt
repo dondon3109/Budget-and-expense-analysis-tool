@@ -5,6 +5,7 @@
 ## Public pages
 
 - [Home](https://zoption.site/): Product overview, voice & receipt entry, statement imports, and account creation.
+- [Pricing & Plans](https://zoption.site/pricing): Transparent Free Plan (₱0) and Pro Plan (₱149/mo, ₱1,299/yr) comparisons with zero bank credential sharing.
 - [Changelog & Updates](https://zoption.site/changelog): Version release notes, new features, and product improvements.
 - [FAQ](https://zoption.site/faq): Plain-language answers about tracking expenses, imports, budgets, AI assistant, privacy, and billing.
 - [Download Android Beta APK](https://zoption.site/install): Official native Android Beta APK with on-device receipt scanning and offline support.

@@ -210,6 +210,7 @@ export function LandingPage() {
           <a href="#modules">Features</a>
           <a href="#calculator">Budget planner</a>
           <a href="#compare">Why Zoption</a>
+          <Link to="/pricing">Pricing</Link>
           <a href="#install">Android APK</a>
           <a href="#banks">Supported imports</a>
           <a href="#approach">How it works</a>
@@ -261,6 +262,9 @@ export function LandingPage() {
               <a href="#compare" onClick={() => setMobileNavOpen(false)}>
                 Why Zoption
               </a>
+              <Link to="/pricing" onClick={() => setMobileNavOpen(false)}>
+                Pricing
+              </Link>
               <a href="#install" onClick={() => setMobileNavOpen(false)}>
                 Android APK
               </a>

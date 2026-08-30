@@ -13,6 +13,7 @@ const searchIndexingEnabled =
 
 export type PublicRoutePath =
   | "/"
+  | "/pricing"
   | "/terms-of-service"
   | "/privacy-policy"
   | "/cookie-policy"
@@ -22,6 +23,7 @@ export type PublicRoutePath =
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/",
+  "/pricing",
   "/terms-of-service",
   "/privacy-policy",
   "/cookie-policy",
@@ -262,6 +264,22 @@ const PUBLIC_CONTENT_LAST_MODIFIED = "2026-08-11";
 const TERMS_AND_PRIVACY_LAST_MODIFIED = "2026-08-11";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-08-10";
 const CHANGELOG_LAST_MODIFIED = "2026-08-24";
+const PRICING_LAST_MODIFIED = "2026-08-30";
+
+function pricingPageStructuredData(): StructuredDataGraph {
+  const url = `${SITE_ORIGIN}/pricing`;
+  return structuredDataGraph(websiteNode(), {
+    "@type": "WebPage",
+    "@id": `${url}#webpage`,
+    name: "Pricing & Plans — Zoption",
+    description:
+      "Explore Zoption Free and Pro plans. Track personal finances with zero bank credentials, speech-to-transaction logging, receipt scanning, and bank statement imports.",
+    url,
+    dateModified: PRICING_LAST_MODIFIED,
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+  });
+}
 
 function changelogPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/changelog`;
@@ -290,6 +308,19 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       lastModified: PUBLIC_CONTENT_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 1,
+    },
+  },
+  "/pricing": {
+    title: "Pricing & Plans — Zoption",
+    description:
+      "Start for free or upgrade to Pro for ₱149/month. Private budget tracking, voice and receipt entry, bank statement imports, and no direct bank credential sharing.",
+    canonical: `${SITE_ORIGIN}/pricing`,
+    robots: "index,follow",
+    structuredData: pricingPageStructuredData(),
+    sitemap: {
+      lastModified: PRICING_LAST_MODIFIED,
+      changeFrequency: "weekly",
+      priority: 0.9,
     },
   },
   "/terms-of-service": {
