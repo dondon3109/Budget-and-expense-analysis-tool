@@ -149,8 +149,13 @@ describe("GET /api/app/assistant/voice/stream", () => {
 
     // Mock globalThis.WebSocketPair
     const clientWs = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
-    const serverWs = {
-      accept: vi.fn(),
+    // Mirror the Workers runtime default for compatibility_date >= 2026-03-17.
+    let binaryTypeAtAccept: string | undefined;
+    const serverWs: any = {
+      binaryType: "blob",
+      accept: vi.fn(() => {
+        binaryTypeAtAccept = serverWs.binaryType;
+      }),
       addEventListener: vi.fn((event, listener) => serverHandlers.set(event, listener)),
       close: vi.fn(),
       send: vi.fn(),
@@ -167,6 +172,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
         headers: { Upgrade: "websocket", Connection: "Upgrade" },
       });
       expect(res.status).toBe(101);
+      // Regression: binary frames must be delivered as ArrayBuffer. Under the runtime default
+      // of "blob", `new Uint8Array(frame)` reads 0 bytes and forwards empty audio to Gemini.
+      expect(serverWs.binaryType).toBe("arraybuffer");
+      expect(binaryTypeAtAccept).toBe("arraybuffer");
       expect(interceptedWsUrl).toContain("generativelanguage.googleapis.com");
       expect(interceptedWsUrl).toContain("key=AIzaSyFakeGoogleApiKey1234567890");
       expect(mockWs.send).toHaveBeenCalledWith(
@@ -184,6 +193,15 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(JSON.parse(mockWs.send.mock.calls.at(-1)[0])).toEqual({
         realtimeInput: {
           audio: { mimeType: "audio/pcm;rate=16000", data: "AQID" },
+        },
+      });
+
+      // A Blob frame must still yield real bytes, never an empty payload.
+      serverHandlers.get("message")({ data: new Blob([new Uint8Array([4, 5, 6])]) });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(JSON.parse(mockWs.send.mock.calls.at(-1)[0])).toEqual({
+        realtimeInput: {
+          audio: { mimeType: "audio/pcm;rate=16000", data: "BAUG" },
         },
       });
 

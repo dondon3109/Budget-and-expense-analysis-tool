@@ -118,8 +118,14 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const client = (pair as unknown as Record<string, WebSocket>)[0] as WebSocket;
     const server = (pair as unknown as Record<string, WebSocket>)[1] as WebSocket;
 
-    // Accept client
-    (server as unknown as { accept: () => void }).accept();
+    // Accept client.
+    // binaryType must be assigned before accept() so binary frames arrive as ArrayBuffer.
+    // With compatibility_date >= 2026-03-17 the runtime defaults binaryType to "blob", and
+    // `new Uint8Array(blob)` reads 0 bytes — that silently forwarded empty audio to Gemini
+    // and broke live transcription with no error surface.
+    const serverSocket = server as unknown as { binaryType?: string; accept: () => void };
+    serverSocket.binaryType = "arraybuffer";
+    serverSocket.accept();
 
     const tWorkerOpen = Date.now();
     let tFirstPartial: number | null = null;
@@ -331,27 +337,39 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       geminiWs.addEventListener("error", geminiOnError as EventListener);
 
       // Browser -> Gemini
+      const sendPcm = (bytes: Uint8Array) => {
+        if (!geminiWs || (geminiWs as unknown as { readyState: number }).readyState !== 1) return;
+        let binary = "";
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]!);
+        }
+        trySend(
+          geminiWs,
+          JSON.stringify({
+            realtimeInput: {
+              audio: { mimeType: "audio/pcm;rate=16000", data: btoa(binary) },
+            },
+          }),
+        );
+      };
+
       server.addEventListener("message", (event) => {
-        const data = (event as unknown as { data: string | ArrayBuffer }).data;
+        const data = (event as unknown as { data: string | ArrayBuffer | Blob }).data;
         if (!geminiWs || (geminiWs as unknown as { readyState: number }).readyState !== 1) return;
 
         // Binary PCM chunk (16kHz 16-bit mono)
         if (typeof data !== "string") {
-          const bytes = new Uint8Array(data);
-          let binary = "";
-          const len = bytes.byteLength;
-          for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]!);
+          if (data instanceof ArrayBuffer) {
+            sendPcm(new Uint8Array(data));
+            return;
           }
-          const b64 = btoa(binary);
-          trySend(
-            geminiWs,
-            JSON.stringify({
-              realtimeInput: {
-                audio: { mimeType: "audio/pcm;rate=16000", data: b64 },
-              },
-            }),
-          );
+          // Safety net: if binaryType ever reverts to "blob", `new Uint8Array(blob)` reads
+          // 0 bytes and forwards empty audio, which fails silently. Read the Blob explicitly.
+          void data
+            .arrayBuffer()
+            .then((buf) => sendPcm(new Uint8Array(buf)))
+            .catch(() => undefined);
         } else if (typeof data === "string" && data.startsWith("{")) {
           try {
             const parsed = JSON.parse(data) as Record<string, unknown>;
