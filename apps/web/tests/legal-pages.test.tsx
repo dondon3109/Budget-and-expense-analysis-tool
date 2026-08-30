@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -100,5 +100,14 @@ describe("legal pages", () => {
       "/terms-of-service",
     );
     expect(screen.getByRole("button", { name: "Cookie Settings" })).toBeInTheDocument();
+  });
+
+  it("renders breadcrumbs navigation on legal pages", () => {
+    renderPage(<PrivacyPolicyPage />);
+
+    const breadcrumbNav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(breadcrumbNav).toBeInTheDocument();
+    expect(within(breadcrumbNav).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
+    expect(within(breadcrumbNav).getByText("Privacy Policy")).toHaveAttribute("aria-current", "page");
   });
 });

@@ -81,6 +81,10 @@ const AuthCallbackPage = lazy(async () => {
   const module = await import("./pages/AuthCallbackPage");
   return { default: module.AuthCallbackPage };
 });
+const ThankYouPage = lazy(async () => {
+  const module = await import("./pages/ThankYouPage");
+  return { default: module.ThankYouPage };
+});
 export function RootRoute() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -167,6 +171,7 @@ export function App() {
             }
           />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/thank-you" element={<ThankYouPage />} />
           <Route
             path="/update-password"
             element={

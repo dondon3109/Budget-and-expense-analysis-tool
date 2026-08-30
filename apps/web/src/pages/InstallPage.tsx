@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 
 import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
+import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
 import {
   useAndroidRelease,
@@ -218,6 +219,14 @@ export function InstallPage() {
       </header>
 
       <main>
+        <div style={{ maxWidth: "1120px", margin: "0 auto", padding: "1.5rem 1.5rem 0" }}>
+          <Breadcrumbs
+            items={[
+              { label: "Home", to: "/" },
+              { label: "Android Beta APK" },
+            ]}
+          />
+        </div>
         <section className="install-hero" aria-labelledby="install-heading">
           <div className="install-hero-copy">
             <p className="hero-eyebrow">

@@ -74,4 +74,19 @@ describe("PricingPage", () => {
     expect(apkLinks.length).toBeGreaterThan(0);
     expect(apkLinks[0]).toHaveAttribute("href", "/install");
   });
+
+  it("displays breadcrumbs and customer support response time guidance", () => {
+    renderPricingPage();
+
+    expect(screen.getByRole("navigation", { name: /Breadcrumb/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 3,
+        name: /What is your customer support response time\?/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/responds within 24 to 48 business hours.*typically under 24 hours/i),
+    ).toBeInTheDocument();
+  });
 });

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { BrandMark } from "../brand/BrandMark";
+import { Breadcrumbs } from "../navigation/Breadcrumbs";
 import { LegalFooter } from "./LegalFooter";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import "./LegalPageLayout.css";
@@ -29,6 +30,12 @@ export function LegalPageLayout({
       <main className="legal-page-main">
         <article className="legal-article">
           <header className="legal-article-header">
+            <Breadcrumbs
+              items={[
+                { label: "Home", to: "/" },
+                { label: title },
+              ]}
+            />
             <Link className="legal-back-link" to="/">
               ← Back to Zoption
             </Link>

@@ -443,8 +443,8 @@ export function SupportChat({ surface, workspace }: SupportChatProps) {
               </button>
             </div>
             <p className="support-chat-disclosure">
-              <ShieldCheck size={13} aria-hidden="true" /> Messages go to DeepSeek for a reply. Bug
-              reports are saved only after you review and submit them.
+              <ShieldCheck size={13} aria-hidden="true" /> Messages go to DeepSeek for a reply.
+              Submitted bug reports are reviewed by our team with a response within 24–48 hours.
             </p>
           </form>
         </section>

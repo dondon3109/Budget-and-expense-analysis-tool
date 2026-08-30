@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { BrandMark } from "../../components/brand/BrandMark";
 import { LegalFooter } from "../../components/legal/LegalFooter";
+import { Breadcrumbs } from "../../components/navigation/Breadcrumbs";
 import { ThemeToggle } from "../../components/theme/ThemeToggle";
 import "./PricingPage.css";
 
@@ -50,7 +51,7 @@ const COMPARISON_ROWS = [
     features: [
       { name: "Progressive Web App (PWA) with offline caching", free: "Included", pro: "Included" },
       { name: "Official Android Beta Native APK", free: "Free download", pro: "Free download" },
-      { name: "Customer support", free: "Community & documentation", pro: "Direct priority support" },
+      { name: "Customer support", free: "Community & documentation", pro: "Direct priority support (< 24h response)" },
     ],
   },
 ];
@@ -80,6 +81,11 @@ const PRICING_FAQS = [
     question: "How does the annual plan discount work?",
     answer:
       "The Annual Pro plan is ₱1,299 per year, which saves you approximately 27% compared to paying ₱149 monthly across 12 months.",
+  },
+  {
+    question: "What is your customer support response time?",
+    answer:
+      "For general inquiries and bug reports, our team reviews and responds within 24 to 48 business hours. Pro subscribers receive priority support with responses typically under 24 hours. The built-in AI Support Assistant is available 24/7 for instant answers.",
   },
 ];
 
@@ -114,6 +120,12 @@ export function PricingPage() {
       </header>
 
       <main className="pricing-main">
+        <Breadcrumbs
+          items={[
+            { label: "Home", to: "/" },
+            { label: "Pricing & Plans" },
+          ]}
+        />
         <section className="pricing-hero">
           <div className="pricing-eyebrow">
             <ShieldCheck size={16} aria-hidden="true" />

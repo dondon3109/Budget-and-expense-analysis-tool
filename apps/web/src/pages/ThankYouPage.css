@@ -1,0 +1,114 @@
+.thank-you-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--page, #f4f1e9);
+  color: var(--text, #17342e);
+}
+
+.thank-you-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem clamp(1.25rem, 5vw, 3.5rem);
+  border-bottom: 1px solid var(--border-light, #d9d5cb);
+  background: var(--surface, #fffdf8);
+}
+
+.thank-you-header .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.thank-you-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.thank-you-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(2rem, 6vw, 4.5rem) 1.25rem;
+}
+
+.thank-you-container {
+  width: 100%;
+  max-width: 38rem;
+}
+
+.thank-you-card {
+  padding: clamp(2rem, 5vw, 3rem);
+  border-radius: 20px;
+  border: 1px solid var(--border, #d9d5cb);
+  background: var(--surface, #fffdf8);
+  box-shadow: 0 16px 48px rgba(23, 52, 46, 0.06);
+  text-align: center;
+}
+
+.thank-you-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: var(--accent-subtle, #e8f5f0);
+  color: var(--accent, #06473d);
+  margin-bottom: 1.25rem;
+}
+
+.thank-you-card h1 {
+  margin: 0.5rem 0 1rem;
+  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.thank-you-description {
+  margin: 0 auto 2rem;
+  max-width: 42ch;
+  color: var(--muted, #5f6b66);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.thank-you-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.thank-you-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  background: var(--surface-muted, #f1ece1);
+  color: var(--muted-strong, #3a4742);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+@media (max-width: 540px) {
+  .thank-you-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .thank-you-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -437,6 +437,7 @@ const PRIVATE_ROUTE_TITLES: Record<string, string> = {
   "/app/budgets": "Budgets — Zoption",
   "/app/subscriptions": "Subscriptions — Zoption",
   "/app/settings": "Settings — Zoption",
+  "/thank-you": "Thank You — Zoption",
 };
 
 const NOINDEX_DESCRIPTION = "Zoption is a private budget and expense tracking workspace.";

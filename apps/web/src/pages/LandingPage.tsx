@@ -1882,9 +1882,41 @@ export function LandingPage() {
           </Link>
         </section>
       </main>
+      <StickyMobileCta />
       <LegalFooter />
       <SupportChat surface="landing" />
     </div>
+  );
+}
+
+function StickyMobileCta() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    function handleScroll() {
+      setVisible(window.scrollY > 280);
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <aside className="landing-sticky-mobile-cta" aria-label="Quick sign up">
+      <div className="sticky-mobile-cta-content">
+        <div className="sticky-mobile-cta-text">
+          <strong>Start for free</strong>
+          <span>100% private · No card needed</span>
+        </div>
+        <div className="sticky-mobile-cta-actions">
+          <Link className="button primary compact" to="/signup">
+            Create account <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+    </aside>
   );
 }
 

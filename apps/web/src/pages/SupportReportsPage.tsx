@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
+import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import { getAdminBugReports, getBugReports, updateAdminBugReportStatus } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
@@ -125,6 +126,13 @@ export function SupportReportsPage() {
   return (
     <AppShell>
       <div className="dashboard-page support-reports-page">
+        <Breadcrumbs
+          items={[
+            { label: "Overview", to: "/app" },
+            { label: "Settings", to: "/app/settings" },
+            { label: "Bug reports" },
+          ]}
+        />
         <header className="dashboard-header support-reports-header">
           <div>
             <p className="eyebrow">Help &amp; contact</p>
