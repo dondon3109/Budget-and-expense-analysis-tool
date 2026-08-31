@@ -1,4 +1,5 @@
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -9,6 +10,7 @@ const webRoot = resolve(import.meta.dirname, "..");
 const distDirectory = resolve(webRoot, "dist");
 const serverEntry = resolve(webRoot, "dist-ssr", "entry-server.js");
 const deployEnvironments = new Set(["production", "preview", "staging"]);
+const SEO_HEAD_MARKER = "<!-- seo-head -->";
 
 function resolveDeployEnvironment() {
   const deployEnvironment = process.env.ZOPTION_DEPLOY_ENV;
@@ -71,9 +73,32 @@ function metadataHead(
   return tags.join("\n    ");
 }
 
+/**
+ * Locates the unprerendered HTML template.
+ *
+ * The client build writes a fresh `dist/index.html` carrying the SEO marker, and a
+ * previous prerender pass leaves that same pristine markup in `dist/spa.html`. Reading
+ * whichever still has the marker keeps `prerender` safely re-runnable instead of
+ * failing with a bare "marker, found 0" once `index.html` has been overwritten.
+ */
+async function readPristineTemplate(distDirectory) {
+  for (const candidate of ["index.html", "spa.html"]) {
+    const path = resolve(distDirectory, candidate);
+    if (!existsSync(path)) continue;
+    const template = await readFile(path, "utf8");
+    if (template.includes(SEO_HEAD_MARKER)) return template;
+  }
+
+  throw new Error(
+    `No unprerendered template in ${distDirectory}: neither index.html nor spa.html ` +
+      `contains the ${SEO_HEAD_MARKER} marker. Run the client build (vite build) again ` +
+      "before prerendering.",
+  );
+}
+
 function renderDocument(template, appHtml, metadata, context) {
   const head = metadataHead(metadata, context);
-  let document = replaceExactlyOnce(template, "<!-- seo-head -->", head, "SEO head");
+  let document = replaceExactlyOnce(template, SEO_HEAD_MARKER, head, "SEO head");
   document = replaceExactlyOnce(
     document,
     `<meta\n      id="zoption-description"\n      name="description"\n      content="${context.defaultDescription}"\n    />`,
@@ -119,7 +144,9 @@ function previewHeaders(headers) {
 }
 
 async function readDeploymentManifest(deployEnvironment) {
-  const path = resolve(distDirectory, ".zoption-deployment.json");
+  // Written by the client build into `.zoption-build/`, deliberately outside `dist/` so
+  // that prerender can re-read it instead of consuming it. See `vite.config.ts`.
+  const path = resolve(webRoot, ".zoption-build", "deployment.json");
   const payload = JSON.parse(await readFile(path, "utf8"));
   if (
     typeof payload !== "object" ||
@@ -144,6 +171,17 @@ function outputFileForPath(pathname) {
 }
 
 async function main() {
+  // Prerender consumes `dist-ssr` and deletes it on the way out so a later pass can
+  // never silently render a stale bundle. Say so plainly instead of surfacing a raw
+  // module resolution failure.
+  if (!existsSync(serverEntry)) {
+    throw new Error(
+      `Missing ${serverEntry}. Run the SSR build first ` +
+        "(vite build --ssr src/entry-server.tsx --outDir dist-ssr): prerender removes " +
+        "dist-ssr when it finishes, so `pnpm build` must run the steps in order.",
+    );
+  }
+
   const deployEnvironment = resolveDeployEnvironment();
   const indexingEnabled = deployEnvironment === "production";
   const deploymentManifest = await readDeploymentManifest(deployEnvironment);
@@ -157,7 +195,7 @@ async function main() {
     SOCIAL_IMAGE_URL,
     STRUCTURED_DATA_SCRIPT_ID,
   } = await import(pathToFileURL(serverEntry).href);
-  const template = await readFile(resolve(distDirectory, "index.html"), "utf8");
+  const template = await readPristineTemplate(distDirectory);
   const defaultDescription =
     "A clear, privacy-conscious workspace for understanding expenses, budgets, and monthly cash flow.";
   const context = {
@@ -168,7 +206,10 @@ async function main() {
     structuredDataScriptId: STRUCTURED_DATA_SCRIPT_ID,
   };
 
-  await copyFile(resolve(distDirectory, "index.html"), resolve(distDirectory, "spa.html"));
+  // Snapshot the pristine template, not `index.html`: once the root route is rendered,
+  // `index.html` no longer holds the marker, so copying it would destroy the snapshot
+  // and make a second prerender pass unreproducible.
+  await writeFile(resolve(distDirectory, "spa.html"), template);
 
   const routes = [];
   for (const entry of SITEMAP_ENTRIES) {
@@ -226,8 +267,7 @@ async function main() {
 try {
   await main();
 } finally {
-  await Promise.all([
-    rm(resolve(webRoot, "dist-ssr"), { recursive: true, force: true }),
-    rm(resolve(distDirectory, ".zoption-deployment.json"), { force: true }),
-  ]);
+  // Only `dist-ssr` is scratch. The deployment manifest must survive so that
+  // re-running prerender against an unchanged `dist/` is reproducible.
+  await rm(resolve(webRoot, "dist-ssr"), { recursive: true, force: true });
 }

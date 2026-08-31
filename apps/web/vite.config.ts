@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,8 +17,18 @@ import {
   type ResolvedDeploymentConfig,
 } from "./deployment-config";
 
+const webRoot = fileURLToPath(new URL(".", import.meta.url));
 const rootPackagePath = fileURLToPath(new URL("../../package.json", import.meta.url));
 const rootPackage = JSON.parse(readFileSync(rootPackagePath, "utf8")) as { version?: unknown };
+
+/**
+ * Scratch space for the client build's handoff to `prerender.mjs`.
+ *
+ * This deliberately lives outside `dist/`: `dist/` is what gets deployed, and while the
+ * manifest is build-time only, anything written there has to be deleted again before
+ * deployment. Deleting it is what made `prerender` a single-shot command.
+ */
+const buildScratchDirectory = resolve(webRoot, ".zoption-build");
 
 if (typeof rootPackage.version !== "string" || !rootPackage.version.trim()) {
   throw new Error("The root package.json must provide a valid version.");
@@ -47,8 +57,9 @@ function deploymentHeadersPlugin(deploymentConfig: ResolvedDeploymentConfig): Pl
       );
       verifyContentSecurityPolicy(headers, contentSecurityPolicy);
       writeFileSync(headersPath, headers);
+      mkdirSync(buildScratchDirectory, { recursive: true });
       writeFileSync(
-        resolve(outputDirectory, ".zoption-deployment.json"),
+        resolve(buildScratchDirectory, "deployment.json"),
         `${JSON.stringify({ ...deploymentConfig, appVersion, contentSecurityPolicy }, null, 2)}\n`,
       );
       writeFileSync(

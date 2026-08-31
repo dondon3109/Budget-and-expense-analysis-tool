@@ -33,3 +33,6 @@ _tmp_*
 *.idsig
 apps/ads/out/
 .worktrees/
+
+# Client build handoff for prerender (build-time only, outside the deployed dist)
+apps/web/.zoption-build/
