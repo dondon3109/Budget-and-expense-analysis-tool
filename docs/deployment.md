@@ -98,6 +98,15 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
     Register one webhook per environment at `https://PREVIEW_API_HOST/api/billing/paypal/webhook` and `https://api.zoption.site/api/billing/paypal/webhook`. Subscribe only to `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, and `PAYMENT.SALE.COMPLETED`. Record the matching webhook ID as the environment secret. Never copy OAuth tokens, webhook headers, payer data, or secret values into source code, tracked configuration, or logs.
 
+13. Store `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` as a Worker secret in each environment. This is the AES-256-GCM master key that encrypts the AI and voice provider credentials admins save at `/app/admin/provider-configs`. Only ciphertext is written to D1; the key itself never is. Generate a fresh value per environment:
+
+    ```bash
+    openssl rand -base64 32 | pnpm --filter @zoption/api exec wrangler secret put PROVIDER_CREDENTIAL_ENCRYPTION_KEY --config wrangler.deploy.jsonc --env preview
+    openssl rand -base64 32 | pnpm --filter @zoption/api exec wrangler secret put PROVIDER_CREDENTIAL_ENCRYPTION_KEY --config wrangler.deploy.jsonc --env production
+    ```
+
+    The value must base64-decode to exactly 32 bytes. When it is missing or malformed, every credential write fails with HTTP 500 `encryption_not_configured`, so an admin cannot save an API key from the provider admin UI. Never rotate a key that is already in use: doing so makes every credential already stored in that environment's D1 permanently undecryptable. Preview and production use separate D1 databases and therefore hold independent keys.
+
 ### Optional PayPal Sandbox provisioning utility
 
 The repository setup utility is intentionally locked to PayPal Sandbox and the approved Preview Worker webhook endpoint. It never calls the live PayPal API, patches/deletes existing resources, or changes Cloudflare by itself. It reconciles the `Zoption Pro` product, the ₱149 monthly and ₱1,299 annual PHP plans, and the seven-event Preview webhook. A conflicting same-name resource, duplicate webhook, or mismatched webhook event set stops the operation for review.
