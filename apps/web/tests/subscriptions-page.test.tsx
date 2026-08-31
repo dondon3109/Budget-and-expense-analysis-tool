@@ -293,4 +293,24 @@ describe("SubscriptionsPage", () => {
     await user.click(screen.getByRole("button", { name: "Edit Music streaming" }));
     expect(screen.getByRole("dialog", { name: "Edit subscription" })).toBeInTheDocument();
   });
+
+  it("switches to the cashflow forecast view and displays projection controls", async () => {
+    const summary: SubscriptionMonthSummary = {
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [{ ...record, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
+    };
+    vi.mocked(getSubscriptions).mockResolvedValue(summary);
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: "Cashflow Forecast" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cashflow Forecast" }));
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Upcoming Balance & Obligation Forecast" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Forecast horizon" })).toBeInTheDocument();
+  });
 });
