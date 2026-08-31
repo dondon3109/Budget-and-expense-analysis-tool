@@ -313,6 +313,42 @@ describe("AdminProviderConfigsPage", () => {
     );
   });
 
+  it("reports a failed save inside the add dialog", async () => {
+    renderPage();
+    await screen.findByText("Voice Input · STT");
+
+    const addButtons = screen.getAllByRole("button", { name: /Add configuration/i });
+    fireEvent.click(addButtons[1]!);
+
+    const dialog = await screen.findByRole("dialog");
+
+    // A saved Google credential exists, so the dialog opens in "existing" mode.
+    // Switch to entering a key so the credential endpoint is exercised.
+    fireEvent.click(within(dialog).getByRole("button", { name: /Enter API key/i }));
+    fireEvent.change(within(dialog).getByPlaceholderText(/AIzaSy\.\.\./i), {
+      target: { value: "AIzaSySecretVoiceKey12345" },
+    });
+
+    apiMocks.createProviderCredential.mockRejectedValue(
+      new Error("Credential encryption is not configured. Set PROVIDER_CREDENTIAL_ENCRYPTION_KEY."),
+    );
+
+    const submitBtn = within(dialog).getByRole("button", { name: "Add configuration" });
+    expect(submitBtn).not.toBeDisabled();
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    // Regression: the dialog is a full-viewport scrim, so an error rendered at
+    // page level sits underneath it and the save looks like a dead click. The
+    // reason must be reachable from inside the still-open dialog.
+    const openDialog = screen.getByRole("dialog");
+    expect(
+      within(openDialog).getByText(/Credential encryption is not configured/i),
+    ).toBeInTheDocument();
+    expect(apiMocks.createProviderConfig).not.toHaveBeenCalled();
+  });
+
   it("allows deleting an inactive configuration and protects active configuration", async () => {
     renderPage();
     await screen.findByText("Cloudflare Whisper");

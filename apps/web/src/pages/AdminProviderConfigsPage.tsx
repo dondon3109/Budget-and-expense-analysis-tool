@@ -114,6 +114,10 @@ export function AdminProviderConfigsPage() {
   const [showAddSecret, setShowAddSecret] = useState<boolean>(false);
   const [addActivateImmediately, setAddActivateImmediately] = useState<boolean>(true);
   const [isSubmittingConfig, setIsSubmittingConfig] = useState<boolean>(false);
+  // Errors from the add dialog must render inside it. The dialog is a
+  // full-viewport scrim, so anything routed to the page-level errorMsg is
+  // painted underneath and the save looks like a dead click.
+  const [addError, setAddError] = useState<string>();
 
   // Credential dialog state
   const [showAddCred, setShowAddCred] = useState(false);
@@ -272,6 +276,7 @@ export function AdminProviderConfigsPage() {
   async function handleCreateConfig() {
     if (!addFor || !addProvider || !addModel || !addDisplayName.trim()) return;
     setIsSubmittingConfig(true);
+    setAddError(undefined);
     setErrorMsg(undefined);
     try {
       let credentialId: string | null = null;
@@ -336,7 +341,7 @@ export function AdminProviderConfigsPage() {
         queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
       });
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to create configuration.");
+      setAddError(err instanceof Error ? err.message : "Failed to create configuration.");
     } finally {
       setIsSubmittingConfig(false);
     }
@@ -590,6 +595,7 @@ export function AdminProviderConfigsPage() {
     setAddNewCredSecret("");
     setShowAddSecret(false);
     setAddFor(service);
+    setAddError(undefined);
     setErrorMsg(undefined);
   }
 
@@ -1678,6 +1684,11 @@ export function AdminProviderConfigsPage() {
                       </>
                     );
                   })()}
+                  {addError && (
+                    <div className="admin-provider-feedback error" role="alert">
+                      {addError}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
