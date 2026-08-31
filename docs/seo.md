@@ -14,11 +14,17 @@ Technical correctness is not what is holding the site back. Two things are:
 1. A Cloudflare configuration is overriding the crawler policy the app declares.
 2. The site has **eight indexable URLs, none of which target any search demand.**
 
-## Blocking issue: Cloudflare is overriding the crawler policy
+## Resolved: Cloudflare was overriding the crawler policy
 
-`apps/web/public/robots.txt` explicitly allows AI crawlers. The live file at
-`https://zoption.site/robots.txt` does not match it — Cloudflare prepends a managed
-block that disallows the same agents:
+**Fixed 2026-08-31.** *Manage your robots.txt* is now off for the `zoption.site` zone,
+and the live file carries no `Disallow` for any agent:
+
+```sh
+curl -s https://zoption.site/robots.txt | grep -c Disallow   # 0
+```
+
+The state before the fix: Cloudflare prepended a managed block that disallowed the
+same agents the app explicitly allowed:
 
 ```text
 # BEGIN Cloudflare Managed content
@@ -44,9 +50,8 @@ tie restrictively, which means **GPTBot, ClaudeBot, Google-Extended, and
 Applebot-Extended are most likely being blocked.** (`PerplexityBot` is not in the
 Cloudflare block list and remains allowed.)
 
-This contradicts stated intent in three places:
+This contradicts stated intent in two places:
 
-- `apps/web/public/robots.txt` — allows these agents.
 - `apps/web/public/llms.txt` — written specifically for AI consumption.
 - The FAQ entry and `/faq` structured data telling users to add Zoption as a Google
   Preferred Source.
@@ -55,13 +60,27 @@ The `Content-Signal: search=yes,ai-train=no,use=reference` header shows the inte
 to allow AI *search* while refusing AI *training*. Blocking GPTBot and Google-Extended
 undermines that.
 
-**Action required (dashboard, not code):** in Cloudflare, open *Bots* → AI crawl
-control / managed robots.txt and either turn off AI-crawler blocking or allow these
-agents. Then re-fetch the live `robots.txt` and confirm no `Disallow` remains for
-GPTBot, ClaudeBot, Google-Extended, or Applebot-Extended.
+**Code side is done.** `scripts/robots.mjs` no longer repeats `Allow` rules for agents
+the Cloudflare block already covers. Restating them produced two equally specific,
+conflicting groups with no defined winner — crawlers resolve that tie restrictively, so
+the duplicate group could not win and only added ambiguity. The wildcard
+`User-agent: * / Allow: /` already permits those agents the moment the edge stops
+blocking them, and `robots.test.ts` fails if anyone re-adds the redundant rules.
 
-Nothing in this repository can fix it — the managed block is injected above the origin
-file at the edge.
+**Code side.** `scripts/robots.mjs` no longer repeats `Allow` rules for agents the
+Cloudflare block covered. The wildcard `User-agent: * / Allow: /` now permits those
+agents on its own, and `robots.test.ts` fails if anyone re-adds the redundant rules.
+
+**Dashboard side.** In Cloudflare for the `zoption.site` zone: **Bots** → *Manage your
+robots.txt* → off. This could not be done from the repository — the managed block is
+injected above the origin response at the edge, so no origin file can override it. If
+the zone is ever recreated or the setting is re-enabled, this is the first thing to
+re-check.
+
+> **Note:** the live `robots.txt` still shows the pre-consolidation content with
+> redundant per-agent `Allow` groups. That is expected — it is the previously deployed
+> build. The consolidated file ships with the next release. It is a cleanup, not a
+> blocker: the old file allows the same crawlers.
 
 ## The real constraint: eight indexable URLs
 
@@ -143,6 +162,17 @@ Android use, no bank connection, e-wallet tracking.
 An interactive 50/30/20 calculator in pesos is the strongest link magnet available
 and matches the product's centavo-precision story.
 
+**Shipped.** `/tools/50-30-20-calculator` runs fully client-side with no account and
+no network call. Percentages are adjustable, and allocation happens in integer
+centavos via the largest-remainder method
+(`apps/web/src/pages/tools/allocateBudget.ts`), so the three buckets always sum to
+exactly the income entered. `budgetCalculator.test.ts` asserts that invariant for
+every amount from 0 to ₱1,000.00 in one-centavo steps — the property most competing
+calculators get wrong, and the one worth claiming.
+
+It also targets the peso phrasing the guide pages will use, and it is the page most
+likely to attract links, so it carries sitemap priority 0.8.
+
 ### Cluster D — feature explainers
 
 - `/features/receipt-scanning`, `/features/voice-expense-entry`
@@ -198,22 +228,45 @@ This document ranks opportunities qualitatively. To prioritize on evidence:
 
 ## Checklist
 
-- [ ] Allow GPTBot, ClaudeBot, Google-Extended, Applebot-Extended in Cloudflare
-- [ ] Verify live `robots.txt` has no conflicting `Disallow`
+- [x] Make `robots.txt` a single source of truth (`scripts/robots.mjs`, no conflicting
+      `Allow` groups) — code side done
+- [x] Turn off *Manage your robots.txt* in the Cloudflare dashboard (2026-08-31)
+- [x] Verify live `robots.txt` has no `Disallow` — confirmed 0
+- [ ] **Ship it: commit and push.** Production is 5 commits behind `origin/main`, so
+      none of the work below is live yet (sitemap still lists 8 URLs, `/tools/...` 404s)
 - [ ] Verify `zoption.site` is indexed (`site:zoption.site`)
 - [ ] Submit sitemap in Search Console
-- [x] Cluster A import pages (hub + 5 bank guides)
+- [x] Cluster A import pages (hub + 5 bank guides) — **built, not deployed**
+- [x] Interactive 50/30/20 peso calculator (`/tools/50-30-20-calculator`) — **built,
+      not deployed**
 - [ ] Decide on Cluster B Philippine budgeting guides
-- [ ] Decide on the interactive 50/30/20 peso calculator
+- [ ] Decide on Cluster D feature explainers
 - [ ] Connect GSC and Ahrefs to replace qualitative ranking with real data
 - [ ] Automate the content-date drift check
 
-## Known build issue
+## Build pipeline
 
-`pnpm build` in `apps/web` fails on a clean `dist` with
-`ENOENT ... dist/_headers`. The `zoption-deployment-headers` plugin reads
-`dist/_headers` in `closeBundle`, but Vite 8 copies `public/` *after* `closeBundle`
-runs, so the file does not exist yet on a first build. It succeeds on a second run
-because the first run's copy lands in `dist`. Anyone building after wiping `dist`
-will hit this; the fix is either to stop the plugin depending on a copied file or to
-read the source from `public/_headers` directly.
+`pnpm --filter @zoption/web build` runs four ordered steps, and `dist/` is what gets
+deployed (`wrangler pages deploy apps/web/dist`):
+
+1. `typecheck`
+2. `vite build` — client bundle into `dist/`
+3. `vite build --ssr src/entry-server.tsx --outDir dist-ssr`
+4. `node scripts/prerender.mjs` — renders every `PUBLIC_ROUTE_PATHS` entry to static
+   HTML, then writes `robots.txt` and `sitemap.xml`
+
+Two consequences are easy to miss:
+
+- **The shipped `robots.txt` is generated, not a file in `public/`.** `prerender.mjs`
+  overwrites `dist/robots.txt` on every build, so `public/robots.txt` never reached
+  production and has been deleted. The policy now lives in `scripts/robots.mjs` and is
+  covered by `apps/web/tests/robots.test.ts`.
+- **`prerender` is single-shot by design.** It deletes `dist-ssr` when it finishes so a
+  later pass can never silently render a stale bundle. Running it twice without
+  redoing the SSR build fails fast with a message naming the missing file. Always use
+  `pnpm build`, which runs the steps in order.
+
+An earlier revision of this document claimed a Vite 8 race caused
+`ENOENT dist/_headers`. That was wrong: Vite copies `public/` during `renderStart`,
+before bundling, so the file is always present by `closeBundle`. The observed failures
+came from re-running `prerender` against an already-prerendered `dist/`.
