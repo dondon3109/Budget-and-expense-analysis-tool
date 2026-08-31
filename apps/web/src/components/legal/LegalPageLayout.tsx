@@ -10,12 +10,13 @@ import "./LegalPageLayout.css";
 export function LegalPageLayout({
   title,
   summary,
-  lastUpdated = "August 10, 2026",
+  lastUpdated,
   children,
 }: {
   title: string;
   summary: string;
-  lastUpdated?: string;
+  /** Required: a shared default silently dates every new page, then goes stale. */
+  lastUpdated: string;
   children: ReactNode;
 }) {
   return (

@@ -54,6 +54,14 @@ describe("public SEO metadata", () => {
     }
   });
 
+  it("never dates a public route ahead of the day it was published", () => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    for (const entry of SITEMAP_ENTRIES) {
+      expect(`${entry.path} ${entry.lastModified}` <= `${entry.path} ${today}`).toBe(true);
+    }
+  });
+
   it("models public routes as linked, canonical Schema.org graphs", () => {
     for (const path of PUBLIC_ROUTE_PATHS) {
       const metadata = PUBLIC_ROUTE_METADATA[path];

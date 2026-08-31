@@ -196,7 +196,7 @@ function faqStructuredData(): StructuredDataGraph {
         "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, subscription tracking, savings interest, the AI assistant, privacy, and billing.",
       url: `${SITE_ORIGIN}/faq`,
       inLanguage: "en",
-      dateModified: PUBLIC_CONTENT_LAST_MODIFIED,
+      dateModified: FAQ_LAST_MODIFIED,
       isPartOf: { "@id": WEBSITE_ID },
     },
     {
@@ -214,7 +214,7 @@ function faqStructuredData(): StructuredDataGraph {
   );
 }
 
-function legalPageStructuredData(
+function contentPageStructuredData(
   name: string,
   description: string,
   url: string,
@@ -267,10 +267,11 @@ function installPageStructuredData(): StructuredDataGraph {
   );
 }
 
-const PUBLIC_CONTENT_LAST_MODIFIED = "2026-08-11";
-const TERMS_AND_PRIVACY_LAST_MODIFIED = "2026-08-11";
-const COOKIE_POLICY_LAST_MODIFIED = "2026-08-10";
-const CHANGELOG_LAST_MODIFIED = "2026-08-24";
+// Each date is the day that page's content last materially changed. They feed both
+// <lastmod> and WebPage dateModified, so a stale value misrepresents freshness to
+// crawlers. Update the constant whenever the corresponding page copy changes, and
+// keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
+const LANDING_LAST_MODIFIED = "2026-08-30";
 const PRICING_LAST_MODIFIED = "2026-08-30";
 const GUIDES_LAST_MODIFIED = "2026-08-30";
 
@@ -303,6 +304,12 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
     isPartOf: { "@id": WEBSITE_ID },
   });
 }
+const FAQ_LAST_MODIFIED = "2026-08-30";
+const CHANGELOG_LAST_MODIFIED = "2026-08-26";
+const TERMS_LAST_MODIFIED = "2026-08-12";
+const PRIVACY_LAST_MODIFIED = "2026-08-28";
+const COOKIE_POLICY_LAST_MODIFIED = "2026-08-24";
+const IMPORT_LAST_MODIFIED = "2026-08-30";
 
 function pricingPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/pricing`;
@@ -343,7 +350,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
     robots: "index,follow",
     structuredData: homepageStructuredData(),
     sitemap: {
-      lastModified: PUBLIC_CONTENT_LAST_MODIFIED,
+      lastModified: LANDING_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 1,
     },
@@ -367,14 +374,14 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       "Read the terms that govern Zoption Free and Pro plans, accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
     canonical: `${SITE_ORIGIN}/terms-of-service`,
     robots: "index,follow",
-    structuredData: legalPageStructuredData(
+    structuredData: contentPageStructuredData(
       "Terms of Service — Zoption",
       "The terms that govern Zoption Free and Pro plans, accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
       `${SITE_ORIGIN}/terms-of-service`,
-      TERMS_AND_PRIVACY_LAST_MODIFIED,
+      TERMS_LAST_MODIFIED,
     ),
     sitemap: {
-      lastModified: TERMS_AND_PRIVACY_LAST_MODIFIED,
+      lastModified: TERMS_LAST_MODIFIED,
       changeFrequency: "yearly",
       priority: 0.4,
     },
@@ -385,14 +392,14 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       "Learn how Zoption handles account, profile, financial workspace, plan, billing, imported transaction, assistant, consent, and operational information.",
     canonical: `${SITE_ORIGIN}/privacy-policy`,
     robots: "index,follow",
-    structuredData: legalPageStructuredData(
+    structuredData: contentPageStructuredData(
       "Privacy Policy — Zoption",
       "How Zoption handles account, profile, financial workspace, plan, billing, imported transaction, assistant, consent, and operational information.",
       `${SITE_ORIGIN}/privacy-policy`,
-      TERMS_AND_PRIVACY_LAST_MODIFIED,
+      PRIVACY_LAST_MODIFIED,
     ),
     sitemap: {
-      lastModified: TERMS_AND_PRIVACY_LAST_MODIFIED,
+      lastModified: PRIVACY_LAST_MODIFIED,
       changeFrequency: "yearly",
       priority: 0.4,
     },
@@ -403,7 +410,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       "Learn about the necessary browser storage Zoption uses and how PostHog provides cookieless web analytics on public pages.",
     canonical: `${SITE_ORIGIN}/cookie-policy`,
     robots: "index,follow",
-    structuredData: legalPageStructuredData(
+    structuredData: contentPageStructuredData(
       "Cookie Policy — Zoption",
       "The necessary browser storage Zoption uses and how PostHog provides cookieless web analytics on public pages.",
       `${SITE_ORIGIN}/cookie-policy`,
@@ -423,7 +430,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
     robots: "index,follow",
     structuredData: faqStructuredData(),
     sitemap: {
-      lastModified: PUBLIC_CONTENT_LAST_MODIFIED,
+      lastModified: FAQ_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.6,
     },

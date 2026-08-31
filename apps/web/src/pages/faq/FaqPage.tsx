@@ -9,6 +9,7 @@ export function FaqPage() {
     <LegalPageLayout
       title="Frequently asked questions"
       summary="Plain-language answers about how Zoption tracks expenses, imports files, follows budgets, and handles your data."
+      lastUpdated="August 30, 2026"
     >
       <section className="faq-page-list">
         {FAQ_ITEMS_PUBLIC.map(({ question, answer }) => (
