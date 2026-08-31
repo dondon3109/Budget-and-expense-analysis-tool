@@ -2,6 +2,7 @@ import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { robotsText } from "./robots.mjs";
 import { verifyPrerenderArtifacts } from "./verify-prerender.mjs";
 
 const webRoot = resolve(import.meta.dirname, "..");
@@ -108,36 +109,6 @@ function sitemapXml(entries, siteOrigin) {
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
-}
-
-function robotsText(siteOrigin, indexingEnabled) {
-  if (!indexingEnabled) return "User-agent: *\nAllow: /\n";
-  return [
-    "User-agent: *",
-    "Allow: /",
-    "",
-    "# Assistive AI and search crawlers",
-    "User-agent: Google-Extended",
-    "Allow: /",
-    "",
-    "User-agent: GoogleOther",
-    "Allow: /",
-    "",
-    "User-agent: GPTBot",
-    "Allow: /",
-    "",
-    "User-agent: PerplexityBot",
-    "Allow: /",
-    "",
-    "User-agent: ClaudeBot",
-    "Allow: /",
-    "",
-    "User-agent: Applebot-Extended",
-    "Allow: /",
-    "",
-    `Sitemap: ${siteOrigin}/sitemap.xml`,
-    "",
-  ].join("\n");
 }
 
 function previewHeaders(headers) {

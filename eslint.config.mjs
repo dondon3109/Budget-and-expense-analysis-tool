@@ -33,6 +33,7 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked,
     files: [
       "**/scripts/**/*.mjs",
+      "**/scripts/**/*.d.mts",
       "apps/mobile/*.cjs",
       "apps/mobile/plugins/**/*.js",
       "apps/web/public/**/*.js",
