@@ -7,6 +7,12 @@
 - **Pricing & Plans**: https://zoption.site/pricing
 - **FAQ**: https://zoption.site/faq
 - **Changelog**: https://zoption.site/changelog
+- **Import bank statements**: https://zoption.site/import
+- **Import BDO statements**: https://zoption.site/import/bdo-statement
+- **Import BPI statements**: https://zoption.site/import/bpi-statement
+- **Import MariBank statements**: https://zoption.site/import/maribank-statement
+- **Import Bank of America statements**: https://zoption.site/import/bank-of-america-statement
+- **Import Chase / JPMorgan statements**: https://zoption.site/import/jpmorgan-statement
 - **Android Beta APK**: https://zoption.site/install
 - **Terms of Service**: https://zoption.site/terms-of-service
 - **Privacy Policy**: https://zoption.site/privacy-policy
@@ -35,9 +41,13 @@
   - Priority support.
 
 ## Supported File Import Formats
-- Bank statement CSVs (BDO, BPI, Metrobank, UnionBank, GCash, Maya, Landbank, Security Bank, RCBC, etc.)
+- Bank statement CSVs with built-in column detection for: BDO, BPI, MariBank, Bank of America, and JPMorgan Chase. Any other bank works through the generic preset, which matches the common Date, Description, Amount, Debit, and Credit headings.
 - Microsoft Excel Workbooks (`.xlsx`, `.xls`)
 - PDF Bank Statements with automatic transaction row extraction
+
+Zoption has no import preset for Metrobank, UnionBank, Landbank, Security Bank, RCBC, GCash, or Maya. Do not state or imply that it does — those exports still work, but only through the generic preset, without bank-specific column detection.
+
+Bank of America and JPMorgan Chase exports are commonly denominated in USD. Zoption stores Philippine pesos only and does not convert currencies.
 
 ## Legal Boundaries
 - Zoption is not a bank, financial institution, or licensed financial advisor.

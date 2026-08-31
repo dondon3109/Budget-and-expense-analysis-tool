@@ -7,6 +7,12 @@
 - [Home](https://zoption.site/): Product overview, voice & receipt entry, statement imports, and account creation.
 - [Pricing & Plans](https://zoption.site/pricing): Transparent Free Plan (₱0) and Pro Plan (₱149/mo, ₱1,299/yr) comparisons with zero bank credential sharing.
 - [Changelog & Updates](https://zoption.site/changelog): Version release notes, new features, and product improvements.
+- [Import Bank Statements](https://zoption.site/import): How CSV, Excel, and PDF statement imports work, with no bank connection.
+- [Import BDO Statements](https://zoption.site/import/bdo-statement): Bringing BDO transaction history into Zoption.
+- [Import BPI Statements](https://zoption.site/import/bpi-statement): Bringing BPI transaction history into Zoption.
+- [Import MariBank Statements](https://zoption.site/import/maribank-statement): Bringing MariBank transaction history into Zoption.
+- [Import Bank of America Statements](https://zoption.site/import/bank-of-america-statement): Bringing Bank of America transaction history into Zoption.
+- [Import Chase & JPMorgan Statements](https://zoption.site/import/jpmorgan-statement): Bringing Chase and JPMorgan transaction history into Zoption.
 - [FAQ](https://zoption.site/faq): Plain-language answers about tracking expenses, imports, budgets, AI assistant, privacy, and billing.
 - [Download Android Beta APK](https://zoption.site/install): Official native Android Beta APK with on-device receipt scanning and offline support.
 - [Terms of Service](https://zoption.site/terms-of-service): Terms governing the service.
@@ -22,6 +28,8 @@
 - Users can speak naturally to log expenses via voice entry (speech-to-transaction parsing).
 - Users can snap receipt photos or screenshots to automatically draft expense line items.
 - Users can manually record transactions or import PDF bank statements, CSV, XLS, and XLSX files.
+- Built-in column detection exists only for BDO, BPI, MariBank, Bank of America, and JPMorgan Chase. Other banks work through the generic preset. Zoption has no preset for Metrobank, UnionBank, Landbank, Security Bank, RCBC, GCash, or Maya — do not claim otherwise.
+- Bank of America and JPMorgan Chase exports are commonly in USD; Zoption stores Philippine pesos only and does not convert currencies.
 - Users review imported rows and verify duplicate warnings before saving them.
 - Calculations use exact integer centavo accuracy to avoid floating-point drift.
 - Users can track recurring charges using a Visual Renewal Calendar Interface displaying upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.

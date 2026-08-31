@@ -1,3 +1,4 @@
+import { findImportGuide } from "../pages/import/importGuides";
 import { ANDROID_RELEASE } from "../releases/androidRelease";
 import { FINANCE_GUIDES, getFinanceGuideBySlug, type FinanceGuide } from "@zoption/shared";
 
@@ -24,7 +25,13 @@ export type PublicRoutePath =
   | "/install"
   | "/changelog"
   | "/guides"
-  | GuideRoutePath;
+  | GuideRoutePath
+  | "/import"
+  | "/import/bdo-statement"
+  | "/import/bpi-statement"
+  | "/import/maribank-statement"
+  | "/import/bank-of-america-statement"
+  | "/import/jpmorgan-statement";
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/",
@@ -37,6 +44,12 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/changelog",
   "/guides",
   ...FINANCE_GUIDES.map((guide) => `/guides/${guide.slug}` as const),
+  "/import",
+  "/import/bdo-statement",
+  "/import/bpi-statement",
+  "/import/maribank-statement",
+  "/import/bank-of-america-statement",
+  "/import/jpmorgan-statement",
 ];
 
 type StructuredDataNode = Record<string, unknown>;
@@ -341,6 +354,57 @@ function changelogPageStructuredData(): StructuredDataGraph {
   });
 }
 
+/**
+ * Guides are keyed by their own path so a route can only be published when a
+ * guide exists for it. Titles and descriptions come from the guide rather than
+ * being restated here, which keeps the page and its metadata from drifting.
+ */
+function importGuideMetadata(path: string): PublicRouteMetadata {
+  const guide = findImportGuide(path);
+  if (!guide) throw new Error(`No import guide registered for ${path}`);
+
+  const url = `${SITE_ORIGIN}${path}`;
+  return {
+    title: guide.title,
+    description: guide.description,
+    canonical: url,
+    robots: "index,follow",
+    structuredData: contentPageStructuredData(
+      guide.heading,
+      guide.description,
+      url,
+      IMPORT_LAST_MODIFIED,
+    ),
+    sitemap: {
+      lastModified: IMPORT_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+  };
+}
+
+function importHubMetadata(): PublicRouteMetadata {
+  const url = `${SITE_ORIGIN}/import`;
+  return {
+    title: "Import Bank Statements — CSV, Excel & PDF | Zoption",
+    description:
+      "Import CSV, Excel, or PDF bank statements from BDO, BPI, MariBank, Bank of America, and Chase into a private peso budget tracker. No bank connection required.",
+    canonical: url,
+    robots: "index,follow",
+    structuredData: contentPageStructuredData(
+      "Import bank statements into Zoption",
+      "Bring CSV, Excel, or PDF transaction history from your bank into a private peso budget tracker, reviewed row by row with no bank connection.",
+      url,
+      IMPORT_LAST_MODIFIED,
+    ),
+    sitemap: {
+      lastModified: IMPORT_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+  };
+}
+
 export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata> = {
   "/": {
     title: "Zoption — Private Budget & Expense Tracker",
@@ -491,6 +555,12 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       } satisfies PublicRouteMetadata,
     ]),
   ),
+  "/import": importHubMetadata(),
+  "/import/bdo-statement": importGuideMetadata("/import/bdo-statement"),
+  "/import/bpi-statement": importGuideMetadata("/import/bpi-statement"),
+  "/import/maribank-statement": importGuideMetadata("/import/maribank-statement"),
+  "/import/bank-of-america-statement": importGuideMetadata("/import/bank-of-america-statement"),
+  "/import/jpmorgan-statement": importGuideMetadata("/import/jpmorgan-statement"),
 } satisfies Record<PublicRoutePath, PublicRouteMetadata>;
 
 export const SITEMAP_ENTRIES: SitemapEntry[] = PUBLIC_ROUTE_PATHS.map((path) => {

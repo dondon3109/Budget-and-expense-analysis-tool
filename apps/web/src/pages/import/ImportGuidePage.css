@@ -1,0 +1,126 @@
+.import-guide-steps,
+.import-guide-columns,
+.import-guide-notes {
+  margin: 14px 0 0;
+  padding-left: 22px;
+}
+
+.import-guide-steps {
+  counter-reset: import-step;
+  list-style: none;
+  padding-left: 0;
+}
+
+.import-guide-steps li {
+  position: relative;
+  padding-left: 38px;
+  counter-increment: import-step;
+}
+
+.import-guide-steps li::before {
+  content: counter(import-step);
+  position: absolute;
+  top: 1px;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.import-guide-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.import-guide-columns li {
+  margin: 0;
+  padding: 5px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.import-guide-columns a {
+  text-decoration: none;
+}
+
+.import-guide-notes {
+  margin-top: 18px;
+}
+
+.import-guide-question {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.import-guide-question h3 {
+  margin-top: 0;
+}
+
+.import-guide-question p {
+  margin-top: 8px;
+}
+
+.import-guide-cta {
+  margin-top: 44px;
+  padding: 26px 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--surface-soft);
+}
+
+.import-guide-cta p {
+  margin: 0 0 18px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.import-guide-others {
+  margin-top: 44px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line-strong);
+}
+
+.import-guide-others h2 {
+  font-size: 18px;
+}
+
+.import-guide-others ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin: 14px 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.import-guide-others li {
+  margin: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .import-guide-steps li {
+    padding-left: 32px;
+  }
+
+  .import-guide-cta {
+    padding: 22px 20px;
+  }
+}

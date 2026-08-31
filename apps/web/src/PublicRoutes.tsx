@@ -14,6 +14,8 @@ import { GuidesIndexPage } from "./pages/guides/GuidesIndexPage";
 import { GuideDetailPage } from "./pages/guides/GuideDetailPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SharedBudgetPage } from "./pages/shared/SharedBudgetPage";
+import { ImportGuidePage } from "./pages/import/ImportGuidePage";
+import { ImportHubPage } from "./pages/import/ImportHubPage";
 import { PUBLIC_ROUTE_PATHS, type PublicRoutePath } from "./seo/siteMetadata";
 
 const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
@@ -32,6 +34,12 @@ const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
       <GuideDetailPage slug={guide.slug} key={guide.slug} />,
     ]),
   ),
+  "/import": <ImportHubPage />,
+  "/import/bdo-statement": <ImportGuidePage />,
+  "/import/bpi-statement": <ImportGuidePage />,
+  "/import/maribank-statement": <ImportGuidePage />,
+  "/import/bank-of-america-statement": <ImportGuidePage />,
+  "/import/jpmorgan-statement": <ImportGuidePage />,
 };
 
 export function publicRouteElements(rootElement = PUBLIC_ROUTE_ELEMENTS["/"]) {
