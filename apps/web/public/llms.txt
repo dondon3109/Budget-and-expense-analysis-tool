@@ -7,6 +7,7 @@
 - [Home](https://zoption.site/): Product overview, voice & receipt entry, statement imports, and account creation.
 - [Pricing & Plans](https://zoption.site/pricing): Transparent Free Plan (₱0) and Pro Plan (₱149/mo, ₱1,299/yr) comparisons with zero bank credential sharing.
 - [Changelog & Updates](https://zoption.site/changelog): Version release notes, new features, and product improvements.
+- [50/30/20 Peso Budget Calculator](https://zoption.site/tools/50-30-20-calculator): Free interactive calculator splitting Philippine peso take-home pay into needs, wants, and savings with exact centavo accuracy and adjustable percentages.
 - [Import Bank Statements](https://zoption.site/import): How CSV, Excel, and PDF statement imports work, with no bank connection.
 - [Import BDO Statements](https://zoption.site/import/bdo-statement): Bringing BDO transaction history into Zoption.
 - [Import BPI Statements](https://zoption.site/import/bpi-statement): Bringing BPI transaction history into Zoption.

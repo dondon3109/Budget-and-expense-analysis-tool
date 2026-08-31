@@ -16,6 +16,7 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { SharedBudgetPage } from "./pages/shared/SharedBudgetPage";
 import { ImportGuidePage } from "./pages/import/ImportGuidePage";
 import { ImportHubPage } from "./pages/import/ImportHubPage";
+import { BudgetCalculatorPage } from "./pages/tools/BudgetCalculatorPage";
 import { PUBLIC_ROUTE_PATHS, type PublicRoutePath } from "./seo/siteMetadata";
 
 const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
@@ -40,6 +41,7 @@ const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
   "/import/maribank-statement": <ImportGuidePage />,
   "/import/bank-of-america-statement": <ImportGuidePage />,
   "/import/jpmorgan-statement": <ImportGuidePage />,
+  "/tools/50-30-20-calculator": <BudgetCalculatorPage />,
 };
 
 export function publicRouteElements(rootElement = PUBLIC_ROUTE_ELEMENTS["/"]) {

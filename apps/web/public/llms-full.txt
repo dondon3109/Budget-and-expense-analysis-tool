@@ -7,6 +7,7 @@
 - **Pricing & Plans**: https://zoption.site/pricing
 - **FAQ**: https://zoption.site/faq
 - **Changelog**: https://zoption.site/changelog
+- **50/30/20 peso budget calculator**: https://zoption.site/tools/50-30-20-calculator
 - **Import bank statements**: https://zoption.site/import
 - **Import BDO statements**: https://zoption.site/import/bdo-statement
 - **Import BPI statements**: https://zoption.site/import/bpi-statement

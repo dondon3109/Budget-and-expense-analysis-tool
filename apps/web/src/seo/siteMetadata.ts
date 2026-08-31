@@ -31,7 +31,8 @@ export type PublicRoutePath =
   | "/import/bpi-statement"
   | "/import/maribank-statement"
   | "/import/bank-of-america-statement"
-  | "/import/jpmorgan-statement";
+  | "/import/jpmorgan-statement"
+  | "/tools/50-30-20-calculator";
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/",
@@ -50,6 +51,7 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/import/maribank-statement",
   "/import/bank-of-america-statement",
   "/import/jpmorgan-statement",
+  "/tools/50-30-20-calculator",
 ];
 
 type StructuredDataNode = Record<string, unknown>;
@@ -323,6 +325,7 @@ const TERMS_LAST_MODIFIED = "2026-08-12";
 const PRIVACY_LAST_MODIFIED = "2026-08-28";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-08-24";
 const IMPORT_LAST_MODIFIED = "2026-08-30";
+const TOOLS_LAST_MODIFIED = "2026-08-31";
 
 function pricingPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/pricing`;
@@ -399,6 +402,28 @@ function importHubMetadata(): PublicRouteMetadata {
     ),
     sitemap: {
       lastModified: IMPORT_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+  };
+}
+
+function budgetCalculatorMetadata(): PublicRouteMetadata {
+  const url = `${SITE_ORIGIN}/tools/50-30-20-calculator`;
+  return {
+    title: "50/30/20 Budget Calculator for Philippine Pesos | Zoption",
+    description:
+      "Split your monthly Philippine peso take-home pay into needs, wants, and savings with exact centavo accuracy. Adjustable percentages, worked examples, and no sign-up.",
+    canonical: url,
+    robots: "index,follow",
+    structuredData: contentPageStructuredData(
+      "50/30/20 Budget Calculator for Philippine Pesos",
+      "Split your monthly Philippine peso take-home pay into needs, wants, and savings with exact centavo accuracy. Adjustable percentages and worked examples for common Filipino salaries.",
+      url,
+      TOOLS_LAST_MODIFIED,
+    ),
+    sitemap: {
+      lastModified: TOOLS_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.8,
     },
@@ -561,6 +586,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/import/maribank-statement": importGuideMetadata("/import/maribank-statement"),
   "/import/bank-of-america-statement": importGuideMetadata("/import/bank-of-america-statement"),
   "/import/jpmorgan-statement": importGuideMetadata("/import/jpmorgan-statement"),
+  "/tools/50-30-20-calculator": budgetCalculatorMetadata(),
 } satisfies Record<PublicRoutePath, PublicRouteMetadata>;
 
 export const SITEMAP_ENTRIES: SitemapEntry[] = PUBLIC_ROUTE_PATHS.map((path) => {
