@@ -37,6 +37,7 @@ if (typeof window !== "undefined") {
 
   const createStorage = (): Storage => {
     const storage = Object.create(Storage.prototype) as Storage;
+
     return new Proxy(storage, {
       get(target, prop, receiver) {
         if (typeof prop === "string" && !(prop in target) && typeof target.getItem === "function") {
@@ -61,31 +62,27 @@ if (typeof window !== "undefined") {
     });
   };
 
-  if (!window.localStorage || typeof window.localStorage.clear !== "function") {
-    const localStorageInstance = createStorage();
-    Object.defineProperty(window, "localStorage", {
-      value: localStorageInstance,
-      configurable: true,
-      writable: true,
-    });
-    Object.defineProperty(globalThis, "localStorage", {
-      value: localStorageInstance,
-      configurable: true,
-      writable: true,
-    });
-  }
+  const localStorageInstance = createStorage();
+  const sessionStorageInstance = createStorage();
 
-  if (!window.sessionStorage || typeof window.sessionStorage.clear !== "function") {
-    const sessionStorageInstance = createStorage();
-    Object.defineProperty(window, "sessionStorage", {
-      value: sessionStorageInstance,
-      configurable: true,
-      writable: true,
-    });
-    Object.defineProperty(globalThis, "sessionStorage", {
-      value: sessionStorageInstance,
-      configurable: true,
-      writable: true,
-    });
-  }
+  Object.defineProperty(window, "localStorage", {
+    value: localStorageInstance,
+    configurable: true,
+    writable: true,
+  });
+  Object.defineProperty(globalThis, "localStorage", {
+    value: localStorageInstance,
+    configurable: true,
+    writable: true,
+  });
+  Object.defineProperty(window, "sessionStorage", {
+    value: sessionStorageInstance,
+    configurable: true,
+    writable: true,
+  });
+  Object.defineProperty(globalThis, "sessionStorage", {
+    value: sessionStorageInstance,
+    configurable: true,
+    writable: true,
+  });
 }

@@ -6,7 +6,7 @@ import type {
   SubscriptionStatus,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, LayoutList, Plus, RefreshCw, Repeat2 } from "lucide-react";
+import { CalendarClock, CalendarDays, LayoutList, Plus, RefreshCw, Repeat2 } from "lucide-react";
 import { useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -15,6 +15,7 @@ import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
 import { MonthSelector } from "../components/month/MonthSelector";
 import { CancellationGuideDrawer } from "../components/subscriptions/CancellationGuideDrawer";
+import { CashflowForecastSection } from "../components/subscriptions/CashflowForecastSection";
 import { SubscriptionForm } from "../components/subscriptions/SubscriptionForm";
 import { SubscriptionRenewalCalendar } from "../components/subscriptions/SubscriptionRenewalCalendar";
 import { SubscriptionTable } from "../components/subscriptions/SubscriptionTable";
@@ -58,7 +59,7 @@ export function SubscriptionsPage() {
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth);
-  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
+  const [viewMode, setViewMode] = useState<"table" | "calendar" | "forecast">("table");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SubscriptionRecord | null>(null);
   const [guideItem, setGuideItem] = useState<SubscriptionMonthItem | null>(null);
@@ -317,6 +318,16 @@ export function SubscriptionsPage() {
                       <CalendarDays size={14} aria-hidden="true" />
                       <span>Renewal calendar</span>
                     </button>
+                    <button
+                      className={`view-toggle-button ${viewMode === "forecast" ? "active" : ""}`}
+                      type="button"
+                      onClick={() => setViewMode("forecast")}
+                      aria-pressed={viewMode === "forecast"}
+                      title="Cashflow Forecast"
+                    >
+                      <CalendarClock size={14} aria-hidden="true" />
+                      <span>Cashflow Forecast</span>
+                    </button>
                   </div>
                   <button
                     className="refresh-button"
@@ -352,6 +363,8 @@ export function SubscriptionsPage() {
                   onEdit={openEdit}
                   onShowCancellationGuide={(item) => setGuideItem(item)}
                 />
+              ) : viewMode === "forecast" ? (
+                <CashflowForecastSection items={data.items} accounts={accountsQuery.data} />
               ) : (
                 <SubscriptionTable
                   items={data.items}
