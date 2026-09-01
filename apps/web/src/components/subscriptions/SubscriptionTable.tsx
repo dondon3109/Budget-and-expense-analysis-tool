@@ -1,5 +1,5 @@
 import type { SubscriptionMonthItem, SubscriptionStatus } from "@zoption/shared";
-import { Pencil, Trash2 } from "lucide-react";
+import { HelpCircle, Pencil, Trash2 } from "lucide-react";
 
 import { formatMoney } from "../../lib/formatters";
 
@@ -10,6 +10,7 @@ interface SubscriptionTableProps {
   onStatusChange: (id: string, status: SubscriptionStatus) => void;
   onEdit: (item: SubscriptionMonthItem) => void;
   onDelete: (item: SubscriptionMonthItem) => void;
+  onShowCancellationGuide?: (item: SubscriptionMonthItem) => void;
 }
 
 function formatBillingDate(value: string): string {
@@ -28,6 +29,7 @@ export function SubscriptionTable({
   onStatusChange,
   onEdit,
   onDelete,
+  onShowCancellationGuide,
 }: SubscriptionTableProps) {
   return (
     <div className="subscription-table-wrap">
@@ -93,6 +95,17 @@ export function SubscriptionTable({
                 </td>
                 <td data-label="Actions">
                   <div className="subscription-actions">
+                    {onShowCancellationGuide && (
+                      <button
+                        className="icon-button compact"
+                        type="button"
+                        onClick={() => onShowCancellationGuide(item)}
+                        aria-label={`How to cancel ${item.name}`}
+                        title="How to cancel"
+                      >
+                        <HelpCircle size={14} aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       className="icon-button compact"
                       type="button"
