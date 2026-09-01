@@ -14,6 +14,7 @@ import { MetricCard } from "../components/dashboard/MetricCard";
 import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
 import { MonthSelector } from "../components/month/MonthSelector";
+import { CancellationGuideDrawer } from "../components/subscriptions/CancellationGuideDrawer";
 import { SubscriptionForm } from "../components/subscriptions/SubscriptionForm";
 import { SubscriptionRenewalCalendar } from "../components/subscriptions/SubscriptionRenewalCalendar";
 import { SubscriptionTable } from "../components/subscriptions/SubscriptionTable";
@@ -60,6 +61,7 @@ export function SubscriptionsPage() {
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SubscriptionRecord | null>(null);
+  const [guideItem, setGuideItem] = useState<SubscriptionMonthItem | null>(null);
   const monthStart = `${month}-01`;
 
   const subscriptionsQuery = useQuery({
@@ -344,7 +346,12 @@ export function SubscriptionsPage() {
                   </button>
                 </div>
               ) : viewMode === "calendar" ? (
-                <SubscriptionRenewalCalendar month={month} items={data.items} onEdit={openEdit} />
+                <SubscriptionRenewalCalendar
+                  month={month}
+                  items={data.items}
+                  onEdit={openEdit}
+                  onShowCancellationGuide={(item) => setGuideItem(item)}
+                />
               ) : (
                 <SubscriptionTable
                   items={data.items}
@@ -353,6 +360,7 @@ export function SubscriptionsPage() {
                   onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
                   onEdit={openEdit}
                   onDelete={confirmDelete}
+                  onShowCancellationGuide={(item) => setGuideItem(item)}
                 />
               )}
             </section>
@@ -398,6 +406,12 @@ export function SubscriptionsPage() {
           }}
         />
       )}
+
+      <CancellationGuideDrawer
+        item={guideItem}
+        isOpen={Boolean(guideItem)}
+        onClose={() => setGuideItem(null)}
+      />
     </AppShell>
   );
 }

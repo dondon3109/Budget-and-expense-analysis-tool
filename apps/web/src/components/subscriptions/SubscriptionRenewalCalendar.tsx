@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock,
+  HelpCircle,
   Pencil,
   Repeat2,
 } from "lucide-react";
@@ -18,6 +19,7 @@ interface SubscriptionRenewalCalendarProps {
   month: string;
   items: SubscriptionMonthItem[];
   onEdit: (item: SubscriptionMonthItem) => void;
+  onShowCancellationGuide?: (item: SubscriptionMonthItem) => void;
 }
 
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -45,6 +47,7 @@ export function SubscriptionRenewalCalendar({
   month,
   items,
   onEdit,
+  onShowCancellationGuide,
 }: SubscriptionRenewalCalendarProps) {
   const today = localIsoDate();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -353,6 +356,17 @@ export function SubscriptionRenewalCalendar({
                   </div>
 
                   <div className="timeline-action-block">
+                    {onShowCancellationGuide && (
+                      <button
+                        type="button"
+                        className="icon-button compact"
+                        onClick={() => onShowCancellationGuide(item)}
+                        aria-label={`How to cancel ${item.name}`}
+                        title="How to cancel"
+                      >
+                        <HelpCircle size={15} aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="icon-button compact"
