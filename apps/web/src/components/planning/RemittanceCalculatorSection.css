@@ -1,0 +1,525 @@
+/* OFW Remittance & FX Fee Calculator Section */
+
+.remittance-calculator-section {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  font-family: var(--font-ui);
+}
+
+.remittance-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-card);
+}
+
+.remittance-title-group {
+  max-width: 680px;
+}
+
+.remittance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  color: var(--sage);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.remittance-heading {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.remittance-subheading {
+  margin: 0;
+  color: var(--subtle);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.remittance-rate-pill {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.remittance-rate-pill .rate-label {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.remittance-rate-pill strong {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.remittance-calculator-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.remittance-card {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-card);
+}
+
+.remittance-card-title {
+  margin: 0 0 16px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+/* Inputs form styling */
+.remittance-inputs-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.remittance-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.remittance-field label {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.remittance-input-wrapper,
+.remittance-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.remittance-input-wrapper:focus-within,
+.remittance-select-wrapper:focus-within {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 20%, transparent);
+}
+
+.input-currency-prefix {
+  padding-left: 12px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.remittance-input-wrapper input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  outline: none;
+}
+
+.remittance-select-wrapper select {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.remittance-select-wrapper select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.remittance-custom-rate-toggle {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  accent-color: var(--sage);
+}
+
+.custom-rate-input-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-rate-input-box label {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+.custom-rate-input-box input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+}
+
+.custom-rate-input-box input:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 20%, transparent);
+}
+
+/* Results Card */
+.remittance-results-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.provider-tag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.results-highlight-box {
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  box-shadow: inset 3px 0 0 var(--sage);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.results-highlight-label {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.results-highlight-amount {
+  color: var(--action-strong);
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.results-highlight-sub {
+  color: var(--subtle);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.results-breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.breakdown-item {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.breakdown-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--subtle);
+  font-size: 11px;
+}
+
+.breakdown-label svg {
+  color: var(--sage);
+}
+
+.breakdown-value {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown-value.loss {
+  color: var(--expense-text);
+}
+
+.breakdown-value.drag {
+  color: var(--muted);
+}
+
+.remittance-loss-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--amber-soft);
+  border: 1px solid color-mix(in srgb, var(--expense-text) 20%, var(--line));
+  color: var(--expense-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.remittance-loss-callout svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.remittance-loss-callout p {
+  margin: 0;
+}
+
+/* Comparison Card */
+.remittance-comparison-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comparison-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.comparison-subtitle {
+  margin: 0;
+  color: var(--subtle);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.best-provider-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--success-soft);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, var(--line));
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.comparison-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.comparison-table th {
+  padding: 12px 16px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--line);
+}
+
+.comparison-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-table tr.row-best {
+  background: color-mix(in srgb, var(--success-soft) 40%, var(--paper));
+}
+
+.comparison-table tr.row-baseline {
+  background: var(--surface-soft);
+}
+
+.provider-cell-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-best {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tag-baseline {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-hover);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.rate-cell,
+.received-cell,
+.spread-cell,
+.drag-cell {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.spread-loss {
+  color: var(--expense-text);
+  font-weight: 600;
+}
+
+.spread-zero {
+  color: var(--subtle);
+}
+
+.received-amount {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.row-best .received-amount {
+  color: var(--action-strong);
+  font-weight: 700;
+}
+
+.drag-percent.high-drag {
+  color: var(--expense-text);
+  font-weight: 600;
+}
+
+.text-right {
+  text-align: right;
+}
+
+@media (max-width: 860px) {
+  .remittance-calculator-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .remittance-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .remittance-rate-pill {
+    align-items: flex-start;
+  }
+
+  .comparison-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
