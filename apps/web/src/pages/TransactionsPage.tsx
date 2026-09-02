@@ -1,9 +1,10 @@
-import type {
-  TransactionExportQuery,
-  TransactionInput,
-  TransactionListItem,
-  TransactionListQuery,
-  TransactionPage,
+import {
+  preferredTransactionAccount,
+  type TransactionExportQuery,
+  type TransactionInput,
+  type TransactionListItem,
+  type TransactionListQuery,
+  type TransactionPage,
 } from "@zoption/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,6 +12,7 @@ import {
   ChevronRight,
   Download,
   FolderCog,
+  MessageSquare,
   Plus,
   Receipt,
   RefreshCw,
@@ -21,6 +23,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { CategoryManager } from "../components/transactions/CategoryManager";
+import {
+  SmsQuickPasteModal,
+  type ParsedSmsTransaction,
+} from "../components/transactions/SmsQuickPasteModal";
 import { TransactionFilters } from "../components/transactions/TransactionFilters";
 import { TransactionForm } from "../components/transactions/TransactionForm";
 import { TransactionTable } from "../components/transactions/TransactionTable";
@@ -104,6 +110,7 @@ export function TransactionsPage() {
   const [searchDraft, setSearchDraft] = useState("");
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [formOpen, setFormOpen] = useState(() => searchParams.get("add") === "1");
+  const [isSmsModalOpen, setIsSmsModalOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionListItem>();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -244,6 +251,50 @@ export function TransactionsPage() {
     query.to,
   );
 
+  const handleCreateTransaction = async (parsed: ParsedSmsTransaction) => {
+    if (parsed.amount === undefined || isNaN(parsed.amount)) return;
+    const kind = parsed.type;
+    const account =
+      accounts.find(
+        (a) =>
+          parsed.account &&
+          (a.name.toLowerCase().includes(parsed.account.replace("*", "").toLowerCase()) ||
+            a.id === parsed.account),
+      ) ??
+      preferredTransactionAccount(accounts) ??
+      accounts[0];
+    if (!account) return;
+
+    const amountMinor = Math.round(Math.abs(parsed.amount) * 100);
+    const date = parsed.date || new Date().toISOString().split("T")[0] || "";
+    const description = parsed.merchant || "SMS Transaction";
+    const categoryId = categories[0]?.id ?? "";
+
+    if (kind === "transfer") {
+      const toAccount = accounts.find((a) => a.id !== account.id) ?? account;
+      await saveMutation.mutateAsync({
+        kind: "transfer",
+        date,
+        description,
+        amountMinor,
+        currency: account.currency,
+        categoryId,
+        fromAccountId: account.id,
+        toAccountId: toAccount.id,
+      });
+    } else {
+      await saveMutation.mutateAsync({
+        kind,
+        date,
+        description,
+        amountMinor,
+        currency: account.currency,
+        categoryId,
+        accountId: account.id,
+      });
+    }
+  };
+
   function updateFilters(change: Partial<TransactionListQuery>) {
     setQuery((current) => ({ ...current, ...change, page: 1 }));
   }
@@ -356,6 +407,13 @@ export function TransactionsPage() {
             <Link className="button secondary" to="/app/import?mode=receipt">
               <Receipt size={17} /> Scan receipt
             </Link>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => setIsSmsModalOpen(true)}
+            >
+              <MessageSquare size={17} /> Paste SMS
+            </button>
             <button className="button primary" type="button" onClick={openCreate}>
               <Plus size={17} /> Add transaction
             </button>
@@ -522,6 +580,13 @@ export function TransactionsPage() {
           onClose={() => setCategoryManagerOpen(false)}
         />
       )}
+      <SmsQuickPasteModal
+        isOpen={isSmsModalOpen}
+        onClose={() => setIsSmsModalOpen(false)}
+        onApply={handleCreateTransaction}
+        categories={categories}
+        accounts={accounts}
+      />
     </AppShell>
   );
 }
