@@ -26,6 +26,7 @@ export function LegalFooter() {
           Google Preferred Source
         </a>
         <Link to="/pricing">Pricing</Link>
+        <Link to="/guides">Guides</Link>
         <Link to="/faq">FAQ</Link>
         <Link to="/install">Android Beta</Link>
         <Link to="/changelog">Changelog</Link>

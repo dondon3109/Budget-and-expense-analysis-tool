@@ -5,6 +5,7 @@ import {
   isEligiblePublicUrl,
   PUBLIC_ROUTE_METADATA,
   PUBLIC_ROUTE_PATHS,
+  type PublicRoutePath,
   serializeJsonLd,
   SITEMAP_ENTRIES,
   SITE_ORIGIN,
@@ -14,8 +15,8 @@ import { ANDROID_RELEASE } from "../src/releases/androidRelease";
 
 type SchemaNode = Record<string, unknown>;
 
-function structuredDataFor(path: keyof typeof PUBLIC_ROUTE_METADATA) {
-  const structuredData = PUBLIC_ROUTE_METADATA[path].structuredData;
+function structuredDataFor(path: PublicRoutePath) {
+  const structuredData = PUBLIC_ROUTE_METADATA[path]?.structuredData;
   if (!structuredData) throw new Error(`${path} is missing structured data.`);
   return structuredData;
 }
@@ -46,6 +47,7 @@ describe("public SEO metadata", () => {
 
     for (const entry of SITEMAP_ENTRIES) {
       const metadata = PUBLIC_ROUTE_METADATA[entry.path];
+      if (!metadata) throw new Error(`Missing metadata for ${entry.path}`);
       expect(entry.lastModified).toBe(metadata.sitemap.lastModified);
       expect(entry.changeFrequency).toBe(metadata.sitemap.changeFrequency);
       expect(entry.priority).toBe(metadata.sitemap.priority);
@@ -55,6 +57,7 @@ describe("public SEO metadata", () => {
   it("models public routes as linked, canonical Schema.org graphs", () => {
     for (const path of PUBLIC_ROUTE_PATHS) {
       const metadata = PUBLIC_ROUTE_METADATA[path];
+      if (!metadata) throw new Error(`Missing metadata for ${path}`);
       const graph = structuredDataFor(path);
       const nodeIds = graph["@graph"].map((node) => node["@id"]);
       const websiteId = `${SITE_ORIGIN}/#website`;
