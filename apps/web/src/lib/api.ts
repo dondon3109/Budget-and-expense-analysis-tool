@@ -1068,6 +1068,39 @@ export async function openVoiceStreamWebSocket(
   return new WebSocket(wsUrl);
 }
 
+export async function describeVoiceStreamFailure(
+  workspace: AuthenticatedWorkspace,
+): Promise<string> {
+  try {
+    const response = await workspaceFetch(
+      workspace,
+      "/api/app/assistant/voice/stream",
+      { method: "GET", headers: { Accept: "application/json" } },
+      { retryUnauthorized: false, timeoutMs: 4_000 },
+    );
+    const payload = apiErrorPayload(await response.json().catch(() => null));
+    if (payload.error === "origin_not_allowed") {
+      return "This origin is not allowed to use live voice. Add it to ALLOWED_ORIGINS.";
+    }
+    if (payload.error === "authentication_required" || payload.error === "invalid_access_token") {
+      return "Voice stream authentication failed. Sign in again.";
+    }
+    if (
+      payload.error === "gemini_missing_key" ||
+      payload.error === "stt_not_streaming" ||
+      payload.error === "stt_not_configured" ||
+      payload.error === "bridge_not_configured" ||
+      payload.error === "rate_limit_exceeded"
+    ) {
+      return payload.message || "Live transcription is not available.";
+    }
+    if (response.status >= 500) return "Voice stream server error. Check the API worker logs.";
+  } catch {
+    // Fall through to the generic handshake error.
+  }
+  return "WebSocket connection to voice stream failed.";
+}
+
 export async function getAssistantVoiceSpeech(
   workspace: AuthenticatedWorkspace,
   messageId: string,

@@ -1,7 +1,26 @@
 // @ts-nocheck
 import { describe, it, expect, vi } from "vitest";
-import { createGoogleSttProvider } from "../src/assistant/google-stt";
+import {
+  createGoogleSttProvider,
+  isGoogleGenerativeLanguageApiKey,
+} from "../src/assistant/google-stt";
 import { AssistantVoiceProviderError } from "../src/assistant/voice-provider";
+
+describe("isGoogleGenerativeLanguageApiKey", () => {
+  it("accepts standard AIza keys and AI Studio Auth keys", () => {
+    expect(isGoogleGenerativeLanguageApiKey("AIzaSyFakeGoogleApiKey1234567890")).toBe(true);
+    expect(isGoogleGenerativeLanguageApiKey("AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ")).toBe(
+      true,
+    );
+    expect(isGoogleGenerativeLanguageApiKey("  AQ.AbFakeAuthKey  ")).toBe(true);
+  });
+
+  it("rejects OAuth tokens, JSON, and empty values", () => {
+    expect(isGoogleGenerativeLanguageApiKey("")).toBe(false);
+    expect(isGoogleGenerativeLanguageApiKey("ya29.a0AFakeOauthToken")).toBe(false);
+    expect(isGoogleGenerativeLanguageApiKey('{"type":"service_account"}')).toBe(false);
+  });
+});
 
 describe("createGoogleSttProvider", () => {
   it("transcribes via Gemini endpoint when model starts with gemini", async () => {

@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import type { AppEnvironment, Bindings } from "../types";
 import { providerRegistry } from "../provider-registry";
 import type { PlatformAdminService } from "../platform-admin";
-import { parseGoogleSecret } from "../assistant/google-stt";
+import { isGoogleGenerativeLanguageApiKey, parseGoogleSecret } from "../assistant/google-stt";
 
 /**
  * Realtime STT WebSocket proxy:
@@ -25,19 +25,69 @@ function createWebSocketResponse(client: WebSocket): Response {
   }
 }
 
+/**
+ * Workers `fetch()` WebSocket upgrades travel over HTTP(S). Passing `wss://` is
+ * rejected (`Fetch API cannot load wss://...`), which aborted the client
+ * handshake before a 101 could be returned.
+ */
+export function websocketUpgradeUrl(url: string): string {
+  if (url.startsWith("wss://")) return `https://${url.slice("wss://".length)}`;
+  if (url.startsWith("ws://")) return `http://${url.slice("ws://".length)}`;
+  return url;
+}
+
+type AcceptableSocket = {
+  binaryType?: string;
+  accept: (options?: { allowHalfOpen?: boolean }) => void;
+};
+
+function acceptProxySocket(socket: AcceptableSocket): void {
+  // binaryType must be set before accept(); after 2026-03-17 it defaults to "blob".
+  socket.binaryType = "arraybuffer";
+  try {
+    // Half-open is required for proxying once web_socket_auto_reply_to_close is on
+    // (compatibility_date >= 2026-04-07); otherwise a close on one side tears down
+    // the other before we can forward it.
+    socket.accept({ allowHalfOpen: true });
+  } catch {
+    socket.accept();
+  }
+}
+
+function decodeSocketData(data: unknown): Promise<string | null> {
+  if (typeof data === "string") return Promise.resolve(data);
+  if (data instanceof ArrayBuffer) {
+    return Promise.resolve(new TextDecoder().decode(data));
+  }
+  if (ArrayBuffer.isView(data)) {
+    return Promise.resolve(new TextDecoder().decode(data));
+  }
+  if (data && typeof (data as Blob).arrayBuffer === "function") {
+    return (data as Blob)
+      .arrayBuffer()
+      .then((buf) => new TextDecoder().decode(buf))
+      .catch(() => null);
+  }
+  return Promise.resolve(null);
+}
+
+function closeAfterHandshake(socket: WebSocket, code: number, reason: string): void {
+  // Closing the pair before the 101 response is returned aborts the browser
+  // handshake and surfaces as "WebSocket connection to voice stream failed."
+  setTimeout(() => {
+    try {
+      socket.close(code, reason);
+    } catch {
+      // already closed
+    }
+  }, 0);
+}
+
 export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) {
   void _platformAdmins;
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/stream", async (context) => {
-    const upgrade = context.req.header("upgrade");
-    if (upgrade?.toLowerCase() !== "websocket") {
-      return context.json(
-        { error: "upgrade_required", message: "WebSocket upgrade required." },
-        426,
-      );
-    }
-
     const env = context.env as Bindings & { STT_BRIDGE_URL?: string };
     const tenant = (context as unknown as { get: (k: string) => { tenantId: string } }).get(
       "tenant",
@@ -75,15 +125,15 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const parsed = cred.secret ? parseGoogleSecret(cred.secret) : null;
     const token = parsed?.token || "";
     const isGeminiLiveModel = sttCfg.model === "gemini-3.5-transcribe-live";
-    const isGeminiLive = Boolean(token && token.startsWith("AIza") && isGeminiLiveModel);
+    const isGeminiLive = Boolean(token && isGoogleGenerativeLanguageApiKey(token) && isGeminiLiveModel);
 
-    // Live model selected but no valid API key — fail fast instead of silently falling through to bridge
-    if (sttCfg.model === "gemini-3.5-transcribe-live" && !token.startsWith("AIza")) {
+    // Live model selected but no usable AI Studio / Gemini API key
+    if (sttCfg.model === "gemini-3.5-transcribe-live" && !isGoogleGenerativeLanguageApiKey(token)) {
       return context.json(
         {
           error: "gemini_missing_key",
           message:
-            "Gemini Live transcription requires a Google API key credential (AIza...). Link a valid API key in AI & Voice Models.",
+            "Gemini Live transcription requires a Google AI Studio API key credential. Link a valid API key in AI & Voice Models.",
         },
         503,
       );
@@ -111,6 +161,14 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       );
     }
 
+    const upgrade = context.req.header("upgrade");
+    if (upgrade?.toLowerCase() !== "websocket") {
+      return context.json(
+        { error: "upgrade_required", message: "WebSocket upgrade required." },
+        426,
+      );
+    }
+
     // WebSocketPair is available in workerd
     const pair = new (
       globalThis as unknown as { WebSocketPair: new () => { 0: WebSocket; 1: WebSocket } }
@@ -118,14 +176,8 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const client = (pair as unknown as Record<string, WebSocket>)[0] as WebSocket;
     const server = (pair as unknown as Record<string, WebSocket>)[1] as WebSocket;
 
-    // Accept client.
-    // binaryType must be assigned before accept() so binary frames arrive as ArrayBuffer.
-    // With compatibility_date >= 2026-03-17 the runtime defaults binaryType to "blob", and
-    // `new Uint8Array(blob)` reads 0 bytes — that silently forwarded empty audio to Gemini
-    // and broke live transcription with no error surface.
-    const serverSocket = server as unknown as { binaryType?: string; accept: () => void };
-    serverSocket.binaryType = "arraybuffer";
-    serverSocket.accept();
+    // Accept client. binaryType and half-open close behavior must be set before accept().
+    acceptProxySocket(server as unknown as AcceptableSocket);
 
     const tWorkerOpen = Date.now();
     let tFirstPartial: number | null = null;
@@ -143,46 +195,12 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     // OPTION A: Google Gemini Multimodal Live API
     // ==========================================
     if (isGeminiLive) {
-      const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(token)}`;
+      const geminiUrl = websocketUpgradeUrl(
+        `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(token)}`,
+      );
       let geminiWs: WebSocket | null = null;
-
-      try {
-        const geminiResp = (await fetch(geminiUrl, {
-          headers: {
-            Upgrade: "websocket",
-          },
-        } as unknown as RequestInit)) as unknown as { status: number; webSocket: WebSocket | null };
-
-        if (geminiResp.status !== 101 || !geminiResp.webSocket) {
-          trySend(
-            server,
-            JSON.stringify({
-              type: "error",
-              code: "gemini_connect_failed",
-              message: `Failed to connect to Google Gemini Live API (HTTP ${geminiResp.status}). Check Google API key in Provider Configs.`,
-              status: geminiResp.status,
-            }),
-          );
-          server.close(1011, "gemini_connect_failed");
-          return createWebSocketResponse(client);
-        }
-
-        geminiWs = geminiResp.webSocket;
-        try {
-          (geminiWs as unknown as { accept?: () => void }).accept?.();
-        } catch (_e) { void _e; }
-      } catch {
-        trySend(
-          server,
-          JSON.stringify({
-            type: "error",
-            code: "gemini_connect_failed",
-            message: "Unable to establish connection to Google Gemini Live API.",
-          }),
-        );
-        server.close(1011, "gemini_connect_failed");
-        return createWebSocketResponse(client);
-      }
+      const pendingPcm: Uint8Array[] = [];
+      const pendingJson: string[] = [];
 
       // Send initial setup payload to Gemini Live
       const modelName = sttCfg.model.includes("/") ? sttCfg.model : `models/${sttCfg.model}`;
@@ -216,17 +234,11 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               },
             },
           };
-      console.log(`[voice-stream] Gemini Live setup sent for ${modelName}`);
-      trySend(geminiWs, JSON.stringify(setupPayload));
-
-      // Handle Gemini -> Browser
-      // The transcription-live model sends interimInputTranscription and inputTranscription.
-      // Log the first few messages for debugging live failures
       let loggedSetupComplete = false;
       let finalizedTranscript = "";
       const geminiOnMessage = (event: MessageEvent) => {
-        const raw = (event as unknown as { data: string | ArrayBuffer }).data;
-        if (typeof raw === "string" && raw.startsWith("{")) {
+        void decodeSocketData((event as unknown as { data: unknown }).data).then((raw) => {
+          if (!raw || !raw.startsWith("{")) return;
           try {
             const msg = JSON.parse(raw) as {
               error?: { code?: number; message?: string };
@@ -255,7 +267,6 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               );
               return;
             }
-            // Log setupComplete for debugging
             if ((msg as Record<string, unknown>).setupComplete && !loggedSetupComplete) {
               console.log("[voice-stream] Gemini Live setupComplete");
               loggedSetupComplete = true;
@@ -310,7 +321,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               finalizedTranscript = "";
             }
           } catch (_e) { void _e; }
-        }
+        });
       };
 
       const geminiOnClose = () => {
@@ -332,13 +343,11 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         } catch (_e) { void _e; }
       };
 
-      geminiWs.addEventListener("message", geminiOnMessage as EventListener);
-      geminiWs.addEventListener("close", geminiOnClose as EventListener);
-      geminiWs.addEventListener("error", geminiOnError as EventListener);
-
-      // Browser -> Gemini
       const sendPcm = (bytes: Uint8Array) => {
-        if (!geminiWs || (geminiWs as unknown as { readyState: number }).readyState !== 1) return;
+        if (!geminiWs || (geminiWs as unknown as { readyState: number }).readyState !== 1) {
+          if (pendingPcm.length < 64) pendingPcm.push(bytes);
+          return;
+        }
         let binary = "";
         const len = bytes.byteLength;
         for (let i = 0; i < len; i++) {
@@ -354,29 +363,93 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         );
       };
 
+      const sendGeminiJson = (payload: string) => {
+        if (!geminiWs || (geminiWs as unknown as { readyState: number }).readyState !== 1) {
+          if (pendingJson.length < 16) pendingJson.push(payload);
+          return;
+        }
+        trySend(geminiWs, payload);
+      };
+
+      const flushPending = () => {
+        const queuedPcm = pendingPcm.splice(0, pendingPcm.length);
+        const queuedJson = pendingJson.splice(0, pendingJson.length);
+        for (const bytes of queuedPcm) sendPcm(bytes);
+        for (const payload of queuedJson) sendGeminiJson(payload);
+      };
+
+      const failGeminiConnect = (message: string, status?: number) => {
+        trySend(
+          server,
+          JSON.stringify({
+            type: "error",
+            code: "gemini_connect_failed",
+            message,
+            ...(status !== undefined ? { status } : {}),
+          }),
+        );
+        closeAfterHandshake(server, 1011, "gemini_connect_failed");
+      };
+
+      const connectGemini = async () => {
+        try {
+          const geminiResp = (await fetch(geminiUrl, {
+            headers: { Upgrade: "websocket" },
+          } as unknown as RequestInit)) as unknown as { status: number; webSocket: WebSocket | null };
+
+          if (geminiResp.status !== 101 || !geminiResp.webSocket) {
+            console.error(
+              `[voice-stream] gemini_connect_failed HTTP ${geminiResp.status} (no webSocket=${!geminiResp.webSocket})`,
+            );
+            failGeminiConnect(
+              `Failed to connect to Google Gemini Live API (HTTP ${geminiResp.status}). Check Google API key in Provider Configs.`,
+              geminiResp.status,
+            );
+            return;
+          }
+
+          geminiWs = geminiResp.webSocket;
+          acceptProxySocket(geminiWs as unknown as AcceptableSocket);
+          geminiWs.addEventListener("message", geminiOnMessage as EventListener);
+          geminiWs.addEventListener("close", geminiOnClose as EventListener);
+          geminiWs.addEventListener("error", geminiOnError as EventListener);
+          console.log(`[voice-stream] Gemini Live setup sent for ${modelName}`);
+          trySend(geminiWs, JSON.stringify(setupPayload));
+          flushPending();
+        } catch (error) {
+          console.error(
+            "[voice-stream] gemini_connect_failed",
+            error instanceof Error ? error.message : error,
+          );
+          failGeminiConnect("Unable to establish connection to Google Gemini Live API.");
+        }
+      };
+
+      const geminiPromise = connectGemini();
+      try {
+        context.executionCtx.waitUntil(geminiPromise.then(() => undefined, () => undefined));
+      } catch {
+        // Unit tests and environments without ExecutionContext still keep the accepted socket.
+      }
+
       server.addEventListener("message", (event) => {
         const data = (event as unknown as { data: string | ArrayBuffer | Blob }).data;
-        if (!geminiWs || (geminiWs as unknown as { readyState: number }).readyState !== 1) return;
 
-        // Binary PCM chunk (16kHz 16-bit mono)
         if (typeof data !== "string") {
           if (data instanceof ArrayBuffer) {
             sendPcm(new Uint8Array(data));
             return;
           }
-          // Safety net: if binaryType ever reverts to "blob", `new Uint8Array(blob)` reads
-          // 0 bytes and forwards empty audio, which fails silently. Read the Blob explicitly.
           void data
             .arrayBuffer()
             .then((buf) => sendPcm(new Uint8Array(buf)))
             .catch(() => undefined);
-        } else if (typeof data === "string" && data.startsWith("{")) {
+        } else if (data.startsWith("{")) {
           try {
             const parsed = JSON.parse(data) as Record<string, unknown>;
             const pcmData = (parsed["data"] as string | undefined) || (parsed["pcm"] as string | undefined);
             if ((parsed["type"] as string) === "audio" && pcmData) {
-              trySend(
-                geminiWs,
+              sendGeminiJson(
                 JSON.stringify({
                   realtimeInput: {
                     audio: { mimeType: "audio/pcm;rate=16000", data: pcmData },
@@ -384,8 +457,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                 }),
               );
             } else if ((parsed["type"] as string) === "stop") {
-              trySend(
-                geminiWs,
+              sendGeminiJson(
                 JSON.stringify({
                   realtimeInput: {
                     audioStreamEnd: true,
@@ -413,7 +485,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     // ==========================================
     let bridgeWs: WebSocket | null = null;
     try {
-      const bridgeResp = (await fetch(bridgeUrl!, {
+      const bridgeResp = (await fetch(websocketUpgradeUrl(bridgeUrl!), {
         headers: {
           Upgrade: "websocket",
           "x-t-mic-start": micStart,
@@ -434,16 +506,14 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
             status: bridgeResp.status,
           }),
         );
-        server.close(1011, "bridge_connect_failed");
+        closeAfterHandshake(server, 1011, "bridge_connect_failed");
         return createWebSocketResponse(client);
       }
       bridgeWs = bridgeResp.webSocket;
-      try {
-        (bridgeWs as unknown as { accept?: () => void }).accept?.();
-      } catch (_e) { void _e; }
+      acceptProxySocket(bridgeWs as unknown as AcceptableSocket);
     } catch {
       trySend(server, JSON.stringify({ type: "error", code: "bridge_connect_failed" }));
-      server.close(1011, "bridge_connect_failed");
+      closeAfterHandshake(server, 1011, "bridge_connect_failed");
       return createWebSocketResponse(client);
     }
 

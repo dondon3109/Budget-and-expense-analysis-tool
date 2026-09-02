@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createVoiceStreamRoutes } from "../src/routes/voice-stream";
+import { createVoiceStreamRoutes, websocketUpgradeUrl } from "../src/routes/voice-stream";
 import { Hono } from "hono";
 import { HttpError } from "../src/errors";
 import { providerRegistry } from "../src/provider-registry";
@@ -27,6 +27,22 @@ function makeApp(sttCfg, bridgeUrl = "wss://bridge.example.com/stream") {
   });
   return app;
 }
+
+describe("websocketUpgradeUrl", () => {
+  it("rewrites wss/ws to https/http so Workers fetch() can upgrade", () => {
+    expect(
+      websocketUpgradeUrl(
+        "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=AIza",
+      ),
+    ).toBe(
+      "https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=AIza",
+    );
+    expect(websocketUpgradeUrl("ws://bridge.example.com/stream")).toBe(
+      "http://bridge.example.com/stream",
+    );
+    expect(websocketUpgradeUrl("https://already.example/ws")).toBe("https://already.example/ws");
+  });
+});
 
 describe("GET /api/app/assistant/voice/stream", () => {
   it("requires websocket upgrade", async () => {
@@ -134,6 +150,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
     const serverHandlers = new Map();
     const mockWs = {
       readyState: 1,
+      binaryType: "blob",
       send: vi.fn(),
       addEventListener: vi.fn((event, listener) => upstreamHandlers.set(event, listener)),
       close: vi.fn(),
@@ -172,10 +189,17 @@ describe("GET /api/app/assistant/voice/stream", () => {
         headers: { Upgrade: "websocket", Connection: "Upgrade" },
       });
       expect(res.status).toBe(101);
+      await vi.waitFor(() => expect(mockWs.send).toHaveBeenCalled());
       // Regression: binary frames must be delivered as ArrayBuffer. Under the runtime default
       // of "blob", `new Uint8Array(frame)` reads 0 bytes and forwards empty audio to Gemini.
       expect(serverWs.binaryType).toBe("arraybuffer");
       expect(binaryTypeAtAccept).toBe("arraybuffer");
+      expect(mockWs.binaryType).toBe("arraybuffer");
+      expect(mockWs.accept).toHaveBeenCalled();
+      // Workers fetch() rejects wss:// ("Fetch API cannot load wss://..."), which aborted
+      // the browser handshake as "WebSocket connection to voice stream failed."
+      expect(interceptedWsUrl.startsWith("https://")).toBe(true);
+      expect(interceptedWsUrl).not.toMatch(/^wss:/);
       expect(interceptedWsUrl).toContain("generativelanguage.googleapis.com");
       expect(interceptedWsUrl).toContain("key=AIzaSyFakeGoogleApiKey1234567890");
       expect(mockWs.send).toHaveBeenCalledWith(
@@ -215,16 +239,22 @@ describe("GET /api/app/assistant/voice/stream", () => {
           serverContent: { interimInputTranscription: { text: "buy groceries" } },
         }),
       });
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(JSON.parse(serverWs.send.mock.calls.at(-1)[0])).toMatchObject({
         type: "partial",
         transcript: "buy groceries",
       });
 
+      // Gemini Live frames can arrive as Blob after websocket_standard_binary_type.
+      // Dropping them silently produced no transcript even after the socket opened.
       upstreamHandlers.get("message")({
-        data: JSON.stringify({
-          serverContent: { inputTranscription: { text: "buy groceries today" } },
-        }),
+        data: new Blob([
+          JSON.stringify({
+            serverContent: { inputTranscription: { text: "buy groceries today" } },
+          }),
+        ]),
       });
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(JSON.parse(serverWs.send.mock.calls.at(-1)[0])).toMatchObject({
         type: "final",
         transcript: "buy groceries today",
@@ -285,5 +315,153 @@ describe("GET /api/app/assistant/voice/stream", () => {
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error).toBe("gemini_missing_key");
+  });
+
+  it("accepts Google AI Studio Auth keys (AQ.) for Gemini Live", async () => {
+    const sttCfg = {
+      id: "cfg-live-auth-key",
+      service: "stt",
+      provider: "google",
+      model: "gemini-3.5-transcribe-live",
+      displayName: "Gemini Live Auth Key",
+      credentialId: "cred-google-auth",
+      enabled: true,
+      isActive: true,
+    };
+    const app = makeApp(sttCfg, "");
+    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
+      secret: "AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ",
+      last4: "r2PQ",
+      source: "db",
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
+    (globalThis as any).WebSocketPair = class {
+      0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
+      1 = {
+        binaryType: "blob",
+        accept: vi.fn(),
+        addEventListener: vi.fn(),
+        close: vi.fn(),
+        send: vi.fn(),
+        readyState: 1,
+      };
+    };
+    try {
+      const res = await app.request("/stream", {
+        method: "GET",
+        headers: { Upgrade: "websocket", Connection: "Upgrade" },
+      });
+      expect(res.status).toBe(101);
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete (globalThis as any).WebSocketPair;
+    }
+  });
+
+  it("returns 101 without waiting for Gemini so a slow upstream cannot stall the browser handshake", async () => {
+    const sttCfg = {
+      id: "cfg-gemini-live",
+      service: "stt",
+      provider: "google",
+      model: "gemini-3.5-transcribe-live",
+      displayName: "Gemini Live",
+      credentialId: "cred-google-key",
+      enabled: true,
+      isActive: true,
+    };
+    const app = makeApp(sttCfg, "");
+    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
+      secret: "AIzaSyFakeGoogleApiKey1234567890",
+      last4: "7890",
+      source: "db",
+    });
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
+    const serverWs: any = {
+      binaryType: "blob",
+      accept: vi.fn(),
+      addEventListener: vi.fn(),
+      close: vi.fn(),
+      send: vi.fn(),
+      readyState: 1,
+    };
+    (globalThis as any).WebSocketPair = class {
+      0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
+      1 = serverWs;
+    };
+
+    try {
+      const res = await app.request("/stream", {
+        method: "GET",
+        headers: { Upgrade: "websocket", Connection: "Upgrade" },
+      });
+      expect(res.status).toBe(101);
+      expect(serverWs.close).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete (globalThis as any).WebSocketPair;
+    }
+  });
+
+  it("still returns 101 when Gemini fetch throws so the browser handshake can complete", async () => {
+    vi.useFakeTimers();
+    const sttCfg = {
+      id: "cfg-gemini-live",
+      service: "stt",
+      provider: "google",
+      model: "gemini-3.5-transcribe-live",
+      displayName: "Gemini Live",
+      credentialId: "cred-google-key",
+      enabled: true,
+      isActive: true,
+    };
+    const app = makeApp(sttCfg, "");
+    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
+      secret: "AIzaSyFakeGoogleApiKey1234567890",
+      last4: "7890",
+      source: "db",
+    });
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async () => {
+      throw new TypeError("Fetch API cannot load: wss://generativelanguage.googleapis.com/...");
+    });
+
+    const clientWs = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
+    const serverWs: any = {
+      binaryType: "blob",
+      accept: vi.fn(),
+      addEventListener: vi.fn(),
+      close: vi.fn(),
+      send: vi.fn(),
+      readyState: 1,
+    };
+    (globalThis as any).WebSocketPair = class {
+      0 = clientWs;
+      1 = serverWs;
+    };
+
+    try {
+      const res = await app.request("/stream", {
+        method: "GET",
+        headers: { Upgrade: "websocket", Connection: "Upgrade" },
+      });
+      expect(res.status).toBe(101);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(serverWs.send).toHaveBeenCalledWith(
+        expect.stringContaining("gemini_connect_failed"),
+      );
+      // Closing before the 101 is returned aborts the browser handshake.
+      expect(serverWs.close).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(serverWs.close).toHaveBeenCalledWith(1011, "gemini_connect_failed");
+    } finally {
+      vi.useRealTimers();
+      globalThis.fetch = originalFetch;
+      delete (globalThis as any).WebSocketPair;
+    }
   });
 });

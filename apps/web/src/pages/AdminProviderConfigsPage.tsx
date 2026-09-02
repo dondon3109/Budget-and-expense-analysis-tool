@@ -1330,7 +1330,7 @@ export function AdminProviderConfigsPage() {
                                     value={editNewCredSecret}
                                     onChange={(e) => setEditNewCredSecret(e.target.value)}
                                     placeholder={
-                                      isGoogle ? "AIzaSy..." : "Paste new API key or secret..."
+                                      isGoogle ? "AIzaSy... or AQ...." : "Paste new API key or secret..."
                                     }
                                     autoComplete="off"
                                     spellCheck={false}
@@ -1591,7 +1591,7 @@ export function AdminProviderConfigsPage() {
                                     onChange={(e) => setAddNewCredSecret(e.target.value)}
                                     placeholder={
                                       isGoogle
-                                        ? "AIzaSy... (Google AI Studio Key)"
+                                        ? "AIzaSy... or AQ.... (Google AI Studio key)"
                                         : addProvider === "deepseek"
                                           ? "sk-..."
                                           : "Paste API key..."
@@ -1734,13 +1734,13 @@ export function AdminProviderConfigsPage() {
                       type={showAddCredSecret ? "text" : "password"}
                       value={credSecret}
                       onChange={(e) => setCredSecret(e.target.value)}
-                      placeholder="Paste API key (e.g. AIzaSy...) or secret"
+                      placeholder="Paste API key (e.g. AIzaSy... or AQ....) or secret"
                       autoComplete="off"
                       spellCheck={false}
                     />
                     <small>
-                      For Google, paste your Google AI Studio API key (AIza...), OAuth token, or
-                      service account JSON. Secrets are encrypted with AES-256-GCM and only
+                      For Google, paste your Google AI Studio API key (AIzaSy... or AQ....), OAuth
+                      token, or service account JSON. Secrets are encrypted with AES-256-GCM and only
                       ••••last4 is ever displayed.
                     </small>
                   </label>

@@ -62,6 +62,17 @@ export function parseGoogleSecret(secret: string): {
   return { projectId: null, location: DEFAULT_LOCATION, token: trimmed };
 }
 
+/**
+ * Google AI Studio / Gemini Developer API keys.
+ * Standard keys used `AIzaSy...`. As of 2026 AI Studio issues Auth keys (`AQ....`).
+ * OAuth access tokens (`ya29...`) and service-account JSON are not API keys.
+ */
+export function isGoogleGenerativeLanguageApiKey(token: string): boolean {
+  const trimmed = token.trim();
+  if (!trimmed) return false;
+  return trimmed.startsWith("AIza") || trimmed.startsWith("AQ.");
+}
+
 function timeoutMs(env: Bindings): number {
   const v = Number(env.ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS);
   return Number.isFinite(v) && v >= 5_000 && v <= 60_000 ? v : REST_RECOGNIZE_TIMEOUT_MS;

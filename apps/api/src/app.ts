@@ -197,11 +197,14 @@ async function enforceRateLimits<Path extends string, Input extends Record<strin
   );
   const rejected = decisions.find((decision) => !decision.allowed);
   const applied = rejected ?? decisions[decisions.length - 1]!;
-  context.header("RateLimit-Limit", String(applied.limit));
-  context.header("RateLimit-Remaining", String(applied.remaining));
-  context.header("RateLimit-Reset", String(applied.retryAfterSeconds));
+  const isWebSocket = context.req.header("Upgrade")?.toLowerCase() === "websocket";
+  if (!isWebSocket) {
+    context.header("RateLimit-Limit", String(applied.limit));
+    context.header("RateLimit-Remaining", String(applied.remaining));
+    context.header("RateLimit-Reset", String(applied.retryAfterSeconds));
+  }
   if (rejected) {
-    context.header("Retry-After", String(rejected.retryAfterSeconds));
+    if (!isWebSocket) context.header("Retry-After", String(rejected.retryAfterSeconds));
     return context.json(
       { error: "rate_limit_exceeded", message: tooManyMessage(rejected.retryAfterSeconds) },
       429,
@@ -319,12 +322,7 @@ export function createApp(options: AppOptions = {}) {
   const readinessCheck = options.readinessCheck ?? checkApiReadiness;
 
   app.use("/api/*", async (context, next) => {
-    context.header("X-Content-Type-Options", "nosniff");
-    context.header("Referrer-Policy", "no-referrer");
-    context.header("X-Frame-Options", "DENY");
-    if (new URL(context.req.url).protocol === "https:") {
-      context.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-    }
+    const isWebSocket = context.req.header("Upgrade")?.toLowerCase() === "websocket";
 
     const allowedOrigins = (context.env?.ALLOWED_ORIGINS ?? "http://localhost:5173")
       .split(",")
@@ -334,6 +332,20 @@ export function createApp(options: AppOptions = {}) {
 
     if (requestOrigin && !allowedOrigins.includes(requestOrigin)) {
       return context.json({ error: "origin_not_allowed" }, 403);
+    }
+
+    // Do not attach extra headers on WebSocket upgrades. Hono/Workers can clone
+    // the 101 response when headers are merged, which aborts the browser handshake.
+    if (isWebSocket) {
+      await next();
+      return;
+    }
+
+    context.header("X-Content-Type-Options", "nosniff");
+    context.header("Referrer-Policy", "no-referrer");
+    context.header("X-Frame-Options", "DENY");
+    if (new URL(context.req.url).protocol === "https:") {
+      context.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     }
 
     if (requestOrigin) {
@@ -349,6 +361,10 @@ export function createApp(options: AppOptions = {}) {
   });
 
   app.use("/api/app/*", async (context, next) => {
+    if (context.req.header("Upgrade")?.toLowerCase() === "websocket") {
+      await next();
+      return;
+    }
     context.header("Cache-Control", "no-store");
     await next();
   });

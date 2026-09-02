@@ -10,6 +10,7 @@ import {
 
 const apiMocks = vi.hoisted(() => ({
   openVoiceStreamWebSocket: vi.fn(),
+  describeVoiceStreamFailure: vi.fn().mockResolvedValue("WebSocket connection to voice stream failed."),
 }));
 
 vi.mock("../src/lib/api", () => apiMocks);

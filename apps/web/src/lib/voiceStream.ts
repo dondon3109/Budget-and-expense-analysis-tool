@@ -1,5 +1,5 @@
 import type { AuthenticatedWorkspace } from "./workspace";
-import { openVoiceStreamWebSocket } from "./api";
+import { describeVoiceStreamFailure, openVoiceStreamWebSocket } from "./api";
 
 export interface LiveTranscriptionCallbacks {
   onPartial: (transcript: string) => void;
@@ -128,11 +128,24 @@ export async function startLiveTranscriptionSession(
     };
     const handleError = () => {
       cleanup();
-      reject(new Error("WebSocket connection to voice stream failed."));
+      void describeVoiceStreamFailure(workspace).then(
+        (message) => reject(new Error(message)),
+        () => reject(new Error("WebSocket connection to voice stream failed.")),
+      );
     };
     const handleClose = (event: CloseEvent) => {
       cleanup();
-      reject(new Error(`WebSocket closed before stream opened (${event.code}).`));
+      void describeVoiceStreamFailure(workspace).then(
+        (message) =>
+          reject(
+            new Error(
+              message === "WebSocket connection to voice stream failed."
+                ? `WebSocket closed before stream opened (${event.code}).`
+                : message,
+            ),
+          ),
+        () => reject(new Error(`WebSocket closed before stream opened (${event.code}).`)),
+      );
     };
 
     if (ws.readyState === WebSocket.OPEN) {

@@ -17,7 +17,7 @@ The Web client (`AssistantVoiceControl`) always starts **both** `MediaRecorder` 
 
 ## 2. Activation (admin)
 
-1. **Create credential** `Admin → AI & Voice Models → Credentials` → `google` → paste `AIza...` Google AI Studio API key. The key is encrypted at rest (`provider_credentials.encrypted_secret`, AES-256-GCM) and never leaves the Worker except as `?key=` to `generativelanguage.googleapis.com`.
+1. **Create credential** `Admin → AI & Voice Models → Credentials` → `google` → paste a Google AI Studio API key (`AIzaSy...` standard keys or `AQ....` Auth keys). The key is encrypted at rest (`provider_credentials.encrypted_secret`, AES-256-GCM) and never leaves the Worker except as `?key=` to `generativelanguage.googleapis.com`.
 
 2. **Create config** `STT → google / gemini-3.5-transcribe-live` → link the credential → **Activate**. This sets `provider_configs.is_active` and calls `providerRegistry.invalidate('stt')` (30s TTL otherwise).
 
@@ -34,7 +34,7 @@ Web:  MediaStream 16kHz → AudioWorklet (patches/pcm-worklet.js, Int16) --Array
 Mobile: AudioStream 16kHz Int16 PCM --base64 JSON {type:"audio",pcm}--> WSS /stream
 Worker:  Hono GET /stream (auth: Supabase JWT via ?token= or Sec-WebSocket-Protocol, tenant global)
          → providerRegistry.getActive('stt') → getDecryptedSecret
-         → if live model + AIza → wss://generativelanguage.googleapis.com/ws/.../BidiGenerateContent?key=AIza
+         → if live model + AI Studio key (AIza or AQ.) → wss://generativelanguage.googleapis.com/ws/.../BidiGenerateContent?key=
            setup: {model:"models/gemini-3.5-transcribe-live", generationConfig:{responseModalities:["TEXT"]}, inputAudioTranscription:{}}
            realtime_input: {media_chunks: [{mime_type:"audio/pcm;rate=16000", data:b64}]} (also sent as realtimeInput for compat)
            <- serverContent.inputTranscription.text || modelTurn.parts[].text (accumulated until turnComplete)
@@ -68,8 +68,9 @@ Worker emits `t_worker_first_partial` and `latency_worker_to_first_partial` (`Da
 | Symptom | Code | Fix |
 |---|---|---|
 | `400 stt_not_streaming` on `/stream` | active provider is `cloudflare` or `gemini-3.5-transcribe` | Activate `gemini-3.5-transcribe-live` |
-| `503 gemini_missing_key` | live model but credential not `AIza` | Link Google AI Studio API key credential |
+| `503 gemini_missing_key` | live model but credential is empty, OAuth (`ya29`), or not an AI Studio key | Link a Google AI Studio API key (`AIzaSy...` or `AQ....`) |
 | `503 bridge_not_configured` | `chirp_3` without `STT_BRIDGE_URL` | Set `STT_BRIDGE_URL` or switch to Gemini Live |
+| `WebSocket connection to voice stream failed.` | Worker never completed the 101 handshake (auth/origin 4xx, or outbound Gemini `fetch()` used `wss://` which Workers reject) | Confirm JWT/`ALLOWED_ORIGINS`; Worker now upgrades Gemini over `https://`. Check Worker logs for `gemini_connect_failed`. |
 | `1011 gemini_connect_failed` | key invalid, quota, or network | Check key, `generativelanguage` status, WAF |
 | No `partial` but `final` arrives | `AudioWorklet` fallback to `ScriptProcessor` with 4096 buffer | Expected 256ms chunks; check `audioContext.sampleRate` is 16000 (iOS may use 48000 — still sent as 16k, accuracy drops) |
 | Mobile shows no partial | `typeof AudioModule.AudioStream !== "function"` in Expo Go | Use dev-client build; Expo Go does not bundle `AudioStream` |
