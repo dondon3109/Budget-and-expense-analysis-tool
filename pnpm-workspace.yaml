@@ -17,6 +17,7 @@ overrides:
   "@lhci/cli>uuid": 11.1.1
   "xcode>uuid": 11.1.1
   "external-editor>tmp": 0.2.7
+  "fast-uri": 3.1.6
 
 auditConfig:
   ignoreGhsas:
