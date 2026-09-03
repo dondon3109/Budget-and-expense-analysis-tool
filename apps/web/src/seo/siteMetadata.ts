@@ -1,4 +1,5 @@
 import { ANDROID_RELEASE } from "../releases/androidRelease";
+import { FINANCE_GUIDES, getFinanceGuideBySlug, type FinanceGuide } from "@zoption/shared";
 
 export const SITE_ORIGIN = "https://zoption.site";
 export const SITE_NAME = "Zoption";
@@ -11,6 +12,8 @@ declare const __SEARCH_INDEXING_ENABLED__: boolean;
 const searchIndexingEnabled =
   typeof __SEARCH_INDEXING_ENABLED__ === "undefined" || __SEARCH_INDEXING_ENABLED__;
 
+export type GuideRoutePath = `/guides/${string}`;
+
 export type PublicRoutePath =
   | "/"
   | "/pricing"
@@ -19,7 +22,9 @@ export type PublicRoutePath =
   | "/cookie-policy"
   | "/faq"
   | "/install"
-  | "/changelog";
+  | "/changelog"
+  | "/guides"
+  | GuideRoutePath;
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/",
@@ -30,6 +35,8 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/faq",
   "/install",
   "/changelog",
+  "/guides",
+  ...FINANCE_GUIDES.map((guide) => `/guides/${guide.slug}` as const),
 ];
 
 type StructuredDataNode = Record<string, unknown>;
@@ -265,6 +272,37 @@ const TERMS_AND_PRIVACY_LAST_MODIFIED = "2026-08-11";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-08-10";
 const CHANGELOG_LAST_MODIFIED = "2026-08-24";
 const PRICING_LAST_MODIFIED = "2026-08-30";
+const GUIDES_LAST_MODIFIED = "2026-08-30";
+
+function guidesIndexPageStructuredData(): StructuredDataGraph {
+  const url = `${SITE_ORIGIN}/guides`;
+  return structuredDataGraph(websiteNode(), {
+    "@type": "WebPage",
+    "@id": `${url}#webpage`,
+    name: "Personal Finance & Budgeting Guides — Zoption",
+    description:
+      "Practical guides and tutorials on privacy-first expense tracking, e-wallet budgeting, subscription management, and digital banking in the Philippines.",
+    url,
+    dateModified: GUIDES_LAST_MODIFIED,
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+  });
+}
+
+function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
+  const url = `${SITE_ORIGIN}/guides/${guide.slug}`;
+  return structuredDataGraph(websiteNode(), {
+    "@type": "WebPage",
+    "@id": `${url}#webpage`,
+    name: `${guide.seoTitle} — Zoption`,
+    description: guide.description,
+    url,
+    datePublished: guide.publishedDate,
+    dateModified: guide.updatedDate,
+    inLanguage: "en",
+    isPartOf: { "@id": WEBSITE_ID },
+  });
+}
 
 function pricingPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/pricing`;
@@ -416,10 +454,44 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       priority: 0.8,
     },
   },
-};
+  "/guides": {
+    title: "Personal Finance & Budgeting Guides — Zoption",
+    description:
+      "Practical guides and tutorials on privacy-first expense tracking, e-wallet budgeting, subscription management, and digital banking in the Philippines.",
+    canonical: `${SITE_ORIGIN}/guides`,
+    robots: "index,follow",
+    structuredData: guidesIndexPageStructuredData(),
+    sitemap: {
+      lastModified: GUIDES_LAST_MODIFIED,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+  },
+  ...Object.fromEntries(
+    FINANCE_GUIDES.map((guide) => [
+      `/guides/${guide.slug}`,
+      {
+        title: `${guide.seoTitle} — Zoption`,
+        description: guide.description,
+        canonical: `${SITE_ORIGIN}/guides/${guide.slug}`,
+        robots: "index,follow",
+        structuredData: guidePageStructuredData(guide),
+        sitemap: {
+          lastModified: guide.updatedDate,
+          changeFrequency: "monthly",
+          priority: 0.7,
+        },
+      } satisfies PublicRouteMetadata,
+    ]),
+  ),
+} satisfies Record<PublicRoutePath, PublicRouteMetadata>;
 
 export const SITEMAP_ENTRIES: SitemapEntry[] = PUBLIC_ROUTE_PATHS.map((path) => {
-  const { sitemap } = PUBLIC_ROUTE_METADATA[path];
+  const metadata = PUBLIC_ROUTE_METADATA[path];
+  if (!metadata) {
+    throw new Error(`Missing metadata for public route: ${path}`);
+  }
+  const { sitemap } = metadata;
   return { path, ...sitemap };
 });
 
@@ -492,8 +564,31 @@ function applyIndexingEnvironment(metadata: PublicRouteMetadata): SeoMetadata {
 }
 
 export function getPublicRouteMetadata(pathname: string): SeoMetadata | undefined {
-  const metadata = PUBLIC_ROUTE_METADATA[normalizePathname(pathname) as PublicRoutePath];
-  return metadata ? applyIndexingEnvironment(metadata) : undefined;
+  const normalized = normalizePathname(pathname);
+  const metadata = PUBLIC_ROUTE_METADATA[normalized as PublicRoutePath];
+  if (metadata) return applyIndexingEnvironment(metadata);
+
+  if (normalized.startsWith("/guides/")) {
+    const slug = normalized.replace(/^\/guides\//, "");
+    const guide = getFinanceGuideBySlug(slug);
+    if (guide) {
+      const dynamicMeta: PublicRouteMetadata = {
+        title: `${guide.seoTitle} — Zoption`,
+        description: guide.description,
+        canonical: `${SITE_ORIGIN}/guides/${guide.slug}`,
+        robots: "index,follow",
+        structuredData: guidePageStructuredData(guide),
+        sitemap: {
+          lastModified: guide.updatedDate,
+          changeFrequency: "monthly",
+          priority: 0.7,
+        },
+      };
+      return applyIndexingEnvironment(dynamicMeta);
+    }
+  }
+
+  return undefined;
 }
 
 export function isEligiblePublicUrl(pathname: string, search = "", hash = ""): boolean {
