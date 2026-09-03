@@ -18,6 +18,9 @@ overrides:
   "xcode>uuid": 11.1.1
   "external-editor>tmp": 0.2.7
   "fast-uri": 3.1.6
+  "@expo/plist>@xmldom/xmldom": 0.8.15
+  "plist>@xmldom/xmldom": 0.9.12
+  "puppeteer-core>@puppeteer/browsers": 3.2.1
 
 auditConfig:
   ignoreGhsas:
@@ -60,4 +63,5 @@ minimumReleaseAgeExclude:
   - posthog-react-native@4.63.4
 
 patchedDependencies:
+  decode-uri-component@0.2.2: patches/decode-uri-component@0.2.2.patch
   react-native-screens: patches/react-native-screens.patch
