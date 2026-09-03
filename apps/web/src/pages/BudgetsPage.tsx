@@ -1,10 +1,11 @@
 import { parseAmountToMinor, type BudgetMonthPlan, type BudgetUpsert } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleDollarSign, PiggyBank, TrendingDown } from "lucide-react";
+import { Check, CircleDollarSign, PiggyBank, Share2, TrendingDown } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { ShareBudgetModal } from "../components/budgets/ShareBudgetModal";
 import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
 import { MonthSelector } from "../components/month/MonthSelector";
@@ -28,6 +29,7 @@ export function BudgetsPage() {
   const requestedMonth = searchParams.get("month");
   const month = isMonth(requestedMonth) ? requestedMonth : currentMonth();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [clientError, setClientError] = useState<string>();
   const initializedDraftShapeRef = useRef<string | undefined>(undefined);
   const monthStart = `${month}-01`;
@@ -126,17 +128,27 @@ export function BudgetsPage() {
             <h1>Budgets</h1>
             <p>Set practical limits by category and compare them with actual spending.</p>
           </div>
-          <MonthSelector
-            label="Budget month"
-            value={month}
-            onChange={(selectedMonth) => {
-              setSearchParams((current) => {
-                const next = new URLSearchParams(current);
-                next.set("month", selectedMonth);
-                return next;
-              });
-            }}
-          />
+          <div className="header-actions budgets-header-actions">
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => setShareModalOpen(true)}
+              disabled={!data || data.items.length === 0}
+            >
+              <Share2 size={17} aria-hidden="true" /> Share envelopes
+            </button>
+            <MonthSelector
+              label="Budget month"
+              value={month}
+              onChange={(selectedMonth) => {
+                setSearchParams((current) => {
+                  const next = new URLSearchParams(current);
+                  next.set("month", selectedMonth);
+                  return next;
+                });
+              }}
+            />
+          </div>
         </header>
 
         {budgetQuery.isPending && <InlineLoader label="Loading your monthly plan" />}
@@ -151,7 +163,8 @@ export function BudgetsPage() {
         )}
 
         {data && (
-          <form onSubmit={handleSubmit}>
+          <>
+            <form onSubmit={handleSubmit}>
             <section
               className="budget-summary-grid"
               aria-label={`${formatFullMonth(month)} budget summary`}
@@ -260,7 +273,20 @@ export function BudgetsPage() {
                 <Check size={14} /> Monthly plan saved and dashboard refreshed.
               </p>
             )}
-          </form>
+            </form>
+            <ShareBudgetModal
+              isOpen={shareModalOpen}
+              onClose={() => setShareModalOpen(false)}
+              month={month}
+              categories={data.items.map((item) => ({
+                id: item.categoryId,
+                name: item.categoryName,
+                color: item.categoryColor,
+                allocatedLimitMinor: item.limitMinor,
+                spentMinor: item.spentMinor,
+              }))}
+            />
+          </>
         )}
       </div>
     </AppShell>

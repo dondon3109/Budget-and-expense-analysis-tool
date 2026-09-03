@@ -13,6 +13,7 @@ import { PricingPage } from "./pages/pricing/PricingPage";
 import { GuidesIndexPage } from "./pages/guides/GuidesIndexPage";
 import { GuideDetailPage } from "./pages/guides/GuideDetailPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { SharedBudgetPage } from "./pages/shared/SharedBudgetPage";
 import { PUBLIC_ROUTE_PATHS, type PublicRoutePath } from "./seo/siteMetadata";
 
 const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
@@ -48,6 +49,7 @@ export function PublicRoutes() {
     <Routes>
       {publicRouteElements()}
       <Route path="/guides/:slug" element={<GuideDetailPage />} />
+      <Route path="/shared/budget/:token" element={<SharedBudgetPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

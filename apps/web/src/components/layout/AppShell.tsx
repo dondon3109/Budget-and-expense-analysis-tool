@@ -62,7 +62,7 @@ export function AppShell({ children }: AppShellProps) {
   const avatarPath = avatarPathFromMetadata(user?.user_metadata);
   const [menuOpen, setMenuOpen] = useState(false);
   const [navCollapsed, setNavCollapsed] = useState(
-    () => window.localStorage.getItem("zoption:nav-collapsed") === "1",
+    () => (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("zoption:nav-collapsed") === "1" : false),
   );
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
