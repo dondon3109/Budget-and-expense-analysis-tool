@@ -7,6 +7,7 @@ import type {
 } from "../db/assistant";
 import type { AssistantResponseMetadata } from "@zoption/shared";
 import {
+  canonicalizePesoAmounts,
   correctivePrompt,
   safeFallback,
   sanitizedAuditJson,
@@ -245,7 +246,7 @@ export function createAssistantOrchestrator(
 
           const toolCalls = completion.message.tool_calls ?? [];
           if (toolCalls.length === 0) {
-            const content = completion.message.content?.trim();
+            const content = canonicalizePesoAmounts(completion.message.content?.trim() ?? "");
             if (!content) {
               if (invocation + 1 < MAX_PROVIDER_CALLS) {
                 messages.push({ role: "user", content: EMPTY_RESPONSE_RETRY_PROMPT });

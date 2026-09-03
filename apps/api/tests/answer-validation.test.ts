@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canonicalizePesoAmounts,
+  correctivePrompt,
   sanitizedAuditJson,
   validateAssistantAnswer,
   validateToolArguments,
@@ -65,6 +67,43 @@ describe("assistant answer validation", () => {
     expect(
       validateToolArguments("get_period_summary", { from: "2026-07-01", to: "2026-07-31" }, policy),
     ).toBeNull();
+  });
+
+  it("canonicalizes peso signs so grounded amounts validate, without weakening grounding", () => {
+    expect(canonicalizePesoAmounts("You spent ₱1,234.56.")).toBe("You spent PHP 1,234.56.");
+    expect(canonicalizePesoAmounts("Total: ₱ 2,000.00!")).toBe("Total: PHP 2,000.00!");
+    expect(canonicalizePesoAmounts("You spent $5.00.")).toBe("You spent $5.00.");
+
+    // Grounded ₱ amount: canonical form matches backend data exactly.
+    expect(
+      validateAssistantAnswer(
+        canonicalizePesoAmounts("From 2026-07-01 to 2026-07-31, expenses were ₱1,234.56."),
+        policy,
+        [execution],
+        new Set(["period_summary"]),
+      ),
+    ).toEqual({ valid: true, reasons: [] });
+
+    // Fabricated ₱ amount: canonical form still rejected.
+    const fabricated = validateAssistantAnswer(
+      canonicalizePesoAmounts("Expenses were ₱9,999.00."),
+      policy,
+      [execution],
+      new Set(["period_summary"]),
+    );
+    expect(fabricated.valid).toBe(false);
+    expect(fabricated.reasons).toContain("unsupported_money");
+  });
+
+  it("adds repair guidance to the corrective prompt", () => {
+    const prompt = correctivePrompt(
+      { valid: false, reasons: ["unsupported_currency_format", "bare_money"] },
+      policy,
+      [execution],
+    );
+    expect(prompt).toContain("unsupported_currency_format");
+    expect(prompt).toContain("Repair: ");
+    expect(prompt).toContain("PHP 1,234.56");
   });
 
   it("removes identifiers, notes, secrets, and user fields from audit snapshots", () => {

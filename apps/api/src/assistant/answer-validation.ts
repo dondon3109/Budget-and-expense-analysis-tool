@@ -53,6 +53,19 @@ export interface AssistantAnswerValidation {
   reasons: string[];
 }
 
+const PESO_SIGN_PATTERN = /₱\s*/g;
+
+/**
+ * Repairs the most common model formatting slip without weakening grounding:
+ * ₱ unambiguously denotes Philippine pesos, so rewrite it to the canonical
+ * "PHP " prefix before validation. Amount grounding is still enforced by
+ * validateAssistantAnswer — a rewritten amount must match backend data
+ * exactly — and $, €, £, ¥ stay rejected.
+ */
+export function canonicalizePesoAmounts(content: string): string {
+  return content.replace(PESO_SIGN_PATTERN, "PHP ");
+}
+
 export function toolGroupForName(name: string): RequiredToolGroup | undefined {
   return TOOL_GROUPS[name];
 }
@@ -237,12 +250,43 @@ export function sanitizedAuditJson(value: unknown): string {
   });
 }
 
+const REPAIR_GUIDANCE: ReadonlyArray<readonly [string[], string]> = [
+  [
+    ["unsupported_currency_format", "bare_money", "unsupported_money"],
+    "Write every peso amount exactly as shown, e.g. PHP 1,234.56 — never ₱, $, or bare numbers.",
+  ],
+  [
+    ["unsupported_percentage", "unsupported_numeric_claim", "unsupported_date"],
+    "Copy percentages, counts, and dates exactly as shown; never compute or reformat them.",
+  ],
+  [
+    ["required_tools_missing"],
+    "Call the approved financial tools for the requested period before answering.",
+  ],
+  [
+    ["unsupported_format", "internal_identifier", "internal_tool_name", "shaming_language"],
+    "Use plain text only, with no markdown, HTML, tool names, identifiers, or judgmental language.",
+  ],
+  [
+    ["filter_miss_substitution"],
+    "If the requested record was not found, say so plainly instead of substituting other data.",
+  ],
+  [
+    ["regulated_recommendation"],
+    "Give general education only, without personalized buy, sell, invest, or coverage recommendations.",
+  ],
+];
+
 export function correctivePrompt(
   validation: AssistantAnswerValidation,
   policy: AssistantTurnPolicy,
   executions: readonly AssistantToolExecution[],
 ): string {
-  return `Your draft could not be accepted because: ${validation.reasons.join(", ")}. Provide one corrected plain-text final answer. Use only exact facts in this trusted JSON and do not mention tools or validation: ${sanitizedAuditJson(
+  const repairs = REPAIR_GUIDANCE.filter(([codes]) =>
+    codes.some((code) => validation.reasons.includes(code)),
+  ).map(([, guidance]) => guidance);
+  const repairSuffix = repairs.length > 0 ? ` Repair: ${repairs.join(" ")}` : "";
+  return `Your draft could not be accepted because: ${validation.reasons.join(", ")}.${repairSuffix} Provide one corrected plain-text final answer. Use only exact facts in this trusted JSON and do not mention tools or validation: ${sanitizedAuditJson(
     {
       resolvedPeriod: policy.resolvedPeriod,
       compliance: policy.compliance,
