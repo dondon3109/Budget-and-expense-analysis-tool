@@ -6,6 +6,7 @@ export * from "./importDate";
 export * from "./interest";
 export * from "./money";
 export * from "./planning";
+export * from "./sharedBudget";
 export * from "./schemas";
 export * from "./subscriptions";
 export * from "./sync";

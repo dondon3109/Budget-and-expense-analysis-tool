@@ -85,6 +85,10 @@ const ThankYouPage = lazy(async () => {
   const module = await import("./pages/ThankYouPage");
   return { default: module.ThankYouPage };
 });
+const SharedBudgetPage = lazy(async () => {
+  const module = await import("./pages/shared/SharedBudgetPage");
+  return { default: module.SharedBudgetPage };
+});
 export function RootRoute() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -172,6 +176,7 @@ export function App() {
           />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/thank-you" element={<ThankYouPage />} />
+          <Route path="/shared/budget/:token" element={<SharedBudgetPage />} />
           <Route
             path="/update-password"
             element={
