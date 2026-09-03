@@ -14,7 +14,7 @@ const csp = [
   "default-src 'self'",
   "script-src 'self'",
   `img-src 'self' data: blob: ${expectedSupabaseUrl}`,
-  `connect-src 'self' ${expectedSupabaseUrl} ${apiUrl} ${expectedPosthogHost}`,
+  `connect-src 'self' ${expectedSupabaseUrl} ${apiUrl} wss://api.preview.example.com ${expectedPosthogHost}`,
   "object-src 'none'",
 ].join("; ");
 

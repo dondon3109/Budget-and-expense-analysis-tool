@@ -180,7 +180,7 @@ export function createGoogleSttProvider(
           null;
 
         if (effectiveProjectId) {
-          const isApiKey = token.startsWith("AIza");
+          const isApiKey = isGoogleGenerativeLanguageApiKey(token);
           const endpoint = isApiKey
             ? `https://speech.googleapis.com/v2/projects/${effectiveProjectId}/locations/${location}/recognizers/_:recognize?key=${encodeURIComponent(token)}`
             : `https://speech.googleapis.com/v2/projects/${effectiveProjectId}/locations/${location}/recognizers/_:recognize`;
@@ -226,7 +226,7 @@ export function createGoogleSttProvider(
         }
 
         // Fallback for raw API key without projectId using Speech V1
-        if (token.startsWith("AIza")) {
+        if (isGoogleGenerativeLanguageApiKey(token)) {
           const endpoint = `https://speech.googleapis.com/v1/speech:recognize?key=${encodeURIComponent(token)}`;
           const res = await fetch(endpoint, {
             method: "POST",

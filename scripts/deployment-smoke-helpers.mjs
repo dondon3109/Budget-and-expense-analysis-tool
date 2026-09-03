@@ -46,6 +46,9 @@ export function assertDeploymentContentSecurityPolicy(
   if (!value?.trim()) throw new Error("Frontend response is missing Content-Security-Policy.");
 
   const apiOrigin = asOrigin(apiUrl, "API_URL");
+  // Browsers treat wss: as a different scheme from https:, so the live voice
+  // WebSocket requires its own explicit connect-src entry.
+  const apiWebSocketOrigin = apiOrigin.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
   const expectedSupabaseOrigin = asOrigin(expectedSupabaseUrl, "EXPECTED_SUPABASE_URL");
   const expectedPosthogOrigin = asOrigin(expectedPosthogHost, "EXPECTED_POSTHOG_HOST");
   const forbiddenOrigins = forbiddenSupabaseOrigins.map((origin) =>
@@ -57,6 +60,7 @@ export function assertDeploymentContentSecurityPolicy(
 
   for (const [sources, expected, label] of [
     [connectSources, apiOrigin, "connect-src API origin"],
+    [connectSources, apiWebSocketOrigin, "connect-src API WebSocket origin"],
     [connectSources, expectedSupabaseOrigin, "connect-src Supabase origin"],
     [connectSources, expectedPosthogOrigin, "connect-src PostHog origin"],
     [imageSources, expectedSupabaseOrigin, "img-src Supabase origin"],

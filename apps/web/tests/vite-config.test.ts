@@ -156,7 +156,9 @@ describe("environment-derived CSP", () => {
     const headers = addContentSecurityPolicy("/*\n  X-Frame-Options: DENY\n", policy);
 
     expect(policy).toContain(`img-src 'self' data: blob: ${supabaseUrl}`);
-    expect(policy).toContain(`connect-src 'self' ${supabaseUrl} ${productionApiUrl}`);
+    expect(policy).toContain(
+      `connect-src 'self' ${supabaseUrl} ${productionApiUrl} wss://api.zoption.site`,
+    );
     expect(policy).toContain("connect-src");
     expect(policy).toContain("https://downloads.zoption.site");
     expect(policy).toContain(
@@ -181,6 +183,18 @@ describe("environment-derived CSP", () => {
     expect(addAssistantVoiceMicrophonePermission(template, "staging")).toContain("microphone=()");
     expect(() => addAssistantVoiceMicrophonePermission("/*\n", "preview")).toThrow(
       "disable microphone access",
+    );
+  });
+
+  it("allows the live voice WebSocket scheme for the API origin", () => {
+    // Browsers treat wss: as a different scheme from https:, so a
+    // scheme-qualified https: connect-src entry alone blocks the voice stream.
+    const production = validateDeploymentConfigForBuild(validInput());
+    const preview = validateDeploymentConfigForBuild(validInput("preview"));
+    if (!production || !preview) throw new Error("Expected deployment configs.");
+    expect(createContentSecurityPolicy(production)).toContain("wss://api.zoption.site");
+    expect(createContentSecurityPolicy(preview)).toContain(
+      "wss://budget-expense-api-preview.dondon3109.workers.dev",
     );
   });
 
