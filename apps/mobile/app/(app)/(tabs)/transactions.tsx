@@ -31,6 +31,7 @@ import {
   type TransactionTotals,
   type TransactionTotalsByCurrency,
 } from "@/features/transactions/transaction-list-view";
+import { SmsQuickPasteModal } from "@/features/transactions/SmsQuickPasteModal";
 import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
@@ -401,6 +402,7 @@ export default function TransactionsScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [kind, setKind] = useState<TransactionKindFilter>("all");
   const [view, setView] = useState<ViewMode>("daily");
+  const [smsQuickPasteVisible, setSmsQuickPasteVisible] = useState(false);
   const deferredSearch = useDeferredValue(search);
   const local = useLocalTransactions(deferredSearch, kind, month);
   const sync = useSyncState();
@@ -457,6 +459,14 @@ export default function TransactionsScreen() {
           );
         })}
       </View>
+      <Button
+        accessibilityHint="Opens the SMS quick-paste sheet to parse a bank notification"
+        icon="message-text-outline"
+        onPress={() => setSmsQuickPasteVisible(true)}
+        variant="secondary"
+      >
+        Paste SMS notification
+      </Button>
     </View>
   );
 
@@ -733,6 +743,11 @@ export default function TransactionsScreen() {
           />
         </Pressable>
       </View>
+
+      <SmsQuickPasteModal
+        visible={smsQuickPasteVisible}
+        onDismiss={() => setSmsQuickPasteVisible(false)}
+      />
     </SafeAreaView>
   );
 }

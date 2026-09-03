@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
 import { usePlan } from "@/auth/plan-state";
-import { useDashboardData } from "@/db/local-workspace-state";
+import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
+import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard";
+import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { buildDashboardView, localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
 import {
@@ -826,6 +828,7 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
 
 export default function HomeScreen() {
   const dashboard = useDashboardData();
+  const subscriptions = useSubscriptions();
   const sync = useSyncState();
   const planState = usePlan();
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
@@ -879,6 +882,11 @@ export default function HomeScreen() {
                 onSelectView={setCashflowView}
                 selectedView={cashflowView}
               />
+              <CashflowForecastCard
+                startingBalanceMinor={view.accountBalances.overallBalanceMinor}
+                subscriptions={subscriptions.subscriptions.filter((sub) => sub.status === "active")}
+              />
+              <RemittanceCalculatorCard />
               <BudgetCard summary={view.summary} />
               <RecentActivityCard transactions={dashboard.data?.transactions ?? []} />
             </>
