@@ -26,6 +26,7 @@ import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
 import { DebtForm } from "../components/planning/DebtForm";
 import { FinancialGoalForm } from "../components/planning/FinancialGoalForm";
+import { RemittanceCalculatorSection } from "../components/planning/RemittanceCalculatorSection";
 import {
   createDebt,
   createFinancialGoal,
@@ -590,6 +591,8 @@ export function FinancialPlanPage() {
                 </div>
               ) : null}
             </section>
+
+            <RemittanceCalculatorSection />
           </>
         )}
 
