@@ -300,7 +300,11 @@ async function workspaceFetch(
   options: { retryUnauthorized?: boolean; timeoutMs?: number } = {},
 ): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? REQUEST_TIMEOUT_MS);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, options.timeoutMs ?? REQUEST_TIMEOUT_MS);
 
   const callerSignal = init.signal;
   const abortFromCaller = () => controller.abort();
@@ -332,11 +336,11 @@ async function workspaceFetch(
     }
     return response;
   } catch (error) {
-    if (
-      controller.signal.aborted &&
-      !(error instanceof ApiRequestError) &&
-      !(error instanceof DOMException && error.name === "AbortError")
-    ) {
+    if (error instanceof ApiRequestError) throw error;
+    if (timedOut) {
+      // Our own ceiling fired: never leak the raw AbortError (Chrome reports
+      // it as "signal is aborted without reason"). Caller-initiated aborts
+      // keep propagating untouched.
       throw new ApiRequestError("The request took too long. Try again.", 0, "request_timeout");
     }
     throw error;
@@ -1220,14 +1224,25 @@ export function getAssistantMessages(
   );
 }
 
+/**
+ * Agentic assistant turns (LLM inference plus tools) legitimately outlast the
+ * 20s default ceiling, so both turn endpoints get a longer client timeout.
+ */
+const ASSISTANT_TURN_TIMEOUT_MS = 120_000;
+
 export function createAssistantThread(
   workspace: AuthenticatedWorkspace,
   input: AssistantMessageInput,
 ): Promise<AssistantTurnResult> {
-  return requestJson(workspace, "/api/app/assistant/threads", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return requestJson(
+    workspace,
+    "/api/app/assistant/threads",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+    { timeoutMs: ASSISTANT_TURN_TIMEOUT_MS },
+  );
 }
 
 export function sendAssistantMessage(
@@ -1238,6 +1253,7 @@ export function sendAssistantMessage(
     workspace,
     `/api/app/assistant/threads/${encodeURIComponent(args.threadId)}/messages`,
     { method: "POST", body: JSON.stringify(args.input) },
+    { timeoutMs: ASSISTANT_TURN_TIMEOUT_MS },
   );
 }
 
