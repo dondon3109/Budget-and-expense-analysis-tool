@@ -87,12 +87,18 @@ export function parseSmsText(text: string): ParsedSmsTransaction {
   // Extract date if present, or default to current ISO date (YYYY-MM-DD)
   let date: string = new Date().toISOString().split('T')[0] ?? '';
   const dateRegex =
-    /(?:on|dated)\s*([0-9]{1,2}[-/.][0-9]{1,2}[-/.][0-9]{2,4}|[0-9]{1,2}-[A-Za-z]{3}(?:-[0-9]{2,4})?)/i;
+    /(?:on|dated)\s*([0-9]{4}[-/.][0-9]{1,2}[-/.][0-9]{1,2}|[0-9]{1,2}[-/.][0-9]{1,2}[-/.][0-9]{2,4}|[0-9]{1,2}-[A-Za-z]{3}(?:-[0-9]{2,4})?)/i;
   const dateMatch = clean.match(dateRegex);
   if (dateMatch && dateMatch[1]) {
-    const parsedDate = new Date(dateMatch[1]);
-    if (!isNaN(parsedDate.getTime())) {
-      date = parsedDate.toISOString().split('T')[0] ?? '';
+    const rawDateStr = dateMatch[1];
+    // If already YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rawDateStr)) {
+      date = rawDateStr;
+    } else {
+      const parsedDate = new Date(rawDateStr);
+      if (!isNaN(parsedDate.getTime())) {
+        date = parsedDate.toISOString().split('T')[0] ?? '';
+      }
     }
   }
 

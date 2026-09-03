@@ -87,7 +87,7 @@ function parseDateTimeFromText(
   preferDayFirst = false,
 ): { date: string; time?: string } {
   // Pattern 1: ISO YYYY-MM-DD [HH:mm[:ss] [AM/PM]]
-  const isoPattern = /\b(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?)?\b/;
+  const isoPattern = /\b(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?[ \t]*(AM|PM)?)?\b/i;
   const isoMatch = isoPattern.exec(text);
   if (isoMatch) {
     const y = Number(isoMatch[1]);
@@ -98,7 +98,7 @@ function parseDateTimeFromText(
   }
 
   // Pattern 2: DD Mon YYYY or DD-Mon-YYYY (e.g. 25 Aug 2026 12:00PM)
-  const textMonthPattern = /\b(\d{1,2})[- ]([A-Za-z]{3,9})[- ](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?)?\b/i;
+  const textMonthPattern = /\b(\d{1,2})[- ]([A-Za-z]{3,9})[- ](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?[ \t]*(AM|PM)?)?\b/i;
   const textMonthMatch = textMonthPattern.exec(text);
   if (textMonthMatch) {
     const d = Number(textMonthMatch[1]);
@@ -114,7 +114,7 @@ function parseDateTimeFromText(
   }
 
   // Pattern 3: Mon DD, YYYY (e.g. Aug 25, 2026 12:00PM)
-  const monDayYearPattern = /\b([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?)?\b/i;
+  const monDayYearPattern = /\b([A-Za-z]{3,9})[ \t]+(\d{1,2}),?[ \t]+(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?[ \t]*(AM|PM)?)?\b/i;
   const monDayYearMatch = monDayYearPattern.exec(text);
   if (monDayYearMatch) {
     const monKey = (monDayYearMatch[1] ?? "").slice(0, 3).toLowerCase();
@@ -130,7 +130,7 @@ function parseDateTimeFromText(
   }
 
   // Pattern 4: MM/DD/YYYY or DD/MM/YYYY [HH:mm[:ss] [AM/PM]]
-  const slashPattern = /\b(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?)?\b/;
+  const slashPattern = /\b(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?[ \t]*(AM|PM)?)?\b/i;
   const slashMatch = slashPattern.exec(text);
   if (slashMatch) {
     const first = Number(slashMatch[1]);
@@ -170,7 +170,7 @@ function parseDateTimeFromText(
   }
 
   // Standalone time extraction if date wasn't inline
-  const standaloneTimePattern = /\b(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?\b/;
+  const standaloneTimePattern = /\b(\d{1,2}):(\d{2})(?::(\d{2}))?[ \t]*(AM|PM)?\b/i;
   const standaloneTimeMatch = standaloneTimePattern.exec(text);
   const time = standaloneTimeMatch
     ? normalizeTime(
@@ -193,11 +193,18 @@ function parseAmountMinor(amountStr?: string): number | null {
 }
 
 function extractReferenceNumber(text: string): string | undefined {
-  const refPattern =
-    /(?:ref(?:erence)?\.?(?:\s*(?:no\.?|#|id))?[:\s#]+|trans(?:action)?\s*id[:\s]+|rn[:\s]+)\s*([A-Za-z0-9_-]+)/i;
-  const match = refPattern.exec(text);
-  if (match && match[1]) {
-    return match[1].trim();
+  // Linear, non-overlapping patterns: bounded whitespace ([ \t]), bounded separators,
+  // each alternative uses disjoint character classes to avoid catastrophic backtracking.
+  // Separator is either colon/hash branch or whitespace branch, not overlapping "*"+.
+  const refPatterns: RegExp[] = [
+    // ref, reference, Ref., Ref No., Reference No, etc.
+    /ref(?:erence)?(?:\.|\b)(?:[ \t]+(?:no\.?|#|id))?(?:[ \t]*:[ \t]*|[ \t]*#[ \t]*|[ \t]+)([A-Za-z0-9_-]{1,64})/i,
+    /trans(?:action)?[ \t]+id(?:[ \t]*:[ \t]*|[ \t]*#[ \t]*|[ \t]+)([A-Za-z0-9_-]{1,64})/i,
+    /\brn(?:[ \t]*:[ \t]*|[ \t]*#[ \t]*|[ \t]+)([A-Za-z0-9_-]{1,64})/i,
+  ];
+  for (const p of refPatterns) {
+    const m = p.exec(text);
+    if (m?.[1]) return m[1].trim();
   }
   return undefined;
 }
@@ -205,17 +212,67 @@ function extractReferenceNumber(text: string): string | undefined {
 function cleanPayee(payee?: string): string {
   if (!payee) return "";
   let cleaned = payee
-    .replace(/^Merchant\s+/i, "")
-    .replace(/^to\s+/i, "")
-    .replace(/^from\s+/i, "")
-    .replace(/^at\s+/i, "")
+    .replace(/^Merchant[ \t]+/i, "")
+    .replace(/^to[ \t]+/i, "")
+    .replace(/^from[ \t]+/i, "")
+    .replace(/^at[ \t]+/i, "")
     .trim();
 
   // Strip trailing sentence connectors if any slipped in
-  cleaned = cleaned.replace(/\s+(?:on|using|with|via)\s+.*$/i, "").trim();
+  cleaned = cleaned.replace(/[ \t]+(?:on|using|with|via)[ \t]+.*$/i, "").trim();
   cleaned = cleaned.replace(/[.,;:]+$/, "").trim();
 
   return cleaned;
+}
+
+// --- Linear payee extraction helpers (avoid ReDoS: no nested overlapping quantifiers, no (.+?) with optional trailing groups) ---
+
+/** Bounded amount capture: up to 15 chars of digits/commas with optional .xx */
+const BOUNDED_AMOUNT = "[\\d,]{1,15}(?:\\.\\d{2})?";
+
+function extractAmountAfterPrefix(
+  text: string,
+  prefixPattern: RegExp,
+): { amount: string; endIndex: number } | null {
+  const m = prefixPattern.exec(text);
+  if (!m || !m[1] || m.index === undefined) return null;
+  return { amount: m[1], endIndex: m.index + m[0].length };
+}
+
+function extractPayeeBetween(
+  text: string,
+  fromIndex: number,
+  keywordPattern: RegExp,
+  terminators: RegExp[],
+): string | null {
+  const slice = text.slice(fromIndex);
+  const km = keywordPattern.exec(slice);
+  if (!km || km.index === undefined) return null;
+  const payeeStart = fromIndex + km.index + km[0].length;
+  let payeeEnd = text.length;
+  const remainder = text.slice(payeeStart);
+  for (const term of terminators) {
+    const tm = term.exec(remainder);
+    if (tm && tm.index !== undefined) {
+      const cand = payeeStart + tm.index;
+      if (cand < payeeEnd) payeeEnd = cand;
+    }
+  }
+  // Deterministic bounded slice: limit to 120 chars to prevent unbounded unbounded matching
+  const raw = text.slice(payeeStart, Math.min(payeeEnd, payeeStart + 120)).trim();
+  // Trim trailing period if any slipped
+  return raw ? raw.replace(/\.$/, "").trim() : null;
+}
+
+function inferChannel(rawText: string): SupportedChannel {
+  if (/gcash/i.test(rawText)) return "gcash";
+  if (/maya/i.test(rawText)) return "maya";
+  if (/bpi/i.test(rawText)) return "bpi";
+  if (/bdo/i.test(rawText)) return "bdo";
+  if (/unionbank/i.test(rawText)) return "unionbank";
+  if (/shopeepay/i.test(rawText)) return "shopeepay";
+  if (/grabpay/i.test(rawText)) return "grabpay";
+  return "generic";
 }
 
 export function suggestCategory(
@@ -227,7 +284,7 @@ export function suggestCategory(
 
   // 1. Food & Dining
   if (
-    /(?:jollibee|mcdo|mcdonald|grabfood|foodpanda|food\s*panda|restaurant|mang\s*inasal|chowking|kfc|starbucks|tokyo\s*tokyo|bonchon|shakey|pizza\s*hut|burger\s*king|kenny\s*rogers|wendy|tim\s*hortons|coffee\s*bean|dunkin|army\s*navy|pepper\s*lunch|subway|din\s*tai\s*fung|samgyup|cafe|bistro|bakery|barbecue|bbq|boba|milktea|milk\s*tea|coffee)/i.test(
+    /(?:jollibee|mcdo|mcdonald|grabfood|foodpanda|food[ \t]*panda|restaurant|mang[ \t]*inasal|chowking|kfc|starbucks|tokyo[ \t]*tokyo|bonchon|shakey|pizza[ \t]*hut|burger[ \t]*king|kenny[ \t]*rogers|wendy|tim[ \t]*hortons|coffee[ \t]*bean|dunkin|army[ \t]*navy|pepper[ \t]*lunch|subway|din[ \t]*tai[ \t]*fung|samgyup|cafe|bistro|bakery|barbecue|bbq|boba|milktea|milk[ \t]*tea|coffee)/i.test(
       haystack,
     )
   ) {
@@ -236,7 +293,7 @@ export function suggestCategory(
 
   // 2. Groceries
   if (
-    /(?:sm\s*supermarket|sm\s*hypermarket|puregold|robinson|mercury\s*drug|waltermart|landmark|savemore|allday|all\s*day|southstar\s*drug|watsons|dali\s*everyday|marketplace|s&r|landers|supermarket|grocery|pharmacy)/i.test(
+    /(?:sm[ \t]*supermarket|sm[ \t]*hypermarket|puregold|robinson|mercury[ \t]*drug|waltermart|landmark|savemore|allday|all[ \t]*day|southstar[ \t]*drug|watsons|dali[ \t]*everyday|marketplace|s&r|landers|supermarket|grocery|pharmacy)/i.test(
       haystack,
     )
   ) {
@@ -245,7 +302,7 @@ export function suggestCategory(
 
   // 3. Entertainment & Subscriptions
   if (
-    /(?:netflix|spotify|apple|google|disney|youtube|prime\s*video|hbo|steam|playstation|nintendo|crunchyroll|patreon|deezer|itunes)/i.test(
+    /(?:netflix|spotify|apple|google|disney|youtube|prime[ \t]*video|hbo|steam|playstation|nintendo|crunchyroll|patreon|deezer|itunes)/i.test(
       haystack,
     )
   ) {
@@ -254,7 +311,7 @@ export function suggestCategory(
 
   // 4. Transportation
   if (
-    /(?:grabcar|grab\s*car|grab\s*philippines|angkas|joyride|joy\s*ride|move\s*it|shell|petron|caltex|seaoil|total|cleanfuel|unioil|mrt|lrt|beep|easytrip|autosweep|cebu\s*pacific|philippine\s*airlines|airasia|transport|taxi|gasoline|gas\s*station)/i.test(
+    /(?:grabcar|grab[ \t]*car|grab[ \t]*philippines|angkas|joyride|joy[ \t]*ride|move[ \t]*it|shell|petron|caltex|seaoil|total|cleanfuel|unioil|mrt|lrt|beep|easytrip|autosweep|cebu[ \t]*pacific|philippine[ \t]*airlines|airasia|transport|taxi|gasoline|gas[ \t]*station)/i.test(
       haystack,
     )
   ) {
@@ -263,7 +320,7 @@ export function suggestCategory(
 
   // 5. Shopping
   if (
-    /(?:shopee|lazada|zalora|sm\s*store|sm\s*dept|uniqlo|shein|tiktok\s*shop|zara|h&m|decathlon|nike|adidas|ikea|mall|boutique|retail)/i.test(
+    /(?:shopee|lazada|zalora|sm[ \t]*store|sm[ \t]*dept|uniqlo|shein|tiktok[ \t]*shop|zara|h&m|decathlon|nike|adidas|ikea|mall|boutique|retail)/i.test(
       haystack,
     )
   ) {
@@ -272,7 +329,7 @@ export function suggestCategory(
 
   // 6. Utilities
   if (
-    /(?:meralco|maynilad|manila\s*water|globe|smart(?:\s*telecom|\s*postpaid|\s*prepaid)?|pldt|converge|dito|cignal|primewater|sky\s*cable|electric|water\s*district|telecom|utility|utilities)/i.test(
+    /(?:meralco|maynilad|manila[ \t]*water|globe|smart(?:[ \t]*telecom|[ \t]*postpaid|[ \t]*prepaid)?|pldt|converge|dito|cignal|primewater|sky[ \t]*cable|electric|water[ \t]*district|telecom|utility|utilities)/i.test(
       haystack,
     )
   ) {
@@ -283,7 +340,7 @@ export function suggestCategory(
   if (
     type === "transfer" ||
     type === "income" ||
-    /(?:gcash|maya|paymaya|bpi|bdo|unionbank|metrobank|landbank|rcbc|security\s*bank|cimb|seabank|gotyme|tonik|bank\s*transfer|instapay|pesonet|cash\s*in|cash-in|send\s*money|express\s*send|padala|transfer)/i.test(
+    /(?:gcash|maya|paymaya|bpi|bdo|unionbank|metrobank|landbank|rcbc|security[ \t]*bank|cimb|seabank|gotyme|tonik|bank[ \t]*transfer|instapay|pesonet|cash[ \t]*in|cash-in|send[ \t]*money|express[ \t]*send|padala|transfer)/i.test(
       haystack,
     )
   ) {
@@ -304,339 +361,612 @@ export function parseSmsNotification(
 
   const refNumber = extractReferenceNumber(rawText);
 
-  // 1. GCash patterns
-  // Pattern A: "You have paid PHP 250.00 of GCash to JOLLIBEE on 08/25/2026 14:30. Ref. No. 123456789"
-  const gcashPaidMatch = /You have paid (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s*(?:of GCash)?\s+to\s+(.+?)(?:\s+on\s+([\d/.: -]+(?:AM|PM|am|pm)?))?(?:\.\s*Ref|$)/i.exec(
-    rawText,
-  );
-  if (gcashPaidMatch && /gcash/i.test(rawText)) {
-    const amountMinor = parseAmountMinor(gcashPaidMatch[1]);
-    if (amountMinor !== null) {
-      const dt = parseDateTimeFromText(rawText, referenceDate);
-      const payee = cleanPayee(gcashPaidMatch[2]);
-      return {
-        channel: "gcash",
-        type: "expense",
-        amountMinor,
-        currency: "PHP",
-        date: dt.date,
-        time: dt.time,
-        payeeOrMerchant: payee,
-        referenceNumber: refNumber,
+  // Shared terminators: linear, non-overlapping, bounded
+  const gcashTerminators: RegExp[] = [/[ \t]+on[ \t]+\d/i, /\.[ \t]*Ref/i];
+  const mayaTerminators: RegExp[] = [
+    /[ \t]+(?:using|via)[ \t]+Maya/i,
+    /[ \t]+on[ \t]+\d/i,
+    /\.[ \t]*Ref/i,
+  ];
+
+  // 1. GCash patterns - linear tokenization (no overlapping \s* vs \s+ and no (.+?) catastrophic)
+  if (/gcash/i.test(rawText)) {
+    // Pattern A: "You have paid PHP 250.00 of GCash to JOLLIBEE on 08/25/2026 14:30. Ref. No. 123456789"
+    if (/You have paid/i.test(rawText)) {
+      const amt = extractAmountAfterPrefix(
         rawText,
-        suggestedCategory: suggestCategory(payee, "expense", rawText),
-        confidence: "high",
-      };
+        new RegExp(`You have paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      );
+      if (amt) {
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, gcashTerminators);
+        if (payeeRaw !== null) {
+          const amountMinor = parseAmountMinor(amt.amount);
+          if (amountMinor !== null) {
+            const dt = parseDateTimeFromText(rawText, referenceDate);
+            const payee = cleanPayee(payeeRaw);
+            return {
+              channel: "gcash",
+              type: "expense",
+              amountMinor,
+              currency: "PHP",
+              date: dt.date,
+              time: dt.time,
+              payeeOrMerchant: payee,
+              referenceNumber: refNumber,
+              rawText,
+              suggestedCategory: suggestCategory(payee, "expense", rawText),
+              confidence: "high",
+            };
+          }
+        }
+      }
+    }
+
+    // Pattern B: "You have sent PHP 500.00 of GCash to JUAN DELA CRUZ 09171234567 on 08/25/2026 10:15. Ref. No. 987654321"
+    if (/You have sent/i.test(rawText)) {
+      const amt = extractAmountAfterPrefix(
+        rawText,
+        new RegExp(`You have sent[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      );
+      if (amt) {
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, gcashTerminators);
+        if (payeeRaw !== null) {
+          const amountMinor = parseAmountMinor(amt.amount);
+          if (amountMinor !== null) {
+            const dt = parseDateTimeFromText(rawText, referenceDate);
+            const payee = cleanPayee(payeeRaw);
+            return {
+              channel: "gcash",
+              type: "transfer",
+              amountMinor,
+              currency: "PHP",
+              date: dt.date,
+              time: dt.time,
+              payeeOrMerchant: payee,
+              referenceNumber: refNumber,
+              rawText,
+              suggestedCategory: suggestCategory(payee, "transfer", rawText),
+              confidence: "high",
+            };
+          }
+        }
+      }
+    }
+
+    // Pattern C: "You have received PHP 1,000.00 of GCash from MARIA CLARA 09181234567 on 08/25/2026 11:20. Ref. No. 456789123"
+    if (/You have received/i.test(rawText)) {
+      const amt = extractAmountAfterPrefix(
+        rawText,
+        new RegExp(`You have received[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      );
+      if (amt) {
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+from[ \t]+/i, gcashTerminators);
+        if (payeeRaw !== null) {
+          const amountMinor = parseAmountMinor(amt.amount);
+          if (amountMinor !== null) {
+            const dt = parseDateTimeFromText(rawText, referenceDate);
+            const payee = cleanPayee(payeeRaw);
+            return {
+              channel: "gcash",
+              type: "income",
+              amountMinor,
+              currency: "PHP",
+              date: dt.date,
+              time: dt.time,
+              payeeOrMerchant: payee,
+              referenceNumber: refNumber,
+              rawText,
+              suggestedCategory: suggestCategory(payee, "income", rawText),
+              confidence: "high",
+            };
+          }
+        }
+      }
     }
   }
 
-  // Pattern B: "You have sent PHP 500.00 of GCash to JUAN DELA CRUZ 09171234567 on 08/25/2026 10:15. Ref. No. 987654321"
-  const gcashSentMatch = /You have sent (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s*(?:of GCash)?\s+to\s+(.+?)(?:\s+on\s+([\d/.: -]+(?:AM|PM|am|pm)?))?(?:\.\s*Ref|$)/i.exec(
-    rawText,
-  );
-  if (gcashSentMatch && /gcash/i.test(rawText)) {
-    const amountMinor = parseAmountMinor(gcashSentMatch[1]);
-    if (amountMinor !== null) {
-      const dt = parseDateTimeFromText(rawText, referenceDate);
-      const payee = cleanPayee(gcashSentMatch[2]);
-      return {
-        channel: "gcash",
-        type: "transfer",
-        amountMinor,
-        currency: "PHP",
-        date: dt.date,
-        time: dt.time,
-        payeeOrMerchant: payee,
-        referenceNumber: refNumber,
-        rawText,
-        suggestedCategory: suggestCategory(payee, "transfer", rawText),
-        confidence: "high",
-      };
-    }
-  }
-
-  // Pattern C: "You have received PHP 1,000.00 of GCash from MARIA CLARA 09181234567 on 08/25/2026 11:20. Ref. No. 456789123"
-  const gcashReceivedMatch = /You have received (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s*(?:of GCash)?\s+from\s+(.+?)(?:\s+on\s+([\d/.: -]+(?:AM|PM|am|pm)?))?(?:\.\s*Ref|$)/i.exec(
-    rawText,
-  );
-  if (gcashReceivedMatch && /gcash/i.test(rawText)) {
-    const amountMinor = parseAmountMinor(gcashReceivedMatch[1]);
-    if (amountMinor !== null) {
-      const dt = parseDateTimeFromText(rawText, referenceDate);
-      const payee = cleanPayee(gcashReceivedMatch[2]);
-      return {
-        channel: "gcash",
-        type: "income",
-        amountMinor,
-        currency: "PHP",
-        date: dt.date,
-        time: dt.time,
-        payeeOrMerchant: payee,
-        referenceNumber: refNumber,
-        rawText,
-        suggestedCategory: suggestCategory(payee, "income", rawText),
-        confidence: "high",
-      };
-    }
-  }
-
-  // Pattern D: "Payment of PHP 1,500.00 to NETFLIX was successful. Ref No. 789123456"
-  const paymentSuccessMatch = /Payment of (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+to\s+(.+?)\s+was successful/i.exec(
-    rawText,
-  );
-  if (paymentSuccessMatch) {
-    const amountMinor = parseAmountMinor(paymentSuccessMatch[1]);
-    if (amountMinor !== null) {
-      const dt = parseDateTimeFromText(rawText, referenceDate);
-      const payee = cleanPayee(paymentSuccessMatch[2]);
-      const channel: SupportedChannel = /gcash/i.test(rawText) || !/maya|bpi|bdo|unionbank|shopeepay|grabpay/i.test(rawText)
-        ? "gcash"
-        : "generic";
-      return {
-        channel,
-        type: "expense",
-        amountMinor,
-        currency: "PHP",
-        date: dt.date,
-        time: dt.time,
-        payeeOrMerchant: payee,
-        referenceNumber: refNumber,
-        rawText,
-        suggestedCategory: suggestCategory(payee, "expense", rawText),
-        confidence: "high",
-      };
+  // Pattern D: "Payment of PHP 1,500.00 to NETFLIX was successful. Ref No. 789123456" - linear
+  if (/Payment of/i.test(rawText) && /was successful/i.test(rawText)) {
+    const amt = extractAmountAfterPrefix(
+      rawText,
+      new RegExp(`Payment of[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+    );
+    if (amt) {
+      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, [
+        /[ \t]+was[ \t]+successful/i,
+      ]);
+      if (payeeRaw !== null) {
+        const amountMinor = parseAmountMinor(amt.amount);
+        if (amountMinor !== null) {
+          const dt = parseDateTimeFromText(rawText, referenceDate);
+          const payee = cleanPayee(payeeRaw);
+          const channel: SupportedChannel =
+            /gcash/i.test(rawText) || !/maya|bpi|bdo|unionbank|shopeepay|grabpay/i.test(rawText)
+              ? "gcash"
+              : "generic";
+          return {
+            channel,
+            type: "expense",
+            amountMinor,
+            currency: "PHP",
+            date: dt.date,
+            time: dt.time,
+            payeeOrMerchant: payee,
+            referenceNumber: refNumber,
+            rawText,
+            suggestedCategory: suggestCategory(payee, "expense", rawText),
+            confidence: "high",
+          };
+        }
+      }
     }
   }
 
   // 2. Maya patterns
-  // Pattern A: "You paid PHP 350.00 to Grab Philippines using Maya on 25 Aug 2026 12:00PM. Ref: MAYA-998877"
-  // Pattern B: "You sent PHP 1,200.00 to 09171234567 via Maya. Ref No: 1122334455"
-  // Pattern C: "You received PHP 5,000.00 from PEDRO PENDUKO via Maya. Ref: 5544332211"
   if (/maya/i.test(rawText)) {
-    const mayaPaidMatch = /You paid (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+to\s+(.+?)(?:\s+(?:using|via)\s+Maya|\s+on|\.|\s+Ref|$)/i.exec(
-      rawText,
-    );
-    if (mayaPaidMatch) {
-      const amountMinor = parseAmountMinor(mayaPaidMatch[1]);
-      if (amountMinor !== null) {
-        const dt = parseDateTimeFromText(rawText, referenceDate);
-        const payee = cleanPayee(mayaPaidMatch[2]);
-        return {
-          channel: "maya",
-          type: "expense",
-          amountMinor,
-          currency: "PHP",
-          date: dt.date,
-          time: dt.time,
-          payeeOrMerchant: payee,
-          referenceNumber: refNumber,
-          rawText,
-          suggestedCategory: suggestCategory(payee, "expense", rawText),
-          confidence: "high",
-        };
+    if (/You paid/i.test(rawText)) {
+      const amt = extractAmountAfterPrefix(
+        rawText,
+        new RegExp(`You paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      );
+      if (amt) {
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, mayaTerminators);
+        if (payeeRaw !== null) {
+          const amountMinor = parseAmountMinor(amt.amount);
+          if (amountMinor !== null) {
+            const dt = parseDateTimeFromText(rawText, referenceDate);
+            const payee = cleanPayee(payeeRaw);
+            return {
+              channel: "maya",
+              type: "expense",
+              amountMinor,
+              currency: "PHP",
+              date: dt.date,
+              time: dt.time,
+              payeeOrMerchant: payee,
+              referenceNumber: refNumber,
+              rawText,
+              suggestedCategory: suggestCategory(payee, "expense", rawText),
+              confidence: "high",
+            };
+          }
+        }
       }
     }
 
-    const mayaSentMatch = /You sent (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+to\s+(.+?)(?:\s+(?:using|via)\s+Maya|\s+on|\.|\s+Ref|$)/i.exec(
-      rawText,
-    );
-    if (mayaSentMatch) {
-      const amountMinor = parseAmountMinor(mayaSentMatch[1]);
-      if (amountMinor !== null) {
-        const dt = parseDateTimeFromText(rawText, referenceDate);
-        const payee = cleanPayee(mayaSentMatch[2]);
-        return {
-          channel: "maya",
-          type: "transfer",
-          amountMinor,
-          currency: "PHP",
-          date: dt.date,
-          time: dt.time,
-          payeeOrMerchant: payee,
-          referenceNumber: refNumber,
-          rawText,
-          suggestedCategory: suggestCategory(payee, "transfer", rawText),
-          confidence: "high",
-        };
+    if (/You sent/i.test(rawText)) {
+      const amt = extractAmountAfterPrefix(
+        rawText,
+        new RegExp(`You sent[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      );
+      if (amt) {
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, mayaTerminators);
+        if (payeeRaw !== null) {
+          const amountMinor = parseAmountMinor(amt.amount);
+          if (amountMinor !== null) {
+            const dt = parseDateTimeFromText(rawText, referenceDate);
+            const payee = cleanPayee(payeeRaw);
+            return {
+              channel: "maya",
+              type: "transfer",
+              amountMinor,
+              currency: "PHP",
+              date: dt.date,
+              time: dt.time,
+              payeeOrMerchant: payee,
+              referenceNumber: refNumber,
+              rawText,
+              suggestedCategory: suggestCategory(payee, "transfer", rawText),
+              confidence: "high",
+            };
+          }
+        }
       }
     }
 
-    const mayaReceivedMatch = /You received (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+from\s+(.+?)(?:\s+(?:using|via)\s+Maya|\s+on|\.|\s+Ref|$)/i.exec(
-      rawText,
-    );
-    if (mayaReceivedMatch) {
-      const amountMinor = parseAmountMinor(mayaReceivedMatch[1]);
-      if (amountMinor !== null) {
-        const dt = parseDateTimeFromText(rawText, referenceDate);
-        const payee = cleanPayee(mayaReceivedMatch[2]);
-        return {
-          channel: "maya",
-          type: "income",
-          amountMinor,
-          currency: "PHP",
-          date: dt.date,
-          time: dt.time,
-          payeeOrMerchant: payee,
-          referenceNumber: refNumber,
-          rawText,
-          suggestedCategory: suggestCategory(payee, "income", rawText),
-          confidence: "high",
-        };
+    if (/You received/i.test(rawText)) {
+      const amt = extractAmountAfterPrefix(
+        rawText,
+        new RegExp(`You received[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      );
+      if (amt) {
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+from[ \t]+/i, mayaTerminators);
+        if (payeeRaw !== null) {
+          const amountMinor = parseAmountMinor(amt.amount);
+          if (amountMinor !== null) {
+            const dt = parseDateTimeFromText(rawText, referenceDate);
+            const payee = cleanPayee(payeeRaw);
+            return {
+              channel: "maya",
+              type: "income",
+              amountMinor,
+              currency: "PHP",
+              date: dt.date,
+              time: dt.time,
+              payeeOrMerchant: payee,
+              referenceNumber: refNumber,
+              rawText,
+              suggestedCategory: suggestCategory(payee, "income", rawText),
+              confidence: "high",
+            };
+          }
+        }
       }
     }
   }
 
   // 3. BPI patterns
-  // Pattern A: "You paid PHP 2,450.00 at MERCURY DRUG with your BPI Debit card ending in 1234 on 08/25/2026. Ref: BPI-9988"
-  // Pattern B: "Your BPI Online transfer of PHP 3,000.00 to GCASH was successful on 08/25/2026. Ref: BPI-1122"
   if (/bpi/i.test(rawText)) {
-    const bpiTransferMatch = /(?:Your\s+)?BPI(?:\s+Online)?\s+transfer\s+of\s+(?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+to\s+(.+?)\s+was successful/i.exec(
-      rawText,
-    );
-    if (bpiTransferMatch) {
-      const amountMinor = parseAmountMinor(bpiTransferMatch[1]);
-      if (amountMinor !== null) {
-        const dt = parseDateTimeFromText(rawText, referenceDate);
-        const payee = cleanPayee(bpiTransferMatch[2]);
-        return {
-          channel: "bpi",
-          type: "transfer",
-          amountMinor,
-          currency: "PHP",
-          date: dt.date,
-          time: dt.time,
-          payeeOrMerchant: payee,
-          referenceNumber: refNumber,
-          rawText,
-          suggestedCategory: suggestCategory(payee, "transfer", rawText),
-          confidence: "high",
-        };
+    // Transfer: "Your BPI Online transfer of PHP 3,000.00 to GCASH was successful on 08/25/2026. Ref: BPI-1122"
+    if (/transfer[ \t]+of/i.test(rawText)) {
+      const amt = extractAmountAfterPrefix(
+        rawText,
+        new RegExp(`BPI(?:[ \\t]+Online)?[ \\t]+transfer[ \\t]+of[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      );
+      if (amt) {
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, [
+          /[ \t]+was[ \t]+successful/i,
+        ]);
+        if (payeeRaw !== null) {
+          const amountMinor = parseAmountMinor(amt.amount);
+          if (amountMinor !== null) {
+            const dt = parseDateTimeFromText(rawText, referenceDate);
+            const payee = cleanPayee(payeeRaw);
+            return {
+              channel: "bpi",
+              type: "transfer",
+              amountMinor,
+              currency: "PHP",
+              date: dt.date,
+              time: dt.time,
+              payeeOrMerchant: payee,
+              referenceNumber: refNumber,
+              rawText,
+              suggestedCategory: suggestCategory(payee, "transfer", rawText),
+              confidence: "high",
+            };
+          }
+        }
       }
     }
 
-    const bpiPaidMatch = /You paid (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+(?:at|to)\s+(.+?)(?:\s+with\s+your\s+BPI|\s+on|\.|\s+Ref|$)/i.exec(
-      rawText,
-    );
-    if (bpiPaidMatch) {
-      const amountMinor = parseAmountMinor(bpiPaidMatch[1]);
-      if (amountMinor !== null) {
-        const dt = parseDateTimeFromText(rawText, referenceDate);
-        const payee = cleanPayee(bpiPaidMatch[2]);
-        return {
-          channel: "bpi",
-          type: "expense",
-          amountMinor,
-          currency: "PHP",
-          date: dt.date,
-          time: dt.time,
-          payeeOrMerchant: payee,
-          referenceNumber: refNumber,
-          rawText,
-          suggestedCategory: suggestCategory(payee, "expense", rawText),
-          confidence: "high",
-        };
+    if (/You paid/i.test(rawText)) {
+      const amt = extractAmountAfterPrefix(
+        rawText,
+        new RegExp(`You paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      );
+      if (amt) {
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+(?:at|to)[ \t]+/i, [
+          /[ \t]+with[ \t]+your[ \t]+BPI/i,
+          /[ \t]+on[ \t]+\d/i,
+          /\.[ \t]*Ref/i,
+        ]);
+        if (payeeRaw !== null) {
+          const amountMinor = parseAmountMinor(amt.amount);
+          if (amountMinor !== null) {
+            const dt = parseDateTimeFromText(rawText, referenceDate);
+            const payee = cleanPayee(payeeRaw);
+            return {
+              channel: "bpi",
+              type: "expense",
+              amountMinor,
+              currency: "PHP",
+              date: dt.date,
+              time: dt.time,
+              payeeOrMerchant: payee,
+              referenceNumber: refNumber,
+              rawText,
+              suggestedCategory: suggestCategory(payee, "expense", rawText),
+              confidence: "high",
+            };
+          }
+        }
       }
     }
   }
 
   // 4. BDO pattern
-  // Pattern: "BDO: You purchased PHP 1,890.50 at SM SUPERMARKET on 08/25/2026 using card ending in 5678. Ref: BDO7788"
   if (/bdo/i.test(rawText)) {
-    const bdoPurchasedMatch = /You purchased (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+(?:at|to)\s+(.+?)(?:\s+on|\s+using|\.|\s+Ref|$)/i.exec(
-      rawText,
-    );
-    if (bdoPurchasedMatch) {
-      const amountMinor = parseAmountMinor(bdoPurchasedMatch[1]);
-      if (amountMinor !== null) {
-        const dt = parseDateTimeFromText(rawText, referenceDate);
-        const payee = cleanPayee(bdoPurchasedMatch[2]);
-        return {
-          channel: "bdo",
-          type: "expense",
-          amountMinor,
-          currency: "PHP",
-          date: dt.date,
-          time: dt.time,
-          payeeOrMerchant: payee,
-          referenceNumber: refNumber,
-          rawText,
-          suggestedCategory: suggestCategory(payee, "expense", rawText),
-          confidence: "high",
-        };
+    if (/You purchased/i.test(rawText)) {
+      const amt = extractAmountAfterPrefix(
+        rawText,
+        new RegExp(`You purchased[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      );
+      if (amt) {
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+(?:at|to)[ \t]+/i, [
+          /[ \t]+on[ \t]+\d/i,
+          /[ \t]+using[ \t]+/i,
+          /\.[ \t]*Ref/i,
+        ]);
+        if (payeeRaw !== null) {
+          const amountMinor = parseAmountMinor(amt.amount);
+          if (amountMinor !== null) {
+            const dt = parseDateTimeFromText(rawText, referenceDate);
+            const payee = cleanPayee(payeeRaw);
+            return {
+              channel: "bdo",
+              type: "expense",
+              amountMinor,
+              currency: "PHP",
+              date: dt.date,
+              time: dt.time,
+              payeeOrMerchant: payee,
+              referenceNumber: refNumber,
+              rawText,
+              suggestedCategory: suggestCategory(payee, "expense", rawText),
+              confidence: "high",
+            };
+          }
+        }
       }
     }
   }
 
   // 5. UnionBank pattern
-  // Pattern: "UnionBank: PHP 750.00 debited from acct ending in 4321 for payment to SHOPEE on 2026-08-25. Ref: UB-4455"
   if (/unionbank/i.test(rawText)) {
-    const ubMatch = /(?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+debited\s+from\s+.+?\s+for payment to\s+(.+?)(?:\s+on|\.|\s+Ref|$)/i.exec(
+    const amt = extractAmountAfterPrefix(
       rawText,
+      new RegExp(`(?:PHP|\\u20B1)[ \\t]*(${BOUNDED_AMOUNT})[ \\t]+debited[ \\t]+from`, "i"),
     );
-    if (ubMatch) {
-      const amountMinor = parseAmountMinor(ubMatch[1]);
-      if (amountMinor !== null) {
-        const dt = parseDateTimeFromText(rawText, referenceDate);
-        const payee = cleanPayee(ubMatch[2]);
-        return {
-          channel: "unionbank",
-          type: "expense",
-          amountMinor,
-          currency: "PHP",
-          date: dt.date,
-          time: dt.time,
-          payeeOrMerchant: payee,
-          referenceNumber: refNumber,
-          rawText,
-          suggestedCategory: suggestCategory(payee, "expense", rawText),
-          confidence: "high",
-        };
+    if (amt) {
+      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+for[ \t]+payment[ \t]+to[ \t]+/i, [
+        /[ \t]+on[ \t]+\d/i,
+        /\.[ \t]*Ref/i,
+      ]);
+      if (payeeRaw !== null) {
+        const amountMinor = parseAmountMinor(amt.amount);
+        if (amountMinor !== null) {
+          const dt = parseDateTimeFromText(rawText, referenceDate);
+          const payee = cleanPayee(payeeRaw);
+          return {
+            channel: "unionbank",
+            type: "expense",
+            amountMinor,
+            currency: "PHP",
+            date: dt.date,
+            time: dt.time,
+            payeeOrMerchant: payee,
+            referenceNumber: refNumber,
+            rawText,
+            suggestedCategory: suggestCategory(payee, "expense", rawText),
+            confidence: "high",
+          };
+        }
       }
     }
   }
 
   // 6. ShopeePay pattern
-  // Pattern: "ShopeePay: Paid PHP 420.00 to Merchant FoodPanda. Ref: SP12345678"
   if (/shopeepay/i.test(rawText)) {
-    const spMatch = /Paid (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+to\s+(.+?)(?:\.|\s+Ref|$)/i.exec(
+    const amt = extractAmountAfterPrefix(
       rawText,
+      new RegExp(`Paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
     );
-    if (spMatch) {
-      const amountMinor = parseAmountMinor(spMatch[1]);
-      if (amountMinor !== null) {
-        const dt = parseDateTimeFromText(rawText, referenceDate);
-        const payee = cleanPayee(spMatch[2]);
-        return {
-          channel: "shopeepay",
-          type: "expense",
-          amountMinor,
-          currency: "PHP",
-          date: dt.date,
-          time: dt.time,
-          payeeOrMerchant: payee,
-          referenceNumber: refNumber,
-          rawText,
-          suggestedCategory: suggestCategory(payee, "expense", rawText),
-          confidence: "high",
-        };
+    if (amt) {
+      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, [/\.[ \t]*Ref/i]);
+      if (payeeRaw !== null) {
+        const amountMinor = parseAmountMinor(amt.amount);
+        if (amountMinor !== null) {
+          const dt = parseDateTimeFromText(rawText, referenceDate);
+          const payee = cleanPayee(payeeRaw);
+          return {
+            channel: "shopeepay",
+            type: "expense",
+            amountMinor,
+            currency: "PHP",
+            date: dt.date,
+            time: dt.time,
+            payeeOrMerchant: payee,
+            referenceNumber: refNumber,
+            rawText,
+            suggestedCategory: suggestCategory(payee, "expense", rawText),
+            confidence: "high",
+          };
+        }
       }
     }
   }
 
   // 7. GrabPay pattern
-  // Pattern: "GrabPay: Payment of PHP 180.00 to GrabCar completed on 25/08/2026. Trans ID: GP-8899"
   if (/grabpay/i.test(rawText)) {
-    const grabMatch = /Payment of (?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+to\s+(.+?)\s+completed/i.exec(
+    const amt = extractAmountAfterPrefix(
       rawText,
+      new RegExp(`Payment of[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
     );
-    if (grabMatch) {
-      const amountMinor = parseAmountMinor(grabMatch[1]);
+    if (amt && /completed/i.test(rawText)) {
+      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, [
+        /[ \t]+completed/i,
+      ]);
+      if (payeeRaw !== null) {
+        const amountMinor = parseAmountMinor(amt.amount);
+        if (amountMinor !== null) {
+          const dt = parseDateTimeFromText(rawText, referenceDate, true);
+          const payee = cleanPayee(payeeRaw);
+          return {
+            channel: "grabpay",
+            type: "expense",
+            amountMinor,
+            currency: "PHP",
+            date: dt.date,
+            time: dt.time,
+            payeeOrMerchant: payee,
+            referenceNumber: refNumber,
+            rawText,
+            suggestedCategory: suggestCategory(payee, "expense", rawText),
+            confidence: "high",
+          };
+        }
+      }
+    }
+  }
+
+  // 8. Generic fallbacks - linear bounded tokenization
+  // Shared generic terminators include period and RN to avoid swallowing reference
+  const genericExpenseTerminators: RegExp[] = [
+    /[ \t]+on[ \t]+\d/i,
+    /\.[ \t]*Ref/i,
+    /\.[ \t]*RN/i,
+    /[ \t]+RN[ \t]*:/i,
+    /\./,
+  ];
+  const genericTransferTerminators: RegExp[] = [
+    /[ \t]+on[ \t]+\d/i,
+    /\.[ \t]*Ref/i,
+    /\.[ \t]*RN/i,
+    /[ \t]+RN[ \t]*:/i,
+    /\./,
+  ];
+  const genericIncomeTerminators: RegExp[] = [
+    /[ \t]+on[ \t]+\d/i,
+    /\.[ \t]*Ref/i,
+    /\.[ \t]*RN/i,
+    /[ \t]+RN[ \t]*:/i,
+    /\./,
+  ];
+  // Paid / Payment: 'Paid PHP X to Y', 'Payment of PHP X to Y'
+  {
+    const amt = extractAmountAfterPrefix(
+      rawText,
+      new RegExp(`(?:Paid|Payment of)[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+    );
+    if (amt) {
+      const payeeRaw = extractPayeeBetween(
+        rawText,
+        amt.endIndex,
+        /[ \t]+(?:to|at)[ \t]+/i,
+        genericExpenseTerminators,
+      );
+      if (payeeRaw !== null) {
+        const amountMinor = parseAmountMinor(amt.amount);
+        if (amountMinor !== null) {
+          const dt = parseDateTimeFromText(rawText, referenceDate);
+          const payee = cleanPayee(payeeRaw);
+          const channel = inferChannel(rawText);
+          return {
+            channel,
+            type: "expense",
+            amountMinor,
+            currency: "PHP",
+            date: dt.date,
+            time: dt.time,
+            payeeOrMerchant: payee,
+            referenceNumber: refNumber,
+            rawText,
+            suggestedCategory: suggestCategory(payee, "expense", rawText),
+            confidence: channel === "generic" ? "medium" : "high",
+          };
+        }
+      }
+    }
+  }
+
+  // Transferred / Sent: 'Transferred PHP X to Y', 'Sent PHP X to Y', 'Transfer of PHP X to Y'
+  {
+    const amt = extractAmountAfterPrefix(
+      rawText,
+      new RegExp(`(?:Transferred|Sent|Transfer of)[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+    );
+    if (amt) {
+      const payeeRaw = extractPayeeBetween(
+        rawText,
+        amt.endIndex,
+        /[ \t]+to[ \t]+/i,
+        genericTransferTerminators,
+      );
+      // optional payee
+      let payee: string;
+      if (payeeRaw === null) {
+        payee = "Transfer";
+      } else {
+        payee = cleanPayee(payeeRaw);
+        if (!payee) payee = "Transfer";
+      }
+      // Only return if we actually matched transfer prefix; but allow fallback even if payee optional
+      // Validate we didn't already handle GCash/Maya specific above; still generic fallback is valid
+      const amountMinor = parseAmountMinor(amt.amount);
       if (amountMinor !== null) {
-        const dt = parseDateTimeFromText(rawText, referenceDate, true);
-        const payee = cleanPayee(grabMatch[2]);
+        // Check that text actually contains transfer keyword to avoid false positives from earlier generic paid
+        if (/(?:Transferred|Sent|Transfer of)/i.test(rawText)) {
+          const dt = parseDateTimeFromText(rawText, referenceDate);
+          const channel = inferChannel(rawText);
+          return {
+            channel,
+            type: "transfer",
+            amountMinor,
+            currency: "PHP",
+            date: dt.date,
+            time: dt.time,
+            payeeOrMerchant: payee,
+            referenceNumber: refNumber,
+            rawText,
+            suggestedCategory: suggestCategory(payee, "transfer", rawText),
+            confidence: channel === "generic" ? "medium" : "high",
+          };
+        }
+      }
+    }
+  }
+
+  // Received / Credited: 'Received PHP X from Y', 'PHP X credited from Y', 'Received PHP X'
+  {
+    const amt = extractAmountAfterPrefix(
+      rawText,
+      new RegExp(`(?:Received|credited with)[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+    );
+    if (amt) {
+      const payeeRaw = extractPayeeBetween(
+        rawText,
+        amt.endIndex,
+        /[ \t]+from[ \t]+/i,
+        genericIncomeTerminators,
+      );
+      let payee: string;
+      if (payeeRaw === null) {
+        payee = "Sender";
+      } else {
+        payee = cleanPayee(payeeRaw);
+        if (!payee) payee = "Sender";
+      }
+      const amountMinor = parseAmountMinor(amt.amount);
+      if (amountMinor !== null) {
+        if (/(?:Received|credited with)/i.test(rawText)) {
+          const dt = parseDateTimeFromText(rawText, referenceDate);
+          const channel = inferChannel(rawText);
+          return {
+            channel,
+            type: "income",
+            amountMinor,
+            currency: "PHP",
+            date: dt.date,
+            time: dt.time,
+            payeeOrMerchant: payee,
+            referenceNumber: refNumber,
+            rawText,
+            suggestedCategory: suggestCategory(payee, "income", rawText),
+            confidence: channel === "generic" ? "medium" : "high",
+          };
+        }
+      }
+    }
+  }
+
+  // Fallback broad amount extractor - bounded linear
+  {
+    const broadMatch = new RegExp(`(?:PHP|\\u20B1)[ \\t]*(${BOUNDED_AMOUNT})`, "i").exec(rawText);
+    if (broadMatch?.[1]) {
+      const amountMinor = parseAmountMinor(broadMatch[1]);
+      if (amountMinor !== null) {
+        const dt = parseDateTimeFromText(rawText, referenceDate);
+        const isIncome = /received|credited|deposit|cash[ \t]*in/i.test(rawText);
+        const isTransfer = /transfer|sent/i.test(rawText);
+        const type: SmsTransactionType = isIncome ? "income" : isTransfer ? "transfer" : "expense";
+
+        const channel = inferChannel(rawText);
+        const payee = "Unknown Merchant";
+
         return {
-          channel: "grabpay",
-          type: "expense",
+          channel,
+          type,
           amountMinor,
           currency: "PHP",
           date: dt.date,
@@ -644,150 +974,10 @@ export function parseSmsNotification(
           payeeOrMerchant: payee,
           referenceNumber: refNumber,
           rawText,
-          suggestedCategory: suggestCategory(payee, "expense", rawText),
-          confidence: "high",
+          suggestedCategory: suggestCategory(payee, type, rawText),
+          confidence: "low",
         };
       }
-    }
-  }
-
-  // 8. Generic fallbacks
-  // Paid / Payment: 'Paid PHP X to Y', 'Payment of PHP X to Y'
-  const genericPaidMatch = /(?:Paid|Payment of)\s+(?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)\s+(?:to|at)\s+(.+?)(?:\s+on|\.|\s+Ref|$)/i.exec(
-    rawText,
-  );
-  if (genericPaidMatch) {
-    const amountMinor = parseAmountMinor(genericPaidMatch[1]);
-    if (amountMinor !== null) {
-      const dt = parseDateTimeFromText(rawText, referenceDate);
-      const payee = cleanPayee(genericPaidMatch[2]);
-      let channel: SupportedChannel = "generic";
-      if (/gcash/i.test(rawText)) channel = "gcash";
-      else if (/maya/i.test(rawText)) channel = "maya";
-      else if (/bpi/i.test(rawText)) channel = "bpi";
-      else if (/bdo/i.test(rawText)) channel = "bdo";
-      else if (/unionbank/i.test(rawText)) channel = "unionbank";
-      else if (/shopeepay/i.test(rawText)) channel = "shopeepay";
-      else if (/grabpay/i.test(rawText)) channel = "grabpay";
-
-      return {
-        channel,
-        type: "expense",
-        amountMinor,
-        currency: "PHP",
-        date: dt.date,
-        time: dt.time,
-        payeeOrMerchant: payee,
-        referenceNumber: refNumber,
-        rawText,
-        suggestedCategory: suggestCategory(payee, "expense", rawText),
-        confidence: channel === "generic" ? "medium" : "high",
-      };
-    }
-  }
-
-  // Transferred / Sent: 'Transferred PHP X to Y', 'Sent PHP X to Y', 'Transfer of PHP X to Y'
-  const genericTransferMatch = /(?:Transferred|Sent|Transfer of)\s+(?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)(?:\s+to\s+(.+?))?(?:\s+on|\.|\s+Ref|$)/i.exec(
-    rawText,
-  );
-  if (genericTransferMatch) {
-    const amountMinor = parseAmountMinor(genericTransferMatch[1]);
-    if (amountMinor !== null) {
-      const dt = parseDateTimeFromText(rawText, referenceDate);
-      const payee = genericTransferMatch[2] ? cleanPayee(genericTransferMatch[2]) : "Transfer";
-      let channel: SupportedChannel = "generic";
-      if (/gcash/i.test(rawText)) channel = "gcash";
-      else if (/maya/i.test(rawText)) channel = "maya";
-      else if (/bpi/i.test(rawText)) channel = "bpi";
-      else if (/bdo/i.test(rawText)) channel = "bdo";
-      else if (/unionbank/i.test(rawText)) channel = "unionbank";
-      else if (/shopeepay/i.test(rawText)) channel = "shopeepay";
-      else if (/grabpay/i.test(rawText)) channel = "grabpay";
-
-      return {
-        channel,
-        type: "transfer",
-        amountMinor,
-        currency: "PHP",
-        date: dt.date,
-        time: dt.time,
-        payeeOrMerchant: payee,
-        referenceNumber: refNumber,
-        rawText,
-        suggestedCategory: suggestCategory(payee, "transfer", rawText),
-        confidence: channel === "generic" ? "medium" : "high",
-      };
-    }
-  }
-
-  // Received / Credited: 'Received PHP X from Y', 'PHP X credited from Y', 'Received PHP X'
-  const genericReceivedMatch = /(?:Received|(?:credited with))\s+(?:PHP|Php|₱)?\s*([\d,]+(?:\.\d{2})?)(?:\s+from\s+(.+?))?(?:\s+on|\.|\s+Ref|$)/i.exec(
-    rawText,
-  );
-  if (genericReceivedMatch) {
-    const amountMinor = parseAmountMinor(genericReceivedMatch[1]);
-    if (amountMinor !== null) {
-      const dt = parseDateTimeFromText(rawText, referenceDate);
-      const payee = genericReceivedMatch[2] ? cleanPayee(genericReceivedMatch[2]) : "Sender";
-      let channel: SupportedChannel = "generic";
-      if (/gcash/i.test(rawText)) channel = "gcash";
-      else if (/maya/i.test(rawText)) channel = "maya";
-      else if (/bpi/i.test(rawText)) channel = "bpi";
-      else if (/bdo/i.test(rawText)) channel = "bdo";
-      else if (/unionbank/i.test(rawText)) channel = "unionbank";
-      else if (/shopeepay/i.test(rawText)) channel = "shopeepay";
-      else if (/grabpay/i.test(rawText)) channel = "grabpay";
-
-      return {
-        channel,
-        type: "income",
-        amountMinor,
-        currency: "PHP",
-        date: dt.date,
-        time: dt.time,
-        payeeOrMerchant: payee,
-        referenceNumber: refNumber,
-        rawText,
-        suggestedCategory: suggestCategory(payee, "income", rawText),
-        confidence: channel === "generic" ? "medium" : "high",
-      };
-    }
-  }
-
-  // Fallback broad amount extractor
-  const broadAmountMatch = /(?:PHP|Php|₱)\s*([\d,]+(?:\.\d{2})?)/i.exec(rawText);
-  if (broadAmountMatch) {
-    const amountMinor = parseAmountMinor(broadAmountMatch[1]);
-    if (amountMinor !== null) {
-      const dt = parseDateTimeFromText(rawText, referenceDate);
-      const isIncome = /received|credited|deposit|cash in/i.test(rawText);
-      const isTransfer = /transfer|sent/i.test(rawText);
-      const type: SmsTransactionType = isIncome ? "income" : isTransfer ? "transfer" : "expense";
-
-      let channel: SupportedChannel = "generic";
-      if (/gcash/i.test(rawText)) channel = "gcash";
-      else if (/maya/i.test(rawText)) channel = "maya";
-      else if (/bpi/i.test(rawText)) channel = "bpi";
-      else if (/bdo/i.test(rawText)) channel = "bdo";
-      else if (/unionbank/i.test(rawText)) channel = "unionbank";
-      else if (/shopeepay/i.test(rawText)) channel = "shopeepay";
-      else if (/grabpay/i.test(rawText)) channel = "grabpay";
-
-      const payee = "Unknown Merchant";
-
-      return {
-        channel,
-        type,
-        amountMinor,
-        currency: "PHP",
-        date: dt.date,
-        time: dt.time,
-        payeeOrMerchant: payee,
-        referenceNumber: refNumber,
-        rawText,
-        suggestedCategory: suggestCategory(payee, type, rawText),
-        confidence: "low",
-      };
     }
   }
 
