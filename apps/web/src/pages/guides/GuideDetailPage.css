@@ -1,0 +1,231 @@
+.guide-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.guide-detail-meta-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.guide-detail-author {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.guide-toc {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  margin-block: 8px 16px;
+}
+
+.guide-toc-title {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-strong);
+  margin: 0 0 12px;
+}
+
+.guide-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.guide-toc-link {
+  font-size: 14px;
+  color: var(--accent);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s ease;
+}
+
+.guide-toc-link:hover {
+  text-decoration: underline;
+}
+
+.guide-content-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-block: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.guide-section-heading {
+  font-family: var(--font-display, inherit);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  scroll-margin-top: 80px;
+}
+
+.guide-section-body {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink);
+  margin: 0;
+}
+
+.guide-takeaways-box {
+  padding: 18px 20px;
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+  margin-top: 8px;
+}
+
+.guide-takeaways-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+
+.guide-takeaways-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted-strong);
+}
+
+.guide-faqs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line-strong);
+}
+
+.guide-faqs-heading {
+  font-family: var(--font-display, inherit);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.guide-faq-item {
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.guide-faq-question {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.guide-faq-answer {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted-strong);
+  margin: 0;
+}
+
+.guide-related-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.guide-related-heading {
+  font-family: var(--font-display, inherit);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.guide-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.guide-related-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.guide-related-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.guide-related-card h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.guide-related-card p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted-strong);
+  margin: 0;
+  flex-grow: 1;
+}
+
+.guide-not-found {
+  padding: 48px 24px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  margin-block: 24px;
+}
+
+.guide-not-found h2 {
+  font-size: 1.35rem;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+.guide-not-found p {
+  font-size: 15px;
+  color: var(--muted-strong);
+  margin: 0 0 24px;
+}
+
+@media (max-width: 640px) {
+  .guide-related-grid {
+    grid-template-columns: 1fr;
+  }
+}
