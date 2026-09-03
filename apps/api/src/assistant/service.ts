@@ -18,7 +18,11 @@ import type { AssistantModelMemoryUsageRepository } from "../db/assistant-model-
 import type { AssistantUsageRepository } from "../db/assistant-usage";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import { DeepSeekError, type DeepSeekErrorKind, type DeepSeekFailureReason } from "./deepseek";
+import {
+  AssistantProviderError,
+  type AssistantProviderErrorKind,
+  type AssistantProviderFailureReason,
+} from "./provider-error";
 import { buildMemoryBlock, deterministicExtract, runModelMemoryPass } from "./memory";
 import type { AssistantOrchestrator } from "./orchestrator";
 import {
@@ -80,9 +84,9 @@ export interface AssistantService {
 
 export interface AssistantProviderFailureEvent {
   event: "assistant_provider_failure";
-  provider: "deepseek";
-  kind: DeepSeekErrorKind;
-  reason: DeepSeekFailureReason;
+  provider: string;
+  kind: AssistantProviderErrorKind;
+  reason: AssistantProviderFailureReason;
   providerStatus?: number;
 }
 
@@ -92,10 +96,13 @@ function defaultDiagnosticReporter(event: AssistantProviderFailureEvent): void {
   console.warn(JSON.stringify(event));
 }
 
-function reportProviderFailure(error: DeepSeekError, reporter: AssistantDiagnosticReporter): void {
+function reportProviderFailure(
+  error: AssistantProviderError,
+  reporter: AssistantDiagnosticReporter,
+): void {
   const event: AssistantProviderFailureEvent = {
     event: "assistant_provider_failure",
-    provider: "deepseek",
+    provider: error.provider,
     kind: error.kind,
     reason: error.reason,
     ...(error.providerStatus === undefined ? {} : { providerStatus: error.providerStatus }),
@@ -108,7 +115,7 @@ function reportProviderFailure(error: DeepSeekError, reporter: AssistantDiagnost
 }
 
 function mapProviderError(error: unknown): never {
-  if (!(error instanceof DeepSeekError)) throw error;
+  if (!(error instanceof AssistantProviderError)) throw error;
   if (error.kind === "blocked") {
     throw new HttpError(
       422,
@@ -316,8 +323,10 @@ export function createAssistantService(
       );
       return completed;
     } catch (error) {
-      telemetry?.finalize(error instanceof DeepSeekError ? "provider_error" : "application_error");
-      if (error instanceof DeepSeekError) reportProviderFailure(error, reporter);
+      telemetry?.finalize(
+        error instanceof AssistantProviderError ? "provider_error" : "application_error",
+      );
+      if (error instanceof AssistantProviderError) reportProviderFailure(error, reporter);
       await repository.failTurn(env, tenantId, start);
       return mapProviderError(error);
     } finally {

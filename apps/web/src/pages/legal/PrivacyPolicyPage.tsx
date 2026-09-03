@@ -156,8 +156,12 @@ export function PrivacyPolicyPage() {
             tenant-isolated application and financial data.
           </li>
           <li>
-            <strong>DeepSeek</strong> for the separately enabled AI financial assistant and for a
-            user-initiated product-support chat. For the financial assistant, Zoption may send the
+            <strong>
+              Configured AI provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, or Muse
+              Spark when activated by the administrator)
+            </strong>{" "}
+            for the separately enabled AI financial assistant and for a user-initiated
+            product-support chat. For the financial assistant, Zoption may send the
             current question, bounded prior chat, assistant and user display-name profile, trusted
             policy and date context, approved tool definitions, and only the tenant-scoped tool
             results needed for the answer through Zoption&apos;s server. For product support,
@@ -238,7 +242,8 @@ export function PrivacyPolicyPage() {
         <p>
           The product-support chat is separate from the financial assistant. When you send a support
           message, Zoption sends that message, bounded prior support messages from the same browser
-          session, the current product area, and product-help instructions to DeepSeek. The support
+          session, the current product area, and product-help instructions to the configured AI
+          provider. The support
           chat does not retrieve financial data or add messages to financial Assistant history.
           Public support remains unauthenticated. Inside the signed-in workspace, authentication is
           used to offer a reviewable bug-report draft and to associate a report you explicitly
@@ -253,7 +258,8 @@ export function PrivacyPolicyPage() {
           conversations and their sanitized audit snapshots share a 90-day thread-retention window.
         </p>
         <p>
-          For a provider-backed request, DeepSeek may receive the current question, bounded prior
+          For a provider-backed request, the configured AI provider may receive the current
+          question, bounded prior
           chat, assistant and user display-name profile, trusted compliance and date context,
           approved tool definitions, and only the financial tool results needed for the answer. Tool
           results may include transaction descriptions, categories, account names, calculated
@@ -262,7 +268,8 @@ export function PrivacyPolicyPage() {
           user identifiers, credentials, secrets, and hidden reasoning from tool results and
           sanitized audit snapshots. Do not type passwords, authentication credentials, payment-card
           details, government identification numbers, medical information, or other sensitive or
-          unnecessary personal information into assistant questions. DeepSeek may process request
+          unnecessary personal information into assistant questions. The configured AI provider
+          may process request
           and technical information for response generation, security, abuse prevention, and service
           operation under its own terms and privacy practices. Provider processing locations,
           retention, backup deletion, and model-improvement treatment require current provider and
@@ -310,7 +317,8 @@ export function PrivacyPolicyPage() {
           Product-support messages are kept in the current browser tab&apos;s session storage so the
           widget can preserve context while you navigate. Zoption does not save the support
           conversation to D1. Closing the browser session normally clears the browser copy;
-          provider-side processing or retention of messages sent to DeepSeek remains governed by
+          provider-side processing or retention of messages sent to the configured AI provider
+          remains governed by
           that provider&apos;s practices and applicable law. If you explicitly submit a bug report,
           Zoption stores the reviewed report and safe diagnostics in D1 and may send an operational
           copy through Resend. Open reports are retained while needed to investigate and support the
@@ -330,7 +338,8 @@ export function PrivacyPolicyPage() {
           security, fraud prevention, dispute resolution, or legal claims. Deleted information may
           remain temporarily in provider recovery copies according to provider backup lifecycles and
           is not ordinarily available for individual restoration. Provider-side retention of
-          information sent to DeepSeek is governed by that provider&apos;s practices as described
+          information sent to the configured AI provider is governed by that provider&apos;s
+          practices as described
           above. Voice recordings and generated audio are not stored in Zoption&apos;s D1;
           information processed by Cloudflare Workers AI and Fish Audio remains subject to their
           provider practices. Metadata-only PostHog AI observability events are subject to the
@@ -388,7 +397,8 @@ export function PrivacyPolicyPage() {
           If you start a Pro checkout or subscribe, PayPal processes subscription approval and
           payment information. When you enable the AI assistant or send a product-support chat
           message, the relevant request context described above may be transferred to and processed
-          by DeepSeek in locations where it or its subprocessors operate. If you enable voice, the
+          by the configured AI provider in locations where it or its subprocessors operate. If
+          you enable voice, the
           recording described above may be processed by Cloudflare Workers AI and the
           generated-reply text may be processed by Fish Audio in locations where they or their
           subprocessors operate. Metadata-only AI observability events are sent to PostHog&apos;s US

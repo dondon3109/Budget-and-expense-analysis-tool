@@ -45,5 +45,6 @@ export interface ProviderCompletion {
 }
 
 export interface AssistantProvider {
+  readonly providerName?: string;
   complete(env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion>;
 }

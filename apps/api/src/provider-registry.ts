@@ -1,7 +1,10 @@
 import type { ProviderConfig, ProviderService } from "@zoption/shared";
 import { providerAllowlist } from "@zoption/shared";
 
-import { createDeepSeekProvider } from "./assistant/deepseek";
+import {
+  createAssistantProviderForConfig,
+  legacyAssistantApiKey,
+} from "./assistant/assistant-providers";
 import { createCloudflareWhisperProvider } from "./assistant/cloudflare-whisper";
 import { createFishAudioProvider } from "./assistant/fish-audio";
 import { createGoogleSttProvider } from "./assistant/google-stt";
@@ -33,7 +36,14 @@ export interface ProviderHealthStatus {
 }
 
 const CREDENTIAL_EXPECTATION: Record<ProviderService, Record<string, boolean>> = {
-  assistant: { deepseek: true },
+  assistant: {
+    deepseek: true,
+    openai: true,
+    anthropic: true,
+    gemini: true,
+    meta: true,
+    muse_spark: true,
+  },
   // google via Cloud Run bridge uses ADC (attached SA) — no admin credential forwarded at runtime; REST health check can use admin credential optionally
   stt: { cloudflare_workers_ai: false, google: false },
   tts: { fish_audio: true },
@@ -80,6 +90,13 @@ export function createProviderRegistry(
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const models = (serviceMap as Record<string, readonly string[]>)[provider];
     if (!models) return false;
+    if (service === "assistant") {
+      // The allowlist is the curated, known-good default set shown in the admin
+      // UI. Any other model from a live vendor listing may be saved so a new
+      // model can be tested; endpoints stay closed (derived from the provider
+      // id), and only the model id is free-form.
+      return model.trim().length > 0;
+    }
     return models.includes(model);
   }
 
@@ -116,11 +133,13 @@ export function createProviderRegistry(
     // Legacy env fallback for one release
     if (expectsCredential(config.service, config.provider)) {
       const legacyMap: Record<string, string | undefined> = {
-        deepseek: env.DEEPSEEK_API_KEY?.trim(),
         fish_audio: env.FISH_AUDIO_API_KEY?.trim(),
         google: (env as unknown as Record<string, string | undefined>)["GOOGLE_STT_API_KEY"],
       };
-      const legacy = legacyMap[config.provider]?.trim();
+      const legacy =
+        config.service === "assistant"
+          ? legacyAssistantApiKey(env, config.provider)
+          : legacyMap[config.provider]?.trim();
       if (legacy) {
         return { secret: legacy, last4: legacy.slice(-4), source: "legacy" };
       }
@@ -182,9 +201,14 @@ export function createProviderRegistry(
     }> {
       const cfg = await this.getActive(env, "assistant");
       const cred = await resolveCredential(env, cfg);
-      const model = cfg?.model;
+      const providerName = cfg?.provider ?? "deepseek";
       // Inject decrypted secret when available; provider falls back to env otherwise
-      const provider = createDeepSeekProvider(model, undefined, cred.secret ?? undefined);
+      const provider = createAssistantProviderForConfig(
+        providerName,
+        cfg?.model,
+        cred.secret ?? legacyAssistantApiKey(env, providerName),
+        env,
+      );
       return { provider, config: cfg, credential: cred };
     },
 

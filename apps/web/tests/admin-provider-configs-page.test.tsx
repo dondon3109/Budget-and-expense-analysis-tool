@@ -19,6 +19,8 @@ const apiMocks = vi.hoisted(() => ({
   getProviderHealth: vi.fn(),
   reorderProviderConfigs: vi.fn(),
   testProviderCredential: vi.fn(),
+  previewProviderModels: vi.fn(),
+  listCredentialModels: vi.fn(),
   updateProviderConfig: vi.fn(),
   updateProviderCredential: vi.fn(),
 }));
@@ -347,6 +349,70 @@ describe("AdminProviderConfigsPage", () => {
       within(openDialog).getByText(/Credential encryption is not configured/i),
     ).toBeInTheDocument();
     expect(apiMocks.createProviderConfig).not.toHaveBeenCalled();
+  });
+
+  it("allows entering a custom model ID when adding an assistant configuration", async () => {
+    renderPage();
+    await screen.findByText("AI Assistant");
+
+    // First "Add configuration" button is the assistant section (tab = all)
+    const addButtons = screen.getAllByRole("button", { name: /Add configuration/i });
+    fireEvent.click(addButtons[0]!);
+
+    expect(await screen.findByText("Add assistant configuration")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+
+    // Switch the model dropdown to manual entry and type an unlisted model
+    const modelSelect = within(dialog).getByLabelText(/^Model/i);
+    fireEvent.change(modelSelect, { target: { value: "__custom" } });
+
+    const customInput = within(dialog).getByLabelText(/Custom model ID/i);
+    fireEvent.change(customInput, { target: { value: "gpt-4o-next-unlisted" } });
+
+    // Entering a key enables saving (assistant has no saved credentials mocked)
+    const secretInput = within(dialog).getByPlaceholderText("sk-...");
+    fireEvent.change(secretInput, { target: { value: "sk-test-custom-key-1234" } });
+
+    apiMocks.createProviderCredential.mockResolvedValue({
+      id: "cred-openai-new",
+      provider: "deepseek",
+      name: "DeepSeek Key",
+      apiKeyLast4: "1234",
+      usedBy: [],
+      createdAt: "2026-08-27T00:00:00Z",
+      updatedAt: "2026-08-27T00:00:00Z",
+      updatedBy: "admin-1",
+    });
+    apiMocks.createProviderConfig.mockResolvedValue({
+      id: "cfg-custom-new",
+      service: "assistant",
+      provider: "deepseek",
+      model: "gpt-4o-next-unlisted",
+      displayName: "deepseek / gpt-4o-next-unlisted",
+      credentialId: "cred-openai-new",
+      enabled: true,
+      priority: 1,
+      isActive: false,
+      createdAt: "2026-08-27T00:00:00Z",
+      updatedAt: "2026-08-27T00:00:00Z",
+      updatedBy: "admin-1",
+    });
+
+    const submitBtn = within(dialog).getByRole("button", { name: "Add configuration" });
+    expect(submitBtn).not.toBeDisabled();
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(apiMocks.createProviderConfig).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        service: "assistant",
+        provider: "deepseek",
+        model: "gpt-4o-next-unlisted",
+        credentialId: "cred-openai-new",
+      }),
+    );
   });
 
   it("allows deleting an inactive configuration and protects active configuration", async () => {

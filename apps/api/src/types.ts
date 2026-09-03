@@ -22,6 +22,18 @@ export interface Bindings {
   BUG_REPORT_TO?: string;
   DEEPSEEK_API_KEY?: string;
   DEEPSEEK_MODEL?: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_API_URL?: string;
+  ANTHROPIC_API_KEY?: string;
+  ANTHROPIC_API_URL?: string;
+  GEMINI_API_KEY?: string;
+  GEMINI_API_URL?: string;
+  GOOGLE_AI_STUDIO_API_KEY?: string;
+  META_API_KEY?: string;
+  META_API_URL?: string;
+  MUSE_SPARK_API_KEY?: string;
+  MUSE_SPARK_API_URL?: string;
+  DEEPSEEK_API_URL?: string;
   ASSISTANT_ENABLED?: string;
   ASSISTANT_TIME_ZONE?: string;
   ASSISTANT_PROVIDER_TIMEOUT_MS?: string;

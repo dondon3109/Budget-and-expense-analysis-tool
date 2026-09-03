@@ -1,9 +1,13 @@
 import {
   providerCredentialCreateSchema,
   providerCredentialUpdateSchema,
+  providerModelsPreviewSchema,
 } from "@zoption/shared";
+import { providerAllowlist } from "@zoption/shared";
 import { Hono } from "hono";
 
+import { listAssistantModels } from "../assistant/model-catalog";
+import { AssistantProviderError } from "../assistant/provider-error";
 import { HttpError } from "../errors";
 import { readJson } from "../request";
 import type { AppEnvironment } from "../types";
@@ -43,6 +47,14 @@ export function createProviderCredentialRoutes(
     const body = providerCredentialCreateSchema.safeParse(await readJson(context));
     if (!body.success) {
       throw new HttpError(400, "invalid_request", "Provide a valid credential.", body.error.flatten());
+    }
+    const knownProviders = new Set([
+      ...Object.keys(providerAllowlist.assistant ?? {}),
+      ...Object.keys(providerAllowlist.stt ?? {}),
+      ...Object.keys(providerAllowlist.tts ?? {}),
+    ]);
+    if (!knownProviders.has(body.data.provider)) {
+      throw new HttpError(400, "unknown_provider", "Unsupported provider.");
     }
     const master = context.env.PROVIDER_CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "";
     if (!validateMasterKeyFormat(master)) {
@@ -93,6 +105,74 @@ export function createProviderCredentialRoutes(
     await repository.delete(context.env, id);
     registry.invalidate();
     return context.json({ deleted: true });
+  });
+
+  function assertListableAssistantProvider(provider: string): void {
+    if (!(provider in (providerAllowlist.assistant ?? {}))) {
+      throw new HttpError(
+        400,
+        "unknown_provider",
+        "Model listing is only for assistant providers.",
+      );
+    }
+  }
+
+  function mapModelsError(error: unknown): never {
+    if (error instanceof HttpError) throw error;
+    if (error instanceof AssistantProviderError) {
+      if (error.kind === "configuration") {
+        throw new HttpError(400, "credential_invalid", error.message);
+      }
+      throw new HttpError(502, "provider_models_unavailable", error.message);
+    }
+    throw error;
+  }
+
+  // List live models with a not-yet-saved key. The secret is used for one
+  // vendor listing call and never stored.
+  routes.post("/models", async (context) => {
+    await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
+    const body = providerModelsPreviewSchema.safeParse(await readJson(context));
+    if (!body.success) {
+      throw new HttpError(400, "invalid_request", "Provide a provider and key.");
+    }
+    assertListableAssistantProvider(body.data.provider);
+    try {
+      const models = await listAssistantModels(context.env, body.data.provider, body.data.secret);
+      return context.json({ provider: body.data.provider, models });
+    } catch (error) {
+      return mapModelsError(error);
+    }
+  });
+
+  // List live models using a saved credential (decrypted in memory only).
+  routes.post("/:id/models", async (context) => {
+    await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
+    const id = context.req.param("id");
+    const row = await repository.getEncryptedById(context.env, id);
+    if (!row) throw new HttpError(404, "credential_not_found", "Credential was not found.");
+    assertListableAssistantProvider(row.provider);
+    const master = context.env.PROVIDER_CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "";
+    if (!validateMasterKeyFormat(master)) {
+      throw new HttpError(
+        500,
+        "encryption_not_configured",
+        "Credential encryption is not configured.",
+      );
+    }
+    let plain: string;
+    try {
+      const { decryptSecret } = await import("../provider-credentials/crypto");
+      plain = await decryptSecret(row.encrypted_secret, master);
+    } catch {
+      throw new HttpError(500, "credential_decrypt_failed", "Could not decrypt credential.");
+    }
+    try {
+      const models = await listAssistantModels(context.env, row.provider, plain);
+      return context.json({ provider: row.provider, models });
+    } catch (error) {
+      return mapModelsError(error);
+    }
   });
 
   // Test credential — verifies decryption + optional provider-specific cheap health check

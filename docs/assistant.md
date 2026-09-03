@@ -1,14 +1,14 @@
 # AI Financial Assistant
 
-Zoption's AI Financial Assistant is a read-only budgeting and financial-wellness interface over the authenticated user's financial workspace. DeepSeek interprets questions and explains verified results; Zoption's Worker owns tenant scope, compliance classification, date resolution, financial calculations, data-quality checks, and final-answer validation.
+Zoption's AI Financial Assistant is a read-only budgeting and financial-wellness interface over the authenticated user's financial workspace. The configured AI provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, or Muse Spark when activated) interprets questions and explains verified results; Zoption's Worker owns tenant scope, compliance classification, date resolution, financial calculations, data-quality checks, and final-answer validation.
 
 ## Data flow
 
 1. The browser sends one user message and an idempotency UUID to `/api/app/assistant/*` with the normal Supabase bearer token.
 2. Existing Worker middleware verifies the JWT and resolves the user's D1 tenant.
 3. The Worker loads bounded tenant-owned chat history and creates a trusted turn policy. The policy classifies regulated topics, resolves dates in `Asia/Manila`, and identifies required tool groups.
-4. Ambiguous dates and personalized regulated-topic recommendation requests receive deterministic server responses without a DeepSeek call or AI-question charge.
-5. Provider-backed turns call `deepseek-v4-flash` with the trusted policy, bounded history, approved tool definitions, and no tenant or user identifier.
+4. Ambiguous dates and personalized regulated-topic recommendation requests receive deterministic server responses without a provider call or AI-question charge.
+5. Provider-backed turns call the active assistant configuration (DeepSeek `deepseek-v4-flash` by default) with the trusted policy, bounded history, approved tool definitions, and no tenant or user identifier.
 6. While required tool groups remain unsatisfied, the Worker requires tool use. It validates every argument against strict schemas and the server-resolved date range before running tenant-scoped reads or calculations.
 7. The Worker validates the final answer against successful tool output. Unsupported money, percentages, dates, counts, internal identifiers, unsafe formats, named-filter substitutions, and disallowed regulated recommendations are rejected. One corrective retry is allowed; otherwise Zoption returns a deterministic safe fallback.
 8. D1 stores the user message, final answer, structured response metadata, and a sanitized run/tool audit snapshot. Raw provider payloads, hidden reasoning, credentials, notes, secrets, tenant IDs, and user IDs are not stored in the audit trail.
@@ -134,10 +134,34 @@ Non-secret Worker variables:
 
 Keep `DEEPSEEK_MODEL` on `deepseek-v4-flash`. The legacy `deepseek-chat` alias was retired by DeepSeek in July 2026. PostHog is server-side only: do not add `VITE_POSTHOG_*`, a browser SDK, or web CSP origins.
 
+The admin UI (`AI & Voice Models`) is the preferred way to test models: add a credential for `deepseek`, `openai`, `anthropic`, `gemini`, `meta`, or `muse_spark`, create a configuration with an allowlisted model, then activate it. Direct Worker secrets below remain as the legacy fallback for one release.
+
+To try a model outside the curated list, open Add configuration for the assistant service, enter the key (or pick a saved one), and choose Fetch live models. The key is used for one vendor listing call and never stored by the fetch. Pick the model from the merged list and save; assistant configs accept any model from a known provider, while voice services stay pinned to their allowlists. Only models that support tool/function calling work with the assistant loop — embeddings, TTS, and vision-only models from a live listing will fail turns, so prefer chat models.
+
 Set the provider secrets separately for preview and production:
 
 ```bash
 pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY \
+  --config wrangler.deploy.jsonc \
+  --env preview
+
+pnpm --filter @zoption/api exec wrangler secret put OPENAI_API_KEY \
+  --config wrangler.deploy.jsonc \
+  --env preview
+
+pnpm --filter @zoption/api exec wrangler secret put ANTHROPIC_API_KEY \
+  --config wrangler.deploy.jsonc \
+  --env preview
+
+pnpm --filter @zoption/api exec wrangler secret put GEMINI_API_KEY \
+  --config wrangler.deploy.jsonc \
+  --env preview
+
+pnpm --filter @zoption/api exec wrangler secret put META_API_KEY \
+  --config wrangler.deploy.jsonc \
+  --env preview
+
+pnpm --filter @zoption/api exec wrangler secret put MUSE_SPARK_API_KEY \
   --config wrangler.deploy.jsonc \
   --env preview
 

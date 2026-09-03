@@ -27,7 +27,14 @@ function parseService(value: string | undefined): ProviderService | undefined {
 }
 
 const CREDENTIAL_REQUIRED: Record<ProviderService, Record<string, boolean>> = {
-  assistant: { deepseek: true },
+  assistant: {
+    deepseek: true,
+    openai: true,
+    anthropic: true,
+    gemini: true,
+    meta: true,
+    muse_spark: true,
+  },
   // google via Cloud Run bridge uses ADC — no credential required at runtime
   stt: { cloudflare_workers_ai: false, google: false },
   tts: { fish_audio: true },

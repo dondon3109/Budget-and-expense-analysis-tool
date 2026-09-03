@@ -34,6 +34,8 @@ import {
   getProviderConfigs,
   getProviderCredentials,
   getProviderHealth,
+  listCredentialModels,
+  previewProviderModels,
   reorderProviderConfigs,
   testProviderCredential,
   updateProviderConfig,
@@ -45,11 +47,37 @@ import { providerAllowlist } from "@zoption/shared";
 import type { ProviderConfig, ProviderCredentialWithUsage, ProviderService } from "@zoption/shared";
 import "./AdminProviderConfigsPage.css";
 
+const ASSISTANT_CREDENTIAL_LABELS: Record<string, string> = {
+  deepseek: "DeepSeek Key",
+  openai: "OpenAI Key",
+  anthropic: "Anthropic Key",
+  gemini: "Gemini Key",
+  meta: "Meta Key",
+  muse_spark: "Muse Spark Key",
+};
+
+const ASSISTANT_KEY_PLACEHOLDERS: Record<string, string> = {
+  deepseek: "sk-...",
+  openai: "sk-... (OpenAI)",
+  anthropic: "sk-ant-... (Anthropic)",
+  gemini: "AIzaSy... (Google AI Studio)",
+  meta: "Paste Meta Llama API key...",
+  muse_spark: "Paste Muse Spark API key...",
+};
+
+/** Model select sentinel for a manually entered model ID. */
+const CUSTOM_MODEL_VALUE = "__custom";
+
+function resolveAddModel(model: string, custom: string): string {
+  return model === CUSTOM_MODEL_VALUE ? custom.trim() : model;
+}
+
 const SERVICES: { id: ProviderService; label: string; description: string }[] = [
   {
     id: "assistant",
     label: "AI Assistant",
-    description: "Primary conversational assistant model used for all Zoption AI answers.",
+    description:
+      "Primary conversational assistant model used for all Zoption AI answers. Add a credential for DeepSeek, OpenAI, Anthropic, Gemini, Meta, or Muse Spark, then activate that configuration to test a new model.",
   },
   {
     id: "stt",
@@ -64,7 +92,10 @@ const SERVICES: { id: ProviderService; label: string; description: string }[] = 
 ];
 
 const SERVICE_CREDENTIALS: Record<ProviderService, { label: string; expectsKey: boolean }> = {
-  assistant: { label: "DeepSeek", expectsKey: true },
+  assistant: {
+    label: "AI model (DeepSeek, OpenAI, Anthropic, Gemini, Meta, Muse Spark)",
+    expectsKey: true,
+  },
   // google STT via Cloud Run bridge uses ADC — no admin credential at runtime; health uses STT_BRIDGE_URL
   stt: { label: "STT bridge", expectsKey: false },
   tts: { label: "Fish Audio", expectsKey: true },
@@ -113,6 +144,10 @@ export function AdminProviderConfigsPage() {
   const [addNewCredSecret, setAddNewCredSecret] = useState<string>("");
   const [showAddSecret, setShowAddSecret] = useState<boolean>(false);
   const [addActivateImmediately, setAddActivateImmediately] = useState<boolean>(true);
+  const [fetchedModels, setFetchedModels] = useState<string[] | null>(null);
+  const [fetchingModels, setFetchingModels] = useState<boolean>(false);
+  const [fetchModelsError, setFetchModelsError] = useState<string>();
+  const [addCustomModel, setAddCustomModel] = useState<string>("");
   const [isSubmittingConfig, setIsSubmittingConfig] = useState<boolean>(false);
   // Errors from the add dialog must render inside it. The dialog is a
   // full-viewport scrim, so anything routed to the page-level errorMsg is
@@ -274,7 +309,8 @@ export function AdminProviderConfigsPage() {
   });
 
   async function handleCreateConfig() {
-    if (!addFor || !addProvider || !addModel || !addDisplayName.trim()) return;
+    const effectiveModel = resolveAddModel(addModel, addCustomModel);
+    if (!addFor || !addProvider || !effectiveModel || !addDisplayName.trim()) return;
     setIsSubmittingConfig(true);
     setAddError(undefined);
     setErrorMsg(undefined);
@@ -311,7 +347,7 @@ export function AdminProviderConfigsPage() {
       const created = await createProviderConfig(workspace, {
         service: addFor,
         provider: addProvider,
-        model: addModel,
+        model: effectiveModel,
         displayName: addDisplayName.trim(),
         credentialId,
       });
@@ -334,6 +370,9 @@ export function AdminProviderConfigsPage() {
       setAddNewCredName("");
       setAddNewCredSecret("");
       setAddCredMode("new");
+      setFetchedModels(null);
+      setAddCustomModel("");
+      setFetchModelsError(undefined);
       setAddActivateImmediately(true);
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
@@ -588,15 +627,52 @@ export function AdminProviderConfigsPage() {
     setAddNewCredName(
       provider === "google"
         ? "Google AI Studio Key"
-        : provider === "deepseek"
-          ? "DeepSeek Key"
-          : `${provider} Key`,
+        : (ASSISTANT_CREDENTIAL_LABELS[provider] ?? `${provider} Key`),
     );
     setAddNewCredSecret("");
     setShowAddSecret(false);
+    setFetchedModels(null);
+    setAddCustomModel("");
+    setFetchingModels(false);
+    setFetchModelsError(undefined);
     setAddFor(service);
     setAddError(undefined);
     setErrorMsg(undefined);
+  }
+
+  async function handleFetchModels() {
+    if (!addFor || !addProvider || fetchingModels) return;
+    setFetchingModels(true);
+    setFetchModelsError(undefined);
+    try {
+      const result =
+        addCredMode === "new"
+          ? await previewProviderModels(workspace, {
+              provider: addProvider,
+              secret: addNewCredSecret.trim(),
+            })
+          : await listCredentialModels(workspace, addCredentialId);
+      const existing = configsByService.get(addFor) ?? [];
+      const used = new Set(existing.filter((c) => c.provider === addProvider).map((c) => c.model));
+      const base = remainingModels(addFor, addProvider, existing);
+      const extras = result.models.filter((m) => !base.includes(m) && !used.has(m));
+      setFetchedModels([...base, ...extras]);
+      if (addModel && addModel !== CUSTOM_MODEL_VALUE && ![...base, ...extras].includes(addModel)) {
+        const next = [...base, ...extras][0] ?? "";
+        setAddModel(next);
+        setAddDisplayName(addProvider && next ? `${addProvider} / ${next}` : "");
+      } else if (!addModel && extras.length > 0 && base.length === 0) {
+        setAddModel(extras[0]!);
+        setAddDisplayName(`${addProvider} / ${extras[0]}`);
+      }
+      if (result.models.length === 0) {
+        setFetchModelsError("The provider returned no models for this key.");
+      }
+    } catch (err) {
+      setFetchModelsError(err instanceof Error ? err.message : "Could not fetch models.");
+    } finally {
+      setFetchingModels(false);
+    }
   }
 
   return (
@@ -1080,7 +1156,8 @@ export function AdminProviderConfigsPage() {
                                         setEditNewCredName(
                                           cfg.provider === "google"
                                             ? "Google AI Studio Key"
-                                            : `${cfg.provider} Key`,
+                                            : (ASSISTANT_CREDENTIAL_LABELS[cfg.provider] ??
+                                              `${cfg.provider} Key`),
                                         );
                                         setEditNewCredSecret("");
                                         setShowEditSecret(false);
@@ -1417,12 +1494,14 @@ export function AdminProviderConfigsPage() {
                   {(() => {
                     const existing = configsByService.get(addFor) ?? [];
                     const providers = availableProviders(addFor);
-                    const models = addProvider
-                      ? remainingModels(addFor, addProvider, existing)
-                      : [];
-                    const hasRemaining = providers.some(
-                      (p) => remainingModels(addFor, p, existing).length > 0,
-                    );
+                    const models =
+                      fetchedModels ??
+                      (addProvider ? remainingModels(addFor, addProvider, existing) : []);
+                    // Assistant configs may use any live-fetched model, so the dialog
+                    // stays open even when every curated model is configured.
+                    const hasRemaining =
+                      addFor === "assistant" ||
+                      providers.some((p) => remainingModels(addFor, p, existing).length > 0);
                     if (!hasRemaining) {
                       return (
                         <>
@@ -1461,6 +1540,9 @@ export function AdminProviderConfigsPage() {
                             onChange={(e) => {
                               const p = e.target.value;
                               setAddProvider(p);
+                              setFetchedModels(null);
+      setAddCustomModel("");
+                              setFetchModelsError(undefined);
                               const rem = remainingModels(addFor, p, existing);
                               setAddModel(rem[0] ?? "");
                               const creds = credentialsByProvider.get(p) ?? [];
@@ -1475,9 +1557,7 @@ export function AdminProviderConfigsPage() {
                               setAddNewCredName(
                                 p === "google"
                                   ? "Google AI Studio Key"
-                                  : p === "deepseek"
-                                    ? "DeepSeek Key"
-                                    : `${p} Key`,
+                                  : (ASSISTANT_CREDENTIAL_LABELS[p] ?? `${p} Key`),
                               );
                               setAddNewCredSecret("");
                               setShowAddSecret(false);
@@ -1502,11 +1582,77 @@ export function AdminProviderConfigsPage() {
                                 {m}
                               </option>
                             ))}
+                            {addFor === "assistant" && (
+                              <option value={CUSTOM_MODEL_VALUE}>
+                                Other (enter manually)…
+                              </option>
+                            )}
                           </select>
-                          {models.length === 0 && (
+                          {models.length === 0 && addModel !== CUSTOM_MODEL_VALUE && (
                             <small>No remaining models for this provider.</small>
                           )}
                         </label>
+                        {addFor === "assistant" && addModel === CUSTOM_MODEL_VALUE && (
+                          <label className="add-field">
+                            <span>Custom model ID</span>
+                            <input
+                              value={addCustomModel}
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                setAddCustomModel(next);
+                                if (
+                                  !addDisplayName.trim() ||
+                                  addDisplayName.startsWith(`${addProvider} /`)
+                                ) {
+                                  setAddDisplayName(
+                                    addProvider && next.trim()
+                                      ? `${addProvider} / ${next.trim()}`
+                                      : "",
+                                  );
+                                }
+                              }}
+                              placeholder="e.g. muse-spark-1.3"
+                              maxLength={200}
+                              autoComplete="off"
+                              spellCheck={false}
+                            />
+                            <small className="field-hint">
+                              Use the exact vendor model ID. It must support tool calling to work
+                              with the assistant.
+                            </small>
+                          </label>
+                        )}
+                        {addFor === "assistant" && (
+                          <div className="add-field">
+                            <button
+                              type="button"
+                              className="button secondary compact"
+                              disabled={
+                                fetchingModels ||
+                                (addCredMode === "new"
+                                  ? addNewCredSecret.trim().length < 8
+                                  : addCredMode === "existing"
+                                    ? !addCredentialId
+                                    : true)
+                              }
+                              onClick={handleFetchModels}
+                              title="List the models this key can access, then choose one"
+                            >
+                              <RefreshCw size={13} />
+                              {fetchingModels ? "Fetching models…" : "Fetch live models"}
+                            </button>{" "}
+                            <small className="field-hint">
+                              {fetchedModels
+                                ? `${fetchedModels.length} models available (curated first). Only models supporting tool calling work with the assistant.`
+                                : "Enter a key above (or pick a saved one), then fetch what it can access."}
+                            </small>
+                            {fetchModelsError && (
+                              <div className="admin-provider-feedback error" role="alert">
+                                {fetchModelsError}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <label className="add-field">
                           <span>Display name</span>
                           <input
@@ -1566,9 +1712,7 @@ export function AdminProviderConfigsPage() {
                                     placeholder={
                                       isGoogle
                                         ? "e.g. My Google AI Studio Key"
-                                        : addProvider === "deepseek"
-                                          ? "e.g. DeepSeek Production Key"
-                                          : "e.g. API Key"
+                                        : `e.g. ${ASSISTANT_CREDENTIAL_LABELS[addProvider] ?? "API Key"}`
                                     }
                                     maxLength={40}
                                   />
@@ -1592,9 +1736,8 @@ export function AdminProviderConfigsPage() {
                                     placeholder={
                                       isGoogle
                                         ? "AIzaSy... or AQ.... (Google AI Studio key)"
-                                        : addProvider === "deepseek"
-                                          ? "sk-..."
-                                          : "Paste API key..."
+                                        : (ASSISTANT_KEY_PLACEHOLDERS[addProvider] ??
+                                          "Paste API key...")
                                     }
                                     autoComplete="off"
                                     spellCheck={false}
@@ -1657,7 +1800,12 @@ export function AdminProviderConfigsPage() {
                           <button
                             type="button"
                             className="button secondary"
-                            onClick={() => setAddFor(null)}
+                            onClick={() => {
+                              setAddFor(null);
+                              setFetchedModels(null);
+      setAddCustomModel("");
+                              setFetchModelsError(undefined);
+                            }}
                           >
                             Cancel
                           </button>
@@ -1666,7 +1814,7 @@ export function AdminProviderConfigsPage() {
                             className="button"
                             disabled={
                               !addProvider ||
-                              !addModel ||
+                              !resolveAddModel(addModel, addCustomModel) ||
                               !addDisplayName.trim() ||
                               isSubmittingConfig ||
                               (!isCloudflare &&
@@ -1705,6 +1853,11 @@ export function AdminProviderConfigsPage() {
                     <span>Provider</span>
                     <select value={credProvider} onChange={(e) => setCredProvider(e.target.value)}>
                       <option value="deepseek">deepseek</option>
+                      <option value="openai">openai</option>
+                      <option value="anthropic">anthropic</option>
+                      <option value="gemini">gemini</option>
+                      <option value="meta">meta</option>
+                      <option value="muse_spark">muse_spark</option>
                       <option value="google">google</option>
                       <option value="fish_audio">fish_audio</option>
                     </select>

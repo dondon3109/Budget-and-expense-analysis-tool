@@ -1349,3 +1349,25 @@ export type ProviderConfigUpdateInput = z.infer<typeof providerConfigUpdateSchem
 export type ProviderConfigReorderInput = z.infer<typeof providerConfigReorderSchema>;
 export type ProviderCredentialCreateInput = z.infer<typeof providerCredentialCreateSchema>;
 export type ProviderCredentialUpdateInput = z.infer<typeof providerCredentialUpdateSchema>;
+
+/**
+ * Preview a vendor's live model list with a not-yet-saved key. The secret is
+ * used for one listing call and never stored.
+ */
+export const providerModelsPreviewSchema = z
+  .object({
+    provider: z.string().min(1).max(80),
+    secret: z.string().trim().min(8).max(8192),
+  })
+  .strict();
+
+export type ProviderModelsPreviewInput = z.infer<typeof providerModelsPreviewSchema>;
+
+export const providerModelsResponseSchema = z
+  .object({
+    provider: z.string().min(1).max(80),
+    models: z.array(z.string().min(1).max(200)).max(300),
+  })
+  .strict();
+
+export type ProviderModelsResponse = z.infer<typeof providerModelsResponseSchema>;

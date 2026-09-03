@@ -1,6 +1,6 @@
 import type { Bindings } from "../types";
-import { DeepSeekError } from "./deepseek";
 import type { AssistantProvider, ProviderCompletion, ProviderCompletionRequest } from "./provider";
+import { AssistantProviderError } from "./provider-error";
 
 const POSTHOG_US_HOST = "https://us.i.posthog.com";
 const POSTHOG_CAPTURE_TIMEOUT_MS = 2_000;
@@ -55,7 +55,7 @@ function resolveConfig(env: Bindings): PostHogAiConfig | undefined {
 }
 
 function errorProperties(error: unknown): Record<string, unknown> {
-  if (error instanceof DeepSeekError) {
+  if (error instanceof AssistantProviderError) {
     return {
       $ai_is_error: true,
       $ai_error: { kind: error.kind, reason: error.reason },
@@ -88,6 +88,7 @@ export function createPostHogAiTelemetry(
       const startedAt = now();
       const spanId = randomUuid();
       const sequence = events.length + 1;
+      const providerName = provider.providerName ?? "deepseek";
       const baseProperties = {
         distinct_id: traceId,
         $process_person_profile: false,
@@ -96,7 +97,7 @@ export function createPostHogAiTelemetry(
         $ai_trace_id: traceId,
         $ai_span_id: spanId,
         $ai_span_name: operation,
-        $ai_provider: "deepseek",
+        $ai_provider: providerName,
         $ai_model: providerEnv.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
         $ai_stream: false,
         $ai_temperature: 0.15,

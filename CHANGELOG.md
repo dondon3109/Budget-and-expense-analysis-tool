@@ -6,6 +6,28 @@ All notable product changes are documented here.
 
 ### Added
 
+- Added multi-provider AI Assistant models: admins can now add API keys and
+  activate configurations for OpenAI, Anthropic, Gemini, Meta, and Muse Spark
+  in addition to DeepSeek at `/app/admin/provider-configs`, so a new model can
+  be tested by switching the active assistant configuration.
+- Added live model fetching to the Add configuration dialog: entering a key (or
+  picking a saved credential) lists the models that key can access, and
+  assistant configurations accept any model from a known provider instead of
+  only the curated allowlist.
+- Fixed the Add configuration dialog cutting off its Cancel/Add buttons on
+  short screens (the popup now scrolls), paged through multi-page vendor model
+  lists, and added manual model-ID entry so a model missing from a listing can
+  still be saved.
+- Fixed saving API keys for new providers failing with "The request could not
+  be completed.": the credentials table had a database-level provider allowlist
+  that only contained the legacy providers (migration `0048`), and credential
+  creation now rejects unknown providers with a readable error instead of a
+  blank 500.
+- Fixed Muse Spark chat failing with "The assistant returned an invalid
+  response.": Meta's endpoint only supports the default auto tool behavior, so
+  forced `tool_choice` values are now omitted for that provider instead of
+  being rejected by the vendor.
+
 - Added shared budget payload and token helpers in `@zoption/shared` for envelope summaries, expiry-aware share tokens, and sanitized public snapshots.
 - Added an interactive 50/30/20 budget calculator for Philippine pesos at `/tools/50-30-20-calculator` (`apps/web/src/pages/tools/`). It runs entirely client-side with no account, supports adjustable percentages, and allocates income in integer centavos using the largest-remainder method, so the three buckets always sum to exactly the amount entered instead of losing a centavo to independent rounding. Includes worked examples for ₱18,000, ₱30,000, and ₱50,000 take-home pay, and guidance on budgeting from take-home pay after SSS, Pag-IBIG, PhilHealth, and withholding tax.
 - Added a public bank statement import cluster: an `/import` hub plus dedicated guides for BDO, BPI, MariBank, Bank of America, and Chase/JPMorgan (`apps/web/src/pages/import/`). Guide copy is driven by `importGuides.ts`, and the column headings each page advertises are read from the real `importPresets` in `packages/shared`, so a page cannot claim detection the importer does not perform. `importGuides.test.ts` fails if a guide references a preset that does not exist.

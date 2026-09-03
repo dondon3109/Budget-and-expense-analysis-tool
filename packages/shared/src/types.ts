@@ -602,7 +602,14 @@ export interface AssistantVoiceTranscription {
 export const providerServices = ["assistant", "stt", "tts"] as const;
 export type ProviderService = (typeof providerServices)[number];
 
-export const assistantProviders = ["deepseek"] as const;
+export const assistantProviders = [
+  "deepseek",
+  "openai",
+  "anthropic",
+  "gemini",
+  "meta",
+  "muse_spark",
+] as const;
 export type AssistantProviderName = (typeof assistantProviders)[number];
 
 export const sttProviders = ["cloudflare_workers_ai", "google"] as const;
@@ -614,7 +621,14 @@ export type TtsProviderName = (typeof ttsProviders)[number];
 export type ProviderName = AssistantProviderName | SttProviderName | TtsProviderName;
 
 export const providerAllowlist: Record<ProviderService, Record<string, readonly string[]>> = {
-  assistant: { deepseek: ["deepseek-v4-flash"] as const },
+  assistant: {
+    deepseek: ["deepseek-v4-flash"] as const,
+    openai: ["gpt-4o-mini", "gpt-4o"] as const,
+    anthropic: ["claude-3-5-haiku-latest", "claude-sonnet-4-20250514"] as const,
+    gemini: ["gemini-2.0-flash", "gemini-2.5-flash"] as const,
+    meta: ["Llama-4-Maverick-17B-128E-Instruct-FP8", "Llama-3.3-70B-Instruct"] as const,
+    muse_spark: ["muse-spark-1.1"] as const,
+  },
   stt: {
     cloudflare_workers_ai: ["@cf/openai/whisper-large-v3-turbo"] as const,
     google: [

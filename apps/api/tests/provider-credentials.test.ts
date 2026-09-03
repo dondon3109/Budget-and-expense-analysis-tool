@@ -130,6 +130,42 @@ describe("provider_credentials — encrypted reusable credentials", () => {
     expect(body.encrypted_secret).toBeUndefined();
   });
 
+  it("rejects an unknown provider with a readable error before touching storage", async () => {
+    const platformAdmins = { requireAdmin: vi.fn(async () => undefined) };
+    const repo = { create: vi.fn(async () => ({ id: "never" })) };
+    const routes = createProviderCredentialRoutes(
+      platformAdmins as any,
+      repo as any,
+      { invalidate: vi.fn() } as any,
+    );
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      (c as any).set("authUser", { id: "admin" });
+      (c as any).env = makeEnv();
+      await next();
+    });
+    app.route("/", routes);
+    app.onError((err, c) => {
+      if (err instanceof HttpError)
+        return c.json({ error: err.code, message: err.message }, err.status);
+      return c.json({ error: "internal" }, 500);
+    });
+    const res = await app.request("/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "bogus_vendor",
+        name: "Bogus",
+        secret: "long-enough-secret",
+      }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("unknown_provider");
+    expect(typeof body.message).toBe("string");
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
   it("reuses one credential across multiple configs", async () => {
     // Create credential once, then two configs reference same credentialId
     const credId = "11111111-1111-4111-8111-111111111111";

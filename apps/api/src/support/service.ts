@@ -1,7 +1,7 @@
 import { bugReportDraftSchema, type BugReportDraft } from "@zoption/shared";
 import { z } from "zod";
 
-import { DeepSeekError } from "../assistant/deepseek";
+import { AssistantProviderError } from "../assistant/provider-error";
 import type {
   AssistantProvider,
   AssistantProviderMessage,
@@ -72,7 +72,7 @@ How Zoption works:
 - Subscriptions tracks recurring charges and keeps their next recorded charge in sync when a subscription is edited, cancelled, or deleted.
 - Calendar combines transaction activity, subscriptions, and user-created events by month.
 - Goals & debt stores savings goals and debt-planning records. These are user-managed and are never changed by chat.
-- AI Assistant is a separate signed-in, consent-gated, read-only financial assistant. DeepSeek interprets questions, while Zoption's server calculates verified financial results through fixed read-only tools. It cannot create, edit, or delete financial records. Users can manage its conversations, names, preferences, and memory from the Assistant area.
+- AI Assistant is a separate signed-in, consent-gated, read-only financial assistant. The configured AI provider interprets questions, while Zoption's server calculates verified financial results through fixed read-only tools. It cannot create, edit, or delete financial records. Users can manage its conversations, names, preferences, and memory from the Assistant area.
 - Account Settings manages profile details, sign-in/security settings, theme, plan and billing, Help & contact, assistant data controls, and permanent account deletion.
 - Supabase manages sign-in and identity. A verified Google identity with the same email can preserve the existing Zoption workspace.
 - Zoption has a free plan and an optional Pro plan. Current limits and checkout details are shown inside Account Settings; direct people there rather than guessing when plan details may have changed.
@@ -132,7 +132,7 @@ export interface SupportChatOptions {
   bugReportDrafting?: boolean;
 }
 
-function providerFailure(error: DeepSeekError): HttpError {
+function providerFailure(error: AssistantProviderError): HttpError {
   if (error.kind === "blocked") {
     return new HttpError(
       422,
@@ -204,7 +204,7 @@ export async function completeSupportChat(
     return { message };
   } catch (error) {
     if (error instanceof HttpError) throw error;
-    if (error instanceof DeepSeekError) throw providerFailure(error);
+    if (error instanceof AssistantProviderError) throw providerFailure(error);
     throw error;
   }
 }

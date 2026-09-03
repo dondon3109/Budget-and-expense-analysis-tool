@@ -828,6 +828,30 @@ export function testProviderCredential(
   );
 }
 
+export function previewProviderModels(
+  workspace: AuthenticatedWorkspace,
+  input: { provider: string; secret: string },
+): Promise<{ provider: string; models: string[] }> {
+  return requestJson(workspace, "/api/app/admin/provider-credentials/models", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function listCredentialModels(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+): Promise<{ provider: string; models: string[] }> {
+  return requestJson(
+    workspace,
+    `/api/app/admin/provider-credentials/${encodeURIComponent(id)}/models`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+}
+
 export function getDashboard(
   workspace: AuthenticatedWorkspace,
   period: { from: string; to: string },

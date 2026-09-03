@@ -358,12 +358,17 @@
   inset: 0;
   display: grid;
   place-items: center;
+  overflow-y: auto;
+  padding: 24px 12px;
   background: color-mix(in srgb, #0a0a0a 48%, transparent);
   z-index: 50;
 }
 
 .admin-provider-confirm {
   width: min(480px, 92vw);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  margin: auto;
   padding: 20px;
   border-radius: 14px;
   background: var(--paper);

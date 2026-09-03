@@ -15,9 +15,10 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
       <p className="eyebrow">Before your next question</p>
       <h1 id="assistant-consent-title">Your data, your boundaries. Private by default.</h1>
       <p className="assistant-consent-intro">
-        Zoption sends your question and only the financial data needed to DeepSeek to prepare an
-        answer. Zoption resolves dates and calculates every personalized amount on its own servers.
-        PostHog receives operational metadata only, never the question, answer, or financial data.
+        Zoption sends your question and only the financial data needed to your configured AI
+        provider to prepare an answer. Zoption resolves dates and calculates every personalized
+        amount on its own servers. PostHog receives operational metadata only, never the question,
+        answer, or financial data.
       </p>
       <div className="assistant-consent-points">
         <article>
