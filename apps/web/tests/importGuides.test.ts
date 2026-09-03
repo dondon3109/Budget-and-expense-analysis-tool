@@ -82,8 +82,8 @@ describe("import guides", () => {
     for (const path of IMPORT_GUIDE_PATHS) {
       expect(PUBLIC_ROUTE_PATHS).toContain(path);
       const metadata = PUBLIC_ROUTE_METADATA[path as (typeof PUBLIC_ROUTE_PATHS)[number]];
-      expect(metadata.robots).toBe("index,follow");
-      expect(metadata.title).toMatch(/Zoption/);
+      expect(metadata?.robots).toBe("index,follow");
+      expect(metadata?.title).toMatch(/Zoption/);
     }
     expect(PUBLIC_ROUTE_PATHS).toContain("/import");
   });
@@ -91,9 +91,9 @@ describe("import guides", () => {
   it("keeps guide metadata in step with the guide copy", () => {
     for (const guide of IMPORT_GUIDES as ImportGuide[]) {
       const metadata = PUBLIC_ROUTE_METADATA[guide.path as (typeof PUBLIC_ROUTE_PATHS)[number]];
-      expect(metadata.title).toBe(guide.title);
-      expect(metadata.description).toBe(guide.description);
-      expect(metadata.canonical).toBe(`https://zoption.site${guide.path}`);
+      expect(metadata?.title).toBe(guide.title);
+      expect(metadata?.description).toBe(guide.description);
+      expect(metadata?.canonical).toBe(`https://zoption.site${guide.path}`);
     }
   });
 

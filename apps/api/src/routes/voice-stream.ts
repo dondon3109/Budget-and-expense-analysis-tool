@@ -177,7 +177,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const server = (pair as unknown as Record<string, WebSocket>)[1] as WebSocket;
 
     // Accept client. binaryType and half-open close behavior must be set before accept().
-    acceptProxySocket(server as unknown as AcceptableSocket);
+    acceptProxySocket(server);
 
     const tWorkerOpen = Date.now();
     let tFirstPartial: number | null = null;
@@ -409,7 +409,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           }
 
           geminiWs = geminiResp.webSocket;
-          acceptProxySocket(geminiWs as unknown as AcceptableSocket);
+          acceptProxySocket(geminiWs);
           geminiWs.addEventListener("message", geminiOnMessage as EventListener);
           geminiWs.addEventListener("close", geminiOnClose as EventListener);
           geminiWs.addEventListener("error", geminiOnError as EventListener);
@@ -510,7 +510,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         return createWebSocketResponse(client);
       }
       bridgeWs = bridgeResp.webSocket;
-      acceptProxySocket(bridgeWs as unknown as AcceptableSocket);
+      acceptProxySocket(bridgeWs);
     } catch {
       trySend(server, JSON.stringify({ type: "error", code: "bridge_connect_failed" }));
       closeAfterHandshake(server, 1011, "bridge_connect_failed");
