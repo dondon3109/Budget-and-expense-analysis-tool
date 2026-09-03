@@ -239,26 +239,132 @@ function extractAmountAfterPrefix(
   return { amount: m[1], endIndex: m.index + m[0].length };
 }
 
+// --- Linear keyword/terminator matching (no regular expressions: immune to ReDoS by construction) ---
+
+function isSpaceTab(ch: string): boolean {
+  return ch === " " || ch === "\t";
+}
+
+function isAsciiDigit(ch: string): boolean {
+  return ch >= "0" && ch <= "9";
+}
+
+/**
+ * Match `[ \t]+ word1 ([ \t]+ word2)*` against lower-cased text at a whitespace
+ * gap starting at `gapStart`. Returns the end index or -1. Callers lower-case the
+ * text first (all keywords are ASCII).
+ */
+function matchWordsAt(
+  lower: string,
+  gapStart: number,
+  words: string[],
+  trailingSpace: boolean,
+  trailingDigit: boolean,
+): number {
+  let i = gapStart;
+  while (i < lower.length && isSpaceTab(lower[i]!)) i++;
+  for (let w = 0; w < words.length; w++) {
+    const word = words[w]!;
+    if (!lower.startsWith(word, i)) return -1;
+    i += word.length;
+    if (w < words.length - 1) {
+      if (i >= lower.length || !isSpaceTab(lower[i]!)) return -1;
+      while (i < lower.length && isSpaceTab(lower[i]!)) i++;
+    }
+  }
+  if (trailingSpace) {
+    if (i >= lower.length || !isSpaceTab(lower[i]!)) return -1;
+    while (i < lower.length && isSpaceTab(lower[i]!)) i++;
+  }
+  if (trailingDigit && (i >= lower.length || !isAsciiDigit(lower[i]!))) return -1;
+  return i;
+}
+
+/** Leftmost match of any word alternative; mirrors RegExp leftmost search order. */
+function scanGapWords(
+  lower: string,
+  from: number,
+  alts: string[][],
+  trailingSpace: boolean,
+  trailingDigit: boolean,
+): { index: number; end: number } | null {
+  for (let i = from; i < lower.length; i++) {
+    if (!isSpaceTab(lower[i]!)) continue;
+    for (const words of alts) {
+      const end = matchWordsAt(lower, i, words, trailingSpace, trailingDigit);
+      if (end !== -1) return { index: i, end };
+    }
+  }
+  return null;
+}
+
+/** Leftmost `.` followed by optional spaces/tabs and `word` (e.g. `.Ref`, `. Ref`). */
+function scanDotWord(lower: string, from: number, word: string): number {
+  for (let i = from; i < lower.length; i++) {
+    if (lower[i] !== ".") continue;
+    let j = i + 1;
+    while (j < lower.length && isSpaceTab(lower[j]!)) j++;
+    if (lower.startsWith(word, j)) return i;
+  }
+  return -1;
+}
+
+/** Leftmost `[ \t]+RN[ \t]*:` (reference-number marker). */
+function scanRnColon(lower: string, from: number): number {
+  for (let i = from; i < lower.length; i++) {
+    if (!isSpaceTab(lower[i]!)) continue;
+    let j = i;
+    while (j < lower.length && isSpaceTab(lower[j]!)) j++;
+    if (!lower.startsWith("rn", j)) continue;
+    j += 2;
+    while (j < lower.length && isSpaceTab(lower[j]!)) j++;
+    if (lower[j] === ":") return i;
+  }
+  return -1;
+}
+
+type PayeeTerminator =
+  | { type: "gapWords"; alts: string[][]; trailingSpace?: boolean; trailingDigit?: boolean }
+  | { type: "dotWord"; word: string }
+  | { type: "dot" }
+  | { type: "rnColon" };
+
+function scanTerminator(lower: string, from: number, term: PayeeTerminator): number {
+  switch (term.type) {
+    case "gapWords":
+      return (
+        scanGapWords(lower, from, term.alts, term.trailingSpace === true, term.trailingDigit === true)
+          ?.index ?? -1
+      );
+    case "dotWord":
+      return scanDotWord(lower, from, term.word);
+    case "dot":
+      return lower.indexOf(".", from);
+    case "rnColon":
+      return scanRnColon(lower, from);
+  }
+}
+
 function extractPayeeBetween(
   text: string,
   fromIndex: number,
-  keywordPattern: RegExp,
-  terminators: RegExp[],
+  keywordAlts: string[][],
+  terminators: PayeeTerminator[],
 ): string | null {
-  const slice = text.slice(fromIndex);
-  const km = keywordPattern.exec(slice);
-  if (!km || km.index === undefined) return null;
-  const payeeStart = fromIndex + km.index + km[0].length;
+  const lower = text.slice(fromIndex).toLowerCase();
+  const km = scanGapWords(lower, 0, keywordAlts, true, false);
+  if (!km) return null;
+  const payeeStart = fromIndex + km.end;
   let payeeEnd = text.length;
-  const remainder = text.slice(payeeStart);
+  const remLower = text.slice(payeeStart).toLowerCase();
   for (const term of terminators) {
-    const tm = term.exec(remainder);
-    if (tm && tm.index !== undefined) {
-      const cand = payeeStart + tm.index;
+    const idx = scanTerminator(remLower, 0, term);
+    if (idx !== -1) {
+      const cand = payeeStart + idx;
       if (cand < payeeEnd) payeeEnd = cand;
     }
   }
-  // Deterministic bounded slice: limit to 120 chars to prevent unbounded unbounded matching
+  // Deterministic bounded slice: limit to 120 chars to prevent unbounded matching
   const raw = text.slice(payeeStart, Math.min(payeeEnd, payeeStart + 120)).trim();
   // Trim trailing period if any slipped
   return raw ? raw.replace(/\.$/, "").trim() : null;
@@ -362,11 +468,14 @@ export function parseSmsNotification(
   const refNumber = extractReferenceNumber(rawText);
 
   // Shared terminators: linear, non-overlapping, bounded
-  const gcashTerminators: RegExp[] = [/[ \t]+on[ \t]+\d/i, /\.[ \t]*Ref/i];
-  const mayaTerminators: RegExp[] = [
-    /[ \t]+(?:using|via)[ \t]+Maya/i,
-    /[ \t]+on[ \t]+\d/i,
-    /\.[ \t]*Ref/i,
+  const gcashTerminators: PayeeTerminator[] = [
+    { type: "gapWords", alts: [["on"]], trailingSpace: true, trailingDigit: true },
+    { type: "dotWord", word: "ref" },
+  ];
+  const mayaTerminators: PayeeTerminator[] = [
+    { type: "gapWords", alts: [["using", "maya"], ["via", "maya"]] },
+    { type: "gapWords", alts: [["on"]], trailingSpace: true, trailingDigit: true },
+    { type: "dotWord", word: "ref" },
   ];
 
   // 1. GCash patterns - linear tokenization (no overlapping \s* vs \s+ and no (.+?) catastrophic)
@@ -378,7 +487,7 @@ export function parseSmsNotification(
         new RegExp(`You have paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
-        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, gcashTerminators);
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], gcashTerminators);
         if (payeeRaw !== null) {
           const amountMinor = parseAmountMinor(amt.amount);
           if (amountMinor !== null) {
@@ -409,7 +518,7 @@ export function parseSmsNotification(
         new RegExp(`You have sent[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
-        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, gcashTerminators);
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], gcashTerminators);
         if (payeeRaw !== null) {
           const amountMinor = parseAmountMinor(amt.amount);
           if (amountMinor !== null) {
@@ -440,7 +549,7 @@ export function parseSmsNotification(
         new RegExp(`You have received[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
-        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+from[ \t]+/i, gcashTerminators);
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["from"]], gcashTerminators);
         if (payeeRaw !== null) {
           const amountMinor = parseAmountMinor(amt.amount);
           if (amountMinor !== null) {
@@ -472,8 +581,8 @@ export function parseSmsNotification(
       new RegExp(`Payment of[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
     );
     if (amt) {
-      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, [
-        /[ \t]+was[ \t]+successful/i,
+      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], [
+        { type: "gapWords", alts: [["was", "successful"]] },
       ]);
       if (payeeRaw !== null) {
         const amountMinor = parseAmountMinor(amt.amount);
@@ -510,7 +619,7 @@ export function parseSmsNotification(
         new RegExp(`You paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
-        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, mayaTerminators);
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], mayaTerminators);
         if (payeeRaw !== null) {
           const amountMinor = parseAmountMinor(amt.amount);
           if (amountMinor !== null) {
@@ -540,7 +649,7 @@ export function parseSmsNotification(
         new RegExp(`You sent[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
-        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, mayaTerminators);
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], mayaTerminators);
         if (payeeRaw !== null) {
           const amountMinor = parseAmountMinor(amt.amount);
           if (amountMinor !== null) {
@@ -570,7 +679,7 @@ export function parseSmsNotification(
         new RegExp(`You received[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
-        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+from[ \t]+/i, mayaTerminators);
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["from"]], mayaTerminators);
         if (payeeRaw !== null) {
           const amountMinor = parseAmountMinor(amt.amount);
           if (amountMinor !== null) {
@@ -604,8 +713,8 @@ export function parseSmsNotification(
         new RegExp(`BPI(?:[ \\t]+Online)?[ \\t]+transfer[ \\t]+of[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
-        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, [
-          /[ \t]+was[ \t]+successful/i,
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], [
+          { type: "gapWords", alts: [["was", "successful"]] },
         ]);
         if (payeeRaw !== null) {
           const amountMinor = parseAmountMinor(amt.amount);
@@ -636,10 +745,10 @@ export function parseSmsNotification(
         new RegExp(`You paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
-        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+(?:at|to)[ \t]+/i, [
-          /[ \t]+with[ \t]+your[ \t]+BPI/i,
-          /[ \t]+on[ \t]+\d/i,
-          /\.[ \t]*Ref/i,
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["at"], ["to"]], [
+          { type: "gapWords", alts: [["with", "your", "bpi"]] },
+          { type: "gapWords", alts: [["on"]], trailingSpace: true, trailingDigit: true },
+          { type: "dotWord", word: "ref" },
         ]);
         if (payeeRaw !== null) {
           const amountMinor = parseAmountMinor(amt.amount);
@@ -673,10 +782,10 @@ export function parseSmsNotification(
         new RegExp(`You purchased[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
-        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+(?:at|to)[ \t]+/i, [
-          /[ \t]+on[ \t]+\d/i,
-          /[ \t]+using[ \t]+/i,
-          /\.[ \t]*Ref/i,
+        const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["at"], ["to"]], [
+          { type: "gapWords", alts: [["on"]], trailingSpace: true, trailingDigit: true },
+          { type: "gapWords", alts: [["using"]], trailingSpace: true },
+          { type: "dotWord", word: "ref" },
         ]);
         if (payeeRaw !== null) {
           const amountMinor = parseAmountMinor(amt.amount);
@@ -709,9 +818,9 @@ export function parseSmsNotification(
       new RegExp(`(?:PHP|\\u20B1)[ \\t]*(${BOUNDED_AMOUNT})[ \\t]+debited[ \\t]+from`, "i"),
     );
     if (amt) {
-      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+for[ \t]+payment[ \t]+to[ \t]+/i, [
-        /[ \t]+on[ \t]+\d/i,
-        /\.[ \t]*Ref/i,
+      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["for", "payment", "to"]], [
+        { type: "gapWords", alts: [["on"]], trailingSpace: true, trailingDigit: true },
+        { type: "dotWord", word: "ref" },
       ]);
       if (payeeRaw !== null) {
         const amountMinor = parseAmountMinor(amt.amount);
@@ -743,7 +852,7 @@ export function parseSmsNotification(
       new RegExp(`Paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
     );
     if (amt) {
-      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, [/\.[ \t]*Ref/i]);
+      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], [{ type: "dotWord", word: "ref" }]);
       if (payeeRaw !== null) {
         const amountMinor = parseAmountMinor(amt.amount);
         if (amountMinor !== null) {
@@ -774,8 +883,8 @@ export function parseSmsNotification(
       new RegExp(`Payment of[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
     );
     if (amt && /completed/i.test(rawText)) {
-      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, /[ \t]+to[ \t]+/i, [
-        /[ \t]+completed/i,
+      const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], [
+        { type: "gapWords", alts: [["completed"]] },
       ]);
       if (payeeRaw !== null) {
         const amountMinor = parseAmountMinor(amt.amount);
@@ -802,27 +911,16 @@ export function parseSmsNotification(
 
   // 8. Generic fallbacks - linear bounded tokenization
   // Shared generic terminators include period and RN to avoid swallowing reference
-  const genericExpenseTerminators: RegExp[] = [
-    /[ \t]+on[ \t]+\d/i,
-    /\.[ \t]*Ref/i,
-    /\.[ \t]*RN/i,
-    /[ \t]+RN[ \t]*:/i,
-    /\./,
+  const genericTerminators: PayeeTerminator[] = [
+    { type: "gapWords", alts: [["on"]], trailingSpace: true, trailingDigit: true },
+    { type: "dotWord", word: "ref" },
+    { type: "dotWord", word: "rn" },
+    { type: "rnColon" },
+    { type: "dot" },
   ];
-  const genericTransferTerminators: RegExp[] = [
-    /[ \t]+on[ \t]+\d/i,
-    /\.[ \t]*Ref/i,
-    /\.[ \t]*RN/i,
-    /[ \t]+RN[ \t]*:/i,
-    /\./,
-  ];
-  const genericIncomeTerminators: RegExp[] = [
-    /[ \t]+on[ \t]+\d/i,
-    /\.[ \t]*Ref/i,
-    /\.[ \t]*RN/i,
-    /[ \t]+RN[ \t]*:/i,
-    /\./,
-  ];
+  const genericExpenseTerminators: PayeeTerminator[] = genericTerminators;
+  const genericTransferTerminators: PayeeTerminator[] = genericTerminators;
+  const genericIncomeTerminators: PayeeTerminator[] = genericTerminators;
   // Paid / Payment: 'Paid PHP X to Y', 'Payment of PHP X to Y'
   {
     const amt = extractAmountAfterPrefix(
@@ -833,7 +931,7 @@ export function parseSmsNotification(
       const payeeRaw = extractPayeeBetween(
         rawText,
         amt.endIndex,
-        /[ \t]+(?:to|at)[ \t]+/i,
+        [["to"], ["at"]],
         genericExpenseTerminators,
       );
       if (payeeRaw !== null) {
@@ -870,7 +968,7 @@ export function parseSmsNotification(
       const payeeRaw = extractPayeeBetween(
         rawText,
         amt.endIndex,
-        /[ \t]+to[ \t]+/i,
+        [["to"]],
         genericTransferTerminators,
       );
       // optional payee
@@ -917,7 +1015,7 @@ export function parseSmsNotification(
       const payeeRaw = extractPayeeBetween(
         rawText,
         amt.endIndex,
-        /[ \t]+from[ \t]+/i,
+        [["from"]],
         genericIncomeTerminators,
       );
       let payee: string;
