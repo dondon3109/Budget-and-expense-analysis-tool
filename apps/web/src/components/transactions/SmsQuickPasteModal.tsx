@@ -41,7 +41,7 @@ export function parseSmsText(text: string): ParsedSmsTransaction {
   // Extract amount
   let amount: number | undefined;
   const keywordAmountRegex =
-    /(?:debited|credited|spent|paid|purchase of|sent|withdrawn|charged|amounting to|for)\s*(?:by|of|for|rs\.?|usd|\$|€|£|₹)?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i;
+    /(?:debited|credited|spent|paid|purchase of|sent|withdrawn|charged|amounting to|for)\s*(?:(?:by|of|for|rs\.?|usd|\$|€|£|₹)\s*)?([0-9,]{1,15}(?:\.[0-9]{1,2})?)/i;
 
   const keywordMatch = clean.match(keywordAmountRegex);
   if (keywordMatch && keywordMatch[1]) {
@@ -66,7 +66,7 @@ export function parseSmsText(text: string): ParsedSmsTransaction {
   // Extract merchant / recipient / counterparty
   let merchant: string | undefined;
   const merchantRegex =
-    /(?:at|to|for|merchant|info|vpa|in\*\s*)\s+([A-Za-z0-9\s._&'-]{2,30}?)(?=\s+(?:on|using|via|with|from|through|ref|bal|avl|card|a\/c|acc|ending|dated|\.|\n|$))/i;
+    /(?:at|to|for|merchant|info|vpa|in\*)\s+([A-Za-z0-9._&'-]+(?:[ \t]+[A-Za-z0-9._&'-]+){0,4}?)(?=\s+(?:on|using|via|with|from|through|ref|bal|avl|card|a\/c|acc|ending|dated|\.|\n|$))/i;
   const merchantMatch = clean.match(merchantRegex);
   if (merchantMatch && merchantMatch[1]) {
     const m = merchantMatch[1].trim().replace(/[.,]$/, '');
@@ -78,7 +78,7 @@ export function parseSmsText(text: string): ParsedSmsTransaction {
   // Extract account / card info
   let account: string | undefined;
   const accountRegex =
-    /(?:a\/c|acc|account|card|ending(?:\s+in)?)\s*(?:no\.?|num\.?)?\s*[*xX.-]*([0-9]{3,4})/i;
+    /(?:a\/c|acc|account|card|ending(?:\s+in)?)\s*(?:(?:no\.?|num\.?)\s*)?[*xX.-]*([0-9]{3,4})/i;
   const accountMatch = clean.match(accountRegex);
   if (accountMatch && accountMatch[1]) {
     account = `*${accountMatch[1]}`;
