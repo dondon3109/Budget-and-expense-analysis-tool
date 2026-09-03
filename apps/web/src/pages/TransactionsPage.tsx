@@ -258,7 +258,7 @@ export function TransactionsPage() {
       accounts.find(
         (a) =>
           parsed.account &&
-          (a.name.toLowerCase().includes(parsed.account.replace("*", "").toLowerCase()) ||
+          (a.name.toLowerCase().includes(parsed.account.replaceAll("*", "").toLowerCase()) ||
             a.id === parsed.account),
       ) ??
       preferredTransactionAccount(accounts) ??
