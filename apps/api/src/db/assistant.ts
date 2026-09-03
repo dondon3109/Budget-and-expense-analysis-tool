@@ -26,6 +26,7 @@ const RUN_LEASE_SECONDS = 45;
 interface ThreadRow {
   id: string;
   title: string;
+  kind?: string | null;
   last_message_at: string;
   created_at: string;
 }
@@ -140,7 +141,12 @@ export interface AssistantRepository {
     threadId: string,
     query: AssistantMessageListQuery,
   ): Promise<AssistantMessagePage>;
-  createThread(env: Bindings, tenantId: string, firstMessage: string): Promise<AssistantThread>;
+  createThread(
+    env: Bindings,
+    tenantId: string,
+    firstMessage: string,
+    kind?: "text" | "voice",
+  ): Promise<AssistantThread>;
   beginTurn(
     env: Bindings,
     tenantId: string,
@@ -203,6 +209,7 @@ function threadFromRow(row: ThreadRow): AssistantThread {
   return {
     id: row.id,
     title: row.title,
+    kind: row.kind === "voice" ? "voice" : "text",
     lastMessageAt: row.last_message_at,
     createdAt: row.created_at,
   };
@@ -260,7 +267,7 @@ async function requireThread(
   threadId: string,
 ): Promise<AssistantThread> {
   const row = await env.DB.prepare(
-    `SELECT id, title, last_message_at, created_at
+    `SELECT id, title, kind, last_message_at, created_at
      FROM assistant_threads
      WHERE id = ? AND tenant_id = ?`,
   )
@@ -447,7 +454,7 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
   async listThreads(env, tenantId, query) {
     await this.cleanupExpired(env, tenantId);
     const rows = await env.DB.prepare(
-      `SELECT id, title, last_message_at, created_at
+      `SELECT id, title, kind, last_message_at, created_at
        FROM assistant_threads
        WHERE tenant_id = ? AND (? IS NULL OR last_message_at < ?)
        ORDER BY last_message_at DESC, id DESC
@@ -482,20 +489,21 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
     };
   },
 
-  async createThread(env, tenantId, firstMessage) {
+  async createThread(env, tenantId, firstMessage, kind = "text") {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     const preferences = await this.getPreferences(env, tenantId);
     const retentionExpiresAt = addDays(now, preferences.retentionDays);
     const title = titleFromMessage(firstMessage);
+    const threadKind = kind === "voice" ? "voice" : "text";
     await env.DB.prepare(
       `INSERT INTO assistant_threads
-       (id, tenant_id, title, last_message_at, retention_expires_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (id, tenant_id, title, kind, last_message_at, retention_expires_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(id, tenantId, title, now, retentionExpiresAt, now, now)
+      .bind(id, tenantId, title, threadKind, now, retentionExpiresAt, now, now)
       .run();
-    return { id, title, lastMessageAt: now, createdAt: now };
+    return { id, title, kind: threadKind, lastMessageAt: now, createdAt: now };
   },
 
   async beginTurn(env, tenantId, threadId, input) {

@@ -19,11 +19,42 @@ The browser cannot submit a tenant ID, model, system prompt, tool definition, as
 
 ## Voice mode
 
-Voice mode is available in Preview and Production. A user explicitly enables the separate, versioned voice consent before the browser requests microphone access. A push-to-talk recording of at most 60 seconds and 4 MB is sent through the authenticated Worker to Cloudflare Workers AI's `@cf/openai/whisper-large-v3-turbo` model. Browser-side voice-activity detection ends the recording after speech followed by 1.4 seconds of silence, while seven seconds without detected speech ends without sending audio for transcription. Production defaults new voice preferences to automatic submission after transcription with a spoken-and-text reply. Preview enforces review-first behavior through configuration, and an existing user's saved choices remain respected.
+The assistant offers two conversation types and nothing in between: text chat and voice
+conversation. Both share the same Worker assistant turn (same tools, consent, usage cycle, and
+validation) and the same versioned voice consent, which the user accepts before the browser ever
+requests microphone access.
 
-For a voice-originated turn, users can choose a spoken-and-text reply or text only. In spoken mode, the Worker may send the completed assistant reply text to Fish Audio TTS and return MP3 audio. The browser keeps the turn pending until synthesis finishes, then reveals the text and its audio control together inside the same assistant message. If synthesis fails, the text is released with an inline audio error. The browser holds recordings and generated audio only in memory, and Zoption does not write either to D1. Speech generation accepts only a completed assistant message owned by the current tenant. The Fish API key remains a Worker secret, request bodies are bounded before multipart parsing, and transcription and speech have separate tenant rate limits.
+Text chat is mic-in / text-out. The composer keeps its microphone: a push-to-talk recording of at
+most 60 seconds transcribes through the live `gemini-3.5-transcribe-live` stream when the admin has
+activated it (otherwise the batch `POST /transcriptions` fallback) and fills the composer draft as
+live partials, then a final transcript for review before Send. Replies are always text — text chat
+never calls Fish Audio `/speech` and never attaches audio to a message, even when an older browser
+profile still stores a spoken reply preference. There is no voice picker or spoken-vs-text toggle in
+text chat. Browser-side voice-activity detection ends the recording after speech followed by 1.4
+seconds of silence, while seven seconds without detected speech ends without sending audio for
+transcription.
 
-The rollout remains dual-gated in each build and Worker environment. `ASSISTANT_VOICE_ENABLED` exposes the microphone and enables the authenticated voice routes. Local and Preview environments enforce review-first behavior, while Production allows the user to opt into automatic submission. Local transcription uses a remote Workers AI binding; spoken local replies additionally require `FISH_AUDIO_API_KEY` in the untracked `apps/api/.dev.vars` file. Without that key, voice input remains available, while the client selects text-only replies and explains that spoken replies are unavailable in the current environment.
+Voice conversation is the spoken-reply surface. The user starts it on purpose with "Voice chat" next
+to "New chat" and lands on a full-screen talk-to-the-ball experience: a central orb with obvious
+listening, thinking, and speaking states (static ball plus status text under
+`prefers-reduced-motion`), backed by a live caption layer showing Gemini partials, then the final
+user line, then the assistant reply text while Fish Audio plays it. No Send tap is needed: after a
+final transcript the client runs the same Worker turn used by text chat, then speaks the completed
+reply with the pinned Bright Female voice (`speechVoice "bright"`) — the only voice offered, with no
+picker. Completed voice turns are stored as `kind: "voice"` threads (migration `0049`) so history
+marks them with a Voice badge instead of mixing them in as text chats. If speech is unavailable, the
+assistant text still appears in the caption layer with a notice that spoken replies are unavailable.
+
+The browser holds recordings and generated audio only in memory, and Zoption does not write either
+to D1. Speech generation accepts only a completed assistant message owned by the current tenant. The
+Fish API key remains a Worker secret, request bodies are bounded before multipart parsing, and
+transcription and speech have separate tenant rate limits.
+
+The rollout remains dual-gated in each build and Worker environment. `ASSISTANT_VOICE_ENABLED`
+exposes the microphone and enables the authenticated voice routes. Local transcription uses a remote
+Workers AI binding; spoken replies additionally require `FISH_AUDIO_API_KEY` in the untracked
+`apps/api/.dev.vars` file. Without that key, voice input remains available while spoken replies are
+explained as unavailable.
 
 TTS is pinned to Fish Audio's free `s2.1-pro-free` model. The Worker rejects any other configured TTS model. Transcription starts within Cloudflare Workers AI's daily free allocation and should be monitored before enabling paid Workers AI usage.
 

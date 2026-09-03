@@ -6,6 +6,13 @@ All notable product changes are documented here.
 
 ### Added
 
+- Split the AI Financial Assistant into two conversation types: text chat
+  (mic-in / text-out, with transcription filling the composer draft) and a new
+  full-screen voice conversation started from "Voice chat" next to "New chat",
+  featuring a talking orb with live captions and Bright Female spoken replies.
+  Voice threads are marked with a Voice badge in history (thread kind
+  `text | voice`, migration `0049`). The text composer no longer offers voice
+  settings or spoken replies.
 - Added multi-provider AI Assistant models: admins can now add API keys and
   activate configurations for OpenAI, Anthropic, Gemini, Meta, and Muse Spark
   in addition to DeepSeek at `/app/admin/provider-configs`, so a new model can

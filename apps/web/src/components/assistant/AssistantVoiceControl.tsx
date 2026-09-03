@@ -1,14 +1,12 @@
 import {
   CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
-  type AssistantSpeechVoice,
   type AssistantVoicePreferences,
 } from "@zoption/shared";
-import { LoaderCircle, Mic, Settings2, Volume2, X } from "lucide-react";
+import { LoaderCircle, Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
   getAssistantVoicePreferences,
-  getAssistantVoicePreview,
   grantAssistantVoiceConsent,
   transcribeAssistantVoice,
 } from "../../lib/api";
@@ -24,31 +22,6 @@ const ENDING_SILENCE_MS = 1_400;
 const VOICE_SAMPLE_INTERVAL_MS = 100;
 const SPEECH_RMS_THRESHOLD = 0.025;
 const MIME_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"];
-const SPEECH_VOICES: ReadonlyArray<{
-  id: AssistantSpeechVoice;
-  label: string;
-  gender: "Female" | "Male";
-  description: string;
-}> = [
-  {
-    id: "default",
-    label: "Default",
-    gender: "Male",
-    description: "Fish Audio’s balanced male voice.",
-  },
-  {
-    id: "bright",
-    label: "Bright",
-    gender: "Female",
-    description: "A bright, lively female voice.",
-  },
-  {
-    id: "energetic",
-    label: "Energetic",
-    gender: "Female",
-    description: "An upbeat, energetic female voice.",
-  },
-];
 
 export type AssistantVoiceSubmissionMode = "review";
 export type AssistantVoiceReplyMode = "spoken" | "text";
@@ -56,10 +29,19 @@ export type AssistantVoiceReplyMode = "spoken" | "text";
 export interface AssistantVoiceTranscriptOptions {
   submissionMode: AssistantVoiceSubmissionMode;
   replyMode: AssistantVoiceReplyMode;
-  speechVoice: AssistantSpeechVoice;
+  speechVoice: "default" | "bright" | "energetic";
 }
 
-type StoredVoiceOptions = AssistantVoiceTranscriptOptions;
+/**
+ * Text-chat microphone: speech in, text out. Transcription fills the composer
+ * draft; replies are always text. Spoken replies live only in the separate
+ * voice conversation surface.
+ */
+const TEXT_TRANSCRIPT_OPTIONS: AssistantVoiceTranscriptOptions = {
+  submissionMode: "review",
+  replyMode: "text",
+  speechVoice: "default",
+};
 
 type StopReason = "manual" | "silence" | "no-speech" | "limit" | "cancelled";
 
@@ -69,62 +51,6 @@ interface AssistantVoiceControlProps {
   reviewRequired?: boolean;
   onTranscript: (text: string, options: AssistantVoiceTranscriptOptions) => void;
   onPartialTranscript?: (text: string) => void;
-}
-
-function storageKey(userId: string): string {
-  return `zoption:assistant-voice-options:${userId}`;
-}
-
-function voiceModelHintKey(userId: string): string {
-  return `zoption:assistant-voice-model-hint:v1:${userId}`;
-}
-
-function hasDismissedVoiceModelHint(userId: string): boolean {
-  try {
-    return window.localStorage.getItem(voiceModelHintKey(userId)) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function saveVoiceModelHintDismissal(userId: string): void {
-  try {
-    window.localStorage.setItem(voiceModelHintKey(userId), "true");
-  } catch {
-    // The hint can still be dismissed for this session when storage is unavailable.
-  }
-}
-
-function readStoredOptions(userId: string): StoredVoiceOptions | undefined {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(storageKey(userId)) ?? "null") as unknown;
-    if (!parsed || typeof parsed !== "object") return undefined;
-    const options = parsed as Partial<StoredVoiceOptions>;
-    if (
-      (options.submissionMode === "review" || options.submissionMode === "automatic") &&
-      (options.replyMode === "spoken" || options.replyMode === "text")
-    ) {
-      return {
-        submissionMode: "review",
-        replyMode: options.replyMode,
-        speechVoice:
-          options.speechVoice && SPEECH_VOICES.some((voice) => voice.id === options.speechVoice)
-            ? options.speechVoice
-            : "default",
-      };
-    }
-  } catch {
-    // Storage may be unavailable in hardened browser modes; session defaults still work.
-  }
-  return undefined;
-}
-
-function saveStoredOptions(userId: string, options: StoredVoiceOptions): void {
-  try {
-    window.localStorage.setItem(storageKey(userId), JSON.stringify(options));
-  } catch {
-    // Voice remains usable when the browser blocks local storage.
-  }
 }
 
 function errorMessage(error: unknown): string {
@@ -159,41 +85,16 @@ export function AssistantVoiceControl({
   const mountedRef = useRef(true);
   const chunksRef = useRef<Blob[]>([]);
   const microphoneButtonRef = useRef<HTMLButtonElement | null>(null);
-  const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const pointerDownTimeRef = useRef<number>(0);
   const isPointerRecordingRef = useRef<boolean>(false);
   const noticeRef = useRef<HTMLDivElement | null>(null);
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
-  const previewUrlRef = useRef<string | undefined>(undefined);
   const [preferences, setPreferences] = useState<AssistantVoicePreferences>();
   const [enabling, setEnabling] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
   const [status, setStatus] = useState<"idle" | "recording" | "transcribing">("idle");
   const [liveTranscript, setLiveTranscript] = useState<string>("");
   const [message, setMessage] = useState<string>();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [previewing, setPreviewing] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string>();
-  const [previewError, setPreviewError] = useState<string>();
-  const [voiceModelHintDismissed, setVoiceModelHintDismissed] = useState(() =>
-    hasDismissedVoiceModelHint(workspace.userId),
-  );
-  const [options, setOptions] = useState<StoredVoiceOptions>(() => {
-    const stored = readStoredOptions(workspace.userId);
-    return {
-      submissionMode: "review",
-      replyMode: stored?.replyMode ?? "spoken",
-      speechVoice: stored?.speechVoice ?? "default",
-    };
-  });
-
-  function clearPreview() {
-    previewAudioRef.current?.pause();
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    previewUrlRef.current = undefined;
-    setPreviewUrl(undefined);
-  }
 
   function clearTimersAndAudioContext() {
     window.clearTimeout(stopTimerRef.current);
@@ -227,24 +128,12 @@ export function AssistantVoiceControl({
   }
 
   useEffect(() => {
-    setVoiceModelHintDismissed(hasDismissedVoiceModelHint(workspace.userId));
-  }, [workspace.userId]);
-
-  useEffect(() => {
     mountedRef.current = true;
     let current = true;
     void getAssistantVoicePreferences(workspace)
       .then((data) => {
         if (!current) return;
         setPreferences(data);
-        if (!data.speechAvailable) {
-          setOptions((stored) => {
-            if (stored.replyMode === "text") return stored;
-            const textOnly = { ...stored, replyMode: "text" as const };
-            saveStoredOptions(workspace.userId, textOnly);
-            return textOnly;
-          });
-        }
       })
       .catch((error) => {
         if (current) setMessage(errorMessage(error));
@@ -256,88 +145,32 @@ export function AssistantVoiceControl({
       stopReasonRef.current = "cancelled";
       if (recorderRef.current?.state === "recording") recorderRef.current.stop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
   }, [workspace.key]);
 
   useEffect(() => {
-    if (!showNotice && !showOptions) return;
-    if (showNotice) noticeRef.current?.focus();
+    if (!showNotice) return;
+    noticeRef.current?.focus();
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key !== "Escape" || enabling) return;
-      if (showNotice) {
-        setShowNotice(false);
-        microphoneButtonRef.current?.focus();
-      } else {
-        clearPreview();
-        setShowOptions(false);
-        settingsButtonRef.current?.focus();
-      }
+      setShowNotice(false);
+      microphoneButtonRef.current?.focus();
     }
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [enabling, showNotice, showOptions]);
+  }, [enabling, showNotice]);
 
   useEffect(() => {
     if (!disabled) return;
     setMessage(undefined);
-    clearPreview();
-    setShowOptions(false);
   }, [disabled]);
-
-  function updateOptions(next: StoredVoiceOptions) {
-    const enforced = { ...next, submissionMode: "review" as const };
-    setOptions(enforced);
-    saveStoredOptions(workspace.userId, enforced);
-  }
-
-  function dismissVoiceModelHint() {
-    setVoiceModelHintDismissed(true);
-    saveVoiceModelHintDismissal(workspace.userId);
-  }
-
-  function openVoiceSettings() {
-    dismissVoiceModelHint();
-    setShowNotice(false);
-    clearPreview();
-    setShowOptions(true);
-  }
-
-  async function previewSelectedVoice() {
-    if (previewing || !speechAvailable) return;
-    setPreviewing(true);
-    setPreviewError(undefined);
-    try {
-      const audio = await getAssistantVoicePreview(workspace, options.speechVoice);
-      if (!mountedRef.current) return;
-      clearPreview();
-      const audioUrl = URL.createObjectURL(audio);
-      previewUrlRef.current = audioUrl;
-      setPreviewUrl(audioUrl);
-    } catch (error) {
-      if (mountedRef.current) setPreviewError(errorMessage(error));
-    } finally {
-      if (mountedRef.current) setPreviewing(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!previewUrl) return;
-    void previewAudioRef.current?.play().catch(() => {
-      // Some browsers require a second user gesture; native controls remain available.
-    });
-  }, [previewUrl]);
 
   async function transcribe(blob: Blob) {
     setStatus("transcribing");
     try {
       const result = await transcribeAssistantVoice(workspace, blob);
       if (!mountedRef.current) return;
-      const transcriptOptions =
-        preferences?.speechAvailable === false
-          ? { ...options, replyMode: "text" as const }
-          : options;
-      onTranscript(result.text, transcriptOptions);
+      onTranscript(result.text, TEXT_TRANSCRIPT_OPTIONS);
       setMessage("Transcript ready — review or edit it, then press Send.");
     } catch (error) {
       if (mountedRef.current) setMessage(errorMessage(error));
@@ -486,11 +319,7 @@ export function AssistantVoiceControl({
           // If live stream produced a transcript (including delayed final during grace), use it directly!
           const liveText = liveTranscriptRef.current.trim();
           if (liveText) {
-            const transcriptOptions =
-              preferences?.speechAvailable === false
-                ? { ...options, replyMode: "text" as const }
-                : options;
-            onTranscript(liveText, transcriptOptions);
+            onTranscript(liveText, TEXT_TRANSCRIPT_OPTIONS);
             setMessage("Transcript ready — review or edit it, then press Send.");
             setStatus("idle");
             setLiveTranscript("");
@@ -503,7 +332,8 @@ export function AssistantVoiceControl({
           // — batch POST /transcriptions rejects gemini-3.5-transcribe-live with 400 and shows a confusing error
           // even though the user did use the streaming button. Surface the live failure instead.
           const isLiveModel =
-            (preferences?.transcriptionModel as string | undefined) === "gemini-3.5-transcribe-live";
+            (preferences?.transcriptionModel as string | undefined) ===
+            "gemini-3.5-transcribe-live";
           if (isLiveModel) {
             setStatus("idle");
             const liveErr = liveErrorRef.current;
@@ -572,7 +402,11 @@ export function AssistantVoiceControl({
             if (!liveTranscriptRef.current) setMessage(error.message);
           }
           if (typeof console !== "undefined" && console.warn) {
-            console.warn("[voice] live error", error.message, (error as unknown as Record<string, unknown>).code);
+            console.warn(
+              "[voice] live error",
+              error.message,
+              (error as unknown as Record<string, unknown>).code,
+            );
           }
         },
       });
@@ -659,16 +493,7 @@ export function AssistantVoiceControl({
     preferences?.consentedAt &&
     preferences.consentVersion === CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
   );
-  const speechAvailable = preferences?.speechAvailable !== false;
   const busy = disabled || status === "transcribing";
-  const showVoiceModelHint =
-    !voiceModelHintDismissed &&
-    preferences?.speechAvailable === true &&
-    !disabled &&
-    status === "idle" &&
-    !message &&
-    !showNotice &&
-    !showOptions;
 
   function handlePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
     if (event.button !== 0) return;
@@ -680,14 +505,10 @@ export function AssistantVoiceControl({
     }
 
     if (!consented) {
-      clearPreview();
-      setShowOptions(false);
       setShowNotice(true);
       return;
     }
 
-    clearPreview();
-    setShowOptions(false);
     isPointerRecordingRef.current = true;
     void startRecording();
   }
@@ -723,24 +544,6 @@ export function AssistantVoiceControl({
   return (
     <div className="assistant-voice-control">
       <button
-        ref={settingsButtonRef}
-        className="assistant-voice-settings-button"
-        type="button"
-        disabled={status !== "idle"}
-        aria-label="Voice settings"
-        aria-expanded={showOptions}
-        onClick={() => {
-          dismissVoiceModelHint();
-          setShowNotice(false);
-          setShowOptions((current) => {
-            if (current) clearPreview();
-            return !current;
-          });
-        }}
-      >
-        <Settings2 size={15} aria-hidden="true" />
-      </button>
-      <button
         ref={microphoneButtonRef}
         className={`assistant-voice-button ${status === "recording" ? "recording" : ""}${
           status === "transcribing" ? "transcribing" : ""
@@ -771,12 +574,8 @@ export function AssistantVoiceControl({
           if (pointerDownTimeRef.current === 0 || Date.now() - pointerDownTimeRef.current > 500) {
             if (status === "recording") stopRecording("manual");
             else if (!consented) {
-              clearPreview();
-              setShowOptions(false);
               setShowNotice(true);
             } else {
-              clearPreview();
-              setShowOptions(false);
               void startRecording();
             }
           }
@@ -788,131 +587,6 @@ export function AssistantVoiceControl({
           <Mic size={18} aria-hidden="true" />
         )}
       </button>
-      {showVoiceModelHint && (
-        <aside className="assistant-voice-model-hint" aria-label="Voice model tip">
-          <span className="assistant-voice-model-hint-icon" aria-hidden="true">
-            <Volume2 size={15} />
-          </span>
-          <div>
-            <strong>Pick a voice you like</strong>
-            <p>You can change the voice model anytime in Voice Settings.</p>
-            <button type="button" onClick={openVoiceSettings}>
-              Choose a voice
-            </button>
-          </div>
-          <button
-            type="button"
-            className="assistant-voice-model-hint-close"
-            aria-label="Dismiss voice model tip"
-            onClick={dismissVoiceModelHint}
-          >
-            <X size={14} aria-hidden="true" />
-          </button>
-        </aside>
-      )}
-      {showOptions && (
-        <div className="assistant-voice-options" role="dialog" aria-label="Voice settings">
-          <div className="assistant-voice-options-header">
-            <strong>Voice settings</strong>
-            <button
-              type="button"
-              aria-label="Close voice settings"
-              onClick={() => {
-                clearPreview();
-                setShowOptions(false);
-              }}
-            >
-              <X size={15} aria-hidden="true" />
-            </button>
-          </div>
-
-          <fieldset>
-            <legend>Assistant replies</legend>
-            <label className={speechAvailable ? "" : "disabled"}>
-              <input
-                type="radio"
-                name="assistant-voice-reply"
-                checked={options.replyMode === "spoken"}
-                disabled={!speechAvailable}
-                onChange={() => updateOptions({ ...options, replyMode: "spoken" })}
-              />
-              <span>
-                <strong>Voice + text</strong>
-                <small>
-                  {speechAvailable
-                    ? "Play the answer aloud and keep it in chat."
-                    : "Unavailable in this environment. Voice input and text replies still work."}
-                </small>
-              </span>
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="assistant-voice-reply"
-                checked={options.replyMode === "text"}
-                onChange={() => updateOptions({ ...options, replyMode: "text" })}
-              />
-              <span>
-                <strong>Text only</strong>
-                <small>Keep the answer silent.</small>
-              </span>
-            </label>
-          </fieldset>
-          <fieldset className="assistant-voice-style-fieldset" disabled={!speechAvailable}>
-            <legend>Voice</legend>
-            <div className="assistant-voice-picker">
-              <label htmlFor="assistant-speech-voice">Voice and gender</label>
-              <select
-                id="assistant-speech-voice"
-                value={options.speechVoice}
-                onChange={(event) => {
-                  clearPreview();
-                  setPreviewError(undefined);
-                  updateOptions({
-                    ...options,
-                    speechVoice: event.target.value as AssistantSpeechVoice,
-                  });
-                }}
-              >
-                {SPEECH_VOICES.map((voice) => (
-                  <option key={voice.id} value={voice.id}>
-                    {voice.label} · {voice.gender}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="button secondary compact"
-                disabled={previewing || !speechAvailable}
-                onClick={() => void previewSelectedVoice()}
-              >
-                <Volume2 size={14} aria-hidden="true" />
-                {previewing ? "Loading…" : "Preview"}
-              </button>
-            </div>
-            <small className="assistant-voice-description">
-              {SPEECH_VOICES.find((voice) => voice.id === options.speechVoice)?.description}
-            </small>
-            {previewUrl && (
-              <audio
-                ref={previewAudioRef}
-                className="assistant-voice-preview-audio"
-                src={previewUrl}
-                controls
-                aria-label={`${
-                  SPEECH_VOICES.find((voice) => voice.id === options.speechVoice)?.label
-                } voice preview`}
-              />
-            )}
-            {previewError && (
-              <small className="assistant-voice-preview-error" role="alert">
-                {previewError}
-              </small>
-            )}
-          </fieldset>
-          <p>Recording stops automatically after you finish speaking.</p>
-        </div>
-      )}
       {showNotice && (
         <div
           ref={noticeRef}
@@ -921,13 +595,11 @@ export function AssistantVoiceControl({
           aria-label="Voice notice"
           tabIndex={-1}
         >
-          <strong>Enable voice mode?</strong>
+          <strong>Enable voice input?</strong>
           <p>
-            Your recording is sent to Cloudflare Workers AI for transcription. You can review
-            the finished transcript before sending. When you choose spoken replies, the completed
-            assistant reply text is sent to Fish Audio for speech. Zoption does not store
-            recordings or generated audio. Voice starts with Cloudflare&apos;s and Fish
-            Audio&apos;s free usage options.
+            Your recording is sent to Cloudflare Workers AI for transcription. You can review the
+            finished transcript before sending. Zoption does not store recordings. Replies in text
+            chat are always text.
           </p>
           <div>
             <button

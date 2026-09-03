@@ -1,5 +1,5 @@
 import type { AssistantThread } from "@zoption/shared";
-import { MessageSquareText, Pencil, Plus, Trash2, X } from "lucide-react";
+import { MessageSquareText, Mic, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState, type Ref } from "react";
 
 interface AssistantThreadListProps {
@@ -11,6 +11,7 @@ interface AssistantThreadListProps {
   onClose: () => void;
   onSelect: (threadId: string) => void;
   onNew: () => void;
+  onVoice: () => void;
   onEditIdentity: () => void;
   onDelete: (threadId: string) => Promise<void>;
   onDeleteAll: () => Promise<void>;
@@ -42,6 +43,7 @@ export function AssistantThreadList({
   onClose,
   onSelect,
   onNew,
+  onVoice,
   onEditIdentity,
   onDelete,
   onDeleteAll,
@@ -110,6 +112,14 @@ export function AssistantThreadList({
         >
           <Plus size={16} aria-hidden="true" /> New chat
         </button>
+        <button
+          className="assistant-new-chat assistant-new-voice-chat"
+          type="button"
+          onClick={onVoice}
+          aria-label="Start a voice chat"
+        >
+          <Mic size={16} aria-hidden="true" /> Voice chat
+        </button>
       </div>
 
       <div className="assistant-thread-list">
@@ -129,7 +139,14 @@ export function AssistantThreadList({
                 <button type="button" onClick={() => onSelect(thread.id)}>
                   <MessageSquareText size={15} aria-hidden="true" />
                   <span>
-                    <strong>{thread.title}</strong>
+                    <strong>
+                      {thread.title}
+                      {thread.kind === "voice" && (
+                        <span className="assistant-thread-kind-badge">
+                          <Mic size={11} aria-hidden="true" /> Voice
+                        </span>
+                      )}
+                    </strong>
                     <small>{relativeDate(thread.lastMessageAt)}</small>
                   </span>
                 </button>

@@ -71,6 +71,7 @@ const audit = {
 const thread: AssistantThread = {
   id: threadId,
   title: "Sensitive prompt",
+  kind: "text",
   lastMessageAt: "2026-07-27T00:00:00.000Z",
   createdAt: "2026-07-27T00:00:00.000Z",
 };

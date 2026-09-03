@@ -540,6 +540,9 @@ export const CURRENT_ASSISTANT_VOICE_CONSENT_VERSION = 3;
 export const assistantSpeechVoices = ["default", "bright", "energetic"] as const;
 export type AssistantSpeechVoice = (typeof assistantSpeechVoices)[number];
 
+export const assistantThreadKinds = ["text", "voice"] as const;
+export type AssistantThreadKind = (typeof assistantThreadKinds)[number];
+
 export type AssistantDebtStrategy = "avalanche" | "snowball";
 export type AssistantMemoryKind = "preference" | "fact" | "summary";
 export type AssistantMemorySource = "user_stated" | "deterministic" | "model_assisted";
@@ -731,6 +734,7 @@ export interface ReceiptDraft {
 export interface AssistantThread {
   id: string;
   title: string;
+  kind: AssistantThreadKind;
   lastMessageAt: string;
   createdAt: string;
 }

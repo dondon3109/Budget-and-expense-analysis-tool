@@ -9,7 +9,6 @@ import { AssistantVoiceControl } from "../src/components/assistant/AssistantVoic
 
 const apiMocks = vi.hoisted(() => ({
   getAssistantVoicePreferences: vi.fn(),
-  getAssistantVoicePreview: vi.fn(),
   grantAssistantVoiceConsent: vi.fn(),
   transcribeAssistantVoice: vi.fn(),
 }));
@@ -67,6 +66,37 @@ class MockAudioContext {
   });
 }
 
+/**
+ * Minimal storage stub for environments whose jsdom build exposes no
+ * window.localStorage. The text composer never reads stored voice options;
+ * this only lets the test seed a stale value left by older versions.
+ */
+function ensureLocalStorage() {
+  if (window.localStorage) {
+    window.localStorage.clear();
+    return;
+  }
+  const store = new Map<string, string>();
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        store.set(key, String(value));
+      },
+      removeItem: (key: string) => {
+        store.delete(key);
+      },
+      clear: () => {
+        store.clear();
+      },
+      get length() {
+        return store.size;
+      },
+    },
+  });
+}
+
 function installRecordingMocks() {
   const stopTrack = vi.fn();
   const stream = { getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream;
@@ -79,27 +109,7 @@ function installRecordingMocks() {
   return { stopTrack };
 }
 
-const storageMap = new Map<string, string>();
-const mockStorage = {
-  getItem: vi.fn((key: string) => storageMap.get(key) ?? null),
-  setItem: vi.fn((key: string, value: string) => {
-    storageMap.set(key, String(value));
-  }),
-  removeItem: vi.fn((key: string) => {
-    storageMap.delete(key);
-  }),
-  clear: vi.fn(() => {
-    storageMap.clear();
-  }),
-  key: vi.fn((index: number) => Array.from(storageMap.keys())[index] ?? null),
-  get length() {
-    return storageMap.size;
-  },
-};
-Object.defineProperty(window, "localStorage", { value: mockStorage, writable: true });
-
 beforeEach(() => {
-  window.localStorage.clear();
   sampleLevel = 128;
   apiMocks.getAssistantVoicePreferences.mockResolvedValue({
     enabled: true,
@@ -110,9 +120,6 @@ beforeEach(() => {
     transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
     ttsModel: "s2.1-pro-free",
   });
-  apiMocks.getAssistantVoicePreview.mockResolvedValue(
-    new Blob(["preview"], { type: "audio/mpeg" }),
-  );
 });
 
 afterEach(() => {
@@ -145,9 +152,8 @@ describe("AssistantVoiceControl", () => {
     const notice = screen.getByRole("dialog", { name: "Voice notice" });
     expect(notice).toHaveFocus();
     expect(notice).toHaveTextContent("recording is sent to Cloudflare Workers AI");
-    expect(notice).toHaveTextContent("choose spoken replies");
-    expect(notice).toHaveTextContent("assistant reply text is sent to Fish Audio");
     expect(notice).toHaveTextContent("review the finished transcript before sending");
+    expect(notice).toHaveTextContent("Replies in text chat are always text.");
     expect(getUserMedia).not.toHaveBeenCalled();
     expect(apiMocks.grantAssistantVoiceConsent).not.toHaveBeenCalled();
   });
@@ -242,68 +248,17 @@ describe("AssistantVoiceControl", () => {
     expect(microphone).toHaveFocus();
   });
 
-  it("defaults push-to-talk to review with a spoken and text reply", async () => {
-    render(
-      <AssistantVoiceControl
-        workspace={workspace}
-        disabled={false}
-        reviewRequired={false}
-        onTranscript={vi.fn()}
-      />,
-    );
-
-    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
-
-    const settings = screen.getByRole("dialog", { name: "Voice settings" });
-    expect(screen.queryByRole("radio", { name: /Send automatically/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /Voice \+ text/i })).toBeChecked();
-
-    fireEvent.click(screen.getByRole("radio", { name: /Text only/i }));
-
-    expect(screen.getByRole("radio", { name: /Text only/i })).toBeChecked();
-    expect(settings).toHaveTextContent("Recording stops automatically");
-    expect(
-      JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
-    ).toEqual({ submissionMode: "review", replyMode: "text", speechVoice: "default" });
-  });
-
-  it("restores an existing user's saved voice choices", async () => {
-    window.localStorage.setItem(
-      "zoption:assistant-voice-options:test-user",
-      JSON.stringify({ submissionMode: "review", replyMode: "text" }),
-    );
-
-    render(
-      <AssistantVoiceControl
-        workspace={workspace}
-        disabled={false}
-        reviewRequired={false}
-        onTranscript={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
-
-    expect(screen.queryByRole("radio", { name: /Send automatically/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /Text only/i })).toBeChecked();
-    expect(screen.getByLabelText("Voice and gender")).toHaveValue("default");
-  });
-
-  it("keeps voice input usable but falls back to text when speech is not configured", async () => {
+  it("renders the microphone with no voice settings control", async () => {
+    installRecordingMocks();
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
       enabled: true,
-      speechAvailable: false,
+      speechAvailable: true,
       reviewRequired: true,
-      consentedAt: null,
-      consentVersion: 0,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
-    window.localStorage.setItem(
-      "zoption:assistant-voice-options:test-user",
-      JSON.stringify({ submissionMode: "review", replyMode: "spoken" }),
-    );
 
     render(
       <AssistantVoiceControl
@@ -313,37 +268,16 @@ describe("AssistantVoiceControl", () => {
         onTranscript={vi.fn()}
       />,
     );
-
     await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
-    await waitFor(() =>
-      expect(screen.getByRole("radio", { name: /Voice \+ text/i })).toBeDisabled(),
-    );
-    expect(screen.getByRole("radio", { name: /Text only/i })).toBeChecked();
-    expect(screen.getByText(/Unavailable in this environment/i)).toBeInTheDocument();
-    expect(
-      JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
-    ).toEqual({ submissionMode: "review", replyMode: "text", speechVoice: "default" });
-    expect(screen.getByRole("button", { name: "Start voice recording" })).toBeEnabled();
+
+    expect(screen.getByRole("button", { name: "Start voice recording" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Voice settings" })).not.toBeInTheDocument();
+    expect(document.querySelector(".assistant-voice-settings-button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Voice settings" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Pick a voice you like")).not.toBeInTheDocument();
   });
 
-  it("always reviews transcript before sending", async () => {
-    render(
-      <AssistantVoiceControl
-        workspace={workspace}
-        disabled={false}
-        reviewRequired
-        onTranscript={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
-
-    expect(screen.queryByRole("radio", { name: /Send automatically/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: /Review first/i })).not.toBeInTheDocument();
-  });
-
-  it("submits a completed push-to-talk transcript with the Production defaults", async () => {
+  it("always submits transcripts as text replies", async () => {
     installRecordingMocks();
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
       enabled: true,
@@ -377,10 +311,59 @@ describe("AssistantVoiceControl", () => {
     await waitFor(() =>
       expect(onTranscript).toHaveBeenCalledWith("Where did my money go?", {
         submissionMode: "review",
-        replyMode: "spoken",
+        replyMode: "text",
         speechVoice: "default",
       }),
     );
+  });
+
+  it("ignores a stored spoken replyMode left by older versions", async () => {
+    installRecordingMocks();
+    ensureLocalStorage();
+    window.localStorage.setItem(
+      "zoption:assistant-voice-options:test-user",
+      JSON.stringify({ submissionMode: "review", replyMode: "spoken", speechVoice: "bright" }),
+    );
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      speechAvailable: true,
+      reviewRequired: false,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
+      ttsModel: "s2.1-pro-free",
+    });
+    apiMocks.transcribeAssistantVoice.mockResolvedValue({
+      text: "Where did my money go?",
+      durationSeconds: 2,
+    });
+    const onTranscript = vi.fn();
+
+    try {
+      render(
+        <AssistantVoiceControl
+          workspace={workspace}
+          disabled={false}
+          reviewRequired={false}
+          onTranscript={onTranscript}
+        />,
+      );
+      await act(async () => Promise.resolve());
+
+      fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
+      await act(async () => Promise.resolve());
+      fireEvent.click(screen.getByRole("button", { name: "Stop voice recording" }));
+
+      await waitFor(() =>
+        expect(onTranscript).toHaveBeenCalledWith("Where did my money go?", {
+          submissionMode: "review",
+          replyMode: "text",
+          speechVoice: "default",
+        }),
+      );
+    } finally {
+      window.localStorage.removeItem("zoption:assistant-voice-options:test-user");
+    }
   });
 
   it("stops after the speaker falls silent and waits for the completed transcript", async () => {
@@ -412,9 +395,6 @@ describe("AssistantVoiceControl", () => {
       />,
     );
     await act(async () => Promise.resolve());
-    fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
-    fireEvent.click(screen.getByRole("radio", { name: /Text only/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Close voice settings" }));
 
     sampleLevel = 160;
     fireEvent.click(screen.getByRole("button", { name: "Start voice recording" }));
@@ -443,93 +423,6 @@ describe("AssistantVoiceControl", () => {
       replyMode: "text",
       speechVoice: "default",
     });
-  });
-
-  it("offers gender-labelled voices, saves the choice, and previews fixed audio", async () => {
-    const createObjectURL = vi.fn(() => "blob:voice-preview");
-    const revokeObjectURL = vi.fn();
-    vi.stubGlobal("URL", {
-      ...URL,
-      createObjectURL,
-      revokeObjectURL,
-    });
-    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
-    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
-
-    render(
-      <AssistantVoiceControl
-        workspace={workspace}
-        disabled={false}
-        reviewRequired={false}
-        onTranscript={vi.fn()}
-      />,
-    );
-
-    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("button", { name: "Voice settings" }));
-
-    const voiceSelect = screen.getByLabelText("Voice and gender");
-    expect(voiceSelect).toHaveTextContent("Default · Male");
-    expect(voiceSelect).toHaveTextContent("Bright · Female");
-    expect(voiceSelect).toHaveTextContent("Energetic · Female");
-
-    fireEvent.change(voiceSelect, { target: { value: "energetic" } });
-    expect(screen.getByText("An upbeat, energetic female voice.")).toBeInTheDocument();
-    expect(
-      JSON.parse(window.localStorage.getItem("zoption:assistant-voice-options:test-user")!),
-    ).toEqual({
-      submissionMode: "review",
-      replyMode: "spoken",
-      speechVoice: "energetic",
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
-    await waitFor(() =>
-      expect(apiMocks.getAssistantVoicePreview).toHaveBeenCalledWith(workspace, "energetic"),
-    );
-    expect(await screen.findByLabelText("Energetic voice preview")).toHaveAttribute(
-      "src",
-      "blob:voice-preview",
-    );
-    expect(createObjectURL).toHaveBeenCalledOnce();
-  });
-
-  it("points first-time users to voice settings and remembers the choice", async () => {
-    const firstRender = render(
-      <AssistantVoiceControl
-        workspace={workspace}
-        disabled={false}
-        reviewRequired={false}
-        onTranscript={vi.fn()}
-      />,
-    );
-
-    const tip = await screen.findByRole("complementary", { name: "Voice model tip" });
-    expect(tip).toHaveTextContent("change the voice model anytime in Voice Settings");
-
-    fireEvent.click(screen.getByRole("button", { name: "Choose a voice" }));
-
-    expect(
-      screen.queryByRole("complementary", { name: "Voice model tip" }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole("dialog", { name: "Voice settings" })).toBeInTheDocument();
-    expect(window.localStorage.getItem("zoption:assistant-voice-model-hint:v1:test-user")).toBe(
-      "true",
-    );
-
-    firstRender.unmount();
-    render(
-      <AssistantVoiceControl
-        workspace={workspace}
-        disabled={false}
-        reviewRequired={false}
-        onTranscript={vi.fn()}
-      />,
-    );
-    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalledTimes(2));
-    expect(
-      screen.queryByRole("complementary", { name: "Voice model tip" }),
-    ).not.toBeInTheDocument();
   });
 
   it("removes transcript guidance once the reviewed message is sent", async () => {

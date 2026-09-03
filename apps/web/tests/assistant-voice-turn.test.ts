@@ -7,6 +7,7 @@ const turn: AssistantTurnResult = {
   thread: {
     id: "thread-1",
     title: "Budget review",
+    kind: "text",
     lastMessageAt: "2026-08-12T10:00:00.000Z",
     createdAt: "2026-08-12T10:00:00.000Z",
   },

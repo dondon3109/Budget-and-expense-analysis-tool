@@ -228,6 +228,7 @@ export const assistantMessageInputSchema = z
   .object({
     message: z.string().trim().min(1).max(2_000),
     clientRequestId: z.string().uuid(),
+    kind: z.enum(["text", "voice"]).optional(),
   })
   .strict();
 
@@ -1064,6 +1065,7 @@ export const assistantThreadSchema = z
   .object({
     id: z.string().uuid(),
     title: z.string().min(1).max(240),
+    kind: z.enum(["text", "voice"]).default("text"),
     lastMessageAt: z.iso.datetime(),
     createdAt: z.iso.datetime(),
   })

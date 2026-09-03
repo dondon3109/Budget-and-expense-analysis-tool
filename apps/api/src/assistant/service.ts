@@ -353,7 +353,12 @@ export function createAssistantService(
 
     async createThreadTurn(env, tenantId, input, execution) {
       await requireReadyPreferences(env, tenantId);
-      const thread = await repository.createThread(env, tenantId, input.message);
+      const thread = await repository.createThread(
+        env,
+        tenantId,
+        input.message,
+        input.kind === "voice" ? "voice" : "text",
+      );
       return runTurn(env, tenantId, thread.id, input, execution);
     },
 

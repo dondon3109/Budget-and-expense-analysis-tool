@@ -1,6 +1,5 @@
 import {
   CURRENT_ASSISTANT_CONSENT_VERSION,
-  type AssistantSpeechVoice,
   type AssistantMessagePage,
   type AssistantThreadPage,
   type AssistantTurnResult,
@@ -13,19 +12,12 @@ import { useAssistantSession } from "../assistant/AssistantSessionProvider";
 import { useAuth } from "../auth/AuthProvider";
 import { AssistantComposer } from "../components/assistant/AssistantComposer";
 import { AssistantConsent } from "../components/assistant/AssistantConsent";
-import {
-  AssistantConversation,
-  type AssistantMessageVoiceReply,
-} from "../components/assistant/AssistantConversation";
+import { AssistantConversation } from "../components/assistant/AssistantConversation";
 import { AssistantIdentityDialog } from "../components/assistant/AssistantIdentityDialog";
 import { AssistantMemoryPanel } from "../components/assistant/AssistantMemoryPanel";
 import { AssistantThreadList } from "../components/assistant/AssistantThreadList";
-import {
-  AssistantVoiceControl,
-  type AssistantVoiceReplyMode,
-  type AssistantVoiceTranscriptOptions,
-} from "../components/assistant/AssistantVoiceControl";
-import { prepareAssistantTurn } from "../components/assistant/prepareAssistantTurn";
+import { AssistantVoiceControl } from "../components/assistant/AssistantVoiceControl";
+import { AssistantVoiceConversation } from "../components/assistant/AssistantVoiceConversation";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
 import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
@@ -41,7 +33,6 @@ import {
   getAssistantPreferences,
   getAssistantThreads,
   getTransferFeeInsight,
-  getAssistantVoiceSpeech,
   grantAssistantConsent,
   isBillingEnforcementError,
   isUsageLimitReachedError,
@@ -67,18 +58,13 @@ export function AssistantPage() {
   const historyToggleRef = useRef<HTMLButtonElement>(null);
   const historyCloseRef = useRef<HTMLButtonElement>(null);
   const historyWasOpenRef = useRef(false);
-  const voiceTurnRef = useRef<Pick<
-    AssistantVoiceTranscriptOptions,
-    "replyMode" | "speechVoice"
-  > | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string>();
   const [sendError, setSendError] = useState<Error>();
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
-  const [voiceReplies, setVoiceReplies] = useState<Record<string, AssistantMessageVoiceReply>>({});
-  const voiceAudioUrlsRef = useRef(new Set<string>());
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const preferences = useQuery({
     queryKey: queryKeys.assistantPreferences(workspace),
@@ -129,14 +115,6 @@ export function AssistantPage() {
     else if (historyWasOpenRef.current) historyToggleRef.current?.focus();
     historyWasOpenRef.current = historyOpen;
   }, [historyOpen]);
-
-  useEffect(
-    () => () => {
-      for (const audioUrl of voiceAudioUrlsRef.current) URL.revokeObjectURL(audioUrl);
-      voiceAudioUrlsRef.current.clear();
-    },
-    [],
-  );
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -212,43 +190,17 @@ export function AssistantPage() {
     );
   }
 
+  // Text chat is mic-in / text-out. It never requests Fish Audio speech, even
+  // when an older browser profile still stores replyMode "spoken".
   const sendMutation = useMutation({
-    mutationFn: async ({
-      message,
-      voiceReply,
-      speechVoice,
-    }: {
-      message: string;
-      voiceReply?: AssistantVoiceReplyMode;
-      speechVoice?: AssistantSpeechVoice;
-    }) => {
+    mutationFn: async ({ message }: { message: string }) => {
       const input = { message, clientRequestId: requestId() };
-      return prepareAssistantTurn({
-        send: () =>
-          activeThreadId
-            ? sendAssistantMessage(workspace, { threadId: activeThreadId, input })
-            : createAssistantThread(workspace, input),
-        replyMode: voiceReply,
-        speechVoice,
-        voiceEnabled: __ASSISTANT_VOICE_ENABLED__,
-        getSpeech: (assistantMessageId, voice) =>
-          getAssistantVoiceSpeech(workspace, assistantMessageId, voice),
-      });
+      const result = activeThreadId
+        ? await sendAssistantMessage(workspace, { threadId: activeThreadId, input })
+        : await createAssistantThread(workspace, input);
+      return { result };
     },
-    onSuccess: ({ result, voice }) => {
-      if (voice) {
-        const messageId = result.assistantMessage.id;
-        if (voice.audio) {
-          const audioUrl = URL.createObjectURL(voice.audio);
-          voiceAudioUrlsRef.current.add(audioUrl);
-          setVoiceReplies((current) => ({ ...current, [messageId]: { audioUrl } }));
-        } else {
-          setVoiceReplies((current) => ({
-            ...current,
-            [messageId]: { error: voice.error },
-          }));
-        }
-      }
+    onSuccess: ({ result }) => {
       cacheTurn(result);
       setActiveThreadId(result.thread.id);
       setDraft("");
@@ -256,7 +208,6 @@ export function AssistantPage() {
       setSendError(undefined);
     },
     onError: (error) => {
-      voiceTurnRef.current = null;
       setPendingMessage(undefined);
       const nextError =
         error instanceof Error ? error : new Error("Your message could not be sent.");
@@ -324,23 +275,14 @@ export function AssistantPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
   });
 
-  function sendMessage(
-    messageValue: string,
-    voiceOptions?: Pick<AssistantVoiceTranscriptOptions, "replyMode" | "speechVoice">,
-  ) {
+  function sendMessage(messageValue: string) {
     const message = messageValue.trim();
     if (!message || sendMutation.isPending) return;
-    const requestedVoice = voiceOptions ?? voiceTurnRef.current ?? undefined;
-    voiceTurnRef.current = null;
     limitTriggerRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setPendingMessage(message);
     setSendError(undefined);
-    sendMutation.mutate({
-      message,
-      voiceReply: requestedVoice?.replyMode,
-      speechVoice: requestedVoice?.speechVoice,
-    });
+    sendMutation.mutate({ message });
   }
 
   function send() {
@@ -350,7 +292,11 @@ export function AssistantPage() {
   function startNew() {
     startNewChat();
     setSendError(undefined);
-    voiceTurnRef.current = null;
+    setHistoryOpen(false);
+  }
+
+  function startVoice() {
+    setVoiceOpen(true);
     setHistoryOpen(false);
   }
 
@@ -403,6 +349,34 @@ export function AssistantPage() {
       : undefined;
   const busy = sendMutation.isPending || deleteMutation.isPending || deleteAllMutation.isPending;
 
+  if (voiceOpen) {
+    return (
+      <AppShell>
+        <AssistantVoiceConversation
+          workspace={workspace}
+          assistantName={assistantName}
+          onClose={() => setVoiceOpen(false)}
+          onTurnComplete={(result) => {
+            cacheTurn(result);
+            setActiveThreadId(result.thread.id);
+          }}
+        />
+        {(identityRequired || editingIdentity) && (
+          <AssistantIdentityDialog
+            required={identityRequired}
+            assistantName={preferences.data?.assistantName}
+            userPreferredName={preferences.data?.userPreferredName}
+            profileDisplayName={profileDisplayName}
+            busy={identityMutation.isPending}
+            serverError={identityMutation.error?.message}
+            onSubmit={(identity) => identityMutation.mutate(identity)}
+            onClose={() => setEditingIdentity(false)}
+          />
+        )}
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="assistant-page">
@@ -421,6 +395,7 @@ export function AssistantPage() {
               setHistoryOpen(false);
             }}
             onNew={startNew}
+            onVoice={startVoice}
             onEditIdentity={() => setEditingIdentity(true)}
             onDelete={(threadId) => deleteMutation.mutateAsync(threadId)}
             onDeleteAll={() => deleteAllMutation.mutateAsync()}
@@ -496,9 +471,7 @@ export function AssistantPage() {
                 messages={messages.data?.items ?? []}
                 pendingMessage={pendingMessage}
                 loading={sendMutation.isPending || (Boolean(activeThreadId) && messages.isLoading)}
-                voiceReplies={voiceReplies}
                 onPrompt={(prompt) => {
-                  voiceTurnRef.current = null;
                   setDraft(prompt);
                 }}
                 feeInsight={feeInsightQuery.data}
@@ -513,7 +486,6 @@ export function AssistantPage() {
               }
               onChange={(value) => {
                 setDraft(value);
-                if (!value.trim()) voiceTurnRef.current = null;
                 if (sendError) setSendError(undefined);
               }}
               onSend={send}
@@ -527,11 +499,7 @@ export function AssistantPage() {
                       setDraft(partial);
                       setSendError(undefined);
                     }}
-                    onTranscript={(transcript, voiceOptions) => {
-                      voiceTurnRef.current = {
-                        replyMode: voiceOptions.replyMode,
-                        speechVoice: voiceOptions.speechVoice,
-                      };
+                    onTranscript={(transcript) => {
                       setDraft(transcript);
                       setSendError(undefined);
                     }}

@@ -39,7 +39,6 @@ import {
 import { getAssistantVoicePreferences, grantAssistantVoiceConsent } from "@/api/assistant-voice";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { useSessionSnapshot } from "@/auth/session-state";
-import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import {
   BottomSheet,
   Button,
@@ -70,14 +69,9 @@ import {
   AssistantUpgradeBanner,
   formatRecordingElapsed,
   MemoryPreferencesBlock,
-  VoiceModelField,
   VoiceRecordButton,
 } from "./assistant-ui";
-import {
-  useAssistantRecorder,
-  useAssistantVoicePreview,
-  useSpokenReplies,
-} from "./assistant-voice-hooks";
+import { useAssistantRecorder } from "./assistant-voice-hooks";
 
 type AssistantView = "threads" | "chat";
 
@@ -95,7 +89,6 @@ interface VoiceError {
 export function AssistantScreen() {
   const theme = useZoptionTheme();
   const session = useSessionSnapshot();
-  const voiceOptions = useAssistantVoiceOptionsStore();
   const netInfo = useNetInfo();
   const isOffline = netInfo.isConnected === false || netInfo.isInternetReachable === false;
 
@@ -138,12 +131,6 @@ export function AssistantScreen() {
       mounted.current = false;
     };
   }, []);
-
-  // Harmless, user-scoped UI preferences are reset when the identity changes so
-  // one account never inherits another account's assistant options.
-  useEffect(() => {
-    voiceOptions.ensureSubject(session.subject);
-  }, [session.subject, voiceOptions]);
 
   const withToken = useCallback(
     async <T,>(operation: (token: string) => Promise<T>): Promise<T> => {
@@ -249,12 +236,6 @@ export function AssistantScreen() {
     setVoiceError({ message: error.message });
   }, []);
 
-  const spokenReplies = useSpokenReplies({
-    getAccessToken: session.getAccessToken,
-    onError: handleVoiceError,
-  });
-  const voicePreview = useAssistantVoicePreview({ getAccessToken: session.getAccessToken });
-
   const handleSend = useCallback(
     async (text?: string) => {
       const message = (text ?? draft).trim();
@@ -294,14 +275,6 @@ export function AssistantScreen() {
           ...previous.filter((item) => item.id !== turn.thread.id),
         ]);
         void loadThreads();
-        // When spoken replies are requested, play the new answer automatically.
-        if (
-          voicePreferences?.enabled === true &&
-          voicePreferences.speechAvailable &&
-          voiceOptions.replyMode === "voice"
-        ) {
-          void spokenReplies.listen(turn.assistantMessage.id, voiceOptions.voice);
-        }
         requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
       } catch (error) {
         if (!mounted.current) return;
@@ -316,16 +289,7 @@ export function AssistantScreen() {
         if (mounted.current) setSending(false);
       }
     },
-    [
-      activeThreadId,
-      draft,
-      sending,
-      spokenReplies,
-      voiceOptions.replyMode,
-      voiceOptions.voice,
-      voicePreferences,
-      withToken,
-    ],
+    [activeThreadId, draft, sending, withToken],
   );
 
   const recorder = useAssistantRecorder({
@@ -569,6 +533,7 @@ export function AssistantScreen() {
     [managingThreads, openThread],
   );
 
+  // Text chat is mic-in / text-out: assistant answers are never spoken here.
   const renderMessage = useCallback(
     ({ item }: ListRenderItemInfo<AssistantWireMessage>) => (
       <AssistantMessageBubble
@@ -577,18 +542,9 @@ export function AssistantScreen() {
         status={item.status}
         createdAt={item.createdAt}
         evidenceLabel={evidenceLabelFor(item)}
-        listening={spokenReplies.playingMessageId === item.id}
-        onListen={
-          item.role === "assistant" &&
-          item.status === "completed" &&
-          voicePreferences?.enabled === true &&
-          voicePreferences.speechAvailable
-            ? () => void spokenReplies.listen(item.id, voiceOptions.voice)
-            : undefined
-        }
       />
     ),
-    [spokenReplies.playingMessageId, spokenReplies.listen, voicePreferences, voiceOptions],
+    [],
   );
 
   const settingsAction = (
@@ -952,48 +908,15 @@ export function AssistantScreen() {
             }
           />
 
-          <Text style={[typography.label, { color: theme.colors.text }]}>Voice</Text>
+          <Text style={[typography.label, { color: theme.colors.text }]}>Voice input</Text>
           {voicePreferences?.enabled !== true || voicePreferences.consentedAt === null ? (
             <VoiceConsentBlock busy={busyAction === "voice"} onEnable={() => void enableVoice()} />
           ) : (
-            <View className="gap-3">
-              <SelectionField
-                label="Replies"
-                value={voiceOptions.replyMode}
-                options={[
-                  { id: "text", label: "Text only" },
-                  {
-                    id: "voice",
-                    label: "Voice + text",
-                    detail: "Generated speech with each answer",
-                  },
-                ]}
-                placeholder="Text only"
-                sheetTitle="Reply mode"
-                disabled={!voicePreferences.speechAvailable}
-                onSelect={(value) => voiceOptions.setReplyMode(value as "text" | "voice")}
-              />
-              {!voicePreferences.speechAvailable ? (
-                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                  Spoken replies are unavailable in this environment.
-                </Text>
-              ) : null}
-              <VoiceModelField
-                voice={voiceOptions.voice}
-                disabled={!voicePreferences.speechAvailable}
-                previewingVoice={voicePreview.previewingVoice}
-                previewError={voicePreview.previewError}
-                onSelect={(voice) => {
-                  voicePreview.clearPreview();
-                  voiceOptions.setVoice(voice);
-                }}
-                onPreview={(voice) => void voicePreview.preview(voice)}
-              />
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                Recordings are transcribed by Cloudflare Workers AI and spoken replies are generated
-                by Fish Audio. Zoption does not store your recordings or the generated audio.
-              </Text>
-            </View>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              The microphone fills the message box with text. Recordings are transcribed by
+              Cloudflare Workers AI and never stored. Assistant answers on this screen are always
+              text.
+            </Text>
           )}
 
           <Text style={[typography.label, { color: theme.colors.text }]}>Memory</Text>
@@ -1056,12 +979,12 @@ function VoiceConsentBlock({ busy, onEnable }: { busy: boolean; onEnable: () => 
   return (
     <View className="gap-3">
       <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-        Enable voice mode to ask questions aloud and hear spoken replies. Your recording is sent to
-        Cloudflare Workers AI for transcription; generated speech is provided by Fish Audio. Zoption
-        does not store recordings or generated audio.
+        Enable voice input to dictate questions into the message box. Your recording is sent to
+        Cloudflare Workers AI for transcription only. Zoption does not store recordings, and
+        answers on this screen are always text.
       </Text>
       <Button variant="secondary" loading={busy} onPress={onEnable}>
-        Enable voice mode
+        Enable voice input
       </Button>
     </View>
   );

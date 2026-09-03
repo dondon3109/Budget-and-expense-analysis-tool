@@ -59,6 +59,7 @@ const AUDIT = {
 const THREAD: AssistantThread = {
   id: THREAD_ID,
   title: "How much did I spend?",
+  kind: "text",
   lastMessageAt: "2026-07-30T00:00:00.000Z",
   createdAt: "2026-07-30T00:00:00.000Z",
 };

@@ -475,6 +475,7 @@ export const assistantThreads = sqliteTable(
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
+    kind: text("kind", { enum: ["text", "voice"] }).notNull().default("text"),
     lastMessageAt: text("last_message_at")
       .notNull()
       .default(sql`(datetime('now'))`),

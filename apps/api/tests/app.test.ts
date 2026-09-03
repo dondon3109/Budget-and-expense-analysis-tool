@@ -895,6 +895,7 @@ describe("API foundation", () => {
         thread: {
           id: "00000000-0000-4000-8000-000000000001",
           title: "Assistant test",
+          kind: "text",
           lastMessageAt: "2026-08-10T00:00:01.000Z",
           createdAt: "2026-08-10T00:00:00.000Z",
         },
