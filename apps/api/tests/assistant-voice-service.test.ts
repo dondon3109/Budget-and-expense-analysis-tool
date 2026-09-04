@@ -122,6 +122,14 @@ describe("assistant voice service", () => {
     expect(assistantSpeechText(`You spent ${written} today.`)).toBe(`You spent ${spoken} today.`);
   });
 
+  it.each([
+    ["Your total spending this month is PHP 0.00.", "Your total spending this month is 0 pesos."],
+    ["Your total this year is PHP 12,450.00.", "Your total this year is 12,450 pesos."],
+    ["You paid ₱70.50.", "You paid 70 pesos and 50 centavos."],
+  ])("reads sentence-final amounts as words: %s", (written, spoken) => {
+    expect(assistantSpeechText(written)).toBe(spoken);
+  });
+
   it("previews a curated voice without sending tenant records", async () => {
     const voiceProviders = providers();
     const service = createAssistantVoiceService(repository(false), voiceProviders);

@@ -16,8 +16,11 @@ import { AssistantVoiceProviderError, type AssistantVoiceProviders } from "./voi
 const FREE_TTS_MODEL = FISH_FREE_MODEL;
 const MAX_SPEECH_CHARACTERS = 6_000;
 const VOICE_PREVIEW_TEXT = "Your total spending is 70 pesos.";
+// The trailing guard rejects a digit (longer number) or a dot followed by a
+// digit (extra decimal places), but allows sentence-ending punctuation such as
+// "PHP 0.00." so end-of-sentence totals still reach the TTS engine as words.
 const PHILIPPINE_PESO_AMOUNT =
-  /(-)?(?:\bPHP|₱)\s*(-)?((?:\d{1,3}(?:,\d{3})+|\d+))(?:\.(\d{1,2}))?(?![\d.])/gi;
+  /(-)?(?:\bPHP|₱)\s*(-)?((?:\d{1,3}(?:,\d{3})+|\d+))(?:\.(\d{1,2}))?(?!\d|\.\d)/gi;
 
 export interface AssistantVoiceService {
   getPreferences(env: Bindings, tenantId: string): Promise<AssistantVoicePreferences>;
