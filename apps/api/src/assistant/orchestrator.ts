@@ -202,7 +202,10 @@ export function createAssistantOrchestrator(
       }
 
       const messages = providerMessages(history, message, identity, policy, memory);
-      const overallTimeoutMs = configuredNumber(env.ASSISTANT_OVERALL_TIMEOUT_MS, 25_000);
+      // A turn can need all four provider calls (tool round, draft, corrective
+      // retry) at up to the per-call provider ceiling each, plus tool time, so
+      // the overall budget must comfortably exceed 4 x provider timeout.
+      const overallTimeoutMs = configuredNumber(env.ASSISTANT_OVERALL_TIMEOUT_MS, 60_000);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort("assistant_timeout"), overallTimeoutMs);
       let totalToolCalls = 0;
