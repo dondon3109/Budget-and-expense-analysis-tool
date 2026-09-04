@@ -123,6 +123,20 @@ describe("assistant accessibility-critical interactions", () => {
     expect(screen.getByText("Not sent. Try asking again.")).toBeTruthy();
   });
 
+  it("renders sent user messages with timestamp without sending or loading status", async () => {
+    await render(
+      <AssistantMessageBubble
+        role="user"
+        content="How much did I spend this month?"
+        status="completed"
+        createdAt="2026-05-01T08:00:00.000Z"
+      />,
+    );
+    expect(screen.getByText("How much did I spend this month?")).toBeTruthy();
+    expect(screen.queryByText(/sending/i)).toBeNull();
+    expect(screen.queryByText(/loading/i)).toBeNull();
+  });
+
   it("keeps the plan-limit banner actionable", async () => {
     const onReviewPlan = jest.fn();
     const onDismiss = jest.fn();

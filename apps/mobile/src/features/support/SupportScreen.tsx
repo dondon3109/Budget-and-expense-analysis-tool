@@ -3,8 +3,8 @@ import * as Crypto from "expo-crypto";
 import type { BugReport, BugReportDraft } from "@zoption/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   type ListRenderItemInfo,
   Platform,
@@ -113,6 +113,13 @@ export function SupportScreen() {
   useEffect(() => {
     void loadReports();
   }, [loadReports]);
+
+  useEffect(() => {
+    const subscription = Keyboard.addListener("keyboardDidShow", () => {
+      listRef.current?.scrollToEnd({ animated: true });
+    });
+    return () => subscription.remove();
+  }, []);
 
   const toggleReport = useCallback(
     async (report: BugReport) => {
@@ -269,13 +276,19 @@ export function SupportScreen() {
       </View>
 
       {section === "ask" ? (
-        <View style={styles.chat}>
+        <KeyboardAvoidingView
+          style={styles.chat}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
+        >
           <FlatList
             ref={listRef}
             data={messages}
             keyExtractor={(item, index) => index + ":" + item.role}
             contentContainerStyle={styles.chatContent}
             renderItem={renderSupportMessage}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             ListHeaderComponent={
               <Text
                 style={[
@@ -342,49 +355,37 @@ export function SupportScreen() {
             </Text>
           ) : null}
 
-          {/* Edge-to-edge on Android 15+ stops the OS from resizing the
-              window for the keyboard, so Android needs an explicit avoiding
-              behavior instead of relying on adjustResize. */}
-          <KeyboardAvoidingView
-            behavior="padding"
-            keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
+          <View
+            style={[
+              styles.composer,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            ]}
           >
-            <View
+            <TextInput
+              accessibilityLabel="Message Zoption Support"
+              multiline
+              value={draftText}
+              onChangeText={setDraftText}
+              placeholder="Describe what you need help with"
+              placeholderTextColor={theme.colors.textMuted}
+              maxLength={1200}
+              style={[styles.input, { color: theme.colors.text }]}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Send support message"
+              accessibilityState={{ disabled: !canSend }}
+              disabled={!canSend}
+              onPress={() => void sendChat()}
               style={[
-                styles.composer,
-                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                styles.sendButton,
+                { backgroundColor: canSend ? theme.colors.brand : theme.colors.border },
               ]}
             >
-              <TextInput
-                accessibilityLabel="Message Zoption Support"
-                multiline
-                value={draftText}
-                onChangeText={setDraftText}
-                placeholder="Describe what you need help with"
-                placeholderTextColor={theme.colors.textMuted}
-                maxLength={1200}
-                style={[styles.input, { color: theme.colors.text }]}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Send support message"
-                accessibilityState={{ disabled: !canSend }}
-                disabled={!canSend}
-                onPress={() => void sendChat()}
-                style={[
-                  styles.sendButton,
-                  { backgroundColor: canSend ? theme.colors.brand : theme.colors.border },
-                ]}
-              >
-                {busy ? (
-                  <ActivityIndicator color={theme.colors.onBrand} size="small" />
-                ) : (
-                  <MaterialCommunityIcons name="arrow-up" size={22} color={theme.colors.onBrand} />
-                )}
-              </Pressable>
-            </View>
-          </KeyboardAvoidingView>
-        </View>
+              <MaterialCommunityIcons name="arrow-up" size={22} color={theme.colors.onBrand} />
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
       ) : (
         <View style={styles.reports}>
           {reportsPhase === "loading" ? (

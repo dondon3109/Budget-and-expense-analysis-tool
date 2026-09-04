@@ -207,8 +207,9 @@ export function AssistantPage() {
       setPendingMessage(undefined);
       setSendError(undefined);
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       setPendingMessage(undefined);
+      setDraft(variables.message);
       const nextError =
         error instanceof Error ? error : new Error("Your message could not be sent.");
       setSendError(nextError);
@@ -281,6 +282,7 @@ export function AssistantPage() {
     limitTriggerRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setPendingMessage(message);
+    setDraft("");
     setSendError(undefined);
     sendMutation.mutate({ message });
   }

@@ -332,14 +332,14 @@ export function AssistantConversation({
         );
       })}
       {pendingMessage && (
-        <article className="assistant-message user pending">
+        <article className="assistant-message user">
           <span className="assistant-message-avatar" aria-hidden="true">
             <UserRound size={16} />
           </span>
           <div>
             <div className="assistant-message-meta">
               <strong>You</strong>
-              <span>Sending</span>
+              <span>Sent</span>
             </div>
             <p>{pendingMessage}</p>
           </div>

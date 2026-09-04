@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   type ListRenderItemInfo,
   Platform,
@@ -214,6 +215,13 @@ export function AssistantScreen() {
     }
   }, [phase, preferences, loadThreads]);
 
+  useEffect(() => {
+    const subscription = Keyboard.addListener("keyboardDidShow", () => {
+      listRef.current?.scrollToEnd({ animated: true });
+    });
+    return () => subscription.remove();
+  }, []);
+
   const openThread = useCallback(
     async (threadId: string) => {
       setActiveThreadId(threadId);
@@ -291,7 +299,21 @@ export function AssistantScreen() {
       setInlineError(null);
       setLimitBanner(null);
       setVoiceError(null);
+      setDraft("");
+
       const clientRequestId = newClientRequestId();
+      const optimisticMessageId = `optimistic-${clientRequestId}`;
+      const optimisticUserMessage: AssistantWireMessage = {
+        id: optimisticMessageId,
+        threadId: activeThreadId ?? "pending",
+        role: "user",
+        content: message,
+        status: "completed",
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((previous) => [...previous, optimisticUserMessage]);
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+
       try {
         const turn = await withToken((token) =>
           activeThreadId === null
@@ -305,12 +327,14 @@ export function AssistantScreen() {
         setActiveThreadId(turn.thread.id);
         setMessages((previous) => [
           ...previous.filter(
-            (item) => item.id !== turn.userMessage.id && item.id !== turn.assistantMessage.id,
+            (item) =>
+              item.id !== optimisticMessageId &&
+              item.id !== turn.userMessage.id &&
+              item.id !== turn.assistantMessage.id,
           ),
           turn.userMessage,
           turn.assistantMessage,
         ]);
-        setDraft("");
         setView("chat");
         setThreads((previous) => [
           turn.thread,
@@ -320,6 +344,11 @@ export function AssistantScreen() {
         requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
       } catch (error) {
         if (!mounted.current) return;
+        setMessages((previous) =>
+          previous.map((item) =>
+            item.id === optimisticMessageId ? { ...item, status: "failed" } : item,
+          ),
+        );
         if (error instanceof ApiTransportError && error.code === "plan_limit") {
           setLimitBanner(error.message);
         } else {
@@ -783,7 +812,11 @@ export function AssistantScreen() {
           }
         />
       ) : (
-        <View style={styles.chat}>
+        <KeyboardAvoidingView
+          style={styles.chat}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
+        >
           <FlatList
             ref={listRef}
             data={messages}
@@ -791,6 +824,8 @@ export function AssistantScreen() {
             contentContainerStyle={styles.chatContent}
             renderItem={renderMessage}
             ItemSeparatorComponent={MessageListSeparator}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             ListEmptyComponent={
               loadingMessages ? (
                 <ActivityIndicator color={theme.colors.brand} />
@@ -851,62 +886,50 @@ export function AssistantScreen() {
               </Text>
             </View>
           ) : null}
-          {/* Edge-to-edge on Android 15+ stops the OS from resizing the
-              window for the keyboard, so Android needs an explicit avoiding
-              behavior instead of relying on adjustResize. */}
-          <KeyboardAvoidingView
-            behavior="padding"
-            keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
+          <View
+            style={[
+              styles.composer,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            ]}
           >
-            <View
+            {voicePreferences?.enabled === true ? (
+              <VoiceRecordButton
+                phase={recorder.phase}
+                onPress={() => {
+                  if (recorder.phase === "recording") void recorder.stopAndTranscribe();
+                  else if (voicePreferences.consentedAt === null) void enableVoice();
+                  else if (recorder.phase === "idle") void recorder.startRecording();
+                }}
+              />
+            ) : null}
+            <TextInput
+              accessibilityLabel="Message the assistant"
+              multiline
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Ask about your finances"
+              placeholderTextColor={theme.colors.textMuted}
+              maxLength={MAX_ASSISTANT_MESSAGE_LENGTH + 200}
+              style={[styles.input, { color: theme.colors.text }]}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+              accessibilityState={{ disabled: !draftValid || sending }}
+              disabled={!draftValid || sending}
+              onPress={() => void handleSend()}
               style={[
-                styles.composer,
-                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                styles.sendButton,
+                {
+                  backgroundColor:
+                    draftValid && !sending ? theme.colors.brand : theme.colors.border,
+                },
               ]}
             >
-              {voicePreferences?.enabled === true ? (
-                <VoiceRecordButton
-                  phase={recorder.phase}
-                  onPress={() => {
-                    if (recorder.phase === "recording") void recorder.stopAndTranscribe();
-                    else if (voicePreferences.consentedAt === null) void enableVoice();
-                    else if (recorder.phase === "idle") void recorder.startRecording();
-                  }}
-                />
-              ) : null}
-              <TextInput
-                accessibilityLabel="Message the assistant"
-                multiline
-                value={draft}
-                onChangeText={setDraft}
-                placeholder="Ask about your finances"
-                placeholderTextColor={theme.colors.textMuted}
-                maxLength={MAX_ASSISTANT_MESSAGE_LENGTH + 200}
-                style={[styles.input, { color: theme.colors.text }]}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Send message"
-                accessibilityState={{ disabled: !draftValid || sending }}
-                disabled={!draftValid || sending}
-                onPress={() => void handleSend()}
-                style={[
-                  styles.sendButton,
-                  {
-                    backgroundColor:
-                      draftValid && !sending ? theme.colors.brand : theme.colors.border,
-                  },
-                ]}
-              >
-                {sending ? (
-                  <ActivityIndicator color={theme.colors.onBrand} size="small" />
-                ) : (
-                  <MaterialCommunityIcons name="arrow-up" size={22} color={theme.colors.onBrand} />
-                )}
-              </Pressable>
-            </View>
-          </KeyboardAvoidingView>
-        </View>
+              <MaterialCommunityIcons name="arrow-up" size={22} color={theme.colors.onBrand} />
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
       )}
 
       <BottomSheet
