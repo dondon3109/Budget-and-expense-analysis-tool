@@ -16,6 +16,10 @@ terminal outcome:
   `android/latest.json` verified, when publishing was approved).
 - OTA (`Mobile OTA Update`, when dispatched): EAS update published.
 
+Like `babysit-pr`, fix source-related failures forward and re-release: patch
+the code, verify locally, commit, push, and resume watching the new run in
+the same turn. A fix push is a progress event, never a stop.
+
 Stop only for a terminal outcome or a blocker that needs Don. Do not stop on a
 single `idle`/pending snapshot.
 
@@ -47,13 +51,16 @@ Accept any of the following:
    (`gh run view <run-id> --json jobs`, then the Actions job-logs endpoint for
    the failed `job_id`; `gh run view <run-id> --log-failed` only after the run
    finishes).
-6. Classify each failure as branch/source-related vs flaky/infra (see below)
-   and act accordingly. After any rerun or approved dispatch, keep polling the
-   new attempt in the same turn.
-7. Never auto-push fixes to `main`, never manually deploy the production
-   Worker/Pages while `Production Release` is running, and never enable the
-   Android `publish_apk` / `publish_latest_json` inputs or dispatch OTA
-   without Don's explicit approval for that version.
+6. Classify each failure as source-related vs flaky/infra (see below) and act
+   accordingly. If source-related, fix forward and re-release (see below),
+   then keep polling the new run in the same turn. If flaky/infra, rerun
+   failed jobs first; only fix forward when reruns prove it is not a flake.
+7. Never manually deploy the production Worker/Pages while
+   `Production Release` is running, and never enable the Android
+   `publish_apk` / `publish_latest_json` inputs or dispatch OTA without
+   Don's explicit approval for that version. Fix-forward pushes to `main`
+   are allowed under the Safety Rules below; that approval does not extend
+   to publish inputs or OTA dispatch.
 8. Report status changes concisely plus occasional heartbeats; emit the final
    summary only at a strict stop condition.
 
@@ -141,6 +148,27 @@ network outages, or Actions infra errors. Rerun failed jobs for flakes
 (`gh run rerun <run-id> --failed`), up to 3 cycles; do not edit tests, build
 scripts, CI config, pins, or infra code to force green.
 
+## Fix Forward and Re-release
+
+When a failure is source-related (failed logs point at landed code), resolve
+it the way `babysit-pr` resolves branch failures:
+
+1. Patch the code locally. Before editing, check for unrelated uncommitted
+   changes; if present, stop and ask Don instead of mixing concerns.
+2. Verify the fix locally with the same check that failed (`pnpm lint`,
+   `pnpm typecheck`, the failing test, or the failing build) before pushing.
+3. Commit with a `feat:`/`fix:` type so semantic-release picks it up for the
+   re-release (e.g. `fix(web): ...`). Never use `[skip ci]`.
+4. Push to `main` (forward-only; never force-push), then immediately resume
+   polling in the same turn: the push retriggers CI, and CI success
+   retriggers `Production Release` automatically.
+5. For `Android Beta Build` failures: dispatch workflows do not retrigger on
+   push, so after the fix lands, re-dispatch build-only validation with
+   `gh workflow run android-beta.yml` (defaults keep both publish inputs
+   `false`). Publish inputs still need Don's per-version approval.
+6. Never auto-dispatch `Mobile OTA Update` (its trust confirmation must come
+   from Don); fix the source, report readiness, and wait.
+
 Stop for Don when: secrets/vars missing, Cloudflare Git deploy not disabled,
 stale SHA, missing baseline tag, signing-certificate mismatch, public
 R2/latest.json mismatch, `main` advanced mid-run, CI not successful for an
@@ -149,10 +177,11 @@ failures are never fixed by republishing over the bad object.
 
 ## Safety Rules
 
-- Read anything; write almost nothing. No pushes to `main`, no
-  `[skip ci]` commits, no manual `wrangler deploy`/`pages deploy`/D1 apply
-  against production while the workflow runs (emergency recovery only, and
-  never concurrently with it).
+- Fix-forward pushes to `main` are part of the job (see Fix Forward and
+  Re-release). Guard them: forward-only, never force-push; only the fix
+  commit goes in the push; no `[skip ci]`; no manual `wrangler deploy`/
+  `pages deploy`/D1 apply against production while the workflow runs
+  (emergency recovery only, and never concurrently with it).
 - No Android publish inputs and no OTA dispatch without explicit approval for
   that exact version and notes.
 - No resolving human review threads, no closing/reopening runs, no
@@ -191,5 +220,5 @@ triggered is still in flight.
 Progress updates on status changes plus heartbeats; final summary with: SHAs
 watched, per-track run conclusions + URLs, published tag/version (or no-op
 reason), deployment-record state, smoke and public-verification results,
-snapshot-refresh commit (Android publish), reruns used, and remaining
-blockers.
+snapshot-refresh commit (Android publish), fix commits pushed, reruns and
+re-dispatches used, and remaining blockers.
