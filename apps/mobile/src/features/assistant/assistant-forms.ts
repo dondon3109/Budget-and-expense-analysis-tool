@@ -3,6 +3,7 @@ import {
   assistantIdentityNameSchema,
   assistantMessageInputSchema,
   type AssistantPreferences,
+  type AssistantThreadKind,
 } from "@zoption/shared";
 
 // Mirrors the server's consent gate: the Worker refuses turns until consent is
@@ -59,6 +60,17 @@ export function validateAssistantMessage(value: string): string | null {
 
 export function newClientRequestId(): string {
   return Crypto.randomUUID();
+}
+
+/**
+ * History resume routing: voice-kind threads reopen in the voice session UI,
+ * everything else (including unknown/missing kinds) stays in the text chat.
+ * New voice sessions bypass this helper and always enter the voice UI fresh.
+ */
+export function resolveAssistantThreadView(
+  kind: AssistantThreadKind | null | undefined,
+): "chat" | "voice" {
+  return kind === "voice" ? "voice" : "chat";
 }
 
 export function threadSectionTitle(lastMessageAt: string): "Today" | "Previous 7 days" | "Older" {

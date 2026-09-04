@@ -7,7 +7,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import {
   VOICE_CONVERSATION_SPEECH_VOICE,
   AssistantVoiceConversation,
+  mapAssistantMessagesToVoiceCaptions,
 } from "./AssistantVoiceConversation";
+import { ApiTransportError } from "@/api/authenticated";
 
 jest.mock("./assistant-voice-hooks", () => ({
   useAssistantRecorder: jest.fn(),
@@ -16,6 +18,7 @@ jest.mock("./assistant-voice-hooks", () => ({
 
 jest.mock("@/api/assistant", () => ({
   createAssistantThreadTurn: jest.fn(),
+  listAssistantMessages: jest.fn(),
   sendAssistantTurn: jest.fn(),
 }));
 
@@ -28,6 +31,7 @@ interface HookMocks {
   useAssistantRecorder: jest.Mock;
   useSpokenReplies: jest.Mock;
   createAssistantThreadTurn: jest.Mock;
+  listAssistantMessages: jest.Mock;
   sendAssistantTurn: jest.Mock;
   getAssistantVoicePreferences: jest.Mock;
   grantAssistantVoiceConsent: jest.Mock;
@@ -40,7 +44,7 @@ function mocks(): HookMocks {
   >;
   const api = jest.requireMock("@/api/assistant") as Pick<
     HookMocks,
-    "createAssistantThreadTurn" | "sendAssistantTurn"
+    "createAssistantThreadTurn" | "listAssistantMessages" | "sendAssistantTurn"
   >;
   const voiceApi = jest.requireMock("@/api/assistant-voice") as Pick<
     HookMocks,
@@ -50,6 +54,7 @@ function mocks(): HookMocks {
     useAssistantRecorder: hooks.useAssistantRecorder,
     useSpokenReplies: hooks.useSpokenReplies,
     createAssistantThreadTurn: api.createAssistantThreadTurn,
+    listAssistantMessages: api.listAssistantMessages,
     sendAssistantTurn: api.sendAssistantTurn,
     getAssistantVoicePreferences: voiceApi.getAssistantVoicePreferences,
     grantAssistantVoiceConsent: voiceApi.grantAssistantVoiceConsent,
@@ -147,6 +152,7 @@ beforeEach(() => {
   m.grantAssistantVoiceConsent.mockResolvedValue(consentedPreferences());
   m.createAssistantThreadTurn.mockResolvedValue(turnResult());
   m.sendAssistantTurn.mockResolvedValue(turnResult());
+  m.listAssistantMessages.mockResolvedValue({ items: [], nextCursor: null });
 });
 
 describe("AssistantVoiceConversation", () => {
@@ -396,6 +402,112 @@ describe("AssistantVoiceConversation", () => {
     fireEvent.press(stopSpeakingBtn);
     expect(spoken.listen).toHaveBeenCalled();
     expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+  });
+
+  it("maps stored messages to voice captions and drops empty content", () => {
+    expect(
+      mapAssistantMessagesToVoiceCaptions([
+        { id: "u1", role: "user", content: "How much did I spend?" },
+        { id: "a1", role: "assistant", content: "You spent PHP 1,250." },
+        { id: "blank", role: "assistant", content: "   " },
+      ]),
+    ).toEqual([
+      { id: "u1", role: "user", text: "How much did I spend?" },
+      { id: "a1", role: "assistant", text: "You spent PHP 1,250." },
+    ]);
+  });
+
+  it("starts a fresh session without history when no resume id is given", async () => {
+    const m = mocks();
+    installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+
+    expect(await screen.findByText("Ready to talk")).toBeTruthy();
+    expect(m.listAssistantMessages).not.toHaveBeenCalled();
+  });
+
+  it("resumes a previous voice conversation with prior captions in the voice UI", async () => {
+    const m = mocks();
+    m.listAssistantMessages.mockResolvedValue({
+      items: [
+        {
+          id: "u-prior",
+          threadId: THREAD_ID,
+          role: "user",
+          content: "How much did I spend?",
+          status: "completed",
+          createdAt: "2026-08-12T10:00:00.000Z",
+        },
+        {
+          id: "a-prior",
+          threadId: THREAD_ID,
+          role: "assistant",
+          content: "You spent PHP 1,250 this month.",
+          status: "completed",
+          createdAt: "2026-08-12T10:00:01.000Z",
+        },
+      ],
+      nextCursor: null,
+    });
+    installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} initialThreadId={THREAD_ID} />);
+
+    expect(m.listAssistantMessages).toHaveBeenCalledWith(
+      { accessToken: "token" },
+      THREAD_ID,
+    );
+    // Prior context re-enters the voice UI instead of a blank session.
+    expect(await screen.findByText("How much did I spend?")).toBeTruthy();
+    expect(await screen.findByText("You spent PHP 1,250 this month.")).toBeTruthy();
+    expect(screen.queryByText("Ready to talk")).toBeNull();
+  });
+
+  it("continues the resumed voice thread instead of creating a new one", async () => {
+    const m = mocks();
+    m.listAssistantMessages.mockResolvedValue({
+      items: [
+        {
+          id: "u-prior",
+          threadId: THREAD_ID,
+          role: "user",
+          content: "How much did I spend?",
+          status: "completed",
+          createdAt: "2026-08-12T10:00:00.000Z",
+        },
+      ],
+      nextCursor: null,
+    });
+    const { captured } = installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} initialThreadId={THREAD_ID} />);
+    expect(await screen.findByText("How much did I spend?")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Start talking"));
+    await captured.transcript?.("And on groceries?");
+
+    await waitFor(() =>
+      expect(m.sendAssistantTurn).toHaveBeenCalledWith(
+        { accessToken: "token" },
+        THREAD_ID,
+        expect.objectContaining({ message: "And on groceries?", kind: "voice" }),
+      ),
+    );
+    expect(m.createAssistantThreadTurn).not.toHaveBeenCalled();
+  });
+
+  it("falls back to a fresh voice session when the resumed thread is gone", async () => {
+    const m = mocks();
+    m.listAssistantMessages.mockRejectedValue(
+      new ApiTransportError("Conversation not found.", "not_found", 404),
+    );
+    const { captured } = installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} initialThreadId={THREAD_ID} />);
+
+    expect(await screen.findByText("Ready to talk")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Start talking"));
+    await captured.transcript?.("How much did I spend?");
+
+    await waitFor(() => expect(m.createAssistantThreadTurn).toHaveBeenCalled());
   });
 });
 
