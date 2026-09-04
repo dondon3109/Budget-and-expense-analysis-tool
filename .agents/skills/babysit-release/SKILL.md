@@ -30,8 +30,8 @@ Accept any of the following:
 - No argument: watch the latest `main` release activity (CI run on `main`,
   open `Production Release` run, latest manual `Android Beta Build` /
   `Mobile OTA Update` dispatch).
-- Workflow run ID or URL.
-- Commit SHA on `main`.
+- Commit SHA on `main` (passed as `--sha`; the watcher resolves the run IDs
+  itself, so a run URL/ID must first be mapped to its head SHA).
 
 ## Core Workflow
 
@@ -47,9 +47,9 @@ Accept any of the following:
 2. Identify the in-scope runs: the `CI` run for the `main` SHA, the
    `Production Release` run triggered by it, and any dispatched
    `Android Beta Build` / `Mobile OTA Update` runs for the same source.
-3. On every loop, snapshot all three tracks before acting:
-   `gh run list --workflow=ci.yml`, `release.yml`, `android-beta.yml`,
-   `mobile-ota.yml`, plus `gh run view <id>` for the active runs.
+3. On every delivered watcher snapshot, read its `actions` list first and
+   act on that (see Monitoring Loop Pattern). Fall back to raw `gh run
+   list` / `gh run view` only when the watcher needs backup.
 4. For web, also check the GitHub deployment record
    (`scripts/github-production-deployment.mjs` stages: begin, worker, pages,
    finish) and the live endpoints: `https://zoption.site`,
@@ -60,16 +60,17 @@ Accept any of the following:
    finishes).
 6. Classify each failure as source-related vs flaky/infra (see below) and act
    accordingly. If source-related, fix forward and re-release (see below),
-   then keep polling the new run in the same turn. If flaky/infra, rerun
-   failed jobs first; only fix forward when reruns prove it is not a flake.
+   then relaunch `--watch` on wake. If flaky/infra, rerun failed jobs
+   first; only fix forward when reruns prove it is not a flake.
 7. Never manually deploy the production Worker/Pages while
    `Production Release` is running, and never enable the Android
    `publish_apk` / `publish_latest_json` inputs or dispatch OTA without
    Don's explicit approval for that version. Fix-forward pushes to `main`
    are allowed under the Safety Rules below; that approval does not extend
    to publish inputs or OTA dispatch.
-8. Report status changes concisely plus occasional heartbeats; emit the final
-   summary only at a strict stop condition.
+8. Report status changes concisely; liveness heartbeats live in the
+   heartbeat file, not the chat. Emit the final summary only at a strict
+   stop condition.
 
 ## Commands
 
@@ -190,10 +191,9 @@ it the way `babysit-pr` resolves branch failures:
    `pnpm typecheck`, the failing test, or the failing build) before pushing.
 3. Commit with a `feat:`/`fix:` type so semantic-release picks it up for the
    re-release (e.g. `fix(web): ...`). Never use `[skip ci]`.
-4. Push to `main` (forward-only; never force-push), then immediately relaunch
-   `--watch` in the same turn: the push retriggers CI, and CI success
-   retriggers `Production Release` automatically. A fix push is not a
-   completion event.
+4. Push to `main` (forward-only; never force-push), then relaunch `--watch`
+   on wake: the push retriggers CI, and CI success retriggers `Production
+   Release` automatically. A fix push is not a completion event.
 5. For `Android Beta Build` failures: dispatch workflows do not retrigger on
    push, so after the fix lands, re-dispatch build-only validation with
    `gh workflow run android-beta.yml` (defaults keep both publish inputs
@@ -236,19 +236,19 @@ failures are never fixed by republishing over the bad object.
    release source` gate), read that step's log line: a stale-SHA trip is
    benign — the newer commit retriggers the pipeline on its own, so keep
    watching and do not rerun; a missing-baseline-tag trip needs Don.
-4. If `verify_production` is present (release success, live version lagging),
+5. If `verify_production` is present (release success, live version lagging),
    keep watching; run `pnpm smoke:production` for an independent check.
-5. After any push, rerun, or re-dispatch, relaunch `--watch` yourself on
+6. After any push, rerun, or re-dispatch, relaunch `--watch` yourself on
    wake; do not wait for Don to re-invoke the skill. A fix push is not a
    completion event. The watcher survives a few transient poll errors on its
    own; only relaunch for a dead watch (no heartbeat for several minutes).
-6. A live `--watch` with no strict stop condition means the babysitting task
+7. A live `--watch` with no strict stop condition means the babysitting task
    is still in progress. Being woken with no new snapshot output is normal:
    the watcher prints full snapshots only on change or stop, and records
    every poll as one liveness line in the heartbeat file (next to the state
    file, `.log` suffix, overridable with `--heartbeat-file`). Check it with
    `tail` instead of re-running the watcher when only liveness is in doubt.
-7. Stop only when the watcher emits `stop_released` /
+8. Stop only when the watcher emits `stop_released` /
    `stop_exhausted_retries`, or a blocker needs Don. A green snapshot that is
    not a stop event is a progress update, not a reason to end the watch.
 
