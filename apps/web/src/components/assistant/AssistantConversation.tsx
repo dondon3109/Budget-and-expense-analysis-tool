@@ -4,6 +4,7 @@ import type {
   TransferFeeInsight,
 } from "@zoption/shared";
 import {
+  ArrowRight,
   Bot,
   Database,
   PiggyBank,
@@ -251,6 +252,9 @@ export function AssistantConversation({
   if (messages.length === 0 && !pendingMessage) {
     return (
       <div className="assistant-empty assistant-empty-with-insight">
+        <span className="assistant-empty-core-beacon" aria-hidden="true">
+          <Sparkles size={28} />
+        </span>
         <p className="eyebrow">Evidence-led answers from your records</p>
         <h2>What would you like to understand?</h2>
         <p>
@@ -265,6 +269,9 @@ export function AssistantConversation({
               <span className="assistant-quick-prompt-copy">
                 <span className="assistant-quick-prompt-title">{title}</span>
                 <span className="assistant-quick-prompt-desc">{desc}</span>
+              </span>
+              <span className="assistant-quick-prompt-arrow" aria-hidden="true">
+                <ArrowRight size={14} />
               </span>
             </button>
           ))}

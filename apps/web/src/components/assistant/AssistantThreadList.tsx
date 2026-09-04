@@ -104,22 +104,27 @@ export function AssistantThreadList({
             </button>
           </div>
         </div>
-        <button
-          className="assistant-new-chat"
-          type="button"
-          onClick={onNew}
-          aria-label="Start a new chat"
-        >
-          <Plus size={16} aria-hidden="true" /> New chat
-        </button>
-        <button
-          className="assistant-new-chat assistant-new-voice-chat"
-          type="button"
-          onClick={onVoice}
-          aria-label="Start a voice chat"
-        >
-          <Mic size={16} aria-hidden="true" /> Voice chat
-        </button>
+        <div className="assistant-history-cta-row">
+          <button
+            className="assistant-new-chat"
+            type="button"
+            onClick={onNew}
+            aria-label="Start a new chat"
+          >
+            <Plus size={15} aria-hidden="true" />
+            <span>New chat</span>
+          </button>
+          <button
+            className="assistant-new-chat assistant-new-voice-chat"
+            type="button"
+            onClick={onVoice}
+            aria-label="Start a voice chat"
+            title="Start a voice chat"
+          >
+            <Mic size={14} aria-hidden="true" />
+            <span>Voice</span>
+          </button>
+        </div>
       </div>
 
       <div className="assistant-thread-list">
@@ -137,16 +142,21 @@ export function AssistantThreadList({
                 key={thread.id}
               >
                 <button type="button" onClick={() => onSelect(thread.id)}>
-                  <MessageSquareText size={15} aria-hidden="true" />
-                  <span>
-                    <strong>
-                      {thread.title}
+                  <span
+                    className={`assistant-thread-icon ${thread.kind === "voice" ? "voice" : ""}`}
+                    aria-hidden="true"
+                  >
+                    {thread.kind === "voice" ? <Mic size={14} /> : <MessageSquareText size={14} />}
+                  </span>
+                  <span className="assistant-thread-details">
+                    <span className="assistant-thread-title-line">
+                      <strong>{thread.title}</strong>
                       {thread.kind === "voice" && (
-                        <span className="assistant-thread-kind-badge">
-                          <Mic size={11} aria-hidden="true" /> Voice
+                        <span className="assistant-thread-kind-badge" aria-hidden="true">
+                          Voice
                         </span>
                       )}
-                    </strong>
+                    </span>
                     <small>{relativeDate(thread.lastMessageAt)}</small>
                   </span>
                 </button>

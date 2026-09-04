@@ -58,10 +58,15 @@ export function AssistantComposer({
         <Send size={18} />
       </button>
       <div className="assistant-composer-note">
-        <span>
+        <span className="assistant-composer-privacy">
           <ShieldCheck size={13} aria-hidden="true" /> Read-only · Server-verified calculations
         </span>
-        <small>{value.length}/2,000</small>
+        <div className="assistant-composer-meta">
+          <span className="assistant-composer-shortcut" aria-hidden="true">
+            <kbd>↵</kbd> send <kbd>⇧↵</kbd> line
+          </span>
+          <small>{value.length}/2,000</small>
+        </div>
       </div>
       {error && (
         <p className="assistant-composer-error" role="alert">
