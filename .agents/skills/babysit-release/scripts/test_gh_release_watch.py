@@ -1,8 +1,11 @@
 """Focused tests for gh_release_watch.py (stdlib unittest, no extra deps)."""
 
+import argparse
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 MODULE_PATH = Path(__file__).with_name("gh_release_watch.py")
 MODULE_SPEC = importlib.util.spec_from_file_location("gh_release_watch", MODULE_PATH)
@@ -176,6 +179,54 @@ class SnapshotKeyTest(unittest.TestCase):
             gh_release_watch.snapshot_change_key(base),
             gh_release_watch.snapshot_change_key(progressed),
         )
+
+
+class CollectSnapshotTest(unittest.TestCase):
+    def test_failed_jobs_surface_from_raw_runs(self):
+        # Regression test: collect_snapshot must hand raw API payloads (with
+        # numeric `id`) to failed_jobs_for_runs, not summarized runs.
+        raw_run = {
+            "id": 999,
+            "name": "CI",
+            "head_sha": SHA,
+            "status": "completed",
+            "conclusion": "failure",
+            "html_url": "https://example.test/runs/999",
+        }
+        raw_job = {
+            "id": 555,
+            "name": "verify",
+            "status": "completed",
+            "conclusion": "failure",
+            "html_url": "https://example.test/job/555",
+        }
+
+        def fake_runs(repo, workflow_file, head_sha=None):
+            return [raw_run] if workflow_file == "ci.yml" else []
+
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(
+                sha=SHA,
+                repo="owner/repo",
+                state_file=str(Path(tmp) / "state.json"),
+                expect_version=None,
+                max_flaky_retries=3,
+            )
+            with (
+                mock.patch.object(gh_release_watch, "resolve_repo", return_value="owner/repo"),
+                mock.patch.object(gh_release_watch, "resolve_sha", return_value=SHA),
+                mock.patch.object(gh_release_watch, "get_workflow_runs", side_effect=fake_runs),
+                mock.patch.object(gh_release_watch, "get_jobs_for_run", return_value=[raw_job]),
+                mock.patch.object(gh_release_watch, "collect_live_markers", return_value={}),
+            ):
+                snapshot, _ = gh_release_watch.collect_snapshot(args)
+
+        self.assertEqual([job["job_id"] for job in snapshot["failed_jobs"]], [555])
+        self.assertEqual(
+            snapshot["failed_jobs"][0]["logs_endpoint"],
+            "repos/owner/repo/actions/jobs/555/logs",
+        )
+        self.assertEqual(snapshot["actions"], ["diagnose_ci_failure", "retry_failed_checks"])
 
 
 if __name__ == "__main__":

@@ -436,12 +436,19 @@ def collect_snapshot(args):
         # releases and must not block this watch.
         scoped_sha = sha if track in ("ci", "release") else None
         runs = get_workflow_runs(repo, workflow_file, head_sha=scoped_sha)
-        latest = summarize_run(runs[0]) if runs else None
-        if latest is not None and track in ("android", "ota") and latest["head_sha"] != sha:
-            latest = None
+        raw_latest = runs[0] if runs else None
+        # failed_jobs_for_runs reads raw API payloads (numeric `id`), not
+        # summarized runs, so keep the raw payload for diagnosis.
+        if (
+            raw_latest is not None
+            and track in ("android", "ota")
+            and str(raw_latest.get("head_sha") or "") != sha
+        ):
+            raw_latest = None
+        latest = summarize_run(raw_latest) if raw_latest is not None else None
         tracks[track] = latest
-        if latest is not None:
-            diagnosable_runs.append(latest)
+        if raw_latest is not None:
+            diagnosable_runs.append(raw_latest)
 
     failed_jobs = failed_jobs_for_runs(repo, diagnosable_runs)
     live_markers = collect_live_markers()
