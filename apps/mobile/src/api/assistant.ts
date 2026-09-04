@@ -49,6 +49,12 @@ export interface AssistantWireTurnResult {
 
 const assistantFallback = "The financial assistant could not be reached. Try again shortly.";
 
+/**
+ * Agentic assistant turns (LLM inference plus tools) legitimately take much
+ * longer than a quick lookup, mirroring the web client's turn ceiling.
+ */
+const ASSISTANT_TURN_TIMEOUT_MS = 120_000;
+
 export function getAssistantPreferences(api: AssistantApi): Promise<AssistantPreferences> {
   return apiRequest({
     ...api,
@@ -167,6 +173,7 @@ export function createAssistantThreadTurn(
     body: input,
     fallback: assistantFallback,
     decode: (value) => assistantTurnResultSchema.parse(value),
+    timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
   });
 }
 
@@ -182,6 +189,7 @@ export function sendAssistantTurn(
     body: input,
     fallback: assistantFallback,
     decode: (value) => assistantTurnResultSchema.parse(value),
+    timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
   });
 }
 

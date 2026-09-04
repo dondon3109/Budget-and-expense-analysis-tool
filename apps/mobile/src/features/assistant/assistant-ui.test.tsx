@@ -258,4 +258,35 @@ describe("assistant status and unavailable UI", () => {
     expect(screen.getByRole("header", { name: "AI Assistant is unavailable" })).toBeTruthy();
     expect(screen.getByText("Custom gateway error")).toBeTruthy();
   });
+
+  it("marks voice threads with a Voice badge and leaves text threads unmarked", async () => {
+    const onOpen = jest.fn();
+    const onDelete = jest.fn();
+    const { rerender } = await render(
+      <AssistantThreadRow
+        title="Evening check-in"
+        lastMessageAt="2026-05-01T08:00:00.000Z"
+        kind="voice"
+        onOpen={onOpen}
+        onDelete={onDelete}
+      />,
+    );
+    expect(screen.getByLabelText("Voice conversation")).toBeTruthy();
+    expect(screen.getByText("Voice")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Conversation Evening check-in.*voice conversation/ }),
+    ).toBeTruthy();
+
+    await rerender(
+      <AssistantThreadRow
+        title="Evening check-in"
+        lastMessageAt="2026-05-01T08:00:00.000Z"
+        kind="text"
+        onOpen={onOpen}
+        onDelete={onDelete}
+      />,
+    );
+    expect(screen.queryByLabelText("Voice conversation")).toBeNull();
+    expect(screen.queryByText("Voice")).toBeNull();
+  });
 });

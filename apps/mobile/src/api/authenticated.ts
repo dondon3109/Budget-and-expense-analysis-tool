@@ -143,6 +143,7 @@ export async function apiRequest<T>({
   fetchImpl = fetch,
   decode,
   fallback,
+  timeoutMs,
 }: {
   accessToken: string;
   path: string;
@@ -153,9 +154,27 @@ export async function apiRequest<T>({
   fetchImpl?: typeof fetch;
   decode: (value: unknown) => T;
   fallback: string;
+  timeoutMs?: number;
 }): Promise<T> {
   let response: Response;
   const url = publicConfig.apiUrl + path;
+  // Long operations (assistant turns) opt into their own ceiling. Without it
+  // the request waits indefinitely; with it, our own timer maps to a friendly
+  // timeout error while caller-initiated aborts keep propagating untouched.
+  const controller = timeoutMs === undefined ? null : new AbortController();
+  let timedOut = false;
+  const timer =
+    controller === null || timeoutMs === undefined
+      ? null
+      : setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, timeoutMs);
+  const forwardAbort = () => controller?.abort();
+  if (controller !== null) {
+    if (signal?.aborted) controller.abort();
+    else signal?.addEventListener("abort", forwardAbort, { once: true });
+  }
   try {
     response = await fetchImpl(url, {
       method,
@@ -165,15 +184,26 @@ export async function apiRequest<T>({
         ...headers,
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-      signal,
+      signal: controller?.signal ?? signal,
     });
   } catch (error) {
+    if (controller !== null && timedOut) {
+      throw new ApiTransportError(
+        "The assistant took too long. Try again.",
+        "network",
+        0,
+        "request_timeout",
+      );
+    }
     if (error instanceof Error && error.name === "AbortError") throw error;
     throw new ApiTransportError(
       "Zoption could not be reached. Connect to the internet and retry.",
       "network",
       0,
     );
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+    signal?.removeEventListener("abort", forwardAbort);
   }
   if (!response.ok) {
     throw mapApiError(response.status, (await decodeJson(response)) as ApiErrorBody, fallback);

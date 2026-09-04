@@ -212,4 +212,85 @@ describe("assistant api transport", () => {
     );
     expect(preferences.debtStrategy).toBe("avalanche");
   });
+
+  it("lets a slow turn resolve within the extended ceiling", async () => {
+    jest.useFakeTimers();
+    try {
+      const thread = {
+        id: "11111111-1111-4111-8111-111111111111",
+        title: "Budget check",
+        kind: "text",
+        lastMessageAt: "2026-05-01T08:00:00.000Z",
+        createdAt: "2026-05-01T08:00:00.000Z",
+      };
+      const message = {
+        id: "44444444-4444-4444-8444-444444444444",
+        threadId: thread.id,
+        role: "assistant",
+        content: "ok",
+        status: "completed",
+        createdAt: "2026-05-01T08:00:05.000Z",
+      };
+      const turn = {
+        thread,
+        userMessage: { ...message, role: "user", content: "and food?" },
+        assistantMessage: message,
+      };
+      const fetchMock = jest.fn(
+        (...args: Parameters<typeof fetch>): Promise<Response> =>
+          new Promise<Response>((resolve, reject) => {
+            const timer = setTimeout(() => resolve(jsonResponse(turn, 201)), 60_000);
+            const init = args[1];
+            init?.signal?.addEventListener(
+              "abort",
+              () => {
+                clearTimeout(timer);
+                reject(new DOMException("Aborted", "AbortError"));
+              },
+              { once: true },
+            );
+          }),
+      );
+      const pending = createAssistantThreadTurn(
+        { accessToken: token, fetchImpl: fetchMock },
+        { message: "and food?", clientRequestId: "55555555-5555-4555-8555-555555555555" },
+      );
+      await jest.advanceTimersByTimeAsync(60_000);
+      const result = await pending;
+      expect(result.thread.id).toBe(thread.id);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("maps an expired turn timeout to a friendly timeout error", async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = jest.fn(
+        (...args: Parameters<typeof fetch>): Promise<Response> =>
+          new Promise<Response>((_resolve, reject) => {
+            const init = args[1];
+            init?.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      );
+      const pending = sendAssistantTurn(
+        { accessToken: token, fetchImpl: fetchMock },
+        "11111111-1111-4111-8111-111111111111",
+        { message: "and food?", clientRequestId: "55555555-5555-4555-8555-555555555555" },
+      );
+      const assertion = expect(pending).rejects.toMatchObject({
+        name: "ApiTransportError",
+        message: "The assistant took too long. Try again.",
+        serverCode: "request_timeout",
+      });
+      await jest.advanceTimersByTimeAsync(120_000);
+      await assertion;
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

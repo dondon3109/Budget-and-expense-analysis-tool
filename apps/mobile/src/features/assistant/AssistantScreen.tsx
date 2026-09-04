@@ -3,6 +3,8 @@ import { router } from "expo-router";
 import type {
   AssistantMemory,
   AssistantPreferences,
+  AssistantThread,
+  AssistantThreadKind,
   AssistantVoicePreferences,
 } from "@zoption/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -72,12 +74,14 @@ import {
   VoiceRecordButton,
 } from "./assistant-ui";
 import { useAssistantRecorder } from "./assistant-voice-hooks";
+import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 
-type AssistantView = "threads" | "chat";
+type AssistantView = "threads" | "chat" | "voice";
 
 interface AssistantThreadSummary {
   id: string;
   title: string;
+  kind: AssistantThreadKind;
   lastMessageAt: string;
   createdAt: string;
 }
@@ -231,6 +235,33 @@ export function AssistantScreen() {
     setManagingThreads(false);
     setView("chat");
   }, []);
+
+  const startVoiceChat = useCallback(() => {
+    setManagingThreads(false);
+    setInlineError(null);
+    setView("voice");
+  }, []);
+
+  const closeVoiceChat = useCallback(() => {
+    setView("threads");
+    void loadThreads();
+  }, [loadThreads]);
+
+  const handleVoiceTurnComplete = useCallback(
+    (thread: AssistantThread) => {
+      setThreads((previous) => [
+        {
+          id: thread.id,
+          title: thread.title,
+          kind: thread.kind,
+          lastMessageAt: thread.lastMessageAt,
+          createdAt: thread.createdAt,
+        },
+        ...previous.filter((item) => item.id !== thread.id),
+      ]);
+    },
+    [],
+  );
 
   const handleVoiceError = useCallback((error: ApiTransportError) => {
     setVoiceError({ message: error.message });
@@ -521,6 +552,7 @@ export function AssistantScreen() {
       <AssistantThreadRow
         title={item.title}
         lastMessageAt={item.lastMessageAt}
+        kind={item.kind}
         managing={managingThreads}
         onOpen={() => {
           if (managingThreads) return;
@@ -692,7 +724,15 @@ export function AssistantScreen() {
         </View>
       ) : null}
 
-      {view === "threads" ? (
+      {view === "voice" ? (
+        <AssistantVoiceConversation
+          getAccessToken={session.getAccessToken}
+          withToken={withToken}
+          assistantName={preferences?.assistantName ?? "Assistant"}
+          onClose={closeVoiceChat}
+          onTurnComplete={handleVoiceTurnComplete}
+        />
+      ) : view === "threads" ? (
         <FlatList
           data={threads}
           keyExtractor={(item) => item.id}
@@ -702,6 +742,9 @@ export function AssistantScreen() {
           ListHeaderComponent={
             <View style={styles.newChat}>
               <Button onPress={startNewChat}>New conversation</Button>
+              <Button variant="secondary" onPress={startVoiceChat}>
+                Voice chat
+              </Button>
               {threads.length > 0 ? (
                 <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                   {managingThreads
@@ -1031,7 +1074,7 @@ const styles = StyleSheet.create({
   iconButton: { padding: spacing.xs },
   headerTitle: { flexShrink: 1 },
   listContent: { padding: spacing.md, paddingBottom: spacing.xl },
-  newChat: { marginBottom: spacing.md, alignSelf: "stretch" },
+  newChat: { marginBottom: spacing.md, alignSelf: "stretch", gap: spacing.sm },
   chat: { flex: 1 },
   chatContent: { padding: spacing.md, paddingBottom: spacing.md },
   bannerWrap: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },

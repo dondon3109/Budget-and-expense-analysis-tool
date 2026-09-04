@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { AssistantMemory } from "@zoption/shared";
+import type { AssistantMemory, AssistantThreadKind } from "@zoption/shared";
 import {
   assistantSpeechVoiceOptions,
   type AssistantSpeechVoice,
@@ -331,21 +331,30 @@ export function AssistantMessageBubble({
 export function AssistantThreadRow({
   title,
   lastMessageAt,
+  kind = "text",
   managing = false,
   onOpen,
   onDelete,
 }: {
   title: string;
   lastMessageAt: string;
+  kind?: AssistantThreadKind;
   managing?: boolean;
   onOpen: () => void;
   onDelete: () => void;
 }) {
   const theme = useZoptionTheme();
+  const isVoice = kind === "voice";
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={"Conversation " + title + ", " + formatThreadTime(lastMessageAt)}
+      accessibilityLabel={
+        "Conversation " +
+        title +
+        ", " +
+        formatThreadTime(lastMessageAt) +
+        (isVoice ? ", voice conversation" : "")
+      }
       accessibilityHint={managing ? undefined : "Opens the conversation. Press and hold to delete."}
       accessibilityActions={
         managing ? undefined : [{ name: "delete", label: "Delete conversation" }]
@@ -365,9 +374,27 @@ export function AssistantThreadRow({
       ]}
     >
       <View className="flex-1 gap-1">
-        <Text numberOfLines={2} style={[typography.body, { color: theme.colors.text }]}>
-          {title}
-        </Text>
+        <View className="flex-row items-center gap-1">
+          <Text
+            numberOfLines={2}
+            style={[typography.body, { color: theme.colors.text, flexShrink: 1 }]}
+          >
+            {title}
+          </Text>
+          {isVoice ? (
+            <View
+              accessibilityRole="text"
+              accessibilityLabel="Voice conversation"
+              style={[
+                styles.threadKindBadge,
+                { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+              ]}
+            >
+              <MaterialCommunityIcons name="microphone" size={11} color={theme.colors.textMuted} />
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Voice</Text>
+            </View>
+          ) : null}
+        </View>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
           {formatThreadTime(lastMessageAt)}
         </Text>
@@ -559,6 +586,15 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  threadKindBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 999,
   },
   deleteButton: {
     minHeight: touchTarget,

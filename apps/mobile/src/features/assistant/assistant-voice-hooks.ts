@@ -4,6 +4,7 @@ import {
   RecordingPresets,
   setAudioModeAsync,
   useAudioPlayer,
+  useAudioPlayerStatus,
   useAudioRecorder,
 } from "expo-audio";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -364,13 +365,26 @@ export interface VoicePreviewController {
 export function useSpokenReplies({
   getAccessToken,
   onError,
+  onEnded,
 }: {
   getAccessToken: (refresh: boolean) => Promise<string>;
   onError: (error: ApiTransportError) => void;
+  onEnded?: () => void;
 }): SpokenReplyController {
   const player = useAudioPlayer(null);
+  const status = useAudioPlayerStatus(player);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const playingRef = useRef<string | null>(null);
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
+
+  useEffect(() => {
+    if (status.didJustFinish && playingRef.current !== null) {
+      playingRef.current = null;
+      setPlayingMessageId(null);
+      onEndedRef.current?.();
+    }
+  }, [status.didJustFinish]);
 
   const listen = useCallback(
     async (messageId: string, voice: AssistantSpeechVoice) => {
