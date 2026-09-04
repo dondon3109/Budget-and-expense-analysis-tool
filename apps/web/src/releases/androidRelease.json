@@ -1,22 +1,19 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.16-beta",
-  "versionCode": 20316,
-  "filename": "zoption-beta-0.2.16.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.16.apk",
-  "sha256": "630f710589b99ee051b2432558256bd9729d226a8716267588a95834fa702260",
-  "sizeBytes": 142753307,
-  "sizeLabel": "142,753,307 bytes (136.14 MiB)",
-  "releaseDate": "2026-08-25",
-  "releaseDateLabel": "August 25, 2026",
+  "versionName": "0.2.17-beta",
+  "versionCode": 20317,
+  "filename": "zoption-beta-0.2.17.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.17.apk",
+  "sha256": "3f449f2cfba071df85ed57640148bbcc693338848878403167b48978319a464e",
+  "sizeBytes": 142963475,
+  "sizeLabel": "142,963,475 bytes (136.34 MiB)",
+  "releaseDate": "2026-09-04",
+  "releaseDateLabel": "September 4, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Added prominent header and floating add buttons, status filter chips, category emojis, payment account badges, and enhanced monthly cost metrics to the mobile Subscriptions tab.",
-    "Updated the mobile light theme to a crisp pure white palette instead of warm paper, and cleaned up theme labels in the mobile theme picker.",
-    "Updated the mobile Budget tab month selector UI to match the Transactions tab design.",
-    "Streamlined mobile tab header layouts and typography scales for compact screens."
+    "Signed Zoption Beta release."
   ]
 }
