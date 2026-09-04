@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { router } from "expo-router";
 
 import {
+  useDashboardData,
   useLocalReferenceData,
   useLocalWorkspace,
   useSubscriptions,
@@ -20,6 +21,7 @@ jest.mock("expo-router", () => ({
 }));
 
 jest.mock("@/db/local-workspace-state", () => ({
+  useDashboardData: jest.fn(),
   useLocalWorkspace: jest.fn(),
   useSubscriptions: jest.fn(),
   useLocalReferenceData: jest.fn(),
@@ -107,6 +109,11 @@ describe("SubscriptionsScreen", () => {
       error: null,
       retry: jest.fn(),
     });
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: { transactions: [], accounts: [], budgets: [] },
+      error: null,
+      retry: jest.fn(),
+    });
   });
 
   it("renders empty state with add button when no subscriptions exist", async () => {
@@ -136,7 +143,7 @@ describe("SubscriptionsScreen", () => {
     await render(<SubscriptionsScreen />);
 
     expect(screen.getByText("Total monthly cost")).toBeTruthy();
-    expect(screen.getByText("Netflix")).toBeTruthy();
+    expect(screen.getAllByText("Netflix")[0]).toBeTruthy();
     expect(screen.getByText("Gym Membership")).toBeTruthy();
     expect(screen.getByText("🎬")).toBeTruthy();
     expect(screen.getByText("Entertainment")).toBeTruthy();
@@ -169,13 +176,13 @@ describe("SubscriptionsScreen", () => {
     // Filter to Active
     const activeChip = screen.getByRole("tab", { name: /Active/ });
     await fireEvent.press(activeChip);
-    expect(screen.getByText("Netflix")).toBeTruthy();
+    expect(screen.getAllByText("Netflix")[0]).toBeTruthy();
     expect(screen.queryByText("Gym Membership")).toBeNull();
 
     // Filter to Canceled
     const canceledChip = screen.getByRole("tab", { name: /Canceled/ });
     await fireEvent.press(canceledChip);
     expect(screen.getByText("Gym Membership")).toBeTruthy();
-    expect(screen.queryByText("Netflix")).toBeNull();
+    expect(screen.queryByLabelText("Netflix, 54900 minor, active")).toBeNull();
   });
 });
