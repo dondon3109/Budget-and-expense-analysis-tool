@@ -8,7 +8,7 @@ describe("current release notes", () => {
       "Visual Renewal Calendar for Subscriptions",
       "Category emojis across web and mobile",
       "Redesigned mobile transaction ledger",
-      "Android Beta 0.2.12",
+      "Android Beta 0.2.18",
       "Focused budget limits",
     ]);
 
