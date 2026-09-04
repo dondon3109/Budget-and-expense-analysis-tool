@@ -61,6 +61,7 @@ import {
   newClientRequestId,
   requiresAssistantConsent,
   requiresIdentitySetup,
+  resolveAssistantThreadView,
   validateAssistantMessage,
 } from "./assistant-forms";
 import {
@@ -107,6 +108,7 @@ export function AssistantScreen() {
   const [view, setView] = useState<AssistantView>("threads");
   const [threads, setThreads] = useState<AssistantThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [voiceThreadId, setVoiceThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AssistantWireMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
@@ -249,6 +251,7 @@ export function AssistantScreen() {
 
   const startNewChat = useCallback(() => {
     setActiveThreadId(null);
+    setVoiceThreadId(null);
     setMessages([]);
     setLimitBanner(null);
     setInlineError(null);
@@ -259,13 +262,34 @@ export function AssistantScreen() {
   const startVoiceChat = useCallback(() => {
     setManagingThreads(false);
     setInlineError(null);
+    // New sessions always start fresh; history resume sets voiceThreadId.
+    setVoiceThreadId(null);
     setView("voice");
   }, []);
 
   const closeVoiceChat = useCallback(() => {
+    setVoiceThreadId(null);
     setView("threads");
     void loadThreads();
   }, [loadThreads]);
+
+  const openHistoryThread = useCallback(
+    async (thread: AssistantThreadSummary) => {
+      if (resolveAssistantThreadView(thread.kind) === "voice") {
+        setActiveThreadId(thread.id);
+        setVoiceThreadId(thread.id);
+        setLimitBanner(null);
+        setInlineError(null);
+        setManagingThreads(false);
+        setView("voice");
+        return;
+      }
+      setVoiceThreadId(null);
+      setView("chat");
+      await openThread(thread.id);
+    },
+    [openThread],
+  );
 
   const handleVoiceTurnComplete = useCallback(
     (thread: AssistantThread) => {
@@ -536,6 +560,7 @@ export function AssistantScreen() {
     setThreads((previous) => previous.filter((item) => item.id !== threadId));
     if (activeThreadId === threadId) {
       setActiveThreadId(null);
+      setVoiceThreadId((current) => (current === threadId ? null : current));
       setMessages([]);
       setView("threads");
     }
@@ -549,6 +574,7 @@ export function AssistantScreen() {
       if (!mounted.current) return;
       setThreads([]);
       setActiveThreadId(null);
+      setVoiceThreadId(null);
       setMessages([]);
       setView("threads");
     } catch (error) {
@@ -588,6 +614,8 @@ export function AssistantScreen() {
 
   // Stable renderItem identities keep the FlatLists from re-rendering every
   // row on unrelated state changes such as composer keystrokes.
+  // Voice-kind history re-enters the voice session UI with prior context;
+  // text history stays in the text chat.
   const renderThread = useCallback(
     ({ item }: ListRenderItemInfo<AssistantThreadSummary>) => (
       <AssistantThreadRow
@@ -597,13 +625,12 @@ export function AssistantScreen() {
         managing={managingThreads}
         onOpen={() => {
           if (managingThreads) return;
-          setView("chat");
-          void openThread(item.id);
+          void openHistoryThread(item);
         }}
         onDelete={() => setPendingDeleteThread(item.id)}
       />
     ),
-    [managingThreads, openThread],
+    [managingThreads, openHistoryThread],
   );
 
   // Text chat is mic-in / text-out: assistant answers are never spoken here.
@@ -774,11 +801,13 @@ export function AssistantScreen() {
 
       {view === "voice" ? (
         <AssistantVoiceConversation
+          key={voiceThreadId ?? "new"}
           getAccessToken={session.getAccessToken}
           withToken={withToken}
           assistantName={preferences?.assistantName ?? "Assistant"}
           onClose={closeVoiceChat}
           onTurnComplete={handleVoiceTurnComplete}
+          initialThreadId={voiceThreadId}
         />
       ) : view === "threads" ? (
         <FlatList

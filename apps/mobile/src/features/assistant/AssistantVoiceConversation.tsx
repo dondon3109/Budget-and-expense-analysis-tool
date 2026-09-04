@@ -7,7 +7,12 @@ import {
   type AssistantVoicePreferences,
 } from "@zoption/shared";
 
-import { createAssistantThreadTurn, sendAssistantTurn } from "@/api/assistant";
+import {
+  createAssistantThreadTurn,
+  listAssistantMessages,
+  sendAssistantTurn,
+  type AssistantWireMessage,
+} from "@/api/assistant";
 import { getAssistantVoicePreferences, grantAssistantVoiceConsent } from "@/api/assistant-voice";
 import { ApiTransportError } from "@/api/authenticated";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -26,10 +31,23 @@ export const VOICE_CONVERSATION_SPEECH_VOICE = "bright" as const;
 
 type VoiceStatus = "idle" | "listening" | "thinking" | "speaking";
 
-interface VoiceCaption {
+export interface AssistantVoiceCaption {
   id: string;
   role: "user" | "assistant";
   text: string;
+}
+
+/**
+ * Maps stored thread messages to voice captions, preserving order and
+ * dropping empty content so a resumed voice session re-enters with prior
+ * context instead of a blank conversation.
+ */
+export function mapAssistantMessagesToVoiceCaptions(
+  messages: ReadonlyArray<Pick<AssistantWireMessage, "id" | "role" | "content">>,
+): AssistantVoiceCaption[] {
+  return messages
+    .filter((message) => message.content.trim().length > 0)
+    .map((message) => ({ id: message.id, role: message.role, text: message.content }));
 }
 
 interface AssistantVoiceConversationProps {
@@ -38,6 +56,12 @@ interface AssistantVoiceConversationProps {
   assistantName: string;
   onClose: () => void;
   onTurnComplete: (thread: AssistantThread) => void;
+  /**
+   * Resume target for history entries. Null (the default) starts a fresh
+   * voice session. The parent remounts via `key` per thread so this is only
+   * read as the initial session id.
+   */
+  initialThreadId?: string | null;
 }
 
 const STATUS_LABEL: Record<VoiceStatus, string> = {
@@ -64,11 +88,12 @@ export function AssistantVoiceConversation({
   assistantName,
   onClose,
   onTurnComplete,
+  initialThreadId = null,
 }: AssistantVoiceConversationProps) {
   const theme = useZoptionTheme();
-  const listRef = useRef<FlatList<VoiceCaption>>(null);
+  const listRef = useRef<FlatList<AssistantVoiceCaption>>(null);
   const statusRef = useRef<VoiceStatus>("idle");
-  const threadIdRef = useRef<string | null>(null);
+  const threadIdRef = useRef<string | null>(initialThreadId ?? null);
   const mountedRef = useRef(true);
 
   const [preferences, setPreferences] = useState<AssistantVoicePreferences | null>(null);
@@ -76,9 +101,10 @@ export function AssistantVoiceConversation({
   const [enabling, setEnabling] = useState(false);
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [livePartial, setLivePartial] = useState("");
-  const [captions, setCaptions] = useState<VoiceCaption[]>([]);
+  const [captions, setCaptions] = useState<AssistantVoiceCaption[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(initialThreadId != null);
   // Typewriter caption: while the reply is spoken, letters appear paced to
   // the audio instead of the full text popping in before the voice starts.
   const [speakingId, setSpeakingId] = useState<string | null>(null);
@@ -110,6 +136,39 @@ export function AssistantVoiceConversation({
       mountedRef.current = false;
     };
   }, [withToken]);
+
+  // Resume path: a history voice thread re-enters here with its id and prior
+  // messages become captions. Fresh sessions skip this entirely.
+  useEffect(() => {
+    if (initialThreadId == null) return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    void withToken((token) =>
+      listAssistantMessages({ accessToken: token }, initialThreadId),
+    )
+      .then((page) => {
+        if (cancelled || !mountedRef.current) return;
+        setCaptions(mapAssistantMessagesToVoiceCaptions(page.items));
+      })
+      .catch((error: unknown) => {
+        if (cancelled || !mountedRef.current) return;
+        if (error instanceof ApiTransportError && error.status === 404) {
+          threadIdRef.current = null;
+          return;
+        }
+        setNotice(
+          error instanceof ApiTransportError
+            ? error.message
+            : "Previous voice messages could not be loaded. You can still continue talking.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled && mountedRef.current) setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialThreadId, withToken]);
 
   const consented = Boolean(
     preferences?.consentedAt &&
@@ -296,6 +355,7 @@ export function AssistantVoiceConversation({
   }, [recorder.phase, status, setVoiceStatus]);
 
   const handleOrbPress = useCallback(() => {
+    if (historyLoading) return;
     if (!consented) {
       void enableVoice();
       return;
@@ -313,7 +373,7 @@ export function AssistantVoiceConversation({
       setVoiceStatus("listening");
       void recorder.startRecording();
     }
-  }, [consented, enableVoice, recorder, setVoiceStatus, speakingId, status]);
+  }, [consented, enableVoice, historyLoading, recorder, setVoiceStatus, speakingId, status]);
 
   const handleClose = useCallback(() => {
     if (statusRef.current === "listening") {
@@ -533,7 +593,14 @@ export function AssistantVoiceConversation({
         accessibilityLabel="Conversation captions"
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         ListEmptyComponent={
-          livePartial || status !== "idle" ? null : (
+          livePartial || status !== "idle" ? null : historyLoading ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator color={theme.colors.brand} />
+              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                Loading previous conversation…
+              </Text>
+            </View>
+          ) : (
             <View style={styles.emptyContainer}>
               <View
                 style={[
@@ -561,6 +628,8 @@ export function AssistantVoiceConversation({
                     key={prompt}
                     accessibilityRole="button"
                     accessibilityLabel={prompt}
+                    accessibilityState={{ disabled: historyLoading }}
+                    disabled={historyLoading}
                     onPress={() => void handleFinalTranscript(prompt)}
                     style={[
                       styles.promptChip,
@@ -861,7 +930,7 @@ export function AssistantVoiceConversation({
                   ? "Stops audio playback"
                   : undefined
             }
-            disabled={status === "thinking"}
+            disabled={status === "thinking" || historyLoading}
             onPress={handleOrbPress}
             style={[
               styles.orb,
