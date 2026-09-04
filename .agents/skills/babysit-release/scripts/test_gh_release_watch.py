@@ -353,6 +353,134 @@ class SourceGuardTest(unittest.TestCase):
         self.assertEqual(gh_release_watch.terminal_failed_run_ids(snapshot), [])
 
 
+class UnifiedRetryBudgetTest(unittest.TestCase):
+    def _raw_run(self, attempt):
+        return {
+            "id": 4242,
+            "name": "CI",
+            "head_sha": SHA,
+            "status": "completed",
+            "conclusion": "failure",
+            "run_attempt": attempt,
+            "html_url": "https://example.test/runs/4242",
+        }
+
+    def _raw_job(self):
+        return {
+            "id": 8484,
+            "name": "verify",
+            "status": "completed",
+            "conclusion": "failure",
+            "html_url": "https://example.test/job/8484",
+            "steps": [{"name": "Run pnpm lint", "conclusion": "failure"}],
+        }
+
+    def _collect(self, args, attempt):
+        def fake_runs(repo, workflow_file, head_sha=None):
+            return [self._raw_run(attempt)] if workflow_file == "ci.yml" else []
+
+        with (
+            mock.patch.object(gh_release_watch, "resolve_repo", return_value="o/r"),
+            mock.patch.object(gh_release_watch, "resolve_sha", return_value=SHA),
+            mock.patch.object(
+                gh_release_watch, "get_workflow_runs", side_effect=fake_runs
+            ),
+            mock.patch.object(
+                gh_release_watch, "get_jobs_for_run", return_value=[self._raw_job()]
+            ),
+            mock.patch.object(gh_release_watch, "collect_live_markers", return_value={}),
+        ):
+            return gh_release_watch.collect_snapshot(args)
+
+    def _args(self, tmp, max_retries=2):
+        return argparse.Namespace(
+            sha=SHA,
+            repo="o/r",
+            state_file=str(Path(tmp) / "state.json"),
+            expect_version=None,
+            max_flaky_retries=max_retries,
+            poll_seconds=60,
+            heartbeat_file=str(Path(tmp) / "watch.log"),
+        )
+
+    def test_manual_reruns_count_toward_budget(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = self._args(tmp)
+            snap1, _ = self._collect(args, 1)
+            self.assertEqual(snap1["retry_state"]["current_sha_retries_used"], 0)
+            self.assertIn("retry_failed_checks", snap1["actions"])
+            # Don clicks rerun in the UI: attempt rises without the watcher.
+            snap2, _ = self._collect(args, 2)
+            self.assertEqual(snap2["retry_state"]["current_sha_retries_used"], 1)
+            self.assertIn("retry_failed_checks", snap2["actions"])
+            # Second manual cycle exhausts the budget of 2.
+            snap3, _ = self._collect(args, 3)
+            self.assertEqual(snap3["retry_state"]["current_sha_retries_used"], 2)
+            self.assertIn("stop_exhausted_retries", snap3["actions"])
+
+    def test_watcher_rerun_counted_exactly_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = self._args(tmp, max_retries=3)
+            self._collect(args, 1)
+            canned = {
+                "sha": SHA,
+                "repo": "o/r",
+                "tracks": {
+                    "ci": {
+                        "run_id": 4242,
+                        "workflow_name": "CI",
+                        "head_sha": SHA,
+                        "status": "completed",
+                        "conclusion": "failure",
+                        "run_attempt": 1,
+                        "terminal": True,
+                        "pending": False,
+                        "failed": True,
+                        "html_url": "https://example.test/runs/4242",
+                    },
+                    "release": None,
+                    "android": None,
+                    "ota": None,
+                },
+                "failed_jobs": [
+                    {
+                        "run_id": 4242,
+                        "workflow_name": "CI",
+                        "job_id": 8484,
+                        "failed_steps": ["Run pnpm lint"],
+                    }
+                ],
+                "live": {},
+                "actions": ["diagnose_ci_failure", "retry_failed_checks"],
+                "retry_state": {
+                    "current_sha_retries_used": 0,
+                    "max_flaky_retries": 3,
+                },
+            }
+            with (
+                mock.patch.object(
+                    gh_release_watch,
+                    "collect_snapshot",
+                    return_value=(canned, Path(tmp) / "state.json"),
+                ),
+                mock.patch.object(gh_release_watch, "gh_text", return_value=""),
+            ):
+                result = gh_release_watch.retry_failed_now(args)
+            self.assertEqual(result["reason"], "rerun_triggered")
+            # Attempt bump not yet visible: optimistic count holds at 1.
+            snap, _ = self._collect(args, 1)
+            self.assertEqual(snap["retry_state"]["current_sha_retries_used"], 1)
+            # Bump lands: still 1, not 2.
+            snap, _ = self._collect(args, 2)
+            self.assertEqual(snap["retry_state"]["current_sha_retries_used"], 1)
+
+    def test_pre_watch_reruns_are_forgiven(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = self._args(tmp)
+            snap, _ = self._collect(args, 3)
+            self.assertEqual(snap["retry_state"]["current_sha_retries_used"], 0)
+
+
 class WatchResilienceTest(unittest.TestCase):
     def _args(self, tmp):
         return argparse.Namespace(

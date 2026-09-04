@@ -172,8 +172,69 @@ def load_state(path):
         "started_at": None,
         "last_seen_sha": None,
         "retries_by_sha": {},
+        "reruns_used_by_sha": {},
+        "run_rerun_baseline": {},
         "last_snapshot_at": None,
     }, True
+
+
+def _reruns_used(state, sha):
+    totals = state.get("reruns_used_by_sha")
+    if not isinstance(totals, dict):
+        # One-time migration from the watcher-triggered-only counter.
+        legacy = state.get("retries_by_sha") or {}
+        totals = dict(legacy) if isinstance(legacy, dict) else {}
+        state["reruns_used_by_sha"] = totals
+    try:
+        return int(totals.get(sha, 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _note_reruns_used(state, sha, count):
+    totals = state.get("reruns_used_by_sha")
+    if not isinstance(totals, dict):
+        totals = {}
+        state["reruns_used_by_sha"] = totals
+    totals[sha] = _reruns_used(state, sha) + int(count)
+
+
+def observe_run_attempts(state, sha, runs):
+    """Fold rerun cycles into the SHA budget, whoever triggered them.
+
+    Each rerun (watcher `--retry-failed-now`, the agent's manual `gh run
+    rerun`, or Don's click in the UI) bumps the run's `run_attempt`. The
+    first attempt seen for a run id becomes its baseline, so only cycles
+    observed during the watch count. Pre-watch reruns are forgiven: their
+    history is unattributable.
+    """
+    baselines = state.get("run_rerun_baseline")
+    if not isinstance(baselines, dict):
+        baselines = {}
+        state["run_rerun_baseline"] = baselines
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        run_id = str(run.get("id") or "")
+        if not run_id:
+            continue
+        try:
+            attempt = int(run.get("run_attempt") or 1)
+        except (TypeError, ValueError):
+            attempt = 1
+        entry = baselines.get(run_id)
+        if not isinstance(entry, dict):
+            baselines[run_id] = {"first": attempt, "counted": 0}
+            continue
+        try:
+            first = int(entry.get("first", attempt))
+            counted = int(entry.get("counted", 0))
+        except (TypeError, ValueError):
+            first, counted = attempt, 0
+        new_cycles = max(0, attempt - first - counted)
+        if new_cycles:
+            entry["counted"] = counted + new_cycles
+            _note_reruns_used(state, sha, new_cycles)
 
 
 def save_state(path, state):
@@ -201,12 +262,17 @@ def default_state_file_for(repo, sha):
 def summarize_run(run):
     status = str(run.get("status") or "")
     conclusion = str(run.get("conclusion") or "")
+    try:
+        attempt = int(run.get("run_attempt") or 1)
+    except (TypeError, ValueError):
+        attempt = 1
     return {
         "run_id": run.get("id"),
         "workflow_name": str(run.get("name") or ""),
         "head_sha": str(run.get("head_sha") or ""),
         "status": status,
         "conclusion": conclusion,
+        "run_attempt": attempt,
         "terminal": status.lower() == "completed",
         "pending": status.lower() in PENDING_RUN_STATUSES,
         "failed": conclusion in FAILED_RUN_CONCLUSIONS,
@@ -346,22 +412,6 @@ def collect_live_markers():
         if not android.get("ok"):
             markers["android_fetch_error"] = str(android.get("error") or "unknown")
     return markers
-
-
-def current_retry_count(state, sha):
-    retries = state.get("retries_by_sha") or {}
-    try:
-        return int(retries.get(sha, 0))
-    except (TypeError, ValueError):
-        return 0
-
-
-def set_retry_count(state, sha, count):
-    retries = state.get("retries_by_sha")
-    if not isinstance(retries, dict):
-        retries = {}
-    retries[sha] = int(count)
-    state["retries_by_sha"] = retries
 
 
 def unique_actions(actions):
@@ -541,7 +591,10 @@ def collect_snapshot(args):
     failed_jobs = failed_jobs_for_runs(repo, diagnosable_runs)
     live_markers = collect_live_markers()
 
-    retries_used = current_retry_count(state, sha)
+    # Unified retry budget: count rerun cycles whoever triggered them. The raw
+    # run payloads carry the API's latest attempt number.
+    observe_run_attempts(state, sha, diagnosable_runs)
+    retries_used = _reruns_used(state, sha)
     actions = recommend_actions(
         tracks,
         failed_jobs,
@@ -620,8 +673,35 @@ def retry_failed_now(args):
         gh_text(["run", "rerun", str(run_id), "--failed"], repo=snapshot["repo"])
         result["rerun_run_ids"].append(run_id)
 
+    # Optimistic attribution: the attempt bump lands asynchronously, so count
+    # these cycles now. A rapid second --retry-failed-now then sees the spent
+    # budget instead of double-triggering. If a rerun never materializes the
+    # count errs conservative (stops earlier), never loose.
     state, _ = load_state(state_path)
-    set_retry_count(state, sha, current_retry_count(state, sha) + 1)
+    attempts_by_track = {}
+    for run in (snapshot.get("tracks") or {}).values():
+        if isinstance(run, dict) and run.get("run_id") not in (None, ""):
+            attempts_by_track[str(run["run_id"])] = run
+    baselines = state.get("run_rerun_baseline")
+    if not isinstance(baselines, dict):
+        baselines = {}
+        state["run_rerun_baseline"] = baselines
+    for run_id in result["rerun_run_ids"]:
+        key = str(run_id)
+        entry = baselines.get(key)
+        if not isinstance(entry, dict):
+            track = attempts_by_track.get(key, {})
+            try:
+                first = int(track.get("run_attempt") or 1)
+            except (TypeError, ValueError):
+                first = 1
+            entry = {"first": first, "counted": 0}
+            baselines[key] = entry
+        try:
+            entry["counted"] = int(entry.get("counted", 0)) + 1
+        except (TypeError, ValueError):
+            entry["counted"] = 1
+        _note_reruns_used(state, sha, 1)
     state["last_snapshot_at"] = int(time.time())
     save_state(state_path, state)
     result["rerun_attempted"] = True
