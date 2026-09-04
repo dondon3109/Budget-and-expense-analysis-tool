@@ -267,6 +267,16 @@ def failed_jobs_for_runs(repo, runs):
             logs_endpoint = None
             if job_id not in (None, ""):
                 logs_endpoint = f"repos/{repo}/actions/jobs/{job_id}/logs"
+            steps = job.get("steps") if isinstance(job.get("steps"), list) else []
+            failed_steps = sorted(
+                {
+                    str(step.get("name") or "")
+                    for step in steps
+                    if isinstance(step, dict)
+                    and str(step.get("conclusion") or "") in FAILED_RUN_CONCLUSIONS
+                    and step.get("name")
+                }
+            )
             failed_jobs.append(
                 {
                     "run_id": run_id,
@@ -278,6 +288,7 @@ def failed_jobs_for_runs(repo, runs):
                     "conclusion": job_conclusion,
                     "html_url": str(job.get("html_url") or ""),
                     "logs_endpoint": logs_endpoint,
+                    "failed_steps": failed_steps,
                 }
             )
     failed_jobs.sort(
@@ -363,6 +374,52 @@ def unique_actions(actions):
     return out
 
 
+# The release workflow's first gate. When it is the ONLY thing that failed,
+# the run tripped on a stale SHA (benign: a newer commit already retriggered
+# the pipeline) or a missing baseline tag (needs Don). Rerunning is futile.
+RELEASE_SOURCE_GUARD_STEP = "Verify release source"
+
+
+def release_failed_only_on_source_guard(failed_jobs):
+    relevant = [
+        job
+        for job in failed_jobs
+        if isinstance(job, dict) and job.get("workflow_name") == "Production Release"
+    ]
+    if not relevant:
+        return False
+    return all(
+        job.get("failed_steps") and set(job["failed_steps"]) <= {RELEASE_SOURCE_GUARD_STEP}
+        for job in relevant
+    )
+
+
+def guard_only_run_ids(failed_jobs):
+    """Run ids whose every failed job tripped only the release source guard.
+
+    Rerunning these is futile (stale SHA) or wrong (missing baseline tag), so
+    they are excluded from retry candidates.
+    """
+    by_run = {}
+    for job in failed_jobs or []:
+        if not isinstance(job, dict):
+            continue
+        run_id = job.get("run_id")
+        if run_id in (None, ""):
+            continue
+        by_run.setdefault(run_id, []).append(job)
+    return {
+        run_id
+        for run_id, jobs in by_run.items()
+        if jobs
+        and all(
+            job.get("failed_steps")
+            and set(job["failed_steps"]) <= {RELEASE_SOURCE_GUARD_STEP}
+            for job in jobs
+        )
+    }
+
+
 def recommend_actions(tracks, failed_jobs, live_markers, retries_used, max_retries, expect_version=None):
     """Decide watcher actions from one snapshot of track states.
 
@@ -379,12 +436,20 @@ def recommend_actions(tracks, failed_jobs, live_markers, retries_used, max_retri
     if ci_failed:
         actions.append("diagnose_ci_failure")
 
+    source_guard_trip = bool(
+        release is not None
+        and release["conclusion"] in FAILED_RUN_CONCLUSIONS
+        and release_failed_only_on_source_guard(failed_jobs)
+    )
+
     if release is not None:
         conclusion = release["conclusion"]
         if conclusion in FAILED_RUN_CONCLUSIONS:
             # A `skipped` release on top of a failed CI run is by design; the
             # CI diagnosis above already covers it.
-            if not (conclusion == "skipped" and not ci_green):
+            if source_guard_trip:
+                actions.append("check_release_source")
+            elif not (conclusion == "skipped" and not ci_green):
                 actions.append("diagnose_release_failure")
         elif conclusion == "skipped" and ci_green:
             # Terminal-skip with green CI: either a correct no-op
@@ -396,10 +461,14 @@ def recommend_actions(tracks, failed_jobs, live_markers, retries_used, max_retri
         if run is not None and run["failed"]:
             actions.append(action)
 
+    guard_only_ids = guard_only_run_ids(failed_jobs)
     terminal_failed_runs = [
         run
         for run in tracks.values()
-        if run is not None and run["terminal"] and run["failed"]
+        if run is not None
+        and run["terminal"]
+        and run["failed"]
+        and run.get("run_id") not in guard_only_ids
     ]
     # A by-design release skip is not a rerun candidate.
     terminal_failed_runs = [
@@ -502,6 +571,7 @@ def collect_snapshot(args):
 
 
 def terminal_failed_run_ids(snapshot):
+    guard_only_ids = guard_only_run_ids(snapshot.get("failed_jobs"))
     ids = []
     for run in (snapshot.get("tracks") or {}).values():
         if not isinstance(run, dict):
@@ -514,8 +584,12 @@ def terminal_failed_run_ids(snapshot):
         ):
             # By-design skip on red CI (or a no-op guard); rerunning changes nothing.
             continue
-        if run.get("run_id") not in (None, ""):
-            ids.append(run["run_id"])
+        if run.get("run_id") in (None, ""):
+            continue
+        if run["run_id"] in guard_only_ids:
+            # Source-guard trip (stale SHA / missing tag); rerun is futile.
+            continue
+        ids.append(run["run_id"])
     return ids
 
 

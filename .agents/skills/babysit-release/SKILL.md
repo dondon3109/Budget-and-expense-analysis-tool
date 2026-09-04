@@ -232,11 +232,16 @@ failures are never fixed by republishing over the bad object.
    the failure looks flaky.
 3. If `check_release_needed` is present (green CI, skipped release), run
    `node scripts/next-semantic-release.mjs` to decide no-op vs guard trip.
+4. If `check_release_source` is present (release failed only at the `Verify
+   release source` gate), read that step's log line: a stale-SHA trip is
+   benign — the newer commit retriggers the pipeline on its own, so keep
+   watching and do not rerun; a missing-baseline-tag trip needs Don.
 4. If `verify_production` is present (release success, live version lagging),
    keep watching; run `pnpm smoke:production` for an independent check.
 5. After any push, rerun, or re-dispatch, relaunch `--watch` yourself on
    wake; do not wait for Don to re-invoke the skill. A fix push is not a
-   completion event.
+   completion event. The watcher survives a few transient poll errors on its
+   own; only relaunch for a dead watch (no heartbeat for several minutes).
 6. A live `--watch` with no strict stop condition means the babysitting task
    is still in progress. Being woken with no new snapshot output is normal:
    the watcher prints full snapshots only on change or stop, and records

@@ -308,6 +308,51 @@ class QuietWatchTest(unittest.TestCase):
             self.assertIn("changed=false", beats[1])
 
 
+class SourceGuardTest(unittest.TestCase):
+    def _guard_job(self, run_id, steps):
+        return {
+            "run_id": run_id,
+            "workflow_name": "Production Release",
+            "job_id": 777,
+            "job_name": "deploy-and-release",
+            "conclusion": "failure",
+            "failed_steps": steps,
+        }
+
+    def test_guard_only_trip_advises_check_not_retry(self):
+        tracks = {
+            "ci": sample_run("CI", run_id=11),
+            "release": sample_run("Production Release", conclusion="failure", run_id=12),
+            "android": None,
+            "ota": None,
+        }
+        jobs = [self._guard_job(12, ["Verify release source"])]
+        actions = gh_release_watch.recommend_actions(tracks, jobs, live_markers(), 0, 3)
+        self.assertEqual(actions, ["check_release_source"])
+
+    def test_guard_plus_real_failure_stays_diagnose(self):
+        tracks = {
+            "ci": sample_run("CI", run_id=11),
+            "release": sample_run("Production Release", conclusion="failure", run_id=12),
+            "android": None,
+            "ota": None,
+        }
+        jobs = [self._guard_job(12, ["Verify release source", "Deploy production Worker"])]
+        actions = gh_release_watch.recommend_actions(tracks, jobs, live_markers(), 0, 3)
+        self.assertEqual(actions, ["diagnose_release_failure", "retry_failed_checks"])
+
+    def test_guard_only_run_excluded_from_rerun_ids(self):
+        snapshot = {
+            "tracks": {
+                "release": sample_run(
+                    "Production Release", conclusion="failure", run_id=12
+                ),
+            },
+            "failed_jobs": [self._guard_job(12, ["Verify release source"])],
+        }
+        self.assertEqual(gh_release_watch.terminal_failed_run_ids(snapshot), [])
+
+
 class WatchResilienceTest(unittest.TestCase):
     def _args(self, tmp):
         return argparse.Namespace(
