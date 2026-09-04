@@ -15,7 +15,7 @@ import {
 } from "react";
 import { AppState, Platform } from "react-native";
 
-import { isSupabaseConfigured } from "@/config/public-config";
+import { environmentValue, isSupabaseConfigured } from "@/config/public-config";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -28,7 +28,8 @@ import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, supabase } from "./supabase-client";
 
 export const DUMMY_DEV_SUBJECT =
-  process.env.EXPO_PUBLIC_DEV_USER_ID?.trim() || "08060c19-8a55-4046-a2e7-7384808dd81c";
+  environmentValue(process.env.EXPO_PUBLIC_DEV_USER_ID)?.trim() ||
+  "08060c19-8a55-4046-a2e7-7384808dd81c";
 export const DUMMY_DEV_STORAGE_KEY = "zoption.dev.dummy_session";
 
 export type SessionStatus = "loading" | "signed-out" | "signed-in";

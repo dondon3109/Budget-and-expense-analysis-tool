@@ -18,7 +18,7 @@ function optionalValue(value: string | undefined): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-function environmentValue(value: unknown): string | undefined {
+export function environmentValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
