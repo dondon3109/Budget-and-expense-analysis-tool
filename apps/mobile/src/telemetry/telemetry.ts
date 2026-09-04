@@ -268,12 +268,15 @@ export function createTelemetryService(
     isActive: () => transport !== null,
     async identify(distinctId, personProperties) {
       if (!config.enabled || !distinctId) return;
+      const alreadyInitialized = transport !== null;
       identifiedUser = { distinctId, personProperties };
       await this.init();
-      try {
-        applyIdentity();
-      } catch {
-        // Identification must never interfere with a completed authentication flow.
+      if (alreadyInitialized) {
+        try {
+          applyIdentity();
+        } catch {
+          // Identification must never interfere with a completed authentication flow.
+        }
       }
     },
     reset() {

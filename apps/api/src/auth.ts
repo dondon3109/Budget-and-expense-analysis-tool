@@ -108,7 +108,7 @@ export function createAuthMiddleware(
       );
     if (isLocalDevToken) {
       user = {
-        id: "00000000-0000-4000-8000-000000000001",
+        id: context.env.DEV_USER_ID?.trim() || "08060c19-8a55-4046-a2e7-7384808dd81c",
         email: "dummy@zoption.local",
       };
     } else {

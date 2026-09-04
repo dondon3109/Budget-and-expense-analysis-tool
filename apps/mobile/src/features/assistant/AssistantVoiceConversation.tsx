@@ -195,7 +195,14 @@ export function AssistantVoiceConversation({
   const handleFinalTranscript = useCallback(
     async (text: string) => {
       const finalText = text.trim();
-      if (!finalText || statusRef.current === "thinking" || statusRef.current === "speaking") {
+      if (!finalText) {
+        if (mountedRef.current) {
+          setVoiceStatus("idle");
+          setLivePartial("");
+        }
+        return;
+      }
+      if (statusRef.current === "thinking" || statusRef.current === "speaking") {
         return;
       }
       setLivePartial("");
@@ -272,14 +279,21 @@ export function AssistantVoiceConversation({
     },
   });
 
+  useEffect(() => {
+    if (recorder.phase === "idle" && status === "listening") {
+      setVoiceStatus("idle");
+      setLivePartial("");
+    }
+  }, [recorder.phase, status, setVoiceStatus]);
+
   const handleOrbPress = useCallback(() => {
     if (!consented) {
       void enableVoice();
       return;
     }
-    if (status === "listening") {
+    if (status === "listening" && recorder.phase === "recording") {
       void recorder.stopAndTranscribe();
-    } else if (status === "idle") {
+    } else {
       setNotice(null);
       setAudioError(null);
       setLivePartial("");

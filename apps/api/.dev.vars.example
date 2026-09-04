@@ -3,6 +3,8 @@
 # Public Worker-side Supabase key used by readiness and account reauthentication. It must match
 # SUPABASE_URL in the active Wrangler config and be an sb_publishable_ or legacy anon key.
 SUPABASE_PUBLISHABLE_KEY=
+# Optional local development user UUID for dummy token bypass. Defaults to the primary local user.
+DEV_USER_ID=
 
 DEEPSEEK_API_KEY=
 

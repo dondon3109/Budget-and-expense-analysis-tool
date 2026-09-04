@@ -1112,8 +1112,8 @@ export const assistantVoicePreferencesResponseSchema = z
     reviewRequired: z.boolean(),
     consentedAt: z.iso.datetime().nullable(),
     consentVersion: z.number().int().min(0),
-    transcriptionModel: z.literal("@cf/openai/whisper-large-v3-turbo"),
-    ttsModel: z.literal("s2.1-pro-free"),
+    transcriptionModel: z.string().min(1),
+    ttsModel: z.string().min(1),
   })
   .strict();
 

@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { monthlySubscriptionCost, resolveCategoryEmoji } from "@zoption/shared";
@@ -11,6 +11,7 @@ import {
   useSubscriptions,
 } from "@/db/local-workspace-state";
 import type { LocalSubscriptionItem } from "@/db/repository";
+import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
   Card,
@@ -75,6 +76,14 @@ export function SubscriptionsScreen() {
     return state.subscriptions;
   }, [filter, state.subscriptions, activeSubscriptions, canceledSubscriptions]);
 
+  const sync = useSyncState();
+  const handleRefresh = useCallback(async () => {
+    sync.retry();
+    state.retry();
+    reference.retry();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+  }, [reference, state, sync]);
+
   return (
     <Screen
       action={
@@ -82,6 +91,8 @@ export function SubscriptionsScreen() {
           + Add
         </Button>
       }
+      onRefresh={handleRefresh}
+      refreshing={sync.status === "syncing"}
       title="Subscriptions"
     >
       {state.error ? (

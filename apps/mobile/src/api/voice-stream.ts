@@ -186,6 +186,13 @@ export async function startMobileVoiceStream(
       };
       const onError = () => {
         removeListeners();
+        const targetUrl = ws?.url ?? "";
+        const isLocalHost = targetUrl.includes("127.0.0.1") || targetUrl.includes("localhost");
+        if (typeof __DEV__ !== "undefined" && __DEV__ && isLocalHost) {
+          console.warn(
+            `[voice] WebSocket connection failed to ${targetUrl}. If testing on an Android device via USB, run 'adb reverse tcp:8787 tcp:8787'.`,
+          );
+        }
         reject(new Error("WebSocket connection to voice stream failed."));
       };
       const onClose = (e: { code: number }) => {

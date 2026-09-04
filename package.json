@@ -30,9 +30,9 @@
     "ads:render:showcase": "pnpm --filter @zoption/ads render:showcase",
     "ads:render:combined": "pnpm --filter @zoption/ads render:combined",
     "ads:render:all": "pnpm --filter @zoption/ads render:all",
-    "mobile:start": "pnpm --filter @zoption/mobile start",
-    "mobile:android": "pnpm --filter @zoption/mobile android",
-    "mobile:android:rebuild": "pnpm --filter @zoption/mobile android:rebuild",
+    "mobile:start": "node scripts/ensure-adb-reverse.mjs && pnpm --filter @zoption/mobile start",
+    "mobile:android": "node scripts/ensure-adb-reverse.mjs && pnpm --filter @zoption/mobile android",
+    "mobile:android:rebuild": "node scripts/ensure-adb-reverse.mjs && pnpm --filter @zoption/mobile android:rebuild",
     "mobile:ios": "pnpm --filter @zoption/mobile ios",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "pnpm --filter @zoption/api exec wrangler d1 migrations apply budget-expense-local --local"

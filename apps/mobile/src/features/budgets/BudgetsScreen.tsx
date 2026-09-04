@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
 import { resolveCategoryEmoji } from "@zoption/shared";
@@ -178,6 +178,12 @@ export function BudgetsScreen() {
 
   const theme = useZoptionTheme();
 
+  const handleRefresh = useCallback(async () => {
+    sync.retry();
+    budgetMonth.retry();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+  }, [budgetMonth, sync]);
+
   return (
     <Screen
       action={
@@ -185,6 +191,8 @@ export function BudgetsScreen() {
           Add budget
         </Button>
       }
+      onRefresh={handleRefresh}
+      refreshing={sync.status === "syncing"}
       title="Budgets"
     >
       <MonthNavigator

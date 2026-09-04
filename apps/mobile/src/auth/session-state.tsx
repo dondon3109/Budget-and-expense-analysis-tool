@@ -27,8 +27,8 @@ import { clearPlanCache } from "./plan-state";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, supabase } from "./supabase-client";
 
-import { DUMMY_DEV_SUBJECT } from "@/db/demo-seed";
-export { DUMMY_DEV_SUBJECT };
+export const DUMMY_DEV_SUBJECT =
+  process.env.EXPO_PUBLIC_DEV_USER_ID?.trim() || "08060c19-8a55-4046-a2e7-7384808dd81c";
 export const DUMMY_DEV_STORAGE_KEY = "zoption.dev.dummy_session";
 
 export type SessionStatus = "loading" | "signed-out" | "signed-in";
@@ -127,8 +127,16 @@ export function SessionProvider({ children }: PropsWithChildren) {
       }
       let active = true;
       void SecureStore.getItemAsync(DUMMY_DEV_STORAGE_KEY)
-        .then((storedSubject) => {
+        .then(async (storedSubject) => {
           if (!active) return;
+          if (
+            storedSubject === "00000000-0000-4000-8000-000000000001" &&
+            DUMMY_DEV_SUBJECT !== "00000000-0000-4000-8000-000000000001"
+          ) {
+            await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
+            setSnapshot(signedOutSession);
+            return;
+          }
           if (storedSubject) {
             void telemetry.identify(storedSubject);
             subjectRef.current = storedSubject;
@@ -155,9 +163,35 @@ export function SessionProvider({ children }: PropsWithChildren) {
       if (active) applySession(session);
     });
 
-    void client.auth.getSession().then(({ data, error }) => {
+    void client.auth.getSession().then(async ({ data, error }) => {
       if (!active) return;
-      applySession(error ? null : data.session);
+      if (!error && data?.session) {
+        applySession(data.session);
+        return;
+      }
+      if (demoEnabled) {
+        const stored = await SecureStore.getItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => null);
+        if (!active) return;
+        if (
+          stored === "00000000-0000-4000-8000-000000000001" &&
+          DUMMY_DEV_SUBJECT !== "00000000-0000-4000-8000-000000000001"
+        ) {
+          await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
+          applySession(null);
+          return;
+        }
+        if (stored && stored === DUMMY_DEV_SUBJECT) {
+          void telemetry.identify(stored);
+          subjectRef.current = stored;
+          initializedRef.current = true;
+          setSnapshot({
+            status: "signed-in",
+            subject: stored,
+          });
+          return;
+        }
+      }
+      applySession(null);
     });
 
     const appStateListener =

@@ -190,13 +190,24 @@ export function useVoiceRecorder<Result>({
       const uri = recorder.uri ?? recordingUri;
       recordingUri = uri;
 
-      if (liveTranscribeResult && (resolvedTranscript.length > 0 || streamWasActive)) {
-        const liveResult = liveTranscribeResult(resolvedTranscript, recordedElapsed);
-        if (liveResult !== null) {
+      if (liveTranscribeResult) {
+        if (resolvedTranscript.length > 0) {
+          const liveResult = liveTranscribeResult(resolvedTranscript, recordedElapsed);
+          if (liveResult !== null) {
+            discardTemporarySourceFile(uri);
+            await restorePlaybackAudioMode();
+            setPhaseBoth("idle");
+            onTranscribed(liveResult);
+            return;
+          }
+        } else if (streamWasActive) {
           discardTemporarySourceFile(uri);
           await restorePlaybackAudioMode();
-          if (currentPhase() !== "transcribing") return;
-          onTranscribed(liveResult);
+          setPhaseBoth("idle");
+          const emptyResult = liveTranscribeResult("", recordedElapsed);
+          if (emptyResult !== null) {
+            onTranscribed(emptyResult);
+          }
           return;
         }
       }

@@ -50,12 +50,21 @@ describe("billing api transport", () => {
   });
 
   it("starts a checkout and decodes the approval URL", async () => {
-    const fetchMock = jest.fn(async () => jsonResponse({ approvalUrl: "https://paypal.example/approve" }, 201));
+    const fetchMock = jest.fn(async () =>
+      jsonResponse(
+        {
+          approvalUrl: "https://paypal.example/approve",
+          subscriptionId: "I-SUB123",
+        },
+        201,
+      ),
+    );
     const result = await startBillingCheckout(
       { accessToken: token, fetchImpl: fetchMock },
       "year",
     );
     expect(result.approvalUrl).toBe("https://paypal.example/approve");
+    expect(result.subscriptionId).toBe("I-SUB123");
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(apiBase + "/api/app/billing/checkout");
     expect(JSON.parse(init.body as string)).toEqual({ interval: "year" });

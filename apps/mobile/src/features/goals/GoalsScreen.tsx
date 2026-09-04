@@ -1,9 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
 import { useGoals, useLocalWorkspace } from "@/db/local-workspace-state";
 import type { LocalGoalItem } from "@/db/repository";
+import { useSyncState } from "@/sync/sync-state";
 import { Button, Card, EmptyState, ErrorState, MoneyValue, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -12,7 +14,14 @@ import { goalStatusLabel } from "./goal-form";
 
 export function GoalsScreen() {
   const local = useLocalWorkspace();
+  const sync = useSyncState();
   const state = useGoals();
+
+  const handleRefresh = useCallback(async () => {
+    sync.retry();
+    state.retry();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+  }, [state, sync]);
 
   const addGoal = (): void => {
     router.push("/(app)/goal");
@@ -26,6 +35,8 @@ export function GoalsScreen() {
         </Button>
       }
       description="Save toward a target. Changes sync when you reconnect."
+      onRefresh={handleRefresh}
+      refreshing={sync.status === "syncing"}
       title="Goals"
     >
       {state.error ? (

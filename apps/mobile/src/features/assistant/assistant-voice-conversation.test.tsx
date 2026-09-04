@@ -319,4 +319,18 @@ describe("AssistantVoiceConversation", () => {
     expect(await screen.findByText("PHP 1,250")).toBeTruthy();
     expect(await screen.findByText("this month.")).toBeTruthy();
   });
+
+  it("resets voice status to idle when transcript is empty", async () => {
+    const { captured } = installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Start talking"));
+    expect(await screen.findByLabelText("Stop listening")).toBeTruthy();
+
+    await captured.transcript?.("   ");
+
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    expect(screen.queryByLabelText("Stop listening")).toBeNull();
+  });
 });

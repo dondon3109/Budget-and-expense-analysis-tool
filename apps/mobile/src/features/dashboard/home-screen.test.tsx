@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { router } from "expo-router";
 
 import HomeScreen from "../../../app/(app)/(tabs)/index";
@@ -170,5 +170,37 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Recent activity")).toBeTruthy();
     expect(screen.getByText("Salary deposit")).toBeTruthy();
     expect(screen.getByText("Supermarket groceries")).toBeTruthy();
+  });
+
+  it("triggers sync and dashboard retry on pull to refresh", async () => {
+    const mockSyncRetry = jest.fn();
+    const mockDashboardRetry = jest.fn();
+
+    jest.mocked(useSyncState).mockReturnValue({
+      status: "synced",
+      message: null,
+      retry: mockSyncRetry,
+    });
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: {
+        transactions: [],
+        accounts: [],
+        budgets: [],
+      },
+      error: null,
+      retry: mockDashboardRetry,
+    });
+
+    await render(<HomeScreen />);
+    const refreshControl = screen.root?.queryAll((node) => node.type === "RCTRefreshControl")[0];
+    expect(refreshControl).toBeTruthy();
+    if (!refreshControl) throw new Error("RCTRefreshControl not found");
+
+    await act(async () => {
+      await fireEvent(refreshControl, "refresh");
+    });
+
+    expect(mockSyncRetry).toHaveBeenCalledTimes(1);
+    expect(mockDashboardRetry).toHaveBeenCalledTimes(1);
   });
 });

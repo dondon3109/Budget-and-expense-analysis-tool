@@ -1,12 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { calculateDebtPayoff, type DebtPayoffStrategy } from "@zoption/shared";
 
 import { useDebts, useLocalWorkspace } from "@/db/local-workspace-state";
 import type { LocalDebtItem } from "@/db/repository";
+import { useSyncState } from "@/sync/sync-state";
 import { Button, Card, EmptyState, ErrorState, FormField, MoneyValue, SelectionField, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -20,7 +21,14 @@ const strategyOptions: Array<{ id: DebtPayoffStrategy; label: string; detail: st
 
 export function DebtsScreen() {
   const local = useLocalWorkspace();
+  const sync = useSyncState();
   const state = useDebts();
+
+  const handleRefresh = useCallback(async () => {
+    sync.retry();
+    state.retry();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+  }, [state, sync]);
 
   const addDebt = (): void => {
     router.push("/(app)/debt");
@@ -34,6 +42,8 @@ export function DebtsScreen() {
         </Button>
       }
       description="Track balances and compare payoff strategies offline."
+      onRefresh={handleRefresh}
+      refreshing={sync.status === "syncing"}
       title="Debts"
     >
       {state.error ? (

@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useNetInfo } from "@react-native-community/netinfo";
@@ -9,6 +9,7 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { seedDummyWorkspaceData } from "@/db/demo-seed";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
+import { useSyncState } from "@/sync/sync-state";
 import { AssistantStatusBadge } from "@/features/assistant/assistant-ui";
 import { OtaUpdateSettingsCard } from "@/features/ota-updates";
 import { UpdateSettingsCard } from "@/features/updates";
@@ -113,9 +114,18 @@ export default function MoreScreen() {
   const isPro = planState.plan === "zoption_pro";
   const netInfo = useNetInfo();
   const isOffline = netInfo.isConnected === false || netInfo.isInternetReachable === false;
+  const sync = useSyncState();
+  const handleRefresh = useCallback(async () => {
+    sync.retry();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+  }, [sync]);
 
   return (
-    <Screen title="More">
+    <Screen
+      onRefresh={handleRefresh}
+      refreshing={sync.status === "syncing"}
+      title="More"
+    >
       <Card
         accessibilityLabel="AI Financial Assistant"
         style={[

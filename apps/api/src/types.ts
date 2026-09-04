@@ -18,6 +18,7 @@ export interface Bindings {
   SUPABASE_SERVICE_ROLE_KEY?: string;
   RESEND_API_KEY?: string;
   WEB_APP_URL?: string;
+  DEV_USER_ID?: string;
   EMAIL_FROM?: string;
   BUG_REPORT_TO?: string;
   DEEPSEEK_API_KEY?: string;

@@ -373,8 +373,8 @@ export function AssistantThreadRow({
         },
       ]}
     >
-      <View className="flex-1 gap-1">
-        <View className="flex-row items-center gap-1">
+      <View style={styles.threadContent}>
+        <View style={styles.threadTitleRow}>
           <Text
             numberOfLines={2}
             style={[typography.body, { color: theme.colors.text, flexShrink: 1 }]}
@@ -586,6 +586,15 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  threadContent: {
+    flex: 1,
+    gap: 4,
+  },
+  threadTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   threadKindBadge: {
     flexDirection: "row",

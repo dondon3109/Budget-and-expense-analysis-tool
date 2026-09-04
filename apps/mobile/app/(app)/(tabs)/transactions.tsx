@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useDeferredValue, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -407,6 +407,29 @@ export default function TransactionsScreen() {
   const theme = useZoptionTheme();
   const filtering = search.trim().length > 0 || kind !== "all";
 
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    sync.retry();
+    local.retry();
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 650));
+    } finally {
+      setRefreshing(false);
+    }
+  }, [local, sync]);
+
+  const isRefreshing = refreshing || sync.status === "syncing";
+  const refreshControl = (
+    <RefreshControl
+      colors={[String(theme.colors.brand)]}
+      onRefresh={handleRefresh}
+      progressBackgroundColor={String(theme.colors.surfaceRaised)}
+      refreshing={isRefreshing}
+      tintColor={String(theme.colors.brand)}
+    />
+  );
+
   const items = local.items ?? [];
   const totals = useMemo(() => summarizeTransactions(items), [items]);
   const dateGroups = useMemo(() => groupTransactionsByDate(items), [items]);
@@ -626,13 +649,7 @@ export default function TransactionsScreen() {
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={emptyState}
           ListHeaderComponent={filterPanel}
-          refreshControl={
-            <RefreshControl
-              refreshing={sync.status === "syncing"}
-              onRefresh={sync.retry}
-              tintColor={String(theme.colors.brand)}
-            />
-          }
+          refreshControl={refreshControl}
           renderItem={({ item }) => <TransactionItemRow item={item} />}
           renderSectionHeader={({ section }) => <DateHeader section={section} />}
           showsVerticalScrollIndicator={false}
@@ -640,6 +657,7 @@ export default function TransactionsScreen() {
         />
       ) : view === "summary" ? (
         <FlatList
+          alwaysBounceVertical
           contentContainerStyle={[
             styles.listContent,
             summaryItems.length === 0 && styles.emptyList,
@@ -648,13 +666,7 @@ export default function TransactionsScreen() {
           keyExtractor={(item) => item.key}
           ListEmptyComponent={emptyState}
           ListHeaderComponent={filterPanel}
-          refreshControl={
-            <RefreshControl
-              refreshing={sync.status === "syncing"}
-              onRefresh={sync.retry}
-              tintColor={String(theme.colors.brand)}
-            />
-          }
+          refreshControl={refreshControl}
           renderItem={({ item }) => (
             <View
               style={[
@@ -696,6 +708,7 @@ export default function TransactionsScreen() {
         />
       ) : (
         <FlatList
+          alwaysBounceVertical
           contentContainerStyle={[
             styles.listContent,
             items.length === 0 && styles.emptyList,
@@ -704,13 +717,7 @@ export default function TransactionsScreen() {
           keyExtractor={(item) => item.transaction.id}
           ListEmptyComponent={emptyState}
           ListHeaderComponent={filterPanel}
-          refreshControl={
-            <RefreshControl
-              refreshing={sync.status === "syncing"}
-              onRefresh={sync.retry}
-              tintColor={String(theme.colors.brand)}
-            />
-          }
+          refreshControl={refreshControl}
           renderItem={({ item }) => <TransactionItemRow item={item} showDate />}
           showsVerticalScrollIndicator={false}
         />

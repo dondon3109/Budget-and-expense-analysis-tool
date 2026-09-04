@@ -771,8 +771,6 @@ export function createApp(options: AppOptions = {}) {
         message: "Request failed",
         category: "unexpected_error",
         method: context.req.method,
-        error: String(error),
-        stack: error instanceof Error ? error.stack : undefined,
       }),
     );
     return context.json({ error: "internal_server_error" }, 500);

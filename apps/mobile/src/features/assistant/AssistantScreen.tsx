@@ -15,6 +15,7 @@ import {
   type ListRenderItemInfo,
   Platform,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -196,6 +197,16 @@ export function AssistantScreen() {
       );
     }
   }, [withToken]);
+
+  const [refreshingThreads, setRefreshingThreads] = useState(false);
+  const handleRefreshThreads = useCallback(async () => {
+    setRefreshingThreads(true);
+    try {
+      await Promise.all([loadThreads(), new Promise((r) => setTimeout(r, 650))]);
+    } finally {
+      if (mounted.current) setRefreshingThreads(false);
+    }
+  }, [loadThreads]);
 
   useEffect(() => {
     if (phase === "ready" && !requiresAssistantConsent(preferences)) {
@@ -739,6 +750,16 @@ export function AssistantScreen() {
           contentContainerStyle={styles.listContent}
           renderItem={renderThread}
           ItemSeparatorComponent={ThreadListSeparator}
+          removeClippedSubviews={false}
+          refreshControl={
+            <RefreshControl
+              colors={[String(theme.colors.brand)]}
+              onRefresh={handleRefreshThreads}
+              progressBackgroundColor={String(theme.colors.surfaceRaised)}
+              refreshing={refreshingThreads}
+              tintColor={String(theme.colors.brand)}
+            />
+          }
           ListHeaderComponent={
             <View style={styles.newChat}>
               <Button onPress={startNewChat}>New conversation</Button>

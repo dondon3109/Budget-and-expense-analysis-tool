@@ -592,8 +592,8 @@ export interface AssistantVoicePreferences {
   reviewRequired: boolean;
   consentedAt: string | null;
   consentVersion: number;
-  transcriptionModel: "@cf/openai/whisper-large-v3-turbo";
-  ttsModel: "s2.1-pro-free";
+  transcriptionModel: string;
+  ttsModel: string;
 }
 
 export interface AssistantVoiceTranscription {

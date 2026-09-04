@@ -4,6 +4,7 @@ import {
   billingReconciliationResponseSchema,
   billingSummaryResponseSchema,
   type BillingCheckoutReconciliation,
+  type BillingCheckoutResponse,
   type BillingInterval,
   type BillingSummary,
 } from "@zoption/shared";
@@ -31,7 +32,7 @@ export function getBillingSummary(api: BillingApi): Promise<BillingSummary> {
 export function startBillingCheckout(
   api: BillingApi,
   interval: BillingInterval,
-): Promise<{ approvalUrl: string }> {
+): Promise<BillingCheckoutResponse> {
   return apiRequest({
     ...api,
     path: "/api/app/billing/checkout",

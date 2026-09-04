@@ -6,6 +6,15 @@ All notable product changes are documented here.
 
 ### Added
 
+- Mobile development mode now connects directly to the local D1 user workspace
+  and API Worker matching the web app, allowing testing against real financial
+  records and live assistant threads instead of isolated dummy accounts.
+- Added pull-to-refresh gestures across mobile screens (Dashboard, Transactions,
+  Budgets, Subscriptions, Goals, Debts, and Assistant threads) for immediate data
+  synchronization and refresh.
+- Automated ADB port reverse forwarding (`tcp:8081` and `tcp:8787`) on mobile dev
+  server startup for physical Android USB testing.
+
 - Mobile voice input now shows live partial transcripts on dummy dev
   sessions (the local dev Worker accepts the dummy token, so the Dev build
   streams against the active STT model) and stops automatically after ~3s

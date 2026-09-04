@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
 import { usePlan } from "@/auth/plan-state";
@@ -844,9 +844,17 @@ export default function HomeScreen() {
   );
   const isPro = planState.plan === "zoption_pro";
 
+  const handleRefresh = useCallback(async () => {
+    sync.retry();
+    dashboard.retry();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+  }, [dashboard, sync]);
+
   return (
     <Screen
       action={<SyncStatus state={visibleSyncState(sync.status)} />}
+      onRefresh={handleRefresh}
+      refreshing={sync.status === "syncing"}
       title="Home"
     >
       <OfflineBanner />

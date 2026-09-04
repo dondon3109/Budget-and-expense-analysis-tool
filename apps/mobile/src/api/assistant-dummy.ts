@@ -26,6 +26,9 @@ import type {
 export const CURRENT_CONSENT_VERSION = 5;
 
 export function isDummyAssistantToken(accessToken: string): boolean {
+  if (process.env.EXPO_PUBLIC_DEV_USE_REAL_API === "true") {
+    return false;
+  }
   return isDevelopmentAppVariant() && accessToken === "dummy-dev-access-token";
 }
 

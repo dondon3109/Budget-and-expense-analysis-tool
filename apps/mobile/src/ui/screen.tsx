@@ -1,16 +1,19 @@
-import type { PropsWithChildren, ReactNode } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useZoptionTheme } from "./theme-provider";
 import { spacing, typography } from "./tokens";
 
-interface ScreenProps extends PropsWithChildren {
+export interface ScreenProps extends PropsWithChildren {
   title: string;
   description?: string;
   action?: ReactNode;
   scroll?: boolean;
   showHeading?: boolean;
+  refreshing?: boolean;
+  onRefresh?: () => void | Promise<void>;
+  refreshControl?: ReactElement;
 }
 
 export function Screen({
@@ -19,9 +22,42 @@ export function Screen({
   action,
   scroll = true,
   showHeading = true,
+  refreshing,
+  onRefresh,
+  refreshControl: customRefreshControl,
   children,
 }: ScreenProps) {
   const theme = useZoptionTheme();
+  const [internalRefreshing, setInternalRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (!onRefresh) return;
+    setInternalRefreshing(true);
+    try {
+      const result = onRefresh();
+      if (result instanceof Promise) {
+        await result;
+      }
+    } finally {
+      setInternalRefreshing(false);
+    }
+  }, [onRefresh]);
+
+  const isRefreshing =
+    refreshing !== undefined ? Boolean(refreshing || internalRefreshing) : internalRefreshing;
+
+  const resolvedRefreshControl =
+    customRefreshControl ??
+    (onRefresh ? (
+      <RefreshControl
+        testID="screen-refresh-control"
+        colors={[String(theme.colors.brand)]}
+        onRefresh={handleRefresh}
+        progressBackgroundColor={String(theme.colors.surfaceRaised)}
+        refreshing={isRefreshing}
+        tintColor={String(theme.colors.brand)}
+      />
+    ) : undefined);
   const body = (
     <View className="w-full gap-6 px-4 pb-8 pt-3" style={[styles.content, !scroll && styles.fill]}>
       {showHeading ? (
@@ -59,9 +95,11 @@ export function Screen({
     >
       {scroll ? (
         <ScrollView
+          alwaysBounceVertical={Boolean(resolvedRefreshControl)}
           contentInsetAdjustmentBehavior="never"
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scroll}
+          refreshControl={resolvedRefreshControl}
         >
           {body}
         </ScrollView>
