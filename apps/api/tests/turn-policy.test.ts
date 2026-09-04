@@ -137,6 +137,24 @@ describe("assistant turn policy", () => {
     );
   });
 
+  it.each([
+    "how much did I spend this month?",
+    "how much did I spend this year?",
+    "What did I spend last month?",
+    "How much did I earn this month?",
+  ])("requires a grounded period summary for %s", (message) => {
+    const policy = createAssistantTurnPolicy({
+      history: [],
+      message,
+      currentDate: "2026-08-02",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+    expect(policy.deterministicResponse).toBeUndefined();
+    expect(policy.requiredToolGroups).toContain("period_summary");
+    expect(policy.resolvedPeriod).toBeTruthy();
+  });
+
   it("returns compliance redirects without required tools", () => {
     const policy = createAssistantTurnPolicy({
       history: [],

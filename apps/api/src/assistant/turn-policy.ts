@@ -94,7 +94,7 @@ function requiredGroups(message: string): RequiredToolGroup[] {
   }
   if (
     personalized &&
-    /\b(?:income|earnings?|expenses?|spending|spent|net|savings rate|cash flow|remaining|left|average)\b/i.test(
+    /\b(?:income|earn(?:ed|ing|s)?|expenses?|spend(?:ing|t)?|net|sav(?:e|ed|ings?)(?: rate)?|pay(?:ments?)?|paid|receive(?:d)?|cash flow|remaining|left|average)\b/i.test(
       message,
     )
   ) {
