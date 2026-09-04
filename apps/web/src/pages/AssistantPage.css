@@ -1095,6 +1095,19 @@ main:has(.assistant-page) > .legal-footer,
   font-weight: 650;
 }
 
+.assistant-message.user .assistant-message-meta strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--action);
+  background: color-mix(in srgb, var(--action) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--action) 18%, var(--line));
+}
+
 .assistant-message-meta time,
 .assistant-message-meta span {
   color: var(--subtle);
@@ -1282,6 +1295,105 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-message.pending {
   opacity: 0.75;
+}
+
+.assistant-message.checking {
+  border-color: color-mix(in srgb, var(--action) 40%, var(--line));
+  animation: assistant-checking-bubble-pulse 2.2s ease-in-out infinite;
+}
+
+.assistant-message.checking .assistant-message-avatar {
+  animation: assistant-checking-avatar-pulse 2.2s ease-in-out infinite;
+}
+
+.assistant-checking-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.assistant-thinking-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+.assistant-thinking-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--action);
+  animation: assistant-wave-pulse 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-origin: center;
+}
+
+.assistant-thinking-bar:nth-child(1) {
+  height: 10px;
+  animation-delay: 0s;
+}
+
+.assistant-thinking-bar:nth-child(2) {
+  height: 16px;
+  animation-delay: 0.16s;
+}
+
+.assistant-thinking-bar:nth-child(3) {
+  height: 13px;
+  animation-delay: 0.32s;
+}
+
+.assistant-thinking-bar:nth-child(4) {
+  height: 9px;
+  animation-delay: 0.48s;
+}
+
+@keyframes assistant-wave-pulse {
+  0%, 100% {
+    transform: scaleY(0.4);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scaleY(1.15);
+    opacity: 1;
+  }
+}
+
+.assistant-thinking-text {
+  animation: assistant-thinking-text-breathe 2.2s ease-in-out infinite;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+@keyframes assistant-thinking-text-breathe {
+  0%, 100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes assistant-checking-bubble-pulse {
+  0%, 100% {
+    border-color: color-mix(in srgb, var(--action) 25%, var(--line));
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--action) 55%, var(--line));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--action) 15%, transparent);
+  }
+}
+
+@keyframes assistant-checking-avatar-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
 }
 
 .assistant-thinking-dots {

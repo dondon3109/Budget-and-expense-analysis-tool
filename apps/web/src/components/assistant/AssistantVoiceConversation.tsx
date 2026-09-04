@@ -3,7 +3,17 @@ import {
   type AssistantTurnResult,
   type AssistantVoicePreferences,
 } from "@zoption/shared";
-import { LoaderCircle, Mic, X } from "lucide-react";
+import {
+  ArrowLeft,
+  AudioLines,
+  LoaderCircle,
+  Mic,
+  RotateCcw,
+  Sparkles,
+  Square,
+  UserRound,
+  Volume2,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -62,8 +72,15 @@ function errorMessage(error: unknown): string {
   return "The voice conversation could not continue.";
 }
 
+export const VOICE_SUGGESTED_PROMPTS = [
+  "How much did I spend this month?",
+  "What is my biggest expense category?",
+  "How are my budgets looking?",
+  "Which debt should I pay first?",
+] as const;
+
 const STATUS_LABEL: Record<VoiceStatus, string> = {
-  idle: "Tap the ball and speak",
+  idle: "Tap to speak",
   listening: "Listening…",
   thinking: "Thinking…",
   speaking: "Speaking…",
@@ -110,6 +127,7 @@ export function AssistantVoiceConversation({
   // the audio instead of the full text popping in before the voice starts.
   const [speakingId, setSpeakingId] = useState<string>();
   const [typedCount, setTypedCount] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(0);
 
   function setVoiceStatus(next: VoiceStatus) {
     statusRef.current = next;
@@ -117,6 +135,7 @@ export function AssistantVoiceConversation({
   }
 
   function clearTimersAndAudioContext() {
+    setAudioLevel(0);
     window.clearTimeout(stopTimerRef.current);
     window.clearInterval(activityTimerRef.current);
     activityTimerRef.current = undefined;
@@ -128,6 +147,7 @@ export function AssistantVoiceConversation({
   }
 
   function clearRecordingResources() {
+    setAudioLevel(0);
     window.clearTimeout(stopTimerRef.current);
     window.clearInterval(activityTimerRef.current);
     activityTimerRef.current = undefined;
@@ -149,6 +169,18 @@ export function AssistantVoiceConversation({
     const audioContext = audioContextRef.current;
     audioContextRef.current = undefined;
     if (audioContext && audioContext.state !== "closed") void audioContext.close();
+  }
+
+  function handleResetSession() {
+    if (statusRef.current === "listening") stopRecording("cancelled");
+    stopPlayback();
+    setSpeakingId(undefined);
+    setVoiceStatus("idle");
+    setCaptions([]);
+    setLivePartial("");
+    setNotice(undefined);
+    setAudioError(undefined);
+    threadIdRef.current = null;
   }
 
   function stopPlayback() {
@@ -402,6 +434,12 @@ export function AssistantVoiceConversation({
           ? SPEECH_RMS_THRESHOLD
           : Math.min(0.06, Math.max(0.018, noiseFloor * 2.2));
 
+      // Expose normalized level for reactive audio visualizer (0.0 to 1.0)
+      const normalizedLevel = Math.min(1, Math.max(0.08, rms * 7.5));
+      if (mountedRef.current) {
+        setAudioLevel(normalizedLevel);
+      }
+
       if (rms >= dynamicThreshold) {
         heardSpeechRef.current = true;
         lastSpeechAtRef.current = now;
@@ -492,7 +530,7 @@ export function AssistantVoiceConversation({
           }
           if (stopReasonRef.current === "no-speech") {
             setVoiceStatus("idle");
-            setNotice("I didn’t hear anything. Tap the ball and try again.");
+            setNotice("I didn’t hear anything. Tap to speak and try again.");
             liveShouldStopRef.current = false;
             liveErrorRef.current = null;
             setLivePartial("");
@@ -676,6 +714,7 @@ export function AssistantVoiceConversation({
   }
 
   function stopRecording(reason: StopReason = "manual") {
+    setAudioLevel(0);
     stopReasonRef.current = reason;
     liveShouldStopRef.current = true;
     window.clearTimeout(stopTimerRef.current);
@@ -692,29 +731,57 @@ export function AssistantVoiceConversation({
       void enableVoice();
       return;
     }
-    if (status === "listening") stopRecording("manual");
-    else if (status === "idle") void startRecording();
+    if (status === "listening") {
+      stopRecording("manual");
+    } else if (status === "speaking") {
+      stopPlayback();
+      setSpeakingId(undefined);
+      setVoiceStatus("idle");
+    } else if (status === "idle") {
+      void startRecording();
+    }
   }
 
   return (
     <div className="assistant-voice-conversation" role="dialog" aria-label="Voice conversation">
       <div className="assistant-voice-conversation-topbar">
         <div className="assistant-voice-conversation-title">
-          <strong>Voice chat</strong>
-          <small>Bright Female · spoken replies</small>
+          <div className="assistant-voice-title-row">
+            <strong>Voice chat</strong>
+            <span className="assistant-voice-live-badge" aria-label="Audio active">
+              <span className="assistant-voice-live-dot" aria-hidden="true" />
+              Live
+            </span>
+          </div>
+          <small>Hands-free conversation with {assistantName}</small>
         </div>
-        <button
-          type="button"
-          className="assistant-voice-conversation-close"
-          onClick={() => {
-            if (statusRef.current === "listening") stopRecording("cancelled");
-            stopPlayback();
-            onClose();
-          }}
-          aria-label="Back to text chat"
-        >
-          <X size={18} aria-hidden="true" /> Text chat
-        </button>
+        <div className="assistant-voice-topbar-actions">
+          {captions.length > 0 && (
+            <button
+              type="button"
+              className="assistant-voice-conversation-action-btn"
+              onClick={handleResetSession}
+              title="Start a new voice session"
+              aria-label="Start new conversation"
+            >
+              <RotateCcw size={15} aria-hidden="true" />
+              <span>New session</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="assistant-voice-conversation-close"
+            onClick={() => {
+              if (statusRef.current === "listening") stopRecording("cancelled");
+              stopPlayback();
+              onClose();
+            }}
+            aria-label="Back to text chat"
+            title="Back to text chat"
+          >
+            <ArrowLeft size={18} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {!preferences && !prefsError ? (
@@ -735,12 +802,25 @@ export function AssistantVoiceConversation({
           role="dialog"
           aria-label="Voice consent"
         >
+          <div className="assistant-voice-consent-icon" aria-hidden="true">
+            <Mic size={24} />
+          </div>
           <strong>Talk to {assistantName}?</strong>
-          <p>
+          <p className="assistant-voice-consent-desc">
             Your recording is sent to Cloudflare Workers AI for transcription. After you finish
             speaking, the completed reply text is sent to Fish Audio for speech. Zoption does not
             store recordings or generated audio.
           </p>
+          <div className="assistant-voice-consent-features">
+            <div className="assistant-voice-consent-feature">
+              <Sparkles size={15} aria-hidden="true" />
+              <span>Ask about budgets, expenses, transactions, goals, or debt</span>
+            </div>
+            <div className="assistant-voice-consent-feature">
+              <Volume2 size={15} aria-hidden="true" />
+              <span>Hear responses spoken aloud in real time</span>
+            </div>
+          </div>
           {notice && (
             <p className="assistant-voice-conversation-error" role="alert">
               {notice}
@@ -768,12 +848,34 @@ export function AssistantVoiceConversation({
             aria-label="Conversation captions"
           >
             {captions.length === 0 && !livePartial && status === "idle" && (
-              <p className="assistant-voice-conversation-empty">
-                Tap the ball and ask about spending, budgets, recurring charges, goals, or debt.
-              </p>
+              <div className="assistant-voice-empty-state">
+                <div className="assistant-voice-empty-badge" aria-hidden="true">
+                  <AudioLines size={24} />
+                </div>
+                <strong className="assistant-voice-empty-title">Ready to talk</strong>
+                <p className="assistant-voice-conversation-empty">
+                  Tap the microphone to speak, or pick a question below:
+                </p>
+                <div
+                  className="assistant-voice-prompt-chips"
+                  role="group"
+                  aria-label="Suggested questions"
+                >
+                  {VOICE_SUGGESTED_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      className="assistant-voice-prompt-chip"
+                      onClick={() => void handleFinalTranscript(prompt)}
+                    >
+                      <span>“{prompt}”</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
             {captions.map((caption) => (
-              <p
+              <div
                 key={caption.id}
                 className={
                   caption.role === "user"
@@ -781,10 +883,26 @@ export function AssistantVoiceConversation({
                     : "assistant-voice-caption-assistant"
                 }
               >
-                <span className="assistant-voice-caption-speaker">
-                  {caption.role === "user" ? "You" : assistantName}
+                <span
+                  className={`assistant-voice-caption-speaker ${
+                    caption.role === "user"
+                      ? "assistant-voice-caption-speaker-user"
+                      : "assistant-voice-caption-speaker-assistant"
+                  }`}
+                >
+                  {caption.role === "user" ? (
+                    <>
+                      <UserRound size={12} aria-hidden="true" />
+                      <span>You</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={12} aria-hidden="true" />
+                      <span>{assistantName}</span>
+                    </>
+                  )}
                 </span>
-                <span>
+                <span className="assistant-voice-caption-body">
                   {caption.role === "assistant" &&
                   caption.id === speakingId &&
                   status === "speaking" &&
@@ -794,47 +912,132 @@ export function AssistantVoiceConversation({
                       ? renderVoiceCaptionContent(caption.text)
                       : caption.text}
                 </span>
-              </p>
+              </div>
             ))}
             {livePartial && (
-              <p className="assistant-voice-caption-user assistant-voice-caption-live">
-                <span className="assistant-voice-caption-speaker">You</span>
-                <span>“{livePartial}”</span>
-              </p>
+              <div className="assistant-voice-caption-user assistant-voice-caption-live">
+                <span className="assistant-voice-caption-speaker assistant-voice-caption-speaker-user assistant-voice-caption-speaker-live">
+                  <span className="assistant-voice-live-dot" aria-hidden="true" />
+                  <span>You · Live</span>
+                </span>
+                <span className="assistant-voice-caption-body assistant-voice-live-text">
+                  “{livePartial}”
+                </span>
+              </div>
             )}
             {status === "thinking" && (
-              <p className="assistant-voice-caption-status" role="status">
-                Checking your records…
-              </p>
+              <div
+                className="assistant-voice-caption-assistant assistant-voice-caption-thinking"
+                role="status"
+              >
+                <span className="assistant-voice-caption-speaker">
+                  <Sparkles size={12} aria-hidden="true" />
+                  <span>{assistantName}</span>
+                </span>
+                <span className="assistant-voice-thinking-content">
+                  <span className="assistant-thinking-bars" aria-hidden="true">
+                    <span className="assistant-thinking-bar" />
+                    <span className="assistant-thinking-bar" />
+                    <span className="assistant-thinking-bar" />
+                    <span className="assistant-thinking-bar" />
+                  </span>
+                  <span className="assistant-thinking-text">Checking your records…</span>
+                </span>
+              </div>
             )}
             <div ref={captionsEndRef} />
           </div>
 
           <div className="assistant-voice-conversation-stage">
+            {/* Real-time audio waveform feedback */}
+            <div
+              className={`assistant-voice-waveform assistant-voice-waveform-${status}`}
+              aria-hidden="true"
+            >
+              <span
+                className="assistant-voice-wave-bar"
+                style={
+                  status === "listening"
+                    ? { transform: `scaleY(${Math.max(0.18, audioLevel * 1.2)})` }
+                    : undefined
+                }
+              />
+              <span
+                className="assistant-voice-wave-bar"
+                style={
+                  status === "listening"
+                    ? { transform: `scaleY(${Math.max(0.28, audioLevel * 1.7)})` }
+                    : undefined
+                }
+              />
+              <span
+                className="assistant-voice-wave-bar"
+                style={
+                  status === "listening"
+                    ? { transform: `scaleY(${Math.max(0.38, audioLevel * 2.3)})` }
+                    : undefined
+                }
+              />
+              <span
+                className="assistant-voice-wave-bar"
+                style={
+                  status === "listening"
+                    ? { transform: `scaleY(${Math.max(0.28, audioLevel * 1.7)})` }
+                    : undefined
+                }
+              />
+              <span
+                className="assistant-voice-wave-bar"
+                style={
+                  status === "listening"
+                    ? { transform: `scaleY(${Math.max(0.18, audioLevel * 1.1)})` }
+                    : undefined
+                }
+              />
+            </div>
+
             <button
               type="button"
               className={`assistant-voice-orb assistant-voice-orb-${status}`}
               onClick={handleOrbClick}
-              disabled={status === "thinking" || status === "speaking"}
+              disabled={status === "thinking"}
               aria-label={
                 status === "listening"
                   ? "Stop listening"
                   : status === "thinking"
                     ? "Assistant is thinking"
                     : status === "speaking"
-                      ? "Assistant is speaking"
+                      ? "Stop speaking"
                       : "Start talking"
               }
             >
               {status === "thinking" ? (
-                <LoaderCircle className="spinning" size={30} aria-hidden="true" />
+                <span className="assistant-voice-orb-thinking-core" aria-hidden="true">
+                  <span className="assistant-voice-orb-scanner-ring" />
+                  <span className="assistant-voice-orb-scanner-ring-inner" />
+                  <Sparkles className="assistant-voice-orb-scanner-icon" size={24} />
+                </span>
+              ) : status === "listening" ? (
+                <Square size={22} fill="currentColor" aria-hidden="true" />
+              ) : status === "speaking" ? (
+                <Volume2 size={32} aria-hidden="true" />
               ) : (
-                <Mic size={30} aria-hidden="true" />
+                <Mic size={32} aria-hidden="true" />
               )}
             </button>
-            <p className="assistant-voice-conversation-status" role="status">
-              {STATUS_LABEL[status]}
-            </p>
+
+            <div className="assistant-voice-conversation-status-block">
+              <p className="assistant-voice-conversation-status" role="status">
+                {STATUS_LABEL[status]}
+              </p>
+              <p className="assistant-voice-conversation-substatus">
+                {status === "idle" && "Tap to speak with your assistant"}
+                {status === "listening" && "Tap to finish speaking"}
+                {status === "thinking" && "Looking up financial records…"}
+                {status === "speaking" && "Tap orb to interrupt playback"}
+              </p>
+            </div>
+
             {notice && (
               <p className="assistant-voice-conversation-error" role="alert">
                 {notice}

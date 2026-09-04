@@ -354,13 +354,14 @@ export function AssistantConversation({
             <div className="assistant-message-meta">
               <strong>{assistantName}</strong>
             </div>
-            <p>
-              <span className="assistant-thinking-dots" aria-hidden="true">
-                <i />
-                <i />
-                <i />
-              </span>{" "}
-              Checking your records…
+            <p className="assistant-checking-status">
+              <span className="assistant-thinking-bars" aria-hidden="true">
+                <span className="assistant-thinking-bar" />
+                <span className="assistant-thinking-bar" />
+                <span className="assistant-thinking-bar" />
+                <span className="assistant-thinking-bar" />
+              </span>
+              <span className="assistant-thinking-text">Checking your records…</span>
             </p>
           </div>
         </article>

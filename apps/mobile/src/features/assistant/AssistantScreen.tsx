@@ -77,6 +77,7 @@ import {
 } from "./assistant-ui";
 import { useAssistantRecorder } from "./assistant-voice-hooks";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
+import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
 
 type AssistantView = "threads" | "chat" | "voice";
 
@@ -681,67 +682,74 @@ export function AssistantScreen() {
       edges={["top", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
-      <View style={styles.header}>
-        <View className="flex-1" style={styles.headerLeading}>
-          <View className="flex-row items-center gap-2">
-            {view === "chat" ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Back to conversations"
-                onPress={() => {
-                  setView("threads");
-                  setActiveThreadId(null);
-                  setMessages([]);
-                }}
-                hitSlop={8}
+      {view !== "voice" ? (
+        <View style={styles.header}>
+          <View className="flex-1" style={styles.headerLeading}>
+            <View className="flex-row items-center gap-2">
+              {view === "chat" ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to conversations"
+                  onPress={() => {
+                    setView("threads");
+                    setActiveThreadId(null);
+                    setMessages([]);
+                  }}
+                  hitSlop={8}
+                >
+                  <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
+                </Pressable>
+              ) : null}
+              <Text
+                accessibilityRole="header"
+                numberOfLines={1}
+                style={[typography.title, styles.headerTitle, { color: theme.colors.text }]}
               >
-                <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
-              </Pressable>
-            ) : null}
-            <Text
-              accessibilityRole="header"
-              numberOfLines={1}
-              style={[typography.title, styles.headerTitle, { color: theme.colors.text }]}
-            >
-              {view === "chat"
-                ? activeThreadId
-                  ? "Conversation"
-                  : preferences?.assistantName
-                    ? `Chat with ${preferences.assistantName}`
-                    : "New chat"
-                : "AI Assistant"}
-            </Text>
-            {view === "threads" ? (
-              <AssistantStatusBadge label="Online" status="available" />
+                {view === "chat"
+                  ? activeThreadId
+                    ? "Conversation"
+                    : preferences?.assistantName
+                      ? `Chat with ${preferences.assistantName}`
+                      : "New chat"
+                  : "AI Assistant"}
+              </Text>
+              {view === "threads" ? (
+                <AssistantStatusBadge label="Online" status="available" />
+              ) : null}
+            </View>
+            {view === "chat" ? (
+              <View style={styles.chatStatusRow}>
+                <View style={[styles.chatStatusDot, { backgroundColor: theme.colors.income }]} />
+                <Text
+                  style={[
+                    typography.caption,
+                    { color: theme.colors.income, fontWeight: "600" },
+                  ]}
+                >
+                  Online · Read-only
+                </Text>
+              </View>
             ) : null}
           </View>
-          {view === "chat" ? (
-            <View style={styles.chatStatusRow}>
-              <View style={[styles.chatStatusDot, { backgroundColor: theme.colors.income }]} />
-              <Text style={[typography.caption, { color: theme.colors.income, fontWeight: "600" }]}>
-                Online · Read-only
-              </Text>
-            </View>
-          ) : null}
+          <View style={styles.headerActions}>
+            {view === "threads" && threads.length > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  managingThreads ? "Done managing conversations" : "Manage conversations"
+                }
+                onPress={() => setManagingThreads((current) => !current)}
+                style={styles.iconButton}
+              >
+                <Text style={[typography.label, { color: theme.colors.brand }]}>
+                  {managingThreads ? "Done" : "Select"}
+                </Text>
+              </Pressable>
+            ) : null}
+            {settingsAction}
+          </View>
         </View>
-        <View style={styles.headerActions}>
-          {view === "threads" && threads.length > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                managingThreads ? "Done managing conversations" : "Manage conversations"
-              }
-              onPress={() => setManagingThreads((current) => !current)}
-              style={styles.iconButton}
-            >
-              <Text style={[typography.label, { color: theme.colors.brand }]}>
-                {managingThreads ? "Done" : "Select"}
-              </Text>
-            </Pressable>
-          ) : null}
-          {settingsAction}
-        </View>
-      </View>
+      ) : null}
 
       {inlineError && view === "threads" ? (
         <Text
@@ -754,7 +762,7 @@ export function AssistantScreen() {
         </Text>
       ) : null}
 
-      {limitBanner ? (
+      {limitBanner && view !== "voice" ? (
         <View style={styles.bannerWrap}>
           <AssistantUpgradeBanner
             message={limitBanner}
@@ -838,11 +846,34 @@ export function AssistantScreen() {
             }
             ListFooterComponent={
               sending ? (
-                <View style={styles.thinking}>
-                  <ActivityIndicator color={theme.colors.brand} />
-                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                    Checking your records…
-                  </Text>
+                <View style={styles.thinkingWrap}>
+                  <View
+                    style={[
+                      styles.thinkingBubble,
+                      {
+                        backgroundColor: theme.colors.surface,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                  >
+                    <View style={styles.captionSpeakerRow}>
+                      <MaterialCommunityIcons
+                        name="creation"
+                        size={13}
+                        color={theme.colors.brand}
+                      />
+                      <Text
+                        style={[
+                          typography.caption,
+                          styles.captionSpeaker,
+                          { color: theme.colors.textMuted },
+                        ]}
+                      >
+                        {preferences?.assistantName ?? "Assistant"}
+                      </Text>
+                    </View>
+                    <CheckingRecordsIndicator size="small" />
+                  </View>
                 </View>
               ) : null
             }
@@ -1154,6 +1185,30 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
+  },
+  thinkingWrap: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  thinkingBubble: {
+    alignSelf: "flex-start",
+    maxWidth: "90%",
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    gap: 4,
+  },
+  captionSpeakerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  captionSpeaker: {
+    textTransform: "uppercase",
+    fontSize: 11,
+    fontWeight: "600",
+    opacity: 0.85,
   },
   thinking: {
     flexDirection: "row",

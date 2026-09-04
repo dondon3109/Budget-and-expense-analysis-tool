@@ -19,6 +19,8 @@ Do not deploy the production Worker or Pages app manually during normal developm
 
 Keep `CHANGELOG.md` current for every release. Record notable user-facing changes under `Unreleased` before release, then, after semantic-release succeeds, move those entries under the exact released version and date in a follow-up, non-releasing `docs:` commit. Do not guess the next version or mark a failed release as published.
 
+Check for stale patch list notes on production when releasing. Make sure to update the patch list as needed before releasing.
+
 ## Working style
 
 - Do not spawn subagents for work a single agent can complete in one pass.

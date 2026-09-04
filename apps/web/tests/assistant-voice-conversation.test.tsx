@@ -534,4 +534,78 @@ describe("AssistantVoiceConversation", () => {
 
     await waitFor(() => expect(apiMocks.createAssistantThread).toHaveBeenCalled());
   });
+
+  it("allows user to interrupt speaking by clicking the orb", async () => {
+    installRecordingMocks();
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+    await startListening();
+
+    await act(async () => {
+      voiceStreamMocks.captured()?.onFinal("How much did I spend?");
+      await Promise.resolve();
+    });
+    await stopListening();
+
+    await waitFor(() => expect(apiMocks.getAssistantVoiceSpeech).toHaveBeenCalled());
+    expect(await screen.findByText("Speaking…")).toBeInTheDocument();
+
+    const stopSpeakingButton = screen.getByRole("button", { name: "Stop speaking" });
+    expect(stopSpeakingButton).toBeInTheDocument();
+    expect(stopSpeakingButton).not.toBeDisabled();
+
+    fireEvent.click(stopSpeakingButton);
+    await act(async () => Promise.resolve());
+
+    expect(screen.getByRole("button", { name: "Start talking" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Conversation captions")).toHaveTextContent(
+      "You spent PHP 1,250 this month.",
+    );
+  });
+
+  it("submits prompt when clicking suggested prompt chip", async () => {
+    installRecordingMocks();
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+
+    const chip = await screen.findByRole("button", { name: /How much did I spend this month/i });
+    expect(chip).toBeInTheDocument();
+
+    fireEvent.click(chip);
+    await act(async () => Promise.resolve());
+
+    await waitFor(() =>
+      expect(apiMocks.createAssistantThread).toHaveBeenCalledWith(
+        workspace,
+        expect.objectContaining({ message: "How much did I spend this month?", kind: "voice" }),
+      ),
+    );
+  });
+
+  it("resets conversation when clicking New session", async () => {
+    installRecordingMocks();
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+    await startListening();
+
+    await act(async () => {
+      voiceStreamMocks.captured()?.onFinal("How much did I spend?");
+      await Promise.resolve();
+    });
+    await stopListening();
+
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    await act(async () => {
+      audioInstances[0]!.onended?.();
+      await Promise.resolve();
+    });
+
+    const resetButton = screen.getByRole("button", { name: "Start new conversation" });
+    fireEvent.click(resetButton);
+    await act(async () => Promise.resolve());
+
+    expect(screen.getByText("Ready to talk")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start new conversation" })).not.toBeInTheDocument();
+  });
 });
+

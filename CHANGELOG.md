@@ -29,6 +29,19 @@ All notable product changes are documented here.
 - Voice-chat captions now support markdown bolding (`**bold**`) across web and
   mobile, cleanly rendering during both typewriter streaming and completed
   turns without exposing stray markdown delimiters.
+- Enhanced Voice Chat UI and UX across web and mobile: moved the return button
+  to the top left and centered the Voice Chat title on mobile, removed the "Text chat"
+  label in favor of a clean accessible icon button, improved the "Checking your records…"
+  animation across web and mobile with a rhythmic 4-bar equalizer scanner, breathing text,
+  and card pulse, added real-time reactive waveform visualizers, tap-to-interrupt spoken playback,
+  starter prompt suggestion chips for common financial questions, and a "New session" reset action.
+- Refined the "You" indicator on chat bubbles into a structured micro-pill badge across
+  Voice Chat and Text Chat on mobile and web, featuring subtle contrast borders, icon alignment,
+  and a live pulsing status indicator (`You · Live`) during live speech recognition.
+- Upgraded the Sphere (mic button) loading animation when checking records across mobile
+  and web: added radiating concentric radar scan waves, an active breathing rhythm, and an
+  inner dual-orbital gyro scanner with counter-rotating dashed/dotted rings around a pulsing
+  sparkles core.
 - Web voice conversation now supports live speech transcription and automatic
   stopping upon silence detection using adaptive audio calibration and browser
   speech recognition.

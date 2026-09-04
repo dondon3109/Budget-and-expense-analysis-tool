@@ -333,4 +333,69 @@ describe("AssistantVoiceConversation", () => {
     expect(await screen.findByLabelText("Start talking")).toBeTruthy();
     expect(screen.queryByLabelText("Stop listening")).toBeNull();
   });
+
+  it("renders close button with back-to-text-chat label and no 'Text chat' text", async () => {
+    installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+
+    expect(await screen.findByLabelText("Back to text chat")).toBeTruthy();
+    expect(screen.queryByText("Text chat")).toBeNull();
+  });
+
+  it("renders suggested prompt chips in empty state and sends turn when pressed", async () => {
+    const m = mocks();
+    installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+
+    expect(await screen.findByText("Ready to talk")).toBeTruthy();
+    const chip = screen.getByLabelText("How much did I spend this month?");
+    expect(chip).toBeTruthy();
+
+    fireEvent.press(chip);
+    await waitFor(() =>
+      expect(m.createAssistantThreadTurn).toHaveBeenCalledWith(
+        { accessToken: "token" },
+        expect.objectContaining({ message: "How much did I spend this month?", kind: "voice" }),
+      ),
+    );
+  });
+
+  it("resets session and clears captions when reset button is pressed", async () => {
+    const { spoken, captured } = installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Start talking"));
+    await captured.transcript?.("How much did I spend?");
+    captured.ended?.();
+
+    expect(
+      await screen.findByText("You spent PHP 1,250 this month.", {}, { timeout: 4000 }),
+    ).toBeTruthy();
+    const resetBtn = await screen.findByLabelText("Reset conversation");
+    expect(resetBtn).toBeTruthy();
+
+    fireEvent.press(resetBtn);
+    await waitFor(() => {
+      expect(screen.queryByText("You spent PHP 1,250 this month.")).toBeNull();
+    });
+    expect(await screen.findByText("Ready to talk")).toBeTruthy();
+  });
+
+  it("interrupts speaking playback when orb is pressed while speaking", async () => {
+    const { spoken, captured } = installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Start talking"));
+    await captured.transcript?.("How much did I spend?");
+
+    const stopSpeakingBtn = await screen.findByLabelText("Stop speaking");
+    expect(stopSpeakingBtn).toBeTruthy();
+
+    fireEvent.press(stopSpeakingBtn);
+    expect(spoken.listen).toHaveBeenCalled();
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+  });
 });
+
