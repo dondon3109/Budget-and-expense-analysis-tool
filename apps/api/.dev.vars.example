@@ -3,7 +3,7 @@
 # Public Worker-side Supabase key used by readiness and account reauthentication. It must match
 # SUPABASE_URL in the active Wrangler config and be an sb_publishable_ or legacy anon key.
 SUPABASE_PUBLISHABLE_KEY=
-# Optional local development user UUID for dummy token bypass. Defaults to the primary local user.
+# Optional local development user UUID for dummy token bypass. Defaults to 00000000-0000-4000-8000-000000000001.
 DEV_USER_ID=
 # Optional provider timeout override in milliseconds (default 12000; recommended 30000 in dev).
 ASSISTANT_PROVIDER_TIMEOUT_MS=30000

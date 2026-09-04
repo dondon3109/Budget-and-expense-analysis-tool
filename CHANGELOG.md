@@ -104,6 +104,8 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Fixed mobile sync failing on release builds with "Dummy sessions are not available in this Zoption build" (`apps/mobile/src/auth/session-state.tsx`): authenticated Supabase sessions are now tracked via explicit session origin state rather than subject UUID matching, preventing legitimate user accounts from colliding with the development dummy subject.
+- Purged stale development dummy session storage keys on non-development mobile builds (`apps/mobile/src/auth/session-state.tsx`) and reset local development token fallbacks to the canonical dummy UUID (`apps/api/src/auth.ts`).
 - Fixed mobile chat view not folding when typing, preventing the chat composer from being pushed off-screen or covered by the virtual keyboard (`apps/mobile/src/features/assistant/AssistantScreen.tsx`, `apps/mobile/src/features/support/SupportScreen.tsx`). Wrapped the chat container in `KeyboardAvoidingView`, configured list dismiss and tap persistence, and scrolled to the bottom on keyboard appearance.
 - Updated assistant and support chat message sending UI to show outgoing messages as sent immediately without waiting spinners or sending status (`apps/mobile/src/features/assistant/AssistantScreen.tsx`, `apps/web/src/components/assistant/AssistantConversation.tsx`).
 

@@ -15,7 +15,7 @@ import {
 } from "react";
 import { AppState, Platform } from "react-native";
 
-import { environmentValue, isSupabaseConfigured } from "@/config/public-config";
+import { isSupabaseConfigured } from "@/config/public-config";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -27,9 +27,8 @@ import { clearPlanCache } from "./plan-state";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, supabase } from "./supabase-client";
 
-export const DUMMY_DEV_SUBJECT =
-  environmentValue(process.env.EXPO_PUBLIC_DEV_USER_ID)?.trim() ||
-  "08060c19-8a55-4046-a2e7-7384808dd81c";
+import { DUMMY_DEV_SUBJECT } from "@/db/demo-seed";
+export { DUMMY_DEV_SUBJECT };
 export const DUMMY_DEV_STORAGE_KEY = "zoption.dev.dummy_session";
 
 export type SessionStatus = "loading" | "signed-out" | "signed-in";
@@ -96,9 +95,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const demoEnabled = isDevelopmentAppVariant();
   const [snapshot, setSnapshot] = useState<SessionSnapshot>({ status: "loading", subject: null });
   const subjectRef = useRef<string | null>(null);
+  const isDummySessionRef = useRef(false);
   const initializedRef = useRef(false);
 
   const applySession = useCallback((session: Session | null) => {
+    isDummySessionRef.current = false;
+    if (session) {
+      void SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
+    }
     const nextSubject = session?.user.id ?? null;
     const previousSubject = subjectRef.current;
     if (initializedRef.current && previousSubject !== nextSubject) {
@@ -120,9 +124,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
+    if (!demoEnabled) {
+      void SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
+    }
     if (!supabase) {
       if (!demoEnabled) {
-        void SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
         setSnapshot(signedOutSession);
         return;
       }
@@ -130,17 +136,15 @@ export function SessionProvider({ children }: PropsWithChildren) {
       void SecureStore.getItemAsync(DUMMY_DEV_STORAGE_KEY)
         .then(async (storedSubject) => {
           if (!active) return;
-          if (
-            storedSubject === "00000000-0000-4000-8000-000000000001" &&
-            DUMMY_DEV_SUBJECT !== "00000000-0000-4000-8000-000000000001"
-          ) {
+          if (storedSubject && storedSubject !== DUMMY_DEV_SUBJECT) {
             await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
             setSnapshot(signedOutSession);
             return;
           }
-          if (storedSubject) {
+          if (storedSubject && storedSubject === DUMMY_DEV_SUBJECT) {
             void telemetry.identify(storedSubject);
             subjectRef.current = storedSubject;
+            isDummySessionRef.current = true;
             initializedRef.current = true;
             setSnapshot({
               status: "signed-in",
@@ -173,10 +177,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       if (demoEnabled) {
         const stored = await SecureStore.getItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => null);
         if (!active) return;
-        if (
-          stored === "00000000-0000-4000-8000-000000000001" &&
-          DUMMY_DEV_SUBJECT !== "00000000-0000-4000-8000-000000000001"
-        ) {
+        if (stored && stored !== DUMMY_DEV_SUBJECT) {
           await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
           applySession(null);
           return;
@@ -184,6 +185,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         if (stored && stored === DUMMY_DEV_SUBJECT) {
           void telemetry.identify(stored);
           subjectRef.current = stored;
+          isDummySessionRef.current = true;
           initializedRef.current = true;
           setSnapshot({
             status: "signed-in",
@@ -225,6 +227,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     }
     void telemetry.identify(DUMMY_DEV_SUBJECT);
     subjectRef.current = DUMMY_DEV_SUBJECT;
+    isDummySessionRef.current = true;
     initializedRef.current = true;
     setSnapshot({
       status: "signed-in",
@@ -254,7 +257,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
   );
 
   const getAccessToken = useCallback(async (refresh: boolean) => {
-    if (subjectRef.current === DUMMY_DEV_SUBJECT) {
+    if (isDummySessionRef.current) {
       if (!demoEnabled) {
         throw new Error("Dummy sessions are not available in this Zoption build.");
       }
@@ -343,12 +346,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
       assertSignOutRiskAllowed(risk, options.discardUnsyncedChanges === true);
     }
 
-    if (subject === DUMMY_DEV_SUBJECT) {
+    if (isDummySessionRef.current) {
       await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
     } else if (supabase) {
       const { error } = await getSupabaseClient().auth.signOut({ scope: "local" });
       if (error) throw error;
     }
+    isDummySessionRef.current = false;
     clearUserScopedRuntimeState();
     // Supabase may already have emitted SIGNED_OUT while auth.signOut awaited.
     // Reset here only when that listener did not already clear PostHog.
