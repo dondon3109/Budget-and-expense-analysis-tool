@@ -275,6 +275,10 @@ export function createAssistantOrchestrator(
               return totals;
             }
 
+            console.warn(
+              `[assistant-validation] Draft rejected: reasons=[${validation.reasons.join(", ")}] draft=${JSON.stringify(content)}`,
+            );
+
             if (!answerValidationRetryUsed && invocation + 1 < MAX_PROVIDER_CALLS) {
               answerValidationRetryUsed = true;
               messages.push({ role: "assistant", content });
@@ -287,6 +291,10 @@ export function createAssistantOrchestrator(
               });
               continue;
             }
+
+            console.warn(
+              `[assistant-validation] Fallback to safe response for question: ${JSON.stringify(message)}`,
+            );
 
             totals.content = safeFallback(policy);
             totals.finishReason = "validation_fallback";

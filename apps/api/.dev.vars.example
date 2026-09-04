@@ -5,6 +5,8 @@
 SUPABASE_PUBLISHABLE_KEY=
 # Optional local development user UUID for dummy token bypass. Defaults to the primary local user.
 DEV_USER_ID=
+# Optional provider timeout override in milliseconds (default 12000; recommended 30000 in dev).
+ASSISTANT_PROVIDER_TIMEOUT_MS=30000
 
 DEEPSEEK_API_KEY=
 
