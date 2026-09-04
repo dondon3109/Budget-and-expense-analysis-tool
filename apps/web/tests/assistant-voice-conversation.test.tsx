@@ -461,7 +461,7 @@ describe("AssistantVoiceConversation", () => {
 
   it("captures live partial transcript via browser SpeechRecognition when available", async () => {
     installRecordingMocks();
-    let capturedRecognitionInstance: any = null;
+    const seenRecognitions: any[] = [];
     class MockSpeechRecognition {
       continuous = false;
       interimResults = false;
@@ -469,22 +469,28 @@ describe("AssistantVoiceConversation", () => {
       onresult: ((event: any) => void) | null = null;
       onerror: ((event: any) => void) | null = null;
       onspeechend: (() => void) | null = null;
-      start() {
-        capturedRecognitionInstance = this;
-      }
-      stop() {}
-      abort() {}
+      start(): void {}
+      stop(): void {}
+      abort(): void {}
     }
-    vi.stubGlobal("SpeechRecognition", MockSpeechRecognition);
+    vi.stubGlobal(
+      "SpeechRecognition",
+      class extends MockSpeechRecognition {
+        constructor() {
+          super();
+          seenRecognitions.push(this);
+        }
+      },
+    );
 
     renderConversation();
     await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
     await startListening();
 
-    expect(capturedRecognitionInstance).not.toBeNull();
+    expect(seenRecognitions).toHaveLength(1);
 
     await act(async () => {
-      capturedRecognitionInstance.onresult({
+      seenRecognitions[0].onresult({
         results: [[{ transcript: "What is my grocery budget" }]],
         resultIndex: 0,
       });
@@ -497,7 +503,7 @@ describe("AssistantVoiceConversation", () => {
 
   it("automatically stops recording after user finishes speaking via speech end silence", async () => {
     installRecordingMocks();
-    let capturedRecognitionInstance: any = null;
+    const seenRecognitions: any[] = [];
     class MockSpeechRecognition {
       continuous = false;
       interimResults = false;
@@ -505,22 +511,28 @@ describe("AssistantVoiceConversation", () => {
       onresult: ((event: any) => void) | null = null;
       onerror: ((event: any) => void) | null = null;
       onspeechend: (() => void) | null = null;
-      start() {
-        capturedRecognitionInstance = this;
-      }
-      stop() {}
-      abort() {}
+      start(): void {}
+      stop(): void {}
+      abort(): void {}
     }
-    vi.stubGlobal("SpeechRecognition", MockSpeechRecognition);
+    vi.stubGlobal(
+      "SpeechRecognition",
+      class extends MockSpeechRecognition {
+        constructor() {
+          super();
+          seenRecognitions.push(this);
+        }
+      },
+    );
 
     renderConversation();
     await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
     await startListening();
 
-    expect(capturedRecognitionInstance).not.toBeNull();
+    expect(seenRecognitions).toHaveLength(1);
 
     await act(async () => {
-      capturedRecognitionInstance.onresult({
+      seenRecognitions[0].onresult({
         results: [[{ transcript: "How much did I spend on food?" }]],
         resultIndex: 0,
       });
@@ -528,7 +540,7 @@ describe("AssistantVoiceConversation", () => {
     });
 
     await act(async () => {
-      capturedRecognitionInstance.onspeechend?.();
+      seenRecognitions[0].onspeechend?.();
       await new Promise((resolve) => setTimeout(resolve, 900));
     });
 

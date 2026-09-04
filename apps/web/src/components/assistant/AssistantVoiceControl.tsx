@@ -331,9 +331,7 @@ export function AssistantVoiceControl({
           // If the active STT model is the dedicated live transcription model, don't fall back to batch
           // — batch POST /transcriptions rejects gemini-3.5-transcribe-live with 400 and shows a confusing error
           // even though the user did use the streaming button. Surface the live failure instead.
-          const isLiveModel =
-            (preferences?.transcriptionModel as string | undefined) ===
-            "gemini-3.5-transcribe-live";
+          const isLiveModel = preferences?.transcriptionModel === "gemini-3.5-transcribe-live";
           if (isLiveModel) {
             setStatus("idle");
             const liveErr = liveErrorRef.current;

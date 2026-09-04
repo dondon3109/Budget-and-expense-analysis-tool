@@ -10,7 +10,6 @@ export function renderVoiceCaptionContent(content: string): ReactNode[] {
 
   const parts: ReactNode[] = [];
   let cursor = 0;
-  let keyIndex = 0;
 
   while (cursor < content.length) {
     const opening = content.indexOf("**", cursor);
@@ -39,7 +38,7 @@ export function renderVoiceCaptionContent(content: string): ReactNode[] {
       const unclosedText = content.slice(opening + 2);
       if (unclosedText) {
         parts.push(
-          <strong key={`bold-${keyIndex++}`} className="assistant-voice-bold">
+          <strong key={`bold-${parts.length}`} className="assistant-voice-bold">
             {unclosedText}
           </strong>,
         );
@@ -50,7 +49,7 @@ export function renderVoiceCaptionContent(content: string): ReactNode[] {
     const boldText = content.slice(opening + 2, closing);
     if (boldText) {
       parts.push(
-        <strong key={`bold-${keyIndex++}`} className="assistant-voice-bold">
+        <strong key={`bold-${parts.length}`} className="assistant-voice-bold">
           {boldText}
         </strong>,
       );

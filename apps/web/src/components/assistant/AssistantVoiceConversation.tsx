@@ -56,6 +56,47 @@ interface Caption {
   text: string;
 }
 
+// Minimal structural types for the Web Speech API, which has no built-in
+// TypeScript declarations. Only the surface used for live captions is modeled.
+interface SpeechRecognitionResultItem {
+  readonly transcript: string;
+}
+
+interface SpeechRecognitionResult {
+  readonly length: number;
+  [index: number]: SpeechRecognitionResultItem | undefined;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  [index: number]: SpeechRecognitionResult | undefined;
+}
+
+interface SpeechRecognitionResultEvent extends Event {
+  readonly results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  onspeechend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionInstance;
+}
+
+interface WindowWithSpeechRecognition {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
 interface AssistantVoiceConversationProps {
   workspace: AuthenticatedWorkspace;
   assistantName: string;
@@ -100,7 +141,7 @@ export function AssistantVoiceConversation({
   const audioContextRef = useRef<AudioContext | undefined>(undefined);
   const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
   const liveSessionPromiseRef = useRef<Promise<LiveTranscriptionSession> | null>(null);
-  const speechRecognitionRef = useRef<any>(null);
+  const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const heardSpeechRef = useRef(false);
   const lastSpeechAtRef = useRef(0);
   const liveTranscriptRef = useRef<string>("");
@@ -160,7 +201,9 @@ export function AssistantVoiceConversation({
     if (speechRecognitionRef.current) {
       try {
         speechRecognitionRef.current.abort();
-      } catch {}
+      } catch {
+        // Abort can throw when recognition already stopped; resources are cleared anyway.
+      }
       speechRecognitionRef.current = null;
     }
     liveSessionPromiseRef.current = null;
@@ -549,8 +592,7 @@ export function AssistantVoiceConversation({
           // The batch endpoint rejects the live model; surface the live
           // failure (for example stt_not_streaming) instead of hanging.
           const isLiveModel =
-            (preferences?.transcriptionModel as string | undefined) ===
-            "gemini-3.5-transcribe-live";
+            preferences?.transcriptionModel === "gemini-3.5-transcribe-live";
           if (isLiveModel) {
             setVoiceStatus("idle");
             const liveErr = liveErrorRef.current;
@@ -588,10 +630,8 @@ export function AssistantVoiceConversation({
       // Live browser speech recognition if supported
       const SpeechRecognitionClass =
         typeof window !== "undefined"
-          ? (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any })
-              .SpeechRecognition ||
-            (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any })
-              .webkitSpeechRecognition
+          ? (window as unknown as WindowWithSpeechRecognition).SpeechRecognition ||
+            (window as unknown as WindowWithSpeechRecognition).webkitSpeechRecognition
           : undefined;
 
       if (SpeechRecognitionClass) {
@@ -603,7 +643,7 @@ export function AssistantVoiceConversation({
             typeof navigator !== "undefined" && navigator.language ? navigator.language : "en-US";
           speechRecognitionRef.current = recognition;
 
-          recognition.onresult = (event: any) => {
+          recognition.onresult = (event: SpeechRecognitionResultEvent) => {
             if (!mountedRef.current) return;
             let full = "";
             for (let i = 0; i < event.results.length; ++i) {
@@ -648,8 +688,7 @@ export function AssistantVoiceConversation({
 
       // Dual capture: live stream plus MediaRecorder batch fallback.
       const isLiveModel =
-        (preferences?.transcriptionModel as string | undefined) ===
-        "gemini-3.5-transcribe-live";
+        preferences?.transcriptionModel === "gemini-3.5-transcribe-live";
       if (isLiveModel) {
         const livePromise = startLiveTranscriptionSession(workspace, activeStream, {
           onPartial: (partial) => {
@@ -721,7 +760,9 @@ export function AssistantVoiceConversation({
     if (speechRecognitionRef.current) {
       try {
         speechRecognitionRef.current.stop();
-      } catch {}
+      } catch {
+        // Stop can throw when recognition already stopped; recording continues anyway.
+      }
     }
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
   }

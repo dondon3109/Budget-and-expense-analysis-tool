@@ -226,8 +226,8 @@ export function createAssistantVoiceService(
       reviewRequired: env.ASSISTANT_VOICE_REVIEW_REQUIRED !== "false",
       consentedAt: consent.consentedAt,
       consentVersion: consent.consentVersion,
-      transcriptionModel: sttModel as "@cf/openai/whisper-large-v3-turbo",
-      ttsModel: ttsModel as "s2.1-pro-free",
+      transcriptionModel: sttModel,
+      ttsModel: ttsModel,
     };
   }
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
+import { setInterval } from "node:timers";
 import { fileURLToPath } from "node:url";
 
 export const DEFAULT_PORTS = [8081, 8787];
@@ -48,7 +49,7 @@ export function ensureAdbReverse(options = {}) {
   const ports = options.ports ?? DEFAULT_PORTS;
   const log = options.log ?? console.log;
 
-  let devicesOutput = "";
+  let devicesOutput;
   try {
     devicesOutput = execFn("adb devices", {
       encoding: "utf8",
@@ -66,7 +67,7 @@ export function ensureAdbReverse(options = {}) {
 
   const reversed = [];
   for (const serial of devices) {
-    let listOutput = "";
+    let listOutput;
     try {
       listOutput = execFn(`adb -s ${serial} reverse --list`, {
         encoding: "utf8",

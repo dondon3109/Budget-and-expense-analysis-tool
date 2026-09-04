@@ -15,7 +15,6 @@ export function renderMobileVoiceCaption(
 
   const parts: ReactNode[] = [];
   let cursor = 0;
-  let keyIndex = 0;
 
   while (cursor < content.length) {
     const opening = content.indexOf("**", cursor);
@@ -25,19 +24,19 @@ export function renderMobileVoiceCaption(
         const prefix = remaining.slice(0, -2);
         if (prefix) {
           parts.push(
-            <Text key={`text-${keyIndex++}`} style={textStyle}>
+            <Text key={`text-${parts.length}`} style={textStyle}>
               {prefix}
             </Text>,
           );
         }
         parts.push(
-          <Text key={`text-${keyIndex++}`} style={textStyle}>
+          <Text key={`text-${parts.length}`} style={textStyle}>
             ▍
           </Text>,
         );
       } else if (remaining) {
         parts.push(
-          <Text key={`text-${keyIndex++}`} style={textStyle}>
+          <Text key={`text-${parts.length}`} style={textStyle}>
             {remaining}
           </Text>,
         );
@@ -47,7 +46,7 @@ export function renderMobileVoiceCaption(
 
     if (opening > cursor) {
       parts.push(
-        <Text key={`text-${keyIndex++}`} style={textStyle}>
+        <Text key={`text-${parts.length}`} style={textStyle}>
           {content.slice(cursor, opening)}
         </Text>,
       );
@@ -58,7 +57,7 @@ export function renderMobileVoiceCaption(
       const unclosedText = content.slice(opening + 2);
       if (unclosedText) {
         parts.push(
-          <Text key={`bold-${keyIndex++}`} style={[textStyle, boldStyle]}>
+          <Text key={`bold-${parts.length}`} style={[textStyle, boldStyle]}>
             {unclosedText}
           </Text>,
         );
@@ -69,7 +68,7 @@ export function renderMobileVoiceCaption(
     const boldText = content.slice(opening + 2, closing);
     if (boldText) {
       parts.push(
-        <Text key={`bold-${keyIndex++}`} style={[textStyle, boldStyle]}>
+        <Text key={`bold-${parts.length}`} style={[textStyle, boldStyle]}>
           {boldText}
         </Text>,
       );

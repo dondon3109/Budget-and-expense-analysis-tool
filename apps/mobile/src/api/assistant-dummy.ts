@@ -243,11 +243,11 @@ function generateAssistantResponse(prompt: string): string {
 }
 
 // 2. Preferences API
-export async function getDummyAssistantPreferences(): Promise<AssistantPreferences> {
-  return { ...dummyPreferences };
+export function getDummyAssistantPreferences(): Promise<AssistantPreferences> {
+  return Promise.resolve({ ...dummyPreferences });
 }
 
-export async function updateDummyAssistantPreferences(
+export function updateDummyAssistantPreferences(
   update: AssistantPreferenceUpdate,
 ): Promise<AssistantPreferences> {
   if ("consented" in update && update.consented) {
@@ -269,57 +269,58 @@ export async function updateDummyAssistantPreferences(
       coachingStyle: update.coachingStyle,
     };
   }
-  return { ...dummyPreferences };
+  return Promise.resolve({ ...dummyPreferences });
 }
 
 // 3. Memory API
-export async function getDummyAssistantMemoryPreferences(): Promise<AssistantMemoryPreferences> {
-  return { ...dummyMemoryPreferences };
+export function getDummyAssistantMemoryPreferences(): Promise<AssistantMemoryPreferences> {
+  return Promise.resolve({ ...dummyMemoryPreferences });
 }
 
-export async function updateDummyAssistantMemoryPreferences(input: {
+export function updateDummyAssistantMemoryPreferences(input: {
   debtStrategy: "avalanche" | "snowball" | null;
 }): Promise<AssistantMemoryPreferences> {
   dummyMemoryPreferences = {
     ...dummyMemoryPreferences,
     debtStrategy: input.debtStrategy,
   };
-  return { ...dummyMemoryPreferences };
+  return Promise.resolve({ ...dummyMemoryPreferences });
 }
 
-export async function getDummyAssistantMemory(): Promise<AssistantMemory[]> {
-  return [...dummyMemories];
+export function getDummyAssistantMemory(): Promise<AssistantMemory[]> {
+  return Promise.resolve([...dummyMemories]);
 }
 
-export async function clearDummyAssistantMemory(): Promise<void> {
+export function clearDummyAssistantMemory(): Promise<void> {
   dummyMemories = [];
+  return Promise.resolve();
 }
 
 // 4. Threads & Messages API
-export async function listDummyAssistantThreads(
+export function listDummyAssistantThreads(
   query: { cursor?: string; limit?: number } = {},
 ): Promise<AssistantThreadPage> {
   const limit = query.limit ?? 20;
   const items = dummyThreads.slice(0, limit);
-  return {
+  return Promise.resolve({
     items,
     nextCursor: null,
-  };
+  });
 }
 
-export async function listDummyAssistantMessages(
+export function listDummyAssistantMessages(
   threadId: string,
   query: { cursor?: string; limit?: number } = {},
 ): Promise<AssistantWireMessagePage> {
   const limit = query.limit ?? 50;
   const allMessages = dummyMessages[threadId] ?? [];
-  return {
+  return Promise.resolve({
     items: allMessages.slice(-limit),
     nextCursor: null,
-  };
+  });
 }
 
-export async function createDummyAssistantThreadTurn(
+export function createDummyAssistantThreadTurn(
   input: AssistantMessageInput,
 ): Promise<AssistantWireTurnResult> {
   const threadId = generateUuid();
@@ -356,10 +357,10 @@ export async function createDummyAssistantThreadTurn(
   dummyThreads = [thread, ...dummyThreads];
   dummyMessages[threadId] = [userMessage, assistantMessage];
 
-  return { thread, userMessage, assistantMessage };
+  return Promise.resolve({ thread, userMessage, assistantMessage });
 }
 
-export async function sendDummyAssistantTurn(
+export function sendDummyAssistantTurn(
   threadId: string,
   input: AssistantMessageInput,
 ): Promise<AssistantWireTurnResult> {
@@ -402,31 +403,33 @@ export async function sendDummyAssistantTurn(
     dummyThreads = [thread, ...dummyThreads];
   }
 
-  return { thread, userMessage, assistantMessage };
+  return Promise.resolve({ thread, userMessage, assistantMessage });
 }
 
-export async function deleteDummyAssistantThread(threadId: string): Promise<void> {
+export function deleteDummyAssistantThread(threadId: string): Promise<void> {
   dummyThreads = dummyThreads.filter((t) => t.id !== threadId);
   delete dummyMessages[threadId];
+  return Promise.resolve();
 }
 
-export async function deleteAllDummyAssistantThreads(): Promise<void> {
+export function deleteAllDummyAssistantThreads(): Promise<void> {
   dummyThreads = [];
   dummyMessages = {};
+  return Promise.resolve();
 }
 
 // 5. Voice Preferences & Audio API
-export async function getDummyAssistantVoicePreferences(): Promise<AssistantVoicePreferences> {
-  return { ...dummyVoicePreferences };
+export function getDummyAssistantVoicePreferences(): Promise<AssistantVoicePreferences> {
+  return Promise.resolve({ ...dummyVoicePreferences });
 }
 
-export async function grantDummyAssistantVoiceConsent(): Promise<AssistantVoicePreferences> {
+export function grantDummyAssistantVoiceConsent(): Promise<AssistantVoicePreferences> {
   dummyVoicePreferences = {
     ...dummyVoicePreferences,
     consentedAt: new Date().toISOString(),
     consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
   };
-  return { ...dummyVoicePreferences };
+  return Promise.resolve({ ...dummyVoicePreferences });
 }
 
 let dummyVoiceIndex = 0;
@@ -437,18 +440,19 @@ const DUMMY_VOICE_PROMPTS = [
   "What is my debt payoff strategy?",
 ];
 
-export async function transcribeDummyVoice(_recording: {
+export function transcribeDummyVoice(_recording: {
   uri: string;
   mimeType: string;
   fileName: string;
 }): Promise<AssistantVoiceTranscription> {
+  void _recording;
   const text = DUMMY_VOICE_PROMPTS[dummyVoiceIndex % DUMMY_VOICE_PROMPTS.length]!;
   dummyVoiceIndex++;
-  return {
+  return Promise.resolve({
     text,
     durationSeconds: 2.5,
     languageCode: "en",
-  };
+  });
 }
 
 // Minimal valid silent MPEG-1 Audio Layer III frame (128 kbps, 44.1 kHz, Stereo)
@@ -461,37 +465,40 @@ function createSilentMp3(): Uint8Array {
   return frame;
 }
 
-export async function synthesizeDummySpeech(
+export function synthesizeDummySpeech(
   _messageId: string,
   _voice: AssistantSpeechVoice,
 ): Promise<{ bytes: Uint8Array; mimeType: "audio/mpeg" }> {
-  return {
+  void _messageId;
+  void _voice;
+  return Promise.resolve({
     bytes: createSilentMp3(),
     mimeType: "audio/mpeg",
-  };
+  });
 }
 
-export async function previewDummySpeech(
+export function previewDummySpeech(
   _voice: AssistantSpeechVoice,
 ): Promise<{ bytes: Uint8Array; mimeType: "audio/mpeg" }> {
-  return {
+  void _voice;
+  return Promise.resolve({
     bytes: createSilentMp3(),
     mimeType: "audio/mpeg",
-  };
+  });
 }
 
 // 6. Receipt & AI Entry API
-export async function getDummyReceiptPreferences(): Promise<ReceiptPreferences> {
-  return {
+export function getDummyReceiptPreferences(): Promise<ReceiptPreferences> {
+  return Promise.resolve({
     enabled: true,
     consentedAt: "2026-08-01T00:00:00.000Z",
     consentVersion: 1,
     visionModel: "@cf/meta/llama-3.2-11b-vision-instruct",
-  };
+  });
 }
 
-export async function extractDummyReceipt(): Promise<ReceiptDraft> {
-  return {
+export function extractDummyReceipt(): Promise<ReceiptDraft> {
+  return Promise.resolve({
     merchant: "Metro Supermarket",
     date: new Date().toISOString().slice(0, 10),
     amountMinor: 245000,
@@ -504,11 +511,11 @@ export async function extractDummyReceipt(): Promise<ReceiptDraft> {
       { description: "Fresh Produce & Vegetables", amountMinor: 95000, categoryName: "Groceries" },
       { description: "Pantry Staples & Milk", amountMinor: 150000, categoryName: "Groceries" },
     ],
-  };
+  });
 }
 
-export async function extractDummyVoiceTransaction(): Promise<TransactionVoiceDraft> {
-  return {
+export function extractDummyVoiceTransaction(): Promise<TransactionVoiceDraft> {
+  return Promise.resolve({
     transcript: "Spent 250 pesos on lunch at Bistro",
     description: "Lunch at Bistro",
     date: new Date().toISOString().slice(0, 10),
@@ -516,5 +523,5 @@ export async function extractDummyVoiceTransaction(): Promise<TransactionVoiceDr
     currency: "PHP",
     kind: "expense",
     categoryName: "Dining & Food",
-  };
+  });
 }
