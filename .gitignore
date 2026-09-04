@@ -21,6 +21,8 @@ _tmp_*
 *.tsbuildinfo
 *.swp
 ~$*
+__pycache__/
+*.pyc
 
 # Android build output and release-signing secrets
 *.jks
