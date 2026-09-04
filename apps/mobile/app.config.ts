@@ -140,7 +140,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: variant.androidPackage,
-      versionCode: 20316,
+      versionCode: 20317,
       allowBackup: false,
       // Keep the activity height stable when the keyboard opens. Android pans
       // the focused field into view instead of reflowing the whole screen.
