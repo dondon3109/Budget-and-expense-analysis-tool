@@ -6,6 +6,7 @@ import {
   MAX_ASSISTANT_MESSAGE_LENGTH,
   requiresAssistantConsent,
   requiresIdentitySetup,
+  resolveAssistantThreadView,
   suggestedThreadTitle,
   threadSectionTitle,
   validateAssistantMessage,
@@ -69,5 +70,15 @@ describe("assistant form helpers", () => {
     expect(formatThreadTime("not-a-date")).toBe("");
     expect(suggestedThreadTitle("short question")).toBe("short question");
     expect(suggestedThreadTitle("x".repeat(60))).toHaveLength(48);
+  });
+
+  it("routes voice history back to the voice UI", () => {
+    expect(resolveAssistantThreadView("voice")).toBe("voice");
+  });
+
+  it("keeps text history in the text chat UI", () => {
+    expect(resolveAssistantThreadView("text")).toBe("chat");
+    expect(resolveAssistantThreadView(null)).toBe("chat");
+    expect(resolveAssistantThreadView(undefined)).toBe("chat");
   });
 });
