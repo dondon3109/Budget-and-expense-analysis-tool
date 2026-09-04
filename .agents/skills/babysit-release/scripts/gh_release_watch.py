@@ -602,6 +602,10 @@ def write_heartbeat(path, snapshot, changed):
 
 STOP_ACTIONS = {"stop_released", "stop_exhausted_retries"}
 
+# A single failed poll (gh rate limit, API 500, network blip) must not kill an
+# hours-long watch. Tolerate a few consecutive poll errors, then give up.
+MAX_CONSECUTIVE_POLL_ERRORS = 5
+
 
 def run_watch(args):
     # Stdout is precious: the harness wakes the session on process output, so
@@ -610,11 +614,28 @@ def run_watch(args):
     # one liveness line in the heartbeat file and print nothing.
     print_event("watch_started", {"poll_seconds": args.poll_seconds})
     last_change_key = None
-    heartbeat_path = None
+    consecutive_errors = 0
     while True:
-        snapshot, state_path = collect_snapshot(args)
-        if heartbeat_path is None:
-            heartbeat_path = heartbeat_path_for(args, state_path)
+        try:
+            snapshot, state_path = collect_snapshot(args)
+        except (GhCommandError, RuntimeError, ValueError, OSError) as err:
+            consecutive_errors += 1
+            print_event(
+                "error",
+                {
+                    "message": str(err),
+                    "consecutive_errors": consecutive_errors,
+                    "max_consecutive_errors": MAX_CONSECUTIVE_POLL_ERRORS,
+                },
+            )
+            if consecutive_errors >= MAX_CONSECUTIVE_POLL_ERRORS:
+                return 1
+            time.sleep(args.poll_seconds)
+            continue
+        consecutive_errors = 0
+        # Derived per poll, not cached: --sha auto can advance mid-watch and
+        # the heartbeat must follow the watched SHA, not the first one.
+        heartbeat_path = heartbeat_path_for(args, state_path)
         changed = snapshot_change_key(snapshot) != last_change_key
         last_change_key = snapshot_change_key(snapshot)
         write_heartbeat(heartbeat_path, snapshot, changed)

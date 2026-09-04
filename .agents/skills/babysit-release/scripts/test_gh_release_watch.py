@@ -308,5 +308,101 @@ class QuietWatchTest(unittest.TestCase):
             self.assertIn("changed=false", beats[1])
 
 
+class WatchResilienceTest(unittest.TestCase):
+    def _args(self, tmp):
+        return argparse.Namespace(
+            poll_seconds=60,
+            heartbeat_file=None,
+            state_file=str(Path(tmp) / "state.json"),
+        )
+
+    def _snap(self, sha, actions):
+        return {
+            "sha": sha,
+            "tracks": {"ci": None, "release": None, "android": None, "ota": None},
+            "live": live_markers(),
+            "actions": actions,
+        }
+
+    def _run_events(self, args, snapshots):
+        import io
+        from contextlib import redirect_stdout
+
+        with (
+            mock.patch.object(
+                gh_release_watch, "collect_snapshot", side_effect=snapshots
+            ),
+            mock.patch.object(gh_release_watch.time, "sleep", return_value=None),
+        ):
+            out = io.StringIO()
+            with redirect_stdout(out):
+                code = gh_release_watch.run_watch(args)
+        return code, [
+            json.loads(line) for line in out.getvalue().splitlines() if line.strip()
+        ]
+
+    def test_transient_poll_error_does_not_kill_watch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = self._args(tmp)
+            state_path = Path(tmp) / "state.json"
+            steady = self._snap(SHA, ["idle"])
+            stop = self._snap(SHA, ["stop_released"])
+            code, events = self._run_events(
+                args,
+                [
+                    gh_release_watch.GhCommandError("rate limited"),
+                    (steady, state_path),
+                    (stop, state_path),
+                ],
+            )
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            [event["event"] for event in events],
+            ["watch_started", "error", "snapshot", "snapshot", "stop"],
+        )
+
+    def test_persistent_poll_errors_give_up(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = self._args(tmp)
+            with (
+                mock.patch.object(
+                    gh_release_watch,
+                    "collect_snapshot",
+                    side_effect=gh_release_watch.GhCommandError("API 500"),
+                ),
+                mock.patch.object(gh_release_watch.time, "sleep", return_value=None),
+            ):
+                import io
+                from contextlib import redirect_stdout
+
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    code = gh_release_watch.run_watch(args)
+        self.assertEqual(code, 1)
+        errors = [
+            json.loads(line)
+            for line in out.getvalue().splitlines()
+            if '"error"' in line
+        ]
+        self.assertEqual(len(errors), gh_release_watch.MAX_CONSECUTIVE_POLL_ERRORS)
+
+    def test_heartbeat_follows_sha_advance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = self._args(tmp)
+            other_sha = "ffffffffffff"
+            first = self._snap(SHA, ["idle"])
+            second = self._snap(other_sha, ["stop_released"])
+            first_path = Path(tmp) / "state-a.json"
+            second_path = Path(tmp) / "state-b.json"
+            code, _ = self._run_events(
+                args, [(first, first_path), (second, second_path)]
+            )
+            self.assertEqual(code, 0)
+            for path in (first_path.with_suffix(".log"), second_path.with_suffix(".log")):
+                with open(path, encoding="utf-8") as handle:
+                    lines = [line for line in handle.read().splitlines() if line.strip()]
+                self.assertEqual(len(lines), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
