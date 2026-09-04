@@ -35,8 +35,11 @@ Accept any of the following:
 
 ## Core Workflow
 
-1. When Don asks to monitor, watch, or babysit a release, poll continuously in
-   the same turn; do not hand back control after one or two snapshots.
+1. When Don asks to monitor, watch, or babysit a release, start with the
+   watcher's continuous mode (`--watch`) unless intentionally doing a
+   one-shot diagnostic snapshot. Keep consuming watcher output in the same
+   turn; do not leave a detached `--watch` process running and then end the
+   turn as if monitoring were complete.
 2. Identify the in-scope runs: the `CI` run for the `main` SHA, the
    `Production Release` run triggered by it, and any dispatched
    `Android Beta Build` / `Mobile OTA Update` runs for the same source.
@@ -66,11 +69,35 @@ Accept any of the following:
 
 ## Commands
 
+### One-shot snapshot
+
+```bash
+python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --once
+```
+
+### Continuous watch (JSONL) — the default for babysitting
+
+```bash
+python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --watch
+```
+
+### Trigger flaky retry cycle (only when watcher indicates)
+
+```bash
+python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --retry-failed-now
+```
+
+### Explicit SHA or expected live version
+
+```bash
+python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha <main-sha> --once
+python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --expect-version 2.2.2 --watch
+```
+
+Raw fallbacks when the watcher needs backup:
+
 ```bash
 gh run list --workflow=ci.yml --branch=main --limit 5
-gh run list --workflow=release.yml --limit 5
-gh run list --workflow=android-beta.yml --limit 5
-gh run list --workflow=mobile-ota.yml --limit 5
 gh run view <run-id> --json jobs,name,workflowName,conclusion,status,url,headSha
 gh run view <run-id> --log-failed
 node scripts/next-semantic-release.mjs
@@ -159,9 +186,10 @@ it the way `babysit-pr` resolves branch failures:
    `pnpm typecheck`, the failing test, or the failing build) before pushing.
 3. Commit with a `feat:`/`fix:` type so semantic-release picks it up for the
    re-release (e.g. `fix(web): ...`). Never use `[skip ci]`.
-4. Push to `main` (forward-only; never force-push), then immediately resume
-   polling in the same turn: the push retriggers CI, and CI success
-   retriggers `Production Release` automatically.
+4. Push to `main` (forward-only; never force-push), then immediately relaunch
+   `--watch` in the same turn: the push retriggers CI, and CI success
+   retriggers `Production Release` automatically. A fix push is not a
+   completion event.
 5. For `Android Beta Build` failures: dispatch workflows do not retrigger on
    push, so after the fix lands, re-dispatch build-only validation with
    `gh workflow run android-beta.yml` (defaults keep both publish inputs
@@ -189,7 +217,32 @@ failures are never fixed by republishing over the bad object.
 - Keep one polling loop per release; do not stack concurrent watchers for the
   same run.
 
+## Monitoring Loop Pattern
+
+1. Run `--watch` and consume each streamed snapshot; read its `actions` list.
+2. If `diagnose_ci_failure` / `diagnose_release_failure` /
+   `diagnose_android_failure` / `diagnose_ota_failure` is present, fetch the
+   failed job's logs from the snapshot's `logs_endpoint` and classify
+   source-related vs flaky/infra. Fix forward when source-related; rerun
+   with `--retry-failed-now` only when `retry_failed_checks` is present and
+   the failure looks flaky.
+3. If `check_release_needed` is present (green CI, skipped release), run
+   `node scripts/next-semantic-release.mjs` to decide no-op vs guard trip.
+4. If `verify_production` is present (release success, live version lagging),
+   keep watching; run `pnpm smoke:production` for an independent check.
+5. After any push, rerun, or re-dispatch, relaunch `--watch` yourself in the
+   same turn; do not wait for Don to re-invoke the skill.
+6. If a `--watch` process is still running and no strict stop condition has
+   been reached, the babysitting task is still in progress; keep
+   streaming/consuming instead of ending the turn.
+7. Stop only when the watcher emits `stop_released` /
+   `stop_exhausted_retries`, or a blocker needs Don. A green snapshot that is
+   not a stop event is a progress update, not a reason to end the watch.
+
 ## Polling Cadence
+
+The watcher polls every 60 seconds by default (`--poll-seconds`), matching
+this cadence:
 
 - While any in-scope run is pending/running/failing: poll every 1 minute.
 - When all green but terminal publication not yet confirmed (tag, deployment
