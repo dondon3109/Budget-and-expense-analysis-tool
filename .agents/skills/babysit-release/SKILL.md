@@ -37,9 +37,13 @@ Accept any of the following:
 
 1. When Don asks to monitor, watch, or babysit a release, start with the
    watcher's continuous mode (`--watch`) unless intentionally doing a
-   one-shot diagnostic snapshot. Keep consuming watcher output in the same
-   turn; do not leave a detached `--watch` process running and then end the
-   turn as if monitoring were complete.
+   one-shot diagnostic snapshot. The runtime backgrounds `--watch` after
+   its yield window and wakes the session on process output, so the real
+   pattern is launch-and-relaunch-on-wake: start `--watch`, handle each
+   delivered snapshot batch, and restart `--watch` yourself whenever you
+   acted (push, rerun, re-dispatch) or the previous watch exited without a
+   strict stop. Keep exactly one watch loop per release; do not stack
+   concurrent watchers for the same SHA.
 2. Identify the in-scope runs: the `CI` run for the `main` SHA, the
    `Production Release` run triggered by it, and any dispatched
    `Android Beta Build` / `Mobile OTA Update` runs for the same source.
@@ -230,11 +234,15 @@ failures are never fixed by republishing over the bad object.
    `node scripts/next-semantic-release.mjs` to decide no-op vs guard trip.
 4. If `verify_production` is present (release success, live version lagging),
    keep watching; run `pnpm smoke:production` for an independent check.
-5. After any push, rerun, or re-dispatch, relaunch `--watch` yourself in the
-   same turn; do not wait for Don to re-invoke the skill.
-6. If a `--watch` process is still running and no strict stop condition has
-   been reached, the babysitting task is still in progress; keep
-   streaming/consuming instead of ending the turn.
+5. After any push, rerun, or re-dispatch, relaunch `--watch` yourself on
+   wake; do not wait for Don to re-invoke the skill. A fix push is not a
+   completion event.
+6. A live `--watch` with no strict stop condition means the babysitting task
+   is still in progress. Being woken with no new snapshot output is normal:
+   the watcher prints full snapshots only on change or stop, and records
+   every poll as one liveness line in the heartbeat file (next to the state
+   file, `.log` suffix, overridable with `--heartbeat-file`). Check it with
+   `tail` instead of re-running the watcher when only liveness is in doubt.
 7. Stop only when the watcher emits `stop_released` /
    `stop_exhausted_retries`, or a blocker needs Don. A green snapshot that is
    not a stop event is a progress update, not a reason to end the watch.
@@ -270,8 +278,9 @@ triggered is still in flight.
 
 ## Output Expectations
 
-Progress updates on status changes plus heartbeats; final summary with: SHAs
-watched, per-track run conclusions + URLs, published tag/version (or no-op
-reason), deployment-record state, smoke and public-verification results,
+Progress updates on status changes (liveness heartbeats live in the
+heartbeat file, not the chat); final summary with: SHAs watched, per-track
+run conclusions + URLs, published tag/version (or no-op reason),
+deployment-record state, smoke and public-verification results,
 snapshot-refresh commit (Android publish), fix commits pushed, reruns and
 re-dispatches used, and remaining blockers.

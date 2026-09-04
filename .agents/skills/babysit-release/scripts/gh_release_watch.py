@@ -77,6 +77,10 @@ def parse_args():
         help="Max rerun cycles per SHA before stop recommendation",
     )
     parser.add_argument("--state-file", help="Path to state JSON file")
+    parser.add_argument(
+        "--heartbeat-file",
+        help="Append-only liveness log path (default: state file with .log suffix)",
+    )
     parser.add_argument("--once", action="store_true", help="Emit one snapshot and exit")
     parser.add_argument("--watch", action="store_true", help="Continuously emit JSONL snapshots")
     parser.add_argument(
@@ -305,14 +309,31 @@ def fetch_json_url(url):
 
 
 def collect_live_markers():
+    """Trimmed live markers: versions only, never full payloads.
+
+    Full documents (e.g. android/latest.json notes arrays) are noise in every
+    snapshot; keep the identity fields the watcher decides on and record
+    fetch failures as short error strings.
+    """
     web = fetch_json_url(WEB_RELEASE_JSON_URL)
     android = fetch_json_url(ANDROID_LATEST_JSON_URL)
-    markers = {"web_release_json": web, "android_latest_json": android}
-    if isinstance(android.get("payload"), dict):
+    markers = {}
+    web_payload = web.get("payload") if web.get("ok") else None
+    markers["web_app_version"] = (
+        web_payload.get("appVersion") if isinstance(web_payload, dict) else None
+    )
+    if not web.get("ok"):
+        markers["web_fetch_error"] = str(web.get("error") or "unknown")
+    android_payload = android.get("payload") if android.get("ok") else None
+    if isinstance(android_payload, dict):
         markers["android_identity"] = {
-            "version": android["payload"].get("version"),
-            "versionCode": android["payload"].get("versionCode"),
+            "version": android_payload.get("version"),
+            "versionCode": android_payload.get("versionCode"),
         }
+    else:
+        markers["android_identity"] = None
+        if not android.get("ok"):
+            markers["android_fetch_error"] = str(android.get("error") or "unknown")
     return markers
 
 
@@ -403,9 +424,7 @@ def recommend_actions(tracks, failed_jobs, live_markers, retries_used, max_retri
 
     if release is not None and release["conclusion"] == "success" and not mobile_in_flight:
         if expect_version:
-            web = live_markers.get("web_release_json") or {}
-            payload = web.get("payload") if web.get("ok") else None
-            live_version = payload.get("appVersion") if isinstance(payload, dict) else None
+            live_version = live_markers.get("web_app_version")
             if live_version != expect_version:
                 actions.append("verify_production")
             elif not actions:
@@ -551,34 +570,68 @@ def snapshot_change_key(snapshot):
     for track in ("ci", "release", "android", "ota"):
         run = (snapshot.get("tracks") or {}).get(track) or {}
         key.append(f"{track}:{run.get('status') or '-'}:{run.get('conclusion') or '-'}")
-    web = ((snapshot.get("live") or {}).get("web_release_json") or {}).get("payload")
-    key.append(str(web.get("appVersion") if isinstance(web, dict) else "-"))
-    android = (snapshot.get("live") or {}).get("android_identity") or {}
+    live = snapshot.get("live") or {}
+    key.append(str(live.get("web_app_version") or "-"))
+    android = live.get("android_identity") or {}
     key.append(str(android.get("versionCode") or "-"))
     key.append(",".join(snapshot.get("actions") or []))
     return tuple(key)
+
+
+def heartbeat_path_for(args, state_path):
+    if args.heartbeat_file:
+        return Path(args.heartbeat_file)
+    return state_path.with_suffix(".log")
+
+
+def write_heartbeat(path, snapshot, changed):
+    """One tiny liveness line per poll. Never fails the watch."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%S")
+        actions = ",".join(snapshot.get("actions") or [])
+        line = (
+            f"{timestamp} sha={str(snapshot.get('sha') or '')[:12]} "
+            f"changed={str(bool(changed)).lower()} actions={actions}\n"
+        )
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(line)
+    except OSError:
+        pass
 
 
 STOP_ACTIONS = {"stop_released", "stop_exhausted_retries"}
 
 
 def run_watch(args):
+    # Stdout is precious: the harness wakes the session on process output, so
+    # every printed line costs tokens. Print the full snapshot only when
+    # something changed (or on a stop event); unchanged polls leave exactly
+    # one liveness line in the heartbeat file and print nothing.
+    print_event("watch_started", {"poll_seconds": args.poll_seconds})
     last_change_key = None
+    heartbeat_path = None
     while True:
         snapshot, state_path = collect_snapshot(args)
+        if heartbeat_path is None:
+            heartbeat_path = heartbeat_path_for(args, state_path)
         changed = snapshot_change_key(snapshot) != last_change_key
         last_change_key = snapshot_change_key(snapshot)
-        print_event(
-            "snapshot",
-            {
-                "snapshot": snapshot,
-                "state_file": str(state_path),
-                "changed": changed,
-                "next_poll_seconds": args.poll_seconds,
-            },
-        )
+        write_heartbeat(heartbeat_path, snapshot, changed)
         actions = set(snapshot.get("actions") or [])
-        if actions & STOP_ACTIONS:
+        stopping = bool(actions & STOP_ACTIONS)
+        if changed or stopping:
+            print_event(
+                "snapshot",
+                {
+                    "snapshot": snapshot,
+                    "state_file": str(state_path),
+                    "heartbeat_file": str(heartbeat_path),
+                    "changed": changed,
+                    "next_poll_seconds": args.poll_seconds,
+                },
+            )
+        if stopping:
             print_event(
                 "stop",
                 {"actions": snapshot.get("actions"), "sha": snapshot.get("sha")},

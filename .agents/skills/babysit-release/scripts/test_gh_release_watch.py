@@ -2,6 +2,7 @@
 
 import argparse
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -32,8 +33,7 @@ def sample_run(name, status="completed", conclusion="success", head_sha=SHA, run
 
 def live_markers(app_version="2.2.2"):
     return {
-        "web_release_json": {"ok": True, "status": 200, "payload": {"appVersion": app_version}},
-        "android_latest_json": {"ok": True, "status": 200, "payload": {"versionCode": 20316}},
+        "web_app_version": app_version,
         "android_identity": {"version": "0.2.16-beta", "versionCode": 20316},
     }
 
@@ -227,6 +227,85 @@ class CollectSnapshotTest(unittest.TestCase):
             "repos/owner/repo/actions/jobs/555/logs",
         )
         self.assertEqual(snapshot["actions"], ["diagnose_ci_failure", "retry_failed_checks"])
+
+
+class QuietWatchTest(unittest.TestCase):
+    def test_live_markers_never_carry_full_payloads(self):
+        with (
+            mock.patch.object(
+                gh_release_watch,
+                "fetch_json_url",
+                return_value={
+                    "ok": True,
+                    "payload": {"version": "9.9", "notes": ["a" * 5000]},
+                },
+            ),
+        ):
+            markers = gh_release_watch.collect_live_markers()
+        dumped = str(markers)
+        self.assertNotIn("aaaa", dumped)
+        self.assertNotIn("payload", dumped)
+        self.assertEqual(markers["android_identity"]["version"], "9.9")
+
+    def test_watch_prints_only_on_change_or_stop(self):
+        import io
+        from contextlib import redirect_stdout
+
+        def snap(ci_conclusion, actions):
+            return {
+                "sha": SHA,
+                "tracks": {
+                    "ci": {
+                        "status": "completed",
+                        "conclusion": ci_conclusion,
+                    },
+                    "release": None,
+                    "android": None,
+                    "ota": None,
+                },
+                "live": live_markers(),
+                "actions": actions,
+            }
+
+        steady = snap("failure", ["diagnose_ci_failure"])
+        steady_again = snap("failure", ["diagnose_ci_failure"])
+        released = snap("success", ["stop_released"])
+        state_path = Path("/tmp/watch-test-state.json")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(
+                poll_seconds=60,
+                heartbeat_file=str(Path(tmp) / "watch.log"),
+                state_file=str(Path(tmp) / "state.json"),
+            )
+            snapshots = [
+                (steady, state_path),
+                (steady_again, state_path),
+                (released, state_path),
+            ]
+            with (
+                mock.patch.object(
+                    gh_release_watch, "collect_snapshot", side_effect=snapshots
+                ),
+                mock.patch.object(gh_release_watch.time, "sleep", return_value=None),
+            ):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    self.assertEqual(gh_release_watch.run_watch(args), 0)
+
+            events = [
+                json.loads(line) for line in out.getvalue().splitlines() if line.strip()
+            ]
+            kinds = [event["event"] for event in events]
+            # watch_started + first snapshot + changed stop-poll snapshot + stop.
+            # The identical second poll prints nothing.
+            self.assertEqual(kinds, ["watch_started", "snapshot", "snapshot", "stop"])
+
+            with open(args.heartbeat_file, encoding="utf-8") as handle:
+                beats = [line for line in handle.read().splitlines() if line.strip()]
+            # One cheap liveness line per poll, including the silent one.
+            self.assertEqual(len(beats), 3)
+            self.assertIn("changed=false", beats[1])
 
 
 if __name__ == "__main__":
