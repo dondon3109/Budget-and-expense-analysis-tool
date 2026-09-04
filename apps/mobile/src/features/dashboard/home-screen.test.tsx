@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { router } from "expo-router";
 
 import HomeScreen from "../../../app/(app)/(tabs)/index";
-import { useDashboardData } from "@/db/local-workspace-state";
+import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { usePlan } from "@/auth/plan-state";
 import { useSyncState } from "@/sync/sync-state";
 import { localIsoDate } from "./dashboard-view";
@@ -22,6 +22,7 @@ jest.mock("@react-native-community/netinfo", () => ({
 
 jest.mock("@/db/local-workspace-state", () => ({
   useDashboardData: jest.fn(),
+  useSubscriptions: jest.fn(),
 }));
 
 jest.mock("@/sync/sync-state", () => ({
@@ -43,6 +44,12 @@ describe("HomeScreen", () => {
     jest.mocked(usePlan).mockReturnValue({
       plan: "free",
       status: "ready",
+      retry: jest.fn(),
+    });
+    jest.mocked(useSubscriptions).mockReturnValue({
+      subscriptions: [],
+      loading: false,
+      error: null,
       retry: jest.fn(),
     });
   });
@@ -97,6 +104,69 @@ describe("HomeScreen", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "AI Assistant" }));
     expect(router.push).toHaveBeenCalledWith("/(app)/assistant");
+  });
+
+  it("renders the cash flow forecast card when active subscriptions exist", async () => {
+    const today = localIsoDate(new Date());
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: {
+        transactions: [
+          {
+            id: "tx-1",
+            date: today,
+            description: "Salary deposit",
+            amountMinor: 75_000_00,
+            currency: "PHP",
+            kind: "income",
+            categoryId: "cat-income",
+            categoryName: "Income",
+            categoryColor: "#08776d",
+            categoryIconEmoji: "💰",
+            accountName: "Main Bank",
+          },
+        ],
+        accounts: [
+          {
+            id: "acc-1",
+            name: "Main Bank",
+            type: "checking",
+            currency: "PHP",
+            balanceMinor: 70_500_00,
+            balancesByCurrency: { PHP: 70_500_00, USD: 0 },
+            archived: false,
+            system: false,
+          },
+        ],
+        budgets: [],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+    jest.mocked(useSubscriptions).mockReturnValue({
+      subscriptions: [
+        {
+          id: "sub-1",
+          name: "Netflix",
+          amountMinor: 54_900,
+          currency: "PHP",
+          billingCycle: "monthly",
+          nextBillingDate: today,
+          status: "active",
+          categoryId: null,
+          accountId: null,
+          syncState: "synced",
+        },
+      ],
+      loading: false,
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<HomeScreen />);
+
+    expect(screen.getByText("Cash flow forecast")).toBeTruthy();
+    expect(screen.getByText("Upcoming bills and renewals")).toBeTruthy();
+    expect(screen.getByText("Netflix")).toBeTruthy();
   });
 
   it("renders rich financial overview when transactions exist", async () => {

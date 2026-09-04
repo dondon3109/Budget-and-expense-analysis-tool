@@ -6,12 +6,15 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { monthlySubscriptionCost, resolveCategoryEmoji } from "@zoption/shared";
 
 import {
+  useDashboardData,
   useLocalReferenceData,
   useLocalWorkspace,
   useSubscriptions,
 } from "@/db/local-workspace-state";
 import type { LocalSubscriptionItem } from "@/db/repository";
+import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard";
 import { useSyncState } from "@/sync/sync-state";
+import { CancellationGuideSheet } from "./CancellationGuideSheet";
 import {
   Button,
   Card,
@@ -29,8 +32,10 @@ type SubscriptionFilter = "all" | "active" | "canceled";
 export function SubscriptionsScreen() {
   const local = useLocalWorkspace();
   const state = useSubscriptions();
+  const dashboard = useDashboardData();
   const reference = useLocalReferenceData();
   const [filter, setFilter] = useState<SubscriptionFilter>("all");
+  const [guideSubscription, setGuideSubscription] = useState<LocalSubscriptionItem | null>(null);
   const theme = useZoptionTheme();
 
   const addSubscription = (): void => {
@@ -126,6 +131,16 @@ export function SubscriptionsScreen() {
             subscriptions={state.subscriptions}
           />
 
+          <CashflowForecastCard
+            startingBalanceMinor={
+              dashboard.data?.accounts.reduce(
+                (total, account) => total + (account.balanceMinor ?? 0),
+                0,
+              ) ?? 0
+            }
+            subscriptions={activeSubscriptions}
+          />
+
           <View
             accessibilityLabel="Filter subscriptions by status"
             accessibilityRole="tablist"
@@ -211,6 +226,7 @@ export function SubscriptionsScreen() {
                 key={subscription.id}
                 account={accountsMap.get(subscription.accountId ?? "")}
                 category={categoriesMap.get(subscription.categoryId ?? "")}
+                onHowToCancel={() => setGuideSubscription(subscription)}
                 onPress={() =>
                   router.push({ pathname: "/(app)/subscription", params: { id: subscription.id } })
                 }
@@ -220,6 +236,12 @@ export function SubscriptionsScreen() {
           )}
         </View>
       )}
+
+      <CancellationGuideSheet
+        subscriptionName={guideSubscription?.name ?? null}
+        visible={guideSubscription !== null}
+        onDismiss={() => setGuideSubscription(null)}
+      />
 
       {/* Floating Action Button for easy one-handed subscription creation */}
       {state.subscriptions.length > 0 ? (
@@ -329,11 +351,13 @@ function SubscriptionRow({
   category,
   account,
   onPress,
+  onHowToCancel,
 }: {
   subscription: LocalSubscriptionItem;
   category?: { name: string; color?: string; emoji?: string };
   account?: { name: string; currency: string };
   onPress: () => void;
+  onHowToCancel: () => void;
 }) {
   const theme = useZoptionTheme();
   const conflicted = subscription.syncState === "conflicted";
@@ -516,6 +540,18 @@ function SubscriptionRow({
               {conflicted ? "Conflict preserved" : "Sync needs repair"}
             </Text>
           ) : null}
+
+          <Button
+            icon="help-circle-outline"
+            variant="secondary"
+            onPress={(event) => {
+              // Keep the row navigation from firing on web where press events bubble.
+              (event as unknown as { stopPropagation?: () => void }).stopPropagation?.();
+              onHowToCancel();
+            }}
+          >
+            How to cancel
+          </Button>
         </View>
       </Card>
     </Pressable>

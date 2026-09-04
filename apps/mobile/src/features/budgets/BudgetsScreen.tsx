@@ -31,6 +31,7 @@ import {
   type BudgetFormValues,
 } from "./budget-form";
 import { buildBudgetMonthView, type BudgetMonthRow } from "./budget-month-view";
+import { ShareBudgetSheet } from "./ShareBudgetSheet";
 
 interface EditorState {
   open: boolean;
@@ -55,6 +56,7 @@ export function BudgetsScreen() {
   const [errors, setErrors] = useState<BudgetFormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const view = useMemo(
     () => (budgetMonth.data ? buildBudgetMonthView(budgetMonth.data) : null),
@@ -187,9 +189,19 @@ export function BudgetsScreen() {
   return (
     <Screen
       action={
-        <Button disabled={!local.workspace} onPress={() => openAdd()} variant="primary">
-          Add budget
-        </Button>
+        <View style={styles.headerActions}>
+          <Button
+            disabled={!local.workspace || (view?.rows.length ?? 0) === 0}
+            icon="share-variant-outline"
+            onPress={() => setShareOpen(true)}
+            variant="secondary"
+          >
+            Share envelopes
+          </Button>
+          <Button disabled={!local.workspace} onPress={() => openAdd()} variant="primary">
+            Add budget
+          </Button>
+        </View>
       }
       onRefresh={handleRefresh}
       refreshing={sync.status === "syncing"}
@@ -290,6 +302,14 @@ export function BudgetsScreen() {
         saving={saving}
         value={editor}
         visible={editor.open}
+      />
+
+      <ShareBudgetSheet
+        month={month}
+        monthLabel={monthLabel(month)}
+        onDismiss={() => setShareOpen(false)}
+        rows={view?.rows ?? []}
+        visible={shareOpen}
       />
     </Screen>
   );
@@ -1031,6 +1051,11 @@ function BudgetEditorSheet({
 }
 
 const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
   iconButton: {
     width: touchTarget,
     height: touchTarget,
