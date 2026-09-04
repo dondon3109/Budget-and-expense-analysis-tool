@@ -126,7 +126,11 @@ function installHookMocks() {
     captured.partial = options.onPartialTranscript ?? null;
     return recorder;
   });
-  const spoken = { playingMessageId: null as string | null, listen: jest.fn() };
+  const spoken = {
+    playingMessageId: null as string | null,
+    listen: jest.fn(),
+    speechProgress: null as { currentTime: number; duration: number; playing: boolean } | null,
+  };
   spoken.listen.mockResolvedValue(undefined);
   m.useSpokenReplies.mockImplementation((options: any) => {
     captured.speechError = options.onError;
@@ -195,11 +199,64 @@ describe("AssistantVoiceConversation", () => {
     expect(spoken.listen).toHaveBeenCalledTimes(1);
     expect(onTurnComplete).toHaveBeenCalledWith(expect.objectContaining({ id: THREAD_ID }));
 
-    expect(screen.getByText("You spent PHP 1,250 this month.")).toBeTruthy();
-    expect(screen.getByText("Speaking…")).toBeTruthy();
+    // The reply types out while speaking; allow the fallback pace to finish.
+    expect(await screen.findByText("Speaking…")).toBeTruthy();
+    expect(
+      await screen.findByText("You spent PHP 1,250 this month.", {}, { timeout: 4000 }),
+    ).toBeTruthy();
 
     captured.ended?.();
     expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+  });
+
+  it("types the reply while speaking and snaps to full text when speech ends", async () => {
+    const { spoken, captured } = installHookMocks();
+    // Halfway through the audio: the paced branch must show the first half.
+    spoken.speechProgress = { currentTime: 5, duration: 10, playing: true };
+    await render(<AssistantVoiceConversation {...baseProps} />);
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Start talking"));
+    await captured.transcript?.("How much did I spend?");
+    expect(await screen.findByText("Speaking…")).toBeTruthy();
+
+    // Paced to 50% of the audio (31 chars): 16-char prefix with caret, never the full text.
+    expect(await screen.findByText(/You spent PHP 1,/)).toBeTruthy();
+    expect(screen.queryByText("You spent PHP 1,250 this month.", { exact: true })).toBeNull();
+
+    captured.ended?.();
+    expect(await screen.findByText("You spent PHP 1,250 this month.")).toBeTruthy();
+    expect(screen.queryByText("▍", { exact: false })).toBeNull();
+  });
+
+  it("holds the caption at the caret until audio is audible", async () => {
+    const { spoken, captured } = installHookMocks();
+    // Audio known but not playing yet (still loading): no letters may outrun the voice.
+    spoken.speechProgress = { currentTime: 0, duration: 10, playing: false };
+    await render(<AssistantVoiceConversation {...baseProps} />);
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Start talking"));
+    await captured.transcript?.("How much did I spend?");
+    expect(await screen.findByText("Speaking…")).toBeTruthy();
+
+    expect(screen.getByText("▍")).toBeTruthy();
+    expect(screen.queryByText(/You spent PHP/)).toBeNull();
+
+    captured.ended?.();
+    expect(await screen.findByText("You spent PHP 1,250 this month.")).toBeTruthy();
+  });
+
+  it("says live preview is off while listening without a live session", async () => {
+    const m = mocks();
+    const { recorder } = installHookMocks();
+    m.useAssistantRecorder.mockReturnValue({ ...recorder, liveStatus: "unavailable" });
+    await render(<AssistantVoiceConversation {...baseProps} />);
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Start talking"));
+
+    expect(await screen.findByText("Live preview is off here", { exact: false })).toBeTruthy();
   });
 
   it("still shows the reply text when speech synthesis fails", async () => {
@@ -213,7 +270,9 @@ describe("AssistantVoiceConversation", () => {
     await waitFor(() => expect(m.createAssistantThreadTurn).toHaveBeenCalled());
 
     captured.speechError?.({ message: "The spoken reply failed. Try again." });
-    expect(await screen.findByText("You spent PHP 1,250 this month.")).toBeTruthy();
+    expect(
+      await screen.findByText("You spent PHP 1,250 this month.", {}, { timeout: 4000 }),
+    ).toBeTruthy();
     expect(await screen.findByText("The spoken reply failed. Try again.")).toBeTruthy();
   });
 
@@ -236,5 +295,28 @@ describe("AssistantVoiceConversation", () => {
     );
     expect(screen.getByText("You spent PHP 1,250 this month.")).toBeTruthy();
     expect(spoken.listen).not.toHaveBeenCalled();
+  });
+
+  it("renders special character ** for bolding in assistant response", async () => {
+    const m = mocks();
+    m.createAssistantThreadTurn.mockResolvedValueOnce({
+      ...turnResult(),
+      assistantMessage: {
+        ...turnResult().assistantMessage,
+        content: "You spent **PHP 1,250** this month.",
+      },
+    });
+    const { spoken, captured } = installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Start talking"));
+    await captured.transcript?.("How much did I spend?");
+
+    await waitFor(() => expect(spoken.listen).toHaveBeenCalled());
+    captured.ended?.();
+
+    expect(await screen.findByText("PHP 1,250")).toBeTruthy();
+    expect(await screen.findByText("this month.")).toBeTruthy();
   });
 });

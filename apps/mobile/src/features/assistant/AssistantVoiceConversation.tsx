@@ -14,6 +14,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { newClientRequestId } from "./assistant-forms";
 import { useAssistantRecorder, useSpokenReplies } from "./assistant-voice-hooks";
+import { renderMobileVoiceCaption } from "./render-voice-caption";
 
 /**
  * The only voice used by the voice conversation: Bright Female.
@@ -69,6 +70,10 @@ export function AssistantVoiceConversation({
   const [captions, setCaptions] = useState<VoiceCaption[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
+  // Typewriter caption: while the reply is spoken, letters appear paced to
+  // the audio instead of the full text popping in before the voice starts.
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [typedCount, setTypedCount] = useState(0);
 
   const setVoiceStatus = useCallback((next: VoiceStatus) => {
     statusRef.current = next;
@@ -134,6 +139,7 @@ export function AssistantVoiceConversation({
     (error: ApiTransportError) => {
       if (!mountedRef.current) return;
       setAudioError(error.message);
+      setSpeakingId(null);
       setVoiceStatus("idle");
     },
     [setVoiceStatus],
@@ -143,11 +149,48 @@ export function AssistantVoiceConversation({
     getAccessToken,
     onError: handleSpeechError,
     onEnded: () => {
-      if (mountedRef.current) setVoiceStatus("idle");
+      if (!mountedRef.current) return;
+      setSpeakingId(null);
+      setVoiceStatus("idle");
     },
   });
   const spokenRef = useRef(spoken);
   spokenRef.current = spoken;
+
+  const typingFull =
+    speakingId !== null
+      ? (captions.find((item) => item.id === speakingId && item.role === "assistant")?.text ?? "")
+      : "";
+
+  // Advances the typewriter while the reply is spoken: held at the caret
+  // until audio is actually audible, then paced to the playback position
+  // (fixed fallback speed when the duration is unknown). Leaving `speaking`
+  // snaps to the full text via the render below.
+  const fallbackStartRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (status !== "speaking" || typingFull === "") return;
+    const timer = setInterval(() => {
+      const progress = spokenRef.current.speechProgress;
+      // Known-but-not-playing means still loading: hold so text never outruns voice.
+      if (progress && !progress.playing) return;
+      let count: number;
+      if (progress && progress.duration > 0) {
+        count = Math.min(
+          typingFull.length,
+          Math.floor((progress.currentTime / progress.duration) * typingFull.length) + 1,
+        );
+      } else {
+        if (fallbackStartRef.current === null) fallbackStartRef.current = Date.now();
+        count = Math.min(
+          typingFull.length,
+          Math.floor((Date.now() - fallbackStartRef.current) / 60) + 1,
+        );
+      }
+      setTypedCount((previous) => (count > previous ? count : previous));
+      if (count >= typingFull.length) clearInterval(timer);
+    }, 50);
+    return () => clearInterval(timer);
+  }, [status, speakingId, typingFull]);
 
   const handleFinalTranscript = useCallback(
     async (text: string) => {
@@ -167,24 +210,45 @@ export function AssistantVoiceConversation({
           clientRequestId: newClientRequestId(),
           kind: "voice" as const,
         };
-        const turn = await withToken((token) =>
-          threadId
-            ? sendAssistantTurn({ accessToken: token }, threadId, input)
-            : createAssistantThreadTurn({ accessToken: token }, input),
-        );
+        const turn = await withToken(async (token) => {
+          if (threadId) {
+            try {
+              return await sendAssistantTurn({ accessToken: token }, threadId, input);
+            } catch (turnError) {
+              if (turnError instanceof ApiTransportError && turnError.status === 404) {
+                threadIdRef.current = null;
+                return await createAssistantThreadTurn({ accessToken: token }, input);
+              }
+              throw turnError;
+            }
+          }
+          return await createAssistantThreadTurn({ accessToken: token }, input);
+        });
         if (!mountedRef.current) return;
         threadIdRef.current = turn.thread.id;
         onTurnComplete(turn.thread);
-        setCaptions((current) => [
-          ...current,
-          { id: turn.assistantMessage.id, role: "assistant", text: turn.assistantMessage.content },
-        ]);
+
         if (!speechAvailable) {
+          setCaptions((current) => [
+            ...current,
+            { id: turn.assistantMessage.id, role: "assistant", text: turn.assistantMessage.content },
+          ]);
           setNotice("Spoken replies are unavailable in this environment. Showing text only.");
           setVoiceStatus("idle");
           return;
         }
+
+        // Enter speaking state with typedCount=0 BEFORE adding caption
+        // so the assistant message renders directly into typewriter mode (at ▍)
+        // rather than flashing the full text before speech begins.
+        setSpeakingId(turn.assistantMessage.id);
+        setTypedCount(0);
+        fallbackStartRef.current = null;
         setVoiceStatus("speaking");
+        setCaptions((current) => [
+          ...current,
+          { id: turn.assistantMessage.id, role: "assistant", text: turn.assistantMessage.content },
+        ]);
         await spokenRef.current.listen(turn.assistantMessage.id, VOICE_CONVERSATION_SPEECH_VOICE);
       } catch (error) {
         if (!mountedRef.current) return;
@@ -363,21 +427,40 @@ export function AssistantVoiceConversation({
             >
               {item.role === "user" ? "You" : assistantName}
             </Text>
-            <Text
-              style={[
-                typography.body,
-                { color: item.role === "user" ? theme.colors.onBrand : theme.colors.text },
-              ]}
-            >
-              {item.text}
-            </Text>
+            {item.role === "user" ? (
+              <Text style={[typography.body, { color: theme.colors.onBrand }]}>
+                {item.text}
+              </Text>
+            ) : (
+              <Text style={[typography.body, { color: theme.colors.text }]}>
+                {item.id === speakingId && status === "speaking" && typedCount < typingFull.length
+                  ? renderMobileVoiceCaption(
+                      `${typingFull.slice(0, typedCount)}▍`,
+                      [typography.body, { color: theme.colors.text }],
+                      styles.boldCaption,
+                    )
+                  : renderMobileVoiceCaption(
+                      item.text,
+                      [typography.body, { color: theme.colors.text }],
+                      styles.boldCaption,
+                    )}
+              </Text>
+            )}
           </View>
         )}
         ListFooterComponent={null}
       />
 
-      {(livePartial !== "" || notice !== null || audioError !== null) && (
+      {(livePartial !== "" ||
+        notice !== null ||
+        audioError !== null ||
+        (status === "listening" && recorder.liveStatus === "unavailable")) && (
         <View style={[styles.statusBlock, { borderTopColor: theme.colors.border }]}>
+          {status === "listening" && recorder.liveStatus === "unavailable" && livePartial === "" ? (
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Live preview is off here — your words appear when you stop.
+            </Text>
+          ) : null}
           {livePartial !== "" ? (
             <View
               style={[styles.caption, styles.captionUser, { backgroundColor: theme.colors.brand }]}
@@ -528,5 +611,8 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
+  },
+  boldCaption: {
+    fontWeight: "700",
   },
 });

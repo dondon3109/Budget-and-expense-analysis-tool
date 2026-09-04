@@ -111,6 +111,10 @@ const audioInstances: Array<{
   pause: ReturnType<typeof vi.fn>;
   onended: (() => void) | null;
   onerror: (() => void) | null;
+  duration: number;
+  currentTime: number;
+  paused: boolean;
+  ended: boolean;
 }> = [];
 
 class MockAudio {
@@ -118,6 +122,10 @@ class MockAudio {
   pause = vi.fn();
   onended: (() => void) | null = null;
   onerror: (() => void) | null = null;
+  duration = 0;
+  currentTime = 0;
+  paused = false;
+  ended = false;
   constructor(public src: string) {
     audioInstances.push(this);
   }
@@ -199,7 +207,8 @@ function renderConversation(props: { onTurnComplete?: () => void; onClose?: () =
 }
 
 async function startListening() {
-  fireEvent.click(screen.getByRole("button", { name: "Start talking" }));
+  const startButton = await screen.findByRole("button", { name: "Start talking" });
+  fireEvent.click(startButton);
   await act(async () => Promise.resolve());
   expect(screen.getByRole("button", { name: "Stop listening" })).toBeInTheDocument();
 }
@@ -288,10 +297,12 @@ describe("AssistantVoiceConversation", () => {
     );
     expect(apiMocks.getAssistantVoiceSpeech).toHaveBeenCalledOnce();
 
-    // Assistant reply text is visible in the caption layer while audio plays.
+    // Assistant reply text types out in the caption layer while audio plays.
     const captions = screen.getByLabelText("Conversation captions");
     expect(captions).toHaveTextContent("How much did I spend?");
-    expect(captions).toHaveTextContent("You spent PHP 1,250 this month.");
+    await waitFor(() => expect(captions).toHaveTextContent("You spent PHP 1,250 this month."), {
+      timeout: 4000,
+    });
     expect(screen.getByText("Speaking…")).toBeInTheDocument();
     expect(onTurnComplete).toHaveBeenCalledOnce();
 
@@ -301,6 +312,69 @@ describe("AssistantVoiceConversation", () => {
       await Promise.resolve();
     });
     expect(screen.getByRole("button", { name: "Start talking" })).toBeInTheDocument();
+  });
+
+  it("types the reply while speaking and snaps to full text when speech ends", async () => {
+    installRecordingMocks();
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+    await startListening();
+
+    await act(async () => {
+      voiceStreamMocks.captured()?.onFinal("How much did I spend?");
+      await Promise.resolve();
+    });
+    await stopListening();
+
+    await waitFor(() => expect(apiMocks.getAssistantVoiceSpeech).toHaveBeenCalled());
+    expect(await screen.findByText("Speaking…")).toBeInTheDocument();
+
+    // Paced to 50% of the audio (31 chars): 16-char prefix with caret, never the full text.
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    audioInstances[0]!.duration = 10;
+    audioInstances[0]!.currentTime = 5;
+    const captions = screen.getByLabelText("Conversation captions");
+    await waitFor(() => expect(captions.textContent).toContain("You spent PHP 1,"));
+    expect(captions.textContent).not.toContain("You spent PHP 1,250 this month.");
+
+    await act(async () => {
+      audioInstances[0]!.onended?.();
+      await Promise.resolve();
+    });
+    expect(captions).toHaveTextContent("You spent PHP 1,250 this month.");
+    expect(captions.textContent).not.toContain("▍");
+    expect(screen.getByRole("button", { name: "Start talking" })).toBeInTheDocument();
+  });
+
+  it("holds the caption at the caret until audio is audible", async () => {
+    installRecordingMocks();
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+    await startListening();
+
+    await act(async () => {
+      voiceStreamMocks.captured()?.onFinal("How much did I spend?");
+      await Promise.resolve();
+    });
+    await stopListening();
+
+    await waitFor(() => expect(apiMocks.getAssistantVoiceSpeech).toHaveBeenCalled());
+    expect(await screen.findByText("Speaking…")).toBeInTheDocument();
+
+    // Audio known but paused (still loading): no letters may outrun the voice.
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    audioInstances[0]!.duration = 10;
+    audioInstances[0]!.currentTime = 0;
+    audioInstances[0]!.paused = true;
+    const captions = screen.getByLabelText("Conversation captions");
+    await waitFor(() => expect(captions.textContent).toContain("▍"));
+    expect(captions.textContent).not.toContain("You spent PHP");
+
+    await act(async () => {
+      audioInstances[0]!.onended?.();
+      await Promise.resolve();
+    });
+    expect(captions).toHaveTextContent("You spent PHP 1,250 this month.");
   });
 
   it("still shows the reply text when speech synthesis fails", async () => {
@@ -349,5 +423,115 @@ describe("AssistantVoiceConversation", () => {
     const captions = screen.getByLabelText("Conversation captions");
     expect(captions).toHaveTextContent("You spent PHP 1,250 this month.");
     expect(apiMocks.getAssistantVoiceSpeech).not.toHaveBeenCalled();
+  });
+
+  it("renders special character ** for bolding in assistant response", async () => {
+    installRecordingMocks();
+    apiMocks.createAssistantThread.mockResolvedValueOnce({
+      ...turnResult(),
+      assistantMessage: {
+        ...turnResult().assistantMessage,
+        content: "You spent **PHP 1,250** on **groceries**.",
+      },
+    });
+
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+    await startListening();
+
+    await act(async () => {
+      voiceStreamMocks.captured()?.onFinal("How much did I spend on groceries?");
+      await Promise.resolve();
+    });
+    await stopListening();
+
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    await act(async () => {
+      audioInstances[0]!.onended?.();
+      await Promise.resolve();
+    });
+
+    const captions = screen.getByLabelText("Conversation captions");
+    expect(captions).toHaveTextContent("You spent PHP 1,250 on groceries.");
+    const boldElements = captions.querySelectorAll("strong.assistant-voice-bold");
+    expect(boldElements).toHaveLength(2);
+    expect(boldElements[0]).toHaveTextContent("PHP 1,250");
+    expect(boldElements[1]).toHaveTextContent("groceries");
+  });
+
+  it("captures live partial transcript via browser SpeechRecognition when available", async () => {
+    installRecordingMocks();
+    let capturedRecognitionInstance: any = null;
+    class MockSpeechRecognition {
+      continuous = false;
+      interimResults = false;
+      lang = "";
+      onresult: ((event: any) => void) | null = null;
+      onerror: ((event: any) => void) | null = null;
+      onspeechend: (() => void) | null = null;
+      start() {
+        capturedRecognitionInstance = this;
+      }
+      stop() {}
+      abort() {}
+    }
+    vi.stubGlobal("SpeechRecognition", MockSpeechRecognition);
+
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+    await startListening();
+
+    expect(capturedRecognitionInstance).not.toBeNull();
+
+    await act(async () => {
+      capturedRecognitionInstance.onresult({
+        results: [[{ transcript: "What is my grocery budget" }]],
+        resultIndex: 0,
+      });
+      await Promise.resolve();
+    });
+
+    const captions = screen.getByLabelText("Conversation captions");
+    expect(captions).toHaveTextContent("What is my grocery budget");
+  });
+
+  it("automatically stops recording after user finishes speaking via speech end silence", async () => {
+    installRecordingMocks();
+    let capturedRecognitionInstance: any = null;
+    class MockSpeechRecognition {
+      continuous = false;
+      interimResults = false;
+      lang = "";
+      onresult: ((event: any) => void) | null = null;
+      onerror: ((event: any) => void) | null = null;
+      onspeechend: (() => void) | null = null;
+      start() {
+        capturedRecognitionInstance = this;
+      }
+      stop() {}
+      abort() {}
+    }
+    vi.stubGlobal("SpeechRecognition", MockSpeechRecognition);
+
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+    await startListening();
+
+    expect(capturedRecognitionInstance).not.toBeNull();
+
+    await act(async () => {
+      capturedRecognitionInstance.onresult({
+        results: [[{ transcript: "How much did I spend on food?" }]],
+        resultIndex: 0,
+      });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      capturedRecognitionInstance.onspeechend?.();
+      await new Promise((resolve) => setTimeout(resolve, 900));
+    });
+
+    await waitFor(() => expect(apiMocks.createAssistantThread).toHaveBeenCalled());
   });
 });

@@ -821,7 +821,9 @@ export function AssistantScreen() {
                 {recorder.phase === "recording"
                   ? "Recording… " +
                     formatRecordingElapsed(recorder.elapsedSeconds) +
-                    " — tap the microphone to stop."
+                    (recorder.liveStatus === "unavailable"
+                      ? " — live preview is off, transcript appears when you stop."
+                      : " — tap the microphone to stop.")
                   : recorder.phase === "transcribing"
                     ? "Transcribing your question…"
                     : "Allowing microphone access…"}

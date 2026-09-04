@@ -31,6 +31,15 @@ import {
 
 export type RecordingPhase = "idle" | "requesting" | "recording" | "transcribing";
 
+/**
+ * Whether the mic is also producing realtime partial transcripts.
+ * `connecting` hides the "live off" hint during the WebSocket handshake so it
+ * never flashes on a healthy start; `unavailable` means only the stop-time
+ * batch transcript will arrive (no AudioStream, or the active STT provider
+ * has no realtime endpoint).
+ */
+export type LiveStatus = "idle" | "connecting" | "live" | "unavailable";
+
 async function restorePlaybackAudioMode(): Promise<void> {
   try {
     await setAudioModeAsync(playbackAudioMode);
@@ -74,11 +83,13 @@ export function useVoiceRecorder<Result>({
 }) {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [phase, setPhase] = useState<RecordingPhase>("idle");
+  const [liveStatus, setLiveStatus] = useState<LiveStatus>("idle");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const phaseRef = useRef<RecordingPhase>("idle");
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveStreamRef = useRef<MobileVoiceStreamSession | null>(null);
+  const latestLiveTranscriptRef = useRef<string>("");
   const currentPhase = (): RecordingPhase => phaseRef.current;
 
   const setPhaseBoth = useCallback((next: RecordingPhase) => {
@@ -121,16 +132,30 @@ export function useVoiceRecorder<Result>({
         liveStreamRef.current = null;
       }
       if (phaseRef.current === "recording") {
-        const uri = recorder.uri;
-        void recorder
-          .stop()
-          .catch(() => {
-            // Leaving the screen must not surface a recorder cleanup error.
-          })
-          .finally(() => {
-            discardTemporarySourceFile(recorder.uri ?? uri);
-            void restorePlaybackAudioMode();
-          });
+        // The native recorder may already be released (Fast Refresh remount,
+        // late unmount): even the synchronous `uri` getter throws then, so the
+        // whole cleanup stays inside try/catch. Leaving the screen must never
+        // surface a recorder cleanup error.
+        try {
+          const uri = recorder.uri;
+          void recorder
+            .stop()
+            .catch(() => {
+              // Ignore async cleanup failures for the same reason.
+            })
+            .finally(() => {
+              let latestUri: string | null = null;
+              try {
+                latestUri = recorder.uri;
+              } catch {
+                // Released between stop and cleanup — fall back to the first read.
+              }
+              discardTemporarySourceFile(latestUri ?? uri);
+              void restorePlaybackAudioMode();
+            });
+        } catch {
+          // Native recorder already released — nothing left to clean up.
+        }
       }
     },
     [clearElapsedTimer, clearRecordingTimeout, recorder],
@@ -142,14 +167,21 @@ export function useVoiceRecorder<Result>({
     stopElapsedTimer();
     clearRecordingTimeout();
     setPhaseBoth("transcribing");
+    setLiveStatus("idle");
 
     let streamTranscript: string | null = null;
+    let streamWasActive = false;
     if (liveStreamRef.current) {
+      streamWasActive = true;
       try {
         streamTranscript = await liveStreamRef.current.stop();
       } catch {}
       liveStreamRef.current = null;
     }
+    const resolvedTranscript =
+      (streamTranscript && streamTranscript.trim().length > 0
+        ? streamTranscript.trim()
+        : latestLiveTranscriptRef.current.trim());
 
     let recordingUri = recorder.uri;
     let uploadStarted = false;
@@ -158,12 +190,11 @@ export function useVoiceRecorder<Result>({
       const uri = recorder.uri ?? recordingUri;
       recordingUri = uri;
 
-      if (liveTranscribeResult && streamTranscript && streamTranscript.trim().length > 0) {
-        const liveResult = liveTranscribeResult(streamTranscript.trim(), recordedElapsed);
+      if (liveTranscribeResult && (resolvedTranscript.length > 0 || streamWasActive)) {
+        const liveResult = liveTranscribeResult(resolvedTranscript, recordedElapsed);
         if (liveResult !== null) {
           discardTemporarySourceFile(uri);
           await restorePlaybackAudioMode();
-          setPhaseBoth("idle");
           if (currentPhase() !== "transcribing") return;
           onTranscribed(liveResult);
           return;
@@ -206,6 +237,9 @@ export function useVoiceRecorder<Result>({
     clearRecordingTimeout,
   ]);
 
+  const stopAndTranscribeRef = useRef(stopAndTranscribe);
+  stopAndTranscribeRef.current = stopAndTranscribe;
+
   const startRecording = useCallback(async () => {
     if (currentPhase() !== "idle") return;
     setPhaseBoth("requesting");
@@ -227,20 +261,30 @@ export function useVoiceRecorder<Result>({
       await armAssistantRecorder(recorder, setAudioModeAsync);
       setPhaseBoth("recording");
       startElapsedTimer();
+      latestLiveTranscriptRef.current = "";
 
       if (onPartialTranscript || liveTranscribeResult) {
+        setLiveStatus("connecting");
         void getAccessToken(false)
           .then((token) => {
             if (phaseRef.current !== "recording") return;
             void startMobileVoiceStream(token, {
               onPartial: (partial) => {
+                latestLiveTranscriptRef.current = partial;
                 if (phaseRef.current === "recording") {
                   onPartialTranscript?.(partial);
                 }
               },
               onFinal: (final) => {
+                latestLiveTranscriptRef.current = final;
                 if (phaseRef.current === "recording") {
                   onPartialTranscript?.(final);
+                }
+              },
+              onAutoStop: () => {
+                // Silence auto-stop: end the take and transcribe without a tap.
+                if (phaseRef.current === "recording") {
+                  void stopAndTranscribeRef.current();
                 }
               },
               onLatency: (metrics) => {
@@ -248,21 +292,31 @@ export function useVoiceRecorder<Result>({
                   console.debug("[voice] mobile live latency", metrics);
                 }
               },
-              onError: () => {
-                // Live WebSocket failed — batch file upload fallback will still run on stop
+              onError: (err) => {
+                console.warn("[voice] live voice stream onError", err);
               },
             })
               .then((session) => {
+                console.warn("[voice] live session started, live=", session.live);
                 if (phaseRef.current !== "recording") {
                   session.cancel();
                 } else {
                   // No-op session (native AudioStream unavailable) yields null on stop, so batch fallback runs
                   liveStreamRef.current = session;
+                  setLiveStatus(session.live ? "live" : "unavailable");
                 }
               })
-              .catch(() => {});
+              .catch((err) => {
+                console.warn("[voice] live voice stream start failed", err);
+                // Live failed to start — batch file upload fallback still runs on stop.
+                if (phaseRef.current === "recording") setLiveStatus("unavailable");
+              });
           })
-          .catch(() => {});
+          .catch((err) => {
+            console.warn("[voice] getAccessToken failed", err);
+            // No access token means no live stream — batch fallback still runs on stop.
+            if (phaseRef.current === "recording") setLiveStatus("unavailable");
+          });
       }
 
       // A hard stop when the user keeps recording past the cap.
@@ -279,6 +333,7 @@ export function useVoiceRecorder<Result>({
       await restorePlaybackAudioMode();
       onError(new ApiTransportError("Voice input could not start.", "network", 0));
       setPhaseBoth("idle");
+      setLiveStatus("idle");
     }
   }, [
     onError,
@@ -311,11 +366,13 @@ export function useVoiceRecorder<Result>({
     clearRecordingTimeout();
     await restorePlaybackAudioMode();
     setPhaseBoth("idle");
+    setLiveStatus("idle");
   }, [recorder, setPhaseBoth, stopElapsedTimer, clearRecordingTimeout]);
 
   return {
     phase,
     elapsedSeconds,
+    liveStatus,
     startRecording,
     stopAndTranscribe,
     cancelRecording,
@@ -347,6 +404,8 @@ export function useAssistantRecorder({
 
 export interface SpokenReplyController {
   playingMessageId: string | null;
+  /** Live playback position for pacing the typewriter caption; null when idle. */
+  speechProgress: { currentTime: number; duration: number; playing: boolean } | null;
   listen: (messageId: string, voice: AssistantSpeechVoice) => Promise<void>;
 }
 
@@ -394,6 +453,8 @@ export function useSpokenReplies({
         setPlayingMessageId(null);
         return;
       }
+      playingRef.current = messageId;
+      setPlayingMessageId(messageId);
       try {
         await setAudioModeAsync(playbackAudioMode);
         const accessToken = await getAccessToken(false);
@@ -402,9 +463,9 @@ export function useSpokenReplies({
         file.write(bytes);
         player.replace({ uri: file.uri });
         player.play();
-        playingRef.current = messageId;
-        setPlayingMessageId(messageId);
       } catch (error) {
+        playingRef.current = null;
+        setPlayingMessageId(null);
         onError(
           error instanceof ApiTransportError
             ? error
@@ -415,7 +476,16 @@ export function useSpokenReplies({
     [getAccessToken, onError, player],
   );
 
-  return { playingMessageId, listen };
+  const speechProgress =
+    playingRef.current === null
+      ? null
+      : {
+          currentTime: status.currentTime ?? 0,
+          duration: status.duration ?? 0,
+          playing: status.playing,
+        };
+
+  return { playingMessageId, speechProgress, listen };
 }
 
 /**

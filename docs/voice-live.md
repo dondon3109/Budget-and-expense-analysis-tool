@@ -6,12 +6,12 @@ This runbook covers the realtime path `Browser/Mobile --WSS--> Worker /api/app/a
 
 ## 1. When live is used
 
-| Model (provider_configs) | Endpoint | Live? |
-|---|---|---|
-| `@cf/openai/whisper-large-v3-turbo` (`cloudflare_workers_ai`) | `POST /transcriptions` | No — `/stream` returns `400 stt_not_streaming` |
-| `gemini-3.5-transcribe` (`google`) | `POST /transcriptions` via `generateContent` | No — `/stream` returns `400 stt_not_streaming` (REST-only) |
-| `gemini-3.5-transcribe-live` (`google`) | `WSS /stream` → Gemini Bidi | **Yes** |
-| `chirp_3` (`google`) | `WSS /stream` → `STT_BRIDGE_URL` | Yes, via bridge (see `realtime-stt-bridge.md`) |
+| Model (provider_configs)                                      | Endpoint                                     | Live?                                                      |
+| ------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------- |
+| `@cf/openai/whisper-large-v3-turbo` (`cloudflare_workers_ai`) | `POST /transcriptions`                       | No — `/stream` returns `400 stt_not_streaming`             |
+| `gemini-3.5-transcribe` (`google`)                            | `POST /transcriptions` via `generateContent` | No — `/stream` returns `400 stt_not_streaming` (REST-only) |
+| `gemini-3.5-transcribe-live` (`google`)                       | `WSS /stream` → Gemini Bidi                  | **Yes**                                                    |
+| `chirp_3` (`google`)                                          | `WSS /stream` → `STT_BRIDGE_URL`             | Yes, via bridge (see `realtime-stt-bridge.md`)             |
 
 The Web client (`AssistantVoiceControl`) always starts **both** `MediaRecorder` (batch) and `AudioWorklet` (live) concurrently. If `liveTranscript` arrives, it is used directly; otherwise the `Blob` is posted to `/transcriptions`. Mobile (`expo-audio` `AudioStream` 16k Int16) does the same via `startMobileVoiceStream`.
 
@@ -47,17 +47,17 @@ Batch fallback: `POST /transcriptions` → `google-stt.ts` REST `generateContent
 
 ## 4. Env & feature flags
 
-* `ASSISTANT_VOICE_ENABLED` — `true` to expose voice UI. Frontend `__ASSISTANT_VOICE_ENABLED__` (vite `define`) gates `AssistantVoiceControl`. Tests set `false`.
-* `ASSISTANT_VOICE_REVIEW_REQUIRED` — `true` (default) forces `submissionMode="review"`; `Send automatically` was removed. No `STT` impact.
-* `STT_BRIDGE_URL` — only for `chirp_3`. Empty for Gemini Live.
-* `GOOGLE_STT_API_KEY` / `GOOGLE_CLOUD_PROJECT` — legacy env fallbacks (migrate to DB credential).
+- `ASSISTANT_VOICE_ENABLED` — `true` to expose voice UI. Frontend `__ASSISTANT_VOICE_ENABLED__` (vite `define`) gates `AssistantVoiceControl`. Tests set `false`.
+- `ASSISTANT_VOICE_REVIEW_REQUIRED` — `true` (default) forces `submissionMode="review"`; `Send automatically` was removed. No `STT` impact.
+- `STT_BRIDGE_URL` — only for `chirp_3`. Empty for Gemini Live.
+- `GOOGLE_STT_API_KEY` / `GOOGLE_CLOUD_PROJECT` — legacy env fallbacks (migrate to DB credential).
 
 ## 5. Testing
 
-* **Unit:** `pnpm vitest run apps/web/tests/voice-stream.test.ts apps/api/tests/voice-stream.test.ts` — checks `AudioWorklet` fallback, PCM `ArrayBuffer` send, `partial`/`final`, `t_worker_first_partial` latency forwarding, `rate_limit` → `"Voice mode is busy..."`, `gemini_missing_key` 503, and that live setup contains `inputAudioTranscription` and `models/gemini-3.5-transcribe-live`.
-* **Manual Web:** Chrome 120+ → enable `gemini-3.5-transcribe-live` → mic → `ws` panel shows `101` to `generativelanguage`, `partial` grey within ~250ms, `final` commits on silence/stop. Check console `[voice] live latency {t_worker_first_partial, latency}`.
-* **Manual Mobile:** Dev-client build (not Expo Go) → `expo-audio` `AudioStream` must be `function` (`typeof AudioModule.AudioStream`). If missing, client returns no-op session and falls back to file upload (no WSS opened).
-* **Negative:** Activate `gemini-3.5-transcribe` (REST) and hit live button → `400 stt_not_streaming` toast. Activate live with no credential → `503 gemini_missing_key`.
+- **Unit:** `pnpm vitest run apps/web/tests/voice-stream.test.ts apps/api/tests/voice-stream.test.ts` — checks `AudioWorklet` fallback, PCM `ArrayBuffer` send, `partial`/`final`, `t_worker_first_partial` latency forwarding, `rate_limit` → `"Voice mode is busy..."`, `gemini_missing_key` 503, and that live setup contains `inputAudioTranscription` and `models/gemini-3.5-transcribe-live`.
+- **Manual Web:** Chrome 120+ → enable `gemini-3.5-transcribe-live` → mic → `ws` panel shows `101` to `generativelanguage`, `partial` grey within ~250ms, `final` commits on silence/stop. Check console `[voice] live latency {t_worker_first_partial, latency}`.
+- **Manual Mobile:** Dev-client build (not Expo Go) → `expo-audio` `AudioStream` must be `function` (`typeof AudioModule.AudioStream`). If missing, client returns no-op session and falls back to file upload (no WSS opened).
+- **Negative:** Activate `gemini-3.5-transcribe` (REST) and hit live button → `400 stt_not_streaming` toast. Activate live with no credential → `503 gemini_missing_key`.
 
 ## 6. Latency instrumentation
 
@@ -65,16 +65,19 @@ Worker emits `t_worker_first_partial` and `latency_worker_to_first_partial` (`Da
 
 ## 7. Troubleshooting
 
-| Symptom | Code | Fix |
-|---|---|---|
-| `400 stt_not_streaming` on `/stream` | active provider is `cloudflare` or `gemini-3.5-transcribe` | Activate `gemini-3.5-transcribe-live` |
-| `503 gemini_missing_key` | live model but credential is empty, OAuth (`ya29`), or not an AI Studio key | Link a Google AI Studio API key (`AIzaSy...` or `AQ....`) |
-| `503 bridge_not_configured` | `chirp_3` without `STT_BRIDGE_URL` | Set `STT_BRIDGE_URL` or switch to Gemini Live |
-| `WebSocket connection to voice stream failed.` | Worker never completed the 101 handshake (auth/origin 4xx, or outbound Gemini `fetch()` used `wss://` which Workers reject) | Confirm JWT/`ALLOWED_ORIGINS`; Worker now upgrades Gemini over `https://`. Check Worker logs for `gemini_connect_failed`. |
-| `1011 gemini_connect_failed` | key invalid, quota, or network | Check key, `generativelanguage` status, WAF |
-| No `partial` but `final` arrives | `AudioWorklet` fallback to `ScriptProcessor` with 4096 buffer | Expected 256ms chunks; check `audioContext.sampleRate` is 16000 (iOS may use 48000 — still sent as 16k, accuracy drops) |
-| Mobile shows no partial | `typeof AudioModule.AudioStream !== "function"` in Expo Go | Use dev-client build; Expo Go does not bundle `AudioStream` |
-| `429 Voice mode is busy` | `rate_limit` from Google | Backoff, check quota |
+| Symptom                                         | Code                                                                                                                        | Fix                                                                                                                                                                                        |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `400 stt_not_streaming` on `/stream`            | active provider is `cloudflare` or `gemini-3.5-transcribe`                                                                  | Activate `gemini-3.5-transcribe-live`                                                                                                                                                      |
+| `503 gemini_missing_key`                        | live model but credential is empty, OAuth (`ya29`), or not an AI Studio key                                                 | Link a Google AI Studio API key (`AIzaSy...` or `AQ....`)                                                                                                                                  |
+| `503 bridge_not_configured`                     | `chirp_3` without `STT_BRIDGE_URL`                                                                                          | Set `STT_BRIDGE_URL` or switch to Gemini Live                                                                                                                                              |
+| `WebSocket connection to voice stream failed.`  | Worker never completed the 101 handshake (auth/origin 4xx, or outbound Gemini `fetch()` used `wss://` which Workers reject) | Confirm JWT/`ALLOWED_ORIGINS`; Worker now upgrades Gemini over `https://`. Check Worker logs for `gemini_connect_failed`.                                                                  |
+| `1011 gemini_connect_failed`                    | key invalid, quota, or network                                                                                              | Check key, `generativelanguage` status, WAF                                                                                                                                                |
+| No `partial` but `final` arrives                | `AudioWorklet` fallback to `ScriptProcessor` with 4096 buffer                                                               | Expected 256ms chunks; check `audioContext.sampleRate` is 16000 (iOS may use 48000 — still sent as 16k, accuracy drops)                                                                    |
+| Mobile shows no partial                         | `typeof AudioModule.AudioStream !== "function"` in Expo Go                                                                  | Use dev-client build; Expo Go does not bundle `AudioStream`                                                                                                                                |
+| Mobile dev shows no partial on a physical phone | Dev API resolved to phone-local `localhost:8787` (unreachable laptop)                                                       | Same WiFi, run API with `pnpm --filter @zoption/api dev` (listens on `0.0.0.0:8787`); Zoption Dev now derives `http://<expo-host>:8787` automatically unless `EXPO_PUBLIC_API_URL` pins it |
+| Mobile dummy session, no partials               | Dev build pointed at an API whose active STT is not a live model (or a prod API, which rejects dummy tokens)                | Activate `gemini-3.5-transcribe-live` on that API; dummy streams against local dev (accepted) but never production                                                                         |
+| Mobile keeps recording after silence            | Expected until now — no VAD existed                                                                                         | Client auto-stops after ~2s of continuous silence (mic-calibrated RMS threshold); batch transcript follows                                                                                 |
+| `429 Voice mode is busy`                        | `rate_limit` from Google                                                                                                    | Backoff, check quota                                                                                                                                                                       |
 
 ## 8. Fallback guarantee
 
@@ -82,7 +85,7 @@ Every recording also captures `MediaRecorder` (web) or `AudioRecorder` file (mob
 
 ## 9. Security
 
-* Supabase JWT in `?token=` is validated by `createAuthMiddleware` (`auth.ts:128`) before `providerRegistry` lookup. Google API key never touches browser.
-* `STT_BRIDGE_URL` forwarding adds only `x-zoption-tenant` hash (8 chars) and `x-t-mic-start` — no PII, no transcript content to PostHog.
+- Supabase JWT in `?token=` is validated by `createAuthMiddleware` (`auth.ts:128`) before `providerRegistry` lookup. Google API key never touches browser.
+- `STT_BRIDGE_URL` forwarding adds only `x-zoption-tenant` hash (8 chars) and `x-t-mic-start` — no PII, no transcript content to PostHog.
 
 See also: `docs/realtime-stt-bridge.md` (chirp_3 bridge), `docs/assistant.md` (assistant consent), `apps/api/src/assistant/google-stt.ts` (REST path).

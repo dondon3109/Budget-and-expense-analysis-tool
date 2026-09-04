@@ -5,12 +5,69 @@ export interface MobileVoiceStreamCallbacks {
   onPartial: (transcript: string) => void;
   onFinal: (transcript: string) => void;
   onError?: (error: Error) => void;
-  onLatency?: (metrics: { t_worker_first_partial: number; latency_worker_to_first_partial: number }) => void;
+  onAutoStop?: () => void;
+  onLatency?: (metrics: {
+    t_worker_first_partial: number;
+    latency_worker_to_first_partial: number;
+  }) => void;
+}
+
+export interface MobileVoiceStreamOptions {
+  /** Continuous silence that ends the recording (default 2000ms). */
+  silenceMs?: number;
+  /** Never auto-stop before this long (default 2000ms). */
+  minRecordMs?: number;
+  /** Fallback silence threshold before noise-floor calibration (default 500). */
+  silenceRms?: number;
+}
+
+export const MOBILE_VOICE_SILENCE_MS = 3000;
+export const MOBILE_VOICE_MIN_RECORD_MS = 1500;
+export const MOBILE_VOICE_SILENCE_RMS = 600;
+/** First buffers calibrate the mic noise floor (min RMS in this window). */
+export const MOBILE_VOICE_CALIBRATION_MS = 750;
+
+/** Root-mean-square energy of int16 PCM, used as a cheap silence meter. */
+export function pcmRms(data: ArrayBuffer): number {
+  const count = Math.floor(data.byteLength / 2);
+  if (count === 0) return 0;
+  const samples = new Int16Array(data, 0, count);
+  let sum = 0;
+  for (let i = 0; i < count; i++) {
+    const s = samples[i]!;
+    sum += s * s;
+  }
+  return Math.sqrt(sum / count);
+}
+
+/**
+ * Linear-interpolation resampler for int16 PCM mono. Hardware that ignores
+ * the 16kHz request (48kHz is common) would otherwise arrive tagged as 16kHz
+ * and transcribe as slowed-down speech, so every buffer is normalized before
+ * sending. Returns the input buffer untouched when already at target rate.
+ */
+export function resamplePcmInt16(data: ArrayBuffer, fromRate: number, toRate = 16000): ArrayBuffer {
+  const count = Math.floor(data.byteLength / 2);
+  if (count === 0 || fromRate === toRate || fromRate <= 0) return data;
+  const input = new Int16Array(data, 0, count);
+  const ratio = fromRate / toRate;
+  const output = new Int16Array(Math.floor(count / ratio));
+  for (let i = 0; i < output.length; i++) {
+    const pos = i * ratio;
+    const i0 = Math.floor(pos);
+    const frac = pos - i0;
+    const s0 = input[i0]!;
+    const s1 = i0 + 1 < input.length ? input[i0 + 1]! : s0;
+    output[i] = Math.round(s0 + (s1 - s0) * frac);
+  }
+  return output.buffer as ArrayBuffer;
 }
 
 export interface MobileVoiceStreamSession {
   stop: () => Promise<string | null>;
   cancel: () => void;
+  /** True only when mic audio is actually streaming over an open WebSocket. */
+  live: boolean;
 }
 
 export function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -40,6 +97,7 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
 export function openMobileVoiceStreamWebSocket(accessToken: string): WebSocket {
   const base = publicConfig.apiUrl.replace(/^http/, "ws");
   const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(accessToken)}`;
+  console.warn("[voice] connecting ws to", wsUrl);
   return new WebSocket(wsUrl);
 }
 
@@ -48,19 +106,31 @@ export function openMobileVoiceStreamWebSocket(accessToken: string): WebSocket {
  * Uses native AudioStream (16kHz 16-bit PCM mono) and streams frames
  * over a WebSocket connection to /api/app/assistant/voice/stream.
  *
+ * Dummy dev sessions stream too: the local dev Worker accepts
+ * `dummy-dev-access-token`, so the Dev build gets real partials against the
+ * active STT model. (Production rejects dummy tokens at the handshake, which
+ * falls through to the no-op batch fallback below.)
+ *
  * If native AudioStream is not available (old Expo Go, web), returns a
  * no-op session so the caller can fall back to batch file upload without
- * opening a wasted WebSocket.
+ * opening a wasted WebSocket. No-op sessions report `live: false` so the UI
+ * can say live preview is off instead of staying silent.
+ *
+ * Silence auto-stop: PCM energy (int16 RMS) is metered on every buffer and
+ * `onAutoStop` fires once after `silenceMs` of continuous silence past
+ * `minRecordMs`, so the caller can stop and transcribe without a tap.
  */
 export async function startMobileVoiceStream(
   accessToken: string,
   callbacks: MobileVoiceStreamCallbacks,
+  options: MobileVoiceStreamOptions = {},
 ): Promise<MobileVoiceStreamSession> {
   // Fast path: no native streaming support — let batch recorder handle it
   if (typeof AudioModule?.AudioStream !== "function") {
     return {
       stop: async () => null,
       cancel: () => {},
+      live: false,
     };
   }
 
@@ -70,7 +140,10 @@ export async function startMobileVoiceStream(
   let stream: {
     start: () => Promise<void>;
     stop: () => void;
-    addListener: (event: string, cb: (buf: { data: ArrayBuffer; sampleRate?: number }) => void) => { remove: () => void };
+    addListener: (
+      event: string,
+      cb: (buf: { data: ArrayBuffer; sampleRate?: number }) => void,
+    ) => { remove: () => void };
   } | null = null;
   let bufferSub: { remove: () => void } | null = null;
 
@@ -130,6 +203,8 @@ export async function startMobileVoiceStream(
       ws.addEventListener("close", onClose);
     });
 
+    let resetSilenceTrigger: (() => void) | null = null;
+
     // Listen for incoming transcripts (with latency instrumentation from worker)
     const handleMessage = (event: { data: unknown }) => {
       if (typeof event.data !== "string") return;
@@ -145,6 +220,9 @@ export async function startMobileVoiceStream(
         };
         if (msg.type === "partial" && typeof msg.transcript === "string") {
           latestTranscript = msg.transcript;
+          if (msg.transcript.trim().length > 0) {
+            resetSilenceTrigger?.();
+          }
           callbacks.onPartial(msg.transcript);
           if (
             typeof msg.t_worker_first_partial === "number" &&
@@ -157,6 +235,9 @@ export async function startMobileVoiceStream(
           }
         } else if (msg.type === "final" && typeof msg.transcript === "string") {
           latestTranscript = msg.transcript;
+          if (msg.transcript.trim().length > 0) {
+            resetSilenceTrigger?.();
+          }
           callbacks.onFinal(msg.transcript);
           if (
             typeof msg.t_worker_first_partial === "number" &&
@@ -172,7 +253,8 @@ export async function startMobileVoiceStream(
             msg.code === "rate_limit" || msg.code === "429"
               ? "Voice mode is busy. Try again shortly."
               : msg.code === "bridge_not_configured" || msg.code === "gemini_missing_key"
-                ? msg.message || "Live transcription not configured. Activate gemini-3.5-transcribe-live with an API key."
+                ? msg.message ||
+                  "Live transcription not configured. Activate gemini-3.5-transcribe-live with an API key."
                 : msg.message || "Live transcription error.";
           const err = new Error(errorMessage);
           (err as unknown as Record<string, unknown>).code = msg.code;
@@ -194,26 +276,98 @@ export async function startMobileVoiceStream(
 
     // Initialize native AudioStream (16kHz mono 16-bit PCM is optimal for Gemini Live)
     try {
-      stream = new (AudioModule.AudioStream as unknown as new (opts: { sampleRate: number; channels: number; encoding: string }) => typeof stream)( {
+      stream = new (
+        AudioModule.AudioStream as unknown as new (opts: {
+          sampleRate: number;
+          channels: number;
+          encoding: string;
+        }) => typeof stream
+      )({
         sampleRate: 16000,
         channels: 1,
         encoding: "int16",
       } as never);
 
+      const silenceMsTarget = options.silenceMs ?? MOBILE_VOICE_SILENCE_MS;
+      const minRecordMs = options.minRecordMs ?? MOBILE_VOICE_MIN_RECORD_MS;
+      const fallbackRms = options.silenceRms ?? MOBILE_VOICE_SILENCE_RMS;
+      let silenceAccumMs = 0;
+      let consecutiveSpeechMs = 0;
+      let autoStopFired = false;
+      let streamStartMs = 0;
+      let noiseFloor: number | null = null;
+      let lastVadLogMs = 0;
+      const speechDebounceMs = Math.min(200, silenceMsTarget / 2);
+
+      resetSilenceTrigger = () => {
+        consecutiveSpeechMs = 0;
+        silenceAccumMs = 0;
+      };
+
       bufferSub = stream!.addListener("audioStreamBuffer", (buffer) => {
-        if (isStopped || !ws || ws.readyState !== WebSocket.OPEN) return;
-        if (!buffer?.data) return;
-        // Warn if hardware delivered a different sampleRate (some devices ignore 16k request)
-        if (buffer.sampleRate && buffer.sampleRate !== 16000) {
-          // Still send — server declares 16000, but mismatch may affect accuracy
+        if (isStopped || !buffer?.data) return;
+        // Meter silence first so a dead socket still ends the take.
+        if (!autoStopFired && streamStartMs > 0) {
+          const rms = pcmRms(buffer.data);
+          const elapsedMs = Date.now() - streamStartMs;
+          const rate = buffer.sampleRate && buffer.sampleRate > 0 ? buffer.sampleRate : 16000;
+          const bufferDurationMs = (buffer.data.byteLength / 2 / rate) * 1000;
+
+          // Calibrate to this mic: fixed thresholds misfire across devices
+          // (a noisy mic idles above them and never stops; too low cuts speech).
+          if (elapsedMs < MOBILE_VOICE_CALIBRATION_MS) {
+            noiseFloor = noiseFloor === null ? rms : Math.min(noiseFloor, rms);
+          }
+          // Floor of 600 RMS prevents ambient room noise (fans, air conditioning, breathing)
+          // from being misclassified as speech.
+          const threshold =
+            noiseFloor === null ? fallbackRms : Math.min(3000, Math.max(600, noiseFloor * 2.5));
+
+          if (rms >= threshold) {
+            consecutiveSpeechMs += bufferDurationMs;
+            // Require sustained audio above threshold before resetting silence counter.
+            // Brief spikes (keyboard, breathing, clicks < speechDebounceMs) are ignored.
+            if (consecutiveSpeechMs >= speechDebounceMs) {
+              silenceAccumMs = 0;
+            }
+          } else {
+            consecutiveSpeechMs = 0;
+            silenceAccumMs += bufferDurationMs;
+          }
+
+          if (Date.now() - lastVadLogMs >= 1000) {
+            lastVadLogMs = Date.now();
+            if (typeof console !== "undefined" && console.debug) {
+              console.debug("[voice] mobile VAD", {
+                rms: Math.round(rms),
+                threshold: Math.round(threshold),
+                silenceMs: Math.round(silenceAccumMs),
+                sampleRate: buffer.sampleRate ?? "unknown",
+              });
+            }
+          }
+          if (silenceAccumMs >= silenceMsTarget && elapsedMs >= minRecordMs) {
+            autoStopFired = true;
+            console.warn("[voice] mobile autoStop fired, silenceMs=", Math.round(silenceAccumMs));
+            try {
+              callbacks.onAutoStop?.();
+            } catch {}
+          }
         }
-        const pcmBase64 = arrayBufferToBase64(buffer.data);
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        // Normalize to 16kHz: sending 48kHz audio tagged as 16kHz transcribes
+        // as slowed-down speech.
+        const actualRate = buffer.sampleRate && buffer.sampleRate > 0 ? buffer.sampleRate : 16000;
+        const payload =
+          actualRate === 16000 ? buffer.data : resamplePcmInt16(buffer.data, actualRate);
+        const pcmBase64 = arrayBufferToBase64(payload);
         try {
           ws.send(JSON.stringify({ type: "audio", pcm: pcmBase64, data: pcmBase64 }));
         } catch {}
       });
 
       await stream!.start();
+      streamStartMs = Date.now();
     } catch (err) {
       // Native AudioStream failed (permission, hardware busy) — close WS and let batch fallback
       if (bufferSub) {
@@ -234,6 +388,7 @@ export async function startMobileVoiceStream(
       return {
         stop: async () => null,
         cancel: () => {},
+        live: false,
       };
     }
   } catch (error) {
@@ -245,6 +400,7 @@ export async function startMobileVoiceStream(
     return {
       stop: async () => latestTranscript,
       cancel: () => cleanup(),
+      live: false,
     };
   }
 
@@ -277,5 +433,6 @@ export async function startMobileVoiceStream(
     cancel: () => {
       cleanup();
     },
+    live: true,
   };
 }

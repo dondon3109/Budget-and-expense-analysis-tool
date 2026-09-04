@@ -329,8 +329,22 @@ export function createApp(options: AppOptions = {}) {
       .map((allowedOrigin) => allowedOrigin.trim())
       .filter(Boolean);
     const requestOrigin = context.req.header("Origin");
+    const requestUrl = new URL(context.req.url);
+    const isSameOrigin = requestOrigin === requestUrl.origin;
+    const isLocalDev =
+      context.env?.POSTHOG_AI_ENVIRONMENT !== "production" &&
+      requestOrigin !== undefined &&
+      (requestOrigin.startsWith("http://localhost:") ||
+        requestOrigin.startsWith("http://127.0.0.1:") ||
+        requestOrigin.startsWith("http://192.168.") ||
+        requestOrigin.startsWith("http://10."));
 
-    if (requestOrigin && !allowedOrigins.includes(requestOrigin)) {
+    if (
+      requestOrigin &&
+      !isSameOrigin &&
+      !isLocalDev &&
+      !allowedOrigins.includes(requestOrigin)
+    ) {
       return context.json({ error: "origin_not_allowed" }, 403);
     }
 
@@ -757,6 +771,8 @@ export function createApp(options: AppOptions = {}) {
         message: "Request failed",
         category: "unexpected_error",
         method: context.req.method,
+        error: String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       }),
     );
     return context.json({ error: "internal_server_error" }, 500);

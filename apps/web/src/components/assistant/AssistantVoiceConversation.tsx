@@ -20,6 +20,7 @@ import {
 } from "../../lib/voiceStream";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { prepareAssistantTurn } from "./prepareAssistantTurn";
+import { renderVoiceCaptionContent } from "./renderVoiceCaption";
 import "./AssistantVoiceConversation.css";
 
 /**
@@ -82,6 +83,9 @@ export function AssistantVoiceConversation({
   const audioContextRef = useRef<AudioContext | undefined>(undefined);
   const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
   const liveSessionPromiseRef = useRef<Promise<LiveTranscriptionSession> | null>(null);
+  const speechRecognitionRef = useRef<any>(null);
+  const heardSpeechRef = useRef(false);
+  const lastSpeechAtRef = useRef(0);
   const liveTranscriptRef = useRef<string>("");
   const liveErrorRef = useRef<string | null>(null);
   const liveShouldStopRef = useRef(false);
@@ -102,6 +106,10 @@ export function AssistantVoiceConversation({
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [notice, setNotice] = useState<string>();
   const [audioError, setAudioError] = useState<string>();
+  // Typewriter caption: while the reply is spoken, letters appear paced to
+  // the audio instead of the full text popping in before the voice starts.
+  const [speakingId, setSpeakingId] = useState<string>();
+  const [typedCount, setTypedCount] = useState(0);
 
   function setVoiceStatus(next: VoiceStatus) {
     statusRef.current = next;
@@ -128,6 +136,12 @@ export function AssistantVoiceConversation({
     if (liveSessionRef.current) {
       void liveSessionRef.current.stop().catch(() => {});
       liveSessionRef.current = null;
+    }
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.abort();
+      } catch {}
+      speechRecognitionRef.current = null;
     }
     liveSessionPromiseRef.current = null;
     liveShouldStopRef.current = false;
@@ -168,6 +182,42 @@ export function AssistantVoiceConversation({
   useEffect(() => {
     captionsEndRef.current?.scrollIntoView?.({ block: "nearest" });
   }, [captions, livePartial, status]);
+
+  const typingFull =
+    speakingId !== undefined
+      ? (captions.find((item) => item.id === speakingId && item.role === "assistant")?.text ?? "")
+      : "";
+
+  // Advances the typewriter while the reply is spoken: held at the caret
+  // until audio is actually audible, then paced to the playback position
+  // (fixed fallback speed when the duration is unknown). Leaving `speaking`
+  // snaps to the full text in the render below.
+  const fallbackStartRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (status !== "speaking" || typingFull === "") return;
+    const timer = window.setInterval(() => {
+      const audio = audioRef.current;
+      // Audio not playing or paused: hold at current count so text never outruns voice.
+      if (!audio || audio.paused || audio.ended) return;
+      const duration = audio.duration;
+      let count: number;
+      if (Number.isFinite(duration) && duration > 0) {
+        count = Math.min(
+          typingFull.length,
+          Math.floor((audio.currentTime / duration) * typingFull.length) + 1,
+        );
+      } else {
+        if (fallbackStartRef.current === null) fallbackStartRef.current = Date.now();
+        count = Math.min(
+          typingFull.length,
+          Math.floor((Date.now() - fallbackStartRef.current) / 60) + 1,
+        );
+      }
+      setTypedCount((previous) => (count > previous ? count : previous));
+      if (count >= typingFull.length) window.clearInterval(timer);
+    }, 40);
+    return () => window.clearInterval(timer);
+  }, [status, speakingId, typingFull]);
 
   const consented = Boolean(
     preferences?.consentedAt &&
@@ -218,6 +268,51 @@ export function AssistantVoiceConversation({
       if (!mountedRef.current) return;
       threadIdRef.current = prepared.result.thread.id;
       onTurnComplete(prepared.result);
+
+      if (!speechAvailable) {
+        setCaptions((current) => [
+          ...current,
+          {
+            id: prepared.result.assistantMessage.id,
+            role: "assistant",
+            text: prepared.result.assistantMessage.content,
+          },
+        ]);
+        setNotice("Spoken replies are unavailable in this environment. Showing text only.");
+        setVoiceStatus("idle");
+        return;
+      }
+
+      const voiceAudio = prepared.voice && !prepared.voice.error ? prepared.voice.audio : undefined;
+      if (!voiceAudio) {
+        setCaptions((current) => [
+          ...current,
+          {
+            id: prepared.result.assistantMessage.id,
+            role: "assistant",
+            text: prepared.result.assistantMessage.content,
+          },
+        ]);
+        setAudioError(
+          prepared.voice?.error ??
+            "The spoken reply could not be prepared. You can still read the answer above.",
+        );
+        setVoiceStatus("idle");
+        return;
+      }
+
+      const audioUrl = URL.createObjectURL(voiceAudio);
+      audioUrlRef.current = audioUrl;
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      // Enter speaking mode with typedCount=0 BEFORE adding caption to state
+      // so the message renders directly into typewriter mode at the caret (▍),
+      // preventing the full text from appearing before the voice starts.
+      setSpeakingId(prepared.result.assistantMessage.id);
+      setTypedCount(0);
+      fallbackStartRef.current = null;
+      setVoiceStatus("speaking");
       setCaptions((current) => [
         ...current,
         {
@@ -226,39 +321,24 @@ export function AssistantVoiceConversation({
           text: prepared.result.assistantMessage.content,
         },
       ]);
-      if (!speechAvailable) {
-        setNotice("Spoken replies are unavailable in this environment. Showing text only.");
-        setVoiceStatus("idle");
-        return;
-      }
-      const voiceAudio = prepared.voice && !prepared.voice.error ? prepared.voice.audio : undefined;
-      if (!voiceAudio) {
-        setAudioError(
-          prepared.voice?.error ??
-            "The spoken reply could not be prepared. You can still read the answer above.",
-        );
-        setVoiceStatus("idle");
-        return;
-      }
-      const audioUrl = URL.createObjectURL(voiceAudio);
-      audioUrlRef.current = audioUrl;
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      setVoiceStatus("speaking");
+
       audio.onended = () => {
         if (!mountedRef.current) return;
         stopPlayback();
+        setSpeakingId(undefined);
         setVoiceStatus("idle");
       };
       audio.onerror = () => {
         if (!mountedRef.current) return;
         stopPlayback();
+        setSpeakingId(undefined);
         setAudioError("The spoken reply could not be played. You can still read the answer above.");
         setVoiceStatus("idle");
       };
       await audio.play().catch(() => {
         if (!mountedRef.current) return;
         stopPlayback();
+        setSpeakingId(undefined);
         setAudioError("The spoken reply could not be played. You can still read the answer above.");
         setVoiceStatus("idle");
       });
@@ -294,8 +374,9 @@ export function AssistantVoiceConversation({
 
     const samples = new Uint8Array(analyser.fftSize);
     const startedAt = Date.now();
-    let heardSpeech = false;
-    let lastSpeechAt = startedAt;
+    heardSpeechRef.current = false;
+    lastSpeechAtRef.current = startedAt;
+    let noiseFloor: number | null = null;
 
     activityTimerRef.current = window.setInterval(() => {
       const recorder = recorderRef.current;
@@ -309,14 +390,26 @@ export function AssistantVoiceConversation({
       }
       const rms = Math.sqrt(sumSquares / samples.length);
       const now = Date.now();
-      if (rms >= SPEECH_RMS_THRESHOLD) {
-        heardSpeech = true;
-        lastSpeechAt = now;
+      const elapsed = now - startedAt;
+
+      // Adaptively calibrate noise floor during the first 500ms
+      if (elapsed < 500) {
+        noiseFloor = noiseFloor === null ? rms : Math.min(noiseFloor, rms);
+      }
+
+      const dynamicThreshold =
+        noiseFloor === null
+          ? SPEECH_RMS_THRESHOLD
+          : Math.min(0.06, Math.max(0.018, noiseFloor * 2.2));
+
+      if (rms >= dynamicThreshold) {
+        heardSpeechRef.current = true;
+        lastSpeechAtRef.current = now;
         return;
       }
-      if (heardSpeech && now - lastSpeechAt >= ENDING_SILENCE_MS) {
+      if (heardSpeechRef.current && now - lastSpeechAtRef.current >= ENDING_SILENCE_MS) {
         stopRecording("silence");
-      } else if (!heardSpeech && now - startedAt >= NO_SPEECH_TIMEOUT_MS) {
+      } else if (!heardSpeechRef.current && elapsed >= NO_SPEECH_TIMEOUT_MS) {
         stopRecording("no-speech");
       }
     }, VOICE_SAMPLE_INTERVAL_MS);
@@ -454,46 +547,116 @@ export function AssistantVoiceConversation({
       setLivePartial("");
       liveShouldStopRef.current = false;
 
+      // Live browser speech recognition if supported
+      const SpeechRecognitionClass =
+        typeof window !== "undefined"
+          ? (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any })
+              .SpeechRecognition ||
+            (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any })
+              .webkitSpeechRecognition
+          : undefined;
+
+      if (SpeechRecognitionClass) {
+        try {
+          const recognition = new SpeechRecognitionClass();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang =
+            typeof navigator !== "undefined" && navigator.language ? navigator.language : "en-US";
+          speechRecognitionRef.current = recognition;
+
+          recognition.onresult = (event: any) => {
+            if (!mountedRef.current) return;
+            let full = "";
+            for (let i = 0; i < event.results.length; ++i) {
+              const item = event.results[i];
+              if (item && item[0]) {
+                full += item[0].transcript;
+              }
+            }
+            const trimmed = full.trim();
+            if (trimmed) {
+              liveTranscriptRef.current = trimmed;
+              setLivePartial(trimmed);
+              heardSpeechRef.current = true;
+              lastSpeechAtRef.current = Date.now();
+            }
+          };
+
+          recognition.onspeechend = () => {
+            if (heardSpeechRef.current) {
+              window.setTimeout(() => {
+                if (
+                  mountedRef.current &&
+                  recorderRef.current?.state === "recording" &&
+                  heardSpeechRef.current &&
+                  Date.now() - lastSpeechAtRef.current >= 800
+                ) {
+                  stopRecording("silence");
+                }
+              }, 800);
+            }
+          };
+
+          recognition.onerror = () => {
+            // Non-fatal: batch MediaRecorder continues capturing
+          };
+
+          recognition.start();
+        } catch {
+          // Ignore SpeechRecognition start failure
+        }
+      }
+
       // Dual capture: live stream plus MediaRecorder batch fallback.
-      const livePromise = startLiveTranscriptionSession(workspace, activeStream, {
-        onPartial: (partial) => {
-          if (!mountedRef.current) return;
-          liveTranscriptRef.current = partial;
-          setLivePartial(partial);
-        },
-        onFinal: (final) => {
-          if (!mountedRef.current) return;
-          liveTranscriptRef.current = final;
-          setLivePartial(final);
-        },
-        onError: (error) => {
-          liveErrorRef.current = error.message;
-          if (mountedRef.current && !liveTranscriptRef.current) {
-            setNotice(error.message);
-          }
-        },
-      });
-      liveSessionPromiseRef.current = livePromise;
-      void livePromise
-        .then((session) => {
-          liveSessionPromiseRef.current = null;
-          if (!mountedRef.current) {
-            void session.stop().catch(() => {});
-            return;
-          }
-          if (liveShouldStopRef.current) {
-            liveSessionRef.current = session;
-            return;
-          }
-          liveSessionRef.current = session;
-        })
-        .catch((error) => {
-          liveSessionPromiseRef.current = null;
-          if (mountedRef.current && error instanceof Error) {
+      const isLiveModel =
+        (preferences?.transcriptionModel as string | undefined) ===
+        "gemini-3.5-transcribe-live";
+      if (isLiveModel) {
+        const livePromise = startLiveTranscriptionSession(workspace, activeStream, {
+          onPartial: (partial) => {
+            if (!mountedRef.current) return;
+            liveTranscriptRef.current = partial;
+            setLivePartial(partial);
+            heardSpeechRef.current = true;
+            lastSpeechAtRef.current = Date.now();
+          },
+          onFinal: (final) => {
+            if (!mountedRef.current) return;
+            liveTranscriptRef.current = final;
+            setLivePartial(final);
+            heardSpeechRef.current = true;
+            lastSpeechAtRef.current = Date.now();
+          },
+          onError: (error) => {
             liveErrorRef.current = error.message;
-            if (!liveTranscriptRef.current) setNotice(error.message);
-          }
+            if (mountedRef.current && !liveTranscriptRef.current) {
+              setNotice(error.message);
+            }
+          },
         });
+        liveSessionPromiseRef.current = livePromise;
+        void livePromise
+          .then((session) => {
+            liveSessionPromiseRef.current = null;
+            if (!mountedRef.current) {
+              void session.stop().catch(() => {});
+              return;
+            }
+            if (liveShouldStopRef.current) {
+              liveSessionRef.current = session;
+              return;
+            }
+            liveSessionRef.current = session;
+          })
+          .catch((error) => {
+            liveSessionPromiseRef.current = null;
+            if (mountedRef.current && error instanceof Error) {
+              liveErrorRef.current = error.message;
+              if (!liveTranscriptRef.current) setNotice(error.message);
+            }
+          });
+      }
 
       stopReasonRef.current = "manual";
       stopTimerRef.current = window.setTimeout(() => stopRecording("limit"), MAX_RECORDING_MS);
@@ -516,6 +679,11 @@ export function AssistantVoiceConversation({
     stopReasonRef.current = reason;
     liveShouldStopRef.current = true;
     window.clearTimeout(stopTimerRef.current);
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch {}
+    }
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
   }
 
@@ -616,7 +784,16 @@ export function AssistantVoiceConversation({
                 <span className="assistant-voice-caption-speaker">
                   {caption.role === "user" ? "You" : assistantName}
                 </span>
-                <span>{caption.text}</span>
+                <span>
+                  {caption.role === "assistant" &&
+                  caption.id === speakingId &&
+                  status === "speaking" &&
+                  typedCount < typingFull.length
+                    ? renderVoiceCaptionContent(`${typingFull.slice(0, typedCount)}▍`)
+                    : caption.role === "assistant"
+                      ? renderVoiceCaptionContent(caption.text)
+                      : caption.text}
+                </span>
               </p>
             ))}
             {livePartial && (

@@ -216,7 +216,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       serverHandlers.get("message")({ data: new Uint8Array([1, 2, 3]).buffer });
       expect(JSON.parse(mockWs.send.mock.calls.at(-1)[0])).toEqual({
         realtimeInput: {
-          audio: { mimeType: "audio/pcm;rate=16000", data: "AQID" },
+          mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: "AQID" }],
         },
       });
 
@@ -225,7 +225,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(JSON.parse(mockWs.send.mock.calls.at(-1)[0])).toEqual({
         realtimeInput: {
-          audio: { mimeType: "audio/pcm;rate=16000", data: "BAUG" },
+          mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: "BAUG" }],
         },
       });
 

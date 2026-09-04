@@ -11,6 +11,11 @@ import { File } from "expo-file-system";
 import { publicConfig } from "@/config/public-config";
 
 import { ApiTransportError, apiRequest, mapApiError } from "./authenticated";
+import {
+  extractDummyReceipt,
+  getDummyReceiptPreferences,
+  isDummyAssistantToken,
+} from "./assistant-dummy";
 
 export interface ReceiptApi {
   accessToken: string;
@@ -28,6 +33,9 @@ const receiptFallback = "Receipt scanning could not be reached. Try again shortl
 const RECEIPT_EXTRACT_TIMEOUT_MS = 45_000;
 
 export function getReceiptPreferences(api: ReceiptApi): Promise<ReceiptPreferences> {
+  if (isDummyAssistantToken(api.accessToken)) {
+    return getDummyReceiptPreferences();
+  }
   return apiRequest({
     ...api,
     path: "/api/app/receipts/preferences",
@@ -38,6 +46,9 @@ export function getReceiptPreferences(api: ReceiptApi): Promise<ReceiptPreferenc
 }
 
 export function grantReceiptConsent(api: ReceiptApi): Promise<ReceiptPreferences> {
+  if (isDummyAssistantToken(api.accessToken)) {
+    return getDummyReceiptPreferences();
+  }
   return apiRequest({
     ...api,
     path: "/api/app/receipts/preferences",
@@ -53,10 +64,10 @@ export function grantReceiptConsent(api: ReceiptApi): Promise<ReceiptPreferences
  * merchant, date, total, kind and a suggested category. The photo is processed
  * in-flight only and is never stored.
  */
-export async function extractReceipt(
-  api: ReceiptApi,
-  image: ReceiptImage,
-): Promise<ReceiptDraft> {
+export async function extractReceipt(api: ReceiptApi, image: ReceiptImage): Promise<ReceiptDraft> {
+  if (isDummyAssistantToken(api.accessToken)) {
+    return extractDummyReceipt();
+  }
   const form = new FormData();
   // Expo SDK 57's Winter fetch does not support RN's proprietary { uri }
   // FormData parts - it throws "Unsupported FormDataPart implementation".

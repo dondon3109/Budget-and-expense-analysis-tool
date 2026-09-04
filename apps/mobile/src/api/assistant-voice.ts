@@ -12,6 +12,14 @@ import { publicConfig } from "@/config/public-config";
 import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 
 import { ApiTransportError, apiRequest, mapApiError } from "./authenticated";
+import {
+  getDummyAssistantVoicePreferences,
+  grantDummyAssistantVoiceConsent,
+  isDummyAssistantToken,
+  previewDummySpeech,
+  synthesizeDummySpeech,
+  transcribeDummyVoice,
+} from "./assistant-dummy";
 
 export interface AssistantVoiceApi {
   accessToken: string;
@@ -51,29 +59,43 @@ export const assistantSpeechVoiceOptions: readonly AssistantSpeechVoiceOption[] 
   },
 ];
 
-export function getAssistantVoicePreferences(
+export async function getAssistantVoicePreferences(
   api: AssistantVoiceApi,
 ): Promise<AssistantVoicePreferences> {
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/voice/preferences",
-    method: "GET",
-    fallback: voiceFallback,
-    decode: (value) => assistantVoicePreferencesResponseSchema.parse(value),
-  });
+  try {
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/voice/preferences",
+      method: "GET",
+      fallback: voiceFallback,
+      decode: (value) => assistantVoicePreferencesResponseSchema.parse(value),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return getDummyAssistantVoicePreferences();
+    }
+    throw error;
+  }
 }
 
-export function grantAssistantVoiceConsent(
+export async function grantAssistantVoiceConsent(
   api: AssistantVoiceApi,
 ): Promise<AssistantVoicePreferences> {
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/voice/preferences",
-    method: "PATCH",
-    body: { consented: true },
-    fallback: voiceFallback,
-    decode: (value) => assistantVoicePreferencesResponseSchema.parse(value),
-  });
+  try {
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/voice/preferences",
+      method: "PATCH",
+      body: { consented: true },
+      fallback: voiceFallback,
+      decode: (value) => assistantVoicePreferencesResponseSchema.parse(value),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return grantDummyAssistantVoiceConsent();
+    }
+    throw error;
+  }
 }
 
 export const assistantSpeechVoices = ["default", "bright", "energetic"] as const;
@@ -243,6 +265,7 @@ export async function transcribeVoice(
   api: AssistantVoiceApi,
   recording: VoiceRecordingInput,
 ): Promise<AssistantVoiceTranscription> {
+  const isDummy = isDummyAssistantToken(api.accessToken);
   const form = new FormData();
   // Expo SDK 57's Winter fetch cannot serialize React Native's legacy
   // { uri, name, type } FormData part. expo-file-system's File implements the
@@ -271,9 +294,15 @@ export async function transcribeVoice(
     );
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
+    if (isDummy) {
+      return transcribeDummyVoice(recording);
+    }
     throw error;
   }
   if (!response.ok) {
+    if (isDummy) {
+      return transcribeDummyVoice(recording);
+    }
     throw mapApiError(
       response.status,
       (await response.json().catch(() => ({}))) as never,
@@ -321,31 +350,48 @@ async function requestAssistantSpeech(
   return { bytes: new Uint8Array(buffer), mimeType: "audio/mpeg" };
 }
 
-export function synthesizeAssistantSpeech(
+export async function synthesizeAssistantSpeech(
   api: AssistantVoiceApi,
   messageId: string,
   voice: AssistantSpeechVoice,
 ): Promise<{ bytes: Uint8Array; mimeType: "audio/mpeg" }> {
-  return requestAssistantSpeech(
-    api,
-    "/api/app/assistant/voice/speech",
-    { messageId, voice },
-    voiceFallback,
-    "No spoken reply was returned.",
-  );
+  try {
+    return await requestAssistantSpeech(
+      api,
+      "/api/app/assistant/voice/speech",
+      { messageId, voice },
+      voiceFallback,
+      "No spoken reply was returned.",
+    );
+  } catch (error) {
+    if (error instanceof ApiTransportError && error.status > 0) {
+      throw error;
+    }
+    if (isDummyAssistantToken(api.accessToken)) {
+      return synthesizeDummySpeech(messageId, voice);
+    }
+    throw error;
+  }
 }
 
-export function previewAssistantSpeech(
+export async function previewAssistantSpeech(
   api: AssistantVoiceApi,
   voice: AssistantSpeechVoice,
 ): Promise<{ bytes: Uint8Array; mimeType: "audio/mpeg" }> {
-  return requestAssistantSpeech(
-    api,
-    "/api/app/assistant/voice/preview",
-    { voice },
-    voicePreviewFallback,
-    "No voice preview was returned.",
-  );
+  try {
+    return await requestAssistantSpeech(
+      api,
+      "/api/app/assistant/voice/preview",
+      { voice },
+      voicePreviewFallback,
+      "No voice preview was returned.",
+    );
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return previewDummySpeech(voice);
+    }
+    throw error;
+  }
 }
 
 export { ApiTransportError };

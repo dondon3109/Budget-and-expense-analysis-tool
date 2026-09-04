@@ -1,3 +1,34 @@
+jest.mock("expo-audio", () => ({
+  AudioModule: {
+    requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  },
+  RecordingPresets: { HIGH_QUALITY: "hq" },
+  setAudioModeAsync: jest.fn(async () => undefined),
+  useAudioPlayer: jest.fn(() => ({})),
+  useAudioPlayerStatus: jest.fn(() => ({})),
+  useAudioRecorder: jest.fn(),
+}));
+
+jest.mock("expo-file-system", () => ({
+  File: jest.fn(),
+  Paths: { cache: "/cache" },
+}));
+
+jest.mock("@/api/voice-stream", () => ({
+  startMobileVoiceStream: jest.fn(async () => ({
+    stop: jest.fn(async () => null),
+    cancel: jest.fn(),
+    live: false,
+  })),
+}));
+
+jest.mock("@/files/temporary-source-file", () => ({
+  discardTemporarySourceFile: jest.fn(),
+}));
+
+import { act, renderHook } from "@testing-library/react-native";
+
+import { useVoiceRecorder } from "./assistant-voice-hooks";
 import {
   armAssistantRecorder,
   playbackAudioMode,
@@ -42,5 +73,49 @@ describe("armAssistantRecorder", () => {
   it("keeps playback audio from mixing with an active recording session", () => {
     expect(recordingAudioMode.allowsRecording).toBe(true);
     expect(playbackAudioMode.allowsRecording).toBe(false);
+  });
+});
+
+describe("useVoiceRecorder unmount during recording", () => {
+  function audioMocks() {
+    return jest.requireMock("expo-audio") as {
+      AudioModule: { requestRecordingPermissionsAsync: jest.Mock };
+      useAudioRecorder: jest.Mock;
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("never surfaces a released native recorder as a render error", async () => {
+    // Replays the on-device RedBox: leaving voice chat mid-recording read
+    // `.uri` on an already-released AudioRecorder SharedObject, and the
+    // synchronous native throw escaped as a render error.
+    const releasedRecorder = {
+      prepareToRecordAsync: jest.fn(async () => undefined),
+      record: jest.fn(),
+      stop: jest.fn(async () => undefined),
+      get uri(): string | null {
+        throw new Error("Cannot use shared object that was already released");
+      },
+    };
+    audioMocks().useAudioRecorder.mockReturnValue(releasedRecorder);
+
+    const { result, unmount } = await renderHook(() =>
+      useVoiceRecorder<string>({
+        getAccessToken: async () => "token",
+        onTranscribed: jest.fn(),
+        onError: jest.fn(),
+        transcribe: jest.fn(async () => "done"),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+    expect(result.current.phase).toBe("recording");
+
+    expect(() => unmount()).not.toThrow();
   });
 });

@@ -293,6 +293,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               if (tFirstPartial === null) {
                 tFirstPartial = Date.now();
               }
+              console.log("[voice-stream] transcript event:", { transcript, isFinal });
               trySend(
                 server,
                 JSON.stringify({
@@ -357,7 +358,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           geminiWs,
           JSON.stringify({
             realtimeInput: {
-              audio: { mimeType: "audio/pcm;rate=16000", data: btoa(binary) },
+              mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: btoa(binary) }],
             },
           }),
         );
@@ -452,7 +453,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               sendGeminiJson(
                 JSON.stringify({
                   realtimeInput: {
-                    audio: { mimeType: "audio/pcm;rate=16000", data: pcmData },
+                    mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: pcmData }],
                   },
                 }),
               );

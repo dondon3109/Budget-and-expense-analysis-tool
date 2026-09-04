@@ -6,6 +6,7 @@ import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 
 import { fetchMultipartWithTimeout } from "./assistant-voice";
 import { ApiTransportError, mapApiError } from "./authenticated";
+import { extractDummyVoiceTransaction, isDummyAssistantToken } from "./assistant-dummy";
 
 const entryFallback = "AI entry could not be reached. Try again shortly.";
 
@@ -20,6 +21,10 @@ export async function extractVoiceTransaction(
   recording: AiEntryRecording,
   fetchImpl: typeof fetch = fetch,
 ): Promise<TransactionVoiceDraft> {
+  if (isDummyAssistantToken(accessToken)) {
+    discardTemporarySourceFile(recording.uri);
+    return extractDummyVoiceTransaction();
+  }
   const form = new FormData();
   try {
     form.append("audio", new File(recording.uri) as unknown as Blob, recording.fileName);

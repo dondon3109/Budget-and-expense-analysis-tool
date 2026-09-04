@@ -187,7 +187,7 @@ describe("assistant orchestration", () => {
           message: {
             role: "assistant",
             content:
-              calls === 2 ? "You spent ₱12,450.00." : "Your recorded expenses were PHP 12,450.00.",
+              calls === 2 ? "You spent $12,450.00." : "Your recorded expenses were PHP 12,450.00.",
           },
         };
       }),

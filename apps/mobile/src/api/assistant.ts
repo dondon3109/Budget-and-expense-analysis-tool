@@ -16,6 +16,21 @@ import {
 import { z } from "zod";
 
 import { ApiTransportError, apiRequest } from "./authenticated";
+import {
+  clearDummyAssistantMemory,
+  createDummyAssistantThreadTurn,
+  deleteAllDummyAssistantThreads,
+  deleteDummyAssistantThread,
+  getDummyAssistantMemory,
+  getDummyAssistantMemoryPreferences,
+  getDummyAssistantPreferences,
+  isDummyAssistantToken,
+  listDummyAssistantMessages,
+  listDummyAssistantThreads,
+  sendDummyAssistantTurn,
+  updateDummyAssistantMemoryPreferences,
+  updateDummyAssistantPreferences,
+} from "./assistant-dummy";
 
 export interface AssistantApi {
   accessToken: string;
@@ -55,165 +70,252 @@ const assistantFallback = "The financial assistant could not be reached. Try aga
  */
 const ASSISTANT_TURN_TIMEOUT_MS = 120_000;
 
-export function getAssistantPreferences(api: AssistantApi): Promise<AssistantPreferences> {
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/preferences",
-    method: "GET",
-    fallback: assistantFallback,
-    decode: (value) => assistantPreferencesResponseSchema.parse(value),
-  });
+export async function getAssistantPreferences(api: AssistantApi): Promise<AssistantPreferences> {
+  try {
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/preferences",
+      method: "GET",
+      fallback: assistantFallback,
+      decode: (value) => assistantPreferencesResponseSchema.parse(value),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return getDummyAssistantPreferences();
+    }
+    throw error;
+  }
 }
 
-export function updateAssistantPreferences(
+export async function updateAssistantPreferences(
   api: AssistantApi,
   update: AssistantPreferenceUpdate,
 ): Promise<AssistantPreferences> {
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/preferences",
-    method: "PATCH",
-    body: update,
-    fallback: assistantFallback,
-    decode: (value) => assistantPreferencesResponseSchema.parse(value),
-  });
+  try {
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/preferences",
+      method: "PATCH",
+      body: update,
+      fallback: assistantFallback,
+      decode: (value) => assistantPreferencesResponseSchema.parse(value),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return updateDummyAssistantPreferences(update);
+    }
+    throw error;
+  }
 }
 
-export function getAssistantMemoryPreferences(
+export async function getAssistantMemoryPreferences(
   api: AssistantApi,
 ): Promise<AssistantMemoryPreferences> {
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/memory/preferences",
-    method: "GET",
-    fallback: assistantFallback,
-    decode: (value) => assistantMemoryPreferencesResponseSchema.parse(value),
-  });
+  try {
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/memory/preferences",
+      method: "GET",
+      fallback: assistantFallback,
+      decode: (value) => assistantMemoryPreferencesResponseSchema.parse(value),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return getDummyAssistantMemoryPreferences();
+    }
+    throw error;
+  }
 }
 
-export function updateAssistantMemoryPreferences(
+export async function updateAssistantMemoryPreferences(
   api: AssistantApi,
   input: { debtStrategy: "avalanche" | "snowball" | null },
 ): Promise<AssistantMemoryPreferences> {
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/memory/preferences",
-    method: "PATCH",
-    body: input,
-    fallback: assistantFallback,
-    decode: (value) => assistantMemoryPreferencesResponseSchema.parse(value),
-  });
+  try {
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/memory/preferences",
+      method: "PATCH",
+      body: input,
+      fallback: assistantFallback,
+      decode: (value) => assistantMemoryPreferencesResponseSchema.parse(value),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return updateDummyAssistantMemoryPreferences(input);
+    }
+    throw error;
+  }
 }
 
 const assistantMemoryListSchema = z.array(assistantMemoryItemSchema).max(200);
 
-export function getAssistantMemory(api: AssistantApi): Promise<AssistantMemory[]> {
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/memory",
-    method: "GET",
-    fallback: assistantFallback,
-    decode: (value) => assistantMemoryListSchema.parse(value),
-  });
+export async function getAssistantMemory(api: AssistantApi): Promise<AssistantMemory[]> {
+  try {
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/memory",
+      method: "GET",
+      fallback: assistantFallback,
+      decode: (value) => assistantMemoryListSchema.parse(value),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return getDummyAssistantMemory();
+    }
+    throw error;
+  }
 }
 
 export async function clearAssistantMemory(api: AssistantApi): Promise<void> {
-  await apiRequest({
-    ...api,
-    path: "/api/app/assistant/memory",
-    method: "DELETE",
-    fallback: assistantFallback,
-    decode: (value) => value,
-  });
+  try {
+    await apiRequest({
+      ...api,
+      path: "/api/app/assistant/memory",
+      method: "DELETE",
+      fallback: assistantFallback,
+      decode: (value) => value,
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return clearDummyAssistantMemory();
+    }
+    throw error;
+  }
 }
 
-export function listAssistantThreads(
+export async function listAssistantThreads(
   api: AssistantApi,
   query: { cursor?: string; limit?: number } = {},
 ): Promise<AssistantThreadPage> {
-  const search = new URLSearchParams();
-  if (query.cursor) search.set("cursor", query.cursor);
-  if (query.limit) search.set("limit", String(query.limit));
-  const suffix = search.size > 0 ? "?" + search.toString() : "";
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/threads" + suffix,
-    method: "GET",
-    fallback: assistantFallback,
-    decode: (value) => assistantThreadPageSchema.parse(value),
-  });
+  try {
+    const search = new URLSearchParams();
+    if (query.cursor) search.set("cursor", query.cursor);
+    if (query.limit) search.set("limit", String(query.limit));
+    const suffix = search.size > 0 ? "?" + search.toString() : "";
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/threads" + suffix,
+      method: "GET",
+      fallback: assistantFallback,
+      decode: (value) => assistantThreadPageSchema.parse(value),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return listDummyAssistantThreads(query);
+    }
+    throw error;
+  }
 }
 
-export function listAssistantMessages(
+export async function listAssistantMessages(
   api: AssistantApi,
   threadId: string,
   query: { cursor?: string; limit?: number } = {},
 ): Promise<AssistantWireMessagePage> {
-  const search = new URLSearchParams();
-  if (query.cursor) search.set("cursor", query.cursor);
-  if (query.limit) search.set("limit", String(query.limit));
-  const suffix = search.size > 0 ? "?" + search.toString() : "";
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/threads/" + encodeURIComponent(threadId) + "/messages" + suffix,
-    method: "GET",
-    fallback: assistantFallback,
-    decode: (value) => assistantMessagePageSchema.parse(value),
-  });
+  try {
+    const search = new URLSearchParams();
+    if (query.cursor) search.set("cursor", query.cursor);
+    if (query.limit) search.set("limit", String(query.limit));
+    const suffix = search.size > 0 ? "?" + search.toString() : "";
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/threads/" + encodeURIComponent(threadId) + "/messages" + suffix,
+      method: "GET",
+      fallback: assistantFallback,
+      decode: (value) => assistantMessagePageSchema.parse(value),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return listDummyAssistantMessages(threadId, query);
+    }
+    throw error;
+  }
 }
 
-export function createAssistantThreadTurn(
+export async function createAssistantThreadTurn(
   api: AssistantApi,
   input: AssistantMessageInput,
 ): Promise<AssistantWireTurnResult> {
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/threads",
-    method: "POST",
-    body: input,
-    fallback: assistantFallback,
-    decode: (value) => assistantTurnResultSchema.parse(value),
-    timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
-  });
+  try {
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/threads",
+      method: "POST",
+      body: input,
+      fallback: assistantFallback,
+      decode: (value) => assistantTurnResultSchema.parse(value),
+      timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
+    });
+  } catch (error) {
+    if (error instanceof ApiTransportError && error.status > 0) {
+      throw error;
+    }
+    if (isDummyAssistantToken(api.accessToken)) {
+      return createDummyAssistantThreadTurn(input);
+    }
+    throw error;
+  }
 }
 
-export function sendAssistantTurn(
+export async function sendAssistantTurn(
   api: AssistantApi,
   threadId: string,
   input: AssistantMessageInput,
 ): Promise<AssistantWireTurnResult> {
-  return apiRequest({
-    ...api,
-    path: "/api/app/assistant/threads/" + encodeURIComponent(threadId) + "/messages",
-    method: "POST",
-    body: input,
-    fallback: assistantFallback,
-    decode: (value) => assistantTurnResultSchema.parse(value),
-    timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
-  });
+  try {
+    return await apiRequest({
+      ...api,
+      path: "/api/app/assistant/threads/" + encodeURIComponent(threadId) + "/messages",
+      method: "POST",
+      body: input,
+      fallback: assistantFallback,
+      decode: (value) => assistantTurnResultSchema.parse(value),
+      timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
+    });
+  } catch (error) {
+    if (error instanceof ApiTransportError && error.status > 0) {
+      throw error;
+    }
+    if (isDummyAssistantToken(api.accessToken)) {
+      return sendDummyAssistantTurn(threadId, input);
+    }
+    throw error;
+  }
 }
 
-export async function deleteAssistantThread(
-  api: AssistantApi,
-  threadId: string,
-): Promise<void> {
-  await apiRequest({
-    ...api,
-    path: "/api/app/assistant/threads/" + encodeURIComponent(threadId),
-    method: "DELETE",
-    fallback: assistantFallback,
-    decode: (value) => value,
-  });
+export async function deleteAssistantThread(api: AssistantApi, threadId: string): Promise<void> {
+  try {
+    await apiRequest({
+      ...api,
+      path: "/api/app/assistant/threads/" + encodeURIComponent(threadId),
+      method: "DELETE",
+      fallback: assistantFallback,
+      decode: (value) => value,
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return deleteDummyAssistantThread(threadId);
+    }
+    throw error;
+  }
 }
 
 export async function deleteAllAssistantThreads(api: AssistantApi): Promise<void> {
-  await apiRequest({
-    ...api,
-    path: "/api/app/assistant/threads",
-    method: "DELETE",
-    fallback: assistantFallback,
-    decode: (value) => value,
-  });
+  try {
+    await apiRequest({
+      ...api,
+      path: "/api/app/assistant/threads",
+      method: "DELETE",
+      fallback: assistantFallback,
+      decode: (value) => value,
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return deleteAllDummyAssistantThreads();
+    }
+    throw error;
+  }
 }
 
 export { ApiTransportError };
