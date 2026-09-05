@@ -131,6 +131,11 @@ export function useVoiceRecorder<Result>({
         liveStreamRef.current.cancel();
         liveStreamRef.current = null;
       }
+      if (phaseRef.current === "requesting") {
+        // Unmounted while warming up: the pending startRecording continuation
+        // checks this and never starts capturing after unmount.
+        phaseRef.current = "idle";
+      }
       if (phaseRef.current === "recording") {
         // The native recorder may already be released (Fast Refresh remount,
         // late unmount): even the synchronous `uri` getter throws then, so the
@@ -269,7 +274,15 @@ export function useVoiceRecorder<Result>({
         setPhaseBoth("idle");
         return;
       }
-      await armAssistantRecorder(recorder, setAudioModeAsync);
+      await armAssistantRecorder(recorder, setAudioModeAsync, () => currentPhase() !== "requesting");
+      if (currentPhase() !== "requesting") {
+        // Cancelled (or unmounted) while warming up — never report capturing,
+        // or a stranded take confuses the UI after the user gave up or left.
+        stopElapsedTimer();
+        clearRecordingTimeout();
+        await restorePlaybackAudioMode();
+        return;
+      }
       setPhaseBoth("recording");
       startElapsedTimer();
       latestLiveTranscriptRef.current = "";

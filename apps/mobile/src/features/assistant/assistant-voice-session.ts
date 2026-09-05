@@ -23,8 +23,12 @@ export interface AssistantRecorderControls {
 export async function armAssistantRecorder(
   recorder: Pick<AssistantRecorderControls, "prepareToRecordAsync" | "record">,
   setAudioMode: (mode: typeof recordingAudioMode) => Promise<void>,
+  isCancelled: () => boolean = () => false,
 ): Promise<void> {
   await setAudioMode(recordingAudioMode);
   await recorder.prepareToRecordAsync();
+  // The user may have cancelled (or left) while preparing: never start
+  // capturing then, or a stranded take records after they gave up.
+  if (isCancelled()) return;
   recorder.record({ forDuration: MAX_RECORDING_SECONDS });
 }

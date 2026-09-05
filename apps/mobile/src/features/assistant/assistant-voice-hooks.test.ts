@@ -118,4 +118,52 @@ describe("useVoiceRecorder unmount during recording", () => {
 
     expect(() => unmount()).not.toThrow();
   });
+
+  it("never starts capturing after cancel during warm-up", async () => {
+    let resolvePermission!: (value: { granted: boolean }) => void;
+    const permissionGate = new Promise<{ granted: boolean }>((resolve) => {
+      resolvePermission = resolve;
+    });
+    let resolvePrepare!: () => void;
+    const prepareGate = new Promise<void>((resolve) => {
+      resolvePrepare = resolve;
+    });
+    audioMocks().AudioModule.requestRecordingPermissionsAsync.mockResolvedValueOnce(
+      permissionGate,
+    );
+    const pendingRecorder = {
+      prepareToRecordAsync: jest.fn(() => prepareGate),
+      record: jest.fn(),
+      stop: jest.fn(async () => undefined),
+      uri: "file://pending.m4a",
+    };
+    audioMocks().useAudioRecorder.mockReturnValue(pendingRecorder);
+
+    const { result } = await renderHook(() =>
+      useVoiceRecorder<string>({
+        getAccessToken: async () => "token",
+        onTranscribed: jest.fn(),
+        onError: jest.fn(),
+        transcribe: jest.fn(async () => "done"),
+      }),
+    );
+
+    let started!: Promise<void>;
+    await act(async () => {
+      started = result.current.startRecording();
+    });
+    expect(result.current.phase).toBe("requesting");
+
+    await act(async () => {
+      await result.current.cancelRecording();
+    });
+    await act(async () => {
+      resolvePermission({ granted: true });
+      resolvePrepare();
+      await started;
+    });
+
+    expect(pendingRecorder.record).not.toHaveBeenCalled();
+    expect(result.current.phase).toBe("idle");
+  });
 });

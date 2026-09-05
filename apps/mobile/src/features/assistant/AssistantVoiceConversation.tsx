@@ -24,7 +24,7 @@ import { RadarWaveRings, ThinkingSphereCore } from "./ThinkingSphereIndicator";
  */
 export const VOICE_CONVERSATION_SPEECH_VOICE = "bright" as const;
 
-type VoiceStatus = "idle" | "listening" | "thinking" | "speaking";
+type VoiceStatus = "idle" | "preparing" | "listening" | "thinking" | "speaking";
 
 interface VoiceCaption {
   id: string;
@@ -42,7 +42,10 @@ interface AssistantVoiceConversationProps {
 
 const STATUS_LABEL: Record<VoiceStatus, string> = {
   idle: "Tap to speak",
-  listening: "Listening…",
+  // Warming up is its own state so nobody speaks before the mic captures:
+  // "Please wait…" means still preparing, "You can now speak" means recording.
+  preparing: "Please wait…",
+  listening: "You can now speak",
   thinking: "Checking your records…",
   speaking: "Speaking…",
 };
@@ -288,16 +291,63 @@ export function AssistantVoiceConversation({
     },
   });
 
+  // The recorder is the source of truth for capture: "Please wait…" shows
+  // until it reports recording, so the first words are never clipped.
+  // Preparing never resets on an idle phase here — warm-up and the phase
+  // update race each other, and every failure path already reports back
+  // through onError (which idles) or explicit cancel.
   useEffect(() => {
-    if (recorder.phase === "idle" && status === "listening") {
+    if (recorder.phase === "recording" && status === "preparing") {
+      setVoiceStatus("listening");
+    } else if (recorder.phase === "idle" && status === "listening") {
       setVoiceStatus("idle");
       setLivePartial("");
     }
   }, [recorder.phase, status, setVoiceStatus]);
 
+  const beginListening = useCallback(() => {
+    if (!mountedRef.current) return;
+    if (statusRef.current === "thinking" || statusRef.current === "speaking") return;
+    // A busy recorder means a take is already in flight: starting another
+    // would silently strand this one in "Please wait…".
+    if (recorder.phase !== "idle") return;
+    setNotice(null);
+    setAudioError(null);
+    setLivePartial("");
+    setVoiceStatus("preparing");
+    void recorder.startRecording();
+  }, [recorder, setVoiceStatus]);
+
+  // Hands-free open: warm the mic as soon as voice is consented so the
+  // recorder is already capturing when the user starts speaking. Runs once
+  // per mount; a denied permission lands back on idle with a notice.
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (!consented || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    beginListening();
+  }, [consented, beginListening]);
+
+  // Tapping a suggested prompt replaces the spoken question: drop any
+  // in-flight mic take so its late transcript can't send a second turn.
+  const handlePromptChip = useCallback(
+    (prompt: string) => {
+      if (statusRef.current === "listening" || statusRef.current === "preparing") {
+        void recorder.cancelRecording();
+      }
+      void handleFinalTranscript(prompt);
+    },
+    [handleFinalTranscript, recorder],
+  );
+
   const handleOrbPress = useCallback(() => {
     if (!consented) {
       void enableVoice();
+      return;
+    }
+    if (status === "preparing") {
+      void recorder.cancelRecording();
+      setVoiceStatus("idle");
       return;
     }
     if (status === "listening" && recorder.phase === "recording") {
@@ -307,16 +357,12 @@ export function AssistantVoiceConversation({
       setSpeakingId(null);
       setVoiceStatus("idle");
     } else {
-      setNotice(null);
-      setAudioError(null);
-      setLivePartial("");
-      setVoiceStatus("listening");
-      void recorder.startRecording();
+      beginListening();
     }
-  }, [consented, enableVoice, recorder, setVoiceStatus, speakingId, status]);
+  }, [beginListening, consented, enableVoice, recorder, setVoiceStatus, speakingId, status]);
 
   const handleClose = useCallback(() => {
-    if (statusRef.current === "listening") {
+    if (statusRef.current === "listening" || statusRef.current === "preparing") {
       void recorder.cancelRecording();
     }
     const playing = spokenRef.current.playingMessageId;
@@ -327,7 +373,7 @@ export function AssistantVoiceConversation({
   }, [onClose, recorder]);
 
   const handleResetSession = useCallback(() => {
-    if (statusRef.current === "listening") {
+    if (statusRef.current === "listening" || statusRef.current === "preparing") {
       void recorder.cancelRecording();
     }
     const playing = spokenRef.current.playingMessageId;
@@ -533,7 +579,7 @@ export function AssistantVoiceConversation({
         accessibilityLabel="Conversation captions"
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         ListEmptyComponent={
-          livePartial || status !== "idle" ? null : (
+          livePartial || captions.length > 0 ? null : (
             <View style={styles.emptyContainer}>
               <View
                 style={[
@@ -553,7 +599,7 @@ export function AssistantVoiceConversation({
                   { color: theme.colors.textMuted },
                 ]}
               >
-                Tap the microphone to speak, or tap a question below:
+                Speak now, or tap a question below:
               </Text>
               <View style={styles.promptChipsContainer}>
                 {VOICE_SUGGESTED_PROMPTS.map((prompt) => (
@@ -561,7 +607,7 @@ export function AssistantVoiceConversation({
                     key={prompt}
                     accessibilityRole="button"
                     accessibilityLabel={prompt}
-                    onPress={() => void handleFinalTranscript(prompt)}
+                    onPress={() => handlePromptChip(prompt)}
                     style={[
                       styles.promptChip,
                       {
@@ -848,11 +894,13 @@ export function AssistantVoiceConversation({
             accessibilityLabel={
               status === "listening"
                 ? "Stop listening"
-                : status === "thinking"
-                  ? "Assistant is thinking"
-                  : status === "speaking"
-                    ? "Stop speaking"
-                    : "Start talking"
+                : status === "preparing"
+                  ? "Preparing microphone"
+                  : status === "thinking"
+                    ? "Assistant is thinking"
+                    : status === "speaking"
+                      ? "Stop speaking"
+                      : "Start talking"
             }
             accessibilityHint={
               status === "idle"
@@ -893,6 +941,7 @@ export function AssistantVoiceConversation({
         <Text style={[typography.label, { color: theme.colors.text }]}>{STATUS_LABEL[status]}</Text>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
           {status === "idle" && "Tap to speak with your assistant"}
+          {status === "preparing" && "Warming up the microphone…"}
           {status === "listening" && "Tap button when done"}
           {status === "thinking" && "Looking up financial records…"}
           {status === "speaking" && "Tap orb to interrupt playback"}

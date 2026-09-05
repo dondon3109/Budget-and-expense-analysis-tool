@@ -111,6 +111,8 @@ const baseProps = {
 function installHookMocks() {
   const m = mocks();
   const recorder = {
+    phase: "idle",
+    liveStatus: "idle",
     startRecording: jest.fn(),
     stopAndTranscribe: jest.fn(),
     cancelRecording: jest.fn(),
@@ -149,6 +151,19 @@ beforeEach(() => {
   m.sendAssistantTurn.mockResolvedValue(turnResult());
 });
 
+// Advances the mocked recorder lifecycle the way the native module would:
+// mutate phase, re-render, and let the screen status follow.
+function setRecorderPhase(
+  rerender: (ui: any) => void,
+  recorder: { phase: string },
+  phase: string,
+  ui: any,
+) {
+  recorder.phase = phase;
+  mocks().useAssistantRecorder.mockReturnValue({ ...(recorder as any) });
+  rerender(ui);
+}
+
 describe("AssistantVoiceConversation", () => {
   it("uses Bright Female with no voice picker", () => {
     expect(VOICE_CONVERSATION_SPEECH_VOICE).toBe("bright");
@@ -169,18 +184,24 @@ describe("AssistantVoiceConversation", () => {
 
     fireEvent.press(screen.getByText("Accept and continue"));
     await waitFor(() => expect(m.grantAssistantVoiceConsent).toHaveBeenCalledTimes(1));
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    // Consent warms the mic automatically — no second tap needed.
+    await waitFor(() => expect(recorder.startRecording).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
   });
 
-  it("creates a voice-kind thread and speaks the reply with Bright Female only", async () => {
+  it("auto-listens on open and speaks the reply with Bright Female only", async () => {
     const m = mocks();
     const { recorder, spoken, captured } = installHookMocks();
-    const onTurnComplete = jest.fn();
-    await render(<AssistantVoiceConversation {...baseProps} onTurnComplete={onTurnComplete} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    const props = { ...baseProps, onTurnComplete: jest.fn() };
+    const { rerender } = await render(<AssistantVoiceConversation {...props} />);
 
-    fireEvent.press(screen.getByLabelText("Start talking"));
-    expect(recorder.startRecording).toHaveBeenCalledTimes(1);
+    // Hands-free open: warming starts without a tap, and the UI waits for capture.
+    await waitFor(() => expect(recorder.startRecording).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
+
+    // The recorder reports capturing — only now is the user told to speak.
+    setRecorderPhase(rerender, recorder, "recording", <AssistantVoiceConversation {...props} />);
+    expect(await screen.findByText("You can now speak")).toBeTruthy();
     expect(await screen.findByLabelText("Stop listening")).toBeTruthy();
 
     await captured.partial?.("How much did I");
@@ -197,7 +218,7 @@ describe("AssistantVoiceConversation", () => {
     );
     await waitFor(() => expect(spoken.listen).toHaveBeenCalledWith(ASSISTANT_MESSAGE_ID, "bright"));
     expect(spoken.listen).toHaveBeenCalledTimes(1);
-    expect(onTurnComplete).toHaveBeenCalledWith(expect.objectContaining({ id: THREAD_ID }));
+    expect(props.onTurnComplete).toHaveBeenCalledWith(expect.objectContaining({ id: THREAD_ID }));
 
     // The reply types out while speaking; allow the fallback pace to finish.
     expect(await screen.findByText("Speaking…")).toBeTruthy();
@@ -214,9 +235,8 @@ describe("AssistantVoiceConversation", () => {
     // Halfway through the audio: the paced branch must show the first half.
     spoken.speechProgress = { currentTime: 5, duration: 10, playing: true };
     await render(<AssistantVoiceConversation {...baseProps} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText("Start talking"));
     await captured.transcript?.("How much did I spend?");
     expect(await screen.findByText("Speaking…")).toBeTruthy();
 
@@ -234,9 +254,8 @@ describe("AssistantVoiceConversation", () => {
     // Audio known but not playing yet (still loading): no letters may outrun the voice.
     spoken.speechProgress = { currentTime: 0, duration: 10, playing: false };
     await render(<AssistantVoiceConversation {...baseProps} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText("Start talking"));
     await captured.transcript?.("How much did I spend?");
     expect(await screen.findByText("Speaking…")).toBeTruthy();
 
@@ -248,13 +267,13 @@ describe("AssistantVoiceConversation", () => {
   });
 
   it("says live preview is off while listening without a live session", async () => {
-    const m = mocks();
     const { recorder } = installHookMocks();
-    m.useAssistantRecorder.mockReturnValue({ ...recorder, liveStatus: "unavailable" });
-    await render(<AssistantVoiceConversation {...baseProps} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    recorder.liveStatus = "unavailable";
+    const props = { ...baseProps };
+    const { rerender } = await render(<AssistantVoiceConversation {...props} />);
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText("Start talking"));
+    setRecorderPhase(rerender, recorder, "recording", <AssistantVoiceConversation {...props} />);
 
     expect(await screen.findByText("Live preview is off here", { exact: false })).toBeTruthy();
   });
@@ -263,9 +282,8 @@ describe("AssistantVoiceConversation", () => {
     const m = mocks();
     const { captured } = installHookMocks();
     await render(<AssistantVoiceConversation {...baseProps} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText("Start talking"));
     await captured.transcript?.("How much did I spend?");
     await waitFor(() => expect(m.createAssistantThreadTurn).toHaveBeenCalled());
 
@@ -283,9 +301,8 @@ describe("AssistantVoiceConversation", () => {
     );
     const { spoken, captured } = installHookMocks();
     await render(<AssistantVoiceConversation {...baseProps} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText("Start talking"));
     await captured.transcript?.("How much did I spend?");
 
     await waitFor(() =>
@@ -308,9 +325,8 @@ describe("AssistantVoiceConversation", () => {
     });
     const { spoken, captured } = installHookMocks();
     await render(<AssistantVoiceConversation {...baseProps} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText("Start talking"));
     await captured.transcript?.("How much did I spend?");
 
     await waitFor(() => expect(spoken.listen).toHaveBeenCalled());
@@ -321,17 +337,27 @@ describe("AssistantVoiceConversation", () => {
   });
 
   it("resets voice status to idle when transcript is empty", async () => {
-    const { captured } = installHookMocks();
-    await render(<AssistantVoiceConversation {...baseProps} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
-
-    fireEvent.press(screen.getByLabelText("Start talking"));
-    expect(await screen.findByLabelText("Stop listening")).toBeTruthy();
+    const { recorder, captured } = installHookMocks();
+    const props = { ...baseProps };
+    const { rerender } = await render(<AssistantVoiceConversation {...props} />);
+    setRecorderPhase(rerender, recorder, "recording", <AssistantVoiceConversation {...props} />);
+    expect(await screen.findByText("You can now speak")).toBeTruthy();
 
     await captured.transcript?.("   ");
 
     expect(await screen.findByLabelText("Start talking")).toBeTruthy();
-    expect(screen.queryByLabelText("Stop listening")).toBeNull();
+    expect(screen.queryByText("You can now speak")).toBeNull();
+  });
+
+  it("cancels warm-up when the orb is pressed while preparing", async () => {
+    const { recorder } = installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Preparing microphone"));
+
+    expect(recorder.cancelRecording).toHaveBeenCalledTimes(1);
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
   });
 
   it("renders close button with back-to-text-chat label and no 'Text chat' text", async () => {
@@ -344,14 +370,19 @@ describe("AssistantVoiceConversation", () => {
 
   it("renders suggested prompt chips in empty state and sends turn when pressed", async () => {
     const m = mocks();
-    installHookMocks();
+    const { recorder } = installHookMocks();
     await render(<AssistantVoiceConversation {...baseProps} />);
 
     expect(await screen.findByText("Ready to talk")).toBeTruthy();
+    // Let auto-start reach warm-up so the chip press exercises the cancel path.
+    await waitFor(() => expect(recorder.startRecording).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
     const chip = screen.getByLabelText("How much did I spend this month?");
     expect(chip).toBeTruthy();
 
     fireEvent.press(chip);
+    // The auto-started take is dropped so its late transcript can't double-send.
+    expect(recorder.cancelRecording).toHaveBeenCalledTimes(1);
     await waitFor(() =>
       expect(m.createAssistantThreadTurn).toHaveBeenCalledWith(
         { accessToken: "token" },
@@ -363,9 +394,8 @@ describe("AssistantVoiceConversation", () => {
   it("resets session and clears captions when reset button is pressed", async () => {
     const { spoken, captured } = installHookMocks();
     await render(<AssistantVoiceConversation {...baseProps} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText("Start talking"));
     await captured.transcript?.("How much did I spend?");
     captured.ended?.();
 
@@ -385,9 +415,8 @@ describe("AssistantVoiceConversation", () => {
   it("interrupts speaking playback when orb is pressed while speaking", async () => {
     const { spoken, captured } = installHookMocks();
     await render(<AssistantVoiceConversation {...baseProps} />);
-    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+    expect(await screen.findByText("Please wait…")).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText("Start talking"));
     await captured.transcript?.("How much did I spend?");
 
     const stopSpeakingBtn = await screen.findByLabelText("Stop speaking");
