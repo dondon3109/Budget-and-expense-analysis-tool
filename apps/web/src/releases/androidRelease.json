@@ -4,17 +4,17 @@
   "versionCode": 20318,
   "filename": "zoption-beta-0.2.18.apk",
   "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.18.apk",
-  "sha256": "f1788aa339cbbc2e1bd644f03aca0228d37c589ffeabcf998f6033a93f47d369",
-  "sizeBytes": 142963743,
-  "sizeLabel": "142,963,743 bytes (136.34 MiB)",
-  "releaseDate": "2026-09-04",
-  "releaseDateLabel": "September 4, 2026",
+  "sha256": "4ff94eabb928d0d1cf9e0d18478f3cbaf03f69767e22566267b89873582c02ea",
+  "sizeBytes": 142965171,
+  "sizeLabel": "142,965,171 bytes (136.34 MiB)",
+  "releaseDate": "2026-09-05",
+  "releaseDateLabel": "September 5, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Release-build sign-in fix: real accounts are no longer mistaken for development dummy sessions.",
-    "Purges stale dummy session data on launch."
+    "Voice chat listens automatically on open with a Please wait warm-up indicator",
+    "Fixes clipped first words on mobile voice input"
   ]
 }
