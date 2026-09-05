@@ -115,6 +115,37 @@ function groupsRequirePeriod(groups: readonly RequiredToolGroup[]): boolean {
   );
 }
 
+const RETRY_FOLLOWUP_PATTERN =
+  /^(please\s+)?(answer|retry|run)\s+(this|that|it)(\s+question)?(\s+again)?[?.!]*$|^(try\s+again|same\s+question)[?.!]*$/i;
+
+function lastUserMessage(
+  history: readonly AssistantHistoryMessage[],
+): string | null {
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const item = history[index];
+    if (item?.role === "user") return item.content;
+  }
+  return null;
+}
+
+/**
+ * A bare "answer this question" after a refusal carries no requirements of
+ * its own. Treat it as a retry of the previous user question so the same
+ * tools re-run instead of serving the generic rephrase refusal. Anything
+ * with its own requirements, or with no usable previous question, passes
+ * through unchanged.
+ */
+function retryTargetMessage(
+  history: readonly AssistantHistoryMessage[],
+  message: string,
+): string {
+  if (requiredGroups(message).length > 0 || !RETRY_FOLLOWUP_PATTERN.test(message.trim())) {
+    return message;
+  }
+  const previous = lastUserMessage(history);
+  return previous && requiredGroups(previous).length > 0 ? previous : message;
+}
+
 export function createAssistantTurnPolicy(input: {
   history: readonly AssistantHistoryMessage[];
   message: string;
@@ -136,10 +167,11 @@ export function createAssistantTurnPolicy(input: {
     };
   }
 
-  const groups = requiredGroups(input.message);
+  const effectiveMessage = retryTargetMessage(input.history, input.message);
+  const groups = requiredGroups(effectiveMessage);
   const period = resolveAssistantPeriod(
     input.history,
-    input.message,
+    effectiveMessage,
     input.currentDate,
     input.transactionBounds,
     groupsRequirePeriod(groups),

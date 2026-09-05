@@ -166,4 +166,71 @@ describe("assistant turn policy", () => {
     expect(policy.deterministicResponse).toBeTruthy();
     expect(policy.requiredToolGroups).toEqual([]);
   });
+
+  it("retries the previous question for a bare answer-this follow-up", () => {
+    const policy = createAssistantTurnPolicy({
+      history: [
+        { role: "user", content: "How much did I spend this year?" },
+        {
+          role: "assistant",
+          content: "I couldn’t safely verify a complete answer.",
+          metadata: {
+            promptVersion: "expert-v2",
+            compliance: { posture: "budgeting_allowed", topics: [] },
+            resolvedPeriod: { from: "2026-01-01", to: "2026-08-02", label: "this year" },
+            sources: [],
+          },
+        },
+      ],
+      message: "answer this question",
+      currentDate: "2026-08-02",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+    expect(policy.deterministicResponse).toBeUndefined();
+    expect(policy.requiredToolGroups).toContain("period_summary");
+    expect(policy.resolvedPeriod).toMatchObject({ from: "2026-01-01", to: "2026-08-02" });
+  });
+
+  it("leaves answer-this alone without a usable previous question", () => {
+    for (const history of [
+      [],
+      [{ role: "user", content: "answer this question" }],
+    ] as const) {
+      const policy = createAssistantTurnPolicy({
+        history: [...history],
+        message: "answer this question",
+        currentDate: "2026-08-02",
+        timeZone: "Asia/Manila",
+        transactionBounds: null,
+      });
+      expect(policy.requiredToolGroups).toEqual([]);
+      expect(policy.resolvedPeriod).toBeUndefined();
+    }
+  });
+
+  it("does not hijack a new question that has its own requirements", () => {
+    const policy = createAssistantTurnPolicy({
+      history: [
+        { role: "user", content: "How much did I spend this year?" },
+        {
+          role: "assistant",
+          content: "From 2026-01-01 to 2026-08-02, your recorded expenses were PHP 1.00.",
+          metadata: {
+            promptVersion: "expert-v2",
+            compliance: { posture: "budgeting_allowed", topics: [] },
+            resolvedPeriod: { from: "2026-01-01", to: "2026-08-02", label: "this year" },
+            sources: [],
+          },
+        },
+      ],
+      message: "Why did I overspend last month?",
+      currentDate: "2026-08-02",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+    expect(policy.requiredToolGroups).toContain("budget_comparison");
+    expect(policy.requiredToolGroups).not.toContain("period_summary");
+    expect(policy.resolvedPeriod).toMatchObject({ from: "2026-07-01", to: "2026-07-31" });
+  });
 });
