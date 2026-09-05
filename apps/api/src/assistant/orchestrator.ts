@@ -9,6 +9,7 @@ import type { AssistantResponseMetadata } from "@zoption/shared";
 import {
   canonicalizePesoAmounts,
   correctivePrompt,
+  deterministicPeriodSummaryAnswer,
   safeFallback,
   sanitizedAuditJson,
   sourceFromExecution,
@@ -223,6 +224,25 @@ export function createAssistantOrchestrator(
         audit: auditForPolicy(policy, 0, "fallback", []),
       };
 
+      // Every refusal path funnels through here so a total-spend question
+      // with good tool data still gets its verified total instead of a
+      // refusal when the model drafts keep failing grounding validation.
+      const finishFallback = (): AssistantAnswer => {
+        const deterministic = deterministicPeriodSummaryAnswer(policy, executions, satisfiedGroups);
+        if (deterministic) {
+          totals.content = deterministic;
+          totals.finishReason = "deterministic";
+          totals.responseMetadata = responseMetadata(policy, executions);
+          totals.audit = auditForPolicy(policy, providerCallCount, "passed", auditToolCalls);
+          return totals;
+        }
+        totals.content = safeFallback(policy);
+        totals.finishReason = "validation_fallback";
+        totals.responseMetadata = responseMetadata(policy, executions);
+        totals.audit = auditForPolicy(policy, providerCallCount, "fallback", auditToolCalls);
+        return totals;
+      };
+
       try {
         for (let invocation = 0; invocation < MAX_PROVIDER_CALLS; invocation += 1) {
           const missingRequiredGroups = policy.requiredToolGroups.filter(
@@ -255,11 +275,7 @@ export function createAssistantOrchestrator(
                 messages.push({ role: "user", content: EMPTY_RESPONSE_RETRY_PROMPT });
                 continue;
               }
-              totals.content = safeFallback(policy);
-              totals.finishReason = "validation_fallback";
-              totals.responseMetadata = responseMetadata(policy, executions);
-              totals.audit = auditForPolicy(policy, providerCallCount, "fallback", auditToolCalls);
-              return totals;
+              return finishFallback();
             }
 
             const validation = validateAssistantAnswer(
@@ -296,11 +312,7 @@ export function createAssistantOrchestrator(
               `[assistant-validation] Fallback to safe response for question: ${JSON.stringify(message)}`,
             );
 
-            totals.content = safeFallback(policy);
-            totals.finishReason = "validation_fallback";
-            totals.responseMetadata = responseMetadata(policy, executions);
-            totals.audit = auditForPolicy(policy, providerCallCount, "fallback", auditToolCalls);
-            return totals;
+            return finishFallback();
           }
 
           if (toolCalls.length > MAX_TOOL_CALLS_PER_RESPONSE) {
@@ -377,11 +389,7 @@ export function createAssistantOrchestrator(
         clearTimeout(timeout);
       }
 
-      totals.content = safeFallback(policy);
-      totals.finishReason = "validation_fallback";
-      totals.responseMetadata = responseMetadata(policy, executions);
-      totals.audit = auditForPolicy(policy, providerCallCount, "fallback", auditToolCalls);
-      return totals;
+      return finishFallback();
     },
   };
 }

@@ -295,6 +295,55 @@ export function correctivePrompt(
   )}`;
 }
 
+/**
+ * Last-resort answer for a single-group total-spend question whose model
+ * drafts kept failing grounding validation. Copies the backend-supplied
+ * expense total and trusted period verbatim, so the result passes
+ * validateAssistantAnswer by construction (verified below before returning).
+ * Returns null for every other shape — multi-group questions still need the
+ * model to synthesize across tools, and filter misses still need a plain
+ * not-found answer rather than a substituted total.
+ */
+export function deterministicPeriodSummaryAnswer(
+  policy: AssistantTurnPolicy,
+  executions: readonly AssistantToolExecution[],
+  satisfiedGroups: ReadonlySet<RequiredToolGroup>,
+): string | null {
+  if (policy.requiredToolGroups.length !== 1 || policy.requiredToolGroups[0] !== "period_summary") {
+    return null;
+  }
+  if (!satisfiedGroups.has("period_summary") || !policy.resolvedPeriod) return null;
+  if (
+    executions.some((execution) =>
+      JSON.stringify(execution.result).includes('"filterMatched":false'),
+    )
+  ) {
+    return null;
+  }
+  const summary = [...executions]
+    .reverse()
+    .find((execution) => execution.name === "get_period_summary" && isEnvelope(execution.result));
+  if (!summary || !isEnvelope(summary.result)) return null;
+  if (summary.result.dataQuality.status === "insufficient") return null;
+  const data =
+    summary.result.data && typeof summary.result.data === "object"
+      ? (summary.result.data as Record<string, unknown>)
+      : null;
+  const expenses = data?.["expenses"];
+  if (typeof expenses !== "string" || !/^PHP -?\d{1,3}(?:,\d{3})*\.\d{2}$/.test(expenses)) {
+    return null;
+  }
+  const args =
+    summary.arguments && typeof summary.arguments === "object" && !Array.isArray(summary.arguments)
+      ? (summary.arguments as Record<string, unknown>)
+      : null;
+  const accountName = args?.["accountName"];
+  const qualifier =
+    typeof accountName === "string" && accountName.trim() ? ` for ${accountName.trim()}` : "";
+  const content = `From ${policy.resolvedPeriod.from} to ${policy.resolvedPeriod.to}, your recorded expenses${qualifier} were ${expenses}.`;
+  return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid ? content : null;
+}
+
 export function safeFallback(policy: AssistantTurnPolicy): string {
   if (policy.requiredToolGroups.length > 0) {
     return "I couldn’t safely verify a complete answer from the available financial records. Please try a narrower question or a specific date range.";

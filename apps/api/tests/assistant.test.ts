@@ -210,7 +210,7 @@ describe("assistant orchestration", () => {
     expect(vi.mocked(provider.complete).mock.calls[2]?.[1].toolChoice).toBe("none");
   });
 
-  it("returns a deterministic fallback when the corrective answer is still invalid", async () => {
+  it("returns a deterministic total when the corrective answer is still invalid", async () => {
     let calls = 0;
     const provider: AssistantProvider = {
       complete: vi.fn(async (): Promise<ProviderCompletion> => {
@@ -235,8 +235,12 @@ describe("assistant orchestration", () => {
       "",
     );
 
-    expect(answer.content).toContain("couldn’t safely verify");
-    expect(answer.audit.validationStatus).toBe("fallback");
+    expect(answer.content).toBe(
+      "From 2026-07-01 to 2026-07-31, your recorded expenses were PHP 12,450.00.",
+    );
+    expect(answer.finishReason).toBe("deterministic");
+    expect(answer.audit.validationStatus).toBe("passed");
+    expect(answer.responseMetadata.sources).toHaveLength(1);
     expect(provider.complete).toHaveBeenCalledTimes(3);
   });
 

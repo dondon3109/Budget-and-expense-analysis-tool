@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalizePesoAmounts,
   correctivePrompt,
+  deterministicPeriodSummaryAnswer,
   sanitizedAuditJson,
   validateAssistantAnswer,
   validateToolArguments,
@@ -128,5 +129,41 @@ describe("assistant answer validation", () => {
     expect(snapshot).not.toContain("Sam");
     expect(snapshot).not.toContain("private note");
     expect(snapshot).not.toContain("secret-token");
+  });
+
+  it("renders a verified total-spend answer only for the single-group shape", () => {
+    const satisfied = new Set(["period_summary"] as const);
+    expect(deterministicPeriodSummaryAnswer(policy, [execution], satisfied)).toBe(
+      "From 2026-07-01 to 2026-07-31, your recorded expenses were PHP 1,234.56.",
+    );
+
+    // Multi-group questions still need the model to synthesize across tools.
+    expect(
+      deterministicPeriodSummaryAnswer(
+        { ...policy, requiredToolGroups: ["period_summary", "category_spending"] },
+        [execution],
+        new Set(["period_summary", "category_spending"]),
+      ),
+    ).toBeNull();
+
+    // A filter miss must stay a plain not-found answer, never a substituted total.
+    const filterMiss: AssistantToolExecution = {
+      ...execution,
+      result: {
+        ...(execution.result as Record<string, unknown>),
+        data: { categoryName: "Dining", filterMatched: false },
+      },
+    };
+    expect(deterministicPeriodSummaryAnswer(policy, [filterMiss], satisfied)).toBeNull();
+
+    // Insufficient data must keep the safe refusal instead of a zero-data total.
+    const insufficient: AssistantToolExecution = {
+      ...execution,
+      result: {
+        ...(execution.result as Record<string, unknown>),
+        dataQuality: { status: "insufficient", signals: [] },
+      },
+    };
+    expect(deterministicPeriodSummaryAnswer(policy, [insufficient], satisfied)).toBeNull();
   });
 });
