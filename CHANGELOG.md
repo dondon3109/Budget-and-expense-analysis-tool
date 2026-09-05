@@ -104,8 +104,6 @@ All notable product changes are documented here.
 
 ### Fixed
 
-- Fixed mobile sync failing on release builds with "Dummy sessions are not available in this Zoption build" (`apps/mobile/src/auth/session-state.tsx`): authenticated Supabase sessions are now tracked via explicit session origin state rather than subject UUID matching, preventing legitimate user accounts from colliding with the development dummy subject.
-- Purged stale development dummy session storage keys on non-development mobile builds (`apps/mobile/src/auth/session-state.tsx`) and reset local development token fallbacks to the canonical dummy UUID (`apps/api/src/auth.ts`).
 - Fixed mobile chat view not folding when typing, preventing the chat composer from being pushed off-screen or covered by the virtual keyboard (`apps/mobile/src/features/assistant/AssistantScreen.tsx`, `apps/mobile/src/features/support/SupportScreen.tsx`). Wrapped the chat container in `KeyboardAvoidingView`, configured list dismiss and tap persistence, and scrolled to the bottom on keyboard appearance.
 - Updated assistant and support chat message sending UI to show outgoing messages as sent immediately without waiting spinners or sending status (`apps/mobile/src/features/assistant/AssistantScreen.tsx`, `apps/web/src/components/assistant/AssistantConversation.tsx`).
 
@@ -120,6 +118,20 @@ All notable product changes are documented here.
 - Fixed "Voice processing returned an invalid response" on Google STT batch transcriptions by sanitizing the audio MIME type (stripping browser codec parameters like `;codecs=opus` which Google Generative Language `inlineData` rejected with HTTP 400), mapping Live-only model configurations (`gemini-3.5-transcribe-live`) to `gemini-2.0-flash` for batch REST fallback, classifying Google `API_KEY_INVALID` errors as configuration errors with actionable UI guidance, and upgrading the Gemini Multimodal Live WebSocket endpoint to `v1beta` (`apps/api/src/assistant/google-stt.ts:88`, `apps/api/src/routes/voice-stream.ts:114`).
 - Billing now clears a `PayPal` `APPROVAL_PENDING` checkout immediately when the buyer cancels via `?checkout=cancelled` instead of remaining stuck on `Confirming your payment` until the 15-minute expiry. `POST /api/app/billing/reconcile` accepts `abortPendingCheckout` and supersedes the pending checkout without granting Pro.
 - Pro checkout now loads all required PayPal JS v6 components (`paypal-payments`, `paypal-subscriptions`, `paypal-guest-payments`, `card-fields` per https://docs.paypal.ai/developer/how-to/sdk/js/v6/configuration) so the Debit or credit card guest option correctly appears inside the PayPal window when the buyer/merchant is eligible (previously only `paypal-subscriptions` was loaded, hiding card).
+
+## 2.26.3 — 2026-09-05
+
+### Fixed
+
+- Updated the Android install fallback metadata to 0.2.18-beta (versionCode 20318), including the release-build dummy-session sign-in fix notes (`apps/web/src/releases/androidRelease.json`).
+
+## 2.26.2 — 2026-09-05
+
+### Fixed
+
+- Fixed mobile sync failing on release builds with "Dummy sessions are not available in this Zoption build" (`apps/mobile/src/auth/session-state.tsx`): authenticated Supabase sessions are now tracked via explicit session origin state rather than subject UUID matching, preventing legitimate user accounts from colliding with the development dummy subject.
+- Purged stale development dummy session storage keys on non-development mobile builds (`apps/mobile/src/auth/session-state.tsx`) and reset local development token fallbacks to the canonical dummy UUID (`apps/api/src/auth.ts`).
+- Refreshed the production release notes: the "What's new" list now advertises Android Beta 0.2.18 with the release-build sign-in fix instead of the stale 0.2.12 entry (`apps/web/src/releases/currentRelease.ts`).
 
 ## 2.18.0 — 2026-08-26
 
