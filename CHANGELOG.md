@@ -4,6 +4,14 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.27.1 — 2026-09-06
+
+### Fixed
+
+- Refreshed Android install snapshot metadata to 0.2.20-beta (versionCode 20320) and updated production release notes with mobile voice transcription performance optimizations and voice chat routing fixes (`apps/web/src/releases/androidRelease.json`, `apps/web/src/releases/currentRelease.ts`).
+
+## 2.27.0 — 2026-09-06
+
 ### Changed
 
 - Optimized mobile voice transcription responsiveness and accuracy:
@@ -12,6 +20,46 @@ All notable product changes are documented here.
   - Added explicit `{ type: "stop" }` finalization signaling to the streaming WebSocket so Gemini Live immediately commits and emits the final verbatim transcript upon auto-stop or tap-to-stop.
   - Added robust automatic batch transcription fallback if real-time streaming produces an empty transcript, preventing speech loss.
   - Mapped `gemini-3.5-transcribe-live` to `gemini-2.0-flash` on the REST batch STT endpoint and wired active STT providers to the AI entry service.
+
+### Fixed
+
+- Routed existing voice conversations back into the full-screen voice chat interface when opened from conversation history or home screen widgets, preserving live captions and audio playback mode (`apps/mobile/src/features/assistant/AssistantScreen.tsx`).
+
+## 2.26.6 — 2026-09-05
+
+### Fixed
+
+- Refreshed Android install fallback snapshot metadata (`apps/web/src/releases/androidRelease.json`).
+
+## 2.26.5 — 2026-09-05
+
+### Fixed
+
+- Refreshed Android install fallback snapshot metadata (`apps/web/src/releases/androidRelease.json`).
+
+## 2.26.4 — 2026-09-05
+
+### Fixed
+
+- Added auto-listening on voice chat launch with mic warm-up status indication (`apps/mobile/src/features/assistant/VoiceChatScreen.tsx`).
+- Fixed assistant handling for bare "answer this" follow-up questions to retry and answer the preceding inquiry (`apps/api/src/assistant/`).
+- Prioritized verified total-spend calculations before validation fallback in assistant responses.
+
+## 2.26.3 — 2026-09-05
+
+### Fixed
+
+- Updated the Android install fallback metadata to 0.2.18-beta (versionCode 20318), including the release-build dummy-session sign-in fix notes (`apps/web/src/releases/androidRelease.json`).
+
+## 2.26.2 — 2026-09-05
+
+### Fixed
+
+- Fixed mobile sync failing on release builds with "Dummy sessions are not available in this Zoption build" (`apps/mobile/src/auth/session-state.tsx`): authenticated Supabase sessions are now tracked via explicit session origin state rather than subject UUID matching, preventing legitimate user accounts from colliding with the development dummy subject.
+- Purged stale development dummy session storage keys on non-development mobile builds (`apps/mobile/src/auth/session-state.tsx`) and reset local development token fallbacks to the canonical dummy UUID (`apps/api/src/auth.ts`).
+- Refreshed the production release notes: the "What's new" list now advertises Android Beta 0.2.18 with the release-build sign-in fix instead of the stale 0.2.12 entry (`apps/web/src/releases/currentRelease.ts`).
+
+## 2.26.0 — 2026-09-05
 
 ### Added
 
@@ -127,20 +175,6 @@ All notable product changes are documented here.
 - Fixed "Voice processing returned an invalid response" on Google STT batch transcriptions by sanitizing the audio MIME type (stripping browser codec parameters like `;codecs=opus` which Google Generative Language `inlineData` rejected with HTTP 400), mapping Live-only model configurations (`gemini-3.5-transcribe-live`) to `gemini-2.0-flash` for batch REST fallback, classifying Google `API_KEY_INVALID` errors as configuration errors with actionable UI guidance, and upgrading the Gemini Multimodal Live WebSocket endpoint to `v1beta` (`apps/api/src/assistant/google-stt.ts:88`, `apps/api/src/routes/voice-stream.ts:114`).
 - Billing now clears a `PayPal` `APPROVAL_PENDING` checkout immediately when the buyer cancels via `?checkout=cancelled` instead of remaining stuck on `Confirming your payment` until the 15-minute expiry. `POST /api/app/billing/reconcile` accepts `abortPendingCheckout` and supersedes the pending checkout without granting Pro.
 - Pro checkout now loads all required PayPal JS v6 components (`paypal-payments`, `paypal-subscriptions`, `paypal-guest-payments`, `card-fields` per https://docs.paypal.ai/developer/how-to/sdk/js/v6/configuration) so the Debit or credit card guest option correctly appears inside the PayPal window when the buyer/merchant is eligible (previously only `paypal-subscriptions` was loaded, hiding card).
-
-## 2.26.3 — 2026-09-05
-
-### Fixed
-
-- Updated the Android install fallback metadata to 0.2.18-beta (versionCode 20318), including the release-build dummy-session sign-in fix notes (`apps/web/src/releases/androidRelease.json`).
-
-## 2.26.2 — 2026-09-05
-
-### Fixed
-
-- Fixed mobile sync failing on release builds with "Dummy sessions are not available in this Zoption build" (`apps/mobile/src/auth/session-state.tsx`): authenticated Supabase sessions are now tracked via explicit session origin state rather than subject UUID matching, preventing legitimate user accounts from colliding with the development dummy subject.
-- Purged stale development dummy session storage keys on non-development mobile builds (`apps/mobile/src/auth/session-state.tsx`) and reset local development token fallbacks to the canonical dummy UUID (`apps/api/src/auth.ts`).
-- Refreshed the production release notes: the "What's new" list now advertises Android Beta 0.2.18 with the release-build sign-in fix instead of the stale 0.2.12 entry (`apps/web/src/releases/currentRelease.ts`).
 
 ## 2.18.0 — 2026-08-26
 
