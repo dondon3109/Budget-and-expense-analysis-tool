@@ -11,7 +11,7 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 5, 2026",
+  releasedOn: "September 6, 2026",
   changes: [
     {
       title: "Visual Renewal Calendar for Subscriptions",
@@ -29,9 +29,9 @@ export const currentRelease: ProductRelease = {
         "Navigate expenses month by month on your phone with grouped daily timelines, instant monthly income/expense/net totals, quick category filters, and actionable empty states.",
     },
     {
-      title: "Android Beta 0.2.18",
+      title: "Android Beta 0.2.20",
       description:
-        "The official Android Beta includes native outline iconography, cleaner borderless layouts, visible multi-series cash flow charts, and in-app update checks, plus a release-build sign-in fix that no longer mistakes real accounts for development dummy sessions.",
+        "The official Android Beta includes responsive and accurate voice transcription with instant audio capture, faster silence detection, batch transcription fallback, and restored conversation history when reopening voice chat.",
     },
     {
       title: "Focused budget limits",

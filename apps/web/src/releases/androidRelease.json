@@ -1,20 +1,21 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.19-beta",
-  "versionCode": 20319,
-  "filename": "zoption-beta-0.2.19.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.19.apk",
-  "sha256": "4720513695019fa0a7c94fa507ab20ee33034ea01c8000d7b46a0ab9718bb06e",
-  "sizeBytes": 142965175,
-  "sizeLabel": "142,965,175 bytes (136.34 MiB)",
-  "releaseDate": "2026-09-05",
-  "releaseDateLabel": "September 5, 2026",
+  "versionName": "0.2.20-beta",
+  "versionCode": 20320,
+  "filename": "zoption-beta-0.2.20.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.20.apk",
+  "sha256": "4d4fefc3dd5fb08d7a226799ebe4e38f05006d01a27a1ae164a267fa71beb3dd",
+  "sizeBytes": 142967791,
+  "sizeLabel": "142,967,791 bytes (136.34 MiB)",
+  "releaseDate": "2026-09-06",
+  "releaseDateLabel": "September 6, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Voice chat listens automatically on open with a Please wait warm-up indicator",
-    "Fixes clipped first words on mobile voice input"
+    "Route previous voice conversations back into voice chat UI with conversation history restored",
+    "Optimize voice transcription responsiveness and accuracy with instant audio capture and faster silence detection",
+    "Add automatic batch transcription fallback if streaming voice input is interrupted"
   ]
 }
