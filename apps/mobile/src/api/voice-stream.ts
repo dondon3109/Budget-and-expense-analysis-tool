@@ -240,7 +240,7 @@ export async function startMobileVoiceStream(
     let lastVadLogMs = 0;
     const speechDebounceMs = Math.min(200, silenceMsTarget / 2);
 
-    let resetSilenceTrigger: (() => void) | null = () => {
+    const resetSilenceTrigger = () => {
       consecutiveSpeechMs = 0;
       silenceAccumMs = 0;
     };
