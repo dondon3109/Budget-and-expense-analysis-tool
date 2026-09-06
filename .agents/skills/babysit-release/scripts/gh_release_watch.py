@@ -69,7 +69,18 @@ def parse_args():
         "--expect-version",
         help="Optional bare version (e.g. 2.2.2) required in the live release.json",
     )
-    parser.add_argument("--poll-seconds", type=int, default=60, help="Watch poll interval")
+    parser.add_argument(
+        "--poll-seconds",
+        type=int,
+        default=30,
+        help="Watch poll interval in seconds (default: 30)",
+    )
+    parser.add_argument(
+        "--auto-retry",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Automatically rerun failed jobs up to max-flaky-retries in watch mode (default: true)",
+    )
     parser.add_argument(
         "--max-flaky-retries",
         type=int,
@@ -754,7 +765,16 @@ def write_heartbeat(path, snapshot, changed):
         pass
 
 
-STOP_ACTIONS = {"stop_released", "stop_exhausted_retries"}
+STOP_ACTIONS = {
+    "stop_released",
+    "stop_exhausted_retries",
+    "diagnose_ci_failure",
+    "diagnose_release_failure",
+    "diagnose_android_failure",
+    "diagnose_ota_failure",
+    "check_release_source",
+    "check_release_needed",
+}
 
 # A single failed poll (gh rate limit, API 500, network blip) must not kill an
 # hours-long watch. Tolerate a few consecutive poll errors, then give up.
@@ -794,6 +814,16 @@ def run_watch(args):
         last_change_key = snapshot_change_key(snapshot)
         write_heartbeat(heartbeat_path, snapshot, changed)
         actions = set(snapshot.get("actions") or [])
+
+        # Automatically trigger flaky retry when recommended and auto-retry is enabled
+        if "retry_failed_checks" in actions and getattr(args, "auto_retry", True):
+            retry_result = retry_failed_now(args)
+            if retry_result.get("rerun_attempted"):
+                print_event("retry_triggered", retry_result)
+                last_change_key = None
+                time.sleep(args.poll_seconds)
+                continue
+
         stopping = bool(actions & STOP_ACTIONS)
         if changed or stopping:
             print_event(

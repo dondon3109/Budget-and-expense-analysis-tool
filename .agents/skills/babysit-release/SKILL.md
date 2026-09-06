@@ -86,7 +86,9 @@ python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --
 python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --watch
 ```
 
-### Trigger flaky retry cycle (only when watcher indicates)
+`--watch` polls every 30s by default and automatically retries flaky runner checks up to `--max-flaky-retries` (default: 3). It exits cleanly on terminal release completion (`stop_released`), retry exhaustion (`stop_exhausted_retries`), or actionable failures requiring code fixes (`diagnose_*`, `check_*`), ensuring background tasks finish and wake the agent immediately without stalling. Pass `--no-auto-retry` to disable automatic reruns.
+
+### Trigger flaky retry cycle manually
 
 ```bash
 python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --retry-failed-now
@@ -223,43 +225,22 @@ failures are never fixed by republishing over the bad object.
 
 ## Monitoring Loop Pattern
 
-1. Run `--watch` and consume each streamed snapshot; read its `actions` list.
-2. If `diagnose_ci_failure` / `diagnose_release_failure` /
-   `diagnose_android_failure` / `diagnose_ota_failure` is present, fetch the
-   failed job's logs from the snapshot's `logs_endpoint` and classify
-   source-related vs flaky/infra. Fix forward when source-related; rerun
-   with `--retry-failed-now` only when `retry_failed_checks` is present and
-   the failure looks flaky.
-3. If `check_release_needed` is present (green CI, skipped release), run
-   `node scripts/next-semantic-release.mjs` to decide no-op vs guard trip.
-4. If `check_release_source` is present (release failed only at the `Verify
-   release source` gate), read that step's log line: a stale-SHA trip is
-   benign — the newer commit retriggers the pipeline on its own, so keep
-   watching and do not rerun; a missing-baseline-tag trip needs Don.
-5. If `verify_production` is present (release success, live version lagging),
-   keep watching; run `pnpm smoke:production` for an independent check.
-6. After any push, rerun, or re-dispatch, relaunch `--watch` yourself on
-   wake; do not wait for Don to re-invoke the skill. A fix push is not a
-   completion event. The watcher survives a few transient poll errors on its
-   own; only relaunch for a dead watch (no heartbeat for several minutes).
-7. A live `--watch` with no strict stop condition means the babysitting task
-   is still in progress. Being woken with no new snapshot output is normal:
-   the watcher prints full snapshots only on change or stop, and records
-   every poll as one liveness line in the heartbeat file (next to the state
-   file, `.log` suffix, overridable with `--heartbeat-file`). Check it with
-   `tail` instead of re-running the watcher when only liveness is in doubt.
-8. Stop only when the watcher emits `stop_released` /
-   `stop_exhausted_retries`, or a blocker needs Don. A green snapshot that is
-   not a stop event is a progress update, not a reason to end the watch.
+1. Run `--watch` and let it stream events. By default, `--watch` automatically reruns flaky checks up to 3 times without hanging.
+2. If the watcher emits a stop event with `diagnose_ci_failure` / `diagnose_release_failure` / `diagnose_android_failure` / `diagnose_ota_failure`, retries are exhausted or auto-retry was disabled: fetch the failed job's logs from the snapshot's `logs_endpoint` and classify the failure. If source-related, patch code locally, test, commit using Conventional Commits, push forward to `main`, and relaunch `--watch` on wake. If flaky and retries were exhausted, report the persistent failure to Don.
+3. If `check_release_needed` is present (green CI, skipped release), run `node scripts/next-semantic-release.mjs` to decide no-op vs guard trip.
+4. If `check_release_source` is present (release failed only at the `Verify release source` gate), read that step's log line: a stale-SHA trip is benign — the newer commit retriggers the pipeline on its own, so keep watching and do not rerun; a missing-baseline-tag trip needs Don.
+5. If `verify_production` is present (release success, live version lagging), keep watching; run `pnpm smoke:production` for an independent check.
+6. After any push, rerun, or re-dispatch, relaunch `--watch` yourself on wake; do not wait for Don to re-invoke the skill. A fix push is not a completion event.
+7. A live `--watch` that exits with `stop_released` confirms that the full pipeline (web tag + Worker/Pages deployment + smoke) is green.
 
 ## Polling Cadence
 
-The watcher polls every 60 seconds by default (`--poll-seconds`), matching
+The watcher polls every 30 seconds by default (`--poll-seconds`), matching
 this cadence:
 
-- While any in-scope run is pending/running/failing: poll every 1 minute.
+- While any in-scope run is pending/running/failing: poll every 30 seconds.
 - When all green but terminal publication not yet confirmed (tag, deployment
-  record, public `latest.json`): keep the 1-minute cadence.
+  record, public `latest.json`): keep the 30-second cadence.
 - Reset the cadence on any change (new SHA, status change, new dispatch,
   deployment-stage change, live-endpoint version change).
 - After the first all-green snapshot for the current SHA, emit one

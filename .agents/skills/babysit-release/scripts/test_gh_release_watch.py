@@ -267,14 +267,15 @@ class QuietWatchTest(unittest.TestCase):
                 "actions": actions,
             }
 
-        steady = snap("failure", ["diagnose_ci_failure"])
-        steady_again = snap("failure", ["diagnose_ci_failure"])
+        steady = snap("", ["idle"])
+        steady_again = snap("", ["idle"])
         released = snap("success", ["stop_released"])
         state_path = Path("/tmp/watch-test-state.json")
 
         with tempfile.TemporaryDirectory() as tmp:
             args = argparse.Namespace(
-                poll_seconds=60,
+                poll_seconds=30,
+                auto_retry=True,
                 heartbeat_file=str(Path(tmp) / "watch.log"),
                 state_file=str(Path(tmp) / "state.json"),
             )
@@ -306,6 +307,193 @@ class QuietWatchTest(unittest.TestCase):
             # One cheap liveness line per poll, including the silent one.
             self.assertEqual(len(beats), 3)
             self.assertIn("changed=false", beats[1])
+
+    def test_watch_auto_retries_and_continues(self):
+        import io
+        from contextlib import redirect_stdout
+
+        failed = {
+            "sha": SHA,
+            "tracks": {"ci": sample_run("CI", conclusion="failure", run_id=11)},
+            "live": live_markers(),
+            "actions": ["diagnose_ci_failure", "retry_failed_checks"],
+        }
+        queued = {
+            "sha": SHA,
+            "tracks": {"ci": sample_run("CI", status="queued", conclusion="", run_id=11)},
+            "live": live_markers(),
+            "actions": ["idle"],
+        }
+        released = {
+            "sha": SHA,
+            "tracks": {
+                "ci": sample_run("CI", run_id=11),
+                "release": sample_run("Production Release", run_id=12),
+            },
+            "live": live_markers(),
+            "actions": ["stop_released"],
+        }
+        state_path = Path("/tmp/watch-test-state.json")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(
+                poll_seconds=30,
+                auto_retry=True,
+                heartbeat_file=str(Path(tmp) / "watch.log"),
+                state_file=str(Path(tmp) / "state.json"),
+            )
+            snapshots = [
+                (failed, state_path),
+                (queued, state_path),
+                (released, state_path),
+            ]
+            retry_res = {
+                "rerun_attempted": True,
+                "rerun_count": 1,
+                "rerun_run_ids": [11],
+            }
+            with (
+                mock.patch.object(
+                    gh_release_watch, "collect_snapshot", side_effect=snapshots
+                ),
+                mock.patch.object(
+                    gh_release_watch, "retry_failed_now", return_value=retry_res
+                ) as mock_retry,
+                mock.patch.object(gh_release_watch.time, "sleep", return_value=None),
+            ):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    self.assertEqual(gh_release_watch.run_watch(args), 0)
+
+            mock_retry.assert_called_once_with(args)
+            events = [
+                json.loads(line) for line in out.getvalue().splitlines() if line.strip()
+            ]
+            kinds = [event["event"] for event in events]
+            self.assertEqual(
+                kinds,
+                [
+                    "watch_started",
+                    "retry_triggered",
+                    "snapshot",
+                    "snapshot",
+                    "stop",
+                ],
+            )
+
+    def test_watch_stops_on_terminal_failure_without_retry(self):
+        import io
+        from contextlib import redirect_stdout
+
+        failed = {
+            "sha": SHA,
+            "tracks": {"ci": sample_run("CI", conclusion="failure", run_id=11)},
+            "live": live_markers(),
+            "actions": ["diagnose_ci_failure"],
+        }
+        state_path = Path("/tmp/watch-test-state.json")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(
+                poll_seconds=30,
+                auto_retry=True,
+                heartbeat_file=str(Path(tmp) / "watch.log"),
+                state_file=str(Path(tmp) / "state.json"),
+            )
+            with (
+                mock.patch.object(
+                    gh_release_watch, "collect_snapshot", return_value=(failed, state_path)
+                ),
+                mock.patch.object(gh_release_watch.time, "sleep", return_value=None),
+            ):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    self.assertEqual(gh_release_watch.run_watch(args), 0)
+
+            events = [
+                json.loads(line) for line in out.getvalue().splitlines() if line.strip()
+            ]
+            kinds = [event["event"] for event in events]
+            self.assertEqual(kinds, ["watch_started", "snapshot", "stop"])
+            self.assertIn("diagnose_ci_failure", events[-1]["payload"]["actions"])
+
+    def test_watch_stops_on_check_release_needed(self):
+        import io
+        from contextlib import redirect_stdout
+
+        snap = {
+            "sha": SHA,
+            "tracks": {
+                "ci": sample_run("CI", run_id=11),
+                "release": sample_run("Production Release", conclusion="skipped", run_id=12),
+            },
+            "live": live_markers(),
+            "actions": ["check_release_needed"],
+        }
+        state_path = Path("/tmp/watch-test-state.json")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(
+                poll_seconds=30,
+                auto_retry=True,
+                heartbeat_file=str(Path(tmp) / "watch.log"),
+                state_file=str(Path(tmp) / "state.json"),
+            )
+            with (
+                mock.patch.object(
+                    gh_release_watch, "collect_snapshot", return_value=(snap, state_path)
+                ),
+                mock.patch.object(gh_release_watch.time, "sleep", return_value=None),
+            ):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    self.assertEqual(gh_release_watch.run_watch(args), 0)
+
+            events = [
+                json.loads(line) for line in out.getvalue().splitlines() if line.strip()
+            ]
+            kinds = [event["event"] for event in events]
+            self.assertEqual(kinds, ["watch_started", "snapshot", "stop"])
+            self.assertIn("check_release_needed", events[-1]["payload"]["actions"])
+
+    def test_watch_stops_when_auto_retry_disabled(self):
+        import io
+        from contextlib import redirect_stdout
+
+        failed = {
+            "sha": SHA,
+            "tracks": {"ci": sample_run("CI", conclusion="failure", run_id=11)},
+            "live": live_markers(),
+            "actions": ["diagnose_ci_failure", "retry_failed_checks"],
+        }
+        state_path = Path("/tmp/watch-test-state.json")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(
+                poll_seconds=30,
+                auto_retry=False,
+                heartbeat_file=str(Path(tmp) / "watch.log"),
+                state_file=str(Path(tmp) / "state.json"),
+            )
+            with (
+                mock.patch.object(
+                    gh_release_watch, "collect_snapshot", return_value=(failed, state_path)
+                ),
+                mock.patch.object(
+                    gh_release_watch, "retry_failed_now"
+                ) as mock_retry,
+                mock.patch.object(gh_release_watch.time, "sleep", return_value=None),
+            ):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    self.assertEqual(gh_release_watch.run_watch(args), 0)
+
+            mock_retry.assert_not_called()
+            events = [
+                json.loads(line) for line in out.getvalue().splitlines() if line.strip()
+            ]
+            kinds = [event["event"] for event in events]
+            self.assertEqual(kinds, ["watch_started", "snapshot", "stop"])
 
 
 class SourceGuardTest(unittest.TestCase):
