@@ -309,7 +309,12 @@ export function createApp(options: AppOptions = {}) {
   const receiptService =
     options.receiptService ?? createReceiptService(receiptRepository, cloudflareVisionProvider);
   const aiEntryService =
-    options.aiEntryService ?? createAiEntryService(receiptRepository, importStore);
+    options.aiEntryService ??
+    createAiEntryService(
+      receiptRepository,
+      importStore,
+      dynamicVoiceProviders.transcription,
+    );
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =
     options.platformAdminService ?? createPlatformAdminService(platformAdminStore);

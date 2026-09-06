@@ -205,15 +205,6 @@ export function useVoiceRecorder<Result>({
             onTranscribed(liveResult);
             return;
           }
-        } else if (streamWasActive) {
-          discardTemporarySourceFile(uri);
-          await restorePlaybackAudioMode();
-          setPhaseBoth("idle");
-          const emptyResult = liveTranscribeResult("", recordedElapsed);
-          if (emptyResult !== null) {
-            onTranscribed(emptyResult);
-          }
-          return;
         }
       }
 
@@ -274,6 +265,15 @@ export function useVoiceRecorder<Result>({
         setPhaseBoth("idle");
         return;
       }
+      // Prefetch access token concurrently with recorder arming to eliminate warm-up lag
+      const tokenPromise =
+        onPartialTranscript || liveTranscribeResult
+          ? getAccessToken(false).catch((err) => {
+              console.warn("[voice] prefetch getAccessToken failed", err);
+              return null;
+            })
+          : null;
+
       await armAssistantRecorder(recorder, setAudioModeAsync, () => currentPhase() !== "requesting");
       if (currentPhase() !== "requesting") {
         // Cancelled (or unmounted) while warming up — never report capturing,
@@ -287,60 +287,58 @@ export function useVoiceRecorder<Result>({
       startElapsedTimer();
       latestLiveTranscriptRef.current = "";
 
-      if (onPartialTranscript || liveTranscribeResult) {
+      if (tokenPromise) {
         setLiveStatus("connecting");
-        void getAccessToken(false)
-          .then((token) => {
-            if (phaseRef.current !== "recording") return;
-            void startMobileVoiceStream(token, {
-              onPartial: (partial) => {
-                latestLiveTranscriptRef.current = partial;
-                if (phaseRef.current === "recording") {
-                  onPartialTranscript?.(partial);
-                }
-              },
-              onFinal: (final) => {
-                latestLiveTranscriptRef.current = final;
-                if (phaseRef.current === "recording") {
-                  onPartialTranscript?.(final);
-                }
-              },
-              onAutoStop: () => {
-                // Silence auto-stop: end the take and transcribe without a tap.
-                if (phaseRef.current === "recording") {
-                  void stopAndTranscribeRef.current();
-                }
-              },
-              onLatency: (metrics) => {
-                if (typeof console !== "undefined" && console.debug) {
-                  console.debug("[voice] mobile live latency", metrics);
-                }
-              },
-              onError: (err) => {
-                console.warn("[voice] live voice stream onError", err);
-              },
-            })
-              .then((session) => {
-                console.warn("[voice] live session started, live=", session.live);
-                if (phaseRef.current !== "recording") {
-                  session.cancel();
-                } else {
-                  // No-op session (native AudioStream unavailable) yields null on stop, so batch fallback runs
-                  liveStreamRef.current = session;
-                  setLiveStatus(session.live ? "live" : "unavailable");
-                }
-              })
-              .catch((err) => {
-                console.warn("[voice] live voice stream start failed", err);
-                // Live failed to start — batch file upload fallback still runs on stop.
-                if (phaseRef.current === "recording") setLiveStatus("unavailable");
-              });
-          })
-          .catch((err) => {
-            console.warn("[voice] getAccessToken failed", err);
-            // No access token means no live stream — batch fallback still runs on stop.
+        void tokenPromise.then((token) => {
+          if (!token) {
             if (phaseRef.current === "recording") setLiveStatus("unavailable");
-          });
+            return;
+          }
+          if (phaseRef.current !== "recording") return;
+          void startMobileVoiceStream(token, {
+            onPartial: (partial) => {
+              latestLiveTranscriptRef.current = partial;
+              if (phaseRef.current === "recording") {
+                onPartialTranscript?.(partial);
+              }
+            },
+            onFinal: (final) => {
+              latestLiveTranscriptRef.current = final;
+              if (phaseRef.current === "recording") {
+                onPartialTranscript?.(final);
+              }
+            },
+            onAutoStop: () => {
+              // Silence auto-stop: end the take and transcribe without a tap.
+              if (phaseRef.current === "recording") {
+                void stopAndTranscribeRef.current();
+              }
+            },
+            onLatency: (metrics) => {
+              if (typeof console !== "undefined" && console.debug) {
+                console.debug("[voice] mobile live latency", metrics);
+              }
+            },
+            onError: (err) => {
+              console.warn("[voice] live voice stream onError", err);
+            },
+          })
+            .then((session) => {
+              console.warn("[voice] live session started, live=", session.live);
+              if (phaseRef.current !== "recording") {
+                session.cancel();
+              } else {
+                // No-op session (native AudioStream unavailable) yields null on stop, so batch fallback runs
+                liveStreamRef.current = session;
+                setLiveStatus(session.live ? "live" : "unavailable");
+              }
+            })
+            .catch((err) => {
+              console.warn("[voice] live voice stream start failed", err);
+              // Live failed to start — batch file upload fallback still runs on stop.
+              if (phaseRef.current === "recording") setLiveStatus("unavailable");
+            });
+        });
       }
 
       // A hard stop when the user keeps recording past the cap.

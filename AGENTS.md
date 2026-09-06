@@ -21,6 +21,8 @@ Keep `CHANGELOG.md` current for every release. Record notable user-facing change
 
 Check for stale patch list notes on production when releasing. Make sure to update the patch list as needed before releasing.
 
+When releasing new changes however small it may be, always treat it as a new version both in web and mobile. Hence, always bump the version on mobile releases.
+
 ## Working style
 
 - Do not spawn subagents for work a single agent can complete in one pass.

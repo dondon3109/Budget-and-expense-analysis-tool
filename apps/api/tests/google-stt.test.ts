@@ -62,6 +62,40 @@ describe("createGoogleSttProvider", () => {
     }
   });
 
+  it("maps gemini-3.5-transcribe-live to gemini-2.0-flash on REST batch endpoint", async () => {
+    const originalFetch = globalThis.fetch;
+    let interceptedUrl = "";
+
+    globalThis.fetch = vi.fn(async (url: string) => {
+      interceptedUrl = String(url);
+      return new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: "Fallback transcribed speech" }],
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as any;
+
+    try {
+      const provider = createGoogleSttProvider("gemini-3.5-transcribe-live", "AIzaSySecretVoiceKey9999");
+      const audioBlob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "audio/webm" });
+      const res = await provider.transcribe({} as any, audioBlob as any);
+
+      expect(interceptedUrl).toContain("generativelanguage.googleapis.com");
+      expect(interceptedUrl).toContain("gemini-2.0-flash:generateContent");
+      expect(interceptedUrl).toContain("key=AIzaSySecretVoiceKey9999");
+      expect(res.text).toBe("Fallback transcribed speech");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("supports JSON secret with apiKey and projectId for Speech V2", async () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";

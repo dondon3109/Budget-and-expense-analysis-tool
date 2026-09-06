@@ -4,6 +4,15 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Optimized mobile voice transcription responsiveness and accuracy:
+  - Eliminated initial speech truncation by starting native audio capture immediately upon recording start and buffering early audio frames until the WebSocket handshake resolves.
+  - Reduced voice activity detection silence duration from 3.0s to 1.4s and lowered the silence RMS threshold floor from 600 to 150-250 RMS, preventing mid-sentence cutoff on normal speaking volumes while responding promptly when speaking stops.
+  - Added explicit `{ type: "stop" }` finalization signaling to the streaming WebSocket so Gemini Live immediately commits and emits the final verbatim transcript upon auto-stop or tap-to-stop.
+  - Added robust automatic batch transcription fallback if real-time streaming produces an empty transcript, preventing speech loss.
+  - Mapped `gemini-3.5-transcribe-live` to `gemini-2.0-flash` on the REST batch STT endpoint and wired active STT providers to the AI entry service.
+
 ### Added
 
 - Mobile development mode now connects directly to the local D1 user workspace

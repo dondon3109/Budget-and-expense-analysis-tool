@@ -62,10 +62,12 @@ describe("mobile voice-stream", () => {
     class FakeWebSocket {
       static OPEN = 1;
       static CLOSED = 3;
+      static instances: FakeWebSocket[] = [];
       readyState = 0;
       listeners: Record<string, Function[]> = {};
 
       constructor(public url: string) {
+        FakeWebSocket.instances.push(this);
         setTimeout(() => {
           this.readyState = FakeWebSocket.OPEN;
           this.emit("open", {});
@@ -88,7 +90,15 @@ describe("mobile voice-stream", () => {
         }
       }
 
-      send = jest.fn();
+      send = jest.fn((data: any) => {
+        if (typeof data === "string" && data.includes(`"type":"stop"`)) {
+          setTimeout(() => {
+            this.emit("message", {
+              data: JSON.stringify({ type: "final", transcript: "lunch 15 dollars" }),
+            });
+          }, 5);
+        }
+      });
       close = jest.fn(() => {
         this.readyState = FakeWebSocket.CLOSED;
         this.emit("close", { code: 1000 });
@@ -98,6 +108,7 @@ describe("mobile voice-stream", () => {
     let originalWs: any;
 
     beforeEach(() => {
+      FakeWebSocket.instances = [];
       originalWs = global.WebSocket;
       (global as any).WebSocket = FakeWebSocket;
     });
@@ -106,27 +117,83 @@ describe("mobile voice-stream", () => {
       global.WebSocket = originalWs;
     });
 
-    it("streams partial and final transcripts to callbacks", async () => {
+    it("streams partial and final transcripts to callbacks and sends stop", async () => {
       const onPartial = jest.fn();
       const onFinal = jest.fn();
 
-      const sessionPromise = startMobileVoiceStream("auth-token-123", {
+      const session = await startMobileVoiceStream("auth-token-123", {
         onPartial,
         onFinal,
       });
-
-      const session = await sessionPromise;
       expect(session).toBeDefined();
 
-      // Retrieve the created WebSocket instance
-      const activeWs = (session as any);
+      const wsInstance = FakeWebSocket.instances[0]!;
+      expect(wsInstance).toBeDefined();
 
-      // Simulate incoming message
-      const wsInstance = ((global as any).WebSocket as any).instances?.[0];
+      // Simulate partial message
+      wsInstance.emit("message", {
+        data: JSON.stringify({ type: "partial", transcript: "lunch" }),
+      });
+      expect(onPartial).toHaveBeenCalledWith("lunch");
 
-      // Stop session
+      // Stop session - sends { type: "stop" } and awaits final transcript
       const finalTranscript = await session.stop();
-      expect(finalTranscript).toBeNull();
+      expect(wsInstance.send).toHaveBeenCalledWith(JSON.stringify({ type: "stop" }));
+      expect(onFinal).toHaveBeenCalledWith("lunch 15 dollars");
+      expect(finalTranscript).toBe("lunch 15 dollars");
+    });
+
+    it("buffers audio frames while websocket is connecting and flushes on open", async () => {
+      const audioModule = jest.requireMock("expo-audio") as {
+        AudioModule: { AudioStream?: unknown };
+      };
+      const origAudioStream = audioModule.AudioModule.AudioStream;
+      let bufferCallback: ((buf: { data: ArrayBuffer; sampleRate?: number }) => void) | null = null;
+      class FakeStreamWithBuffer {
+        addListener = jest.fn((event: string, cb: any) => {
+          bufferCallback = cb;
+          return { remove: jest.fn() };
+        });
+        start = jest.fn(async () => undefined);
+        stop = jest.fn();
+      }
+      audioModule.AudioModule.AudioStream = FakeStreamWithBuffer;
+
+      class DelayedWebSocket extends FakeWebSocket {
+        constructor(url: string) {
+          super(url);
+          this.readyState = 0;
+        }
+      }
+      (global as any).WebSocket = DelayedWebSocket;
+
+      const sessionPromise = startMobileVoiceStream("auth-token-123", {
+        onPartial: jest.fn(),
+        onFinal: jest.fn(),
+      });
+
+      // Let stream.start() resolve and WebSocket instantiate
+      await Promise.resolve();
+
+      // AudioStream starts capturing and buffering before WebSocket opens
+      expect(bufferCallback).not.toBeNull();
+      const samplePcm = new Int16Array([100, 200, 300]).buffer as ArrayBuffer;
+      bufferCallback!({ data: samplePcm, sampleRate: 16000 });
+
+      const wsInstance = FakeWebSocket.instances[0]!;
+      expect(wsInstance).toBeDefined();
+      // Not open yet: send should not have been called
+      expect(wsInstance.send).not.toHaveBeenCalled();
+
+      // Open socket
+      wsInstance.readyState = FakeWebSocket.OPEN;
+      wsInstance.emit("open", {});
+
+      const session = await sessionPromise;
+      // Queued buffers flushed on socket open
+      expect(wsInstance.send).toHaveBeenCalled();
+      session.cancel();
+      audioModule.AudioModule.AudioStream = origAudioStream;
     });
 
     it("cancels session cleanly", async () => {

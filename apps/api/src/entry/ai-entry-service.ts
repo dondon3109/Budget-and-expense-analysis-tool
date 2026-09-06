@@ -12,7 +12,10 @@ import {
 import { z } from "zod";
 
 import { cloudflareWhisperProvider } from "../assistant/cloudflare-whisper";
-import { AssistantVoiceProviderError } from "../assistant/voice-provider";
+import {
+  AssistantVoiceProviderError,
+  type AssistantVoiceTranscriptionProvider,
+} from "../assistant/voice-provider";
 import type { ImportRepository } from "../db/imports";
 import type { ReceiptRepository } from "../db/receipts";
 import { HttpError } from "../errors";
@@ -278,6 +281,7 @@ async function requireAiEntryConsent(
 export function createAiEntryService(
   receiptRepository: ReceiptRepository,
   imports: ImportRepository,
+  transcriptionProvider: AssistantVoiceTranscriptionProvider = cloudflareWhisperProvider,
 ): AiEntryService {
   return {
     async previewPdf(env, tenantId, pdf) {
@@ -359,7 +363,7 @@ export function createAiEntryService(
       await requireAiEntryConsent(receiptRepository, env, tenantId);
       let transcript: string;
       try {
-        transcript = (await cloudflareWhisperProvider.transcribe(env, audio)).text;
+        transcript = (await transcriptionProvider.transcribe(env, audio)).text;
       } catch (error) {
         return throwProviderFailure("voice", error);
       }
