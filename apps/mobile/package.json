@@ -17,8 +17,7 @@
     "lint": "eslint app src app.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest --runInBand",
-    "test:watch": "jest --watch",
-    "verify:ota-signing": "node scripts/verify-ota-signing.mjs"
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@expo/vector-icons": "15.1.1",
@@ -43,7 +42,6 @@
     "expo-sqlite": "57.0.1",
     "expo-status-bar": "57.0.1",
     "expo-task-manager": "57.0.9",
-    "expo-updates": "~57.0.15",
     "expo-web-browser": "57.0.2",
     "nativewind": "4.2.6",
     "posthog-react-native": "4.63.4",

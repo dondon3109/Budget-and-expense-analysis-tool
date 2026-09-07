@@ -45,7 +45,6 @@ class RecommendActionsTest(unittest.TestCase):
             "ci": sample_run("CI", conclusion="failure", run_id=11),
             "release": sample_run("Production Release", conclusion="skipped", run_id=12),
             "android": None,
-            "ota": None,
         }
         actions = gh_release_watch.recommend_actions(tracks, [{"job_id": 1}], live_markers(), 0, 3)
         self.assertEqual(actions, ["diagnose_ci_failure", "retry_failed_checks"])
@@ -55,7 +54,6 @@ class RecommendActionsTest(unittest.TestCase):
             "ci": sample_run("CI", conclusion="failure", run_id=11),
             "release": None,
             "android": None,
-            "ota": None,
         }
         actions = gh_release_watch.recommend_actions(tracks, [{"job_id": 1}], live_markers(), 3, 3)
         self.assertEqual(actions, ["diagnose_ci_failure", "stop_exhausted_retries"])
@@ -65,7 +63,6 @@ class RecommendActionsTest(unittest.TestCase):
             "ci": sample_run("CI", run_id=11),
             "release": sample_run("Production Release", run_id=12),
             "android": None,
-            "ota": None,
         }
         actions = gh_release_watch.recommend_actions(tracks, [], live_markers(), 0, 3)
         self.assertEqual(actions, ["stop_released"])
@@ -75,7 +72,6 @@ class RecommendActionsTest(unittest.TestCase):
             "ci": sample_run("CI", run_id=11),
             "release": sample_run("Production Release", run_id=12),
             "android": None,
-            "ota": None,
         }
         actions = gh_release_watch.recommend_actions(
             tracks, [], live_markers(app_version="2.2.1"), 0, 3, expect_version="2.2.2"
@@ -87,7 +83,6 @@ class RecommendActionsTest(unittest.TestCase):
             "ci": sample_run("CI", run_id=11),
             "release": sample_run("Production Release", run_id=12),
             "android": None,
-            "ota": None,
         }
         actions = gh_release_watch.recommend_actions(
             tracks, [], live_markers(app_version="2.2.2"), 0, 3, expect_version="2.2.2"
@@ -101,7 +96,6 @@ class RecommendActionsTest(unittest.TestCase):
             "android": sample_run(
                 "Android Beta Build", status="in_progress", conclusion="", run_id=13
             ),
-            "ota": None,
         }
         actions = gh_release_watch.recommend_actions(tracks, [], live_markers(), 0, 3)
         self.assertEqual(actions, ["idle"])
@@ -111,7 +105,6 @@ class RecommendActionsTest(unittest.TestCase):
             "ci": sample_run("CI", run_id=11),
             "release": None,
             "android": sample_run("Android Beta Build", conclusion="failure", run_id=13),
-            "ota": None,
         }
         actions = gh_release_watch.recommend_actions(tracks, [{"job_id": 9}], live_markers(), 0, 3)
         self.assertEqual(
@@ -123,7 +116,6 @@ class RecommendActionsTest(unittest.TestCase):
             "ci": sample_run("CI", run_id=11),
             "release": sample_run("Production Release", conclusion="skipped", run_id=12),
             "android": None,
-            "ota": None,
         }
         actions = gh_release_watch.recommend_actions(tracks, [], live_markers(), 0, 3)
         self.assertEqual(actions, ["check_release_needed"])
@@ -133,7 +125,6 @@ class RecommendActionsTest(unittest.TestCase):
             "ci": sample_run("CI", status="in_progress", conclusion="", run_id=11),
             "release": None,
             "android": None,
-            "ota": None,
         }
         actions = gh_release_watch.recommend_actions(tracks, [], live_markers(), 0, 3)
         self.assertEqual(actions, ["idle"])
@@ -162,8 +153,7 @@ class SnapshotKeyTest(unittest.TestCase):
                 "ci": sample_run("CI", run_id=11),
                 "release": None,
                 "android": None,
-                "ota": None,
-            },
+                },
             "live": live_markers(),
             "actions": ["idle"],
         }
@@ -261,8 +251,7 @@ class QuietWatchTest(unittest.TestCase):
                     },
                     "release": None,
                     "android": None,
-                    "ota": None,
-                },
+                        },
                 "live": live_markers(),
                 "actions": actions,
             }
@@ -512,7 +501,6 @@ class SourceGuardTest(unittest.TestCase):
             "ci": sample_run("CI", run_id=11),
             "release": sample_run("Production Release", conclusion="failure", run_id=12),
             "android": None,
-            "ota": None,
         }
         jobs = [self._guard_job(12, ["Verify release source"])]
         actions = gh_release_watch.recommend_actions(tracks, jobs, live_markers(), 0, 3)
@@ -523,7 +511,6 @@ class SourceGuardTest(unittest.TestCase):
             "ci": sample_run("CI", run_id=11),
             "release": sample_run("Production Release", conclusion="failure", run_id=12),
             "android": None,
-            "ota": None,
         }
         jobs = [self._guard_job(12, ["Verify release source", "Deploy production Worker"])]
         actions = gh_release_watch.recommend_actions(tracks, jobs, live_markers(), 0, 3)
@@ -628,8 +615,7 @@ class UnifiedRetryBudgetTest(unittest.TestCase):
                     },
                     "release": None,
                     "android": None,
-                    "ota": None,
-                },
+                        },
                 "failed_jobs": [
                     {
                         "run_id": 4242,
@@ -680,7 +666,7 @@ class WatchResilienceTest(unittest.TestCase):
     def _snap(self, sha, actions):
         return {
             "sha": sha,
-            "tracks": {"ci": None, "release": None, "android": None, "ota": None},
+            "tracks": {"ci": None, "release": None, "android": None},
             "live": live_markers(),
             "actions": actions,
         }

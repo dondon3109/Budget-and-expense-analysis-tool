@@ -6,8 +6,6 @@ import packageJson from "../../package.json";
 
 import createConfig from "../../app.config";
 
-const PROJECT_ID = "9f20b628-1869-4f69-94d6-b4237a682ac0";
-
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
@@ -15,7 +13,6 @@ function optionalString(value: unknown): string | undefined {
 function configFor(environment: Record<string, string | undefined>): ExpoConfig {
   const original: Record<string, string | undefined> = {
     APP_VARIANT: optionalString(process.env.APP_VARIANT),
-    EAS_PROJECT_ID: optionalString(process.env.EAS_PROJECT_ID),
   };
   try {
     for (const [name, value] of Object.entries(environment)) {
@@ -31,11 +28,10 @@ function configFor(environment: Record<string, string | undefined>): ExpoConfig 
   }
 }
 
-describe("mobile OTA app configuration", () => {
-  it("leaves OTA disabled when no project is configured", () => {
-    const config = configFor({ APP_VARIANT: "production", EAS_PROJECT_ID: undefined });
+describe("mobile app configuration", () => {
+  it("resolves production variant configuration correctly", () => {
+    const config = configFor({ APP_VARIANT: "production" });
 
-    expect(config.updates).toEqual({ enabled: false });
     // The resolved version must be exactly what package.json declares - the
     // single source of truth - not a separately maintained literal.
     expect(config.version).toBe(packageJson.version);
@@ -45,36 +41,28 @@ describe("mobile OTA app configuration", () => {
       softwareKeyboardLayoutMode: "pan",
     });
     expect(config.android?.versionCode).toBeGreaterThan(0);
-    expect(config.runtimeVersion).toEqual({ policy: "appVersion" });
-  });
-
-  it("enables only the production channel when a valid project is embedded", () => {
-    const config = configFor({ APP_VARIANT: "production", EAS_PROJECT_ID: PROJECT_ID });
-
-    expect(config.updates).toEqual({
-      enabled: true,
-      url: `https://u.expo.dev/${PROJECT_ID}`,
-      requestHeaders: { "expo-channel-name": "production" },
-      codeSigningCertificate: "./certs/ota-production.pem",
-      codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
-      checkAutomatically: "ON_ERROR_RECOVERY",
-      fallbackToCacheTimeout: 0,
-    });
     expect(config.extra).toEqual({
       appVariant: "production",
-      eas: { projectId: PROJECT_ID },
     });
   });
 
-  it("keeps development clients off the OTA channel", () => {
-    const config = configFor({ APP_VARIANT: "development", EAS_PROJECT_ID: PROJECT_ID });
+  it("resolves development variant configuration correctly", () => {
+    const config = configFor({ APP_VARIANT: "development" });
 
-    expect(config.updates).toEqual({ enabled: false });
+    expect(config.name).toBe("Zoption Dev");
+    expect(config.android?.package).toBe("site.zoption.android.dev");
+    expect(config.extra).toEqual({
+      appVariant: "development",
+    });
   });
 
-  it("rejects a malformed project ID before generating native configuration", () => {
-    expect(() =>
-      configFor({ APP_VARIANT: "production", EAS_PROJECT_ID: "not-a-project-id" }),
-    ).toThrow("EAS_PROJECT_ID must be a valid UUID.");
+  it("resolves preview variant configuration correctly", () => {
+    const config = configFor({ APP_VARIANT: "preview" });
+
+    expect(config.name).toBe("Zoption Preview");
+    expect(config.android?.package).toBe("site.zoption.android.preview");
+    expect(config.extra).toEqual({
+      appVariant: "preview",
+    });
   });
 });

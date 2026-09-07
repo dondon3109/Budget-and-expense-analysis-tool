@@ -154,8 +154,8 @@ with the key `crash-telemetry-enabled` and enable it for all Android Beta
 installations. The app sends nothing while that flag is absent, unresolved, or
 false.
 
-The signed APK and production OTA workflows validate these values before they
-build or publish, so a missing key or host now fails the workflow. To
-intentionally ship an inert artifact, set the repository variable
-`EXPO_PUBLIC_TELEMETRY_DISABLED=1`; remove it before re-enabling telemetry. A
-new APK or OTA is required whenever the embedded build-time values change.
+The signed APK workflow validates these values before it builds or publishes, so
+a missing key or host now fails the workflow. To intentionally ship an inert artifact,
+set the repository variable `EXPO_PUBLIC_TELEMETRY_DISABLED=1`; remove it before
+re-enabling telemetry. A new APK is required whenever the embedded build-time
+values change.

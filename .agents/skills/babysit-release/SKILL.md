@@ -1,6 +1,6 @@
 ---
 name: babysit-release
-description: Babysit the automatic web and Android release workflows by polling Production Release, Android Beta Build, and Mobile OTA runs until each goes green or needs user help.
+description: Babysit the automatic web and Android release workflows by polling Production Release and Android Beta Build runs until each goes green or needs user help.
 ---
 
 # Release Babysitter
@@ -14,7 +14,6 @@ terminal outcome:
   deployed + production smoke green.
 - Android (`Android Beta Build`): signed APK build green (+ public R2 APK and
   `android/latest.json` verified, when publishing was approved).
-- OTA (`Mobile OTA Update`, when dispatched): EAS update published.
 
 Like `babysit-pr`, fix source-related failures forward and re-release: patch
 the code, verify locally, commit, push, and resume watching the new run in
@@ -28,8 +27,7 @@ single `idle`/pending snapshot.
 Accept any of the following:
 
 - No argument: watch the latest `main` release activity (CI run on `main`,
-  open `Production Release` run, latest manual `Android Beta Build` /
-  `Mobile OTA Update` dispatch).
+  open `Production Release` run, latest manual `Android Beta Build` dispatch).
 - Commit SHA on `main` (passed as `--sha`; the watcher resolves the run IDs
   itself, so a run URL/ID must first be mapped to its head SHA).
 
@@ -46,7 +44,7 @@ Accept any of the following:
    concurrent watchers for the same SHA.
 2. Identify the in-scope runs: the `CI` run for the `main` SHA, the
    `Production Release` run triggered by it, and any dispatched
-   `Android Beta Build` / `Mobile OTA Update` runs for the same source.
+   `Android Beta Build` runs for the same source.
 3. On every delivered watcher snapshot, read its `actions` list first and
    act on that (see Monitoring Loop Pattern). Fall back to raw `gh run
    list` / `gh run view` only when the watcher needs backup.
@@ -64,10 +62,10 @@ Accept any of the following:
    first; only fix forward when reruns prove it is not a flake.
 7. Never manually deploy the production Worker/Pages while
    `Production Release` is running, and never enable the Android
-   `publish_apk` / `publish_latest_json` inputs or dispatch OTA without
+   `publish_apk` / `publish_latest_json` inputs without
    Don's explicit approval for that version. Fix-forward pushes to `main`
    are allowed under the Safety Rules below; that approval does not extend
-   to publish inputs or OTA dispatch.
+   to publish inputs.
 8. Report status changes concisely; liveness heartbeats live in the
    heartbeat file, not the chat. Emit the final summary only at a strict
    stop condition.
@@ -149,7 +147,7 @@ Identity rule: a release bump edits exactly two files,
 (Android `versionCode`); every published value derives from that pair.
 
 Gate order: production config export -> telemetry validation -> release
-identity -> OTA fingerprint -> prebuild -> keystore -> `assembleRelease` ->
+identity -> prebuild -> keystore -> `assembleRelease` ->
 APK signing gate (SHA-256 `f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d`,
 DN `CN=Zoption, O=Zoption, C=PH`, single signer, package/version match) ->
 digest -> optional R2 publish -> public-object re-verification ->
@@ -161,15 +159,6 @@ review `apps/web/src/releases/androidRelease.json`, commit as
 `fix(web): refresh Android install snapshot`, and let `Production Release`
 deploy it. The script rejects versionCode downgrades unless the rollback was
 approved with `--allow-downgrade`.
-
-## OTA Track (`Mobile OTA Update`, `.github/workflows/mobile-ota.yml`)
-
-Manual dispatch with `message` plus `confirm_ota_trust_boundary: true`. Only
-JS/asset changes; native, permission, SDK, or config-plugin changes need a
-new signed APK instead. Gates: main-only source, OTA trust confirmation, live
-OTA-capable APK with matching `otaRuntimeVersion`/fingerprint/certificate,
-`OTA_BASE_COMMIT` ancestor of the update SHA, current `main` SHA, and
-successful CI for that SHA.
 
 ## Failure Classification
 
@@ -200,14 +189,12 @@ it the way `babysit-pr` resolves branch failures:
    push, so after the fix lands, re-dispatch build-only validation with
    `gh workflow run android-beta.yml` (defaults keep both publish inputs
    `false`). Publish inputs still need Don's per-version approval.
-6. Never auto-dispatch `Mobile OTA Update` (its trust confirmation must come
-   from Don); fix the source, report readiness, and wait.
 
 Stop for Don when: secrets/vars missing, Cloudflare Git deploy not disabled,
 stale SHA, missing baseline tag, signing-certificate mismatch, public
-R2/latest.json mismatch, `main` advanced mid-run, CI not successful for an
-OTA, retry budget exhausted, or any publish-gate failure. Publish-gate
-failures are never fixed by republishing over the bad object.
+R2/latest.json mismatch, `main` advanced mid-run, retry budget exhausted,
+or any publish-gate failure. Publish-gate failures are never fixed by
+republishing over the bad object.
 
 ## Safety Rules
 
@@ -216,8 +203,7 @@ failures are never fixed by republishing over the bad object.
   commit goes in the push; no `[skip ci]`; no manual `wrangler deploy`/
   `pages deploy`/D1 apply against production while the workflow runs
   (emergency recovery only, and never concurrently with it).
-- No Android publish inputs and no OTA dispatch without explicit approval for
-  that exact version and notes.
+- No Android publish inputs without explicit approval for that exact version and notes.
 - No resolving human review threads, no closing/reopening runs, no
   deleting/replacing R2 objects outside the workflow.
 - Keep one polling loop per release; do not stack concurrent watchers for the
@@ -226,7 +212,7 @@ failures are never fixed by republishing over the bad object.
 ## Monitoring Loop Pattern
 
 1. Run `--watch` and let it stream events. By default, `--watch` automatically reruns flaky checks up to 3 times without hanging.
-2. If the watcher emits a stop event with `diagnose_ci_failure` / `diagnose_release_failure` / `diagnose_android_failure` / `diagnose_ota_failure`, retries are exhausted or auto-retry was disabled: fetch the failed job's logs from the snapshot's `logs_endpoint` and classify the failure. If source-related, patch code locally, test, commit using Conventional Commits, push forward to `main`, and relaunch `--watch` on wake. If flaky and retries were exhausted, report the persistent failure to Don.
+2. If the watcher emits a stop event with `diagnose_ci_failure` / `diagnose_release_failure` / `diagnose_android_failure`, retries are exhausted or auto-retry was disabled: fetch the failed job's logs from the snapshot's `logs_endpoint` and classify the failure. If source-related, patch code locally, test, commit using Conventional Commits, push forward to `main`, and relaunch `--watch` on wake. If flaky and retries were exhausted, report the persistent failure to Don.
 3. If `check_release_needed` is present (green CI, skipped release), run `node scripts/next-semantic-release.mjs` to decide no-op vs guard trip.
 4. If `check_release_source` is present (release failed only at the `Verify release source` gate), read that step's log line: a stale-SHA trip is benign — the newer commit retriggers the pipeline on its own, so keep watching and do not rerun; a missing-baseline-tag trip needs Don.
 5. If `verify_production` is present (release success, live version lagging), keep watching; run `pnpm smoke:production` for an independent check.
@@ -251,9 +237,8 @@ this cadence:
 Stop only when one of these is true:
 
 - All in-scope tracks terminal green (web tag + deployment + smoke;
-  Android build, plus public verifications when publishing was approved;
-  OTA published when dispatched).
-- Correct no-op: web `release_needed` is `false` and Android/OTA were not
+  Android build, plus public verifications when publishing was approved).
+- Correct no-op: web `release_needed` is `false` and Android was not
   dispatched.
 - A blocker above needs Don.
 

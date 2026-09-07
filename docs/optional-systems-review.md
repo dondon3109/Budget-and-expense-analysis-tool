@@ -18,7 +18,7 @@ Last reviewed: 2026-08-22.
 
 | System                                           | Flag            | Reconsider when                                                                                                                                                                                                       |
 | ------------------------------------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Expo OTA publishing                              | Freeze          | A paid/configured EAS project exists, an OTA-capable signed APK is live and physically verified, rollback is rehearsed, and the separate signing boundary has an operator. Current implementation remains dormant.    |
+| Expo OTA publishing                              | Removed         | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                 |
 | `apps/ads` Remotion renderer and generated media | Freeze          | A concrete campaign requires refreshed product claims and assets. It stays outside runtime/release-critical ownership. Consider moving rendered outputs out of the main source tree in a separately approved cleanup. |
 | PostHog AI observability                         | Freeze disabled | Preview payload allow-list, retention disclosure, and provider-side privacy behavior are reverified. Do not enable merely because the integration exists.                                                             |
 

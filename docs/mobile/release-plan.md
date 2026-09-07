@@ -37,27 +37,16 @@ part of this distribution channel.
 
 - Ship channel: website-linked Android APK. iOS distribution remains pending
   the separate Apple approval and signing work below.
-- Versions use `runtimeVersion: { policy: "appVersion" }`. A native release must
-  change the app version whenever its runtime changes. Compatible JavaScript
-  and bundled-asset fixes may then use the separately gated Expo OTA channel;
-  native dependencies, permissions, config plugins, Expo SDK changes, and
-  native source changes always require another signed APK/build.
 - A signed-release version bump edits exactly two files:
-  `apps/mobile/package.json` for the release version name and `app.config.ts`
+  `apps/mobile/package.json` for the release version name and `apps/mobile/app.config.ts`
   for the Android `versionCode`. The `Android Beta Build` workflow resolves
   that Expo configuration once and derives every other identity value it
   publishes (APK object key, public URL, and `android/latest.json` fields), so
   no release literal is repeated anywhere else.
-- The verified APK updater remains the native Android release and fallback
-  channel. OTA never downloads, verifies, or installs APK files.
+- The verified APK updater remains the native Android release and update channel.
 - Both platforms talk only to the existing Worker. Deploy the Worker before
   or independently of the app; mobile has no pinned server schema beyond the
   shared response contracts in this repository.
-
-The public `0.2.7-beta` APK includes the dormant `expo-updates` dependency, but
-was built without an EAS project ID, so it cannot receive OTA updates. Activation
-is deferred until the required EAS project/token and a later explicit signed APK
-complete the bootstrap in [`ota-updates.md`](ota-updates.md).
 
 ## Rollback plan
 
@@ -118,8 +107,7 @@ update in place.
 
 This release ships the secure in-app APK updater: startup and manual update
 checks, verified APK download, native package/signer gates, and the guided
-system installer handoff. OTA JavaScript updates are not part of this release;
-the later OTA implementation does not alter this updater.
+system installer handoff.
 
 ## 0.2.2-beta assistant fixes release
 
@@ -210,11 +198,3 @@ rule is used by native transaction entry, receipt drafts, and the website.
 Voice recording status and receipt photo actions are also clearer and use the
 shared accessible button component.
 
-## Future signed OTA bootstrap (deferred)
-
-The code, signing certificate, compatibility gates, and manual workflows are
-kept dormant for a future release. No version is reserved. When activation is
-approved, the new APK must retain the permanent APK signer, package ID, native
-streaming updater, and all existing size/hash/package/version/signer checks.
-It must embed the production EAS endpoint/channel and pinned OTA certificate,
-with `runtimeVersion` bound to `appVersion`.

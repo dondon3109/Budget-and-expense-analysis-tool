@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Watch web + Android release workflow runs for babysit-release sessions.
 
-Snapshots CI, Production Release, Android Beta Build, and Mobile OTA runs for
+Snapshots CI, Production Release, and Android Beta Build runs for
 one main SHA (plus live release markers), and recommends watcher actions so
 the babysitter knows what to do on each poll without re-deciding from scratch.
 """
@@ -34,13 +34,12 @@ PENDING_RUN_STATUSES = {
     "requested",
 }
 
-# (track, workflow file). CI + release are head_sha-scoped; android/ota are
-# manual dispatches and tracked via their latest runs.
+# (track, workflow file). CI + release are head_sha-scoped; android is a
+# manual dispatch and tracked via its latest run.
 TRACKS = (
     ("ci", "ci.yml"),
     ("release", "release.yml"),
     ("android", "android-beta.yml"),
-    ("ota", "mobile-ota.yml"),
 )
 
 WEB_RELEASE_JSON_URL = "https://zoption.site/release.json"
@@ -517,7 +516,7 @@ def recommend_actions(tracks, failed_jobs, live_markers, retries_used, max_retri
             # (docs/test/chore-only) or a guard trip. Needs one agent check.
             actions.append("check_release_needed")
 
-    for track, action in (("android", "diagnose_android_failure"), ("ota", "diagnose_ota_failure")):
+    for track, action in (("android", "diagnose_android_failure"),):
         run = tracks.get(track)
         if run is not None and run["failed"]:
             actions.append(action)
@@ -549,7 +548,7 @@ def recommend_actions(tracks, failed_jobs, live_markers, retries_used, max_retri
 
     mobile_in_flight = any(
         tracks.get(track) is not None and not tracks[track]["terminal"]
-        for track in ("android", "ota")
+        for track in ("android",)
     )
 
     if release is not None and release["conclusion"] == "success" and not mobile_in_flight:
@@ -580,7 +579,7 @@ def collect_snapshot(args):
     diagnosable_runs = []
     for track, workflow_file in TRACKS:
         # CI and release are scoped to the watched SHA via the API. The manual
-        # android/ota dispatches are tracked via their latest runs, but only
+        # android dispatch is tracked via its latest run, but only
         # when dispatched from the watched SHA; older runs belong to previous
         # releases and must not block this watch.
         scoped_sha = sha if track in ("ci", "release") else None
@@ -590,7 +589,7 @@ def collect_snapshot(args):
         # summarized runs, so keep the raw payload for diagnosis.
         if (
             raw_latest is not None
-            and track in ("android", "ota")
+            and track == "android"
             and str(raw_latest.get("head_sha") or "") != sha
         ):
             raw_latest = None
@@ -732,7 +731,7 @@ def print_event(event, payload):
 
 def snapshot_change_key(snapshot):
     key = [str(snapshot.get("sha") or "")]
-    for track in ("ci", "release", "android", "ota"):
+    for track in ("ci", "release", "android"):
         run = (snapshot.get("tracks") or {}).get(track) or {}
         key.append(f"{track}:{run.get('status') or '-'}:{run.get('conclusion') or '-'}")
     live = snapshot.get("live") or {}
@@ -771,7 +770,6 @@ STOP_ACTIONS = {
     "diagnose_ci_failure",
     "diagnose_release_failure",
     "diagnose_android_failure",
-    "diagnose_ota_failure",
     "check_release_source",
     "check_release_needed",
 }

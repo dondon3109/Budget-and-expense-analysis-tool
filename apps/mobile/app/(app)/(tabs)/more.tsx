@@ -11,7 +11,6 @@ import { seedDummyWorkspaceData } from "@/db/demo-seed";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
 import { AssistantStatusBadge } from "@/features/assistant/assistant-ui";
-import { OtaUpdateSettingsCard } from "@/features/ota-updates";
 import { UpdateSettingsCard } from "@/features/updates";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
 import { ThemePicker } from "@/ui/theme-picker";
@@ -312,7 +311,6 @@ export default function MoreScreen() {
         </Card>
       </View>
 
-      <OtaUpdateSettingsCard />
       <UpdateSettingsCard />
 
       <View style={styles.section}>

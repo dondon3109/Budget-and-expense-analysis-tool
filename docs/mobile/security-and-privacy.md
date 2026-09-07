@@ -75,7 +75,7 @@ disables the pipeline. Properties:
 
 - **Inert without a key.** Without `EXPO_PUBLIC_POSTHOG_KEY` at build time no
   client is constructed and no network calls are made. Local builds remain
-  inert, while signed APK and production OTA workflows fail closed when the
+  inert, while signed APK workflows fail closed when the
   key or approved regional host is missing unless the build-time kill switch
   explicitly disables telemetry.
 - **Sanitized crash fields only.** The SDK's exception autocapture stays fully
@@ -97,15 +97,14 @@ disables the pipeline. Properties:
   or the flag is absent or false. Build-time:
   `EXPO_PUBLIC_TELEMETRY_DISABLED=1`, passed through CI from a repository
   variable, keeps the client unconstructed in every subsequently built
-  APK/OTA; devices already installed receive it only by shipping such an
+  APK; devices already installed receive it only by shipping such an
   update.
 - **Fail-safe initialization.** The PostHog module loads lazily inside a
   caught initializer; a telemetry failure can never prevent startup or
   compound the failure being reported. The developer diagnostic reports
   success only after the remote gate is open and capture plus flush complete.
 - **JS-only dependency.** posthog-react-native has no required native module,
-  so adding it does not change the expo-updates native fingerprint or require
-  a new signed APK bootstrap.
+  so adding it does not alter native Android dependencies.
 - **Uncaught errors take one path.** SDK autocapture is replaced by a global
   handler wrapper that forwards exceptions through the same sanitizer; the
   root error boundary reports through it as well. Delivery on a fatal crash is
