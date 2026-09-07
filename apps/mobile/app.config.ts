@@ -140,7 +140,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: variant.androidPackage,
-      versionCode: 20320,
+      versionCode: 20321,
       allowBackup: false,
       // Keep the activity height stable when the keyboard opens. Android pans
       // the focused field into view instead of reflowing the whole screen.
@@ -185,6 +185,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // (gitignored keystore.properties or CI env vars) instead of the
       // debug keystore. See apps/mobile/plugins/with-android-release-signing.js.
       "./plugins/with-android-release-signing",
+      // Local config plugin: generates the native home-screen mic widget
+      // (RemoteViews AppWidget + voice capture activity, no new dependencies).
+      // See apps/mobile/plugins/with-android-mic-widget.js.
+      "./plugins/with-android-mic-widget",
     ],
     experiments: {
       typedRoutes: true,

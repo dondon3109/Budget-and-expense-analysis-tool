@@ -31,6 +31,7 @@ import {
   useLocalReferenceData,
   useLocalWorkspace,
 } from "@/db/local-workspace-state";
+import { BalanceAdjustCard } from "@/features/account/BalanceAdjustCard";
 import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
@@ -726,6 +727,15 @@ export function ReferenceEditorScreen() {
                 </View>
               </>
             )}
+            {entityType === "account" && editing && id && account && modelingState.modeling ? (
+              <BalanceAdjustCard
+                accountId={id}
+                accountName={account.name}
+                currency={modelingState.modeling.currency}
+                currentBalanceMinor={modelingState.modeling.balanceMinor}
+                disabled={blocked || saving}
+              />
+            ) : null}
             {message ? (
               <Text
                 accessibilityRole="alert"
