@@ -15,11 +15,24 @@ export interface AiEntryRecording {
   fileName: string;
 }
 
+export interface ExtractVoiceTransactionOptions {
+  /**
+   * In-flight no-store privacy path: the recording is transcribed without
+   * server-side persistence. The temporary file is discarded from this
+   * device as soon as the upload settles, the Worker holds the audio in
+   * memory only while extracting the draft, and the request advertises
+   * `Cache-Control: no-store` plus `X-Zoption-No-Store: 1` so the payload
+   * is never cached or stored.
+   */
+  noStore?: boolean;
+}
+
 /** Uploads one temporary voice clip and returns a review-only transaction draft. */
 export async function extractVoiceTransaction(
   accessToken: string,
   recording: AiEntryRecording,
   fetchImpl: typeof fetch = fetch,
+  options: ExtractVoiceTransactionOptions = {},
 ): Promise<TransactionVoiceDraft> {
   if (isDummyAssistantToken(accessToken)) {
     discardTemporarySourceFile(recording.uri);
@@ -39,7 +52,12 @@ export async function extractVoiceTransaction(
       `${publicConfig.apiUrl}/api/app/entry/voice`,
       {
         method: "POST",
-        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          // No-store privacy path: never cache or persist this audio payload.
+          ...(options.noStore ? { "Cache-Control": "no-store", "X-Zoption-No-Store": "1" } : {}),
+        },
         body: form,
       },
       undefined,
