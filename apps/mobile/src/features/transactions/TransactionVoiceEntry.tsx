@@ -3,7 +3,7 @@ import { CURRENT_RECEIPT_CONSENT_VERSION, type TransactionVoiceDraft } from "@zo
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { extractVoiceTransaction } from "@/api/ai-entry";
+import { extractVoiceTransaction, extractVoiceTransactionFromTranscript } from "@/api/ai-entry";
 import { ApiTransportError } from "@/api/authenticated";
 import { getReceiptPreferences, grantReceiptConsent } from "@/api/receipt-scan";
 import { useSessionSnapshot } from "@/auth/session-state";
@@ -17,9 +17,11 @@ type EntryReadiness = "checking" | "needs-consent" | "ready" | "unavailable";
 export function TransactionVoiceEntry({
   disabled,
   onDraft,
+  categories,
 }: {
   disabled?: boolean;
   onDraft: (draft: TransactionVoiceDraft) => void;
+  categories?: string[];
 }) {
   const session = useSessionSnapshot();
   const theme = useZoptionTheme();
@@ -74,9 +76,14 @@ export function TransactionVoiceEntry({
     };
   }, [loadReadiness]);
 
-  const recorder = useVoiceRecorder({
+  const recorder = useVoiceRecorder<TransactionVoiceDraft>({
     getAccessToken: session.getAccessToken,
-    transcribe: extractVoiceTransaction,
+    transcribe: (token, recording) =>
+      extractVoiceTransaction(token, recording, undefined, categories),
+    liveTranscribeResult: async (transcript) => {
+      const token = await session.getAccessToken(false);
+      return extractVoiceTransactionFromTranscript(token, transcript, undefined, categories);
+    },
     onPartialTranscript: (partial) => {
       setMessage(`Listening: “${partial}”`);
     },
@@ -198,17 +205,45 @@ export function TransactionVoiceEntry({
             </Text>
           </View>
         ) : null}
-        <Button
-          accessibilityLabel={label}
-          disabled={disabled}
-          icon={recording ? "stop" : "microphone-outline"}
-          loading={loading}
-          onPress={action}
-          size="large"
-          variant={recording ? "danger" : "primary"}
-        >
-          {label}
-        </Button>
+        {recording ? (
+          <View className="flex-row items-center gap-2">
+            <View className="flex-1">
+              <Button
+                accessibilityLabel="Stop and review"
+                icon="stop"
+                loading={loading}
+                onPress={action}
+                size="large"
+                variant="danger"
+              >
+                Stop and review
+              </Button>
+            </View>
+            <Button
+              accessibilityLabel="Cancel recording"
+              onPress={() => {
+                setMessage(null);
+                void recorder.cancelRecording();
+              }}
+              size="large"
+              variant="secondary"
+            >
+              Cancel
+            </Button>
+          </View>
+        ) : (
+          <Button
+            accessibilityLabel={label}
+            disabled={disabled}
+            icon="microphone-outline"
+            loading={loading}
+            onPress={action}
+            size="large"
+            variant="primary"
+          >
+            {label}
+          </Button>
+        )}
         {message ? (
           <Text
             accessibilityRole="alert"

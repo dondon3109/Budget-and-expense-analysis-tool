@@ -1381,26 +1381,49 @@ export async function extractReceipt(
   return (await response.json()) as ReceiptDraft;
 }
 
-/** Uploads one temporary voice clip and returns a review-only transaction draft. */
+/** Uploads one temporary voice clip or submits a transcribed voice text and returns a review-only transaction draft. */
 export async function extractVoiceTransaction(
   workspace: AuthenticatedWorkspace,
-  audio: Blob,
+  audioOrTranscript: Blob | { transcript: string },
+  categories?: string[],
 ): Promise<TransactionVoiceDraft> {
-  const form = new FormData();
-  const extension = audio.type.includes("mp4")
-    ? "m4a"
-    : audio.type.includes("ogg")
-      ? "ogg"
-      : "webm";
-  form.set("audio", audio, `voice-input.${extension}`);
+  const isDirectTranscript =
+    !(audioOrTranscript instanceof Blob) &&
+    typeof audioOrTranscript === "object" &&
+    typeof audioOrTranscript.transcript === "string";
+
+  const requestInit: RequestInit = isDirectTranscript
+    ? {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: audioOrTranscript.transcript,
+          ...(categories && categories.length > 0 ? { categories } : {}),
+        }),
+      }
+    : (() => {
+        const audio = audioOrTranscript as Blob;
+        const form = new FormData();
+        const extension = audio.type.includes("mp4")
+          ? "m4a"
+          : audio.type.includes("ogg")
+            ? "ogg"
+            : "webm";
+        form.set("audio", audio, `voice-input.${extension}`);
+        if (categories && categories.length > 0) {
+          form.set("categories", JSON.stringify(categories));
+        }
+        return {
+          method: "POST",
+          headers: { Accept: "application/json" },
+          body: form,
+        };
+      })();
+
   const response = await workspaceFetch(
     workspace,
     "/api/app/entry/voice",
-    {
-      method: "POST",
-      headers: { Accept: "application/json" },
-      body: form,
-    },
+    requestInit,
     { timeoutMs: 60_000 },
   );
   if (!response.ok) {

@@ -79,7 +79,10 @@ export function useVoiceRecorder<Result>({
   onError: (error: ApiTransportError) => void;
   transcribe: (accessToken: string, recording: VoiceRecording) => Promise<Result>;
   onPartialTranscript?: (partial: string) => void;
-  liveTranscribeResult?: (transcript: string, elapsedSeconds: number) => Result | null;
+  liveTranscribeResult?: (
+    transcript: string,
+    elapsedSeconds: number,
+  ) => Promise<Result | null> | Result | null;
 }) {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [phase, setPhase] = useState<RecordingPhase>("idle");
@@ -197,13 +200,25 @@ export function useVoiceRecorder<Result>({
 
       if (liveTranscribeResult) {
         if (resolvedTranscript.length > 0) {
-          const liveResult = liveTranscribeResult(resolvedTranscript, recordedElapsed);
-          if (liveResult !== null) {
-            discardTemporarySourceFile(uri);
-            await restorePlaybackAudioMode();
-            setPhaseBoth("idle");
-            onTranscribed(liveResult);
-            return;
+          try {
+            const liveResult = await liveTranscribeResult(resolvedTranscript, recordedElapsed);
+            if (liveResult !== null) {
+              discardTemporarySourceFile(uri);
+              await restorePlaybackAudioMode();
+              setPhaseBoth("idle");
+              onTranscribed(liveResult);
+              return;
+            }
+          } catch (liveError) {
+            if (!uri) {
+              onError(
+                liveError instanceof ApiTransportError
+                  ? liveError
+                  : new ApiTransportError("Voice entry failed. Try again.", "network", 0),
+              );
+              setPhaseBoth("idle");
+              return;
+            }
           }
         }
       }

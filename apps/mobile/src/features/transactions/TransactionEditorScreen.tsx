@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  matchCategory,
   parseAmountToMinor,
   preferredTransactionAccount,
   resolveCategoryEmoji,
@@ -124,7 +125,18 @@ function KindSelector({
 }
 
 export function TransactionEditorScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    amount?: string | string[];
+    description?: string | string[];
+    date?: string | string[];
+    kind?: string | string[];
+    category?: string | string[];
+    referenceNumber?: string | string[];
+    channel?: string | string[];
+    accountSuffix?: string | string[];
+    currency?: string | string[];
+  }>();
   const id = singleParam(params.id);
   const editing = Boolean(id);
   const local = useLocalWorkspace();
@@ -140,34 +152,97 @@ export function TransactionEditorScreen() {
 
   useEffect(() => {
     if (!formData.data) return;
-    const key = id ?? "new";
+    const paramAmount = singleParam(params.amount);
+    const paramDescription = singleParam(params.description);
+    const paramDate = singleParam(params.date);
+    const paramKind = singleParam(params.kind);
+    const paramCategory = singleParam(params.category);
+    const paramRef = singleParam(params.referenceNumber);
+    const paramChannel = singleParam(params.channel);
+    const paramAccountSuffix = singleParam(params.accountSuffix);
+    const paramCurrency = singleParam(params.currency);
+
+    const key =
+      id ??
+      `new:${paramAmount ?? ""}:${paramDescription ?? ""}:${paramRef ?? ""}:${paramDate ?? ""}`;
     if (initializedFor.current === key) return;
     if (id && !formData.data.transaction) return;
     const existing = formData.data.transaction?.input;
     const existingAccountId =
       existing?.kind === "transfer" ? existing.fromAccountId : existing?.accountId;
+
+    const kind: TransactionFormKind = existing
+      ? existing.kind
+      : paramKind === "income" || paramKind === "transfer"
+        ? paramKind
+        : "expense";
+
+    const cleanSuffix = paramAccountSuffix ? paramAccountSuffix.replaceAll("*", "").trim() : "";
+    const matchedParamAccount =
+      !existing && (cleanSuffix || paramChannel)
+        ? formData.data.accounts.find((a) => {
+            const nameLower = a.name.toLowerCase();
+            if (cleanSuffix && nameLower.includes(cleanSuffix.toLowerCase())) return true;
+            if (paramChannel && nameLower.includes(paramChannel.toLowerCase())) return true;
+            return false;
+          })
+        : undefined;
+
     const account = existing
       ? formData.data.accounts.find((item) => item.id === existingAccountId)
-      : preferredTransactionAccount(formData.data.accounts);
-    const kind = existing?.kind ?? "expense";
+      : (matchedParamAccount ?? preferredTransactionAccount(formData.data.accounts));
+
+    const matchedCategory =
+      !existing && (paramCategory || paramDescription)
+        ? matchCategory(formData.data.categories, paramCategory, {
+            kind,
+            contextText: paramDescription,
+          })
+        : undefined;
+
     const category = existing
       ? formData.data.categories.find((item) => item.id === existing.categoryId)
-      : formData.data.categories.find((item) => item.kind === kind);
+      : (matchedCategory ?? formData.data.categories.find((item) => item.kind === kind));
+
+    const initialDate = existing?.date ?? paramDate ?? localCalendarDate();
+    const initialDesc = existing?.description ?? paramDescription ?? "";
+    const initialAmount = existing
+      ? formatMinorForInput(existing.amountMinor)
+      : (paramAmount ?? "");
+    const initialCurrency =
+      existing?.currency ??
+      (paramCurrency === "PHP" || paramCurrency === "USD"
+        ? paramCurrency
+        : (account?.currency ?? "PHP"));
+    const initialNotes = existing ? (existing.notes ?? "") : paramRef ? `Ref: ${paramRef}` : "";
+
     setValues({
       kind,
       accountId: account?.id ?? existingAccountId ?? "",
       toAccountId: existing?.kind === "transfer" ? existing.toAccountId : "",
       categoryId: category?.id ?? existing?.categoryId ?? "",
-      date: existing?.date ?? localCalendarDate(),
-      description: existing?.description ?? "",
-      amount: existing ? formatMinorForInput(existing.amountMinor) : "",
+      date: initialDate,
+      description: initialDesc,
+      amount: initialAmount,
       transferFee:
         existing?.kind === "transfer" ? formatMinorForInput(existing.transferFeeMinor ?? 0) : "",
-      currency: existing?.currency ?? account?.currency ?? "PHP",
-      notes: existing?.notes ?? "",
+      currency: initialCurrency,
+      notes: initialNotes,
     });
     initializedFor.current = key;
-  }, [formData.data, id]);
+  }, [
+    formData.data,
+    id,
+    params.amount,
+    params.category,
+    params.channel,
+    params.currency,
+    params.date,
+    params.description,
+    params.kind,
+    params.referenceNumber,
+    params.accountSuffix,
+  ]);
 
   const blockedState = formData.data?.transaction?.syncState;
   const mutationBlocked = blockedState === "failed" || blockedState === "conflicted";
@@ -250,7 +325,9 @@ export function TransactionEditorScreen() {
     setMessage(null);
     try {
       await local.workspace.transactionMutations.deleteTransaction(id);
-      void telemetry.capture("transaction_deleted", { transaction_kind: transfer ? "transfer" : "transaction" });
+      void telemetry.capture("transaction_deleted", {
+        transaction_kind: transfer ? "transfer" : "transaction",
+      });
       router.back();
       sync.retry();
     } catch (error) {
@@ -390,17 +467,20 @@ export function TransactionEditorScreen() {
           {!editing ? (
             <TransactionVoiceEntry
               disabled={!hasChoices || saving || mutationBlocked}
+              categories={formData.data?.categories
+                .filter((category) => !category.pending)
+                .map((category) => category.name)}
               onDraft={(draft) => {
                 const nextKind = draft.kind;
-                const matchingCategory = formData.data?.categories.find(
-                  (category) =>
-                    category.kind === nextKind &&
-                    category.name.trim().toLocaleLowerCase("en") ===
-                      draft.categoryName?.trim().toLocaleLowerCase("en"),
-                );
-                const fallbackCategory = formData.data?.categories.find(
-                  (category) => category.kind === nextKind && !category.pending,
-                );
+                const nextKindCategories =
+                  formData.data?.categories.filter(
+                    (category) => category.kind === nextKind && !category.pending,
+                  ) ?? [];
+                const matchingCategory = matchCategory(nextKindCategories, draft.categoryName, {
+                  kind: nextKind,
+                  contextText: draft.transcript,
+                });
+                const fallbackCategory = nextKindCategories[0];
                 const activeAccounts =
                   formData.data?.accounts.filter((account) => !account.pending) ?? [];
                 const fromAccount =

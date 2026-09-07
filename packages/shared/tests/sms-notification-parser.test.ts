@@ -171,6 +171,7 @@ describe("smsNotificationParser", () => {
         time: undefined,
         payeeOrMerchant: "MERCURY DRUG",
         referenceNumber: "BPI-9988",
+        accountSuffix: "*1234",
         rawText: text,
         suggestedCategory: "Groceries",
         confidence: "high",
@@ -215,6 +216,7 @@ describe("smsNotificationParser", () => {
         time: undefined,
         payeeOrMerchant: "SM SUPERMARKET",
         referenceNumber: "BDO7788",
+        accountSuffix: "*5678",
         rawText: text,
         suggestedCategory: "Groceries",
         confidence: "high",
@@ -340,6 +342,71 @@ describe("smsNotificationParser", () => {
       expect(suggestCategory("Meralco", "expense")).toBe("Utilities");
       expect(suggestCategory("Juan", "transfer")).toBe("Transfers / Cash In");
       expect(suggestCategory("Unknown Co", "expense")).toBe("General");
+    });
+  });
+
+  describe("Yearless dates and extended currency/card formats", () => {
+    it("parses yearless slash dates (MM/DD) and infers reference year", () => {
+      const text = "You paid PHP 320.00 at JOLLIBEE on 09/02 12:45pm. Ref: 123456";
+      const result = parseSmsNotification(text, "2026-08-01");
+      expect(result).not.toBeNull();
+      expect(result?.date).toBe("2026-09-02");
+      expect(result?.time).toBe("12:45");
+      expect(result?.amountMinor).toBe(32000);
+      expect(result?.payeeOrMerchant).toBe("JOLLIBEE");
+    });
+
+    it("parses 2-digit year dates (MM/DD/YY)", () => {
+      const text = "You paid PHP 150.00 at 7-Eleven on 08/25/26 14:00. Ref: 998877";
+      const result = parseSmsNotification(text);
+      expect(result).not.toBeNull();
+      expect(result?.date).toBe("2026-08-25");
+      expect(result?.time).toBe("14:00");
+    });
+
+    it("parses yearless text dates (DD Mon)", () => {
+      const text = "You paid PHP 450.00 at Starbucks on 25 Aug 10:30AM. Ref: SB123";
+      const result = parseSmsNotification(text, "2026-01-01");
+      expect(result).not.toBeNull();
+      expect(result?.date).toBe("2026-08-25");
+      expect(result?.time).toBe("10:30");
+    });
+
+    it("parses card charged in USD with account suffix and merchant", () => {
+      const text = "Your card ending in 4321 was charged $42.50 at Target on 2026-09-02.";
+      const result = parseSmsNotification(text);
+      expect(result).not.toBeNull();
+      expect(result?.amountMinor).toBe(4250);
+      expect(result?.currency).toBe("USD");
+      expect(result?.type).toBe("expense");
+      expect(result?.payeeOrMerchant).toBe("Target");
+      expect(result?.accountSuffix).toBe("*4321");
+      expect(result?.date).toBe("2026-09-02");
+      expect(result?.suggestedCategory).toBe("Shopping");
+    });
+
+    it("parses salary credited in USD with account ending", () => {
+      const text = "Salary credited $3,500.00 to account ending 9876 on 2026-09-01.";
+      const result = parseSmsNotification(text);
+      expect(result).not.toBeNull();
+      expect(result?.amountMinor).toBe(350000);
+      expect(result?.currency).toBe("USD");
+      expect(result?.type).toBe("income");
+      expect(result?.payeeOrMerchant).toBe("Salary");
+      expect(result?.accountSuffix).toBe("*9876");
+      expect(result?.date).toBe("2026-09-01");
+      expect(result?.suggestedCategory).toBe("Salary");
+    });
+
+    it("parses transfer in USD", () => {
+      const text = "Transfer of $150.00 sent to John Doe on 2026-09-02.";
+      const result = parseSmsNotification(text);
+      expect(result).not.toBeNull();
+      expect(result?.amountMinor).toBe(15000);
+      expect(result?.currency).toBe("USD");
+      expect(result?.type).toBe("transfer");
+      expect(result?.payeeOrMerchant).toBe("John Doe");
+      expect(result?.date).toBe("2026-09-02");
     });
   });
 

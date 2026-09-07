@@ -1,4 +1,5 @@
 import {
+  matchCategory,
   preferredTransactionAccount,
   type TransactionExportQuery,
   type TransactionInput,
@@ -28,9 +29,13 @@ import {
   type ParsedSmsTransaction,
 } from "../components/transactions/SmsQuickPasteModal";
 import { TransactionFilters } from "../components/transactions/TransactionFilters";
-import { TransactionForm } from "../components/transactions/TransactionForm";
+import {
+  TransactionForm,
+  type TransactionFormDraft,
+} from "../components/transactions/TransactionForm";
 import { TransactionTable } from "../components/transactions/TransactionTable";
 import { AppShell } from "../components/layout/AppShell";
+import { localIsoDate } from "../lib/calendar";
 import {
   createTransaction,
   deleteTransaction,
@@ -112,6 +117,7 @@ export function TransactionsPage() {
   const [formOpen, setFormOpen] = useState(() => searchParams.get("add") === "1");
   const [isSmsModalOpen, setIsSmsModalOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionListItem>();
+  const [formDraft, setFormDraft] = useState<TransactionFormDraft>();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<Error>();
@@ -251,10 +257,14 @@ export function TransactionsPage() {
     query.to,
   );
 
-  const handleCreateTransaction = async (parsed: ParsedSmsTransaction) => {
+  const handleApplySms = (parsed: ParsedSmsTransaction) => {
     if (parsed.amount === undefined || isNaN(parsed.amount)) return;
     const kind = parsed.type;
-    const account =
+    const matchedCategory = matchCategory(categories, parsed.suggestedCategory, {
+      kind,
+      contextText: parsed.merchant,
+    });
+    const matchedAccount =
       accounts.find(
         (a) =>
           parsed.account &&
@@ -263,36 +273,23 @@ export function TransactionsPage() {
       ) ??
       preferredTransactionAccount(accounts) ??
       accounts[0];
-    if (!account) return;
 
-    const amountMinor = Math.round(Math.abs(parsed.amount) * 100);
-    const date = parsed.date || new Date().toISOString().split("T")[0] || "";
-    const description = parsed.merchant || "SMS Transaction";
-    const categoryId = categories[0]?.id ?? "";
+    const categoryId = matchedCategory?.id ?? categories.find((c) => c.kind === kind)?.id ?? "";
+    const notes = parsed.referenceNumber ? `Ref: ${parsed.referenceNumber}` : "";
 
-    if (kind === "transfer") {
-      const toAccount = accounts.find((a) => a.id !== account.id) ?? account;
-      await saveMutation.mutateAsync({
-        kind: "transfer",
-        date,
-        description,
-        amountMinor,
-        currency: account.currency,
-        categoryId,
-        fromAccountId: account.id,
-        toAccountId: toAccount.id,
-      });
-    } else {
-      await saveMutation.mutateAsync({
-        kind,
-        date,
-        description,
-        amountMinor,
-        currency: account.currency,
-        categoryId,
-        accountId: account.id,
-      });
-    }
+    setFormDraft({
+      kind,
+      amount: parsed.amount.toFixed(2),
+      date: parsed.date || localIsoDate(),
+      description: parsed.merchant || "SMS Transaction",
+      categoryId,
+      accountId: matchedAccount?.id ?? "",
+      notes,
+      currency: parsed.currency === "USD" ? "USD" : matchedAccount?.currency || "PHP",
+    });
+    setEditing(undefined);
+    setFormOpen(true);
+    setIsSmsModalOpen(false);
   };
 
   function updateFilters(change: Partial<TransactionListQuery>) {
@@ -558,17 +555,20 @@ export function TransactionsPage() {
         <TransactionForm
           workspace={workspace}
           item={editing}
+          initialDraft={formDraft}
           categories={categories}
           accounts={accounts}
           busy={saveMutation.isPending}
           serverError={saveMutation.error?.message}
           onSubmit={async (input) => {
             await saveMutation.mutateAsync(input);
+            setFormDraft(undefined);
           }}
           onClose={() => {
             if (!saveMutation.isPending) {
               setFormOpen(false);
               setEditing(undefined);
+              setFormDraft(undefined);
             }
           }}
         />
@@ -583,9 +583,10 @@ export function TransactionsPage() {
       <SmsQuickPasteModal
         isOpen={isSmsModalOpen}
         onClose={() => setIsSmsModalOpen(false)}
-        onApply={handleCreateTransaction}
+        onApply={handleApplySms}
         categories={categories}
         accounts={accounts}
+        existingTransactions={page?.items}
       />
     </AppShell>
   );

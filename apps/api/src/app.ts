@@ -441,30 +441,34 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   app.use("/api/app/*", async (context, next) => {
-    const multipartRoute =
-      context.req.method === "POST" &&
-      {
-        "/api/app/assistant/voice/transcriptions": {
-          maxSize: ASSISTANT_VOICE_BODY_LIMIT,
-          typeMessage: "Send voice recordings as multipart form data.",
-          sizeMessage: "The voice recording is too large.",
-        },
-        "/api/app/receipts/extract": {
-          maxSize: RECEIPT_IMAGE_BODY_LIMIT,
-          typeMessage: "Send the receipt photo as multipart form data.",
-          sizeMessage: "The receipt photo is too large.",
-        },
-        "/api/app/entry/voice": {
-          maxSize: ASSISTANT_VOICE_BODY_LIMIT,
-          typeMessage: "Send voice recordings as multipart form data.",
-          sizeMessage: "The voice recording is too large.",
-        },
-        "/api/app/entry/pdf-preview": {
-          maxSize: AI_ENTRY_PDF_BODY_LIMIT,
-          typeMessage: "Send the statement PDF as multipart form data.",
-          sizeMessage: "The statement PDF is too large.",
-        },
-      }[context.req.path];
+    const isVoiceEntry = context.req.path === "/api/app/entry/voice";
+    const requestContentType = context.req.header("Content-Type")?.toLowerCase() ?? "";
+    const isVoiceJson = isVoiceEntry && isJsonContentType(requestContentType);
+
+    const multipartRoute = isVoiceJson
+      ? undefined
+      : {
+          "/api/app/assistant/voice/transcriptions": {
+            maxSize: ASSISTANT_VOICE_BODY_LIMIT,
+            typeMessage: "Send voice recordings as multipart form data.",
+            sizeMessage: "The voice recording is too large.",
+          },
+          "/api/app/receipts/extract": {
+            maxSize: RECEIPT_IMAGE_BODY_LIMIT,
+            typeMessage: "Send the receipt photo as multipart form data.",
+            sizeMessage: "The receipt photo is too large.",
+          },
+          "/api/app/entry/voice": {
+            maxSize: ASSISTANT_VOICE_BODY_LIMIT,
+            typeMessage: "Send voice recordings as multipart form data or JSON transcript.",
+            sizeMessage: "The voice recording is too large.",
+          },
+          "/api/app/entry/pdf-preview": {
+            maxSize: AI_ENTRY_PDF_BODY_LIMIT,
+            typeMessage: "Send the statement PDF as multipart form data.",
+            sizeMessage: "The statement PDF is too large.",
+          },
+        }[context.req.path];
     if (multipartRoute) {
       const contentType = context.req.header("Content-Type")?.toLowerCase() ?? "";
       if (!contentType.startsWith("multipart/form-data;")) {

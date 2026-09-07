@@ -183,10 +183,7 @@ function TransactionItemRow({
         </View>
       </View>
       <View style={styles.descriptionColumn}>
-        <Text
-          numberOfLines={1}
-          style={[styles.descriptionText, { color: theme.colors.text }]}
-        >
+        <Text numberOfLines={1} style={[styles.descriptionText, { color: theme.colors.text }]}>
           {transaction.description}
         </Text>
         <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -320,9 +317,7 @@ function TransactionsEmptyView({
         >
           No matching transactions
         </Text>
-        <Text
-          style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}
-        >
+        <Text style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}>
           {search.trim().length > 0 && kind !== "all"
             ? `No ${kindLabels[kind].toLowerCase()} transactions match "${search.trim()}".`
             : search.trim().length > 0
@@ -345,11 +340,7 @@ function TransactionsEmptyView({
           { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
         ]}
       >
-        <MaterialCommunityIcons
-          name="receipt-text-outline"
-          size={34}
-          color={theme.colors.brand}
-        />
+        <MaterialCommunityIcons name="receipt-text-outline" size={34} color={theme.colors.brand} />
       </View>
       <Text
         accessibilityRole="header"
@@ -357,9 +348,7 @@ function TransactionsEmptyView({
       >
         No transactions in {monthLabel(month)}
       </Text>
-      <Text
-        style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}
-      >
+      <Text style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}>
         Record your spending, income, or scan a paper receipt to track this month&apos;s activity.
       </Text>
       <View style={styles.emptyActions}>
@@ -436,6 +425,17 @@ export default function TransactionsScreen() {
   const totals = useMemo(() => summarizeTransactions(items), [items]);
   const dateGroups = useMemo(() => groupTransactionsByDate(items), [items]);
   const summaryItems = useMemo(() => categorySummary(items), [items]);
+  const existingTransactions = useMemo(
+    () =>
+      items.map((i) => ({
+        id: i.transaction.id,
+        date: i.transaction.date,
+        amountMinor: i.transaction.amountMinor,
+        description: i.transaction.description,
+        notes: i.transaction.notes,
+      })),
+    [items],
+  );
 
   const emptyState = (
     <TransactionsEmptyView
@@ -719,10 +719,7 @@ export default function TransactionsScreen() {
       ) : (
         <FlatList
           alwaysBounceVertical
-          contentContainerStyle={[
-            styles.listContent,
-            items.length === 0 && styles.emptyList,
-          ]}
+          contentContainerStyle={[styles.listContent, items.length === 0 && styles.emptyList]}
           data={items}
           keyExtractor={(item) => item.transaction.id}
           ListEmptyComponent={emptyState}
@@ -752,8 +749,26 @@ export default function TransactionsScreen() {
       </View>
 
       <SmsQuickPasteModal
+        existingTransactions={existingTransactions}
         visible={smsQuickPasteVisible}
         onDismiss={() => setSmsQuickPasteVisible(false)}
+        onApply={(parsed) => {
+          setSmsQuickPasteVisible(false);
+          router.push({
+            pathname: "/(app)/transaction",
+            params: {
+              amount: (parsed.amountMinor / 100).toFixed(2),
+              description: parsed.payeeOrMerchant,
+              date: parsed.date,
+              kind: parsed.type,
+              category: parsed.suggestedCategory,
+              referenceNumber: parsed.referenceNumber ?? "",
+              channel: parsed.channel,
+              accountSuffix: parsed.accountSuffix ?? "",
+              currency: parsed.currency,
+            },
+          });
+        }}
       />
     </SafeAreaView>
   );

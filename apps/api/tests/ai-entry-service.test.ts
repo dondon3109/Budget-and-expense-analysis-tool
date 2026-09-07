@@ -163,6 +163,68 @@ describe("AI entry service", () => {
     ).rejects.toMatchObject({ status: 422, code: "voice_transaction_amount_mismatch" });
   });
 
+  it("extracts a draft directly from a transcript without calling transcription provider", async () => {
+    const run = vi.fn(async () => ({
+      response: {
+        draft: {
+          description: "Shoes",
+          amountPhp: "2000.00",
+          kind: "expense",
+          categoryName: "Shopping",
+        },
+      },
+    }));
+    const service = createAiEntryService(repository(), imports());
+
+    await expect(
+      service.extractVoiceTranscript(env(run, vi.fn()), "tenant-id", "Spent 2k on shoes today"),
+    ).resolves.toMatchObject({
+      transcript: "Spent 2k on shoes today",
+      description: "Shoes",
+      amountMinor: 200_000,
+      kind: "expense",
+      categoryName: "Shopping",
+    });
+
+    expect(run).toHaveBeenCalledOnce();
+  });
+
+  it("includes user categories in prompt and matches category to active user categories", async () => {
+    const run = vi.fn(async () => ({
+      response: {
+        draft: {
+          description: "Weekly groceries at SM",
+          amountPhp: "1500.00",
+          kind: "expense",
+          categoryName: "Groceries",
+        },
+      },
+    }));
+    const service = createAiEntryService(repository(), imports());
+
+    const result = await service.extractVoiceTranscript(
+      env(run, vi.fn()),
+      "tenant-id",
+      "Spent 1500 on groceries today",
+      ["Food & dining", "Transport", "Utilities"],
+    );
+
+    expect(result).toMatchObject({
+      transcript: "Spent 1500 on groceries today",
+      description: "Weekly groceries at SM",
+      amountMinor: 150_000,
+      kind: "expense",
+      categoryName: "Food & dining",
+    });
+
+    const firstCall = run.mock.calls[0] as unknown as [
+      string,
+      { messages: Array<{ role: string; content: string }> },
+    ];
+    const userPrompt = firstCall[1].messages.find((m) => m.role === "user")?.content ?? "";
+    expect(userPrompt).toContain("Available user categories: Food & dining, Transport, Utilities");
+  });
+
   it("does not send a PDF to AI without current AI-entry consent", async () => {
     const run = vi.fn();
     const toMarkdown = vi.fn();

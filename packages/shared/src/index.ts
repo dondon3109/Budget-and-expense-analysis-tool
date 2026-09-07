@@ -18,3 +18,4 @@ export * from "./cancellationGuides";
 export * from "./smsNotificationParser";
 export * from "./financeGuides";
 export * from "./remittance";
+export * from "./categoryMatcher";

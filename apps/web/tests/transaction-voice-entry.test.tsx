@@ -18,7 +18,22 @@ const apiMocks = vi.hoisted(() => ({
   extractVoiceTransaction: vi.fn(),
 }));
 
+const voiceStreamMocks = vi.hoisted(() => ({
+  startLiveTranscriptionSession: vi.fn<
+    (
+      workspace: unknown,
+      stream: unknown,
+      callbacks: {
+        onPartial: (text: string) => void;
+        onFinal: (text: string) => void;
+        onError?: (error: Error) => void;
+      },
+    ) => Promise<{ stop: () => Promise<void> }>
+  >(async () => ({ stop: vi.fn(async () => {}) })),
+}));
+
 vi.mock("../src/lib/api", () => apiMocks);
+vi.mock("../src/lib/voiceStream", () => voiceStreamMocks);
 
 const workspace = { key: "user:test-user" as const, userId: "test-user" };
 
@@ -188,5 +203,69 @@ describe("TransactionVoiceEntry", () => {
     expect(button).toBeDisabled();
     await user.click(button);
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+  });
+
+  it("uses direct live transcript when available from live session", async () => {
+    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(
+      async (_ws: unknown, _stream: unknown, callbacks: { onPartial: (text: string) => void }) => {
+        callbacks.onPartial("Spent 250 pesos on lunch today");
+        return { stop: vi.fn(async () => {}) };
+      },
+    );
+    apiMocks.extractVoiceTransaction.mockResolvedValue(draft);
+    const onDraft = vi.fn();
+    const user = userEvent.setup();
+    renderEntry({ onDraft });
+
+    await user.click(await screen.findByRole("button", { name: "Speak a transaction" }));
+    await user.click(await screen.findByRole("button", { name: "Stop and review" }));
+
+    await waitFor(() =>
+      expect(apiMocks.extractVoiceTransaction).toHaveBeenCalledWith(workspace, {
+        transcript: "Spent 250 pesos on lunch today",
+      }),
+    );
+    expect(onDraft).toHaveBeenCalledWith(draft);
+  });
+
+  it("forwards categories list to extractVoiceTransaction when provided", async () => {
+    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(
+      async (_ws: unknown, _stream: unknown, callbacks: { onPartial: (text: string) => void }) => {
+        callbacks.onPartial("Spent 250 pesos on lunch today");
+        return { stop: vi.fn(async () => {}) };
+      },
+    );
+    apiMocks.extractVoiceTransaction.mockResolvedValue(draft);
+    const onDraft = vi.fn();
+    const user = userEvent.setup();
+    const testCats = ["Food & dining", "Transport"];
+    renderEntry({ onDraft, categories: testCats });
+
+    await user.click(await screen.findByRole("button", { name: "Speak a transaction" }));
+    await user.click(await screen.findByRole("button", { name: "Stop and review" }));
+
+    await waitFor(() =>
+      expect(apiMocks.extractVoiceTransaction).toHaveBeenCalledWith(
+        workspace,
+        { transcript: "Spent 250 pesos on lunch today" },
+        testCats,
+      ),
+    );
+    expect(onDraft).toHaveBeenCalledWith(draft);
+  });
+
+  it("cancels recording without extracting a draft", async () => {
+    const onDraft = vi.fn();
+    const user = userEvent.setup();
+    renderEntry({ onDraft });
+
+    await user.click(await screen.findByRole("button", { name: "Speak a transaction" }));
+    expect(await screen.findByRole("button", { name: "Stop and review" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(apiMocks.extractVoiceTransaction).not.toHaveBeenCalled();
+    expect(onDraft).not.toHaveBeenCalled();
+    expect(await screen.findByRole("button", { name: "Speak a transaction" })).toBeEnabled();
   });
 });

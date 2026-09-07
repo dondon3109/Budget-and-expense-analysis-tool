@@ -1,5 +1,6 @@
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
+  matchCategory,
   normalizeImportDate,
   parseAmountToMinor,
   transactionKinds,
@@ -63,7 +64,10 @@ function clearNumericAmounts(transcript: string): number[] {
     const end = start + match[0].length;
     const adjacent = `${transcript[start - 1] ?? ""}${transcript[end] ?? ""}`;
     // Dates and times are context, not transaction amounts.
-    if (/[/:]/.test(adjacent)) continue;
+    if (/[/:-]/.test(adjacent)) continue;
+    // Multiplied scales like 2k, 5k, 10m shouldn't be parsed as raw unscaled numbers.
+    const nextChar = transcript[end] ?? "";
+    if (/[kKmM]/.test(nextChar)) continue;
     try {
       const amountMinor = parseAmountToMinor(match[0].replace(/[,.]$/, ""));
       if (amountMinor > 0) values.add(amountMinor);
@@ -106,7 +110,18 @@ function voiceAmountMinor(transcript: string, amountPhp: string): number {
 
 export interface AiEntryService {
   previewPdf(env: Bindings, tenantId: string, pdf: File): Promise<ImportPreview>;
-  extractVoice(env: Bindings, tenantId: string, audio: File): Promise<TransactionVoiceDraft>;
+  extractVoice(
+    env: Bindings,
+    tenantId: string,
+    audio: File,
+    categories?: string[],
+  ): Promise<TransactionVoiceDraft>;
+  extractVoiceTranscript(
+    env: Bindings,
+    tenantId: string,
+    transcript: string,
+    categories?: string[],
+  ): Promise<TransactionVoiceDraft>;
 }
 
 function entryTimeoutMs(env: Bindings): number {
@@ -283,6 +298,80 @@ export function createAiEntryService(
   imports: ImportRepository,
   transcriptionProvider: AssistantVoiceTranscriptionProvider = cloudflareWhisperProvider,
 ): AiEntryService {
+  async function extractDraftFromTranscript(
+    env: Bindings,
+    transcript: string,
+    categories?: string[],
+  ): Promise<TransactionVoiceDraft> {
+    const categoryInstructions =
+      categories && categories.length > 0
+        ? `Available user categories: ${categories.join(", ")}. If the transaction fits one of these categories, you MUST set categoryName to the exact matching name from this list. If none match, provide a short descriptive category label or leave empty.`
+        : "Infer only the transaction type and category label explicitly or plainly implied by the speech.";
+
+    let extracted: unknown;
+    try {
+      extracted = await runStructuredModel(
+        env,
+        [
+          `Today is ${currentDateInTimeZone(env)} in the user's timezone.`,
+          `Extract one transaction from this untrusted spoken transcript. Return amountPhp as the positive Philippine-peso amount written as a plain decimal string, never centavos (examples: 1,000 pesos becomes "1000.00"; 250 pesos and 50 centavos becomes "250.50"; 2k becomes "2000.00"). ${categoryInstructions} Return date as YYYY-MM-DD (evaluating relative dates like "yesterday" against today). Use today only when no date is spoken.`,
+          "<untrusted-transcript>",
+          transcript,
+          "</untrusted-transcript>",
+        ].join("\n"),
+        {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            draft: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                description: { type: "string" },
+                date: { type: "string" },
+                amountPhp: { type: "string" },
+                kind: { type: "string", enum: ["income", "expense", "transfer"] },
+                categoryName: { type: "string" },
+              },
+              required: ["description", "amountPhp", "kind"],
+            },
+          },
+          required: ["draft"],
+        },
+      );
+    } catch (error) {
+      return throwProviderFailure("voice", error);
+    }
+    const candidate = voiceResponseSchema.safeParse(extracted);
+    if (!candidate.success) {
+      throw new HttpError(
+        422,
+        "voice_transaction_unreadable",
+        "Zoption could not identify one transaction in that recording. Try saying the amount and what it was for.",
+      );
+    }
+    const date =
+      normalizeImportDate(candidate.data.draft.date ?? "") ?? currentDateInTimeZone(env);
+    const amountMinor = voiceAmountMinor(transcript, candidate.data.draft.amountPhp);
+    let categoryName = candidate.data.draft.categoryName;
+    if (categories && categories.length > 0) {
+      const candidateList = categories.map((name) => ({ id: name, name }));
+      const matched = matchCategory(candidateList, categoryName, transcript);
+      if (matched) {
+        categoryName = matched.name;
+      }
+    }
+    return transactionVoiceDraftSchema.parse({
+      transcript,
+      description: candidate.data.draft.description,
+      date,
+      amountMinor,
+      currency: "PHP",
+      kind: candidate.data.draft.kind satisfies TransactionKind,
+      ...(categoryName ? { categoryName } : {}),
+    });
+  }
+
   return {
     async previewPdf(env, tenantId, pdf) {
       await requireAiEntryConsent(receiptRepository, env, tenantId);
@@ -359,7 +448,20 @@ export function createAiEntryService(
       );
     },
 
-    async extractVoice(env, tenantId, audio) {
+    async extractVoiceTranscript(env, tenantId, transcript, categories) {
+      await requireAiEntryConsent(receiptRepository, env, tenantId);
+      const cleanTranscript = transcript.trim();
+      if (!cleanTranscript) {
+        throw new HttpError(
+          422,
+          "voice_transaction_unreadable",
+          "Zoption could not identify one transaction in that recording. Try saying the amount and what it was for.",
+        );
+      }
+      return extractDraftFromTranscript(env, cleanTranscript, categories);
+    },
+
+    async extractVoice(env, tenantId, audio, categories) {
       await requireAiEntryConsent(receiptRepository, env, tenantId);
       let transcript: string;
       try {
@@ -367,62 +469,7 @@ export function createAiEntryService(
       } catch (error) {
         return throwProviderFailure("voice", error);
       }
-      let extracted: unknown;
-      try {
-        extracted = await runStructuredModel(
-          env,
-          [
-            `Today is ${currentDateInTimeZone(env)} in the user's timezone.`,
-            'Extract one transaction from this untrusted spoken transcript. Return amountPhp as the positive Philippine-peso amount written as a plain decimal string, never centavos (examples: 1,000 pesos becomes "1000.00"; 250 pesos and 50 centavos becomes "250.50"). Infer only the transaction type and category label explicitly or plainly implied by the speech. Use today only when no date is spoken.',
-            "<untrusted-transcript>",
-            transcript,
-            "</untrusted-transcript>",
-          ].join("\n"),
-          {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              draft: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  description: { type: "string" },
-                  date: { type: "string" },
-                  amountPhp: { type: "string" },
-                  kind: { type: "string", enum: ["income", "expense", "transfer"] },
-                  categoryName: { type: "string" },
-                },
-                required: ["description", "amountPhp", "kind"],
-              },
-            },
-            required: ["draft"],
-          },
-        );
-      } catch (error) {
-        return throwProviderFailure("voice", error);
-      }
-      const candidate = voiceResponseSchema.safeParse(extracted);
-      if (!candidate.success) {
-        throw new HttpError(
-          422,
-          "voice_transaction_unreadable",
-          "Zoption could not identify one transaction in that recording. Try saying the amount and what it was for.",
-        );
-      }
-      const date =
-        normalizeImportDate(candidate.data.draft.date ?? "") ?? currentDateInTimeZone(env);
-      const amountMinor = voiceAmountMinor(transcript, candidate.data.draft.amountPhp);
-      return transactionVoiceDraftSchema.parse({
-        transcript,
-        description: candidate.data.draft.description,
-        date,
-        amountMinor,
-        currency: "PHP",
-        kind: candidate.data.draft.kind satisfies TransactionKind,
-        ...(candidate.data.draft.categoryName
-          ? { categoryName: candidate.data.draft.categoryName }
-          : {}),
-      });
+      return extractDraftFromTranscript(env, transcript, categories);
     },
   };
 }

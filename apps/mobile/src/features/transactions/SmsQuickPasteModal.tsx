@@ -7,12 +7,21 @@ import { BottomSheet, Button, MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
+export interface SmsQuickPasteModalTransactionCandidate {
+  id: string;
+  date: string;
+  amountMinor: number;
+  description: string;
+  notes?: string | null;
+}
+
 export interface SmsQuickPasteModalProps {
   visible: boolean;
   onDismiss: () => void;
   onApply?: (parsed: ParsedSmsTransaction) => void;
   initialText?: string;
   readClipboard?: () => Promise<string>;
+  existingTransactions?: SmsQuickPasteModalTransactionCandidate[];
 }
 
 const defaultReadClipboard = (): Promise<string> => Clipboard.getString();
@@ -35,6 +44,7 @@ export function SmsQuickPasteModal({
   onApply,
   initialText = "",
   readClipboard = defaultReadClipboard,
+  existingTransactions,
 }: SmsQuickPasteModalProps) {
   const theme = useZoptionTheme();
   const [smsText, setSmsText] = useState(initialText);
@@ -63,8 +73,14 @@ export function SmsQuickPasteModal({
         return;
       }
       setSmsText(pasted);
-      setParsed(null);
-      setParseError(null);
+      const result = parseSmsNotification(pasted.trim());
+      if (result) {
+        setParsed(result);
+        setParseError(null);
+      } else {
+        setParsed(null);
+        setParseError("That text couldn't be recognized as a transaction. Check it and try again.");
+      }
     } catch {
       setClipboardError("Could not read the clipboard on this device. Paste the text manually.");
     } finally {
@@ -90,10 +106,42 @@ export function SmsQuickPasteModal({
 
   const apply = (): void => {
     if (!parsed) return;
-    if (onApply) onApply(parsed);
-    else router.push("/(app)/transaction");
+    if (onApply) {
+      onApply(parsed);
+    } else {
+      router.push({
+        pathname: "/(app)/transaction",
+        params: {
+          amount: (parsed.amountMinor / 100).toFixed(2),
+          description: parsed.payeeOrMerchant,
+          date: parsed.date,
+          kind: parsed.type,
+          category: parsed.suggestedCategory,
+          referenceNumber: parsed.referenceNumber ?? "",
+          channel: parsed.channel,
+          accountSuffix: parsed.accountSuffix ?? "",
+          currency: parsed.currency,
+        },
+      });
+    }
     onDismiss();
   };
+
+  const duplicateMatch =
+    parsed && existingTransactions?.length
+      ? existingTransactions.find((tx) => {
+          if (parsed.referenceNumber && tx.notes?.includes(parsed.referenceNumber)) {
+            return true;
+          }
+          return (
+            tx.date === parsed.date &&
+            Math.abs(tx.amountMinor) === parsed.amountMinor &&
+            Boolean(parsed.payeeOrMerchant) &&
+            (tx.description.toLowerCase().includes(parsed.payeeOrMerchant.toLowerCase()) ||
+              parsed.payeeOrMerchant.toLowerCase().includes(tx.description.toLowerCase()))
+          );
+        })
+      : null;
 
   const dateTime = parsed?.time ? `${parsed.date} · ${parsed.time}` : (parsed?.date ?? "");
 
@@ -129,7 +177,10 @@ export function SmsQuickPasteModal({
           value={smsText}
         />
         {clipboardError ? (
-          <Text accessibilityRole="alert" style={[typography.caption, { color: theme.colors.danger }]}>
+          <Text
+            accessibilityRole="alert"
+            style={[typography.caption, { color: theme.colors.danger }]}
+          >
             {clipboardError}
           </Text>
         ) : null}
@@ -153,7 +204,10 @@ export function SmsQuickPasteModal({
           </Button>
         </View>
         {parseError ? (
-          <Text accessibilityRole="alert" style={[typography.caption, { color: theme.colors.danger }]}>
+          <Text
+            accessibilityRole="alert"
+            style={[typography.caption, { color: theme.colors.danger }]}
+          >
             {parseError}
           </Text>
         ) : null}
@@ -165,6 +219,20 @@ export function SmsQuickPasteModal({
               { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
             ]}
           >
+            {duplicateMatch ? (
+              <View
+                accessibilityRole="alert"
+                style={[
+                  styles.duplicateWarning,
+                  { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[typography.caption, { color: theme.colors.text }]}>
+                  Possible duplicate: A matching transaction was already recorded (
+                  {duplicateMatch.description} on {duplicateMatch.date}).
+                </Text>
+              </View>
+            ) : null}
             <DetailRow label="Amount">
               <MoneyValue
                 amountMinor={parsed.amountMinor}
@@ -180,6 +248,13 @@ export function SmsQuickPasteModal({
             <DetailRow label="Channel">
               <Text style={[typography.body, { color: theme.colors.text }]}>{parsed.channel}</Text>
             </DetailRow>
+            {parsed.accountSuffix ? (
+              <DetailRow label="Account / Card">
+                <Text style={[typography.body, { color: theme.colors.text }]}>
+                  {parsed.accountSuffix}
+                </Text>
+              </DetailRow>
+            ) : null}
             <DetailRow label="Date">
               <Text style={[typography.body, { color: theme.colors.text }]}>{dateTime}</Text>
             </DetailRow>
@@ -242,4 +317,9 @@ const styles = StyleSheet.create({
   detailRow: { gap: 2 },
   detailLabel: { textTransform: "uppercase" },
   detailValue: { minWidth: 0 },
+  duplicateWarning: {
+    borderWidth: 1,
+    borderRadius: radii.md,
+    padding: spacing.sm,
+  },
 });

@@ -77,6 +77,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+.transaction-voice-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transaction-voice-actions .button.danger {
+  flex: 1;
+}
+
 .transaction-voice .button.danger {
   color: #fff;
   border-color: var(--danger);

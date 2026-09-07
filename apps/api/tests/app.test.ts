@@ -831,6 +831,7 @@ describe("API foundation", () => {
     const aiEntryService: AiEntryService = {
       previewPdf,
       extractVoice: vi.fn(),
+      extractVoiceTranscript: vi.fn(),
     };
     const app = createTestApp({ aiEntryService });
     const form = new FormData();
@@ -859,9 +860,18 @@ describe("API foundation", () => {
       currency: "PHP" as const,
       kind: "expense" as const,
     }));
+    const extractVoiceTranscript = vi.fn(async () => ({
+      transcript: "Spent 250 pesos on lunch today",
+      description: "Lunch",
+      date: "2026-08-20",
+      amountMinor: 25_000,
+      currency: "PHP" as const,
+      kind: "expense" as const,
+    }));
     const aiEntryService: AiEntryService = {
       previewPdf: vi.fn(),
       extractVoice,
+      extractVoiceTranscript,
     };
     const app = createTestApp({ aiEntryService });
     const form = new FormData();
@@ -879,6 +889,40 @@ describe("API foundation", () => {
       amountMinor: 25_000,
     });
     expect(extractVoice).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
+
+    const jsonResponse = await app.request("/api/app/entry/voice", {
+      method: "POST",
+      headers: { ...AUTHORIZATION, "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript: "Spent 250 pesos on lunch today" }),
+    });
+
+    expect(jsonResponse.status).toBe(200);
+    await expect(jsonResponse.json()).resolves.toMatchObject({
+      description: "Lunch",
+      amountMinor: 25_000,
+    });
+    expect(extractVoiceTranscript).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      "Spent 250 pesos on lunch today",
+    );
+
+    const jsonCategoriesResponse = await app.request("/api/app/entry/voice", {
+      method: "POST",
+      headers: { ...AUTHORIZATION, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transcript: "Spent 250 pesos on lunch today",
+        categories: ["Food & dining", "Transport"],
+      }),
+    });
+
+    expect(jsonCategoriesResponse.status).toBe(200);
+    expect(extractVoiceTranscript).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      "Spent 250 pesos on lunch today",
+      ["Food & dining", "Transport"],
+    );
   });
 
   it.each([

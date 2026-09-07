@@ -1,14 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import type { AccountRecord, CategoryRecord } from '@zoption/shared';
-import './SmsQuickPasteModal.css';
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  parseSmsNotification,
+  type AccountRecord,
+  type CategoryRecord,
+  type TransactionListItem,
+} from "@zoption/shared";
+import "./SmsQuickPasteModal.css";
 
 export interface ParsedSmsTransaction {
   amount?: number;
-  type: 'expense' | 'income' | 'transfer';
+  type: "expense" | "income" | "transfer";
   merchant?: string;
   account?: string;
   date?: string;
   rawText: string;
+  suggestedCategory?: string;
+  referenceNumber?: string;
+  channel?: string;
+  currency?: string;
 }
 
 export interface SmsQuickPasteModalProps {
@@ -18,97 +27,45 @@ export interface SmsQuickPasteModalProps {
   initialText?: string;
   categories?: CategoryRecord[];
   accounts?: AccountRecord[];
+  existingTransactions?: TransactionListItem[];
 }
 
 export function parseSmsText(text: string): ParsedSmsTransaction {
   const clean = text.trim();
-  const lower = clean.toLowerCase();
-
-  // Determine transaction type
-  let type: 'expense' | 'income' | 'transfer' = 'expense';
-  if (
-    lower.includes('credited') ||
-    lower.includes('received') ||
-    lower.includes('deposit') ||
-    lower.includes('refund') ||
-    lower.includes('cashback')
-  ) {
-    type = 'income';
-  } else if (lower.includes('transfer') || lower.includes('sent to')) {
-    type = 'transfer';
+  if (!clean) {
+    return {
+      amount: undefined,
+      type: "expense",
+      merchant: undefined,
+      account: undefined,
+      date: new Date().toISOString().split("T")[0] ?? "",
+      rawText: text,
+    };
   }
 
-  // Extract amount
-  let amount: number | undefined;
-  const keywordAmountRegex =
-    /(?:debited|credited|spent|paid|purchase of|sent|withdrawn|charged|amounting to|for)\s*(?:by|of|for|rs\.?|usd|\$|€|£|₹)?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i;
-
-  const keywordMatch = clean.match(keywordAmountRegex);
-  if (keywordMatch && keywordMatch[1]) {
-    const rawVal = keywordMatch[1].replace(/,/g, '');
-    const parsed = parseFloat(rawVal);
-    if (!isNaN(parsed)) {
-      amount = parsed;
-    }
-  } else {
-    const amountRegex =
-      /(?:[$€£₹]|USD|EUR|GBP|INR|RS\.?|AUD|CAD|SGD|HKD)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)\s*(?:USD|EUR|GBP|INR|RS\.?|AUD|CAD|SGD|HKD)?/i;
-    const amountMatch = clean.match(amountRegex);
-    if (amountMatch && amountMatch[1]) {
-      const rawVal = amountMatch[1].replace(/,/g, '');
-      const parsed = parseFloat(rawVal);
-      if (!isNaN(parsed) && parsed > 0) {
-        amount = parsed;
-      }
-    }
-  }
-
-  // Extract merchant / recipient / counterparty
-  let merchant: string | undefined;
-  const merchantRegex =
-    /(?:at|to|for|merchant|info|vpa|in\*\s*)\s+([A-Za-z0-9\s._&'-]{2,30}?)(?=\s+(?:on|using|via|with|from|through|ref|bal|avl|card|a\/c|acc|ending|dated|\.|\n|$))/i;
-  const merchantMatch = clean.match(merchantRegex);
-  if (merchantMatch && merchantMatch[1]) {
-    const m = merchantMatch[1].trim().replace(/[.,]$/, '');
-    if (m && !/^(the|a|an|your|card|bank|account)$/i.test(m)) {
-      merchant = m;
-    }
-  }
-
-  // Extract account / card info
-  let account: string | undefined;
-  const accountRegex =
-    /(?:a\/c|acc|account|card|ending(?:\s+in)?)\s*(?:no\.?|num\.?)?\s*[*xX.-]*([0-9]{3,4})/i;
-  const accountMatch = clean.match(accountRegex);
-  if (accountMatch && accountMatch[1]) {
-    account = `*${accountMatch[1]}`;
-  }
-
-  // Extract date if present, or default to current ISO date (YYYY-MM-DD)
-  let date: string = new Date().toISOString().split('T')[0] ?? '';
-  const dateRegex =
-    /(?:on|dated)\s*([0-9]{4}[-/.][0-9]{1,2}[-/.][0-9]{1,2}|[0-9]{1,2}[-/.][0-9]{1,2}[-/.][0-9]{2,4}|[0-9]{1,2}-[A-Za-z]{3}(?:-[0-9]{2,4})?)/i;
-  const dateMatch = clean.match(dateRegex);
-  if (dateMatch && dateMatch[1]) {
-    const rawDateStr = dateMatch[1];
-    // If already YYYY-MM-DD format
-    if (/^\d{4}-\d{2}-\d{2}$/.test(rawDateStr)) {
-      date = rawDateStr;
-    } else {
-      const parsedDate = new Date(rawDateStr);
-      if (!isNaN(parsedDate.getTime())) {
-        date = parsedDate.toISOString().split('T')[0] ?? '';
-      }
-    }
+  const result = parseSmsNotification(clean);
+  if (!result) {
+    return {
+      amount: undefined,
+      type: "expense",
+      merchant: undefined,
+      account: undefined,
+      date: new Date().toISOString().split("T")[0] ?? "",
+      rawText: text,
+    };
   }
 
   return {
-    amount,
-    type,
-    merchant,
-    account,
-    date,
+    amount: result.amountMinor / 100,
+    type: result.type,
+    merchant: result.payeeOrMerchant,
+    account: result.accountSuffix,
+    date: result.date,
     rawText: text,
+    suggestedCategory: result.suggestedCategory,
+    referenceNumber: result.referenceNumber,
+    channel: result.channel,
+    currency: result.currency,
   };
 }
 
@@ -116,11 +73,12 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
   isOpen,
   onClose,
   onApply,
-  initialText = '',
+  initialText = "",
+  existingTransactions,
 }) => {
   const [smsText, setSmsText] = useState(initialText);
   const [parsedData, setParsedData] = useState<ParsedSmsTransaction>(() =>
-    parseSmsText(initialText)
+    parseSmsText(initialText),
   );
 
   useEffect(() => {
@@ -149,13 +107,13 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
   };
 
   const handleClear = () => {
-    setSmsText('');
-    setParsedData(parseSmsText(''));
+    setSmsText("");
+    setParsedData(parseSmsText(""));
   };
 
   const handleFieldChange = (
     field: keyof ParsedSmsTransaction,
-    value: string | number | undefined
+    value: string | number | undefined,
   ) => {
     setParsedData((prev) => ({
       ...prev,
@@ -168,6 +126,23 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
     onApply(parsedData);
     onClose();
   };
+
+  const duplicateWarning = useMemo(() => {
+    if (!parsedData.amount || !existingTransactions?.length) return null;
+    const minor = Math.round(parsedData.amount * 100);
+    return existingTransactions.find((tx) => {
+      if (parsedData.referenceNumber && tx.notes?.includes(parsedData.referenceNumber)) {
+        return true;
+      }
+      return (
+        tx.date === parsedData.date &&
+        Math.abs(tx.amountMinor) === minor &&
+        Boolean(parsedData.merchant) &&
+        (tx.description.toLowerCase().includes((parsedData.merchant ?? "").toLowerCase()) ||
+          (parsedData.merchant ?? "").toLowerCase().includes(tx.description.toLowerCase()))
+      );
+    });
+  }, [parsedData, existingTransactions]);
 
   if (!isOpen) {
     return null;
@@ -212,29 +187,26 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
                 />
               </div>
               <div className="sms-paste-tools">
-                <button
-                  type="button"
-                  className="sms-tool-btn"
-                  onClick={handlePasteClipboard}
-                >
+                <button type="button" className="sms-tool-btn" onClick={handlePasteClipboard}>
                   Paste from Clipboard
                 </button>
-                <button
-                  type="button"
-                  className="sms-tool-btn"
-                  onClick={handleClear}
-                >
+                <button type="button" className="sms-tool-btn" onClick={handleClear}>
                   Clear
                 </button>
               </div>
             </div>
 
+            {duplicateWarning && (
+              <div className="sms-duplicate-alert" role="alert">
+                <strong>Possible duplicate:</strong> A transaction matching this amount and date was
+                already recorded ({duplicateWarning.description} on {duplicateWarning.date}).
+              </div>
+            )}
+
             <div className="sms-preview-section">
               <div className="sms-preview-header">
                 <h3 className="sms-preview-title">Extracted Details</h3>
-                <span
-                  className={`sms-badge-type sms-badge-${parsedData.type || 'expense'}`}
-                >
+                <span className={`sms-badge-type sms-badge-${parsedData.type || "expense"}`}>
                   {parsedData.type}
                 </span>
               </div>
@@ -249,11 +221,11 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
                     type="number"
                     step="any"
                     className="sms-form-input"
-                    value={parsedData.amount ?? ''}
+                    value={parsedData.amount ?? ""}
                     onChange={(e) =>
                       handleFieldChange(
-                        'amount',
-                        e.target.value ? parseFloat(e.target.value) : undefined
+                        "amount",
+                        e.target.value ? parseFloat(e.target.value) : undefined,
                       )
                     }
                     placeholder="0.00"
@@ -269,9 +241,7 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
                     id="sms-type"
                     className="sms-select"
                     value={parsedData.type}
-                    onChange={(e) =>
-                      handleFieldChange('type', e.target.value)
-                    }
+                    onChange={(e) => handleFieldChange("type", e.target.value)}
                   >
                     <option value="expense">Expense</option>
                     <option value="income">Income</option>
@@ -287,10 +257,8 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
                     id="sms-merchant"
                     type="text"
                     className="sms-form-input"
-                    value={parsedData.merchant ?? ''}
-                    onChange={(e) =>
-                      handleFieldChange('merchant', e.target.value)
-                    }
+                    value={parsedData.merchant ?? ""}
+                    onChange={(e) => handleFieldChange("merchant", e.target.value)}
                     placeholder="e.g. Target, Uber, Salary"
                   />
                 </div>
@@ -303,10 +271,8 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
                     id="sms-account"
                     type="text"
                     className="sms-form-input"
-                    value={parsedData.account ?? ''}
-                    onChange={(e) =>
-                      handleFieldChange('account', e.target.value)
-                    }
+                    value={parsedData.account ?? ""}
+                    onChange={(e) => handleFieldChange("account", e.target.value)}
                     placeholder="*1234"
                   />
                 </div>
@@ -319,22 +285,38 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
                     id="sms-date"
                     type="date"
                     className="sms-form-input"
-                    value={parsedData.date ?? ''}
-                    onChange={(e) =>
-                      handleFieldChange('date', e.target.value)
-                    }
+                    value={parsedData.date ?? ""}
+                    onChange={(e) => handleFieldChange("date", e.target.value)}
                   />
                 </div>
+
+                {parsedData.referenceNumber ? (
+                  <div className="sms-input-group">
+                    <label htmlFor="sms-ref" className="sms-label">
+                      Reference No.
+                    </label>
+                    <input
+                      id="sms-ref"
+                      type="text"
+                      className="sms-form-input"
+                      value={parsedData.referenceNumber}
+                      readOnly
+                    />
+                  </div>
+                ) : null}
+
+                {parsedData.suggestedCategory ? (
+                  <div className="sms-input-group">
+                    <label className="sms-label">Suggested Category</label>
+                    <div className="sms-badge-category">{parsedData.suggestedCategory}</div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
 
           <div className="sms-modal-footer">
-            <button
-              type="button"
-              className="sms-btn-cancel"
-              onClick={onClose}
-            >
+            <button type="button" className="sms-btn-cancel" onClick={onClose}>
               Cancel
             </button>
             <button

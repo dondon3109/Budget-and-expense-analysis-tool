@@ -1,6 +1,7 @@
 import {
   currencies,
   currencyMetadata,
+  matchCategory,
   parseAmountToMinor,
   preferredTransactionAccount,
   transactionInputSchema,
@@ -21,9 +22,22 @@ import { localIsoDate } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
 
+export interface TransactionFormDraft {
+  kind?: TransactionKind;
+  date?: string;
+  description?: string;
+  amount?: string;
+  categoryId?: string;
+  accountId?: string;
+  toAccountId?: string;
+  notes?: string;
+  currency?: Currency;
+}
+
 interface TransactionFormProps {
   workspace: AuthenticatedWorkspace;
   item?: TransactionListItem;
+  initialDraft?: TransactionFormDraft;
   initialDate?: string;
   categories: CategoryRecord[];
   accounts: AccountRecord[];
@@ -40,6 +54,7 @@ function toAmountText(item?: TransactionListItem): string {
 export function TransactionForm({
   workspace,
   item,
+  initialDraft,
   initialDate,
   categories,
   accounts,
@@ -48,19 +63,27 @@ export function TransactionForm({
   onSubmit,
   onClose,
 }: TransactionFormProps) {
-  const [kind, setKind] = useState<TransactionKind>(item?.kind ?? "expense");
-  const [date, setDate] = useState(item?.date ?? initialDate ?? localIsoDate);
-  const [description, setDescription] = useState(item?.description ?? "");
-  const [amount, setAmount] = useState(toAmountText(item));
-  const [categoryId, setCategoryId] = useState(item?.categoryId ?? "");
-  const [accountId, setAccountId] = useState(item?.accountId ?? "");
-  const [fromAccountId, setFromAccountId] = useState(item?.fromAccountId ?? item?.accountId ?? "");
-  const [toAccountId, setToAccountId] = useState(item?.toAccountId ?? "");
-  const [notes, setNotes] = useState(item?.notes ?? "");
+  const [kind, setKind] = useState<TransactionKind>(initialDraft?.kind ?? item?.kind ?? "expense");
+  const [date, setDate] = useState(initialDraft?.date ?? item?.date ?? initialDate ?? localIsoDate);
+  const [description, setDescription] = useState(
+    initialDraft?.description ?? item?.description ?? "",
+  );
+  const [amount, setAmount] = useState(initialDraft?.amount ?? toAmountText(item));
+  const [categoryId, setCategoryId] = useState(initialDraft?.categoryId ?? item?.categoryId ?? "");
+  const [accountId, setAccountId] = useState(initialDraft?.accountId ?? item?.accountId ?? "");
+  const [fromAccountId, setFromAccountId] = useState(
+    initialDraft?.accountId ?? item?.fromAccountId ?? item?.accountId ?? "",
+  );
+  const [toAccountId, setToAccountId] = useState(
+    initialDraft?.toAccountId ?? item?.toAccountId ?? "",
+  );
+  const [notes, setNotes] = useState(initialDraft?.notes ?? item?.notes ?? "");
   const [transferFee, setTransferFee] = useState(
     item?.transferFeeMinor ? (item.transferFeeMinor / 100).toFixed(2) : "",
   );
-  const [currency, setCurrency] = useState<Currency>(item?.currency ?? "PHP");
+  const [currency, setCurrency] = useState<Currency>(
+    initialDraft?.currency ?? item?.currency ?? "PHP",
+  );
   const [clientError, setClientError] = useState<string>();
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
   const defaultAccount = useMemo(
@@ -74,6 +97,13 @@ export function TransactionForm({
   const selectableCategories = useMemo(
     () => availableCategories.filter((category) => !category.locked),
     [availableCategories],
+  );
+  const activeCategoryNames = useMemo(
+    () =>
+      categories
+        .filter((category) => !category.archived && !category.locked)
+        .map((category) => category.name),
+    [categories],
   );
 
   /** Default pick for a fresh entry: income prefers the starter "Salary"
@@ -106,9 +136,20 @@ export function TransactionForm({
     const preservesLockedHistoricalCategory =
       selectedCategory?.locked && item?.categoryId === selectedCategory.id;
     if (!selectedCategory || (selectedCategory.locked && !preservesLockedHistoricalCategory)) {
-      setCategoryId(preferredDefaultCategory?.id ?? "");
+      setCategoryId(
+        initialDraft?.categoryId &&
+          availableCategories.some((c) => c.id === initialDraft.categoryId)
+          ? initialDraft.categoryId
+          : (preferredDefaultCategory?.id ?? ""),
+      );
     }
-  }, [availableCategories, categoryId, item?.categoryId, preferredDefaultCategory]);
+  }, [
+    availableCategories,
+    categoryId,
+    initialDraft?.categoryId,
+    item?.categoryId,
+    preferredDefaultCategory,
+  ]);
   useEffect(() => {
     if (!activeAccounts.some((account) => account.id === accountId))
       setAccountId(defaultAccount?.id ?? "");
@@ -168,15 +209,13 @@ export function TransactionForm({
   /** Applies an AI voice draft as review-only prefill, mirroring the mobile editor. */
   function applyVoiceDraft(draft: TransactionVoiceDraft) {
     const nextKind = draft.kind;
-    const normalizedDraftCategory = draft.categoryName?.trim().toLocaleLowerCase("en");
     const nextKindCategories = categories.filter(
       (category) => !category.archived && !category.locked && category.kind === nextKind,
     );
-    const matchingCategory = normalizedDraftCategory
-      ? nextKindCategories.find(
-          (category) => category.name.trim().toLocaleLowerCase("en") === normalizedDraftCategory,
-        )
-      : undefined;
+    const matchingCategory = matchCategory(nextKindCategories, draft.categoryName, {
+      kind: nextKind,
+      contextText: draft.transcript,
+    });
     const fromAccountIdValue = activeAccounts.some((account) => account.id === accountId)
       ? accountId
       : (defaultAccount?.id ?? "");
@@ -250,8 +289,9 @@ export function TransactionForm({
           {!item && (
             <TransactionVoiceEntry
               workspace={workspace}
-              disabled={busy || selectableCategories.length === 0 || activeAccounts.length === 0}
+              disabled={busy || activeCategoryNames.length === 0 || activeAccounts.length === 0}
               onDraft={applyVoiceDraft}
+              categories={activeCategoryNames}
             />
           )}
           <div className="form-row split">

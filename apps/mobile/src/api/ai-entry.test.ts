@@ -1,4 +1,4 @@
-import { extractVoiceTransaction } from "./ai-entry";
+import { extractVoiceTransaction, extractVoiceTransactionFromTranscript } from "./ai-entry";
 
 const mockDelete = jest.fn();
 
@@ -67,5 +67,60 @@ describe("mobile AI-entry voice transport", () => {
     ).rejects.toMatchObject({ code: "unavailable" });
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("submits transcript directly without uploading a file", async () => {
+    const fetchMock = jest.fn(async () =>
+      jsonResponse({
+        transcript: "Spent 250 pesos on lunch today",
+        description: "Lunch",
+        date: "2026-08-20",
+        amountMinor: 25_000,
+        currency: "PHP",
+        kind: "expense",
+        categoryName: "Food",
+      }),
+    );
+    const draft = await extractVoiceTransactionFromTranscript(
+      "token",
+      "Spent 250 pesos on lunch today",
+      fetchMock,
+    );
+    expect(draft.description).toBe("Lunch");
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url.endsWith("/api/app/entry/voice")).toBe(true);
+    expect(init.headers).toMatchObject({
+      Authorization: "Bearer token",
+      "Content-Type": "application/json",
+    });
+    expect(JSON.parse(init.body as string)).toEqual({
+      transcript: "Spent 250 pesos on lunch today",
+    });
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it("submits categories in json body when provided", async () => {
+    const fetchMock = jest.fn(async () =>
+      jsonResponse({
+        transcript: "Spent 250 pesos on lunch today",
+        description: "Lunch",
+        date: "2026-08-20",
+        amountMinor: 25_000,
+        currency: "PHP",
+        kind: "expense",
+        categoryName: "Food & dining",
+      }),
+    );
+    await extractVoiceTransactionFromTranscript(
+      "token",
+      "Spent 250 pesos on lunch today",
+      fetchMock,
+      ["Food & dining", "Transport"],
+    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      transcript: "Spent 250 pesos on lunch today",
+      categories: ["Food & dining", "Transport"],
+    });
   });
 });

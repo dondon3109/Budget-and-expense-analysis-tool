@@ -13,11 +13,16 @@ import type { AuthenticatedWorkspace } from "../../lib/workspace";
 
 const MAX_RECORDING_MS = 60_000;
 const MIME_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"];
+const SPEECH_RMS_THRESHOLD = 0.015;
+const ENDING_SILENCE_MS = 1400;
+const NO_SPEECH_TIMEOUT_MS = 8000;
+const VOICE_SAMPLE_INTERVAL_MS = 100;
 
 export interface TransactionVoiceEntryProps {
   workspace: AuthenticatedWorkspace;
   disabled?: boolean;
   onDraft: (draft: TransactionVoiceDraft) => void;
+  categories?: string[];
 }
 
 type RecorderStatus = "idle" | "requesting" | "recording" | "transcribing";
@@ -34,6 +39,7 @@ export function TransactionVoiceEntry({
   workspace,
   disabled,
   onDraft,
+  categories,
 }: TransactionVoiceEntryProps) {
   const queryClient = useQueryClient();
   const recorderRef = useRef<MediaRecorder | undefined>(undefined);
@@ -41,6 +47,10 @@ export function TransactionVoiceEntry({
   const chunksRef = useRef<Blob[]>([]);
   const stopTimerRef = useRef<number | undefined>(undefined);
   const elapsedTimerRef = useRef<number | undefined>(undefined);
+  const activityTimerRef = useRef<number | undefined>(undefined);
+  const audioContextRef = useRef<AudioContext | undefined>(undefined);
+  const stopReasonRef = useRef<"user" | "silence" | "no-speech" | "cancelled">("user");
+  const liveTranscriptRef = useRef<string>("");
   const mountedRef = useRef(true);
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [liveTranscript, setLiveTranscript] = useState<string>("");
@@ -63,13 +73,18 @@ export function TransactionVoiceEntry({
 
   function clearRecordingResources() {
     window.clearTimeout(stopTimerRef.current);
+    window.clearInterval(activityTimerRef.current);
+    activityTimerRef.current = undefined;
     window.clearInterval(elapsedTimerRef.current);
+    elapsedTimerRef.current = undefined;
     if (liveSessionRef.current) {
-      void liveSessionRef.current.stop().catch(() => {});
+      void Promise.resolve(liveSessionRef.current.stop()).catch(() => {});
       liveSessionRef.current = null;
     }
+    const audioContext = audioContextRef.current;
+    audioContextRef.current = undefined;
+    if (audioContext && audioContext.state !== "closed") void audioContext.close().catch(() => {});
     stopTimerRef.current = undefined;
-    elapsedTimerRef.current = undefined;
     setElapsedSeconds(0);
   }
 
@@ -77,6 +92,7 @@ export function TransactionVoiceEntry({
     () => () => {
       mountedRef.current = false;
       clearRecordingResources();
+      stopReasonRef.current = "cancelled";
       if (recorderRef.current?.state === "recording") recorderRef.current.stop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
     },
@@ -86,7 +102,9 @@ export function TransactionVoiceEntry({
   async function transcribe(blob: Blob) {
     setStatus("transcribing");
     try {
-      const draft = await extractVoiceTransaction(workspace, blob);
+      const draft = await (categories && categories.length > 0
+        ? extractVoiceTransaction(workspace, blob, categories)
+        : extractVoiceTransaction(workspace, blob));
       if (!mountedRef.current) return;
       onDraft(draft);
       setMessage(`Draft filled from: “${draft.transcript}”`);
@@ -106,10 +124,65 @@ export function TransactionVoiceEntry({
     });
   }
 
+  function monitorAudioActivity(stream: MediaStream) {
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    let audioContext: AudioContext;
+    try {
+      audioContext = new AudioContextClass();
+    } catch {
+      return;
+    }
+    audioContextRef.current = audioContext;
+    let source: MediaStreamAudioSourceNode;
+    let analyser: AnalyserNode;
+    try {
+      source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+    } catch {
+      return;
+    }
+
+    const samples = new Uint8Array(analyser.frequencyBinCount);
+    let heardSpeech = false;
+    const startedAt = Date.now();
+    let lastSpeechAt = startedAt;
+
+    activityTimerRef.current = window.setInterval(() => {
+      const recorder = recorderRef.current;
+      if (!recorder || recorder.state !== "recording") return;
+
+      analyser.getByteTimeDomainData(samples);
+      let sumSquares = 0;
+      for (const sample of samples) {
+        const normalized = (sample - 128) / 128;
+        sumSquares += normalized * normalized;
+      }
+      const rms = Math.sqrt(sumSquares / samples.length);
+      const now = Date.now();
+      if (rms >= SPEECH_RMS_THRESHOLD) {
+        heardSpeech = true;
+        lastSpeechAt = now;
+        return;
+      }
+      if (heardSpeech && now - lastSpeechAt >= ENDING_SILENCE_MS) {
+        stopRecording("silence");
+      } else if (!heardSpeech && now - startedAt >= NO_SPEECH_TIMEOUT_MS) {
+        stopRecording("no-speech");
+      }
+    }, VOICE_SAMPLE_INTERVAL_MS);
+  }
+
   async function startRecording(providedStream?: MediaStream) {
     let stream = providedStream;
     try {
       setMessage(undefined);
+      stopReasonRef.current = "user";
       setStatus("requesting");
       stream ??= await requestMicrophone();
       if (!mountedRef.current) {
@@ -126,29 +199,90 @@ export function TransactionVoiceEntry({
         if (event.data.size) chunksRef.current.push(event.data);
       });
       recorder.addEventListener("stop", () => {
-        clearRecordingResources();
-        activeStream.getTracks().forEach((track) => track.stop());
-        streamRef.current = undefined;
-        recorderRef.current = undefined;
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        if (blob.size) void transcribe(blob);
-        else {
-          setStatus("idle");
-          setMessage("No audio was captured. Try again.");
-        }
+        void (async () => {
+          const liveSession = liveSessionRef.current;
+          liveSessionRef.current = null;
+
+          window.clearTimeout(stopTimerRef.current);
+          window.clearInterval(activityTimerRef.current);
+          activityTimerRef.current = undefined;
+          window.clearInterval(elapsedTimerRef.current);
+          elapsedTimerRef.current = undefined;
+          const monitoringContext = audioContextRef.current;
+          audioContextRef.current = undefined;
+          if (monitoringContext && monitoringContext.state !== "closed") {
+            void monitoringContext.close().catch(() => {});
+          }
+
+          if (liveSession) {
+            try {
+              await liveSession.stop();
+            } catch {
+              // Ignore live stream stop failures during teardown.
+            }
+          }
+
+          activeStream.getTracks().forEach((track) => track.stop());
+          streamRef.current = undefined;
+          recorderRef.current = undefined;
+
+          if (stopReasonRef.current === "cancelled") {
+            setStatus("idle");
+            setLiveTranscript("");
+            liveTranscriptRef.current = "";
+            return;
+          }
+          if (stopReasonRef.current === "no-speech") {
+            setStatus("idle");
+            setMessage("I didn’t hear anything. Speak a transaction and try again.");
+            setLiveTranscript("");
+            liveTranscriptRef.current = "";
+            return;
+          }
+
+          const liveText = liveTranscriptRef.current.trim();
+          if (liveText) {
+            setStatus("transcribing");
+            try {
+              const draft = await (categories && categories.length > 0
+                ? extractVoiceTransaction(workspace, { transcript: liveText }, categories)
+                : extractVoiceTransaction(workspace, { transcript: liveText }));
+              if (!mountedRef.current) return;
+              onDraft(draft);
+              setMessage(`Draft filled from: “${draft.transcript}”`);
+              setStatus("idle");
+              return;
+            } catch {
+              // Fall back to audio blob upload if live transcript extraction fails
+            }
+          }
+
+          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+          if (blob.size) {
+            void transcribe(blob);
+          } else {
+            setStatus("idle");
+            setMessage("No audio was captured. Try again.");
+          }
+        })();
       });
       recorder.start(250);
       setStatus("recording");
       setElapsedSeconds(0);
       setLiveTranscript("");
+      liveTranscriptRef.current = "";
+
+      monitorAudioActivity(activeStream);
 
       void startLiveTranscriptionSession(workspace, activeStream, {
         onPartial: (partial) => {
           if (!mountedRef.current) return;
+          liveTranscriptRef.current = partial;
           setLiveTranscript(partial);
         },
         onFinal: (final) => {
           if (!mountedRef.current) return;
+          liveTranscriptRef.current = final;
           setLiveTranscript(final);
         },
         onError: () => {},
@@ -162,7 +296,7 @@ export function TransactionVoiceEntry({
         setElapsedSeconds((seconds) => seconds + 1);
       }, 1000);
       stopTimerRef.current = window.setTimeout(() => {
-        if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+        if (recorderRef.current?.state === "recording") stopRecording("user");
       }, MAX_RECORDING_MS);
     } catch (error) {
       clearRecordingResources();
@@ -174,9 +308,19 @@ export function TransactionVoiceEntry({
     }
   }
 
-  function stopRecording() {
+  function stopRecording(reason: "user" | "silence" | "no-speech" = "user") {
+    stopReasonRef.current = reason;
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  }
+
+  function cancelRecording() {
+    stopReasonRef.current = "cancelled";
     clearRecordingResources();
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+    setStatus("idle");
+    setMessage(undefined);
+    setLiveTranscript("");
+    liveTranscriptRef.current = "";
   }
 
   async function acceptConsent() {
@@ -268,17 +412,42 @@ export function TransactionVoiceEntry({
           </div>
         </div>
       )}
-      <button
-        type="button"
-        className={["button", recording ? "danger" : "primary"].join(" ")}
-        disabled={disabled || checking}
-        onClick={action}
-      >
-        {recording ? <Square size={16} /> : <Mic size={16} />} {label}
-      </button>
+      {recording ? (
+        <div className="transaction-voice-actions">
+          <button
+            type="button"
+            className="button danger"
+            disabled={disabled || checking}
+            onClick={action}
+          >
+            <Square size={16} /> Stop and review
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={disabled}
+            onClick={cancelRecording}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="button primary"
+          disabled={disabled || checking}
+          onClick={action}
+        >
+          {busy ? <LoaderCircle className="spinning" size={16} /> : <Mic size={16} />} {label}
+        </button>
+      )}
       {(liveTranscript || message) && (
         <small className="transaction-voice-message" role="alert">
-          {recording && liveTranscript ? `“${liveTranscript}”` : message}
+          {status === "transcribing" && liveTranscript
+            ? `“${liveTranscript}”`
+            : recording && liveTranscript
+              ? `“${liveTranscript}”`
+              : message}
         </small>
       )}
       {showConsent && (
