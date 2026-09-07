@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getDocumentAsync } from "expo-document-picker";
 import { File } from "expo-file-system";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   importPresets,
   inspectCsv,
@@ -14,7 +14,7 @@ import {
 // Imported through the dedicated subpath so the SheetJS dependency is only
 // evaluated when a workbook is actually parsed, not at app startup.
 import { convertWorksheet, inspectWorkbook } from "@zoption/shared/workbook";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   type ListRenderItemInfo,
@@ -47,6 +47,11 @@ import {
   type ImportFileKind,
   type ImportMappingState,
 } from "./import-form";
+import {
+  countFirstRunDuplicates,
+  FIRST_RUN_IMPORT_STEPS,
+  firstRunStepIndex,
+} from "./first-run-import";
 
 type Step = "choose" | "configure" | "preview" | "done";
 
@@ -93,6 +98,42 @@ export function ImportScreen() {
     null,
   );
   const [needsAiEntryConsent, setNeedsAiEntryConsent] = useState(false);
+
+  // First-run entry (?firstRun=1) from the empty dashboard keeps the same
+  // engine and steps but adds guided step copy and lands back on the
+  // (now populated) dashboard on completion.
+  const searchParams = useLocalSearchParams<{ firstRun?: string | string[] }>();
+  const firstRunParam = searchParams.firstRun;
+  const firstRun =
+    firstRunParam === "1" || (Array.isArray(firstRunParam) && firstRunParam.includes("1"));
+  const firstRunStep = FIRST_RUN_IMPORT_STEPS[firstRunStepIndex(step)]!;
+
+  // Instant within-file duplicate hint for the review step. The server
+  // preview stays the authority for already-imported rows; this local pass
+  // (same fingerprint function) only counts rows that repeat inside the file
+  // itself, with no extra round trip.
+  const [localRepeatCount, setLocalRepeatCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    if (!firstRun || step !== "preview" || !preview) {
+      setLocalRepeatCount(0);
+      return;
+    }
+    const candidates = preview.rows.filter((row) => row.status !== "invalid");
+    void countFirstRunDuplicates(
+      candidates.map((row) => ({
+        date: row.date ?? "",
+        amountMinor: row.amountMinor ?? 0,
+        description: row.description ?? "",
+        accountSource: preview.fileName,
+      })),
+    ).then((count) => {
+      if (!cancelled) setLocalRepeatCount(count);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [firstRun, step, preview]);
 
   const withToken = async <T,>(operation: (token: string) => Promise<T>): Promise<T> => {
     try {
@@ -467,9 +508,18 @@ export function ImportScreen() {
   return (
     <Screen
       scroll={step !== "preview"}
-      title="Import transactions"
-      description="Preview first — nothing is added until you confirm."
+      title={firstRun ? "Import your first statement" : "Import transactions"}
+      description={
+        firstRun
+          ? "Three quick steps — nothing is saved until you confirm."
+          : "Preview first — nothing is added until you confirm."
+      }
     >
+      {firstRun ? (
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+          {"Step " + (firstRunStepIndex(step) + 1) + " of 3 · " + firstRunStep.title}
+        </Text>
+      ) : null}
       {step === "choose" ? (
         <View className="w-full gap-4">
           <Card>
@@ -659,6 +709,13 @@ export function ImportScreen() {
                 Duplicate rows are skipped and invalid rows are not imported. Tap a row to fix its
                 category or type. Nothing is saved until you confirm.
               </Text>
+              {firstRun && localRepeatCount > 0 ? (
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                  {localRepeatCount} {localRepeatCount === 1 ? "row repeats" : "rows repeat"}{" "}
+                  inside this file — {localRepeatCount === 1 ? "it is" : "they are"} skipped with
+                  the other duplicates.
+                </Text>
+              ) : null}
             </View>
           </Card>
           <FlatList
@@ -720,10 +777,17 @@ export function ImportScreen() {
                 New transactions sync to this device on the next synchronization.
               </Text>
               <Button
-                accessibilityHint="Returns to the previous screen"
-                onPress={() => router.back()}
+                accessibilityHint={
+                  firstRun ? "Returns to your dashboard" : "Returns to the previous screen"
+                }
+                onPress={() => {
+                  // First-run completes onto the populated dashboard; every
+                  // other entry returns where it came from.
+                  if (firstRun) router.replace("/(app)/(tabs)");
+                  else router.back();
+                }}
               >
-                Done
+                {firstRun ? "See my dashboard" : "Done"}
               </Button>
             </View>
           </Card>

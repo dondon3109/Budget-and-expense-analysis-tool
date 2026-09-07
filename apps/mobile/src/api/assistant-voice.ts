@@ -261,9 +261,26 @@ export interface VoiceRecordingInput {
   fileName: string;
 }
 
+export interface TranscribeVoiceOptions {
+  /**
+   * In-flight no-store privacy path: the recording is transcribed without
+   * server-side persistence. End to end this means:
+   * - the temporary recorder file is discarded from this device as soon as
+   *   the upload settles (see the onRequestSettled hook below);
+   * - the Worker holds the audio bytes in memory only for the duration of
+   *   the transcription call (the voice services stream the upload straight
+   *   to the STT provider — no bucket, table, or log persists audio);
+   * - this request additionally advertises `Cache-Control: no-store` plus
+   *   `X-Zoption-No-Store: 1` so any intermediary or future server handling
+   *   must treat the payload as uncacheable and unstorable.
+   */
+  noStore?: boolean;
+}
+
 export async function transcribeVoice(
   api: AssistantVoiceApi,
   recording: VoiceRecordingInput,
+  options: TranscribeVoiceOptions = {},
 ): Promise<AssistantVoiceTranscription> {
   const isDummy = isDummyAssistantToken(api.accessToken);
   const form = new FormData();
@@ -284,7 +301,14 @@ export async function transcribeVoice(
       publicConfig.apiUrl + "/api/app/assistant/voice/transcriptions",
       {
         method: "POST",
-        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          // No-store privacy path: never cache or persist this audio payload.
+          ...(options.noStore
+            ? { "Cache-Control": "no-store", "X-Zoption-No-Store": "1" }
+            : {}),
+        },
         body: form,
         signal: api.signal,
       },

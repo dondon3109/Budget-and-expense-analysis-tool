@@ -737,6 +737,18 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
         Take control of your money with offline-first tracking, smart receipt scans, and category budgeting.
       </Text>
 
+      <View style={styles.firstRunImport}>
+        <Button
+          accessibilityHint="Opens the guided 3-step bank file import"
+          onPress={() => router.push({ pathname: "/(app)/import", params: { firstRun: "1" } })}
+        >
+          Import a bank statement
+        </Button>
+        <Text style={[typography.caption, styles.emptyDescription, { color: theme.colors.textMuted }]}>
+          Fastest start: pick a CSV or Excel file, map the columns, and review before anything saves.
+        </Text>
+      </View>
+
       <View style={styles.onboardingSteps}>
         <Pressable
           accessibilityRole="button"
@@ -1095,6 +1107,11 @@ const styles = StyleSheet.create({
   onboardingSteps: {
     width: "100%",
     gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  firstRunImport: {
+    width: "100%",
+    gap: spacing.xs,
     marginTop: spacing.sm,
   },
   stepCard: {
