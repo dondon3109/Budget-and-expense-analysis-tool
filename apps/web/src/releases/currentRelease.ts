@@ -11,32 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 6, 2026",
+  releasedOn: "September 7, 2026",
   changes: [
     {
-      title: "Visual Renewal Calendar for Subscriptions",
+      title: "Fast-path voice transaction entry",
       description:
-        "Switch between table and renewal calendar views to inspect upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.",
+        "Draft transactions directly from live speech with automatic silence detection, live transcript captions, and intelligent category matching across web and mobile.",
     },
     {
-      title: "Category emojis across web and mobile",
+      title: "Smart SMS notification quick-paste",
       description:
-        "Give custom categories their own emoji icons with starter category presets, clear visual badges in transaction lists, and a dedicated mobile category editor.",
+        "Paste bank and wallet SMS alerts to auto-detect amounts, dates, accounts, and categories with duplicate transaction warnings and drawer review before saving.",
     },
     {
-      title: "Redesigned mobile transaction ledger",
+      title: "Native Android home-screen mic widget",
       description:
-        "Navigate expenses month by month on your phone with grouped daily timelines, instant monthly income/expense/net totals, quick category filters, and actionable empty states.",
+        "Tap to talk right from your home screen without opening the app, featuring voice expense capture, balance reconciliation, and one-click balance adjustments.",
     },
     {
-      title: "Android Beta 0.2.20",
+      title: "Day-1 CSV import and offline privacy mode",
       description:
-        "The official Android Beta includes responsive and accurate voice transcription with instant audio capture, faster silence detection, batch transcription fallback, and restored conversation history when reopening voice chat.",
+        "Import your transaction history in 3 simple steps directly on mobile, with offline transcript queuing and in-flight no-store privacy guarantees.",
     },
     {
-      title: "Focused budget limits",
+      title: "Android Beta 0.2.22",
       description:
-        "Spending in categories without a monthly budget is excluded from budget totals and over-budget warnings so your planned spending stays clear.",
+        "The official Android Beta includes the native home-screen mic widget, day-1 CSV import, offline voice draft queuing, and fast-path transaction transcription.",
     },
   ],
 };
@@ -48,6 +48,37 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.27.0",
+    releasedOn: "September 6, 2026",
+    changes: [
+      {
+        title: "Visual Renewal Calendar for Subscriptions",
+        description:
+          "Switch between table and renewal calendar views to inspect upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.",
+      },
+      {
+        title: "Category emojis across web and mobile",
+        description:
+          "Give custom categories their own emoji icons with starter category presets, clear visual badges in transaction lists, and a dedicated mobile category editor.",
+      },
+      {
+        title: "Redesigned mobile transaction ledger",
+        description:
+          "Navigate expenses month by month on your phone with grouped daily timelines, instant monthly income/expense/net totals, quick category filters, and actionable empty states.",
+      },
+      {
+        title: "Android Beta 0.2.20",
+        description:
+          "The official Android Beta includes responsive and accurate voice transcription with instant audio capture, faster silence detection, batch transcription fallback, and restored conversation history when reopening voice chat.",
+      },
+      {
+        title: "Focused budget limits",
+        description:
+          "Spending in categories without a monthly budget is excluded from budget totals and over-budget warnings so your planned spending stays clear.",
+      },
+    ],
+  },
   {
     version: "2.2.1",
     releasedOn: "August 17, 2026",

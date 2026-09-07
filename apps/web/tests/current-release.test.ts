@@ -3,27 +3,39 @@ import { describe, expect, it } from "vitest";
 import { currentRelease, releaseHistory } from "../src/releases/currentRelease";
 
 describe("current release notes", () => {
-  it("highlights category emojis, mobile transaction ledger, and Android Beta", () => {
+  it("highlights voice entry, SMS quick-paste, mic widget, CSV import, and Android Beta", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Fast-path voice transaction entry",
+      "Smart SMS notification quick-paste",
+      "Native Android home-screen mic widget",
+      "Day-1 CSV import and offline privacy mode",
+      "Android Beta 0.2.22",
+    ]);
+
+    const notes = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(notes).toMatch(/voice transaction entry/i);
+    expect(notes).toMatch(/SMS notification/i);
+    expect(notes).toMatch(/mic widget/i);
+    expect(notes).toMatch(/CSV import/i);
+    expect(notes).toMatch(/Android Beta/i);
+  });
+
+  it("keeps the renewal calendar and 0.2.20 beta as 2.27.0 release history", () => {
+    const prevRelease = releaseHistory[1];
+    expect(prevRelease?.version).toBe("2.27.0");
+    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
       "Visual Renewal Calendar for Subscriptions",
       "Category emojis across web and mobile",
       "Redesigned mobile transaction ledger",
       "Android Beta 0.2.20",
       "Focused budget limits",
     ]);
-
-    const notes = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
-    expect(notes).toMatch(/visual renewal calendar/i);
-    expect(notes).toMatch(/category emojis/i);
-    expect(notes).toMatch(/transaction ledger/i);
-    expect(notes).toMatch(/Android Beta/i);
-    expect(notes).toMatch(/budget limits/i);
   });
 
   it("keeps the touch-first cash flow and voice states as 2.2.1 release history", () => {
-    const mobileRelease = releaseHistory[1];
+    const mobileRelease = releaseHistory[2];
     expect(mobileRelease?.version).toBe("2.2.1");
     expect(mobileRelease?.changes.map((change) => change.title)).toEqual([
       "Cash flow chart built for your phone",
@@ -40,7 +52,7 @@ describe("current release notes", () => {
   });
 
   it("keeps review-first receipt scanning as 2.2.0 release history", () => {
-    const receiptRelease = releaseHistory[2];
+    const receiptRelease = releaseHistory[3];
     expect(receiptRelease?.version).toBe("2.2.0");
     expect(receiptRelease?.changes.map((change) => change.title)).toEqual([
       "Turn a receipt photo into a transaction draft",
@@ -58,7 +70,7 @@ describe("current release notes", () => {
   });
 
   it("keeps the assistant voice implementation as 2.1.0 release history", () => {
-    const voiceRelease = releaseHistory[3];
+    const voiceRelease = releaseHistory[4];
     expect(voiceRelease?.version).toBe("2.1.0");
     expect(voiceRelease?.changes.map((change) => change.title)).toEqual([
       "Talk naturally with your Financial Assistant",
