@@ -258,6 +258,16 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
             headerBackTitle: "More",
           }}
         />
+        <Stack.Screen
+          name="widget-intent"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Home",
+            title: "Voice widget",
+            presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            sheetGrabberVisible: Platform.OS === "ios",
+          }}
+        />
       </Stack>
     </SyncProvider>
   );
