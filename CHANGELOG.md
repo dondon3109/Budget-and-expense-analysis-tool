@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.29.0 — 2026-09-07
+
 ### Changed
 
 - Optimized transaction voice input responsiveness, speed, and reliability across web and mobile:
@@ -23,15 +25,20 @@ All notable product changes are documented here.
   - Added real-time duplicate transaction detection warnings against existing records matching date, amount, and merchant or reference numbers.
   - Web: Updated Quick-Paste modal to route parsed drafts through the `TransactionForm` drawer with category pre-selection for user review before saving.
   - Mobile: Connected Quick-Paste modal to auto-parse on clipboard paste, alert on duplicates, and prefill `TransactionEditorScreen` via route parameters.
-- Added native Android home-screen mic widget with voice capture, balance reconciliation, and one-click balance adjustment on mobile:
-  - Added native RemoteViews mic AppWidget for tap-to-talk voice capture without opening the app, emitting intent deep-links.
-  - Added widget-intent screen with intent confirmation, validation, and submission through the voice/transaction pipeline.
-  - Added one-click balance adjustments with before/after previews and undo support in account details.
 - Added mobile day-1 CSV/sheet import flow and offline privacy voice mode:
   - Added 3-step first-run CSV/sheet import flow on mobile to populate workspaces immediately.
   - Added separate mic-capture consent gating and optional in-flight no-store audio streaming headers.
   - Added offline voice draft queue caching on-device transcripts when disconnected and auto-draining on reconnect.
 - Bumped mobile version to 0.2.22-beta (versionCode 20322).
+
+## 2.28.0 — 2026-09-07
+
+### Added
+
+- Native Android home-screen mic widget with voice capture, balance reconciliation, and one-click balance adjustment on mobile:
+  - Added native RemoteViews mic AppWidget for tap-to-talk voice capture without opening the app, emitting intent deep-links.
+  - Added widget-intent screen with intent confirmation, validation, and submission through the voice/transaction pipeline.
+  - Added one-click balance adjustments with before/after previews and undo support in account details.
 
 ## 2.27.1 — 2026-09-06
 
