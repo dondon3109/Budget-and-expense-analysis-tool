@@ -1,9 +1,14 @@
 "use strict";
 
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const withMicWidget = require("./with-android-mic-widget");
 const {
   addMicWidgetToManifest,
   resolveWidgetScheme,
   widgetFileContents,
+  writeWidgetFiles,
 } = require("./with-android-mic-widget");
 
 function fakeManifest() {
@@ -65,5 +70,52 @@ test("widget UI uses a solid background, never a gradient", () => {
   expect(background).toContain("<solid");
   for (const contents of Object.values(files)) {
     expect(contents.toLowerCase()).not.toContain("gradient");
+  }
+});
+
+test("writeWidgetFiles creates directory tree and writes files to platform root", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mic-widget-test-"));
+  try {
+    await writeWidgetFiles(tempDir, "zoption");
+    const manifestInfo = path.join(tempDir, "app/src/main/res/xml/zoption_mic_widget_info.xml");
+    const stringsXml = path.join(tempDir, "app/src/main/res/values/zoption_mic_widget_strings.xml");
+    const providerKt = path.join(
+      tempDir,
+      "app/src/main/java/site/zoption/micwidget/MicWidgetProvider.kt",
+    );
+    expect(fs.existsSync(manifestInfo)).toBe(true);
+    expect(fs.existsSync(stringsXml)).toBe(true);
+    expect(fs.existsSync(providerKt)).toBe(true);
+    const content = await fs.promises.readFile(stringsXml, "utf-8");
+    expect(content).toContain("<string name=\"zoption_mic_widget_scheme\">zoption</string>");
+  } finally {
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("withMicWidget dangerous mod correctly extracts platformProjectRoot from modRequest", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mic-widget-mod-"));
+  try {
+    const config = withMicWidget({ name: "Test", slug: "test", scheme: "zoption-test" });
+    expect(typeof config.mods.android.dangerous).toBe("function");
+
+    const modConfig = {
+      ...config,
+      modRequest: {
+        platformProjectRoot: tempDir,
+        projectRoot: "/fake/root",
+        modName: "dangerous",
+        platform: "android",
+        introspect: false,
+      },
+    };
+    await config.mods.android.dangerous(modConfig);
+
+    const stringsXml = path.join(tempDir, "app/src/main/res/values/zoption_mic_widget_strings.xml");
+    expect(fs.existsSync(stringsXml)).toBe(true);
+    const content = await fs.promises.readFile(stringsXml, "utf-8");
+    expect(content).toContain("<string name=\"zoption_mic_widget_scheme\">zoption-test</string>");
+  } finally {
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
   }
 });

@@ -387,7 +387,14 @@ const withMicWidget = (config) => {
   return withDangerousMod(withManifest, [
     "android",
     async (mod) => {
-      await writeWidgetFiles(mod.modPath, scheme);
+      const projectRoot =
+        mod.modRequest?.platformProjectRoot ||
+        mod.modRequest?.projectRoot ||
+        mod.modPath;
+      if (!projectRoot) {
+        throw new Error("Unable to resolve Android platform project root from modRequest");
+      }
+      await writeWidgetFiles(projectRoot, scheme);
       return mod;
     },
   ]);
@@ -397,3 +404,4 @@ module.exports = withMicWidget;
 module.exports.resolveWidgetScheme = resolveWidgetScheme;
 module.exports.addMicWidgetToManifest = addMicWidgetToManifest;
 module.exports.widgetFileContents = widgetFileContents;
+module.exports.writeWidgetFiles = writeWidgetFiles;
