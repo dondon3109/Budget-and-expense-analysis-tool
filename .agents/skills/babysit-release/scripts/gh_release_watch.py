@@ -69,6 +69,15 @@ def parse_args():
         help="Optional bare version (e.g. 2.2.2) required in the live release.json",
     )
     parser.add_argument(
+        "--expect-android-version",
+        help="Optional Android version name (e.g. 0.2.22-beta) expected in latest.json",
+    )
+    parser.add_argument(
+        "--expect-android-version-code",
+        type=int,
+        help="Optional Android versionCode (e.g. 20322) expected in latest.json",
+    )
+    parser.add_argument(
         "--poll-seconds",
         type=int,
         default=30,
@@ -122,20 +131,46 @@ def _format_gh_error(cmd, err):
     return "\n".join(parts)
 
 
-def gh_text(args, repo=None):
+_CACHED_REPO = None
+
+
+def gh_text(args, repo=None, max_attempts=3):
     cmd = ["gh"]
     # `gh api` does not accept `-R/--repo` on all gh versions. API calls use
     # explicit endpoints (repos/{owner}/{repo}/...), so the flag is unneeded.
     if repo and (not args or args[0] != "api"):
         cmd.extend(["-R", repo])
     cmd.extend(args)
-    try:
-        proc = subprocess.run(cmd, check=True, capture_output=True, text=True)
-    except FileNotFoundError as err:
-        raise GhCommandError("`gh` command not found") from err
-    except subprocess.CalledProcessError as err:
-        raise GhCommandError(_format_gh_error(cmd, err)) from err
-    return proc.stdout
+    last_err = None
+    for attempt in range(max_attempts):
+        try:
+            proc = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            return proc.stdout
+        except FileNotFoundError as err:
+            raise GhCommandError("`gh` command not found") from err
+        except subprocess.CalledProcessError as err:
+            last_err = err
+            stderr = ((err.stderr or "") + " " + (err.stdout or "")).lower()
+            transient = any(
+                phrase in stderr
+                for phrase in (
+                    "tls handshake timeout",
+                    "connection reset",
+                    "socket: bad file descriptor",
+                    "temporary failure in name resolution",
+                    "i/o timeout",
+                    "timed out",
+                    "502",
+                    "503",
+                    "504",
+                )
+            )
+            if transient and attempt + 1 < max_attempts:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            raise GhCommandError(_format_gh_error(cmd, err)) from err
+    if last_err:
+        raise GhCommandError(_format_gh_error(cmd, last_err)) from last_err
 
 
 def gh_json(args, repo=None):
@@ -149,23 +184,68 @@ def gh_json(args, repo=None):
 
 
 def resolve_repo(repo_override=None):
+    global _CACHED_REPO
     if repo_override:
         return repo_override
+    if _CACHED_REPO:
+        return _CACHED_REPO
+
+    # Prefer local git remote to avoid unnecessary network roundtrips & TLS flakes.
+    try:
+        proc = subprocess.run(
+            ["git", "config", "--get", "remote.origin.url"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        url = proc.stdout.strip()
+        match = re.search(r"github\.com[:/]([^/]+/[^/.]+?)(?:\.git)?$", url)
+        if match:
+            _CACHED_REPO = match.group(1)
+            return _CACHED_REPO
+    except Exception:
+        pass
+
     data = gh_json(["repo", "view", "--json", "nameWithOwner"])
     if not isinstance(data, dict) or not data.get("nameWithOwner"):
         raise GhCommandError("Unable to determine OWNER/REPO from `gh repo view`")
-    return str(data["nameWithOwner"])
+    _CACHED_REPO = str(data["nameWithOwner"])
+    return _CACHED_REPO
 
 
 def resolve_sha(repo, sha_spec):
     if sha_spec != "auto":
-        if not re.fullmatch(r"[0-9a-fA-F]{4,40}", sha_spec):
+        sha_clean = sha_spec.strip()
+        if not re.fullmatch(r"[0-9a-fA-F]{4,40}", sha_clean):
             raise ValueError("--sha must be 'auto' or a commit SHA")
-        return sha_spec.lower()
+        if len(sha_clean) == 40:
+            return sha_clean.lower()
+        # Expand short SHA: try local git rev-parse first
+        try:
+            proc = subprocess.run(
+                ["git", "rev-parse", "--verify", f"{sha_clean}^{{commit}}"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            full_sha = proc.stdout.strip().lower()
+            if len(full_sha) == 40 and re.fullmatch(r"[0-9a-f]{40}", full_sha):
+                return full_sha
+        except Exception:
+            pass
+        # Fallback to GitHub commits API to resolve short SHA
+        try:
+            data = gh_json(["api", f"repos/{repo}/commits/{sha_clean}"])
+            if isinstance(data, dict) and data.get("sha"):
+                return str(data["sha"]).lower()
+        except Exception:
+            pass
+        return sha_clean.lower()
+
     data = gh_json(["api", f"repos/{repo}/commits/main"])
     if not isinstance(data, dict) or not data.get("sha"):
         raise GhCommandError("Unable to determine main HEAD from the commits API")
-    return str(data["sha"])
+    return str(data["sha"]).lower()
 
 
 def load_state(path):
@@ -480,7 +560,43 @@ def guard_only_run_ids(failed_jobs):
     }
 
 
-def recommend_actions(tracks, failed_jobs, live_markers, retries_used, max_retries, expect_version=None):
+def get_repo_mobile_identity():
+    """Extract mobile version and versionCode from local repository files if present."""
+    version = None
+    version_code = None
+    pkg_path = Path("apps/mobile/package.json")
+    if pkg_path.is_file():
+        try:
+            data = json.loads(pkg_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and data.get("version"):
+                version = str(data["version"])
+        except Exception:
+            pass
+    cfg_path = Path("apps/mobile/app.config.ts")
+    if cfg_path.is_file():
+        try:
+            text = cfg_path.read_text(encoding="utf-8")
+            match = re.search(r"versionCode:\s*(\d+)", text)
+            if match:
+                version_code = int(match.group(1))
+        except Exception:
+            pass
+    if version or version_code is not None:
+        return {"version": version, "versionCode": version_code}
+    return None
+
+
+def recommend_actions(
+    tracks,
+    failed_jobs,
+    live_markers,
+    retries_used,
+    max_retries,
+    expect_version=None,
+    expect_android_version=None,
+    expect_android_version_code=None,
+    repo_mobile_identity=None,
+):
     """Decide watcher actions from one snapshot of track states.
 
     `tracks` maps track name -> latest summarized run (or None when the
@@ -551,7 +667,31 @@ def recommend_actions(tracks, failed_jobs, live_markers, retries_used, max_retri
         for track in ("android",)
     )
 
-    if release is not None and release["conclusion"] == "success" and not mobile_in_flight:
+    # Check whether an Android release is expected or pending publication
+    android_run = tracks.get("android")
+    live_android = live_markers.get("android_identity") if isinstance(live_markers, dict) else {}
+    if not isinstance(live_android, dict):
+        live_android = {}
+
+    mobile_pending_publish = False
+    if expect_android_version or expect_android_version_code:
+        if expect_android_version and live_android.get("version") != expect_android_version:
+            mobile_pending_publish = True
+        if expect_android_version_code and live_android.get("versionCode") != expect_android_version_code:
+            mobile_pending_publish = True
+    elif repo_mobile_identity:
+        repo_vc = repo_mobile_identity.get("versionCode")
+        live_vc = live_android.get("versionCode")
+        if repo_vc is not None and live_vc is not None and repo_vc > live_vc:
+            mobile_pending_publish = True
+
+    if mobile_pending_publish:
+        if android_run is None:
+            actions.append("recommend_android_dispatch")
+        elif android_run.get("terminal") and android_run.get("conclusion") == "success":
+            actions.append("verify_android_production")
+
+    if release is not None and release["conclusion"] == "success" and not mobile_in_flight and not mobile_pending_publish:
         if expect_version:
             live_version = live_markers.get("web_app_version")
             if live_version != expect_version:
@@ -600,6 +740,7 @@ def collect_snapshot(args):
 
     failed_jobs = failed_jobs_for_runs(repo, diagnosable_runs)
     live_markers = collect_live_markers()
+    repo_mobile_identity = get_repo_mobile_identity()
 
     # Unified retry budget: count rerun cycles whoever triggered them. The raw
     # run payloads carry the API's latest attempt number.
@@ -612,6 +753,9 @@ def collect_snapshot(args):
         retries_used,
         args.max_flaky_retries,
         expect_version=args.expect_version,
+        expect_android_version=getattr(args, "expect_android_version", None),
+        expect_android_version_code=getattr(args, "expect_android_version_code", None),
+        repo_mobile_identity=repo_mobile_identity,
     )
 
     state["repo"] = repo
@@ -625,6 +769,7 @@ def collect_snapshot(args):
         "tracks": tracks,
         "failed_jobs": failed_jobs,
         "live": live_markers,
+        "repo_mobile_identity": repo_mobile_identity,
         "actions": actions,
         "retry_state": {
             "current_sha_retries_used": retries_used,
@@ -772,11 +917,13 @@ STOP_ACTIONS = {
     "diagnose_android_failure",
     "check_release_source",
     "check_release_needed",
+    "recommend_android_dispatch",
 }
 
 # A single failed poll (gh rate limit, API 500, network blip) must not kill an
-# hours-long watch. Tolerate a few consecutive poll errors, then give up.
-MAX_CONSECUTIVE_POLL_ERRORS = 5
+# hours-long watch. Tolerate transient poll errors with backoff before giving up.
+MAX_CONSECUTIVE_POLL_ERRORS = 15
+KEEPALIVE_POLL_INTERVAL = 10
 
 
 def run_watch(args):
@@ -787,6 +934,8 @@ def run_watch(args):
     print_event("watch_started", {"poll_seconds": args.poll_seconds})
     last_change_key = None
     consecutive_errors = 0
+    poll_count = 0
+    start_time = time.time()
     while True:
         try:
             snapshot, state_path = collect_snapshot(args)
@@ -802,9 +951,11 @@ def run_watch(args):
             )
             if consecutive_errors >= MAX_CONSECUTIVE_POLL_ERRORS:
                 return 1
-            time.sleep(args.poll_seconds)
+            sleep_time = min(60, args.poll_seconds * (1 + (consecutive_errors // 3)))
+            time.sleep(sleep_time)
             continue
         consecutive_errors = 0
+        poll_count += 1
         # Derived per poll, not cached: --sha auto can advance mid-watch and
         # the heartbeat must follow the watched SHA, not the first one.
         heartbeat_path = heartbeat_path_for(args, state_path)
@@ -832,6 +983,16 @@ def run_watch(args):
                     "heartbeat_file": str(heartbeat_path),
                     "changed": changed,
                     "next_poll_seconds": args.poll_seconds,
+                },
+            )
+        elif poll_count % KEEPALIVE_POLL_INTERVAL == 0:
+            print_event(
+                "keepalive",
+                {
+                    "poll_count": poll_count,
+                    "elapsed_seconds": int(time.time() - start_time),
+                    "actions": snapshot.get("actions"),
+                    "tracks": snapshot.get("tracks"),
                 },
             )
         if stopping:

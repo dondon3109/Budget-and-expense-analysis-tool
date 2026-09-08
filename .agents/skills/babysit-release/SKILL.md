@@ -96,7 +96,7 @@ python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --
 
 ```bash
 python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha <main-sha> --once
-python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --expect-version 2.2.2 --watch
+python3 .agents/skills/babysit-release/scripts/gh_release_watch.py --sha auto --expect-version 2.29.1 --expect-android-version-code 20322 --watch
 ```
 
 Raw fallbacks when the watcher needs backup:
@@ -216,8 +216,10 @@ republishing over the bad object.
 3. If `check_release_needed` is present (green CI, skipped release), run `node scripts/next-semantic-release.mjs` to decide no-op vs guard trip.
 4. If `check_release_source` is present (release failed only at the `Verify release source` gate), read that step's log line: a stale-SHA trip is benign — the newer commit retriggers the pipeline on its own, so keep watching and do not rerun; a missing-baseline-tag trip needs Don.
 5. If `verify_production` is present (release success, live version lagging), keep watching; run `pnpm smoke:production` for an independent check.
-6. After any push, rerun, or re-dispatch, relaunch `--watch` yourself on wake; do not wait for Don to re-invoke the skill. A fix push is not a completion event.
-7. A live `--watch` that exits with `stop_released` confirms that the full pipeline (web tag + Worker/Pages deployment + smoke) is green.
+6. If `recommend_android_dispatch` is present (web release completed or green, but mobile has an unreleased version bump in `apps/mobile/`), the watcher cleanly exits with this stop event so the agent is immediately awakened to dispatch `Android Beta Build` (or request Don's publish approval).
+7. If `verify_android_production` is present (Android workflow completed, live `android/latest.json` lagging behind), keep watching until the CDN updates.
+8. After any push, rerun, or re-dispatch, relaunch `--watch` yourself on wake; do not wait for Don to re-invoke the skill. A fix push is not a completion event.
+9. A live `--watch` that exits with `stop_released` confirms that the full pipeline (web tag + Worker/Pages deployment + smoke, and mobile release if applicable) is green.
 
 ## Polling Cadence
 

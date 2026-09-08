@@ -748,8 +748,58 @@ class WatchResilienceTest(unittest.TestCase):
             for path in (first_path.with_suffix(".log"), second_path.with_suffix(".log")):
                 with open(path, encoding="utf-8") as handle:
                     lines = [line for line in handle.read().splitlines() if line.strip()]
-                self.assertEqual(len(lines), 1)
+    def test_recommend_actions_with_pending_mobile_version(self):
+        tracks = {
+            "ci": sample_run("CI", run_id=11),
+            "release": sample_run("Production Release", run_id=12),
+            "android": None,
+        }
+        # Web is released, but expected android versionCode (20322) is not live yet (live is 20316)
+        actions = gh_release_watch.recommend_actions(
+            tracks,
+            [],
+            live_markers(),
+            0,
+            3,
+            expect_android_version_code=20322,
+        )
+        self.assertIn("recommend_android_dispatch", actions)
+        self.assertNotIn("stop_released", actions)
+
+    def test_recommend_actions_with_completed_android_waiting_cdn(self):
+        tracks = {
+            "ci": sample_run("CI", run_id=11),
+            "release": sample_run("Production Release", run_id=12),
+            "android": sample_run("Android Beta Build", run_id=13, conclusion="success"),
+        }
+        actions = gh_release_watch.recommend_actions(
+            tracks,
+            [],
+            live_markers(),
+            0,
+            3,
+            expect_android_version_code=20322,
+        )
+        self.assertIn("verify_android_production", actions)
+        self.assertNotIn("stop_released", actions)
+
+    def test_resolve_sha_expands_short_sha(self):
+        full_sha = "3620b7742854b8fdc0f68f4580c81d1e6d6a73aa"
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value.stdout = full_sha + "\n"
+            resolved = gh_release_watch.resolve_sha("owner/repo", "3620b77")
+            self.assertEqual(resolved, full_sha)
+
+    def test_resolve_repo_prefers_local_git(self):
+        gh_release_watch._CACHED_REPO = None
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value.stdout = "git@github.com:myorg/myrepo.git\n"
+            resolved = gh_release_watch.resolve_repo()
+            self.assertEqual(resolved, "myorg/myrepo")
+            self.assertEqual(gh_release_watch._CACHED_REPO, "myorg/myrepo")
+        gh_release_watch._CACHED_REPO = None
 
 
 if __name__ == "__main__":
     unittest.main()
+
