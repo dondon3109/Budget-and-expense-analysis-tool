@@ -4,6 +4,20 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.29.2 — 2026-09-08
+
+### Fixed
+
+- Refreshed web install page metadata and direct APK links to Android Beta 0.2.22 (versionCode 20322).
+- Hardened the `babysit-release` watcher with local zero-network repo resolution, canonical 40-character SHA expansion, and mobile version code awareness.
+
+## 2.29.1 — 2026-09-08
+
+### Fixed
+
+- Resolved the Android native prebuild error in the mic widget config plugin by reading `platformProjectRoot` from `modRequest`.
+- Removed dormant Expo OTA update dependencies and workflows to avoid confusion in favor of the verified native APK updater.
+
 ## 2.29.0 — 2026-09-07
 
 ### Changed
