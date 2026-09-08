@@ -11,7 +11,7 @@ interface ButtonProps extends Omit<PressableProps, "children" | "style">, PropsW
   variant?: ButtonVariant;
   loading?: boolean;
   icon?: ComponentProps<typeof MaterialCommunityIcons>["name"];
-  size?: "default" | "large";
+  size?: "default" | "large" | "compact";
 }
 
 export function Button({
@@ -29,6 +29,7 @@ export function Button({
   const theme = useZoptionTheme();
   const [pressed, setPressed] = useState(false);
   const isDisabled = disabled || loading;
+  const isIconOnly = !children && Boolean(icon);
   const resolvedAccessibilityLabel =
     accessibilityLabel ?? (typeof children === "string" ? children : undefined);
   const palette = {
@@ -90,7 +91,8 @@ export function Button({
       }}
       style={[
         styles.base,
-        size === "large" ? styles.large : null,
+        isIconOnly ? styles.iconOnly : null,
+        size === "large" ? styles.large : size === "compact" ? styles.compact : null,
         {
           backgroundColor: isDisabled
             ? disabledPalette.background
@@ -112,18 +114,24 @@ export function Button({
           accessibilityElementsHidden
           color={isDisabled ? disabledPalette.text : palette.text}
           name={icon}
-          size={size === "large" ? 22 : 19}
+          size={size === "large" ? 22 : size === "compact" ? 18 : 19}
         />
       ) : null}
-      <Text
-        numberOfLines={2}
-        style={[
-          size === "large" ? styles.largeLabel : typography.label,
-          { color: isDisabled ? disabledPalette.text : palette.text, textAlign: "center" },
-        ]}
-      >
-        {children}
-      </Text>
+      {children ? (
+        <Text
+          numberOfLines={2}
+          style={[
+            size === "large"
+              ? styles.largeLabel
+              : size === "compact"
+                ? styles.compactLabel
+                : typography.label,
+            { color: isDisabled ? disabledPalette.text : palette.text, textAlign: "center" },
+          ]}
+        >
+          {children}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -141,6 +149,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
+  compact: {
+    minHeight: touchTarget,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+  },
+  iconOnly: {
+    width: touchTarget,
+    height: touchTarget,
+    minWidth: touchTarget,
+    minHeight: touchTarget,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    gap: 0,
+  },
   large: {
     minHeight: touchTarget + spacing.sm,
     paddingHorizontal: spacing.lg,
@@ -148,5 +170,9 @@ const styles = StyleSheet.create({
   largeLabel: {
     ...typography.callout,
     fontWeight: "600",
+  },
+  compactLabel: {
+    ...typography.label,
+    fontSize: 13,
   },
 });

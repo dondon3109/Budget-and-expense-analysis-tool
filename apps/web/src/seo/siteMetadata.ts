@@ -26,6 +26,7 @@ export type PublicRoutePath =
   | "/changelog"
   | "/guides"
   | GuideRoutePath
+  | "/tutorials"
   | "/import"
   | "/import/bdo-statement"
   | "/import/bpi-statement"
@@ -45,6 +46,7 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/changelog",
   "/guides",
   ...FINANCE_GUIDES.map((guide) => `/guides/${guide.slug}` as const),
+  "/tutorials",
   "/import",
   "/import/bdo-statement",
   "/import/bpi-statement",
@@ -326,6 +328,7 @@ const PRIVACY_LAST_MODIFIED = "2026-08-28";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-08-24";
 const IMPORT_LAST_MODIFIED = "2026-08-30";
 const TOOLS_LAST_MODIFIED = "2026-08-31";
+const TUTORIALS_LAST_MODIFIED = "2026-09-08";
 
 function pricingPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/pricing`;
@@ -587,6 +590,24 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/import/bank-of-america-statement": importGuideMetadata("/import/bank-of-america-statement"),
   "/import/jpmorgan-statement": importGuideMetadata("/import/jpmorgan-statement"),
   "/tools/50-30-20-calculator": budgetCalculatorMetadata(),
+  "/tutorials": {
+    title: "User Guides & Step-by-Step Tutorials — Zoption",
+    description:
+      "Step-by-step guides on how to adjust account balances, use envelope budgeting, scan receipts, import bank CSV statements, and track subscriptions in Zoption.",
+    canonical: `${SITE_ORIGIN}/tutorials`,
+    robots: "index,follow",
+    structuredData: contentPageStructuredData(
+      "User Guides & Step-by-Step Tutorials — Zoption",
+      "Step-by-step guides on how to adjust account balances, use envelope budgeting, scan receipts, import bank CSV statements, and track subscriptions in Zoption.",
+      `${SITE_ORIGIN}/tutorials`,
+      TUTORIALS_LAST_MODIFIED,
+    ),
+    sitemap: {
+      lastModified: TUTORIALS_LAST_MODIFIED,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+  },
 } satisfies Record<PublicRoutePath, PublicRouteMetadata>;
 
 export const SITEMAP_ENTRIES: SitemapEntry[] = PUBLIC_ROUTE_PATHS.map((path) => {
@@ -612,6 +633,7 @@ const PRIVATE_ROUTE_TITLES: Record<string, string> = {
   "/app/budgets": "Budgets — Zoption",
   "/app/subscriptions": "Subscriptions — Zoption",
   "/app/settings": "Settings — Zoption",
+  "/app/tutorials": "Tutorials & User Guides — Zoption",
   "/thank-you": "Thank You — Zoption",
 };
 

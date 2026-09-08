@@ -191,14 +191,21 @@ export function BudgetsScreen() {
       action={
         <View style={styles.headerActions}>
           <Button
+            accessibilityLabel="Share envelopes"
             disabled={!local.workspace || (view?.rows.length ?? 0) === 0}
             icon="share-variant-outline"
             onPress={() => setShareOpen(true)}
+            size="compact"
             variant="secondary"
+          />
+          <Button
+            accessibilityLabel="Add budget"
+            disabled={!local.workspace}
+            icon="plus"
+            onPress={() => openAdd()}
+            size="compact"
+            variant="primary"
           >
-            Share envelopes
-          </Button>
-          <Button disabled={!local.workspace} onPress={() => openAdd()} variant="primary">
             Add budget
           </Button>
         </View>
@@ -437,7 +444,8 @@ function ZeroBudgetsView({
               { color: theme.colors.textMuted, textAlign: "center", maxWidth: 320 },
             ]}
           >
-            Set spending targets per category to monitor expenses in real time and prevent overspending.
+            Set spending targets per category to monitor expenses in real time and prevent
+            overspending.
           </Text>
         </View>
 
@@ -501,9 +509,7 @@ function ZeroBudgetsView({
                         {emoji}
                       </Text>
                     ) : (
-                      <View
-                        style={[styles.avatarDot, { backgroundColor: category.color }]}
-                      />
+                      <View style={[styles.avatarDot, { backgroundColor: category.color }]} />
                     )}
                   </View>
 
@@ -517,18 +523,8 @@ function ZeroBudgetsView({
                     {category.name}
                   </Text>
 
-                  <View
-                    style={[
-                      styles.quickAddPill,
-                      { backgroundColor: theme.colors.brandSoft },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.quickAddPillText,
-                        { color: theme.colors.brand },
-                      ]}
-                    >
+                  <View style={[styles.quickAddPill, { backgroundColor: theme.colors.brandSoft }]}>
+                    <Text style={[styles.quickAddPillText, { color: theme.colors.brand }]}>
                       + Set limit
                     </Text>
                   </View>
@@ -559,17 +555,8 @@ function ZeroBudgetsView({
         ]}
       >
         <View style={styles.benefitRow}>
-          <View
-            style={[
-              styles.benefitIconWrap,
-              { backgroundColor: theme.colors.brandSoft },
-            ]}
-          >
-            <MaterialCommunityIcons
-              color={theme.colors.income}
-              name="target"
-              size={18}
-            />
+          <View style={[styles.benefitIconWrap, { backgroundColor: theme.colors.brandSoft }]}>
+            <MaterialCommunityIcons color={theme.colors.income} name="target" size={18} />
           </View>
           <View style={styles.benefitTextWrap}>
             <Text style={[typography.label, { color: theme.colors.text }]}>
@@ -582,17 +569,8 @@ function ZeroBudgetsView({
         </View>
 
         <View style={styles.benefitRow}>
-          <View
-            style={[
-              styles.benefitIconWrap,
-              { backgroundColor: theme.colors.warningSoft },
-            ]}
-          >
-            <MaterialCommunityIcons
-              color={theme.colors.warning}
-              name="alert-outline"
-              size={18}
-            />
+          <View style={[styles.benefitIconWrap, { backgroundColor: theme.colors.warningSoft }]}>
+            <MaterialCommunityIcons color={theme.colors.warning} name="alert-outline" size={18} />
           </View>
           <View style={styles.benefitTextWrap}>
             <Text style={[typography.label, { color: theme.colors.text }]}>
@@ -737,8 +715,7 @@ function SummaryCard({
 function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => void }) {
   const theme = useZoptionTheme();
   const emoji =
-    row.categoryIconEmoji ??
-    resolveCategoryEmoji({ name: row.categoryName, kind: "expense" });
+    row.categoryIconEmoji ?? resolveCategoryEmoji({ name: row.categoryName, kind: "expense" });
 
   return (
     <View
@@ -791,10 +768,7 @@ function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => v
             >
               {row.categoryName}
             </Text>
-            <Text
-              numberOfLines={1}
-              style={[typography.caption, { color: theme.colors.textMuted }]}
-            >
+            <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
               <MoneyValue amountMinor={row.spentMinor} tone="expense" /> of{" "}
               <MoneyValue amountMinor={row.limitMinor} />
             </Text>
@@ -815,10 +789,7 @@ function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => v
               </View>
             ) : (
               <Text
-                style={[
-                  typography.caption,
-                  { color: theme.colors.textMuted, textAlign: "right" },
-                ]}
+                style={[typography.caption, { color: theme.colors.textMuted, textAlign: "right" }]}
               >
                 {row.usedPercent}% used
               </Text>
@@ -916,7 +887,8 @@ function BudgetEditorSheet({
 }: {
   addOptions: { id: string; label: string; color?: string; detail?: string }[];
   editingBudget: BudgetMonthItem | undefined;
-  editingCategoryOption: { id: string; name: string; color: string; iconEmoji?: string | null } | undefined;
+  editingCategoryOption:
+    { id: string; name: string; color: string; iconEmoji?: string | null } | undefined;
   errors: BudgetFormErrors;
   isEditing: boolean;
   message: string | null;
@@ -1055,6 +1027,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+    flexShrink: 0,
   },
   iconButton: {
     width: touchTarget,

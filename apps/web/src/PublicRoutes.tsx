@@ -17,6 +17,7 @@ import { SharedBudgetPage } from "./pages/shared/SharedBudgetPage";
 import { ImportGuidePage } from "./pages/import/ImportGuidePage";
 import { ImportHubPage } from "./pages/import/ImportHubPage";
 import { BudgetCalculatorPage } from "./pages/tools/BudgetCalculatorPage";
+import { TutorialsPage } from "./pages/tutorials/TutorialsPage";
 import { PUBLIC_ROUTE_PATHS, type PublicRoutePath } from "./seo/siteMetadata";
 
 const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
@@ -35,6 +36,7 @@ const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
       <GuideDetailPage slug={guide.slug} key={guide.slug} />,
     ]),
   ),
+  "/tutorials": <TutorialsPage />,
   "/import": <ImportHubPage />,
   "/import/bdo-statement": <ImportGuidePage />,
   "/import/bpi-statement": <ImportGuidePage />,

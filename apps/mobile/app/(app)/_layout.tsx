@@ -259,6 +259,14 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
           }}
         />
         <Stack.Screen
+          name="tutorials"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+            title: "Tutorials & Guides",
+          }}
+        />
+        <Stack.Screen
           name="widget-intent"
           options={{
             headerShown: true,

@@ -120,11 +120,7 @@ export default function MoreScreen() {
   }, [sync]);
 
   return (
-    <Screen
-      onRefresh={handleRefresh}
-      refreshing={sync.status === "syncing"}
-      title="More"
-    >
+    <Screen onRefresh={handleRefresh} refreshing={sync.status === "syncing"} title="More">
       <Card
         accessibilityLabel="AI Financial Assistant"
         style={[
@@ -242,6 +238,13 @@ export default function MoreScreen() {
           />
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
           <MenuItem
+            icon="book-open-page-variant-outline"
+            title="Tutorials & guides"
+            subtitle="Walkthroughs for budgeting, adjustments, and more"
+            onPress={() => router.push("/(app)/tutorials")}
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <MenuItem
             icon="account-cog-outline"
             title="Account"
             subtitle="Identity, email, and deletion options"
@@ -299,10 +302,16 @@ export default function MoreScreen() {
               accessibilityElementsHidden
               style={[styles.securityIconBox, { backgroundColor: theme.colors.brandSoft }]}
             >
-              <MaterialCommunityIcons name="shield-lock-outline" size={20} color={theme.colors.brand} />
+              <MaterialCommunityIcons
+                name="shield-lock-outline"
+                size={20}
+                color={theme.colors.brand}
+              />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[typography.headline, { color: theme.colors.text }]}>Local data encrypted</Text>
+              <Text style={[typography.headline, { color: theme.colors.text }]}>
+                Local data encrypted
+              </Text>
               <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                 SQLCipher database · Schema version {local.workspace?.schemaVersion ?? "ready"}
               </Text>

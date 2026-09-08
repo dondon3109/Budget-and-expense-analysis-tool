@@ -18,6 +18,7 @@ import {
   PiggyBank,
   Plus,
   Receipt,
+  SlidersHorizontal,
   Trash2,
   WalletCards,
   X,
@@ -27,12 +28,14 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { useBillingSummary } from "../hooks/useBillingSummary";
+import { AdjustBalanceModal } from "../components/account/AdjustBalanceModal";
 import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
 import { OverviewStatBar, type OverviewStatItem } from "../components/dashboard/OverviewStatBar";
+import { QuickStartTutorial } from "../components/dashboard/QuickStartTutorial";
 import { useInitialDashboardExperience } from "../components/dashboard/InitialDashboardExperienceProvider";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
@@ -151,6 +154,7 @@ export function DashboardPage() {
   const [interestFrequency, setInterestFrequency] = useState<InterestFrequency>("monthly");
   const [interestPayDay, setInterestPayDay] = useState(15);
   const [removingAccount, setRemovingAccount] = useState<AccountBalanceSummaryItem>();
+  const [adjustingAccount, setAdjustingAccount] = useState<AccountBalanceSummaryItem>();
   const [cashflowView, setCashflowView] = useState<CashflowTrendView>("weekly");
   const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
@@ -649,6 +653,10 @@ export function DashboardPage() {
           </div>
         </header>
 
+        <QuickStartTutorial
+          onAdjustBalance={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
+        />
+
         {accountBalances && (
           <section className="dashboard-balance" aria-labelledby="dashboard-balance-title">
             <div className="dashboard-balance-total">
@@ -679,15 +687,27 @@ export function DashboardPage() {
             <section className="dashboard-account-breakdown" aria-label="Account management">
               <div className="dashboard-account-breakdown-heading">
                 <span>Account balances</span>
-                <button
-                  className="dashboard-account-add"
-                  type="button"
-                  onClick={() => setIsAddingAccount((isAdding) => !isAdding)}
-                  aria-expanded={isAddingAccount}
-                  aria-controls="add-account-form"
-                >
-                  <Plus size={14} aria-hidden="true" /> {isAddingAccount ? "Close" : "Add account"}
-                </button>
+                <div className="dashboard-account-heading-actions">
+                  <button
+                    className="dashboard-account-adjust-quick"
+                    type="button"
+                    onClick={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
+                    disabled={activeAccounts.length === 0}
+                    title="Adjust balance to match your real cash or bank amount"
+                  >
+                    <SlidersHorizontal size={14} aria-hidden="true" /> Adjust balance
+                  </button>
+                  <button
+                    className="dashboard-account-add"
+                    type="button"
+                    onClick={() => setIsAddingAccount((isAdding) => !isAdding)}
+                    aria-expanded={isAddingAccount}
+                    aria-controls="add-account-form"
+                  >
+                    <Plus size={14} aria-hidden="true" />{" "}
+                    {isAddingAccount ? "Close" : "Add account"}
+                  </button>
+                </div>
               </div>
               {isAddingAccount && (
                 <form
@@ -757,8 +777,16 @@ export function DashboardPage() {
                         </span>
                       </div>
                       <div className="dashboard-account-value">
-                        {canEdit && (
-                          <span className="dashboard-account-actions">
+                        <span className="dashboard-account-actions">
+                          <button
+                            type="button"
+                            onClick={() => setAdjustingAccount(account)}
+                            aria-label={`Adjust balance for ${account.name}`}
+                            title={`Adjust balance for ${account.name}`}
+                          >
+                            <SlidersHorizontal size={14} aria-hidden="true" />
+                          </button>
+                          {canEdit && (
                             <button
                               type="button"
                               onClick={() => {
@@ -781,20 +809,20 @@ export function DashboardPage() {
                             >
                               <Pencil size={14} aria-hidden="true" />
                             </button>
-                            {canRemove && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  removeAccountMutation.reset();
-                                  setRemovingAccount(account);
-                                }}
-                                aria-label={`Remove ${account.name}`}
-                              >
-                                <Trash2 size={14} aria-hidden="true" />
-                              </button>
-                            )}
-                          </span>
-                        )}
+                          )}
+                          {canRemove && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                removeAccountMutation.reset();
+                                setRemovingAccount(account);
+                              }}
+                              aria-label={`Remove ${account.name}`}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                            </button>
+                          )}
+                        </span>
                         <span className="dashboard-account-balances">
                           <strong>{formatMoney(account.balancesByCurrency.PHP, "PHP")}</strong>
                           {account.balancesByCurrency.USD !== 0 && (
@@ -1010,6 +1038,20 @@ export function DashboardPage() {
                       {updateAccountMutation.error.message}
                     </p>
                   )}
+                <div className="edit-account-adjust-prompt">
+                  <span>Looking to adjust the current balance?</span>
+                  <button
+                    type="button"
+                    className="button secondary compact-action"
+                    onClick={() => {
+                      const target = editingAccount;
+                      setEditingAccount(undefined);
+                      setAdjustingAccount(target);
+                    }}
+                  >
+                    <SlidersHorizontal size={14} aria-hidden="true" /> Adjust balance
+                  </button>
+                </div>
                 <div className="modal-actions">
                   <button
                     className="button secondary"
@@ -1072,6 +1114,15 @@ export function DashboardPage() {
               </div>
             </section>
           </div>
+        )}
+
+        {adjustingAccount && (
+          <AdjustBalanceModal
+            account={adjustingAccount}
+            accounts={activeAccounts}
+            onSelectAccount={(acc) => setAdjustingAccount(acc as AccountBalanceSummaryItem)}
+            onClose={() => setAdjustingAccount(undefined)}
+          />
         )}
 
         {empty ? (

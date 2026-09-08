@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-na
 import { usePlan } from "@/auth/plan-state";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard";
+import { QuickStartGuideCard } from "@/features/dashboard/QuickStartGuideCard";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { buildDashboardView, localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
@@ -150,16 +151,36 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
     <Card accessibilityLabel="Account balances">
       <View style={styles.cardHeaderRow}>
         <SectionLabel>Total Balance</SectionLabel>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Manage accounts"
-          onPress={() => router.push("/(app)/money-setup")}
-          hitSlop={8}
-        >
-          <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
-            Accounts
-          </Text>
-        </Pressable>
+        <View className="flex-row items-center gap-3">
+          {balances && balances.items.length > 0 && balances.items[0] ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Adjust balance"
+              accessibilityHint="Opens balance adjustment for your accounts"
+              onPress={() => {
+                const targetId = balances.items[0]?.id;
+                if (targetId) {
+                  router.push(`/(app)/reference?entityType=account&id=${targetId}`);
+                }
+              }}
+              hitSlop={8}
+            >
+              <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+                Adjust balance
+              </Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Manage accounts"
+            onPress={() => router.push("/(app)/money-setup")}
+            hitSlop={8}
+          >
+            <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+              Accounts
+            </Text>
+          </Pressable>
+        </View>
       </View>
       <View style={styles.balanceHeroRow}>
         <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} style={styles.heroMoney} />
@@ -200,7 +221,15 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
       {balances && balances.items.length > 0 ? (
         <View style={{ gap: spacing.xs, marginTop: spacing.xxs }}>
           {balances.items.map((account) => (
-            <View key={account.id} style={styles.accountRow}>
+            <Pressable
+              key={account.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${account.name}, balance ${account.balanceMinor / 100} ${account.currency}. Tap to adjust balance or edit.`}
+              accessibilityHint="Opens account editor to adjust balance"
+              android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+              onPress={() => router.push(`/(app)/reference?entityType=account&id=${account.id}`)}
+              style={({ pressed }) => [styles.accountRow, { opacity: pressed ? 0.75 : 1 }]}
+            >
               <View style={styles.accountLeading}>
                 <View
                   accessibilityElementsHidden
@@ -225,15 +254,30 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
                       { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
                     ]}
                   >
-                    <Text style={[typography.caption, { color: theme.colors.textMuted, fontSize: 10 }]}>
+                    <Text
+                      style={[typography.caption, { color: theme.colors.textMuted, fontSize: 10 }]}
+                    >
                       USD
                     </Text>
                   </View>
                 ) : null}
               </View>
-              <MoneyValue amountMinor={account.balanceMinor} currency={account.currency} />
-            </View>
+              <View className="flex-row items-center gap-1">
+                <MoneyValue amountMinor={account.balanceMinor} currency={account.currency} />
+                <MaterialCommunityIcons
+                  accessibilityElementsHidden
+                  color={theme.colors.textMuted}
+                  name="chevron-right"
+                  size={16}
+                />
+              </View>
+            </Pressable>
           ))}
+          <Text
+            style={[typography.caption, { color: theme.colors.textMuted, marginTop: spacing.xxs }]}
+          >
+            Tap any account above to adjust its balance or view details.
+          </Text>
         </View>
       ) : null}
     </Card>
@@ -273,7 +317,11 @@ function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
             </View>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Money in</Text>
           </View>
-          <MoneyValue amountMinor={metrics.moneyInMinor} tone="income" style={typography.headline} />
+          <MoneyValue
+            amountMinor={metrics.moneyInMinor}
+            tone="income"
+            style={typography.headline}
+          />
         </View>
 
         {/* Money out */}
@@ -296,7 +344,11 @@ function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
             </View>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Money out</Text>
           </View>
-          <MoneyValue amountMinor={-metrics.moneyOutMinor} tone="expense" style={typography.headline} />
+          <MoneyValue
+            amountMinor={-metrics.moneyOutMinor}
+            tone="expense"
+            style={typography.headline}
+          />
         </View>
 
         {/* Net flow */}
@@ -340,7 +392,9 @@ function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
                 color={theme.colors.brand}
               />
             </View>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Savings rate</Text>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Savings rate
+            </Text>
           </View>
           <Text style={[typography.headline, { color: theme.colors.text, fontWeight: "700" }]}>
             {insights.savingsRatePercent === null ? "—" : `${insights.savingsRatePercent}%`}
@@ -689,11 +743,7 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
             { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
           ]}
         >
-          <MaterialCommunityIcons
-            name="cloud-sync-outline"
-            size={34}
-            color={theme.colors.brand}
-          />
+          <MaterialCommunityIcons name="cloud-sync-outline" size={34} color={theme.colors.brand} />
         </View>
         <Text
           accessibilityRole="header"
@@ -701,9 +751,7 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
         >
           Checking your workspace…
         </Text>
-        <Text
-          style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}
-        >
+        <Text style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}>
           Synchronizing your encrypted financial workspace records.
         </Text>
       </View>
@@ -719,11 +767,7 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
           { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
         ]}
       >
-        <MaterialCommunityIcons
-          name="wallet-plus-outline"
-          size={36}
-          color={theme.colors.brand}
-        />
+        <MaterialCommunityIcons name="wallet-plus-outline" size={36} color={theme.colors.brand} />
       </View>
       <Text
         accessibilityRole="header"
@@ -731,10 +775,9 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
       >
         Welcome to your workspace
       </Text>
-      <Text
-        style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}
-      >
-        Take control of your money with offline-first tracking, smart receipt scans, and category budgeting.
+      <Text style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}>
+        Take control of your money with offline-first tracking, smart receipt scans, and category
+        budgeting.
       </Text>
 
       <View style={styles.firstRunImport}>
@@ -744,8 +787,11 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
         >
           Import a bank statement
         </Button>
-        <Text style={[typography.caption, styles.emptyDescription, { color: theme.colors.textMuted }]}>
-          Fastest start: pick a CSV or Excel file, map the columns, and review before anything saves.
+        <Text
+          style={[typography.caption, styles.emptyDescription, { color: theme.colors.textMuted }]}
+        >
+          Fastest start: pick a CSV or Excel file, map the columns, and review before anything
+          saves.
         </Text>
       </View>
 
@@ -853,9 +899,9 @@ export default function HomeScreen() {
   );
   const hasTransactions = Boolean(
     view &&
-      (view.summary.monthlyTrend.length > 0 ||
-        (dashboard.data?.transactions.length ?? 0) > 0 ||
-        (dashboard.data?.accounts.length ?? 0) > 0),
+    (view.summary.monthlyTrend.length > 0 ||
+      (dashboard.data?.transactions.length ?? 0) > 0 ||
+      (dashboard.data?.accounts.length ?? 0) > 0),
   );
   const isPro = planState.plan === "zoption_pro";
 
@@ -891,6 +937,7 @@ export default function HomeScreen() {
       ) : (
         <View style={{ gap: spacing.md }}>
           <QuickActionBar />
+          <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (
             <>
               <BalanceCard summary={view.summary} />

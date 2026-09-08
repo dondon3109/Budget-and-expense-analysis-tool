@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   CalendarDays,
   CircleUserRound,
   FileUp,
@@ -61,8 +62,10 @@ export function AppShell({ children }: AppShellProps) {
       : "";
   const avatarPath = avatarPathFromMetadata(user?.user_metadata);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [navCollapsed, setNavCollapsed] = useState(
-    () => (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("zoption:nav-collapsed") === "1" : false),
+  const [navCollapsed, setNavCollapsed] = useState(() =>
+    typeof window !== "undefined" && window.localStorage
+      ? window.localStorage.getItem("zoption:nav-collapsed") === "1"
+      : false,
   );
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
@@ -213,6 +216,15 @@ export function AppShell({ children }: AppShellProps) {
         </nav>
 
         <div className="sidebar-account">
+          <NavLink
+            to="/app/tutorials"
+            className={({ isActive }) =>
+              isActive ? "sidebar-account-action current" : "sidebar-account-action"
+            }
+            onClick={() => setMenuOpen(false)}
+          >
+            <BookOpen size={15} aria-hidden="true" /> <span>Tutorials & guide</span>
+          </NavLink>
           <NavLink
             to="/app/settings"
             className={({ isActive }) =>

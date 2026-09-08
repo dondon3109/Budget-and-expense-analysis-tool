@@ -4,6 +4,16 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Added dedicated Tutorials & Guides page across web (`/app/tutorials`, `/tutorials`) and mobile (`/(app)/tutorials`) with step-by-step guides, search, and action shortcuts.
+- Added interactive Quick Start onboarding cards on web and mobile dashboards covering balance setup, envelope budgeting, transaction entry, and tutorials.
+- Added prominent "Adjust balance" actions across dashboard account breakdowns, individual account rows, and mobile balance cards with live delta calculation and one-click undo.
+
+### Fixed
+
+- Refactored mobile Budgets screen action buttons ("Share Envelopes" and "Add budget") to wrap responsively on compact screen widths without overflowing.
+
 ## 2.29.2 — 2026-09-08
 
 ### Fixed

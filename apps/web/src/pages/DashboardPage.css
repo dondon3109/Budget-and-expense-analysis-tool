@@ -1037,6 +1037,50 @@
   transform: translateY(-1px);
 }
 
+.dashboard-account-heading-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-account-adjust-quick {
+  min-height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--action);
+  border: 1px solid var(--subtle-border, #e5e7eb);
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.dashboard-account-adjust-quick:hover {
+  background: var(--action-soft);
+  transform: translateY(-1px);
+}
+
+.edit-account-adjust-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0.875rem 1rem;
+  margin-top: 1rem;
+  background-color: var(--surface-muted, #f9fafb);
+  border: 1px solid var(--subtle-border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
 .dashboard-account-form {
   margin-top: 16px;
   padding: 18px;
@@ -1171,7 +1215,7 @@
   background: var(--action-soft);
 }
 
-.dashboard-account-actions button:last-child:hover {
+.dashboard-account-actions button[aria-label^="Remove"]:hover {
   color: var(--danger);
   background: var(--danger-soft);
 }

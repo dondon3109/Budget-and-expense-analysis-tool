@@ -27,6 +27,7 @@ export function LegalFooter() {
         </a>
         <Link to="/pricing">Pricing</Link>
         <Link to="/guides">Guides</Link>
+        <Link to="/tutorials">Tutorials</Link>
         <Link to="/faq">FAQ</Link>
         <Link to="/install">Android Beta</Link>
         <Link to="/changelog">Changelog</Link>

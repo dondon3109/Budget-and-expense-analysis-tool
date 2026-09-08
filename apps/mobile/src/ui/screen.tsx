@@ -1,4 +1,10 @@
-import { useCallback, useState, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
+import {
+  useCallback,
+  useState,
+  type PropsWithChildren,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -126,8 +132,8 @@ const styles = StyleSheet.create({
   headingRowWithDescription: {
     alignItems: "flex-start",
   },
-  // The title keeps its width on a single line; the action (sync status,
-  // add button) is the one allowed to compress when the row is tight.
-  titleBlock: { flexGrow: 1, flexShrink: 0, minWidth: 0 },
-  actionBlock: { flexShrink: 1, minWidth: 0 },
+  // The title and description adapt to available width while preserving space
+  // for the action controls on the right.
+  titleBlock: { flex: 1, minWidth: 0 },
+  actionBlock: { flexShrink: 0 },
 });

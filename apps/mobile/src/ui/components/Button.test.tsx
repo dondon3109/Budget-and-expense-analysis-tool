@@ -34,4 +34,37 @@ describe("Button", () => {
       minHeight: touchTarget + spacing.sm,
     });
   });
+
+  it("renders a compact button with reduced padding and accessible touch target", async () => {
+    await render(
+      <Button icon="plus" size="compact">
+        Add item
+      </Button>,
+    );
+
+    const button = screen.getByRole("button", { name: "Add item" });
+    expect(button).toHaveStyle({
+      minHeight: touchTarget,
+      paddingHorizontal: spacing.sm + 2,
+    });
+  });
+
+  it("renders an icon-only square button when children are omitted", async () => {
+    await render(
+      <Button
+        accessibilityLabel="Share envelopes"
+        icon="share-variant-outline"
+        variant="secondary"
+      />,
+    );
+
+    const button = screen.getByRole("button", { name: "Share envelopes" });
+    expect(button).toHaveStyle({
+      width: touchTarget,
+      height: touchTarget,
+      paddingHorizontal: 0,
+      paddingVertical: 0,
+    });
+    expect(screen.queryByText("Share envelopes")).toBeNull();
+  });
 });

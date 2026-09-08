@@ -180,4 +180,45 @@ describe("BudgetsScreen", () => {
 
     expect(screen.getByText("This month")).toBeTruthy();
   });
+
+  it("renders compact accessible header actions", async () => {
+    jest.mocked(useBudgetMonth).mockReturnValue({
+      data: {
+        budgets: [
+          {
+            id: "budget-1",
+            categoryId: "cat-1",
+            categoryName: "Dining",
+            categoryColor: "#FF5722",
+            limitMinor: 50_000,
+            spentMinor: 20_000,
+            syncState: "synced",
+          },
+        ],
+        categories: [
+          {
+            id: "cat-1",
+            name: "Dining",
+            kind: "expense",
+            color: "#FF5722",
+            iconEmoji: "🍔",
+            pending: false,
+          },
+        ],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<BudgetsScreen />);
+
+    const shareButton = screen.getByRole("button", { name: "Share envelopes" });
+    const addButton = screen.getByRole("button", { name: "Add budget" });
+
+    expect(shareButton).toBeTruthy();
+    expect(addButton).toBeTruthy();
+
+    expect(screen.queryByText("Share envelopes")).toBeNull();
+    expect(screen.getByText("Add budget")).toBeTruthy();
+  });
 });

@@ -1,0 +1,197 @@
+.quick-start-tutorial-card {
+  margin-bottom: 1.5rem;
+  background-color: var(--surface-raised, #ffffff);
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+}
+
+.quick-start-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.quick-start-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.quick-start-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--brand-dark, #065f46);
+  background-color: var(--brand-subtle, #ecfdf5);
+  border: 1px solid var(--brand-border, #a7f3d0);
+  border-radius: 9999px;
+  padding: 0.2rem 0.6rem;
+  width: fit-content;
+}
+
+.quick-start-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.quick-start-header p {
+  font-size: 0.875rem;
+  color: var(--text-muted, #4b5563);
+  margin: 0;
+}
+
+.quick-start-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.quick-start-content {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.quick-start-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.quick-start-step {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-muted, #f9fafb);
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+  padding: 1rem;
+  position: relative;
+}
+
+.quick-start-step-num {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: var(--brand-subtle, #ecfdf5);
+  color: var(--brand-dark, #065f46);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick-start-step-details {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.quick-start-step-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-right: 1.5rem;
+}
+
+.quick-start-step-icon {
+  color: var(--brand-primary, #0f766e);
+  flex-shrink: 0;
+}
+
+.quick-start-step-details h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.quick-start-step-details p {
+  font-size: 0.8125rem;
+  color: var(--text-muted, #4b5563);
+  line-height: 1.45;
+  margin: 0 0 1rem 0;
+  flex-grow: 1;
+}
+
+.compact-action {
+  font-size: 0.8125rem;
+  padding: 0.4rem 0.75rem;
+  align-self: flex-start;
+  text-decoration: none;
+  text-align: center;
+}
+
+.quick-start-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.quick-start-all-link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--brand-primary, #0f766e);
+  text-decoration: none;
+}
+
+.quick-start-all-link:hover {
+  text-decoration: underline;
+}
+
+.quick-start-reopen {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.625rem 1rem;
+  background-color: var(--surface-muted, #f3f4f6);
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+}
+
+.quick-start-reopen-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--brand-dark, #065f46);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.quick-start-reopen-button:hover {
+  text-decoration: underline;
+}
+
+.quick-start-reopen-link {
+  font-size: 0.8125rem;
+  color: var(--text-muted, #6b7280);
+  text-decoration: none;
+}
+
+.quick-start-reopen-link:hover {
+  color: var(--brand-primary, #0f766e);
+  text-decoration: underline;
+}

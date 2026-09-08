@@ -171,7 +171,7 @@ export function MoneySetupScreen() {
   return (
     <Screen
       title="Accounts & categories"
-      description="Changes save to encrypted storage first and synchronize when Zoption is reachable."
+      description="Changes save to encrypted storage first and synchronize when reachable. Tap any account to edit details or adjust its current balance."
     >
       <Stack.Screen options={{ title: "Money setup" }} />
       {references.error ? (
@@ -203,7 +203,7 @@ export function MoneySetupScreen() {
                     ) : null}
                     <SetupRow
                       title={account.name}
-                      detail={`${accountTypeLabel[account.type]} · ${account.currency}${account.system ? " · Permanent" : ""}`}
+                      detail={`${accountTypeLabel[account.type]} · ${account.currency}${account.system ? " · Permanent" : ""} · Edit or adjust balance`}
                       state={account.syncState}
                       icon={accountTypeIcon[account.type]}
                       onPress={() =>
