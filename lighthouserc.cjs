@@ -17,7 +17,7 @@ module.exports = {
       chromePath: chromium.executablePath(),
       settings: {
         preset: "desktop",
-        chromeFlags: "--no-sandbox",
+        chromeFlags: "--no-sandbox --disable-dev-shm-usage --disable-gpu",
         onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
       },
     },

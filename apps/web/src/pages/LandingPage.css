@@ -847,6 +847,19 @@
 /* ============================================================
    Zero-Typing Financial Input Spotlight Section
    ============================================================ */
+.spotlight-section,
+.facet-modules,
+.calculator-section,
+.comparison-section,
+.install-promo,
+.formats-band,
+.approach,
+.customer-reviews,
+.faq {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}
+
 .spotlight-section {
   width: min(1160px, calc(100% - 48px));
   margin: 0 auto;
