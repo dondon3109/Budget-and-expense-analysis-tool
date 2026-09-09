@@ -24,6 +24,7 @@ vi.mock("../src/components/legal/LegalFooter", () => ({
   LegalFooter: () => <footer data-testid="legal-footer" />,
 }));
 
+import { AppTutorialsPage } from "../src/pages/tutorials/AppTutorialsPage";
 import { TutorialsPage } from "../src/pages/tutorials/TutorialsPage";
 
 describe("TutorialsPage", () => {
@@ -98,5 +99,16 @@ describe("TutorialsPage", () => {
     expect(screen.getByTestId("legal-footer")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "How to Use Zoption" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Get Started Free" })).toBeInTheDocument();
+  });
+
+  it("renders inside AppShell for AppTutorialsPage", () => {
+    render(
+      <MemoryRouter initialEntries={["/app/tutorials"]}>
+        <AppTutorialsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("app-shell")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "How to Use Zoption" })).toBeInTheDocument();
   });
 });

@@ -15,7 +15,6 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useOptionalAuth } from "../../auth/AuthProvider";
-import { AppShell } from "../../components/layout/AppShell";
 import { LegalFooter } from "../../components/legal/LegalFooter";
 import "./TutorialsPage.css";
 
@@ -210,7 +209,7 @@ const TUTORIALS_DATA: TutorialSection[] = [
   },
 ];
 
-export function TutorialsPage() {
+export function TutorialsPage({ inAppShell = false }: { inAppShell?: boolean } = {}) {
   const auth = useOptionalAuth();
   const user = auth?.user ?? null;
   const [searchQuery, setSearchQuery] = useState("");
@@ -374,8 +373,8 @@ export function TutorialsPage() {
     </div>
   );
 
-  if (user) {
-    return <AppShell>{content}</AppShell>;
+  if (inAppShell) {
+    return content;
   }
 
   return (
