@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.30.0 — 2026-09-09
+
 ### Added
 
 - Added dedicated Tutorials & Guides page across web (`/app/tutorials`, `/tutorials`) and mobile (`/(app)/tutorials`) with step-by-step guides, search, and action shortcuts.
