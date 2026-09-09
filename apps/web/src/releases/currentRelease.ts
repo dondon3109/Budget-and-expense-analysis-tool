@@ -11,32 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 7, 2026",
+  releasedOn: "September 9, 2026",
   changes: [
     {
-      title: "Fast-path voice transaction entry",
+      title: "Interactive user guides and tutorials page",
       description:
-        "Draft transactions directly from live speech with automatic silence detection, live transcript captions, and intelligent category matching across web and mobile.",
+        "Step-by-step walkthroughs to help you master envelope budgeting, balance adjustments, receipt scanning, and financial planning across web and mobile.",
     },
     {
-      title: "Smart SMS notification quick-paste",
+      title: "Interactive Quick Start onboarding guides",
       description:
-        "Paste bank and wallet SMS alerts to auto-detect amounts, dates, accounts, and categories with duplicate transaction warnings and drawer review before saving.",
+        "Interactive onboarding cards guide you through balance setup, envelope budgeting, and first transaction entry directly from your dashboard.",
     },
     {
-      title: "Native Android home-screen mic widget",
+      title: "One-click account balance adjustments",
       description:
-        "Tap to talk right from your home screen without opening the app, featuring voice expense capture, balance reconciliation, and one-click balance adjustments.",
+        "Keep accounts in exact sync with your real-world balances directly from dashboard account cards and mobile wallets with live delta calculation.",
     },
     {
-      title: "Day-1 CSV import and offline privacy mode",
+      title: "Responsive budget controls on compact screens",
       description:
-        "Import your transaction history in 3 simple steps directly on mobile, with offline transcript queuing and in-flight no-store privacy guarantees.",
+        "Actions like Share Envelopes and Add Budget now wrap cleanly on compact screens without clipping or horizontal scrolling.",
     },
     {
-      title: "Android Beta 0.2.22",
+      title: "Android Beta 0.2.23",
       description:
-        "The official Android Beta includes the native home-screen mic widget, day-1 CSV import, offline voice draft queuing, and fast-path transaction transcription.",
+        "The official Android Beta includes the Tutorials screen, dashboard quick start guides, responsive budget screen actions, and one-click balance adjust shortcuts.",
     },
   ],
 };
@@ -48,6 +48,37 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.29.0",
+    releasedOn: "September 7, 2026",
+    changes: [
+      {
+        title: "Fast-path voice transaction entry",
+        description:
+          "Draft transactions directly from live speech with automatic silence detection, live transcript captions, and intelligent category matching across web and mobile.",
+      },
+      {
+        title: "Smart SMS notification quick-paste",
+        description:
+          "Paste bank and wallet SMS alerts to auto-detect amounts, dates, accounts, and categories with duplicate transaction warnings and drawer review before saving.",
+      },
+      {
+        title: "Native Android home-screen mic widget",
+        description:
+          "Tap to talk right from your home screen without opening the app, featuring voice expense capture, balance reconciliation, and one-click balance adjustments.",
+      },
+      {
+        title: "Day-1 CSV import and offline privacy mode",
+        description:
+          "Import your transaction history in 3 simple steps directly on mobile, with offline transcript queuing and in-flight no-store privacy guarantees.",
+      },
+      {
+        title: "Android Beta 0.2.22",
+        description:
+          "The official Android Beta includes the native home-screen mic widget, day-1 CSV import, offline voice draft queuing, and fast-path transaction transcription.",
+      },
+    ],
+  },
   {
     version: "2.27.0",
     releasedOn: "September 6, 2026",

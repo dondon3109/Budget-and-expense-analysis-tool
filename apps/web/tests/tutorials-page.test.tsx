@@ -5,10 +5,13 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mockUseOptionalAuth = vi.fn();
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { id: "user-1", email: "user@example.com" } }),
+  useOptionalAuth: () => mockUseOptionalAuth(),
 }));
 
 vi.mock("../src/components/layout/AppShell", () => ({
@@ -24,6 +27,10 @@ vi.mock("../src/components/legal/LegalFooter", () => ({
 import { TutorialsPage } from "../src/pages/tutorials/TutorialsPage";
 
 describe("TutorialsPage", () => {
+  beforeEach(() => {
+    mockUseOptionalAuth.mockReturnValue({ user: { id: "user-1", email: "user@example.com" } });
+  });
+
   afterEach(cleanup);
 
   function renderPage() {
@@ -76,5 +83,20 @@ describe("TutorialsPage", () => {
     expect(
       screen.queryByRole("heading", { name: "Tracking Subscriptions & Recurring Bills" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders in public layout when signed out", () => {
+    mockUseOptionalAuth.mockReturnValue(null);
+
+    render(
+      <MemoryRouter initialEntries={["/tutorials"]}>
+        <TutorialsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: /Back to Zoption Home/i })).toBeInTheDocument();
+    expect(screen.getByTestId("legal-footer")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "How to Use Zoption" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Get Started Free" })).toBeInTheDocument();
   });
 });

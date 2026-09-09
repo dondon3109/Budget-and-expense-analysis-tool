@@ -13,6 +13,9 @@ All notable product changes are documented here.
 ### Fixed
 
 - Refactored mobile Budgets screen action buttons ("Share Envelopes" and "Add budget") to wrap responsively on compact screen widths without overflowing.
+- Supported public prerendering for the tutorials page without throwing on unauthenticated contexts.
+- Overrode `js-yaml` dependencies to patched versions (3.15.2 and 4.3.2) resolving high-severity advisory GHSA-2883-xcg3-v3hh.
+- Prepared Android Beta 0.2.23 (versionCode 20323) mobile release and refreshed in-app patch notes.
 
 ## 2.29.2 — 2026-09-08
 

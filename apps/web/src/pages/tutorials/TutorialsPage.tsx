@@ -14,7 +14,7 @@ import {
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { useAuth } from "../../auth/AuthProvider";
+import { useOptionalAuth } from "../../auth/AuthProvider";
 import { AppShell } from "../../components/layout/AppShell";
 import { LegalFooter } from "../../components/legal/LegalFooter";
 import "./TutorialsPage.css";
@@ -211,7 +211,8 @@ const TUTORIALS_DATA: TutorialSection[] = [
 ];
 
 export function TutorialsPage() {
-  const { user } = useAuth();
+  const auth = useOptionalAuth();
+  const user = auth?.user ?? null;
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("All");
 
