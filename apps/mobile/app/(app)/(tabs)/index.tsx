@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-na
 import { usePlan } from "@/auth/plan-state";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard";
+import { SafeToSpendHero } from "@/features/dashboard/SafeToSpendHero";
 import { QuickStartGuideCard } from "@/features/dashboard/QuickStartGuideCard";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { buildDashboardView, localIsoDate } from "@/features/dashboard/dashboard-view";
@@ -188,7 +189,7 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
           style={[
             styles.netChangePill,
             {
-              backgroundColor: isNetPositive ? theme.colors.brandSoft : theme.colors.dangerSoft,
+              backgroundColor: isNetPositive ? theme.colors.brandSoft : theme.colors.canvasMuted,
             },
           ]}
         >
@@ -940,6 +941,21 @@ export default function HomeScreen() {
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (
             <>
+              <SafeToSpendHero
+                startingBalanceMinor={view.accountBalances.overallBalanceMinor}
+                subscriptions={subscriptions.subscriptions.filter((sub) => sub.status === "active")}
+                remainingBudgetMinor={
+                  view.summary.budgetProgress.length > 0
+                    ? Math.max(
+                        0,
+                        view.summary.budgetProgress.reduce(
+                          (sum, item) => sum + item.remainingMinor,
+                          0,
+                        ),
+                      )
+                    : undefined
+                }
+              />
               <BalanceCard summary={view.summary} />
               <MonthSummaryCard summary={view.summary} />
               <SpendingByCategory summary={view.summary} />
