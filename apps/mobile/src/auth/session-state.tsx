@@ -38,7 +38,7 @@ export interface SessionSnapshot {
   subject: string | null;
 }
 
-interface SessionContextValue extends SessionSnapshot {
+export interface SessionContextValue extends SessionSnapshot {
   configured: boolean;
   getAccessToken: (refresh: boolean) => Promise<string>;
   signInWithPassword: (email: string, password: string) => Promise<void>;

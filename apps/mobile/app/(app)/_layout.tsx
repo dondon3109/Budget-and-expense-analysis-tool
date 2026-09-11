@@ -12,6 +12,25 @@ import { typography } from "@/ui/tokens";
 export default function AuthenticatedLayout() {
   const session = useSessionSnapshot();
   const identity = useWorkerIdentity();
+  const theme = useZoptionTheme();
+  // Hold the route while the stored session is still being restored. A deep
+  // link that opens the app cold arrives before the restore settles, and
+  // redirecting here would discard that route and its params: the home-screen
+  // mic widget's widget-intent link lost its transcript and payload that way.
+  // Only a resolved signed-out session redirects. Same rule as app/index.tsx.
+  if (session.status === "loading") {
+    return (
+      <View className="flex-1 items-center justify-center gap-3 px-6">
+        <ActivityIndicator
+          accessibilityLabel="Restoring your session"
+          color={theme.colors.brand}
+        />
+        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+          Restoring your session…
+        </Text>
+      </View>
+    );
+  }
   if (session.status !== "signed-in") return <Redirect href="/(public)/sign-in" />;
   if (!session.subject) return <Redirect href="/(public)/sign-in" />;
   return (
