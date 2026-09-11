@@ -12,6 +12,7 @@ All notable product changes are documented here.
 - Declared `android.speech.RecognitionService` package visibility so the widget's speech availability check works on Android 11 and later.
 - Fixed mic widget voice expenses ignoring the account spoken in the note ("... for dinner today using cash"): the account is now resolved by matching the speaker's own account names against the transcript, since the native intent JSON only carries the amount and merchant.
 - Fixed mic widget voice expenses always landing on Uncategorized: the category is now suggested from the transcript with the shared semantic matcher (so "dinner" selects Food & dining, "groceries" selects Groceries), instead of defaulting straight to Uncategorized.
+- Prepared Android Beta 0.2.24 (versionCode 20324) mobile release and refreshed in-app patch notes.
 
 ## 2.30.0 — 2026-09-09
 

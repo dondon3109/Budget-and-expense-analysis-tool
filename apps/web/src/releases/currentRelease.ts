@@ -11,32 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 9, 2026",
+  releasedOn: "September 11, 2026",
   changes: [
     {
-      title: "Interactive user guides and tutorials page",
+      title: "Resilient home-screen mic widget voice capture",
       description:
-        "Step-by-step walkthroughs to help you master envelope budgeting, balance adjustments, receipt scanning, and financial planning across web and mobile.",
+        "Cold-starting the app from the home-screen mic widget preserves your voice recording and review payload without dropping notes during session restore or on devices with full-screen speech UI.",
     },
     {
-      title: "Interactive Quick Start onboarding guides",
+      title: "Context-aware spoken accounts and categories",
       description:
-        "Interactive onboarding cards guide you through balance setup, envelope budgeting, and first transaction entry directly from your dashboard.",
+        "Mic widget voice notes now detect the target account directly from what you speak and suggest matching categories with semantic matching instead of defaulting to Uncategorized.",
     },
     {
-      title: "One-click account balance adjustments",
+      title: "Safer balance adjustments from widget notes",
       description:
-        "Keep accounts in exact sync with your real-world balances directly from dashboard account cards and mobile wallets with live delta calculation.",
+        "Balance updates initiated from the mic widget now wait for the account balance to load from the dashboard before computing adjustments.",
     },
     {
-      title: "Responsive budget controls on compact screens",
+      title: "Android Beta 0.2.24",
       description:
-        "Actions like Share Envelopes and Add Budget now wrap cleanly on compact screens without clipping or horizontal scrolling.",
-    },
-    {
-      title: "Android Beta 0.2.23",
-      description:
-        "The official Android Beta includes the Tutorials screen, dashboard quick start guides, responsive budget screen actions, and one-click balance adjust shortcuts.",
+        "The official Android Beta includes improved home-screen mic widget voice capture, speech recognition fixes for Android 11+, and context-aware account and category detection.",
     },
   ],
 };
@@ -48,6 +43,37 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.30.0",
+    releasedOn: "September 9, 2026",
+    changes: [
+      {
+        title: "Interactive user guides and tutorials page",
+        description:
+          "Step-by-step walkthroughs to help you master envelope budgeting, balance adjustments, receipt scanning, and financial planning across web and mobile.",
+      },
+      {
+        title: "Interactive Quick Start onboarding guides",
+        description:
+          "Interactive onboarding cards guide you through balance setup, envelope budgeting, and first transaction entry directly from your dashboard.",
+      },
+      {
+        title: "One-click account balance adjustments",
+        description:
+          "Keep accounts in exact sync with your real-world balances directly from dashboard account cards and mobile wallets with live delta calculation.",
+      },
+      {
+        title: "Responsive budget controls on compact screens",
+        description:
+          "Actions like Share Envelopes and Add Budget now wrap cleanly on compact screens without clipping or horizontal scrolling.",
+      },
+      {
+        title: "Android Beta 0.2.23",
+        description:
+          "The official Android Beta includes the Tutorials screen, dashboard quick start guides, responsive budget screen actions, and one-click balance adjust shortcuts.",
+      },
+    ],
+  },
   {
     version: "2.29.0",
     releasedOn: "September 7, 2026",
