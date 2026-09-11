@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
-import { transactionInputSchema } from "@zoption/shared";
+import { matchCategory, transactionInputSchema } from "@zoption/shared";
 
 import { useDashboardData, useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
@@ -24,7 +24,9 @@ import {
 import {
   parseWidgetIntentPayload,
   parseWidgetTranscriptToIntent,
+  resolveKnownBalanceMinor,
   resolveWidgetAccount,
+  resolveWidgetAccountFromTranscript,
   resolveWidgetCategory,
   type WidgetExpenseIntent,
   type WidgetIntent,
@@ -73,7 +75,13 @@ function useResolvedIntent(): ResolvedIntent {
   }, [params.payload, params.transcript, params.error]);
 }
 
-function ExpenseConfirm({ intent }: { intent: WidgetExpenseIntent }) {
+function ExpenseConfirm({
+  intent,
+  transcript,
+}: {
+  intent: WidgetExpenseIntent;
+  transcript: string | null;
+}) {
   const theme = useZoptionTheme();
   const local = useLocalWorkspace();
   const sync = useSyncState();
@@ -91,10 +99,27 @@ function ExpenseConfirm({ intent }: { intent: WidgetExpenseIntent }) {
     () => formData.data?.categories.filter((item) => item.kind === "expense" && !item.pending) ?? [],
     [formData.data],
   );
+  // The native widget only parses the amount and merchant, so the account and
+  // category the speaker actually named ("... dinner today using cash") are
+  // recovered here: the account from the speaker's own account names in the
+  // transcript, the category from the shared semantic matcher.
+  const suggestedCategory = useMemo(
+    () =>
+      matchCategory(categories, intent.category ?? null, {
+        kind: "expense",
+        contextText: transcript ?? intent.merchant,
+      }),
+    [categories, intent.category, intent.merchant, transcript],
+  );
   const resolvedAccountId =
-    accountId ?? resolveWidgetAccount(accounts, intent.account) ?? accounts[0]?.id ?? "";
+    accountId ??
+    resolveWidgetAccount(accounts, intent.account) ??
+    resolveWidgetAccountFromTranscript(accounts, transcript) ??
+    accounts[0]?.id ??
+    "";
   const resolvedCategoryId =
     categoryId ??
+    suggestedCategory?.id ??
     resolveWidgetCategory(categories, "expense", intent.category) ??
     "";
   const account = accounts.find((item) => item.id === resolvedAccountId);
@@ -220,6 +245,38 @@ function parseAmountInput(value: string): number {
   return Number(whole) * 100 + Number((fraction + "00").slice(0, 2));
 }
 
+/** Current to new balance with the booked delta. Requires a known balance. */
+function BalanceDeltaPreview({
+  currentBalanceMinor,
+  newBalanceMinor,
+  currency,
+}: {
+  currentBalanceMinor: number;
+  newBalanceMinor: number;
+  currency: "PHP" | "USD";
+}) {
+  const theme = useZoptionTheme();
+  const preview = computeBalanceAdjustment(currentBalanceMinor, newBalanceMinor);
+  return (
+    <View className="flex-row flex-wrap items-center">
+      <MoneyValue amountMinor={currentBalanceMinor} currency={currency} />
+      <Text style={[typography.callout, { color: theme.colors.textMuted }]}> → </Text>
+      <MoneyValue amountMinor={newBalanceMinor} currency={currency} />
+      {preview.kind ? (
+        <>
+          <Text style={[typography.callout, { color: theme.colors.textMuted }]}> (</Text>
+          <MoneyValue
+            amountMinor={preview.deltaMinor}
+            currency={currency}
+            tone={preview.kind === "income" ? "income" : "expense"}
+          />
+          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>)</Text>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
 function ReconcileConfirm({
   accountName,
   newBalanceMinor,
@@ -240,16 +297,25 @@ function ReconcileConfirm({
   const accounts = useMemo(() => formData.data?.accounts.filter((item) => !item.pending) ?? [], [formData.data]);
   const resolvedAccountId =
     accountId ?? resolveWidgetAccount(accounts, accountName) ?? "";
-  const balances = useMemo(() => {
-    const items = dashboard.data?.accounts ?? [];
-    return new Map(items.map((item) => [item.id, item.balanceMinor ?? 0]));
-  }, [dashboard.data]);
   const account = accounts.find((item) => item.id === resolvedAccountId);
-  const currentBalanceMinor = resolvedAccountId ? (balances.get(resolvedAccountId) ?? 0) : 0;
-  const preview = computeBalanceAdjustment(currentBalanceMinor, newBalanceMinor);
+  // The dashboard read is the only source of the current balance and settles
+  // after the lighter accounts query, so an unread balance stays unknown and
+  // the delta stays hidden. Reading it as zero would book the whole target
+  // balance as an adjustment.
+  const currentBalanceMinor = resolveKnownBalanceMinor(
+    dashboard.data?.accounts,
+    resolvedAccountId,
+  );
+  const balanceAlreadyMatches =
+    currentBalanceMinor !== null && currentBalanceMinor === newBalanceMinor;
 
   const confirm = async (): Promise<void> => {
     if (!local.workspace || saving || !resolvedAccountId || !account) return;
+    if (currentBalanceMinor === null) {
+      setMessage("The current balance is still loading. Try again in a moment.");
+      return;
+    }
+    const preview = computeBalanceAdjustment(currentBalanceMinor, newBalanceMinor);
     setSaving(true);
     setMessage(null);
     try {
@@ -334,22 +400,27 @@ function ReconcileConfirm({
           onSelect={setAccountId}
         />
         {resolvedAccountId && account ? (
-          <View className="flex-row flex-wrap items-center">
-            <MoneyValue amountMinor={currentBalanceMinor} currency={account.currency} />
-            <Text style={[typography.callout, { color: theme.colors.textMuted }]}> → </Text>
-            <MoneyValue amountMinor={newBalanceMinor} currency={account.currency} />
-            {preview.kind ? (
-              <>
-                <Text style={[typography.callout, { color: theme.colors.textMuted }]}> (</Text>
-                <MoneyValue
-                  amountMinor={preview.deltaMinor}
-                  currency={account.currency}
-                  tone={preview.kind === "income" ? "income" : "expense"}
-                />
-                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>)</Text>
-              </>
-            ) : null}
-          </View>
+          currentBalanceMinor === null ? (
+            <View className="gap-2">
+              <Text
+                accessibilityRole="alert"
+                style={[typography.callout, { color: theme.colors.textMuted }]}
+              >
+                {dashboard.error ?? "Reading the current balance from encrypted storage…"}
+              </Text>
+              {dashboard.error ? (
+                <Button variant="secondary" disabled={saving} onPress={dashboard.retry}>
+                  Retry balance
+                </Button>
+              ) : null}
+            </View>
+          ) : (
+            <BalanceDeltaPreview
+              currentBalanceMinor={currentBalanceMinor}
+              newBalanceMinor={newBalanceMinor}
+              currency={account.currency}
+            />
+          )
         ) : (
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
             “{accountName}” did not match an account. Choose the account to update.
@@ -372,7 +443,9 @@ function ReconcileConfirm({
         ) : (
           <Button
             loading={saving}
-            disabled={saving || !resolvedAccountId || preview.kind === null}
+            disabled={
+              saving || !resolvedAccountId || currentBalanceMinor === null || balanceAlreadyMatches
+            }
             onPress={() => void confirm()}
           >
             Update balance
@@ -417,7 +490,7 @@ export function WidgetIntentScreen() {
         </Text>
       ) : null}
       {resolved.intent.type === "expense" ? (
-        <ExpenseConfirm intent={resolved.intent} />
+        <ExpenseConfirm intent={resolved.intent} transcript={resolved.transcript} />
       ) : (
         <ReconcileConfirm
           accountName={resolved.intent.account}

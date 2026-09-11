@@ -4,6 +4,15 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Fixed the home-screen mic widget discarding a voice note when its tap opened Zoption cold: the signed-in area now waits for the stored session to finish restoring before routing, so the widget's transcript and payload survive to the review screen instead of being redirected away.
+- Fixed the mic widget balance update booking the whole target balance as an adjustment when the account balance had not finished loading, by reading an unknown balance as unknown instead of zero and waiting for the dashboard read before enabling the update.
+- Removed `android:noHistory` from the widget voice capture activity; the platform finished it as soon as it stopped, so devices whose speech UI covers the activity instead of floating over it dropped every transcript.
+- Declared `android.speech.RecognitionService` package visibility so the widget's speech availability check works on Android 11 and later.
+- Fixed mic widget voice expenses ignoring the account spoken in the note ("... for dinner today using cash"): the account is now resolved by matching the speaker's own account names against the transcript, since the native intent JSON only carries the amount and merchant.
+- Fixed mic widget voice expenses always landing on Uncategorized: the category is now suggested from the transcript with the shared semantic matcher (so "dinner" selects Food & dining, "groceries" selects Groceries), instead of defaulting straight to Uncategorized.
+
 ## 2.30.0 — 2026-09-09
 
 ### Added

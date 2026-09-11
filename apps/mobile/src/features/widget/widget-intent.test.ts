@@ -1,7 +1,9 @@
 import {
   parseWidgetIntentPayload,
   parseWidgetTranscriptToIntent,
+  resolveKnownBalanceMinor,
   resolveWidgetAccount,
+  resolveWidgetAccountFromTranscript,
   resolveWidgetCategory,
 } from "./widget-intent";
 
@@ -98,6 +100,56 @@ describe("widget resolvers", () => {
     expect(resolveWidgetAccount(accounts, "bdo")).toBe("a-bdo");
     expect(resolveWidgetAccount(accounts, "Nope")).toBeNull();
     expect(resolveWidgetAccount(accounts, undefined)).toBeNull();
+  });
+
+  const walletAccounts = [
+    { id: "a-cash", name: "Cash" },
+    { id: "a-gcash", name: "GCash" },
+    { id: "a-gcash-wallet", name: "GCash Wallet" },
+  ];
+
+  it("recovers the account the speaker named out loud", () => {
+    // Reported case: the native widget never emits an account, so it has to
+    // come from the transcript.
+    expect(
+      resolveWidgetAccountFromTranscript(
+        accounts,
+        "I have spent 500 pesos for dinner today using cash",
+      ),
+    ).toBe("a-cash");
+    expect(resolveWidgetAccountFromTranscript(accounts, "paid with my BDO card")).toBe("a-bdo");
+  });
+
+  it("matches whole account names only, preferring the longest", () => {
+    expect(resolveWidgetAccountFromTranscript(walletAccounts, "paid via gcash")).toBe("a-gcash");
+    expect(
+      resolveWidgetAccountFromTranscript(walletAccounts, "transferred to my gcash wallet"),
+    ).toBe("a-gcash-wallet");
+    // "cashier" and the "cash" inside "gcash" must not select the Cash account.
+    expect(resolveWidgetAccountFromTranscript(walletAccounts, "paid the cashier")).toBeNull();
+    expect(resolveWidgetAccountFromTranscript(accounts, "no account named here")).toBeNull();
+    expect(resolveWidgetAccountFromTranscript(accounts, null)).toBeNull();
+    expect(resolveWidgetAccountFromTranscript(accounts, "   ")).toBeNull();
+  });
+
+  const balances = [
+    { id: "a-bdo", balanceMinor: 300000 },
+    { id: "a-empty", balanceMinor: 0 },
+    { id: "a-new", balanceMinor: null },
+  ];
+
+  it("keeps a reconcile balance unknown until the dashboard read lands", () => {
+    expect(resolveKnownBalanceMinor(null, "a-bdo")).toBeNull();
+    expect(resolveKnownBalanceMinor(undefined, "a-bdo")).toBeNull();
+    expect(resolveKnownBalanceMinor([], "a-bdo")).toBeNull();
+    expect(resolveKnownBalanceMinor(balances, "")).toBeNull();
+    expect(resolveKnownBalanceMinor(balances, "a-missing")).toBeNull();
+    expect(resolveKnownBalanceMinor(balances, "a-new")).toBeNull();
+  });
+
+  it("still treats a real zero balance as known", () => {
+    expect(resolveKnownBalanceMinor(balances, "a-empty")).toBe(0);
+    expect(resolveKnownBalanceMinor(balances, "a-bdo")).toBe(300000);
   });
 
   it("falls back to Uncategorized, then the first of its kind", () => {

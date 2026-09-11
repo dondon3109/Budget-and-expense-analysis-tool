@@ -147,6 +147,65 @@ export function resolveWidgetAccount(
   return null;
 }
 
+/** Lowercased word tokens, so punctuation and spacing never block a phrase match. */
+function matchTokens(value: string): string[] {
+  return normalizeName(value)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+}
+
+function includesTokenPhrase(haystack: readonly string[], phrase: readonly string[]): boolean {
+  if (phrase.length === 0 || phrase.length > haystack.length) return false;
+  return haystack.some((_, index) => phrase.every((token, offset) => haystack[index + offset] === token));
+}
+
+/**
+ * Resolves an account the speaker named out loud ("... dinner today using cash").
+ *
+ * The native widget only extracts the amount and merchant, so its intent JSON
+ * never carries an account. Matching the speaker's own account names against
+ * the transcript recovers it without a hardcoded alias list. Longest names are
+ * tried first so "GCash Wallet" wins over "GCash", and whole-token matching
+ * keeps "Cash" from matching "cashier" or the "cash" inside "GCash".
+ */
+export function resolveWidgetAccountFromTranscript(
+  accounts: readonly WidgetAccountOption[],
+  transcript: string | null | undefined,
+): string | null {
+  if (!transcript?.trim()) return null;
+  const haystack = matchTokens(transcript);
+  const byLongestName = [...accounts].sort(
+    (a, b) => matchTokens(b.name).length - matchTokens(a.name).length,
+  );
+  for (const account of byLongestName) {
+    if (includesTokenPhrase(haystack, matchTokens(account.name))) return account.id;
+  }
+  return null;
+}
+
+export interface WidgetAccountBalance {
+  id: string;
+  /** Null when the account has no computed balance yet. */
+  balanceMinor: number | null;
+}
+
+/**
+ * Current balance for the account a reconcile voice note targets.
+ *
+ * The dashboard read is the only source of that number and settles after the
+ * lighter accounts query, so an unknown balance stays null instead of
+ * defaulting to zero: a placeholder zero would book the whole target balance as
+ * an adjustment.
+ */
+export function resolveKnownBalanceMinor(
+  accounts: readonly WidgetAccountBalance[] | null | undefined,
+  accountId: string,
+): number | null {
+  if (!accountId || !accounts) return null;
+  const account = accounts.find((item) => item.id === accountId);
+  return account?.balanceMinor ?? null;
+}
+
 /**
  * Resolves an intent category name to a local category id, mirroring the
  * receipt-review fallback: suggested name, then "Uncategorized", then the
