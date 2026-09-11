@@ -1,24 +1,22 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.22-beta",
-  "versionCode": 20322,
-  "filename": "zoption-beta-0.2.22.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.22.apk",
-  "sha256": "ecbd67bdbe6ff15b54f1a02e78dad5693c40b8634ac5e1082da8ecbb246ce0a0",
-  "sizeBytes": 139140661,
-  "sizeLabel": "139,140,661 bytes (132.69 MiB)",
-  "releaseDate": "2026-09-08",
-  "releaseDateLabel": "September 8, 2026",
+  "versionName": "0.2.24-beta",
+  "versionCode": 20324,
+  "filename": "zoption-beta-0.2.24.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.24.apk",
+  "sha256": "e4c893d5e065fb436f978beba593a70c3b8b4b02254aea6dde3ec83ab8ed8a81",
+  "sizeBytes": 139164369,
+  "sizeLabel": "139,164,369 bytes (132.72 MiB)",
+  "releaseDate": "2026-09-11",
+  "releaseDateLabel": "September 11, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Native Android home-screen mic widget with tap-to-talk voice entry",
-    "Fast-path voice transaction entry with streaming transcripts and instant audio capture",
-    "Smart SMS notification quick-paste with duplicate transaction detection",
-    "One-click account balance adjustment and reconciliation",
-    "3-step Day-1 CSV and spreadsheet onboarding import flow",
-    "Offline voice draft queue and microphone privacy consent controls"
+    "Resilient home-screen mic widget voice capture with session restore protection",
+    "Reliable speech recognition visibility for Android 11 and newer",
+    "Context-aware spoken account and category detection in widget notes",
+    "Safe balance adjustments waiting for live account data"
   ]
 }
