@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.30.1 — 2026-09-11
+
 ### Fixed
 
 - Fixed the home-screen mic widget discarding a voice note when its tap opened Zoption cold: the signed-in area now waits for the stored session to finish restoring before routing, so the widget's transcript and payload survive to the review screen instead of being redirected away.
