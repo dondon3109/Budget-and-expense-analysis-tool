@@ -4,6 +4,12 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.30.2 — 2026-09-11
+
+### Fixed
+
+- Refreshed web install page metadata and direct APK links to Android Beta 0.2.24 (versionCode 20324).
+
 ## 2.30.1 — 2026-09-11
 
 ### Fixed
