@@ -41,6 +41,13 @@ import {
   type TransactionFormKind,
   type TransactionFormValues,
 } from "./transaction-form";
+import {
+  VOICE_PREVIEW_AUTO_SAVE_MS,
+  VoicePreviewMachine,
+  remainingSecondsFromMs,
+  type VoicePreviewState,
+} from "./voice-preview";
+import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
 
 const emptyForm: TransactionFormValues = {
@@ -149,6 +156,15 @@ export function TransactionEditorScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [voicePreviewState, setVoicePreviewState] = useState<VoicePreviewState>({ status: "idle" });
+  const [previewSummary, setPreviewSummary] = useState<VoicePreviewDraftSummary | null>(null);
+  const pendingValuesToSaveRef = useRef<TransactionFormValues | null>(null);
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+  const saveRef =
+    useRef<((formValuesToSave?: TransactionFormValues) => Promise<boolean>) | undefined>(
+      undefined,
+    );
 
   useEffect(() => {
     if (!formData.data) return;
@@ -276,18 +292,22 @@ export function TransactionEditorScreen() {
     key: Key,
     value: TransactionFormValues[Key],
   ): void => {
+    if (voicePreviewState.status === "pending") {
+      machineRef.current?.edit();
+    }
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
     setMessage(null);
   };
 
-  const save = async (): Promise<void> => {
-    if (!local.workspace || saving || mutationBlocked) return;
-    const parsed = parseTransactionForm(values);
+  const save = async (formValuesToSave?: TransactionFormValues): Promise<boolean> => {
+    if (!local.workspace || saving || mutationBlocked) return false;
+    const targetValues = formValuesToSave ?? valuesRef.current;
+    const parsed = parseTransactionForm(targetValues);
     if (!parsed.success) {
       setErrors(parsed.errors);
       setMessage("Check the highlighted details.");
-      return;
+      return false;
     }
     setSaving(true);
     setMessage(null);
@@ -307,15 +327,81 @@ export function TransactionEditorScreen() {
       });
       router.back();
       sync.retry();
+      return true;
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
           : "The transaction could not be saved to encrypted local storage.",
       );
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+  saveRef.current = save;
+
+  const machineRef = useRef<VoicePreviewMachine | null>(null);
+  if (!machineRef.current) {
+    machineRef.current = new VoicePreviewMachine({
+      autoSaveDurationMs: VOICE_PREVIEW_AUTO_SAVE_MS,
+      onStateChange: (nextState) => {
+        setVoicePreviewState(nextState);
+      },
+      onAutoSave: async () => {
+        const valuesToSave = pendingValuesToSaveRef.current ?? valuesRef.current;
+        const saveFn = saveRef.current;
+        const savedOk = saveFn ? await saveFn(valuesToSave) : false;
+        if (!savedOk) {
+          throw new Error("Could not save transaction. Check the highlighted details.");
+        }
+      },
+    });
+  }
+
+  useEffect(() => {
+    if (voicePreviewState.status !== "pending") return;
+    const timer = setInterval(() => {
+      machineRef.current?.tick(250);
+    }, 250);
+    return () => clearInterval(timer);
+  }, [voicePreviewState.status]);
+
+  useEffect(() => {
+    return () => {
+      machineRef.current?.reset();
+    };
+  }, []);
+
+  const handleEditVoicePreview = () => {
+    machineRef.current?.edit();
+    pendingValuesToSaveRef.current = null;
+  };
+
+  const handleCancelVoicePreview = () => {
+    machineRef.current?.cancel();
+    pendingValuesToSaveRef.current = null;
+    setPreviewSummary(null);
+    const synchronizedAccounts =
+      formData.data?.accounts.filter((account) => !account.pending) ?? [];
+    const defaultAccount = preferredTransactionAccount(synchronizedAccounts);
+    const defaultCategory = formData.data?.categories.find(
+      (item) => item.kind === "expense" && !item.pending,
+    );
+    setValues({
+      kind: "expense",
+      accountId: defaultAccount?.id ?? "",
+      toAccountId: "",
+      categoryId: defaultCategory?.id ?? "",
+      date: localCalendarDate(),
+      description: "",
+      amount: "",
+      transferFee: "",
+      currency: defaultAccount?.currency ?? "PHP",
+      notes: "",
+    });
+    setErrors({});
+    setMessage(null);
   };
 
   const remove = async (): Promise<void> => {
@@ -486,24 +572,56 @@ export function TransactionEditorScreen() {
                 const fromAccount =
                   activeAccounts.find((account) => account.id === values.accountId) ??
                   activeAccounts[0];
-                setValues((current) => ({
-                  ...current,
+                const nextValues: TransactionFormValues = {
+                  ...values,
                   kind: nextKind,
-                  accountId: fromAccount?.id ?? current.accountId,
+                  accountId: fromAccount?.id ?? values.accountId,
                   toAccountId:
                     nextKind === "transfer"
                       ? (activeAccounts.find((account) => account.id !== fromAccount?.id)?.id ?? "")
                       : "",
-                  categoryId: matchingCategory?.id ?? fallbackCategory?.id ?? current.categoryId,
+                  categoryId: matchingCategory?.id ?? fallbackCategory?.id ?? values.categoryId,
                   date: draft.date,
                   description: draft.description,
                   amount: formatMinorForInput(draft.amountMinor),
                   transferFee: "",
                   currency: draft.currency,
-                }));
+                  notes: values.notes,
+                };
+                setValues(nextValues);
                 setErrors({});
                 setMessage(null);
+
+                pendingValuesToSaveRef.current = nextValues;
+                setPreviewSummary({
+                  amountMinor: draft.amountMinor,
+                  currency: draft.currency,
+                  description: draft.description,
+                  categoryName:
+                    matchingCategory?.name ?? fallbackCategory?.name ?? draft.categoryName,
+                  accountName: fromAccount?.name,
+                  kind: nextKind,
+                });
+                machineRef.current?.start(draft, VOICE_PREVIEW_AUTO_SAVE_MS);
               }}
+            />
+          ) : null}
+
+          {previewSummary &&
+          (voicePreviewState.status === "pending" ||
+            voicePreviewState.status === "saving" ||
+            voicePreviewState.status === "error") ? (
+            <VoicePreviewCard
+              draft={previewSummary}
+              remainingSeconds={
+                voicePreviewState.status === "pending"
+                  ? remainingSecondsFromMs(voicePreviewState.remainingMs)
+                  : 0
+              }
+              saving={voicePreviewState.status === "saving" || saving}
+              error={voicePreviewState.status === "error" ? voicePreviewState.error : null}
+              onEdit={handleEditVoicePreview}
+              onCancel={handleCancelVoicePreview}
             />
           ) : null}
 
@@ -511,6 +629,9 @@ export function TransactionEditorScreen() {
             value={values.kind}
             disabled={saving || mutationBlocked || editing}
             onChange={(kind) => {
+              if (voicePreviewState.status === "pending") {
+                machineRef.current?.edit();
+              }
               const firstCategory = formData.data?.categories.find(
                 (category) => category.kind === kind && (kind !== "transfer" || !category.pending),
               );
@@ -673,7 +794,12 @@ export function TransactionEditorScreen() {
             }
             disabled={!hasChoices || mutationBlocked}
             loading={saving}
-            onPress={() => void save()}
+            onPress={() => {
+              if (voicePreviewState.status === "pending") {
+                machineRef.current?.edit();
+              }
+              void save();
+            }}
           >
             {editing ? "Save changes" : transfer ? "Save transfer" : "Save transaction"}
           </Button>
