@@ -6,6 +6,7 @@ const path = require("path");
 const withMicWidget = require("./with-android-mic-widget");
 const {
   addMicWidgetToManifest,
+  addSpeechRecognitionQueries,
   resolveWidgetScheme,
   widgetFileContents,
   writeWidgetFiles,
@@ -40,6 +41,46 @@ test("registers the widget receiver and voice activity exactly once", () => {
   expect(receivers[0]["meta-data"][0].$["android:resource"]).toBe(
     "@xml/zoption_mic_widget_info",
   );
+});
+
+test("declares speech-recognizer package visibility exactly once", () => {
+  const manifest = fakeManifest();
+  addSpeechRecognitionQueries(manifest);
+  addSpeechRecognitionQueries(manifest);
+  expect(manifest.queries).toHaveLength(1);
+  expect(manifest.queries[0].intent).toHaveLength(1);
+  expect(manifest.queries[0].intent[0].action[0].$["android:name"]).toBe(
+    "android.speech.RecognitionService",
+  );
+});
+
+test("merges the recognizer intent into an existing queries element", () => {
+  const manifest = fakeManifest();
+  manifest.queries = [
+    { intent: [{ action: [{ $: { "android:name": "android.intent.action.PROCESS_TEXT" } }] }] },
+  ];
+  addSpeechRecognitionQueries(manifest);
+  addSpeechRecognitionQueries(manifest);
+  // A manifest may only declare one <queries> element.
+  expect(manifest.queries).toHaveLength(1);
+  expect(manifest.queries[0].intent).toHaveLength(2);
+  expect(manifest.queries[0].intent[1].action[0].$["android:name"]).toBe(
+    "android.speech.RecognitionService",
+  );
+});
+
+test("voice activity is not noHistory so the transcript survives recognition", () => {
+  const manifest = fakeManifest();
+  addMicWidgetToManifest(manifest);
+  const activity = manifest.application[0].activity[0];
+  // A no-history activity is finished as soon as it stops, and a stopped
+  // activity never receives onActivityResult: the recognizer result was lost
+  // whenever the device's speech UI covered the activity instead of floating
+  // over it.
+  expect(activity.$["android:noHistory"]).toBeUndefined();
+  expect(activity.$["android:excludeFromRecents"]).toBe("true");
+  expect(activity.$["android:launchMode"]).toBe("singleTop");
+  expect(activity.$["android:theme"]).toBe("@android:style/Theme.Translucent.NoTitleBar");
 });
 
 test("generated widget carries the scheme and deep-links the intent route", () => {

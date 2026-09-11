@@ -11,13 +11,15 @@
 //
 // The activity needs no RECORD_AUDIO permission: recognition runs through the
 // platform speech activity (RecognizerIntent), and STT absence degrades to a
-// graceful in-app message instead of a crash.
+// graceful in-app message instead of a crash. Package visibility for
+// android.speech.RecognitionService is declared alongside the widget.
 
 const { withAndroidManifest, withDangerousMod } = require("@expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
 
 const MARKER = "zoption-mic-widget";
+const RECOGNITION_SERVICE_ACTION = "android.speech.RecognitionService";
 const WIDGET_PACKAGE = "site.zoption.micwidget";
 const PROVIDER_NAME = `${WIDGET_PACKAGE}.MicWidgetProvider`;
 const ACTIVITY_NAME = `${WIDGET_PACKAGE}.MicWidgetVoiceActivity`;
@@ -80,10 +82,46 @@ function addMicWidgetToManifest(manifest) {
         "android:exported": "true",
         "android:excludeFromRecents": "true",
         "android:launchMode": "singleTop",
-        "android:noHistory": "true",
+        // Deliberately no android:noHistory: the platform finishes no-history
+        // activities as soon as they stop, and a stopped activity never
+        // receives onActivityResult. Any device whose recognizer UI covers this
+        // activity instead of floating over it therefore dropped the transcript
+        // silently. MicWidgetVoiceActivity finishes itself on every path.
         "android:theme": "@android:style/Theme.Translucent.NoTitleBar",
       },
     });
+  }
+  return manifest;
+}
+
+/**
+ * Declares package visibility for the platform speech recognizer.
+ *
+ * Android 11+ filters PackageManager.queryIntentServices, and
+ * SpeechRecognizer.isRecognitionAvailable() is exactly that query, so without
+ * this the widget's availability guard can read false forever and every tap
+ * reports that voice input is unavailable. Idempotent, and merged into an
+ * existing <queries> element because a manifest may only declare one.
+ */
+function addSpeechRecognitionQueries(manifest) {
+  const queries = manifest.queries || (manifest.queries = []);
+  const declared = queries.some((entry) =>
+    (entry.intent || []).some((intent) =>
+      (intent.action || []).some(
+        (action) => action.$ && action.$["android:name"] === RECOGNITION_SERVICE_ACTION,
+      ),
+    ),
+  );
+  if (declared) return manifest;
+  const intent = {
+    action: [{ $: { "android:name": RECOGNITION_SERVICE_ACTION } }],
+  };
+  const existing = queries[0];
+  if (existing) {
+    existing.intent = existing.intent || [];
+    existing.intent.push(intent);
+  } else {
+    queries.push({ intent: [intent] });
   }
   return manifest;
 }
@@ -381,6 +419,7 @@ async function writeWidgetFiles(projectRoot, scheme) {
 const withMicWidget = (config) => {
   const scheme = resolveWidgetScheme(config);
   const withManifest = withAndroidManifest(config, (mod) => {
+    mod.modResults.manifest = addSpeechRecognitionQueries(mod.modResults.manifest);
     mod.modResults.manifest = addMicWidgetToManifest(mod.modResults.manifest);
     return mod;
   });
@@ -403,5 +442,6 @@ const withMicWidget = (config) => {
 module.exports = withMicWidget;
 module.exports.resolveWidgetScheme = resolveWidgetScheme;
 module.exports.addMicWidgetToManifest = addMicWidgetToManifest;
+module.exports.addSpeechRecognitionQueries = addSpeechRecognitionQueries;
 module.exports.widgetFileContents = widgetFileContents;
 module.exports.writeWidgetFiles = writeWidgetFiles;
