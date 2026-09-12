@@ -1,7 +1,4 @@
-import {
-  accountDeletionResponseSchema,
-  type AccountDeletionRequest,
-} from "@zoption/shared";
+import { accountDeletionResponseSchema, type AccountDeletionRequest } from "@zoption/shared";
 
 import { ApiTransportError, apiRequest } from "./authenticated";
 
@@ -30,6 +27,21 @@ export async function requestAccountDeletion(
     decode: (value) => accountDeletionResponseSchema.parse(value),
   });
   return result.status;
+}
+
+/**
+ * Unpaywalled, full account archive export. Returns the structured JSON
+ * export containing accounts, categories, transactions, budgets, subscriptions,
+ * financial goals, debts, and calendar events.
+ */
+export async function downloadAccountArchive(api: AccountApi): Promise<unknown> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/exports/account-archive.json",
+    method: "GET",
+    fallback: "Account archive could not be downloaded. Try again shortly.",
+    decode: (value) => value,
+  });
 }
 
 export { ApiTransportError };

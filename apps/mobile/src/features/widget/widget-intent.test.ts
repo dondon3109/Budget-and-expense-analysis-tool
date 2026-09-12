@@ -5,6 +5,7 @@ import {
   resolveWidgetAccount,
   resolveWidgetAccountFromTranscript,
   resolveWidgetCategory,
+  summarizeWidgetDescription,
 } from "./widget-intent";
 
 describe("parseWidgetIntentPayload", () => {
@@ -62,12 +63,53 @@ describe("parseWidgetIntentPayload", () => {
   });
 });
 
+describe("summarizeWidgetDescription", () => {
+  it("shortens and cleans spoken expense descriptions", () => {
+    expect(summarizeWidgetDescription("for iced coffee at Starbucks today using gcash")).toBe(
+      "Iced coffee at Starbucks",
+    );
+    expect(summarizeWidgetDescription("for dinner today using cash")).toBe("Dinner");
+    expect(
+      summarizeWidgetDescription("groceries at Puregold yesterday using credit card"),
+    ).toBe("Groceries at Puregold");
+    expect(summarizeWidgetDescription("bought medicine at Mercury Drug with cash")).toBe(
+      "Medicine at Mercury Drug",
+    );
+    expect(summarizeWidgetDescription("log 45 pesos jeepney fare")).toBe("45 pesos jeepney fare");
+    expect(summarizeWidgetDescription("parking fee today")).toBe("Parking fee");
+    expect(summarizeWidgetDescription("on load")).toBe("Load");
+  });
+
+  it("strips custom user account names from descriptions", () => {
+    const accountNames = ["Maya Wallet", "BDO Checking", "Pocket Cash"];
+    expect(
+      summarizeWidgetDescription("dinner at Jollibee using Maya Wallet", accountNames),
+    ).toBe("Dinner at Jollibee");
+    expect(
+      summarizeWidgetDescription("gas at Shell from BDO Checking", accountNames),
+    ).toBe("Gas at Shell");
+  });
+
+  it("falls back to Expense when speech contained only filler/payment terms", () => {
+    expect(summarizeWidgetDescription("")).toBe("Expense");
+    expect(summarizeWidgetDescription("using cash")).toBe("Expense");
+    expect(summarizeWidgetDescription("today with gcash")).toBe("Expense");
+  });
+});
+
 describe("parseWidgetTranscriptToIntent", () => {
-  it("parses an expense transcript", () => {
+  it("parses and summarizes an expense transcript", () => {
     expect(parseWidgetTranscriptToIntent("Spent 250 pesos on lunch")).toEqual({
       type: "expense",
       amountMinor: 25000,
-      merchant: "on lunch",
+      merchant: "Lunch",
+    });
+    expect(
+      parseWidgetTranscriptToIntent("I have spent 500 pesos for dinner today using cash"),
+    ).toEqual({
+      type: "expense",
+      amountMinor: 50000,
+      merchant: "Dinner",
     });
   });
 

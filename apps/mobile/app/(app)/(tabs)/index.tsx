@@ -774,24 +774,65 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
       >
         Welcome to your workspace
       </Text>
+      <Text style={[typography.headline, { color: theme.colors.text, textAlign: "center" }]}>
+        Build your real financial picture
+      </Text>
       <Text style={[typography.body, styles.emptyDescription, { color: theme.colors.textMuted }]}>
-        Take control of your money with offline-first tracking, smart receipt scans, and category
-        budgeting.
+        Your workspace starts clean without fictional transactions. Choose how you want to begin:
+        migrate existing bank or Excel statements in under a minute, or build clean as you go.
       </Text>
 
-      <View style={styles.firstRunImport}>
-        <Button
-          accessibilityHint="Opens the guided 3-step bank file import"
-          onPress={() => router.push({ pathname: "/(app)/import", params: { firstRun: "1" } })}
-        >
-          Import a bank statement
-        </Button>
-        <Text
-          style={[typography.caption, styles.emptyDescription, { color: theme.colors.textMuted }]}
-        >
-          Fastest start: pick a CSV or Excel file, map the columns, and review before anything
-          saves.
-        </Text>
+      <View style={{ width: "100%", gap: spacing.sm, marginTop: spacing.xs }}>
+        <Card accessibilityLabel="Option A: Bring your data">
+          <View style={{ gap: spacing.xs }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+              <MaterialCommunityIcons
+                name="file-excel-outline"
+                size={20}
+                color={theme.colors.brand}
+              />
+              <Text style={[typography.headline, { color: theme.colors.text }]}>
+                Option A: Bring your data
+              </Text>
+            </View>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Upload Excel sheets or bank CSVs with automated column matching and duplicate checks.
+            </Text>
+            <View style={{ marginTop: spacing.xs }}>
+              <Button
+                accessibilityHint="Opens the guided 3-step bank file import"
+                onPress={() =>
+                  router.push({ pathname: "/(app)/import", params: { firstRun: "1" } })
+                }
+              >
+                Bring your data (File import)
+              </Button>
+            </View>
+          </View>
+        </Card>
+
+        <Card accessibilityLabel="Option B: Start fresh">
+          <View style={{ gap: spacing.xs }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+              <MaterialCommunityIcons name="pencil-outline" size={20} color={theme.colors.brand} />
+              <Text style={[typography.headline, { color: theme.colors.text }]}>
+                Option B: Start fresh
+              </Text>
+            </View>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Configure your accounts and track spending with voice or manual entries.
+            </Text>
+            <View style={{ marginTop: spacing.xs }}>
+              <Button
+                variant="secondary"
+                accessibilityHint="Opens manual transaction entry"
+                onPress={() => router.push("/(app)/transaction")}
+              >
+                Start fresh (Add transaction)
+              </Button>
+            </View>
+          </View>
+        </Card>
       </View>
 
       <View style={styles.onboardingSteps}>

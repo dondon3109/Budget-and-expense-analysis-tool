@@ -75,6 +75,11 @@ describe("HomeScreen", () => {
 
     // Onboarding guide
     expect(screen.getByText("Welcome to your workspace")).toBeTruthy();
+    expect(screen.getByText("Build your real financial picture")).toBeTruthy();
+    expect(screen.getByText("Option A: Bring your data")).toBeTruthy();
+    expect(screen.getByText("Option B: Start fresh")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Bring your data (File import)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Start fresh (Add transaction)" })).toBeTruthy();
     expect(screen.getByText("Set up accounts & categories")).toBeTruthy();
     expect(screen.getByText("Add transaction or scan receipt")).toBeTruthy();
     expect(screen.getByText("Set monthly budget limits")).toBeTruthy();

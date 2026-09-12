@@ -1,0 +1,360 @@
+.migration-wizard-modal {
+  width: min(740px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: var(--paper);
+  box-shadow: var(--shadow-dialog);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.migration-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.migration-header-titles h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.migration-header-titles p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.migration-stepper {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.migration-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.migration-step-item.active {
+  color: var(--brand-strong);
+  font-weight: 600;
+}
+
+.migration-step-item.completed {
+  color: var(--success);
+}
+
+.migration-step-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.migration-step-item.active .migration-step-circle {
+  background: var(--brand-strong);
+  color: #fff;
+  border-color: var(--brand-strong);
+}
+
+.migration-step-item.completed .migration-step-circle {
+  background: var(--success);
+  color: #fff;
+  border-color: var(--success);
+}
+
+/* Step 1: File & Account Dropzone */
+.migration-dropzone {
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-lg);
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--paper);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.migration-dropzone:hover,
+.migration-dropzone.drag-active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.migration-dropzone-icon {
+  color: var(--brand);
+}
+
+.migration-dropzone-text strong {
+  display: block;
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.migration-dropzone-text span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.migration-file-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--brand-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+.migration-template-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 4px;
+}
+
+.migration-account-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.migration-account-select-group label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.migration-account-select-group select,
+.migration-account-select-group input {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+/* Step 2: Mapping */
+.migration-preset-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.migration-mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.migration-mapping-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.migration-mapping-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.migration-mapping-field select {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.migration-sample-preview {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.migration-sample-preview h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.migration-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.migration-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.migration-table th,
+.migration-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.migration-table th {
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.migration-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Step 3: Review & Deduplication */
+.migration-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.migration-stat-card {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.migration-stat-card .label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.migration-stat-card .val {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.migration-stat-card.ready .val {
+  color: var(--brand-strong);
+}
+
+.migration-stat-card.dupes .val {
+  color: var(--muted);
+}
+
+.migration-badge-ready {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.migration-badge-duplicate {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Step 4: Success Instant Gratification */
+.migration-success-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 30px 20px;
+}
+
+.migration-success-icon {
+  color: var(--success);
+}
+
+.migration-success-box h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.migration-success-box p {
+  margin: 0;
+  max-width: 460px;
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.migration-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.migration-action-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

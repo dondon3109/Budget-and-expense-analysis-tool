@@ -1,9 +1,11 @@
+import { File, Paths } from "expo-file-system";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
-import { Text, View } from "react-native";
+import { Platform, Share, Text, View } from "react-native";
 
 import {
   ApiTransportError,
+  downloadAccountArchive,
   requestAccountDeletion,
   type AccountDeletionStatus,
 } from "@/api/account";
@@ -26,6 +28,8 @@ export function AccountScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleted, setDeleted] = useState<AccountDeletionStatus | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportFeedback, setExportFeedback] = useState<{ error?: string; success?: string }>({});
 
   const canSubmit = confirmation === "DELETE" && password.length > 0 && !busy;
 
@@ -86,6 +90,43 @@ export function AccountScreen() {
     }
   }, [finishDeletion, password, session]);
 
+  const handleExportArchive = useCallback(async () => {
+    if (exportBusy) return;
+    setExportBusy(true);
+    setExportFeedback({});
+    try {
+      const token = await session.getAccessToken(false);
+      let data: unknown;
+      try {
+        data = await downloadAccountArchive({ accessToken: token });
+      } catch (err) {
+        if (err instanceof ApiTransportError && err.code === "session_expired") {
+          const freshToken = await session.getAccessToken(true);
+          data = await downloadAccountArchive({ accessToken: freshToken });
+        } else {
+          throw err;
+        }
+      }
+
+      const jsonString = JSON.stringify(data, null, 2);
+      const file = new File(Paths.cache, "zoption-account-archive.json");
+      file.write(jsonString);
+
+      await Share.share({
+        title: "Zoption Account Archive",
+        message: Platform.OS === "android" ? jsonString : undefined,
+        url: file.uri,
+      });
+      setExportFeedback({ success: "Account archive exported successfully." });
+    } catch (err) {
+      setExportFeedback({
+        error: err instanceof Error ? err.message : "Failed to export account archive.",
+      });
+    } finally {
+      setExportBusy(false);
+    }
+  }, [exportBusy, session]);
+
   const localRows =
     localStats.stats === null
       ? null
@@ -112,24 +153,66 @@ export function AccountScreen() {
         </View>
       </Card>
 
+      <Card accessibilityLabel="Data portability and backup">
+        <View className="gap-3">
+          <Text style={[typography.headline, { color: theme.colors.text }]}>
+            Data portability & backup
+          </Text>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+            Your financial records belong strictly to you. Download or share a full, structured JSON
+            archive of all your accounts, transactions, categories, budgets, and subscriptions at
+            any time. Free, private, and always available.
+          </Text>
+          {exportFeedback.error ? (
+            <Text
+              accessibilityRole="alert"
+              style={[typography.caption, { color: theme.colors.danger }]}
+            >
+              {exportFeedback.error}
+            </Text>
+          ) : null}
+          {exportFeedback.success ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[typography.caption, { color: theme.colors.brand }]}
+            >
+              {exportFeedback.success}
+            </Text>
+          ) : null}
+          <Button
+            variant="secondary"
+            loading={exportBusy}
+            disabled={exportBusy}
+            onPress={() => void handleExportArchive()}
+          >
+            Export &amp; Share account archive (.json)
+          </Button>
+        </View>
+      </Card>
+
       <Card accessibilityLabel="Danger zone">
         <View className="gap-3">
           <Text style={[typography.headline, { color: theme.colors.danger }]}>Delete account</Text>
           <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-            This permanently removes your Zoption financial workspace, assistant history,
-            profile picture files and sign-in account. It cannot be undone.
+            This permanently removes your Zoption financial workspace, assistant history, profile
+            picture files and sign-in account. It cannot be undone.
           </Text>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            The encrypted local copy on this device is cleared only after Zoption confirms
-            deletion.
+            The encrypted local copy on this device is cleared only after Zoption confirms deletion.
           </Text>
           {error ? (
-            <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.danger }]}>
+            <Text
+              accessibilityRole="alert"
+              style={[typography.body, { color: theme.colors.danger }]}
+            >
               {error}
             </Text>
           ) : null}
           {deleted ? (
-            <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.brand }]}>
+            <Text
+              accessibilityRole="alert"
+              style={[typography.body, { color: theme.colors.brand }]}
+            >
               {deleted === "deleted"
                 ? "Your account has been deleted. Signing out…"
                 : "Account deletion requested. Remaining cleanup continues securely. Signing out…"}

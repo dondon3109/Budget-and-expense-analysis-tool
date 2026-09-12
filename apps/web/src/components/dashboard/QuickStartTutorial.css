@@ -155,6 +155,24 @@
   text-decoration: underline;
 }
 
+.quick-start-migration-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--brand-strong, #0f766e);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+
+.quick-start-migration-link:hover {
+  text-decoration: underline;
+}
+
 .quick-start-reopen {
   display: flex;
   justify-content: space-between;

@@ -450,4 +450,24 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Confirmation link processed");
     expect(screen.getByRole("status")).toHaveTextContent("complete the confirmation");
   });
+
+  it("renders data portability section and triggers full account archive export", async () => {
+    const api = await import("../src/lib/api");
+    const downloadSpy = vi.spyOn(api, "downloadAccountArchive").mockResolvedValue(undefined);
+
+    renderSettings();
+
+    const heading = screen.getByRole("heading", { name: "Data portability & backup" });
+    expect(heading).toBeInTheDocument();
+
+    const exportBtn = screen.getByRole("button", { name: "Download full account archive (.json)" });
+    expect(exportBtn).toBeInTheDocument();
+
+    fireEvent.click(exportBtn);
+
+    await waitFor(() => {
+      expect(downloadSpy).toHaveBeenCalled();
+      expect(screen.getByRole("status")).toHaveTextContent("Account archive downloaded successfully.");
+    });
+  });
 });

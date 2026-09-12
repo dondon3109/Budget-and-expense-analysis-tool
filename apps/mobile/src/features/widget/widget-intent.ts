@@ -87,6 +87,81 @@ function stripAmount(transcript: string): string {
 }
 
 /**
+ * Shortens a raw spoken description into a concise transaction label.
+ *
+ * Strips speech noise:
+ * - Conversational prefixes ("I spent", "I have spent", "Please log", etc.)
+ * - Payment/account references ("using cash", "with GCash", "via Maya", or known account names)
+ * - Temporal words ("today", "yesterday", "tonight", "this morning", etc.)
+ * - Leading prepositions & articles ("for dinner" -> "Dinner", "on groceries" -> "Groceries")
+ * - Dangling trailing prepositions
+ *
+ * Capitalizes the first letter and falls back to "Expense" if empty.
+ */
+export function summarizeWidgetDescription(
+  raw: string,
+  accountNames?: readonly string[],
+): string {
+  let text = raw.trim();
+  if (!text) return "Expense";
+
+  // 1. Strip speech prefixes
+  text = text.replace(
+    /^(?:i(?:'ve| have)?|we(?:'ve| have)?|please|kindly)?\s*(?:just\s+)?(?:spent|spend|paid|pay|log|logged|add|added|bought|buy|purchase|purchased|record|recorded|have\s+spent|had)\b\s*/i,
+    "",
+  );
+
+  // 2. Strip payment/account phrases matching user account names
+  if (accountNames && accountNames.length > 0) {
+    const sorted = [...accountNames]
+      .map((n) => n.trim())
+      .filter((n) => n.length > 1)
+      .sort((a, b) => b.length - a.length);
+    for (const name of sorted) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const withPrep = new RegExp(
+        `\\b(?:using|with|via|through|from|on|by|paid\\s+with|paid\\s+via|charged\\s+to)\\s+(?:my\\s+)?${escaped}\\b`,
+        "gi",
+      );
+      text = text.replace(withPrep, " ");
+      const trailing = new RegExp(`\\s+${escaped}\\s*$`, "i");
+      text = text.replace(trailing, " ");
+    }
+  }
+
+  // 3. Strip generic payment method phrases
+  text = text.replace(
+    /\b(?:using|with|via|through|from|on|by|paid\s+with|paid\s+via|charged\s+to)\s+(?:my\s+)?(?:cash|gcash|maya|paymaya|card|credit\s+card|debit\s+card|bank|bank\s+transfer|wallet|checking|savings|pocket\s+money)\b/gi,
+    " ",
+  );
+  text = text.replace(/\b(?:in\s+cash|by\s+card)\b/gi, " ");
+
+  // 4. Strip date and temporal phrases
+  text = text.replace(
+    /\b(?:today|yesterday|tonight|this\s+morning|this\s+afternoon|this\s+evening|just\s+now|earlier(?:\s+today)?|last\s+night)\b/gi,
+    " ",
+  );
+
+  // 5. Repeatedly strip leading prepositions and articles
+  let prev = "";
+  while (prev !== text) {
+    prev = text;
+    text = text.replace(/^(?:for|on|at|in|to|about|around|a|an|the|my|our|some)\b\s*/i, "");
+  }
+
+  // 6. Strip trailing dangling prepositions and conjunctions
+  text = text.replace(/\s+\b(?:for|on|at|in|to|using|with|via|from|by|and)\s*$/i, "");
+
+  // 7. Normalize whitespace and trailing punctuation
+  text = text.replace(/\s+/g, " ").replace(/[,.;:]+$/, "").trim();
+
+  if (!text) return "Expense";
+
+  // 8. Sentence case (capitalize first letter)
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
  * Canonical transcript-to-intent parser. The native widget builds best-effort
  * JSON with a mirrored subset of these rules; the app falls back to this
  * parser when the native payload is missing or unparseable, so behavior stays
@@ -110,13 +185,14 @@ export function parseWidgetTranscriptToIntent(transcript: string): WidgetIntent 
     return { type: "reconcile", account, newBalanceMinor: amountMinor };
   }
 
-  const merchant = stripAmount(text)
+  const rawMerchant = stripAmount(text)
     .replace(CURRENCY_WORDS, " ")
     .replace(EXPENSE_LEADERS, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (!merchant) return null;
-  return { type: "expense", amountMinor, merchant: merchant.slice(0, 240) };
+  if (!rawMerchant) return null;
+  const merchant = summarizeWidgetDescription(rawMerchant).slice(0, 240);
+  return { type: "expense", amountMinor, merchant };
 }
 
 export interface WidgetAccountOption {

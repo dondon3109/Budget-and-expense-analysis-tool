@@ -763,13 +763,9 @@ export function deleteProviderConfig(
   workspace: AuthenticatedWorkspace,
   id: string,
 ): Promise<ProviderConfig> {
-  return requestJson(
-    workspace,
-    `/api/app/admin/provider-configs/${encodeURIComponent(id)}`,
-    {
-      method: "DELETE",
-    },
-  );
+  return requestJson(workspace, `/api/app/admin/provider-configs/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }
 
 export function reorderProviderConfigs(
@@ -1420,12 +1416,9 @@ export async function extractVoiceTransaction(
         };
       })();
 
-  const response = await workspaceFetch(
-    workspace,
-    "/api/app/entry/voice",
-    requestInit,
-    { timeoutMs: 60_000 },
-  );
+  const response = await workspaceFetch(workspace, "/api/app/entry/voice", requestInit, {
+    timeoutMs: 60_000,
+  });
   if (!response.ok) {
     const payload = apiErrorPayload(await response.json().catch(() => null));
     throw new ApiRequestError(
@@ -1583,6 +1576,17 @@ export async function downloadTransactions(
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = "zoption-transactions.csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadAccountArchive(workspace: AuthenticatedWorkspace): Promise<void> {
+  const blob = await requestBlob(workspace, "/api/app/exports/account-archive.json");
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  const today = new Date().toISOString().slice(0, 10);
+  anchor.download = `zoption-account-archive-${today}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
 }

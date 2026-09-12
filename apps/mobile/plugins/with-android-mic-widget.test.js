@@ -85,10 +85,26 @@ test("voice activity is not noHistory so the transcript survives recognition", (
 
 test("generated widget carries the scheme and deep-links the intent route", () => {
   const files = widgetFileContents("zoption-preview");
-  expect(Object.keys(files)).toHaveLength(7);
+  expect(Object.keys(files)).toHaveLength(8);
   expect(files["app/src/main/res/values/zoption_mic_widget_strings.xml"]).toContain(
     "<string name=\"zoption_mic_widget_scheme\">zoption-preview</string>",
   );
+  expect(files["app/src/main/res/values/zoption_mic_widget_strings.xml"]).toContain(
+    "<string name=\"zoption_mic_widget_action_label\">Record expense</string>",
+  );
+  const infoXml = files["app/src/main/res/xml/zoption_mic_widget_info.xml"];
+  expect(infoXml).toContain('android:resizeMode="horizontal|vertical"');
+  expect(infoXml).toContain('android:minResizeWidth="48dp"');
+  expect(infoXml).toContain('android:minResizeHeight="48dp"');
+  expect(infoXml).toContain('android:previewLayout="@layout/zoption_mic_widget"');
+  const iconXml = files["app/src/main/res/drawable/zoption_mic_widget_icon.xml"];
+  expect(iconXml).toContain("<vector");
+  expect(iconXml).toContain('android:viewportWidth="24"');
+  expect(iconXml).toContain("#064E3B");
+  expect(iconXml).toContain("#FFFFFF");
+  const layoutXml = files["app/src/main/res/layout/zoption_mic_widget.xml"];
+  expect(layoutXml).toContain("@drawable/zoption_mic_widget_icon");
+  expect(layoutXml).not.toContain("@android:drawable/ic_btn_speak_now");
   const intents = files["app/src/main/java/site/zoption/micwidget/MicWidgetIntents.kt"];
   expect(intents).toContain('authority("widget-intent")');
   expect(intents).toContain("PARAM_PAYLOAD");
@@ -96,6 +112,7 @@ test("generated widget carries the scheme and deep-links the intent route", () =
   expect(intents).toContain('"type", "expense"');
   expect(intents).toContain("newBalanceMinor");
   expect(intents).toContain("amountMinor");
+  expect(intents).toContain("summarizeMerchant");
   const activity =
     files["app/src/main/java/site/zoption/micwidget/MicWidgetVoiceActivity.kt"];
   expect(activity).toContain("RecognizerIntent.ACTION_RECOGNIZE_SPEECH");
@@ -103,6 +120,8 @@ test("generated widget carries the scheme and deep-links the intent route", () =
   expect(activity).toContain("ERROR_STT_UNAVAILABLE");
   const provider = files["app/src/main/java/site/zoption/micwidget/MicWidgetProvider.kt"];
   expect(provider).toContain("setOnClickPendingIntent");
+  expect(provider).toContain("onAppWidgetOptionsChanged");
+  expect(provider).toContain("OPTION_APPWIDGET_MIN_WIDTH");
 });
 
 test("widget UI uses a solid background, never a gradient", () => {
@@ -120,12 +139,14 @@ test("writeWidgetFiles creates directory tree and writes files to platform root"
     await writeWidgetFiles(tempDir, "zoption");
     const manifestInfo = path.join(tempDir, "app/src/main/res/xml/zoption_mic_widget_info.xml");
     const stringsXml = path.join(tempDir, "app/src/main/res/values/zoption_mic_widget_strings.xml");
+    const iconXml = path.join(tempDir, "app/src/main/res/drawable/zoption_mic_widget_icon.xml");
     const providerKt = path.join(
       tempDir,
       "app/src/main/java/site/zoption/micwidget/MicWidgetProvider.kt",
     );
     expect(fs.existsSync(manifestInfo)).toBe(true);
     expect(fs.existsSync(stringsXml)).toBe(true);
+    expect(fs.existsSync(iconXml)).toBe(true);
     expect(fs.existsSync(providerKt)).toBe(true);
     const content = await fs.promises.readFile(stringsXml, "utf-8");
     expect(content).toContain("<string name=\"zoption_mic_widget_scheme\">zoption</string>");

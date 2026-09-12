@@ -1,5 +1,6 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
 import { matchCategory, transactionInputSchema } from "@zoption/shared";
@@ -9,7 +10,7 @@ import { useSyncState } from "@/sync/sync-state";
 import { Button, Card, ErrorState, FormField, MoneyValue, SelectionField } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { typography } from "@/ui/tokens";
+import { radii, spacing, typography } from "@/ui/tokens";
 import {
   formatMinorForInput,
   localCalendarDate,
@@ -28,6 +29,7 @@ import {
   resolveWidgetAccount,
   resolveWidgetAccountFromTranscript,
   resolveWidgetCategory,
+  summarizeWidgetDescription,
   type WidgetExpenseIntent,
   type WidgetIntent,
 } from "./widget-intent";
@@ -86,7 +88,28 @@ function ExpenseConfirm({
   const local = useLocalWorkspace();
   const sync = useSyncState();
   const formData = useTransactionFormData();
-  const [description, setDescription] = useState(intent.merchant);
+
+  const accounts = useMemo(() => formData.data?.accounts.filter((item) => !item.pending) ?? [], [formData.data]);
+  const categories = useMemo(
+    () => formData.data?.categories.filter((item) => item.kind === "expense" && !item.pending) ?? [],
+    [formData.data],
+  );
+
+  const [description, setDescription] = useState(() =>
+    summarizeWidgetDescription(intent.merchant, accounts.map((a) => a.name)),
+  );
+
+  useEffect(() => {
+    if (accounts.length > 0) {
+      setDescription((current) => {
+        if (current === intent.merchant) {
+          return summarizeWidgetDescription(intent.merchant, accounts.map((a) => a.name));
+        }
+        return current;
+      });
+    }
+  }, [accounts, intent.merchant]);
+
   const [amount, setAmount] = useState(formatMinorForInput(intent.amountMinor));
   const [accountId, setAccountId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -94,11 +117,14 @@ function ExpenseConfirm({
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const accounts = useMemo(() => formData.data?.accounts.filter((item) => !item.pending) ?? [], [formData.data]);
-  const categories = useMemo(
-    () => formData.data?.categories.filter((item) => item.kind === "expense" && !item.pending) ?? [],
-    [formData.data],
-  );
+  const dismiss = (): void => {
+    if (typeof router.canGoBack === "function" && router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(app)/(tabs)/transactions");
+    }
+  };
+
   // The native widget only parses the amount and merchant, so the account and
   // category the speaker actually named ("... dinner today using cash") are
   // recovered here: the account from the speaker's own account names in the
@@ -178,14 +204,41 @@ function ExpenseConfirm({
   if (saved) {
     return (
       <Card accessibilityLabel="Expense saved">
-        <View className="gap-3">
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Expense saved</Text>
-          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-            Your voice note is now in the ledger.
-          </Text>
-          <Button onPress={() => router.replace("/(app)/(tabs)/transactions")}>
-            View transactions
-          </Button>
+        <View className="gap-4">
+          <View className="flex-row items-center gap-3">
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: radii.round,
+                backgroundColor: theme.colors.brandSoft,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <MaterialCommunityIcons
+                name="check-circle-outline"
+                size={24}
+                color={theme.colors.brand}
+              />
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text style={[typography.headline, { color: theme.colors.text }]}>Expense saved</Text>
+              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                Your voice note is now in the ledger.
+              </Text>
+            </View>
+          </View>
+          <View className="flex-row items-center gap-3">
+            <View className="flex-1">
+              <Button onPress={() => router.replace("/(app)/(tabs)/transactions")}>
+                View transactions
+              </Button>
+            </View>
+            <Button variant="secondary" onPress={dismiss}>
+              Done
+            </Button>
+          </View>
         </View>
       </Card>
     );
@@ -194,8 +247,28 @@ function ExpenseConfirm({
   return (
     <Card accessibilityLabel="Confirm voice expense">
       <View className="gap-4">
-        <Text style={[typography.headline, { color: theme.colors.text }]}>Confirm expense</Text>
-        <FormField label="Description" value={description} onChangeText={setDescription} maxLength={240} editable={!saving} />
+        <View className="flex-row items-center justify-between">
+          <Text style={[typography.headline, { color: theme.colors.text }]}>Confirm expense</Text>
+          <View
+            style={{
+              paddingHorizontal: spacing.sm,
+              paddingVertical: spacing.xxs,
+              borderRadius: radii.sm,
+              backgroundColor: theme.colors.brandSoft,
+            }}
+          >
+            <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+              Voice Draft
+            </Text>
+          </View>
+        </View>
+        <FormField
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          maxLength={240}
+          editable={!saving}
+        />
         <FormField
           label="Amount"
           value={amount}
@@ -228,9 +301,16 @@ function ExpenseConfirm({
             {message}
           </Text>
         ) : null}
-        <Button loading={saving} disabled={saving} onPress={() => void confirm()}>
-          Save expense
-        </Button>
+        <View className="flex-row items-center gap-3">
+          <View className="flex-1">
+            <Button loading={saving} disabled={saving} onPress={() => void confirm()}>
+              Save expense
+            </Button>
+          </View>
+          <Button variant="secondary" disabled={saving} onPress={dismiss}>
+            Cancel
+          </Button>
+        </View>
       </View>
     </Card>
   );
@@ -290,9 +370,28 @@ function ReconcileConfirm({
   const formData = useTransactionFormData();
   const dashboard = useDashboardData();
   const [accountId, setAccountId] = useState<string | null>(null);
+  const [targetAmountInput, setTargetAmountInput] = useState(() =>
+    formatMinorForInput(newBalanceMinor),
+  );
   const [saving, setSaving] = useState(false);
   const [adjustmentId, setAdjustmentId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  const dismiss = (): void => {
+    if (typeof router.canGoBack === "function" && router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(app)/(tabs)");
+    }
+  };
+
+  const effectiveNewBalanceMinor = useMemo(() => {
+    try {
+      return parseAmountInput(targetAmountInput);
+    } catch {
+      return null;
+    }
+  }, [targetAmountInput]);
 
   const accounts = useMemo(() => formData.data?.accounts.filter((item) => !item.pending) ?? [], [formData.data]);
   const resolvedAccountId =
@@ -306,8 +405,9 @@ function ReconcileConfirm({
     dashboard.data?.accounts,
     resolvedAccountId,
   );
+  const targetMinor = effectiveNewBalanceMinor ?? newBalanceMinor;
   const balanceAlreadyMatches =
-    currentBalanceMinor !== null && currentBalanceMinor === newBalanceMinor;
+    currentBalanceMinor !== null && currentBalanceMinor === targetMinor;
 
   const confirm = async (): Promise<void> => {
     if (!local.workspace || saving || !resolvedAccountId || !account) return;
@@ -315,7 +415,11 @@ function ReconcileConfirm({
       setMessage("The current balance is still loading. Try again in a moment.");
       return;
     }
-    const preview = computeBalanceAdjustment(currentBalanceMinor, newBalanceMinor);
+    if (effectiveNewBalanceMinor === null) {
+      setMessage("Enter a valid target balance with no more than two decimal places.");
+      return;
+    }
+    const preview = computeBalanceAdjustment(currentBalanceMinor, effectiveNewBalanceMinor);
     setSaving(true);
     setMessage(null);
     try {
@@ -337,7 +441,7 @@ function ReconcileConfirm({
         categoryId,
         currency: account.currency,
         currentBalanceMinor,
-        newBalanceMinor,
+        newBalanceMinor: effectiveNewBalanceMinor,
       });
       if (!input) {
         setMessage("The balance already matches this amount.");
@@ -389,7 +493,21 @@ function ReconcileConfirm({
   return (
     <Card accessibilityLabel="Confirm balance update">
       <View className="gap-4">
-        <Text style={[typography.headline, { color: theme.colors.text }]}>Confirm balance update</Text>
+        <View className="flex-row items-center justify-between">
+          <Text style={[typography.headline, { color: theme.colors.text }]}>Confirm balance update</Text>
+          <View
+            style={{
+              paddingHorizontal: spacing.sm,
+              paddingVertical: spacing.xxs,
+              borderRadius: radii.sm,
+              backgroundColor: theme.colors.brandSoft,
+            }}
+          >
+            <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+              Adjust Balance
+            </Text>
+          </View>
+        </View>
         <SelectionField
           label="Account"
           value={resolvedAccountId}
@@ -398,6 +516,15 @@ function ReconcileConfirm({
           sheetTitle="Account"
           disabled={saving || adjustmentId !== null}
           onSelect={setAccountId}
+        />
+        <FormField
+          label="Target balance"
+          value={targetAmountInput}
+          onChangeText={setTargetAmountInput}
+          placeholder="0.00"
+          inputMode="decimal"
+          keyboardType="decimal-pad"
+          editable={!saving && adjustmentId === null}
         />
         {resolvedAccountId && account ? (
           currentBalanceMinor === null ? (
@@ -414,13 +541,13 @@ function ReconcileConfirm({
                 </Button>
               ) : null}
             </View>
-          ) : (
+          ) : effectiveNewBalanceMinor !== null ? (
             <BalanceDeltaPreview
               currentBalanceMinor={currentBalanceMinor}
-              newBalanceMinor={newBalanceMinor}
+              newBalanceMinor={effectiveNewBalanceMinor}
               currency={account.currency}
             />
-          )
+          ) : null
         ) : (
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
             “{accountName}” did not match an account. Choose the account to update.
@@ -432,24 +559,42 @@ function ReconcileConfirm({
           </Text>
         ) : null}
         {adjustmentId ? (
-          <>
+          <View className="gap-3">
             <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.brand }]}>
               Balance updated with an Uncategorized adjustment.
             </Text>
-            <Button variant="secondary" disabled={saving} loading={saving} onPress={() => void undo()}>
-              Undo adjustment
-            </Button>
-          </>
+            <View className="flex-row items-center gap-3">
+              <View className="flex-1">
+                <Button onPress={() => router.replace("/(app)/(tabs)")}>
+                  View accounts
+                </Button>
+              </View>
+              <Button variant="secondary" disabled={saving} loading={saving} onPress={() => void undo()}>
+                Undo adjustment
+              </Button>
+            </View>
+          </View>
         ) : (
-          <Button
-            loading={saving}
-            disabled={
-              saving || !resolvedAccountId || currentBalanceMinor === null || balanceAlreadyMatches
-            }
-            onPress={() => void confirm()}
-          >
-            Update balance
-          </Button>
+          <View className="flex-row items-center gap-3">
+            <View className="flex-1">
+              <Button
+                loading={saving}
+                disabled={
+                  saving ||
+                  !resolvedAccountId ||
+                  currentBalanceMinor === null ||
+                  balanceAlreadyMatches ||
+                  effectiveNewBalanceMinor === null
+                }
+                onPress={() => void confirm()}
+              >
+                Update balance
+              </Button>
+            </View>
+            <Button variant="secondary" disabled={saving} onPress={dismiss}>
+              Cancel
+            </Button>
+          </View>
         )}
       </View>
     </Card>
@@ -470,12 +615,55 @@ export function WidgetIntentScreen() {
         />
         {resolved.transcript ? (
           <Card accessibilityLabel="Heard transcript">
-            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-              Heard: “{resolved.transcript}”
-            </Text>
-            <Button variant="secondary" onPress={() => router.replace("/(app)/transaction")}>
-              Open transaction form
-            </Button>
+            <View className="gap-4">
+              <View className="flex-row items-center gap-3">
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: radii.round,
+                    backgroundColor: theme.colors.brandSoft,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="microphone-outline"
+                    size={20}
+                    color={theme.colors.brand}
+                  />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                    Heard
+                  </Text>
+                  <Text
+                    style={[typography.callout, { color: theme.colors.text, fontStyle: "italic" }]}
+                  >
+                    “{resolved.transcript}”
+                  </Text>
+                </View>
+              </View>
+              <View className="flex-row items-center gap-3">
+                <View className="flex-1">
+                  <Button
+                    variant="secondary"
+                    onPress={() => router.replace("/(app)/transaction")}
+                  >
+                    Open transaction form
+                  </Button>
+                </View>
+                <Button
+                  variant="secondary"
+                  onPress={() => {
+                    if (typeof router.canGoBack === "function" && router.canGoBack()) router.back();
+                    else router.replace("/(app)/(tabs)/transactions");
+                  }}
+                >
+                  Dismiss
+                </Button>
+              </View>
+            </View>
           </Card>
         ) : null}
       </Screen>
@@ -484,10 +672,38 @@ export function WidgetIntentScreen() {
 
   return (
     <Screen title="Voice widget" description="Review a voice note from the home-screen mic">
-      {resolved.interpreted ? (
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Interpreted from “{resolved.transcript}”. Review before saving.
-        </Text>
+      {resolved.transcript ? (
+        <Card accessibilityLabel="Spoken voice note">
+          <View className="flex-row items-center gap-3">
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: radii.round,
+                backgroundColor: theme.colors.brandSoft,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <MaterialCommunityIcons
+                name="microphone-outline"
+                size={20}
+                color={theme.colors.brand}
+              />
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                Voice note heard
+              </Text>
+              <Text
+                style={[typography.callout, { color: theme.colors.text, fontStyle: "italic" }]}
+                numberOfLines={3}
+              >
+                “{resolved.transcript}”
+              </Text>
+            </View>
+          </View>
+        </Card>
       ) : null}
       {resolved.intent.type === "expense" ? (
         <ExpenseConfirm intent={resolved.intent} transcript={resolved.transcript} />

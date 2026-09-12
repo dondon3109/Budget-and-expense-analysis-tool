@@ -19,13 +19,14 @@ import {
   ChevronRight,
   Download,
   FileCheck2,
+  FileSpreadsheet,
   FileUp,
   LoaderCircle,
   RotateCcw,
   ShieldCheck,
   Tags,
 } from "lucide-react";
-import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -33,6 +34,7 @@ import { ReceiptEntry, type ReceiptEntryDraft } from "../components/receipts/Rec
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
 import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
+import { SpreadsheetMigrationWizard } from "../components/onboarding/SpreadsheetMigrationWizard";
 import { AppShell } from "../components/layout/AppShell";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import { emptyImportMapping, localToday, useImportDraft } from "../import/ImportDraftProvider";
@@ -166,7 +168,14 @@ export function ImportPage() {
   const [dragActive, setDragActive] = useState(false);
   const dragDepthRef = useRef(0);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
   const entryMode = searchParams.get("mode") === "receipt" ? "receipt" : "file";
+
+  useEffect(() => {
+    if (searchParams.get("wizard") === "true") {
+      setMigrationWizardOpen(true);
+    }
+  }, [searchParams]);
 
   function csvField(value: string): string {
     return '"' + value.replaceAll('"', '""') + '"';
@@ -222,8 +231,15 @@ export function ImportPage() {
   });
   const accounts = accountsQuery.data ?? [];
   const subscriptionsQuery = useQuery({
-    queryKey: queryKeys.subscriptions(workspace, `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`),
-    queryFn: () => getSubscriptions(workspace, `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`),
+    queryKey: queryKeys.subscriptions(
+      workspace,
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`,
+    ),
+    queryFn: () =>
+      getSubscriptions(
+        workspace,
+        `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`,
+      ),
     enabled: Boolean(preview),
   });
 
@@ -699,9 +715,18 @@ export function ImportPage() {
               match the columns, review the rows, then save them to your budget.
             </p>
           </div>
-          <button className="button secondary" type="button" onClick={downloadTemplate}>
-            <Download size={17} /> Download template
-          </button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button
+              className="button primary"
+              type="button"
+              onClick={() => setMigrationWizardOpen(true)}
+            >
+              <FileSpreadsheet size={17} aria-hidden="true" /> Migration Wizard
+            </button>
+            <button className="button secondary" type="button" onClick={downloadTemplate}>
+              <Download size={17} aria-hidden="true" /> Download template
+            </button>
+          </div>
         </header>
 
         <nav className="import-tabs" aria-label="Import source">
@@ -1328,6 +1353,11 @@ export function ImportPage() {
             onClose={() => setLimitDialogOpen(false)}
           />
         )}
+        <SpreadsheetMigrationWizard
+          open={migrationWizardOpen}
+          onClose={() => setMigrationWizardOpen(false)}
+          onComplete={() => setMigrationWizardOpen(false)}
+        />
       </div>
     </AppShell>
   );

@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronUp,
   CreditCard,
+  FileSpreadsheet,
   PieChart,
   PlusCircle,
   SlidersHorizontal,
@@ -17,9 +18,13 @@ const STORAGE_KEY = "zoption:quick-start-tutorial-state";
 
 export interface QuickStartTutorialProps {
   onAdjustBalance?: () => void;
+  onMigrateSpreadsheet?: () => void;
 }
 
-export function QuickStartTutorial({ onAdjustBalance }: QuickStartTutorialProps) {
+export function QuickStartTutorial({
+  onAdjustBalance,
+  onMigrateSpreadsheet,
+}: QuickStartTutorialProps) {
   const [dismissed, setDismissed] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -215,6 +220,21 @@ export function QuickStartTutorial({ onAdjustBalance }: QuickStartTutorialProps)
           </div>
 
           <footer className="quick-start-footer">
+            {onMigrateSpreadsheet ? (
+              <button
+                type="button"
+                className="quick-start-migration-link"
+                onClick={onMigrateSpreadsheet}
+              >
+                <FileSpreadsheet size={15} aria-hidden="true" />
+                <span>Switching from Excel or CSV? Launch Migration Wizard →</span>
+              </button>
+            ) : (
+              <Link to="/app/import?wizard=true" className="quick-start-migration-link">
+                <FileSpreadsheet size={15} aria-hidden="true" />
+                <span>Switching from Excel or CSV? Launch Migration Wizard →</span>
+              </Link>
+            )}
             <Link to="/app/tutorials" className="quick-start-all-link">
               Looking for detailed instructions? Visit the dedicated Tutorials Page →
             </Link>

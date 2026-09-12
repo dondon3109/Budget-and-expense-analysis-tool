@@ -21,7 +21,12 @@ const reconcileParams = {
 let mockSearchParams: Record<string, string> = { ...reconcileParams };
 
 jest.mock("expo-router", () => ({
-  router: { replace: jest.fn(), push: jest.fn() },
+  router: {
+    replace: jest.fn(),
+    push: jest.fn(),
+    back: jest.fn(),
+    canGoBack: jest.fn().mockReturnValue(true),
+  },
   useLocalSearchParams: () => mockSearchParams,
 }));
 
@@ -218,6 +223,30 @@ describe("WidgetIntentScreen expense review", () => {
     expect(screen.getByRole("button", { name: "Category, Food & dining" })).toBeTruthy();
   });
 
+  it("summarizes the raw merchant into a concise description", async () => {
+    await render(<WidgetIntentScreen />);
+
+    // Raw merchant was "dinner today using cash", summarized to "Dinner"
+    expect(screen.getByDisplayValue("Dinner")).toBeTruthy();
+  });
+
+  it("displays the voice note transcript banner when speech was heard", async () => {
+    await render(<WidgetIntentScreen />);
+
+    expect(screen.getByText("Voice note heard")).toBeTruthy();
+    expect(
+      screen.getByText("“I have spent 500 pesos for dinner today using cash”"),
+    ).toBeTruthy();
+  });
+
+  it("renders a cancel button to dismiss the confirmation", async () => {
+    await render(<WidgetIntentScreen />);
+
+    const cancelButton = screen.getByRole("button", { name: "Cancel" });
+    expect(cancelButton).toBeTruthy();
+    await fireEvent.press(cancelButton);
+  });
+
   it("falls back to the first account and Uncategorized when nothing matches", async () => {
     mockSearchParams = {
       payload: JSON.stringify({ type: "expense", amountMinor: 15000, merchant: "misc" }),
@@ -228,5 +257,52 @@ describe("WidgetIntentScreen expense review", () => {
 
     expect(screen.getByRole("button", { name: "Account, Bank, PHP" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Category, Uncategorized" })).toBeTruthy();
+  });
+});
+
+describe("WidgetIntentScreen adjustable reconcile", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchParams = { ...reconcileParams };
+    jest
+      .mocked(useSyncState)
+      .mockReturnValue({ status: "synced", message: null, retry: jest.fn() });
+    jest.mocked(useLocalWorkspace).mockReturnValue({
+      workspace: { transactionMutations: { createTransaction } } as unknown as LocalWorkspace,
+      status: "ready",
+      message: null,
+      retry: jest.fn(),
+      reopen: jest.fn(),
+    });
+    jest.mocked(useTransactionFormData).mockReturnValue({
+      data: formData(),
+      error: null,
+      retry: jest.fn(),
+    });
+    jest
+      .mocked(useDashboardData)
+      .mockReturnValue({ data: dashboardWithBalance(300000), error: null, retry: jest.fn() });
+  });
+
+  it("allows the user to edit the target balance before updating", async () => {
+    await render(<WidgetIntentScreen />);
+
+    const input = screen.getByDisplayValue("5000.00");
+    expect(input).toBeTruthy();
+
+    // Change target balance to 6,000.00
+    await fireEvent.changeText(input, "6000");
+
+    const updateButton = screen.getByRole("button", { name: "Update balance" });
+    await fireEvent.press(updateButton);
+
+    await waitFor(() => expect(createTransaction).toHaveBeenCalledTimes(1));
+    expect(createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "income",
+        accountId: "a-bdo",
+        amountMinor: 300000, // 6,000.00 - 3,000.00 = 3,000.00 delta
+      }),
+    );
   });
 });

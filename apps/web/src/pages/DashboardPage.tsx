@@ -13,7 +13,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import {
   ArrowDownRight,
   ArrowUpRight,
-  FileUp,
+  FileSpreadsheet,
   Pencil,
   PiggyBank,
   Plus,
@@ -36,6 +36,7 @@ import { DashboardTransactionHistory } from "../components/dashboard/DashboardTr
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
 import { OverviewStatBar, type OverviewStatItem } from "../components/dashboard/OverviewStatBar";
 import { QuickStartTutorial } from "../components/dashboard/QuickStartTutorial";
+import { SpreadsheetMigrationWizard } from "../components/onboarding/SpreadsheetMigrationWizard";
 import { useInitialDashboardExperience } from "../components/dashboard/InitialDashboardExperienceProvider";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
@@ -158,9 +159,16 @@ export function DashboardPage() {
   const [cashflowView, setCashflowView] = useState<CashflowTrendView>("weekly");
   const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
+  const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const subscribeTriggerRef = useRef<HTMLElement | null>(null);
   const handledPostAuthCheckoutIntentRef = useRef(false);
+
+  useEffect(() => {
+    if (searchParams.get("wizard") === "true") {
+      setMigrationWizardOpen(true);
+    }
+  }, [searchParams]);
   const today = localIsoDate();
   const currentDashboardMonth = currentMonth();
   const requestedMonth = searchParams.get("month");
@@ -655,6 +663,7 @@ export function DashboardPage() {
 
         <QuickStartTutorial
           onAdjustBalance={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
+          onMigrateSpreadsheet={() => setMigrationWizardOpen(true)}
         />
 
         {accountBalances && (
@@ -1128,38 +1137,41 @@ export function DashboardPage() {
         {empty ? (
           <section className="workspace-onboarding" aria-labelledby="workspace-onboarding-title">
             <div className="onboarding-copy">
-              <p className="eyebrow">A clean starting point</p>
-              <h2 id="workspace-onboarding-title">Build your first monthly picture</h2>
+              <p className="eyebrow">First-time setup</p>
+              <h2 id="workspace-onboarding-title">Build your real financial picture</h2>
               <p>
-                Your workspace starts without fictional transactions or budgets. Import a CSV or add
-                a transaction when you are ready, and Zoption will build the overview from your
-                data.
+                Your workspace starts clean without fictional transactions. Choose how you want to
+                begin: migrate existing bank or Excel statements in under a minute, or build clean
+                as you go.
               </p>
               <div className="onboarding-actions">
-                <Link className="button primary" to="/app/import">
-                  <FileUp size={17} aria-hidden="true" /> Import a CSV
-                </Link>
-                <Link className="button secondary" to="/app/transactions">
-                  <Plus size={17} aria-hidden="true" /> Add a transaction
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => setMigrationWizardOpen(true)}
+                >
+                  <FileSpreadsheet size={17} aria-hidden="true" /> Bring your data (Spreadsheet
+                  wizard)
+                </button>
+                <Link className="button secondary" to="/app/transactions?add=1">
+                  <Plus size={17} aria-hidden="true" /> Add transactions manually
                 </Link>
               </div>
             </div>
-            <div className="onboarding-steps" aria-label="Getting started">
+            <div className="onboarding-steps" aria-label="Starting paths">
               <span>1</span>
-              <p>
-                <strong>Add your records</strong>
-                Import a file or enter transactions manually.
-              </p>
+              <div>
+                <strong>Option A: Bring your data</strong>
+                <p>
+                  Upload Excel sheets or bank CSVs with automated column matching and duplicate
+                  checks.
+                </p>
+              </div>
               <span>2</span>
-              <p>
-                <strong>Shape a budget</strong>
-                Set practical monthly limits by category.
-              </p>
-              <span>3</span>
-              <p>
-                <strong>Return for a clearer picture</strong>
-                Review totals, trends, and recurring costs together.
-              </p>
+              <div>
+                <strong>Option B: Start fresh</strong>
+                <p>Configure your accounts and track spending with voice or manual entries.</p>
+              </div>
             </div>
           </section>
         ) : (
@@ -1228,6 +1240,15 @@ export function DashboardPage() {
           onClose={closeProCheckout}
         />
       )}
+      <SpreadsheetMigrationWizard
+        open={migrationWizardOpen}
+        onClose={() => setMigrationWizardOpen(false)}
+        onComplete={() => {
+          setMigrationWizardOpen(false);
+          void refetch();
+          void transactionHistoryQuery.refetch();
+        }}
+      />
     </AppShell>
   );
 }

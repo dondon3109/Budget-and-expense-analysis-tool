@@ -8,6 +8,9 @@ All notable product changes are documented here.
 
 - Added a platform admin console at `/app/admin` that gathers sponsored Pro seats, customer reviews, AI and voice models, and support report triage into one page, each area showing its live state and where it opens.
 - Added an Admin entry to the private app sidebar that appears only for the platform administrator.
+- Added a guided Spreadsheet Migration Onboarding Wizard with drag-and-drop file upload (CSV and Excel .xlsx/.xls), automatic bank preset recognition, visual column mapping with sample row preview, duplicate transaction detection, and one-click import into a new or existing account.
+- Added a first-run "Fork in the Road" experience across web and mobile dashboards giving new users a clear choice between bringing existing bank/Excel data or starting clean with guided setup.
+- Added full data portability export endpoint `GET /api/app/exports/account-archive.json` with web download and native mobile file share sheet under Account settings for unpaywalled, full JSON account backups (accounts, transactions, categories, budgets, subscriptions, goals, debts, and events).
 
 ### Changed
 
