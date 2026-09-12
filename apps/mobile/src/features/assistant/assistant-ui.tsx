@@ -328,26 +328,33 @@ export function AssistantMessageBubble({
   );
 }
 
+/** Selection mode hands the row a checkbox: the mode cannot be on without a toggle. */
+export interface AssistantThreadSelection {
+  selected: boolean;
+  onToggle: () => void;
+}
+
 export function AssistantThreadRow({
   title,
   lastMessageAt,
   kind = "text",
-  managing = false,
+  selection,
   onOpen,
   onDelete,
 }: {
   title: string;
   lastMessageAt: string;
   kind?: AssistantThreadKind;
-  managing?: boolean;
+  selection?: AssistantThreadSelection;
   onOpen: () => void;
   onDelete: () => void;
 }) {
   const theme = useZoptionTheme();
   const isVoice = kind === "voice";
+  const managing = selection !== undefined;
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={managing ? "checkbox" : "button"}
       accessibilityLabel={
         "Conversation " +
         title +
@@ -355,24 +362,40 @@ export function AssistantThreadRow({
         formatThreadTime(lastMessageAt) +
         (isVoice ? ", voice conversation" : "")
       }
-      accessibilityHint={managing ? undefined : "Opens the conversation. Press and hold to delete."}
+      accessibilityHint={
+        managing
+          ? "Selects this conversation for deleting."
+          : "Opens the conversation. Press and hold to delete."
+      }
+      accessibilityState={managing ? { checked: selection.selected } : undefined}
       accessibilityActions={
         managing ? undefined : [{ name: "delete", label: "Delete conversation" }]
       }
       onAccessibilityAction={(event) => {
         if (event.nativeEvent.actionName === "delete") onDelete();
       }}
-      onPress={onOpen}
+      onPress={managing ? selection.onToggle : onOpen}
       onLongPress={managing ? undefined : onDelete}
       delayLongPress={450}
       style={({ pressed }) => [
         styles.threadRow,
         {
-          backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surface,
-          borderColor: theme.colors.border,
+          backgroundColor: pressed
+            ? theme.colors.brandSoft
+            : managing && selection.selected
+              ? theme.colors.brandSoft
+              : theme.colors.surface,
+          borderColor: managing && selection.selected ? theme.colors.brand : theme.colors.border,
         },
       ]}
     >
+      {managing ? (
+        <MaterialCommunityIcons
+          name={selection.selected ? "checkbox-marked" : "checkbox-blank-outline"}
+          size={22}
+          color={selection.selected ? theme.colors.brand : theme.colors.textMuted}
+        />
+      ) : null}
       <View style={styles.threadContent}>
         <View style={styles.threadTitleRow}>
           <Text
@@ -399,17 +422,6 @@ export function AssistantThreadRow({
           {formatThreadTime(lastMessageAt)}
         </Text>
       </View>
-      {managing ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={"Delete conversation " + title}
-          onPress={onDelete}
-          hitSlop={4}
-          style={[styles.deleteButton, { backgroundColor: theme.colors.dangerSoft }]}
-        >
-          <Text style={[typography.label, { color: theme.colors.danger }]}>Delete</Text>
-        </Pressable>
-      ) : null}
     </Pressable>
   );
 }
@@ -604,14 +616,6 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
-  },
-  deleteButton: {
-    minHeight: touchTarget,
-    minWidth: 76,
-    paddingHorizontal: spacing.sm,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radii.sm,
   },
   banner: {
     borderWidth: 1,

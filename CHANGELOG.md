@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Fixed
 
 - Fixed the assistant chat history Select button on web, which only revealed per-chat trash icons: select mode now shows a checkbox on each chat, toggles chats instead of opening them, and deletes the selected chats together in one confirmed action.
+- Fixed the assistant chat history Select button on mobile, which made conversation taps do nothing and only offered a per-chat Delete: select mode now shows a checkbox on each conversation, taps toggle the selection, and a Delete selected bar removes the chosen conversations together after confirmation.
 
 ## 2.30.2 — 2026-09-11
 

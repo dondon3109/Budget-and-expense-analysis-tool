@@ -131,6 +131,8 @@ export function AssistantScreen() {
   const [confirmClearChats, setConfirmClearChats] = useState(false);
   const [pendingDeleteThread, setPendingDeleteThread] = useState<string | null>(null);
   const [managingThreads, setManagingThreads] = useState(false);
+  const [selectedThreadIds, setSelectedThreadIds] = useState<string[]>([]);
+  const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
 
   const listRef = useRef<FlatList<AssistantWireMessage>>(null);
   const mounted = useRef(true);
@@ -529,6 +531,72 @@ export function AssistantScreen() {
     }
   }, [withToken]);
 
+  const toggleThreadSelection = useCallback((threadId: string) => {
+    setSelectedThreadIds((current) =>
+      current.includes(threadId) ? current.filter((id) => id !== threadId) : [...current, threadId],
+    );
+  }, []);
+
+  // Leaving select mode always drops the selection, and an empty history hides
+  // the Select toggle entirely, so select mode leaves with it.
+  useEffect(() => {
+    if (!managingThreads) {
+      setSelectedThreadIds([]);
+      setConfirmDeleteSelected(false);
+    } else if (threads.length === 0) {
+      setManagingThreads(false);
+    }
+  }, [managingThreads, threads.length]);
+
+  const confirmDeleteSelectedThreads = useCallback(async () => {
+    setConfirmDeleteSelected(false);
+    const selected = threads.filter((thread) => selectedThreadIds.includes(thread.id));
+    if (selected.length === 0) return;
+    setBusyAction("threads");
+    const deletedIds: string[] = [];
+    try {
+      for (const thread of selected) {
+        try {
+          await withToken((token) => deleteAssistantThread({ accessToken: token }, thread.id));
+          deletedIds.push(thread.id);
+        } catch (error) {
+          // A 404 for an already-absent conversation means the desired end state
+          // is already reached, so we treat it as a successful delete instead of
+          // a misleading "not found" error. Genuine failures stop the pass so the
+          // conversations after the failure stay selected for a retry.
+          const alreadyAbsent =
+            error instanceof ApiTransportError &&
+            error.code === "not_found" &&
+            error.status === 404;
+          if (alreadyAbsent) {
+            deletedIds.push(thread.id);
+            continue;
+          }
+          if (mounted.current) {
+            setInlineError(
+              error instanceof ApiTransportError
+                ? error.message
+                : "The selected conversations could not be deleted.",
+            );
+          }
+          break;
+        }
+      }
+    } finally {
+      if (mounted.current) setBusyAction(null);
+    }
+    if (deletedIds.length === 0 || !mounted.current) return;
+    const removed = new Set(deletedIds);
+    setThreads((previous) => previous.filter((item) => !removed.has(item.id)));
+    setSelectedThreadIds((previous) => previous.filter((id) => !removed.has(id)));
+    if (activeThreadId !== null && removed.has(activeThreadId)) {
+      setActiveThreadId(null);
+      setVoiceThreadId((current) => (current === activeThreadId ? null : current));
+      setMessages([]);
+      setView("threads");
+    }
+  }, [activeThreadId, selectedThreadIds, threads, withToken]);
+
   const confirmDeleteThread = useCallback(async () => {
     if (!pendingDeleteThread) return;
     const threadId = pendingDeleteThread;
@@ -611,6 +679,11 @@ export function AssistantScreen() {
     preferences !== null &&
     !requiresAssistantConsent(preferences) &&
     requiresIdentitySetup(preferences);
+  // Counted against the live list so a conversation that disappeared elsewhere
+  // never inflates the selection.
+  const selectedThreadCount = threads.filter((thread) =>
+    selectedThreadIds.includes(thread.id),
+  ).length;
 
   // Stable renderItem identities keep the FlatLists from re-rendering every
   // row on unrelated state changes such as composer keystrokes.
@@ -622,15 +695,19 @@ export function AssistantScreen() {
         title={item.title}
         lastMessageAt={item.lastMessageAt}
         kind={item.kind}
-        managing={managingThreads}
-        onOpen={() => {
-          if (managingThreads) return;
-          void openHistoryThread(item);
-        }}
+        selection={
+          managingThreads
+            ? {
+                selected: selectedThreadIds.includes(item.id),
+                onToggle: () => toggleThreadSelection(item.id),
+              }
+            : undefined
+        }
+        onOpen={() => void openHistoryThread(item)}
         onDelete={() => setPendingDeleteThread(item.id)}
       />
     ),
-    [managingThreads, openHistoryThread],
+    [managingThreads, openHistoryThread, selectedThreadIds, toggleThreadSelection],
   );
 
   // Text chat is mic-in / text-out: assistant answers are never spoken here.
@@ -763,7 +840,7 @@ export function AssistantScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={
-                  managingThreads ? "Done managing conversations" : "Manage conversations"
+                  managingThreads ? "Done selecting conversations" : "Select conversations"
                 }
                 onPress={() => setManagingThreads((current) => !current)}
                 style={styles.iconButton}
@@ -810,44 +887,73 @@ export function AssistantScreen() {
           initialThreadId={voiceThreadId}
         />
       ) : view === "threads" ? (
-        <FlatList
-          data={threads}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          renderItem={renderThread}
-          ItemSeparatorComponent={ThreadListSeparator}
-          removeClippedSubviews={false}
-          refreshControl={
-            <RefreshControl
-              colors={[String(theme.colors.brand)]}
-              onRefresh={handleRefreshThreads}
-              progressBackgroundColor={String(theme.colors.surfaceRaised)}
-              refreshing={refreshingThreads}
-              tintColor={String(theme.colors.brand)}
-            />
-          }
-          ListHeaderComponent={
-            <View style={styles.newChat}>
-              <Button onPress={startNewChat}>New conversation</Button>
-              <Button variant="secondary" onPress={startVoiceChat}>
-                Voice chat
+        <View style={styles.threadsPane}>
+          <FlatList
+            data={threads}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            renderItem={renderThread}
+            ItemSeparatorComponent={ThreadListSeparator}
+            removeClippedSubviews={false}
+            refreshControl={
+              <RefreshControl
+                colors={[String(theme.colors.brand)]}
+                onRefresh={handleRefreshThreads}
+                progressBackgroundColor={String(theme.colors.surfaceRaised)}
+                refreshing={refreshingThreads}
+                tintColor={String(theme.colors.brand)}
+              />
+            }
+            ListHeaderComponent={
+              <View style={styles.newChat}>
+                <Button onPress={startNewChat}>New conversation</Button>
+                <Button variant="secondary" onPress={startVoiceChat}>
+                  Voice chat
+                </Button>
+                {threads.length > 0 ? (
+                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                    {managingThreads
+                      ? "Tap conversations to select them, then delete the selection."
+                      : "Open a conversation, or press Select / press and hold to delete one."}
+                  </Text>
+                ) : null}
+              </View>
+            }
+            ListEmptyComponent={
+              <EmptyState
+                title="No conversations yet"
+                description="Ask about your spending, budgets, subscriptions, goals or debts. The assistant reads your records and never changes them."
+              />
+            }
+          />
+          {managingThreads ? (
+            <SafeAreaView
+              edges={["bottom"]}
+              style={[
+                styles.selectionBar,
+                {
+                  borderTopColor: theme.colors.border,
+                  backgroundColor: theme.colors.surface,
+                },
+              ]}
+            >
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                {selectedThreadCount === 0
+                  ? "Tap conversations to select them."
+                  : selectedThreadCount + " selected"}
+              </Text>
+              <Button
+                variant="danger"
+                icon="trash-can-outline"
+                disabled={selectedThreadCount === 0}
+                loading={busyAction === "threads"}
+                onPress={() => setConfirmDeleteSelected(true)}
+              >
+                {"Delete selected (" + selectedThreadCount + ")"}
               </Button>
-              {threads.length > 0 ? (
-                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                  {managingThreads
-                    ? "Delete only the conversations you mean to remove."
-                    : "Open a conversation, or press Select / press and hold to delete one."}
-                </Text>
-              ) : null}
-            </View>
-          }
-          ListEmptyComponent={
-            <EmptyState
-              title="No conversations yet"
-              description="Ask about your spending, budgets, subscriptions, goals or debts. The assistant reads your records and never changes them."
-            />
-          }
-        />
+            </SafeAreaView>
+          ) : null}
+        </View>
       ) : (
         <KeyboardAvoidingView
           style={styles.chat}
@@ -1111,6 +1217,19 @@ export function AssistantScreen() {
         onConfirm={() => void confirmDeleteThread()}
       />
       <ConfirmationDialog
+        visible={confirmDeleteSelected}
+        title={
+          selectedThreadCount === 1
+            ? "Delete conversation?"
+            : "Delete " + selectedThreadCount + " conversations?"
+        }
+        message="These conversations are removed for good. Your financial records are never touched."
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setConfirmDeleteSelected(false)}
+        onConfirm={() => void confirmDeleteSelectedThreads()}
+      />
+      <ConfirmationDialog
         visible={confirmClearChats}
         title="Clear all conversations?"
         message="Every assistant conversation is removed. Your financial records are never touched."
@@ -1180,6 +1299,13 @@ const styles = StyleSheet.create({
   iconButton: { padding: spacing.xs },
   headerTitle: { flexShrink: 1 },
   listContent: { padding: spacing.md, paddingBottom: spacing.xl },
+  threadsPane: { flex: 1 },
+  selectionBar: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    gap: spacing.xs,
+  },
   newChat: { marginBottom: spacing.md, alignSelf: "stretch", gap: spacing.sm },
   chat: { flex: 1 },
   chatContent: { padding: spacing.md, paddingBottom: spacing.md },

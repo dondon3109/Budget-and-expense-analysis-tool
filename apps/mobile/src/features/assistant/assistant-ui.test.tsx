@@ -56,9 +56,10 @@ describe("assistant accessibility-critical interactions", () => {
     ).toBeNull();
   });
 
-  it("deletes only after a long press or an explicit manage-mode action", async () => {
+  it("deletes on long press, and toggles selection instead in select mode", async () => {
     const onOpen = jest.fn();
     const onDelete = jest.fn();
+    const onToggle = jest.fn();
     const { rerender } = await render(
       <AssistantThreadRow
         title="Where does my money go?"
@@ -76,14 +77,37 @@ describe("assistant accessibility-critical interactions", () => {
       <AssistantThreadRow
         title="Where does my money go?"
         lastMessageAt="2026-05-01T08:00:00.000Z"
-        managing
+        selection={{ selected: false, onToggle }}
         onOpen={onOpen}
         onDelete={onDelete}
       />,
     );
-    const del = screen.getByRole("button", { name: "Delete conversation Where does my money go?" });
-    await fireEvent.press(del);
-    expect(onDelete).toHaveBeenCalledTimes(2);
+    const selectable = screen.getByRole("checkbox", {
+      name: /Conversation Where does my money go/,
+    });
+    expect(selectable.props.accessibilityState).toMatchObject({ checked: false });
+    await fireEvent.press(selectable);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    // Selecting must never open or delete the conversation.
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("button", { name: "Delete conversation Where does my money go?" }),
+    ).toBeNull();
+
+    await rerender(
+      <AssistantThreadRow
+        title="Where does my money go?"
+        lastMessageAt="2026-05-01T08:00:00.000Z"
+        selection={{ selected: true, onToggle }}
+        onOpen={onOpen}
+        onDelete={onDelete}
+      />,
+    );
+    expect(
+      screen.getByRole("checkbox", { name: /Conversation Where does my money go/ }).props
+        .accessibilityState,
+    ).toMatchObject({ checked: true });
   });
 
   it("offers spoken replies only when a listener exists", async () => {
@@ -209,9 +233,7 @@ describe("voice model selection", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: /Voice and gender, Bright · Female/ }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Voice and gender, Bright · Female/ })).toBeTruthy();
     expect(screen.getByText("A bright, lively female voice.")).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "Preview Bright voice" }));
     expect(onPreview).toHaveBeenCalledWith("bright");
