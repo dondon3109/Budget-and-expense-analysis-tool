@@ -125,7 +125,7 @@ describe("CashflowForecastSection", () => {
 
     const alertBanner = screen.getByRole("alert");
     expect(alertBanner).toBeInTheDocument();
-    expect(screen.getByText("Deficit Risk Detected")).toBeInTheDocument();
+    expect(screen.getByText("Projected Shortfall Guidance")).toBeInTheDocument();
     expect(
       screen.getByText(/Your balance is projected to fall below zero/),
     ).toBeInTheDocument();

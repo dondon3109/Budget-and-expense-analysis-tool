@@ -8,7 +8,7 @@ import {
   CheckCircle2,
   Clock,
   DollarSign,
-  ShieldAlert,
+  Info,
   ShieldCheck,
   TrendingDown,
   TrendingUp,
@@ -193,17 +193,17 @@ export function CashflowForecastSection({
       {alertStatus === "deficit" && (
         <div className="forecast-alert-banner alert-deficit" role="alert">
           <div className="alert-icon-wrap">
-            <ShieldAlert size={20} aria-hidden="true" />
+            <Info size={20} aria-hidden="true" />
           </div>
           <div className="alert-content">
-            <strong className="alert-title">Deficit Risk Detected</strong>
+            <strong className="alert-title">Projected Shortfall Guidance</strong>
             <p className="alert-desc">
               Your balance is projected to fall below zero on{" "}
               <strong>{formatFullDate(forecast.minBalanceDate)}</strong>, reaching a minimum of{" "}
               <span className="alert-amount negative">
                 {formatMoney(forecast.minProjectedBalanceMinor)}
               </span>
-              . Consider adjusting renewal dates or transferring additional funds to prevent overdraft.
+              . Consider adjusting renewal dates or transferring additional funds to keep accounts covered.
             </p>
           </div>
         </div>

@@ -131,9 +131,9 @@
 }
 
 .alert-deficit {
-  background: var(--danger-soft, #fff1ef);
-  border-color: rgba(220, 38, 38, 0.3);
-  color: #991b1b;
+  background: var(--surface-soft, #faf8f2);
+  border-color: var(--line-strong, #d9d5cb);
+  color: var(--ink, #17342e);
 }
 
 .alert-warning {
@@ -154,7 +154,7 @@
 }
 
 .alert-deficit .alert-icon-wrap {
-  color: #dc2626;
+  color: var(--muted, #6c716c);
 }
 
 .alert-warning .alert-icon-wrap {
@@ -188,7 +188,7 @@
 .alert-amount.negative {
   font-weight: 700;
   font-family: var(--font-mono, monospace);
-  color: #b91c1c;
+  color: var(--ink, #17342e);
 }
 
 /* 3. Summary Metric Cards */

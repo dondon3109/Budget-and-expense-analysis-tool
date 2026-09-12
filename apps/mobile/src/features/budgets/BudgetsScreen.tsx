@@ -603,25 +603,27 @@ function SummaryCard({
   const nearingLimit = !overBudget && usedPercent >= 85;
 
   const statusBadge = overBudget ? (
-    <View style={[styles.statusBadge, { backgroundColor: theme.colors.dangerSoft }]}>
+    <View style={[styles.statusBadge, { backgroundColor: theme.colors.canvasMuted }]}>
       <MaterialCommunityIcons
         accessibilityElementsHidden
-        color={theme.colors.danger}
-        name="alert-circle-outline"
+        color={theme.colors.textMuted}
+        name="information-outline"
         size={14}
       />
-      <Text style={[styles.statusBadgeText, { color: theme.colors.danger }]}>Over budget</Text>
+      <Text style={[styles.statusBadgeText, { color: theme.colors.textMuted }]}>
+        Above plan ({usedPercent}%)
+      </Text>
     </View>
   ) : nearingLimit ? (
-    <View style={[styles.statusBadge, { backgroundColor: theme.colors.warningSoft }]}>
+    <View style={[styles.statusBadge, { backgroundColor: theme.colors.canvasMuted }]}>
       <MaterialCommunityIcons
         accessibilityElementsHidden
-        color={theme.colors.warning}
-        name="alert-outline"
+        color={theme.colors.textMuted}
+        name="information-outline"
         size={14}
       />
-      <Text style={[styles.statusBadgeText, { color: theme.colors.warning }]}>
-        {usedPercent}% used
+      <Text style={[styles.statusBadgeText, { color: theme.colors.textMuted }]}>
+        Approaching plan ({usedPercent}%)
       </Text>
     </View>
   ) : (
