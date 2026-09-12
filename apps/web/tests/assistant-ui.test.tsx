@@ -766,7 +766,6 @@ describe("assistant UI", () => {
     const { queryClient } = renderPage();
 
     await screen.findByText(thread.title);
-    fireEvent.click(screen.getByRole("button", { name: "Manage chats" }));
     fireEvent.click(screen.getByRole("button", { name: `Delete ${thread.title}` }));
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
@@ -810,5 +809,59 @@ describe("assistant UI", () => {
       nextCursor: null,
     });
     await waitFor(() => expect(apiMocks.getAssistantThreads).toHaveBeenCalledTimes(2));
+  });
+
+  it("deletes every selected chat in one pass", async () => {
+    const otherThread = {
+      id: "thread-2",
+      title: "Cashflow check",
+      lastMessageAt: "2026-07-26T10:00:00.000Z",
+      createdAt: "2026-07-26T10:00:00.000Z",
+    };
+    let threads = [thread, otherThread];
+    apiMocks.getAssistantThreads.mockImplementation(() =>
+      Promise.resolve({ items: threads, nextCursor: null }),
+    );
+    apiMocks.deleteAssistantThread.mockImplementation(async (_workspace, threadId: string) => {
+      threads = threads.filter((item) => item.id !== threadId);
+    });
+    const { queryClient } = renderPage();
+
+    await screen.findByText(otherThread.title);
+    fireEvent.click(screen.getByRole("button", { name: "Select chats" }));
+
+    // Select mode toggles rows instead of opening them.
+    const secondRow = screen.getByRole("button", { name: `Select ${otherThread.title}` });
+    expect(secondRow).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(secondRow);
+    expect(screen.getByRole("button", { name: `Deselect ${otherThread.title}` })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(apiMocks.getAssistantMessages).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: `Select ${thread.title}` }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete selected (2)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete selected" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Your recent questions will appear here.")).toBeInTheDocument(),
+    );
+    expect(apiMocks.deleteAssistantThread).toHaveBeenCalledWith(
+      { key: "user:user-1", userId: "user-1" },
+      otherThread.id,
+    );
+    expect(apiMocks.deleteAssistantThread).toHaveBeenCalledWith(
+      { key: "user:user-1", userId: "user-1" },
+      thread.id,
+    );
+    expect(
+      queryClient.getQueryData(
+        queryKeys.assistantThreads({ key: "user:user-1", userId: "user-1" }),
+      ),
+    ).toEqual({
+      items: [],
+      nextCursor: null,
+    });
   });
 });

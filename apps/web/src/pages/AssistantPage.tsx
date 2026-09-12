@@ -219,28 +219,35 @@ export function AssistantPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (threadId: string) => deleteAssistantThread(workspace, threadId),
-    onMutate: async (threadId) => {
+    mutationFn: (threadIds: string[]) =>
+      Promise.all(threadIds.map((threadId) => deleteAssistantThread(workspace, threadId))).then(
+        () => undefined,
+      ),
+    onMutate: async (threadIds) => {
       const threadKey = queryKeys.assistantThreads(workspace);
       await queryClient.cancelQueries({ queryKey: threadKey });
 
+      const removed = new Set(threadIds);
       const previousThreads = queryClient.getQueryData<AssistantThreadPage>(threadKey);
       queryClient.setQueryData<AssistantThreadPage>(threadKey, (current) => ({
-        items: current?.items.filter((thread) => thread.id !== threadId) ?? [],
+        items: current?.items.filter((thread) => !removed.has(thread.id)) ?? [],
         nextCursor: current?.nextCursor ?? null,
       }));
 
-      const wasActive = activeThreadId === threadId;
+      const wasActive = activeThreadId !== null && removed.has(activeThreadId);
+      const previousActiveThreadId = activeThreadId;
       if (wasActive) setActiveThreadId(null);
-      return { previousThreads, wasActive };
+      return { previousThreads, previousActiveThreadId, wasActive };
     },
-    onError: (_error, _threadId, context) => {
+    onError: (_error, _threadIds, context) => {
       if (!context) return;
       queryClient.setQueryData(queryKeys.assistantThreads(workspace), context.previousThreads);
-      if (context.wasActive) setActiveThreadId(_threadId);
+      if (context.wasActive) setActiveThreadId(context.previousActiveThreadId);
     },
-    onSuccess: (_result, threadId) => {
-      queryClient.removeQueries({ queryKey: queryKeys.assistantMessages(workspace, threadId) });
+    onSuccess: (_result, threadIds) => {
+      for (const threadId of threadIds) {
+        queryClient.removeQueries({ queryKey: queryKeys.assistantMessages(workspace, threadId) });
+      }
     },
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.assistantThreads(workspace) }),
@@ -399,7 +406,7 @@ export function AssistantPage() {
             onNew={startNew}
             onVoice={startVoice}
             onEditIdentity={() => setEditingIdentity(true)}
-            onDelete={(threadId) => deleteMutation.mutateAsync(threadId)}
+            onDelete={(threadIds) => deleteMutation.mutateAsync(threadIds)}
             onDeleteAll={() => deleteAllMutation.mutateAsync()}
           />
           <button

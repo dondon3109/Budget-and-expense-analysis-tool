@@ -356,6 +356,20 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--surface);
 }
 
+/* Select mode turns the kind icon into a checkbox; the row supplies aria-pressed. */
+.assistant-thread-icon.checked,
+.assistant-thread-row:hover .assistant-thread-icon.checked,
+.assistant-thread-row.current .assistant-thread-icon.checked {
+  color: var(--contrast-text);
+  border-color: var(--action);
+  background: var(--action);
+}
+
+.assistant-thread-row.is-selected {
+  background: color-mix(in srgb, var(--action) 7%, var(--surface));
+  border-color: color-mix(in srgb, var(--action) 30%, var(--line));
+}
+
 .assistant-thread-details {
   min-width: 0;
   flex: 1 1 auto;
@@ -416,7 +430,6 @@ main:has(.assistant-page) > .legal-footer,
   }
 }
 
-.assistant-history.managing .assistant-thread-delete,
 .assistant-thread-row.is-confirming .assistant-thread-delete {
   opacity: 1;
   visibility: visible;
