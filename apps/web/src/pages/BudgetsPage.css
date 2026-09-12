@@ -32,9 +32,9 @@
 }
 
 .budget-summary-grid article.over {
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 24%, var(--line));
-  background: var(--danger-soft);
+  color: var(--muted);
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
 }
 
 .budget-summary-grid span {
@@ -186,7 +186,7 @@
 }
 
 .budget-editor-row.over .budget-editor-progress > div {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 72%, transparent);
+  box-shadow: 0 0 0 1px var(--line-strong);
 }
 
 .budget-amount-input {
@@ -235,7 +235,7 @@
 }
 
 .budget-editor-row.over .budget-remaining strong {
-  color: var(--danger);
+  color: var(--ink);
 }
 
 .save-confirmation {

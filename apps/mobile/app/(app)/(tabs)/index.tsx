@@ -632,9 +632,7 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
                     style={[
                       styles.budgetStatusPill,
                       {
-                        backgroundColor: overBudget
-                          ? theme.colors.dangerSoft
-                          : theme.colors.canvasMuted,
+                        backgroundColor: theme.colors.canvasMuted,
                       },
                     ]}
                   >
@@ -642,7 +640,7 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
                       style={[
                         typography.caption,
                         {
-                          color: overBudget ? theme.colors.danger : theme.colors.textMuted,
+                          color: theme.colors.textMuted,
                           fontWeight: overBudget ? "700" : "500",
                         },
                       ]}
@@ -955,6 +953,7 @@ export default function HomeScreen() {
                       )
                     : undefined
                 }
+                onViewRenewals={() => router.push("/(app)/subscriptions")}
               />
               <BalanceCard summary={view.summary} />
               <MonthSummaryCard summary={view.summary} />

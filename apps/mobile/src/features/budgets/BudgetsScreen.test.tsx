@@ -221,4 +221,39 @@ describe("BudgetsScreen", () => {
     expect(screen.queryByText("Share envelopes")).toBeNull();
     expect(screen.getByText("Add budget")).toBeTruthy();
   });
+
+  it("renders non-shaming status badges when above plan", async () => {
+    jest.mocked(useBudgetMonth).mockReturnValue({
+      data: {
+        budgets: [
+          {
+            id: "budget-1",
+            categoryId: "cat-1",
+            categoryName: "Dining",
+            categoryColor: "#FF5722",
+            limitMinor: 10_000,
+            spentMinor: 12_000,
+            syncState: "synced",
+          },
+        ],
+        categories: [
+          {
+            id: "cat-1",
+            name: "Dining",
+            kind: "expense",
+            color: "#FF5722",
+            iconEmoji: "🍔",
+            pending: false,
+          },
+        ],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<BudgetsScreen />);
+
+    expect(screen.getByText("Above plan (120%)")).toBeTruthy();
+    expect(screen.queryByText("Over budget")).toBeNull();
+  });
 });
