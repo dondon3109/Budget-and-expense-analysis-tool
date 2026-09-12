@@ -1,4 +1,55 @@
-/* Sponsored Pro seat administration is owned by this Settings component. */
+/* Sponsored Pro seat administration is owned by this component, including its section frame. */
+.sponsored-pro-seats {
+  padding: clamp(22px, 3vw, 32px);
+  scroll-margin-top: 84px;
+}
+
+.sponsored-pro-seats .settings-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.sponsored-pro-seats .settings-section-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.sponsored-pro-seats .settings-section-heading p {
+  max-width: 570px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.sponsored-pro-seats .settings-section-heading > span {
+  flex: 0 0 auto;
+  padding-top: 5px;
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.sponsored-pro-seats-empty {
+  margin: 0;
+  color: var(--subtle);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
 .sponsored-pro-seats-add {
   margin-top: 26px;
   padding: 20px;
@@ -130,6 +181,15 @@
   font-size: 12px;
 }
 
+.sponsored-pro-seat.is-open strong {
+  color: var(--muted);
+}
+
+.sponsored-pro-seat.is-open p {
+  color: var(--subtle);
+  font-size: 12.5px;
+}
+
 .sponsored-pro-seat-actions {
   display: grid;
   justify-items: end;
@@ -145,6 +205,11 @@
 }
 
 @media (max-width: 760px) {
+  .sponsored-pro-seats .settings-section-heading {
+    flex-direction: column;
+    gap: 14px;
+  }
+
   .sponsored-pro-seats-admin-actions {
     width: 100%;
     justify-content: flex-start;

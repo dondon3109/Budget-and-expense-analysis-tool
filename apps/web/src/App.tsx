@@ -57,6 +57,10 @@ const SupportReportsPage = lazy(async () => {
   const module = await import("./pages/SupportReportsPage");
   return { default: module.SupportReportsPage };
 });
+const AdminOverviewPage = lazy(async () => {
+  const module = await import("./pages/AdminOverviewPage");
+  return { default: module.AdminOverviewPage };
+});
 const AdminCustomerReviewsPage = lazy(async () => {
   const module = await import("./pages/AdminCustomerReviewsPage");
   return { default: module.AdminCustomerReviewsPage };
@@ -202,6 +206,7 @@ export function App() {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="tutorials" element={<AppTutorialsPage />} />
             <Route path="support/reports" element={<SupportReportsPage />} />
+            <Route path="admin" element={<AdminOverviewPage />} />
             <Route path="admin/reviews" element={<AdminCustomerReviewsPage />} />
             <Route path="admin/provider-configs" element={<AdminProviderConfigsPage />} />
           </Route>

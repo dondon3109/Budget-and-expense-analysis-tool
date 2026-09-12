@@ -11,6 +11,7 @@ import {
   PiggyBank,
   Repeat2,
   Settings,
+  ShieldCheck,
   Sparkles,
   X,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import "../../styles/private-primitives.css";
 import "./AppShell.css";
 import "../transactions/TransactionForm.css";
 import { useAuth } from "../../auth/AuthProvider";
+import { useBillingSummary } from "../../hooks/useBillingSummary";
 import { avatarPathFromMetadata } from "../../lib/avatar";
 import { userWorkspace } from "../../lib/workspace";
 import { useBodyScrollLock } from "../../hooks/useRootLock";
@@ -46,6 +48,8 @@ const navItems = [
   { label: "Subscriptions", icon: Repeat2, to: "/app/subscriptions" },
 ];
 
+const adminNavItem = { label: "Admin", icon: ShieldCheck, to: "/app/admin" };
+
 const mobileNavItems = [
   { label: "Home", icon: House, to: "/app", end: true },
   { label: "Transactions", icon: List, to: "/app/transactions" },
@@ -69,6 +73,9 @@ export function AppShell({ children }: AppShellProps) {
   );
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
+  const billing = useBillingSummary(userWorkspace(user!));
+  const visibleNavItems =
+    billing.data?.canManageSponsoredSeats === true ? [...navItems, adminNavItem] : navItems;
   const showSupportChat =
     location.pathname !== "/app/assistant" && location.pathname !== "/app/assistant/";
   const mobilePrimaryRoute = mobileNavItems.some(({ end, to }) =>
@@ -198,7 +205,7 @@ export function AppShell({ children }: AppShellProps) {
         <div className="sidebar-profile-divider" aria-hidden="true" />
 
         <nav id="primary-navigation" className="side-nav" aria-label="Main navigation">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
@@ -288,9 +295,11 @@ export function AppShell({ children }: AppShellProps) {
       {showSupportChat && (
         <SupportChat surface="app" workspace={user ? userWorkspace(user) : undefined} />
       )}
-      {user && !location.pathname.startsWith("/app/admin/") && (
-        <CustomerReviewPrompt user={user} workspace={userWorkspace(user)} />
-      )}
+      {user &&
+        location.pathname !== "/app/admin" &&
+        !location.pathname.startsWith("/app/admin/") && (
+          <CustomerReviewPrompt user={user} workspace={userWorkspace(user)} />
+        )}
     </div>
   );
 }

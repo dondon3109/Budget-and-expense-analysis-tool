@@ -688,16 +688,6 @@
   border-color: var(--danger, #e11d48);
 }
 
-.button.danger {
-  background: var(--danger, #e11d48);
-  color: #fff;
-  border: none;
-}
-
-.button.danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger, #e11d48) 90%, black);
-}
-
 /* Hero Active Card */
 .admin-active-hero-card {
   margin-top: 14px;

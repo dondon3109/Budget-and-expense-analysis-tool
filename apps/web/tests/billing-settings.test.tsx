@@ -476,7 +476,7 @@ describe("BillingSettings", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("places the comparison before billing and sponsored-seat management", async () => {
+  it("places the comparison before billing and the admin console pointer", async () => {
     renderSettings(
       summary(null, {
         plan: "zoption_pro",
@@ -486,36 +486,20 @@ describe("BillingSettings", () => {
       }),
     );
 
-    const email = await screen.findByLabelText("Recipient email");
-    const addSeat = screen.getByRole("button", { name: "Add seat" });
+    const consoleLink = await screen.findByRole("link", { name: "Open admin console" });
     const comparisonSection = screen
       .getByRole("heading", { name: "Free and Pro, side by side" })
       .closest("section");
     const billingSection = screen
       .getByRole("heading", { name: "Plan and billing" })
       .closest("section");
-    const sponsoredSection = screen
-      .getByRole("heading", { name: "Sponsored Pro seats" })
-      .closest("section");
+    const adminSection = screen.getByRole("heading", { name: "Platform admin" }).closest("section");
 
-    expect(email).toBeVisible();
-    expect(email).toBeEnabled();
-    expect(email).toHaveAccessibleDescription(
-      /must sign in and confirm their email before a seat can be active/i,
-    );
-    expect(addSeat).toBeDisabled();
+    expect(consoleLink).toHaveAttribute("href", "/app/admin");
     expect(comparisonSection?.nextElementSibling).toBe(billingSection);
-    expect(billingSection?.nextElementSibling).toBe(sponsoredSection);
-
-    fireEvent.change(email, { target: { value: "recipient@example.com" } });
-    expect(addSeat).toBeEnabled();
-    fireEvent.click(addSeat);
-
-    expect(await screen.findByText("Sponsored Pro seat added.")).toBeInTheDocument();
-    expect(apiMocks.addSponsoredProSeat).toHaveBeenCalledWith(
-      { key: "user:user-1", userId: "user-1" },
-      "recipient@example.com",
-    );
+    expect(billingSection?.nextElementSibling).toBe(adminSection);
+    expect(screen.queryByLabelText("Recipient email")).not.toBeInTheDocument();
+    expect(apiMocks.getSponsoredProSeats).not.toHaveBeenCalled();
   });
 
   it("does not mount sponsored seat management for a non-administrator", async () => {
@@ -523,7 +507,8 @@ describe("BillingSettings", () => {
 
     await screen.findByText("Free and Pro, side by side");
 
-    expect(screen.queryByRole("heading", { name: "Sponsored Pro seats" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Platform admin" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open admin console" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Recipient email")).not.toBeInTheDocument();
     expect(apiMocks.getSponsoredProSeats).not.toHaveBeenCalled();
   });

@@ -18,7 +18,6 @@ import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { ProCheckoutDialog } from "../billing/ProCheckoutDialog";
 import { userWorkspace } from "../../lib/workspace";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
-import { SponsoredProSeatsSettings } from "./SponsoredProSeatsSettings";
 import "./BillingSettings.css";
 
 const PAYMENT_FAST_CONFIRMATION_ATTEMPTS = 10;
@@ -640,7 +639,7 @@ export function BillingSettings({ user }: { user: User }) {
 
   const paymentPending = Boolean(
     checkoutCompleted ||
-      (summary?.pendingCheckout && !checkoutCancelled && !checkoutCancelledNotice),
+    (summary?.pendingCheckout && !checkoutCancelled && !checkoutCancelledNotice),
   );
   useEffect(() => {
     if (!paymentPending || !paymentPollingExhausted) return;
@@ -957,25 +956,20 @@ export function BillingSettings({ user }: { user: User }) {
         onClose={() => setCancelDialogOpen(false)}
         onConfirm={() => void requestCancellation()}
       />
-      {summary?.canManageSponsoredSeats && <SponsoredProSeatsSettings workspace={workspace} />}
       {summary?.canManageSponsoredSeats && (
-        <section
-          className="settings-section"
-          aria-labelledby="admin-provider-configs-title"
-          tabIndex={-1}
-        >
+        <section className="settings-section" aria-labelledby="admin-console-title" tabIndex={-1}>
           <div className="settings-section-heading">
             <div>
-              <h2 id="admin-provider-configs-title">AI & Voice Models</h2>
+              <h2 id="admin-console-title">Platform admin</h2>
               <p>
-                Change the active assistant, speech-to-text and text-to-speech models without
-                redeploying. Manual activation only — switch quickly during a provider outage.
+                Sponsored Pro seats, customer reviews, AI and voice models, and report triage are
+                managed together in the admin console.
               </p>
             </div>
             <span>Platform admin</span>
           </div>
-          <Link to="/app/admin/provider-configs" className="button secondary compact">
-            Manage AI & Voice models
+          <Link to="/app/admin" className="button secondary compact">
+            Open admin console
           </Link>
         </section>
       )}

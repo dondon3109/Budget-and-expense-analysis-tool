@@ -4,11 +4,21 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "../src/components/layout/AppShell";
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
+
+const mocks = vi.hoisted(() => ({ canManageSponsoredSeats: false }));
+
+vi.mock("../src/hooks/useBillingSummary", () => ({
+  useBillingSummary: () => ({ data: { canManageSponsoredSeats: mocks.canManageSponsoredSeats } }),
+}));
+
+vi.mock("../src/components/reviews/CustomerReviewPrompt", () => ({
+  CustomerReviewPrompt: () => <div>Review prompt</div>,
+}));
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({
@@ -37,6 +47,10 @@ function CurrentLocation() {
 }
 
 describe("AppShell", () => {
+  beforeEach(() => {
+    mocks.canManageSponsoredSeats = false;
+  });
+
   afterEach(cleanup);
 
   it("places the profile above navigation and Subscriptions below Budgets", () => {
@@ -99,6 +113,59 @@ describe("AppShell", () => {
       screen.getAllByRole("button", { name: /choose theme\. current theme: (light|dark|coffee)/i }),
     ).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Open Zoption Support" })).toBeInTheDocument();
+  });
+
+  it("adds the admin console only for the platform administrator", () => {
+    mocks.canManageSponsoredSeats = true;
+    render(
+      <ThemeProvider>
+        <CookieConsentProvider>
+          <MemoryRouter initialEntries={["/app/admin"]}>
+            <AppShell>
+              <div>Admin console content</div>
+            </AppShell>
+          </MemoryRouter>
+        </CookieConsentProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: "Admin" })).toHaveAttribute("href", "/app/admin");
+    expect(screen.getByRole("link", { name: "Admin" })).toHaveClass("current");
+    expect(screen.queryByText("Review prompt")).not.toBeInTheDocument();
+
+    mocks.canManageSponsoredSeats = false;
+    cleanup();
+    render(
+      <ThemeProvider>
+        <CookieConsentProvider>
+          <MemoryRouter initialEntries={["/app/subscriptions"]}>
+            <AppShell>
+              <div>Subscriptions content</div>
+            </AppShell>
+          </MemoryRouter>
+        </CookieConsentProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+    expect(screen.getByText("Review prompt")).toBeInTheDocument();
+
+    mocks.canManageSponsoredSeats = true;
+    cleanup();
+    render(
+      <ThemeProvider>
+        <CookieConsentProvider>
+          <MemoryRouter initialEntries={["/app/subscriptions"]}>
+            <AppShell>
+              <div>Subscriptions content</div>
+            </AppShell>
+          </MemoryRouter>
+        </CookieConsentProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: "Admin" })).toBeInTheDocument();
+    expect(screen.getByText("Review prompt")).toBeInTheDocument();
   });
 
   it("marks account settings as current without adding it to main navigation", () => {

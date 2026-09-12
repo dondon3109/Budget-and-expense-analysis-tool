@@ -4,8 +4,18 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Added a platform admin console at `/app/admin` that gathers sponsored Pro seats, customer reviews, AI and voice models, and support report triage into one page, each area showing its live state and where it opens.
+- Added an Admin entry to the private app sidebar that appears only for the platform administrator.
+
+### Changed
+
+- Moved sponsored Pro seat management from Account settings > Billing into the admin console, leaving a pointer to the console behind so that page loses nothing. The workbench also lists all five seats now, so open capacity is visible instead of counted.
+
 ### Fixed
 
+- Fixed Revoke, Delete, and Cancel actions rendering as plain text on every screen except the AI and voice models desk, which held the only copy of their button styling.
 - Fixed the assistant chat history Select button on web, which only revealed per-chat trash icons: select mode now shows a checkbox on each chat, toggles chats instead of opening them, and deletes the selected chats together in one confirmed action.
 - Fixed the assistant chat history Select button on mobile, which made conversation taps do nothing and only offered a per-chat Delete: select mode now shows a checkbox on each conversation, taps toggle the selection, and a Delete selected bar removes the chosen conversations together after confirmation.
 

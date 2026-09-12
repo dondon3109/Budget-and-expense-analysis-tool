@@ -196,7 +196,7 @@ export function AdminProviderConfigsPage() {
   });
 
   const healthQuery = useQuery({
-    queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+    queryKey: queryKeys.providerHealth(workspace),
     queryFn: () => getProviderHealth(workspace),
     enabled: isAdmin,
     refetchInterval: 20_000,
@@ -213,7 +213,7 @@ export function AdminProviderConfigsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
       void queryClient.invalidateQueries({
-        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+        queryKey: queryKeys.providerHealth(workspace),
       });
     },
     onError: (err: unknown) =>
@@ -263,7 +263,7 @@ export function AdminProviderConfigsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
       void queryClient.invalidateQueries({
-        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+        queryKey: queryKeys.providerHealth(workspace),
       });
     },
     onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Create failed."),
@@ -285,7 +285,7 @@ export function AdminProviderConfigsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
       void queryClient.invalidateQueries({
-        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+        queryKey: queryKeys.providerHealth(workspace),
       });
     },
     onError: (err: unknown) =>
@@ -301,7 +301,7 @@ export function AdminProviderConfigsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
       void queryClient.invalidateQueries({
-        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+        queryKey: queryKeys.providerHealth(workspace),
       });
     },
     onError: (err: unknown) =>
@@ -377,7 +377,7 @@ export function AdminProviderConfigsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
       void queryClient.invalidateQueries({
-        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+        queryKey: queryKeys.providerHealth(workspace),
       });
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to create configuration.");
@@ -432,7 +432,7 @@ export function AdminProviderConfigsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
       void queryClient.invalidateQueries({
-        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+        queryKey: queryKeys.providerHealth(workspace),
       });
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Failed to update configuration.");
@@ -452,7 +452,7 @@ export function AdminProviderConfigsPage() {
       setCredSecret("");
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
       void queryClient.invalidateQueries({
-        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+        queryKey: queryKeys.providerHealth(workspace),
       });
     },
     onError: (err: unknown) =>
@@ -473,7 +473,7 @@ export function AdminProviderConfigsPage() {
       setEditCredSecret("");
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
       void queryClient.invalidateQueries({
-        queryKey: [...queryKeys.providerConfigs(workspace), "health"] as const,
+        queryKey: queryKeys.providerHealth(workspace),
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
     },

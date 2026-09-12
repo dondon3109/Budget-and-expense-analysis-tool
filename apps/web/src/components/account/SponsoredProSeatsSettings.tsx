@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 
 import {
   addSponsoredProSeat,
@@ -115,11 +114,17 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
 
   const busy =
     add.isPending || invite.isPending || replace.isPending || revoke.isPending || resend.isPending;
+  const summary = seats.data;
+  const openSlots = summary
+    ? Array.from({ length: summary.capacity }, (_, index) => index + 1).filter(
+        (slotNumber) => !summary.seats.some((seat) => seat.slotNumber === slotNumber),
+      )
+    : [];
 
   return (
     <section
       id="sponsored-pro-seats"
-      className="settings-section sponsored-pro-seats"
+      className="sponsored-pro-seats"
       aria-labelledby="sponsored-pro-seats-title"
     >
       <div className="settings-section-heading">
@@ -128,9 +133,6 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
           <p>Manage five complimentary Pro seats without accessing anyone&apos;s financial data.</p>
         </div>
         <div className="sponsored-pro-seats-admin-actions">
-          <Link className="button secondary compact" to="/app/admin/reviews">
-            Manage reviews
-          </Link>
           <span>{seats.data ? `${seats.data.activeCount} of 5 active` : "Loading"}</span>
         </div>
       </div>
@@ -200,106 +202,111 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
             {seats.data.activeCount} active, {seats.data.pendingCount} pending,{" "}
             {seats.data.availableCount} available
           </p>
-          {seats.data.seats.length === 0 ? (
-            <p className="settings-helper">No sponsored seats are currently reserved.</p>
-          ) : (
-            seats.data.seats.map((seat) => (
-              <article className="sponsored-pro-seat" key={seat.slotNumber}>
-                <div>
-                  <strong>Seat {seat.slotNumber}</strong>
-                  <p>
-                    {seat.state === "active"
-                      ? `Active for ${seat.beneficiaryUserId}`
-                      : `Invitation pending since ${displayDate(seat.invitedAt)}`}
-                  </p>
-                  {seat.state === "active" && (
-                    <small>Assigned {displayDate(seat.assignedAt)}</small>
-                  )}
-                </div>
-                <div className="sponsored-pro-seat-actions">
-                  {seat.state === "pending" && (
+          {seats.data.seats.length === 0 && (
+            <p className="sponsored-pro-seats-empty">No sponsored seats are currently reserved.</p>
+          )}
+          {seats.data.seats.map((seat) => (
+            <article className="sponsored-pro-seat" key={seat.slotNumber}>
+              <div>
+                <strong>Seat {seat.slotNumber}</strong>
+                <p>
+                  {seat.state === "active"
+                    ? `Active for ${seat.beneficiaryUserId}`
+                    : `Invitation pending since ${displayDate(seat.invitedAt)}`}
+                </p>
+                {seat.state === "active" && <small>Assigned {displayDate(seat.assignedAt)}</small>}
+              </div>
+              <div className="sponsored-pro-seat-actions">
+                {seat.state === "pending" && (
+                  <button
+                    className="button secondary compact"
+                    type="button"
+                    disabled={busy || !seat.canResendInvitation}
+                    onClick={() => void resend.mutateAsync(seat.slotNumber)}
+                  >
+                    {resend.isPending ? "Sending…" : "Resend invitation"}
+                  </button>
+                )}
+                {seat.state === "active" && (
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void replace.mutateAsync({
+                        slotNumber: seat.slotNumber,
+                        nextEmail: replacementEmails[seat.slotNumber] ?? "",
+                      });
+                    }}
+                  >
+                    <label
+                      className="sr-only"
+                      htmlFor={`replace-sponsored-seat-${seat.slotNumber}`}
+                    >
+                      Replacement recipient email for seat {seat.slotNumber}
+                    </label>
+                    <input
+                      id={`replace-sponsored-seat-${seat.slotNumber}`}
+                      type="email"
+                      placeholder="Replacement email"
+                      value={replacementEmails[seat.slotNumber] ?? ""}
+                      onChange={(event) =>
+                        setReplacementEmails((current) => ({
+                          ...current,
+                          [seat.slotNumber]: event.target.value,
+                        }))
+                      }
+                      required
+                      disabled={busy}
+                    />
                     <button
                       className="button secondary compact"
-                      type="button"
-                      disabled={busy || !seat.canResendInvitation}
-                      onClick={() => void resend.mutateAsync(seat.slotNumber)}
+                      type="submit"
+                      disabled={busy || !replacementEmails[seat.slotNumber]?.trim()}
                     >
-                      {resend.isPending ? "Sending…" : "Resend invitation"}
+                      Replace
                     </button>
-                  )}
-                  {seat.state === "active" && (
-                    <form
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        void replace.mutateAsync({
-                          slotNumber: seat.slotNumber,
-                          nextEmail: replacementEmails[seat.slotNumber] ?? "",
-                        });
-                      }}
-                    >
-                      <label
-                        className="sr-only"
-                        htmlFor={`replace-sponsored-seat-${seat.slotNumber}`}
-                      >
-                        Replacement recipient email for seat {seat.slotNumber}
-                      </label>
-                      <input
-                        id={`replace-sponsored-seat-${seat.slotNumber}`}
-                        type="email"
-                        placeholder="Replacement email"
-                        value={replacementEmails[seat.slotNumber] ?? ""}
-                        onChange={(event) =>
-                          setReplacementEmails((current) => ({
-                            ...current,
-                            [seat.slotNumber]: event.target.value,
-                          }))
-                        }
-                        required
-                        disabled={busy}
-                      />
-                      <button
-                        className="button secondary compact"
-                        type="submit"
-                        disabled={busy || !replacementEmails[seat.slotNumber]?.trim()}
-                      >
-                        Replace
-                      </button>
-                    </form>
-                  )}
-                  {revokeSlot === seat.slotNumber ? (
-                    <div className="sponsored-pro-seat-confirm" role="alert">
-                      <span>Revoke immediately?</span>
-                      <button
-                        className="button danger compact"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void revoke.mutateAsync(seat.slotNumber)}
-                      >
-                        Confirm revoke
-                      </button>
-                      <button
-                        className="button ghost compact"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => setRevokeSlot(undefined)}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
+                  </form>
+                )}
+                {revokeSlot === seat.slotNumber ? (
+                  <div className="sponsored-pro-seat-confirm" role="alert">
+                    <span>Revoke immediately?</span>
                     <button
                       className="button danger compact"
                       type="button"
                       disabled={busy}
-                      onClick={() => setRevokeSlot(seat.slotNumber)}
+                      onClick={() => void revoke.mutateAsync(seat.slotNumber)}
                     >
-                      Revoke
+                      Confirm revoke
                     </button>
-                  )}
-                </div>
-              </article>
-            ))
-          )}
+                    <button
+                      className="button ghost compact"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setRevokeSlot(undefined)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="button danger compact"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setRevokeSlot(seat.slotNumber)}
+                  >
+                    Revoke
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+          {openSlots.map((slotNumber) => (
+            <article className="sponsored-pro-seat is-open" key={`open-seat-${slotNumber}`}>
+              <div>
+                <strong>Seat {slotNumber}</strong>
+                <p>Open. Assign it from the form above.</p>
+              </div>
+            </article>
+          ))}
         </div>
       )}
 

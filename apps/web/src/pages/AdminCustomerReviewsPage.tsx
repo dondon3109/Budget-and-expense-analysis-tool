@@ -24,11 +24,11 @@ import {
   updateAdminCustomerReviewLineup,
   updateAdminCustomerReviewStatus,
 } from "../lib/api";
+import { LANDING_REVIEW_LIMIT } from "../lib/customerReviews";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import "./AdminCustomerReviewsPage.css";
 
-const LANDING_REVIEW_LIMIT = 6;
 const INBOX_REFRESH_INTERVAL_MS = 30_000;
 
 const STATUS_LABELS: Record<CustomerReviewModerationStatus, string> = {
@@ -127,8 +127,8 @@ export function AdminCustomerReviewsPage() {
   const fallbackSelected = filteredReviews[0] ?? dashboard?.items[0];
   const selected =
     (selectedId
-      ? dashboard?.items.find((review) => review.id === selectedId) ??
-        dashboard?.lineup.find((review) => review.id === selectedId)
+      ? (dashboard?.items.find((review) => review.id === selectedId) ??
+        dashboard?.lineup.find((review) => review.id === selectedId))
       : undefined) ?? fallbackSelected;
 
   async function refreshDashboard() {

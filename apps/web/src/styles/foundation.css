@@ -619,6 +619,24 @@ textarea:focus-visible {
   border-color: color-mix(in srgb, var(--action) 30%, var(--line-strong));
   background: var(--surface-hover);
 }
+.button.danger {
+  color: #fff;
+  border-color: var(--danger);
+  background: var(--danger);
+}
+.button.danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--danger) 90%, black);
+  background: color-mix(in srgb, var(--danger) 90%, black);
+}
+.button.ghost {
+  color: var(--muted);
+  border-color: transparent;
+  background: transparent;
+}
+.button.ghost:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
 .text-link {
   display: inline-flex;
   align-items: center;
