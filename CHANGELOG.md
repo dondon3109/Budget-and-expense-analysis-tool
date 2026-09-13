@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.32.0 — 2026-09-13
+
 ### Added
 
 - Added a platform admin console at `/app/admin` that gathers sponsored Pro seats, customer reviews, AI and voice models, and support report triage into one page, each area showing its live state and where it opens.
@@ -36,7 +38,6 @@ All notable product changes are documented here.
 - Budget edits now survive leaving the page at all: an in-progress monthly plan is kept for the browser session and restored when you return, so the Back button, a refresh or a crashed tab can no longer lose typed amounts. Confirming a discard still clears it.
 - Promoted the AI Financial Assistant into the mobile tab bar, which is now Home, Transactions, Budgets, Assistant and More, so the assistant is one tap away instead of two. Calendar moved into the More drawer to keep the bar at five slots, so it is now two taps instead of one.
 - Added breadcrumbs to the nested admin console and bug report pages, which previously gave no indication of where they sat inside the app.
-
 - The customer review prompt is now a modal dialog. As a fixed side panel it covered primary content on most screens, including the ledger's Amount column, the budget inputs and the plan screen's spread column.
 
 ### Fixed
@@ -66,7 +67,6 @@ All notable product changes are documented here.
 - Fixed 32 table headers across the import preview, subscriptions, cash flow, remittance, spending and spreadsheet-migration tables missing a scope, so a screen reader can associate each cell with its header. Those tables also gained accessible names.
 - Fixed touch targets below 44px centrally for compact icon buttons and small text buttons, rather than each screen patching its own.
 - Removed 48 dead CSS fallback chains that still named long-deleted colour variables, so a future edit cannot silently resolve a wrong colour through them.
-
 - Fixed the calendar month grid, whose grid role held the weekday headers and day cells as direct children with no row role, a structure assistive technology cannot navigate as a grid.
 - Fixed the calendar income and expense indicators and the import screen's disabled cards, all of which failed WCAG AA contrast; the disabled cards were dimmed with a whole-card opacity that blended their text toward the page behind them.
 - Fixed the dashboard charts, which exposed focusable pie sectors inside containers hidden from assistive technology.
@@ -79,6 +79,18 @@ All notable product changes are documented here.
 - Fixed accounts that could not load any page after their email had previously been verified by a different account: the identity record clashed on the unique verified email, so every request failed with a server error.
 - Fixed the shared public header painting its own navigation on top of itself on a 1280-1420px laptop: the landing page carries ten links beside the wordmark, the theme control, Sign in and Start free, and the row used to shrink below its own content, so "Voice & Scan" ran into "Zoption" and the theme pill sat over "FAQ". The row now keeps clear space at every width, holds all ten links from 1420px, keeps the primary six plus the menu trigger down to 1040px, and hands the rest to the drawer, which lists every link.
 - Fixed the public header's drawer hiding its own "Sign in" link on phones and tablets, because the rule that removes the header-bar control also matched the drawer's copy.
+- Fixed the pricing page plan comparison table being unreachable by keyboard on mobile screens.
+
+## 2.31.0 — 2026-09-12
+
+### Added
+
+- Added safe-to-spend guidance hero to the mobile dashboard, projecting liquidity and remaining budget envelope into a neutral weekly spending figure.
+- Added voice draft preview card with a 3-second countdown auto-save and fast cancel or edit options.
+
+### Changed
+
+- Replaced alarming over-budget warning colors and badge copy with calm, forward-looking plan guidance across web and mobile budgets.
 
 ## 2.30.2 — 2026-09-11
 
