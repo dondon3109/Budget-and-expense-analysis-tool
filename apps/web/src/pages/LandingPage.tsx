@@ -28,17 +28,24 @@ import { SupportChat } from "../components/support/SupportChat";
 import { getPublicCustomerReviews } from "../lib/api";
 import { useAndroidRelease } from "../releases/useAndroidRelease";
 
-/** In-page anchors for the long marketing page; the shared header renders them. */
+/**
+ * In-page anchors for the long marketing page; the shared header renders them.
+ *
+ * Ten labels plus the brand and the account actions need roughly 1420px of viewport,
+ * so the four deeper section links step out of the desktop row below that width and
+ * stay reachable in the header drawer. The order below is page order, which is also
+ * the drawer order, so nothing moves except on a squeezed row.
+ */
 const LANDING_HEADER_LINKS: PublicHeaderLink[] = [
   { label: "Voice & Scan", href: "#fast-entry" },
   { label: "Features", href: "#modules" },
   { label: "Budget planner", href: "#calculator" },
   { label: "Why Zoption", href: "#compare" },
   { label: "Pricing", to: "/pricing" },
-  { label: "Android APK", href: "#install" },
-  { label: "Supported imports", href: "#banks" },
-  { label: "How it works", href: "#approach" },
-  { label: "Reviews", href: "#reviews" },
+  { label: "Android APK", href: "#install", secondary: true },
+  { label: "Supported imports", href: "#banks", secondary: true },
+  { label: "How it works", href: "#approach", secondary: true },
+  { label: "Reviews", href: "#reviews", secondary: true },
   { label: "FAQ", href: "#faq" },
 ];
 

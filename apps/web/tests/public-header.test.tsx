@@ -6,17 +6,15 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { PublicHeader } from "../src/components/navigation/PublicHeader";
+import { PublicHeader, type PublicHeaderLink } from "../src/components/navigation/PublicHeader";
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
-function renderHeader() {
+function renderHeader(links?: PublicHeaderLink[]) {
   return render(
     <ThemeProvider>
       <CookieConsentProvider>
-        <MemoryRouter>
-          <PublicHeader />
-        </MemoryRouter>
+        <MemoryRouter>{links ? <PublicHeader links={links} /> : <PublicHeader />}</MemoryRouter>
       </CookieConsentProvider>
     </ThemeProvider>,
   );
@@ -91,6 +89,33 @@ describe("PublicHeader", () => {
       "#modules",
     );
     expect(screen.getByRole("button", { name: "Open navigation menu" })).toBeInTheDocument();
+    // All-primary links never earn the modifier that reveals the trigger early.
+    expect(document.querySelector("header.public-header")).not.toHaveClass("has-secondary-links");
+  });
+
+  it("marks a secondary link, announces it, and keeps it in the drawer", async () => {
+    const { user } = await import("@testing-library/user-event").then((module) => ({
+      user: module.default.setup(),
+    }));
+
+    renderHeader([
+      { label: "Features", href: "#modules" },
+      { label: "Reviews", href: "#reviews", secondary: true },
+    ]);
+
+    expect(document.querySelector("header.public-header")).toHaveClass("has-secondary-links");
+
+    const navigation = screen.getByRole("navigation", { name: "Learn more" });
+    expect(within(navigation).getByRole("link", { name: "Reviews" })).toHaveClass("is-secondary");
+    expect(within(navigation).getByRole("link", { name: "Features" })).not.toHaveClass(
+      "is-secondary",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open navigation menu" }));
+
+    const drawer = screen.getByRole("dialog", { name: "Navigation menu" });
+    expect(within(drawer).getByRole("link", { name: "Reviews" })).toBeInTheDocument();
+    expect(within(drawer).getByRole("link", { name: "Features" })).toBeInTheDocument();
   });
 
   it("offers a skip link as the first focusable control, targeting the content landmark", () => {

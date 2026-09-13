@@ -11,7 +11,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  /* The gap carries the separation on both sides of the link row, so it grows with
+     the viewport instead of leaving the wordmark touching the first link. */
+  gap: clamp(16px, 2.4vw, 40px);
   width: 100%;
   min-height: 74px;
   padding: 8px clamp(16px, 3.5vw, 56px);
@@ -47,7 +49,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(10px, 1.4vw, 24px);
+  gap: clamp(10px, 1.2vw, 22px);
   flex: 1;
   min-width: 0;
   font-size: 13.5px;
@@ -58,7 +60,7 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding: 0 2px;
+  padding: 0;
   color: var(--muted);
   font-weight: 600;
   text-decoration: none;
@@ -258,6 +260,45 @@
   white-space: nowrap;
 }
 
+/* Half a pixel smaller in this band is invisible; it buys the gaps the room they
+   need instead of squeezing the labels together. */
+@media (max-width: 1599px) {
+  .public-header-links {
+    font-size: 13px;
+  }
+}
+
+/* The landing link set only fits on one row from about 1420px. Down to the drawer
+   breakpoint the row keeps its primary links and hands the secondary ones to the
+   drawer, which lists every link, so nothing collides with the brand or the
+   actions and no destination becomes unreachable. Pages whose links are all
+   primary keep their full row and gain no menu trigger. */
+@media (max-width: 1419px) {
+  .public-header-links a.is-secondary {
+    display: none;
+  }
+
+  .public-header.has-secondary-links .public-header-menu-toggle {
+    display: inline-flex;
+  }
+}
+
+/* The trimmed row still crowds the wordmark just above the drawer breakpoint, so a
+   secondary-link header hands the whole row to the drawer a little earlier. Only
+   headers that own secondary links take this path. */
+@media (max-width: 1039px) {
+  /* Scoped to the actions bar: the drawer reuses .public-header-sign-in and has to
+     keep offering the same destination while the row is hidden. */
+  .public-header.has-secondary-links .public-header-links,
+  .public-header.has-secondary-links .public-header-actions .public-header-sign-in {
+    display: none;
+  }
+
+  .public-header.has-secondary-links .public-header-menu-toggle {
+    display: inline-flex;
+  }
+}
+
 @media (max-width: 960px) {
   .public-header-links {
     display: none;
@@ -267,7 +308,7 @@
     display: inline-flex;
   }
 
-  .public-header .public-header-sign-in {
+  .public-header .public-header-actions .public-header-sign-in {
     display: none;
   }
 }

@@ -14,6 +14,11 @@ export interface PublicHeaderLink {
   to?: string;
   /** Same-page anchor target, rendered as a plain anchor. */
   href?: string;
+  /**
+   * Drops the link from the desktop row on viewports too narrow to hold the whole
+   * set. The drawer still lists it, so the destination stays reachable.
+   */
+  secondary?: boolean;
 }
 
 /**
@@ -32,15 +37,17 @@ const DEFAULT_LINKS: PublicHeaderLink[] = [
 const DRAWER_ID = "public-header-mobile-nav";
 
 function HeaderLink({ link, onNavigate }: { link: PublicHeaderLink; onNavigate?: () => void }) {
+  // Only the desktop row honours this class; the drawer renders every link.
+  const className = link.secondary ? "is-secondary" : undefined;
   if (link.to) {
     return (
-      <Link to={link.to} onClick={onNavigate}>
+      <Link className={className} to={link.to} onClick={onNavigate}>
         {link.label}
       </Link>
     );
   }
   return (
-    <a href={link.href ?? "#top"} onClick={onNavigate}>
+    <a className={className} href={link.href ?? "#top"} onClick={onNavigate}>
       {link.label}
     </a>
   );
@@ -101,9 +108,15 @@ export function PublicHeader({
 } = {}) {
   const [menuOpen, setMenuOpen] = useState(false);
   useBodyScrollLock(menuOpen);
+  // The toggle only earns its place next to a trimmed row; without secondary links
+  // the row keeps every link at every width and stays hamburger-free until 960px.
+  const hasSecondaryLinks = links.some((link) => link.secondary);
 
   return (
-    <header className="public-header" id="top">
+    <header
+      className={hasSecondaryLinks ? "public-header has-secondary-links" : "public-header"}
+      id="top"
+    >
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>

@@ -37,6 +37,7 @@ All notable product changes are documented here.
 - Added breadcrumbs to the nested admin console and bug report pages, which previously gave no indication of where they sat inside the app.
 
 - The customer review prompt is now a modal dialog. As a fixed side panel it covered primary content on most screens, including the ledger's Amount column, the budget inputs and the plan screen's spread column.
+
 ### Fixed
 
 - Fixed Revoke, Delete, and Cancel actions rendering as plain text on every screen except the AI and voice models desk, which held the only copy of their button styling.
@@ -75,6 +76,8 @@ All notable product changes are documented here.
 - Fixed the renewal calendar on the subscriptions screen exposing the same invalid grid structure the main calendar had: its weekday headers and day cells now sit inside rows.
 - Fixed the expanded next-month calendar having no tab stop of its own, which left its days unreachable by keyboard, and padded the last week of every month grid to seven cells.
 - Fixed accounts that could not load any page after their email had previously been verified by a different account: the identity record clashed on the unique verified email, so every request failed with a server error.
+- Fixed the shared public header painting its own navigation on top of itself on a 1280-1420px laptop: the landing page carries ten links beside the wordmark, the theme control, Sign in and Start free, and the row used to shrink below its own content, so "Voice & Scan" ran into "Zoption" and the theme pill sat over "FAQ". The row now keeps clear space at every width, holds all ten links from 1420px, keeps the primary six plus the menu trigger down to 1040px, and hands the rest to the drawer, which lists every link.
+- Fixed the public header's drawer hiding its own "Sign in" link on phones and tablets, because the rule that removes the header-bar control also matched the drawer's copy.
 
 ## 2.30.2 — 2026-09-11
 
