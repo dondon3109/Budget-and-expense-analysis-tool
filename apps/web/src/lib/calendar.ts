@@ -44,6 +44,24 @@ export function monthDates(month: string): string[] {
   );
 }
 
+/**
+ * The month's days grouped one week per row and padded to seven cells, which is the shape
+ * `role="grid"` needs: a grid holds row children, and each row holds seven gridcells.
+ */
+export function calendarWeeks(month: string): Array<Array<string | null>> {
+  const cells: Array<string | null> = [
+    ...Array.from({ length: firstWeekday(month) }, () => null),
+    ...monthDates(month),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks: Array<Array<string | null>> = [];
+  for (let index = 0; index < cells.length; index += 7) {
+    weeks.push(cells.slice(index, index + 7));
+  }
+  return weeks;
+}
+
 export function isMonth(value: string | null): value is string {
   if (!value || !/^\d{4}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}-01T00:00:00Z`);

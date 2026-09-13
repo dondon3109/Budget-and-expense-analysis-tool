@@ -11,7 +11,13 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type KeyboardEvent } from "react";
 
-import { firstWeekday, formatCalendarDate, localIsoDate, monthDates } from "../../lib/calendar";
+import {
+  calendarWeeks,
+  firstWeekday,
+  formatCalendarDate,
+  localIsoDate,
+  monthDates,
+} from "../../lib/calendar";
 import { formatFullMonth, formatMoney } from "../../lib/formatters";
 import "./SubscriptionRenewalCalendar.css";
 
@@ -54,6 +60,7 @@ export function SubscriptionRenewalCalendar({
 
   const dates = useMemo(() => monthDates(month), [month]);
   const leadingCells = useMemo(() => firstWeekday(month), [month]);
+  const weeks = useMemo(() => calendarWeeks(month), [month]);
 
   // Active subscriptions scheduled to renew in this visible month
   const activeBilledItems = useMemo(
@@ -196,85 +203,93 @@ export function SubscriptionRenewalCalendar({
         </div>
 
         <div className="renewal-calendar-grid" role="grid" aria-label={`Renewals in ${month}`}>
-          {weekdays.map((weekday) => (
-            <div className="renewal-weekday" role="columnheader" key={weekday} title={weekday}>
-              <span aria-hidden="true">{weekday.slice(0, 3)}</span>
-              <span className="sr-only">{weekday}</span>
+          <div className="renewal-calendar-row" role="row">
+            {weekdays.map((weekday) => (
+              <div className="renewal-weekday" role="columnheader" key={weekday} title={weekday}>
+                <span aria-hidden="true">{weekday.slice(0, 3)}</span>
+                <span className="sr-only">{weekday}</span>
+              </div>
+            ))}
+          </div>
+
+          {weeks.map((week, weekIndex) => (
+            <div className="renewal-calendar-row" role="row" key={`renewal-week-${weekIndex}`}>
+              {week.map((date, cellIndex) => {
+                if (date === null) {
+                  return (
+                    <div
+                      className="renewal-day-placeholder"
+                      role="gridcell"
+                      key={`renewal-placeholder-${weekIndex}-${cellIndex}`}
+                    />
+                  );
+                }
+                const dayRenewals = renewalsByDate.get(date) ?? [];
+                const isToday = date === today;
+                const isSelected = date === selectedDate;
+                const hasRenewals = dayRenewals.length > 0;
+                const dailyOutflow = dayRenewals.reduce((sum, item) => sum + item.amountMinor, 0);
+
+                return (
+                  <div className="renewal-day-cell" role="gridcell" key={date}>
+                    <button
+                      type="button"
+                      className={`renewal-day${isSelected ? " selected" : ""}${
+                        isToday ? " today" : ""
+                      }${hasRenewals ? " has-renewals" : ""}`}
+                      data-renewal-calendar-date={date}
+                      aria-label={`${formatCalendarDate(date)}${
+                        hasRenewals
+                          ? `, ${dayRenewals.length} subscription renewal${
+                              dayRenewals.length === 1 ? "" : "s"
+                            } totaling ${formatMoney(dailyOutflow)}`
+                          : ", no renewals"
+                      }`}
+                      aria-pressed={isSelected}
+                      onClick={() => setSelectedDate((cur) => (cur === date ? null : date))}
+                      onKeyDown={(event) => handleKeyDown(event, date)}
+                    >
+                      <header className="renewal-day-head">
+                        <span className="renewal-day-number">{Number(date.slice(-2))}</span>
+                        {isToday && <span className="renewal-today-badge">Today</span>}
+                      </header>
+
+                      {hasRenewals && (
+                        <div className="renewal-day-body">
+                          <span className="renewal-outflow-pill" title="Cash flow impact">
+                            <ArrowDownRight size={11} aria-hidden="true" />−
+                            {formatMoney(dailyOutflow)}
+                          </span>
+
+                          <div className="renewal-day-badges">
+                            {dayRenewals.map((subscription) => {
+                              const isPaid = date <= today;
+                              return (
+                                <span
+                                  key={subscription.id}
+                                  className={`renewal-badge ${isPaid ? "paid" : "due"}`}
+                                  title={`${subscription.name} · ${formatMoney(
+                                    subscription.amountMinor,
+                                  )} · ${isPaid ? "Paid" : "Due"}`}
+                                >
+                                  <i
+                                    className="renewal-cat-dot"
+                                    style={{ backgroundColor: subscription.categoryColor }}
+                                    aria-hidden="true"
+                                  />
+                                  <span className="renewal-badge-name">{subscription.name}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           ))}
-
-          {Array.from({ length: leadingCells }, (_, index) => (
-            <div
-              className="renewal-day-placeholder"
-              role="gridcell"
-              key={`renewal-leading-${index}`}
-            />
-          ))}
-
-          {dates.map((date) => {
-            const dayRenewals = renewalsByDate.get(date) ?? [];
-            const isToday = date === today;
-            const isSelected = date === selectedDate;
-            const hasRenewals = dayRenewals.length > 0;
-            const dailyOutflow = dayRenewals.reduce((sum, item) => sum + item.amountMinor, 0);
-
-            return (
-              <div className="renewal-day-cell" role="gridcell" key={date}>
-                <button
-                  type="button"
-                  className={`renewal-day${isSelected ? " selected" : ""}${
-                    isToday ? " today" : ""
-                  }${hasRenewals ? " has-renewals" : ""}`}
-                  data-renewal-calendar-date={date}
-                  aria-label={`${formatCalendarDate(date)}${
-                    hasRenewals
-                      ? `, ${dayRenewals.length} subscription renewal${
-                          dayRenewals.length === 1 ? "" : "s"
-                        } totaling ${formatMoney(dailyOutflow)}`
-                      : ", no renewals"
-                  }`}
-                  aria-pressed={isSelected}
-                  onClick={() => setSelectedDate((cur) => (cur === date ? null : date))}
-                  onKeyDown={(event) => handleKeyDown(event, date)}
-                >
-                  <header className="renewal-day-head">
-                    <span className="renewal-day-number">{Number(date.slice(-2))}</span>
-                    {isToday && <span className="renewal-today-badge">Today</span>}
-                  </header>
-
-                  {hasRenewals && (
-                    <div className="renewal-day-body">
-                      <span className="renewal-outflow-pill" title="Cash flow impact">
-                        <ArrowDownRight size={11} aria-hidden="true" />−{formatMoney(dailyOutflow)}
-                      </span>
-
-                      <div className="renewal-day-badges">
-                        {dayRenewals.map((subscription) => {
-                          const isPaid = date <= today;
-                          return (
-                            <span
-                              key={subscription.id}
-                              className={`renewal-badge ${isPaid ? "paid" : "due"}`}
-                              title={`${subscription.name} · ${formatMoney(
-                                subscription.amountMinor,
-                              )} · ${isPaid ? "Paid" : "Due"}`}
-                            >
-                              <i
-                                className="renewal-cat-dot"
-                                style={{ backgroundColor: subscription.categoryColor }}
-                                aria-hidden="true"
-                              />
-                              <span className="renewal-badge-name">{subscription.name}</span>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </button>
-              </div>
-            );
-          })}
         </div>
       </section>
 

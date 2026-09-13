@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   calendarEventTimeLabel,
+  calendarWeeks,
   daysInMonth,
   firstWeekday,
   monthDates,
@@ -57,6 +58,25 @@ describe("calendar utilities", () => {
 
   it("returns the month opening weekday", () => {
     expect(firstWeekday("2026-07")).toBe(3);
+  });
+
+  it("groups a month into week rows padded to seven cells", () => {
+    // July 2026 opens on Wednesday: three leading placeholders, 31 days, one trailing placeholder.
+    const weeks = calendarWeeks("2026-07");
+    expect(weeks).toHaveLength(5);
+    expect(weeks.every((week) => week.length === 7)).toBe(true);
+    expect(weeks[0]).toEqual([
+      null,
+      null,
+      null,
+      "2026-07-01",
+      "2026-07-02",
+      "2026-07-03",
+      "2026-07-04",
+    ]);
+    expect(weeks.flat().filter((date): date is string => date !== null)).toEqual(
+      monthDates("2026-07"),
+    );
   });
 
   it("keeps today and later events sorted across the visible two-month range", () => {

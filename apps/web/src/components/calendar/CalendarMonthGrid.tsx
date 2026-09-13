@@ -9,7 +9,7 @@ import {
 import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarDays, Repeat2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
-import { firstWeekday, formatCalendarDate, monthDates } from "../../lib/calendar";
+import { calendarWeeks, firstWeekday, formatCalendarDate, monthDates } from "../../lib/calendar";
 
 export interface CalendarDayData {
   items: TransactionListItem[];
@@ -97,6 +97,7 @@ export function CalendarMonthGrid({
 }: CalendarMonthGridProps) {
   const dates = monthDates(month);
   const leadingCells = firstWeekday(month);
+  const weeks = calendarWeeks(month);
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, date: string) {
     const index = dates.indexOf(date);
@@ -118,148 +119,145 @@ export function CalendarMonthGrid({
     });
   }
 
-  // ARIA requires role="grid" to hold role="row" children, so the cells are grouped one
-  // week per row. The day cells themselves are unchanged; only their grouping is new.
-  const allCells: Array<{ key: string; date: string | null }> = [
-    ...Array.from({ length: leadingCells }, (_, index) => ({
-      key: "leading-" + index,
-      date: null as string | null,
-    })),
-    ...dates.map((date) => ({ key: date, date: date as string | null })),
-  ];
-  const weeks: Array<typeof allCells> = [];
-  for (let index = 0; index < allCells.length; index += 7) {
-    weeks.push(allCells.slice(index, index + 7));
-  }
+  // Each visible grid needs one tab stop, so CalendarPage's expanded next-month grid stays
+  // reachable by Tab: the selected day when it falls in this month, otherwise today or the first
+  // of the month. Arrow keys move the selection and the tab stop follows it.
+  const tabbableDate = dates.includes(selectedDate)
+    ? selectedDate
+    : dates.includes(today)
+      ? today
+      : (dates[0] ?? "");
 
   function renderDayCell(date: string) {
-        const data = days.get(date);
-        const selected = date === selectedDate;
-        const isToday = date === today;
-        return (
-          <div className="calendar-day-cell" role="gridcell" key={date}>
-            <button
-              type="button"
-              className={`calendar-day${selected ? " selected" : ""}${isToday ? " today" : ""}`}
-              data-calendar-date={date}
-              aria-label={dayLabel(date, data, selected, isToday)}
-              aria-pressed={selected}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => onSelectDate(date)}
-              onKeyDown={(event) => handleKeyDown(event, date)}
-            >
-              <span className="calendar-day-number">
-                {Number(date.slice(-2))}
-                {isToday && <small>Today</small>}
+    const data = days.get(date);
+    const selected = date === selectedDate;
+    const isToday = date === today;
+    return (
+      <div className="calendar-day-cell" role="gridcell" key={date}>
+        <button
+          type="button"
+          className={`calendar-day${selected ? " selected" : ""}${isToday ? " today" : ""}`}
+          data-calendar-date={date}
+          aria-label={dayLabel(date, data, selected, isToday)}
+          aria-pressed={selected}
+          tabIndex={date === tabbableDate ? 0 : -1}
+          onClick={() => onSelectDate(date)}
+          onKeyDown={(event) => handleKeyDown(event, date)}
+        >
+          <span className="calendar-day-number">
+            {Number(date.slice(-2))}
+            {isToday && <small>Today</small>}
+          </span>
+          <span className="calendar-day-indicators">
+            {data?.incomeCount
+              ? currencies
+                  .filter((currency) => data.incomeByCurrency[currency] > 0)
+                  .map((currency) => (
+                    <span className="calendar-indicator income" key={`income-${currency}`}>
+                      <ArrowDownRight size={12} aria-hidden="true" />+
+                      {compactMoney(data.incomeByCurrency[currency], currency)}
+                    </span>
+                  ))
+              : null}
+            {data?.expenseCount
+              ? currencies
+                  .filter((currency) => data.expenseByCurrency[currency] > 0)
+                  .map((currency) => (
+                    <span className="calendar-indicator expense" key={`expense-${currency}`}>
+                      <ArrowUpRight size={12} aria-hidden="true" />−
+                      {compactMoney(data.expenseByCurrency[currency], currency)}
+                    </span>
+                  ))
+              : null}
+            {data?.transferCount ? (
+              <span className="calendar-indicator transfer">
+                <Repeat2 size={11} aria-hidden="true" /> {data.transferCount}
               </span>
-              <span className="calendar-day-indicators">
-                {data?.incomeCount
-                  ? currencies
-                      .filter((currency) => data.incomeByCurrency[currency] > 0)
-                      .map((currency) => (
-                        <span className="calendar-indicator income" key={`income-${currency}`}>
-                          <ArrowDownRight size={12} aria-hidden="true" />+
-                          {compactMoney(data.incomeByCurrency[currency], currency)}
-                        </span>
-                      ))
-                  : null}
-                {data?.expenseCount
-                  ? currencies
-                      .filter((currency) => data.expenseByCurrency[currency] > 0)
-                      .map((currency) => (
-                        <span className="calendar-indicator expense" key={`expense-${currency}`}>
-                          <ArrowUpRight size={12} aria-hidden="true" />−
-                          {compactMoney(data.expenseByCurrency[currency], currency)}
-                        </span>
-                      ))
-                  : null}
-                {data?.transferCount ? (
-                  <span className="calendar-indicator transfer">
-                    <Repeat2 size={11} aria-hidden="true" /> {data.transferCount}
-                  </span>
-                ) : null}
-                {data?.events.slice(0, 2).map((calendarEvent) => (
-                  <span
-                    className="calendar-indicator event"
-                    key={calendarEvent.id}
-                    title={calendarEvent.title}
-                  >
-                    <CalendarDays size={11} aria-hidden="true" /> {calendarEvent.title}
-                  </span>
-                ))}
-                {data && data.events.length > 2 && (
-                  <span className="calendar-indicator event-more">
-                    +{data.events.length - 2} more
+            ) : null}
+            {data?.events.slice(0, 2).map((calendarEvent) => (
+              <span
+                className="calendar-indicator event"
+                key={calendarEvent.id}
+                title={calendarEvent.title}
+              >
+                <CalendarDays size={11} aria-hidden="true" /> {calendarEvent.title}
+              </span>
+            ))}
+            {data && data.events.length > 2 && (
+              <span className="calendar-indicator event-more">+{data.events.length - 2} more</span>
+            )}
+            {data?.subscriptions.map((subscription) => (
+              <span
+                className={`calendar-indicator subscription ${date <= today ? "paid" : "due"}`}
+                key={subscription.id}
+                title={`${subscription.name} · ${date <= today ? "Paid" : "Upcoming"}`}
+              >
+                <CalendarClock size={11} aria-hidden="true" /> {subscription.name}
+              </span>
+            ))}
+          </span>
+          {data &&
+            (data.incomeCount > 0 ||
+              data.expenseCount > 0 ||
+              data.transferCount > 0 ||
+              data.events.length > 0 ||
+              data.subscriptions.length > 0) && (
+              <span className="calendar-mobile-signals" aria-hidden="true">
+                {data.incomeCount > 0 && (
+                  <span className="calendar-mobile-signal income">
+                    <ArrowDownRight size={9} aria-hidden="true" /> {data.incomeCount}
                   </span>
                 )}
-                {data?.subscriptions.map((subscription) => (
-                  <span
-                    className={`calendar-indicator subscription ${date <= today ? "paid" : "due"}`}
-                    key={subscription.id}
-                    title={`${subscription.name} · ${date <= today ? "Paid" : "Upcoming"}`}
-                  >
-                    <CalendarClock size={11} aria-hidden="true" /> {subscription.name}
-                  </span>
-                ))}
-              </span>
-              {data &&
-                (data.incomeCount > 0 ||
-                  data.expenseCount > 0 ||
-                  data.transferCount > 0 ||
-                  data.events.length > 0 ||
-                  data.subscriptions.length > 0) && (
-                  <span className="calendar-mobile-signals" aria-hidden="true">
-                    {data.incomeCount > 0 && (
-                      <span className="calendar-mobile-signal income">
-                        <ArrowDownRight size={9} aria-hidden="true" /> {data.incomeCount}
-                      </span>
-                    )}
-                    {data.expenseCount > 0 && (
-                      <span className="calendar-mobile-signal expense">
-                        <ArrowUpRight size={9} aria-hidden="true" /> {data.expenseCount}
-                      </span>
-                    )}
-                    {data.transferCount > 0 && (
-                      <span className="calendar-mobile-signal transfer">
-                        <Repeat2 size={9} aria-hidden="true" /> {data.transferCount}
-                      </span>
-                    )}
-                    {data.events.length > 0 && (
-                      <span className="calendar-mobile-signal event">
-                        <CalendarDays size={9} aria-hidden="true" /> {data.events.length}
-                      </span>
-                    )}
-                    {data.subscriptions.length > 0 && (
-                      <span
-                        className={`calendar-mobile-signal subscription ${date <= today ? "paid" : "due"}`}
-                      >
-                        <CalendarClock size={9} aria-hidden="true" /> {data.subscriptions.length}
-                      </span>
-                    )}
+                {data.expenseCount > 0 && (
+                  <span className="calendar-mobile-signal expense">
+                    <ArrowUpRight size={9} aria-hidden="true" /> {data.expenseCount}
                   </span>
                 )}
-            </button>
-          </div>
-        );
+                {data.transferCount > 0 && (
+                  <span className="calendar-mobile-signal transfer">
+                    <Repeat2 size={9} aria-hidden="true" /> {data.transferCount}
+                  </span>
+                )}
+                {data.events.length > 0 && (
+                  <span className="calendar-mobile-signal event">
+                    <CalendarDays size={9} aria-hidden="true" /> {data.events.length}
+                  </span>
+                )}
+                {data.subscriptions.length > 0 && (
+                  <span
+                    className={`calendar-mobile-signal subscription ${date <= today ? "paid" : "due"}`}
+                  >
+                    <CalendarClock size={9} aria-hidden="true" /> {data.subscriptions.length}
+                  </span>
+                )}
+              </span>
+            )}
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="calendar-grid" role="grid" aria-label={`Calendar for ${month}`}>
       <div className="calendar-row" role="row">
-      {weekdays.map((weekday) => (
-        <div className="calendar-weekday" role="columnheader" key={weekday} title={weekday}>
-          <span aria-hidden="true">{weekday.slice(0, 3)}</span>
-          <span className="sr-only">{weekday}</span>
-        </div>
-      ))}
+        {weekdays.map((weekday) => (
+          <div className="calendar-weekday" role="columnheader" key={weekday} title={weekday}>
+            <span aria-hidden="true">{weekday.slice(0, 3)}</span>
+            <span className="sr-only">{weekday}</span>
+          </div>
+        ))}
       </div>
       {weeks.map((week, weekIndex) => (
-        <div className="calendar-row" role="row" key={"week-" + weekIndex}>
-          {week.map((cell) =>
-            cell.date === null ? (
-              <div className="calendar-day-placeholder" role="gridcell" key={cell.key} />
+        <div className="calendar-row" role="row" key={`week-${weekIndex}`}>
+          {week.map((date, cellIndex) =>
+            date === null ? (
+              <div
+                className="calendar-day-placeholder"
+                role="gridcell"
+                key={`placeholder-${weekIndex}-${cellIndex}`}
+              />
             ) : (
-              renderDayCell(cell.date)
+              renderDayCell(date)
             ),
           )}
         </div>

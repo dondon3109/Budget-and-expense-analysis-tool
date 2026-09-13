@@ -24,13 +24,11 @@ function displayNameFor(user: User): string {
 }
 
 /**
- * Modal, matching ReleaseNotesDialog, the app's other one-time prompt.
+ * Modal, matching ReleaseNotesDialog, the app's other one-time prompt. As a fixed side panel it
+ * covered the data underneath without hiding anything from assistive tech, which is why no scan
+ * caught it.
  *
- * As a fixed panel this covered primary data on most authenticated pages: the ledger's Amount
- * column, the budget inputs, the plan's spread column, and it cut two sentences in half. No
- * rule-based scan can see that, because nothing was hidden from assistive tech, only from the eye.
- * Going modal means the user answers it once and it is gone, and its role="dialog" finally behaves
- * like the dialog it always claimed to be.
+ * A plain div rather than an aside: HTML-ARIA does not allow role="dialog" on aside.
  */
 function ReviewPromptSurface({
   onEscape,
@@ -39,7 +37,7 @@ function ReviewPromptSurface({
   onEscape: () => void;
   children: ReactNode;
 }) {
-  const dialogRef = useRef<HTMLElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   useRootLock(true);
   // No initialFocusRef: the close button is the first focusable control in the panel.
   const handleKeyDown = useFocusTrap(dialogRef, { onEscape });
@@ -47,7 +45,7 @@ function ReviewPromptSurface({
   return createPortal(
     <div className="review-prompt-layer">
       <div className="review-prompt-backdrop" aria-hidden="true" onClick={onEscape} />
-      <aside
+      <div
         ref={dialogRef}
         className="customer-review-prompt"
         role="dialog"
@@ -56,7 +54,7 @@ function ReviewPromptSurface({
         onKeyDown={handleKeyDown}
       >
         {children}
-      </aside>
+      </div>
     </div>,
     document.body,
   );

@@ -126,6 +126,14 @@
 
 .renewal-calendar-grid {
   display: grid;
+  /* One column of week rows: role="grid" has to hold role="row" children, and each row keeps
+     the 7-column track so the calendar lays out exactly as it did before. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.renewal-calendar-row {
+  display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
@@ -476,7 +484,8 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .renewal-calendar-grid {
+  .renewal-calendar-grid,
+  .renewal-calendar-row {
     gap: 3px;
   }
 

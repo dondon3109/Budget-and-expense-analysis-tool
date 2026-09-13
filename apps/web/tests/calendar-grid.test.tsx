@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CalendarMonthGrid } from "../src/components/calendar/CalendarMonthGrid";
@@ -187,6 +187,52 @@ describe("CalendarMonthGrid", () => {
     expect(bottomRightDate).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(bottomRightDate);
     expect(onSelectDate).toHaveBeenCalledWith("2026-10-31");
+  });
+
+  it("builds a grid of week rows with seven cells each", () => {
+    render(
+      <CalendarMonthGrid
+        month="2026-07"
+        selectedDate="2026-07-01"
+        today="2026-07-18"
+        days={new Map()}
+        onSelectDate={vi.fn()}
+      />,
+    );
+
+    const grid = screen.getByRole("grid", { name: "Calendar for 2026-07" });
+    // The defect this pins: gridcells and columnheaders sat directly under the grid, with no
+    // role="row" between them, which is not a structure assistive technology can navigate.
+    expect(
+      Array.from(grid.children).some((child) => child.getAttribute("role") === "gridcell"),
+    ).toBe(false);
+
+    const rows = within(grid).getAllByRole("row");
+    expect(rows).toHaveLength(6); // one weekday header row plus five week rows
+    expect(within(rows[0]!).getAllByRole("columnheader")).toHaveLength(7);
+    for (const row of rows.slice(1)) {
+      expect(within(row).getAllByRole("gridcell")).toHaveLength(7);
+    }
+  });
+
+  it("gives a grid with no selection of its own a tab stop", () => {
+    render(
+      <CalendarMonthGrid
+        month="2026-08"
+        selectedDate="2026-07-15"
+        today="2026-07-18"
+        days={new Map()}
+        onSelectDate={vi.fn()}
+      />,
+    );
+
+    // CalendarPage opens a second grid on the next month. Only the selected day used to be
+    // tabbable, so with the selection in the first grid every cell of the second was tabIndex={-1}.
+    const tabbable = screen
+      .getAllByRole("button")
+      .filter((button) => button.getAttribute("tabindex") === "0");
+    expect(tabbable).toHaveLength(1);
+    expect(tabbable[0]).toHaveAccessibleName(/August 1, 2026/);
   });
 
   it("moves focus selection by week with the keyboard", () => {

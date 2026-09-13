@@ -72,6 +72,8 @@ All notable product changes are documented here.
 - Fixed the next-month calendar toggle sitting inside a separator role, which ARIA defines as a leaf and so cannot contain a control.
 - Fixed the assistant route's loading and error states rendering no heading.
 - Fixed the support launcher covering the footer links on a phone, and the cookie banner covering the last stretch of every page.
+- Fixed the renewal calendar on the subscriptions screen exposing the same invalid grid structure the main calendar had: its weekday headers and day cells now sit inside rows.
+- Fixed the expanded next-month calendar having no tab stop of its own, which left its days unreachable by keyboard, and padded the last week of every month grid to seven cells.
 - Fixed accounts that could not load any page after their email had previously been verified by a different account: the identity record clashed on the unique verified email, so every request failed with a server error.
 
 ## 2.30.2 — 2026-09-11

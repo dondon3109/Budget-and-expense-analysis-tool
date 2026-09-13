@@ -303,7 +303,17 @@ describe("SubscriptionsPage", () => {
     expect(
       screen.getByRole("heading", { level: 3, name: "Renewal Calendar Grid" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("grid", { name: /^Renewals in/ })).toBeInTheDocument();
+    const renewalGrid = screen.getByRole("grid", { name: /^Renewals in/ });
+    // The defect this pins: the weekday headers and day cells sat directly under the grid with no
+    // role="row" between them, the same invalid structure the main calendar had.
+    expect(
+      Array.from(renewalGrid.children).some((child) => child.getAttribute("role") === "gridcell"),
+    ).toBe(false);
+    const renewalRows = within(renewalGrid).getAllByRole("row");
+    expect(within(renewalRows[0]!).getAllByRole("columnheader")).toHaveLength(7);
+    for (const row of renewalRows.slice(1)) {
+      expect(within(row).getAllByRole("gridcell")).toHaveLength(7);
+    }
 
     // Verify Payment Schedule & Upcoming Billing Cycles timeline
     expect(
