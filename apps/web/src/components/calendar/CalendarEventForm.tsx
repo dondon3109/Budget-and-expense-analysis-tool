@@ -4,7 +4,11 @@ import {
   type CalendarEventRecord,
 } from "@zoption/shared";
 import { CalendarClock, X } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
+
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 
 interface CalendarEventFormProps {
   initialDate: string;
@@ -30,20 +34,24 @@ export function CalendarEventForm({
   const [endTime, setEndTime] = useState(item?.endTime ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [clientError, setClientError] = useState<string>();
-  const openerRef = useRef(
+  const dialogRef = useRef<HTMLElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  // Captured during the first render, while the control that opened the form still has focus:
+  // by the time the portal mounts, the trap has already moved focus into the dialog.
+  const openerRef = useRef<HTMLElement | null>(
     document.activeElement instanceof HTMLElement ? document.activeElement : null,
   );
   const titleId = "calendar-event-form-title";
 
-  useEffect(() => () => openerRef.current?.focus(), []);
+  useRootLock(true);
 
-  useEffect(() => {
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) onClose();
-    }
-    window.addEventListener("keydown", handleKeydown);
-    return () => window.removeEventListener("keydown", handleKeydown);
-  }, [busy, onClose]);
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: titleInputRef,
+    returnFocus: openerRef.current,
+    onEscape: () => {
+      if (!busy) onClose();
+    },
+  });
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -68,7 +76,8 @@ export function CalendarEventForm({
     await onSubmit(parsed.data);
   }
 
-  return (
+  // Portalled so the inert application root from useRootLock does not disable the dialog.
+  return createPortal(
     <div
       className="modal-backdrop"
       role="presentation"
@@ -77,10 +86,12 @@ export function CalendarEventForm({
       }}
     >
       <section
+        ref={dialogRef}
         className="form-modal calendar-event-form-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        onKeyDown={handleKeyDown}
       >
         <header className="modal-header calendar-event-form-header">
           <div className="calendar-event-form-heading">
@@ -107,7 +118,7 @@ export function CalendarEventForm({
           <label>
             <span>Event title</span>
             <input
-              autoFocus
+              ref={titleInputRef}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="e.g. Dentist appointment"
@@ -199,6 +210,7 @@ export function CalendarEventForm({
           </div>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

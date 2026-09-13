@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import type { ImportPreview } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -130,11 +130,51 @@ describe("SpreadsheetMigrationWizard", () => {
     });
   });
 
+  it("opens the file picker from the keyboard-operable dropzone button", async () => {
+    const user = userEvent.setup();
+    renderWizard();
+
+    const dropzone = screen.getByRole("button", {
+      name: /choose a csv or excel bank statement/i,
+    });
+    // The wizard is portalled to document.body, so its input lives outside the RTL container.
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const clickSpy = vi.spyOn(fileInput, "click");
+
+    dropzone.focus();
+    expect(dropzone).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+
+    await user.keyboard(" ");
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+
+    clickSpy.mockRestore();
+  });
+
+  it("still accepts a dragged-and-dropped file on the dropzone button", async () => {
+    renderWizard();
+
+    const dropzone = screen.getByRole("button", {
+      name: /choose a csv or excel bank statement/i,
+    });
+    const file = createFile(
+      "dropped.csv",
+      ["Date,Description,Amount", "2026-07-20,Dropped row,-10.00"].join("\n"),
+    );
+
+    fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
+
+    await waitFor(() => expect(screen.getByText("dropped.csv")).toBeInTheDocument());
+    expect(screen.getByText("3 columns detected")).toBeInTheDocument();
+  });
+
   it("walks through file selection, column mapping, duplicate preview, and commit", async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();
     const onClose = vi.fn();
-    const { container } = renderWizard({ onComplete, onClose });
+    renderWizard({ onComplete, onClose });
 
     const csvContent = [
       "Date,Description,Amount,Category",
@@ -143,7 +183,8 @@ describe("SpreadsheetMigrationWizard", () => {
     ].join("\n");
 
     const file = createFile("bank-statement.csv", csvContent);
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    // The wizard is portalled to document.body, so its input lives outside the RTL container.
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput).toBeTruthy();
 
     await user.upload(fileInput, file);
@@ -191,5 +232,58 @@ describe("SpreadsheetMigrationWizard", () => {
 
     expect(onClose).toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();
+  });
+
+  it("scopes every header and names both preview tables", async () => {
+    const user = userEvent.setup();
+    renderWizard();
+
+    const csv = [
+      "Date,Description,Amount,Category",
+      "2026-07-20,Market,-1500.00,Food & dining",
+    ].join("\n");
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(fileInput, createFile("bank-statement.csv", csv));
+    await waitFor(() => expect(screen.getByText("bank-statement.csv")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /continue to column mapping/i }));
+    const sampleTable = screen.getByRole("table", { name: "Sample rows preview" });
+    const sampleHeaders = within(sampleTable).getAllByRole("columnheader");
+    expect(sampleHeaders).toHaveLength(4);
+    for (const header of sampleHeaders) {
+      expect(header).toHaveAttribute("scope", "col");
+    }
+
+    await user.click(screen.getByRole("button", { name: /review & check duplicates/i }));
+    const reviewTable = await screen.findByRole("table", { name: "Migration preview rows" });
+    const reviewHeaders = within(reviewTable).getAllByRole("columnheader");
+    expect(reviewHeaders).toHaveLength(5);
+    for (const header of reviewHeaders) {
+      expect(header).toHaveAttribute("scope", "col");
+    }
+  });
+
+  it("renders outside the inert application root so the root lock cannot disable it", () => {
+    const root = document.createElement("div");
+    root.id = "root";
+    document.body.append(root);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SpreadsheetMigrationWizard open onClose={vi.fn()} />
+      </QueryClientProvider>,
+      { container: root },
+    );
+
+    expect(root).toHaveAttribute("aria-hidden", "true");
+    const dialog = screen.getByRole("dialog", { name: "Spreadsheet Migration Wizard" });
+    expect(root.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+
+    cleanup();
+    root.remove();
   });
 });

@@ -10,6 +10,8 @@ import { ThemeChoiceDialog } from "../src/components/theme/ThemeChoiceDialog";
 import { useRootLock } from "../src/hooks/useRootLock";
 import { THEME_STORAGE_KEY, ThemeProvider } from "../src/theme/ThemeProvider";
 
+const CLOSE_LABEL = "Close and keep the default Light theme";
+
 function ExternalLock({ locked }: { locked: boolean }) {
   useRootLock(locked);
   return null;
@@ -192,7 +194,7 @@ describe("ThemeChoiceDialog", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "coffee");
   });
 
-  it("supports arrow selection and traps focus through the Confirm action", async () => {
+  it("supports arrow selection and traps focus inside the dialog", async () => {
     const user = userEvent.setup();
     renderThemeChoiceDialog();
 
@@ -209,12 +211,60 @@ describe("ThemeChoiceDialog", () => {
     const confirm = screen.getByRole("button", { name: "Confirm Coffee theme" });
     expect(confirm).toHaveFocus();
     await user.tab();
-    expect(coffeeOption).toHaveFocus();
+    expect(screen.getByRole("button", { name: CLOSE_LABEL })).toHaveFocus();
     await user.tab({ shift: true });
     expect(confirm).toHaveFocus();
+  });
+
+  it("titles itself with an h2 so public routes keep a single h1", () => {
+    renderThemeChoiceDialog();
+
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Choose how Zoption looks" }),
+    ).toHaveAttribute("id", "theme-choice-title");
+    expect(screen.getByRole("dialog")).toHaveAttribute("aria-labelledby", "theme-choice-title");
+  });
+
+  it("dismisses with Escape by keeping the default Light theme, and remembers it", async () => {
+    document.documentElement.dataset.theme = "dark";
+    const user = userEvent.setup();
+    const view = renderThemeChoiceDialog();
+
+    await user.click(screen.getByRole("radio", { name: "Preview Coffee theme" }));
+    expect(document.documentElement).toHaveAttribute("data-theme", "coffee");
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
 
     await user.keyboard("{Escape}");
-    expect(screen.getByRole("dialog")).toBeVisible();
-    expect(confirm).toHaveFocus();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(document.documentElement.style.colorScheme).toBe("light");
+    expect(document.getElementById("root")?.inert).toBe(false);
+    expect(document.getElementById("root")).not.toHaveAttribute("aria-hidden");
+    expect(document.body.style.overflow).toBe("");
+
+    view.unmount();
+    document.body.innerHTML = '<div id="root"></div>';
+    renderThemeChoiceDialog();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+  });
+
+  it("dismisses with the visible close control by keeping the default Light theme", async () => {
+    document.documentElement.dataset.theme = "dark";
+    const user = userEvent.setup();
+    renderThemeChoiceDialog();
+
+    const close = screen.getByRole("button", { name: CLOSE_LABEL });
+    expect(close).toBeVisible();
+    await user.click(close);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(document.body.style.overflow).toBe("");
   });
 });

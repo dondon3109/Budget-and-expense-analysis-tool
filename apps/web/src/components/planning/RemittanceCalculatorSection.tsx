@@ -312,15 +312,23 @@ export function RemittanceCalculatorSection() {
           </div>
         </div>
 
-        <div className="comparison-table-wrapper">
+        {/* At narrow widths this table scrolls sideways, and a scroll container with no tab stop
+            is unreachable by keyboard. Same treatment as the dashboard's category list. */}
+        <div
+          className="comparison-table-wrapper"
+          role="region"
+          aria-label="Provider spread comparison"
+          tabIndex={0}
+        >
           <table className="comparison-table">
+            <caption className="sr-only">Provider spread and value comparison</caption>
             <thead>
               <tr>
-                <th>Provider</th>
-                <th>Effective Rate</th>
-                <th>Estimated Spread Loss</th>
-                <th className="text-right">Net Received (PHP)</th>
-                <th className="text-right">Total Drag</th>
+                <th scope="col">Provider</th>
+                <th scope="col">Effective Rate</th>
+                <th scope="col">Estimated Spread Loss</th>
+                <th scope="col" className="text-right">Net Received (PHP)</th>
+                <th scope="col" className="text-right">Total Drag</th>
               </tr>
             </thead>
             <tbody>

@@ -22,6 +22,7 @@ import {
 import { useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
 import { DebtForm } from "../components/planning/DebtForm";
@@ -78,6 +79,8 @@ export function FinancialPlanPage() {
   const queryClient = useQueryClient();
   const [goalForm, setGoalForm] = useState<FinancialGoal | "new" | null>(null);
   const [debtForm, setDebtForm] = useState<Debt | "new" | null>(null);
+  const [goalToDelete, setGoalToDelete] = useState<FinancialGoal | null>(null);
+  const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
 
   const goalsQuery = useQuery({
     queryKey: queryKeys.financialGoals(workspace),
@@ -244,28 +247,45 @@ export function FinancialPlanPage() {
   const activeDebtMinor = activeDebts.reduce((total, debt) => total + debt.balanceMinor, 0);
   const loading = goalsQuery.isPending || debtsQuery.isPending;
   const loadError = goalsQuery.error ?? debtsQuery.error;
+  // Delete failures render inside their ConfirmDialog, so they are excluded here.
   const mutationError =
-    saveGoalMutation.error ??
-    saveDebtMutation.error ??
-    deleteGoalMutation.error ??
-    deleteDebtMutation.error ??
-    preferencesMutation.error;
+    saveGoalMutation.error ?? saveDebtMutation.error ?? preferencesMutation.error;
 
-  function confirmGoalDelete(goal: FinancialGoal) {
-    if (window.confirm(`Delete “${goal.name}”? This cannot be undone.`)) {
-      deleteGoalMutation.mutate(goal.id);
-    }
+  function closeGoalDelete() {
+    if (deleteGoalMutation.isPending) return;
+    deleteGoalMutation.reset();
+    setGoalToDelete(null);
   }
 
-  function confirmDebtDelete(debt: Debt) {
-    if (window.confirm(`Delete “${debt.name}”? This cannot be undone.`)) {
-      deleteDebtMutation.mutate(debt.id);
-    }
+  function confirmGoalDelete() {
+    if (!goalToDelete) return;
+    deleteGoalMutation.mutate(goalToDelete.id, {
+      onSuccess: () => {
+        deleteGoalMutation.reset();
+        setGoalToDelete(null);
+      },
+    });
+  }
+
+  function closeDebtDelete() {
+    if (deleteDebtMutation.isPending) return;
+    deleteDebtMutation.reset();
+    setDebtToDelete(null);
+  }
+
+  function confirmDebtDelete() {
+    if (!debtToDelete) return;
+    deleteDebtMutation.mutate(debtToDelete.id, {
+      onSuccess: () => {
+        deleteDebtMutation.reset();
+        setDebtToDelete(null);
+      },
+    });
   }
 
   return (
     <AppShell>
-      <main className="dashboard-page financial-plan-page">
+      <div className="dashboard-page financial-plan-page">
         <header className="dashboard-header financial-plan-header">
           <div>
             <p className="eyebrow">Goals & debt</p>
@@ -390,7 +410,7 @@ export function FinancialPlanPage() {
                               <button
                                 className="icon-button compact danger"
                                 type="button"
-                                onClick={() => confirmGoalDelete(goal)}
+                                onClick={() => setGoalToDelete(goal)}
                                 disabled={deleteGoalMutation.isPending}
                                 aria-label={`Delete ${goal.name}`}
                               >
@@ -470,7 +490,7 @@ export function FinancialPlanPage() {
                             <button
                               className="icon-button compact danger"
                               type="button"
-                              onClick={() => confirmDebtDelete(debt)}
+                              onClick={() => setDebtToDelete(debt)}
                               disabled={deleteDebtMutation.isPending}
                               aria-label={`Delete ${debt.name}`}
                             >
@@ -601,7 +621,7 @@ export function FinancialPlanPage() {
             {mutationError.message}
           </p>
         )}
-      </main>
+      </div>
 
       {goalForm && (
         <FinancialGoalForm
@@ -614,6 +634,30 @@ export function FinancialPlanPage() {
           onClose={() => {
             if (!saveGoalMutation.isPending) setGoalForm(null);
           }}
+        />
+      )}
+      {goalToDelete && (
+        <ConfirmDialog
+          title={`Delete “${goalToDelete.name}”?`}
+          consequence="This permanently removes the goal, its saved amount, and its target date from your planning ledger. This cannot be undone."
+          confirmLabel="Delete goal"
+          busyLabel="Deleting…"
+          busy={deleteGoalMutation.isPending}
+          error={deleteGoalMutation.error?.message}
+          onConfirm={confirmGoalDelete}
+          onClose={closeGoalDelete}
+        />
+      )}
+      {debtToDelete && (
+        <ConfirmDialog
+          title={`Delete “${debtToDelete.name}”?`}
+          consequence="This permanently removes the balance, APR, and minimum payment from your payoff planning. This cannot be undone."
+          confirmLabel="Delete debt"
+          busyLabel="Deleting…"
+          busy={deleteDebtMutation.isPending}
+          error={deleteDebtMutation.error?.message}
+          onConfirm={confirmDebtDelete}
+          onClose={closeDebtDelete}
         />
       )}
       {debtForm && (

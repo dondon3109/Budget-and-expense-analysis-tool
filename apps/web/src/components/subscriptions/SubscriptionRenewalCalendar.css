@@ -182,7 +182,7 @@
 }
 
 .renewal-day.today {
-  border-color: var(--accent, #10b981);
+  border-color: var(--brand);
 }
 
 .renewal-day-head {
@@ -203,8 +203,8 @@
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
-  background: var(--accent, #10b981);
-  color: #ffffff;
+  background: var(--solid-bg);
+  color: var(--solid-text);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }

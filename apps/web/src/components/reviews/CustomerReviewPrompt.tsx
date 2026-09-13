@@ -1,8 +1,11 @@
 import { Check, MessageCircleHeart, Star, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import type { User } from "@supabase/supabase-js";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 import { getCustomerReviewState, saveCustomerReview } from "../../lib/api";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import "./CustomerReviewPrompt.css";
@@ -18,6 +21,45 @@ function displayNameFor(user: User): string {
   return friendlyEmailName && friendlyEmailName.length >= 2
     ? friendlyEmailName.slice(0, 50)
     : "Zoption customer";
+}
+
+/**
+ * Modal, matching ReleaseNotesDialog, the app's other one-time prompt.
+ *
+ * As a fixed panel this covered primary data on most authenticated pages: the ledger's Amount
+ * column, the budget inputs, the plan's spread column, and it cut two sentences in half. No
+ * rule-based scan can see that, because nothing was hidden from assistive tech, only from the eye.
+ * Going modal means the user answers it once and it is gone, and its role="dialog" finally behaves
+ * like the dialog it always claimed to be.
+ */
+function ReviewPromptSurface({
+  onEscape,
+  children,
+}: {
+  onEscape: () => void;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLElement>(null);
+  useRootLock(true);
+  // No initialFocusRef: the close button is the first focusable control in the panel.
+  const handleKeyDown = useFocusTrap(dialogRef, { onEscape });
+
+  return createPortal(
+    <div className="review-prompt-layer">
+      <div className="review-prompt-backdrop" aria-hidden="true" onClick={onEscape} />
+      <aside
+        ref={dialogRef}
+        className="customer-review-prompt"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-prompt-title"
+        onKeyDown={handleKeyDown}
+      >
+        {children}
+      </aside>
+    </div>,
+    document.body,
+  );
 }
 
 export function CustomerReviewPrompt({
@@ -61,15 +103,6 @@ export function CustomerReviewPrompt({
     // The key is stable for the authenticated account; AppShell recreates the workspace object.
   }, [workspace.key]);
 
-  useEffect(() => {
-    if (dismissed || submitted) return undefined;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") dismissPrompt();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  });
-
   function dismissPrompt() {
     window.localStorage.setItem(storageKey, String(Date.now() + REMIND_LATER_MS));
     setDismissed(true);
@@ -100,7 +133,7 @@ export function CustomerReviewPrompt({
   }
 
   return (
-    <aside className="customer-review-prompt" role="dialog" aria-labelledby="review-prompt-title">
+    <ReviewPromptSurface onEscape={dismissPrompt}>
       <button
         className="review-prompt-close"
         type="button"
@@ -226,6 +259,6 @@ export function CustomerReviewPrompt({
           </div>
         </form>
       )}
-    </aside>
+    </ReviewPromptSurface>
   );
 }

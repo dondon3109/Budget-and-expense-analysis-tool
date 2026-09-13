@@ -10,6 +10,7 @@ import { CalendarClock, CalendarDays, LayoutList, Plus, RefreshCw, Repeat2 } fro
 import { useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { MetricCard } from "../components/dashboard/MetricCard";
 import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
@@ -63,6 +64,7 @@ export function SubscriptionsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SubscriptionRecord | null>(null);
   const [guideItem, setGuideItem] = useState<SubscriptionMonthItem | null>(null);
+  const [subscriptionToDelete, setSubscriptionToDelete] = useState<SubscriptionRecord | null>(null);
   const monthStart = `${month}-01`;
 
   const subscriptionsQuery = useQuery({
@@ -235,10 +237,20 @@ export function SubscriptionsPage() {
     setFormOpen(true);
   }
 
-  function confirmDelete(item: SubscriptionRecord) {
-    if (window.confirm(`Delete “${item.name}”? This cannot be undone.`)) {
-      deleteMutation.mutate(item.id);
-    }
+  function closeDelete() {
+    if (deleteMutation.isPending) return;
+    deleteMutation.reset();
+    setSubscriptionToDelete(null);
+  }
+
+  function confirmDelete() {
+    if (!subscriptionToDelete) return;
+    deleteMutation.mutate(subscriptionToDelete.id, {
+      onSuccess: () => {
+        deleteMutation.reset();
+        setSubscriptionToDelete(null);
+      },
+    });
   }
 
   return (
@@ -372,7 +384,7 @@ export function SubscriptionsPage() {
                   deletingId={deleteMutation.variables}
                   onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
                   onEdit={openEdit}
-                  onDelete={confirmDelete}
+                  onDelete={setSubscriptionToDelete}
                   onShowCancellationGuide={(item) => setGuideItem(item)}
                 />
               )}
@@ -382,20 +394,31 @@ export function SubscriptionsPage() {
 
         {(createMutation.isError ||
           updateMutation.isError ||
-          deleteMutation.isError ||
           statusMutation.isError ||
           categoriesQuery.isError ||
           accountsQuery.isError) && (
           <p className="page-error" role="alert">
             {createMutation.error?.message ??
               updateMutation.error?.message ??
-              deleteMutation.error?.message ??
               statusMutation.error?.message ??
               categoriesQuery.error?.message ??
               accountsQuery.error?.message}
           </p>
         )}
       </div>
+
+      {subscriptionToDelete && (
+        <ConfirmDialog
+          title={`Delete “${subscriptionToDelete.name}”?`}
+          consequence="This permanently removes the subscription and its renewal reminders. Transactions you already recorded stay in your history. This cannot be undone."
+          confirmLabel="Delete subscription"
+          busyLabel="Deleting…"
+          busy={deleteMutation.isPending}
+          error={deleteMutation.error?.message}
+          onConfirm={confirmDelete}
+          onClose={closeDelete}
+        />
+      )}
 
       {formOpen && (
         <SubscriptionForm

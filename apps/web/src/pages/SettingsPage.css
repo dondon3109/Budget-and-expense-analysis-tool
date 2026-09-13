@@ -407,7 +407,8 @@
 
 .settings-danger-zone .button.danger {
   flex: 0 0 auto;
-  color: #fff;
+  /* --paper flips with the theme so the label stays legible on --danger. */
+  color: var(--paper);
   border-color: var(--danger);
   background: var(--danger);
   box-shadow: none;

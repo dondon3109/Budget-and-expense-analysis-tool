@@ -26,6 +26,7 @@ vi.mock("../src/components/legal/LegalFooter", () => ({
 
 import { AppTutorialsPage } from "../src/pages/tutorials/AppTutorialsPage";
 import { TutorialsPage } from "../src/pages/tutorials/TutorialsPage";
+import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 describe("TutorialsPage", () => {
   beforeEach(() => {
@@ -36,9 +37,11 @@ describe("TutorialsPage", () => {
 
   function renderPage() {
     return render(
-      <MemoryRouter initialEntries={["/app/tutorials"]}>
-        <TutorialsPage />
-      </MemoryRouter>,
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/app/tutorials"]}>
+          <TutorialsPage />
+        </MemoryRouter>
+      </ThemeProvider>,
     );
   }
 
@@ -90,12 +93,16 @@ describe("TutorialsPage", () => {
     mockUseOptionalAuth.mockReturnValue(null);
 
     render(
-      <MemoryRouter initialEntries={["/tutorials"]}>
-        <TutorialsPage />
-      </MemoryRouter>,
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/tutorials"]}>
+          <TutorialsPage />
+        </MemoryRouter>
+      </ThemeProvider>,
     );
 
-    expect(screen.getByRole("link", { name: /Back to Zoption Home/i })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Learn more" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/signup");
+    expect(screen.getByRole("button", { name: "Open navigation menu" })).toBeInTheDocument();
     expect(screen.getByTestId("legal-footer")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "How to Use Zoption" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Get Started Free" })).toBeInTheDocument();
@@ -103,9 +110,11 @@ describe("TutorialsPage", () => {
 
   it("renders inside AppShell for AppTutorialsPage", () => {
     render(
-      <MemoryRouter initialEntries={["/app/tutorials"]}>
-        <AppTutorialsPage />
-      </MemoryRouter>,
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/app/tutorials"]}>
+          <AppTutorialsPage />
+        </MemoryRouter>
+      </ThemeProvider>,
     );
 
     expect(screen.getByTestId("app-shell")).toBeInTheDocument();

@@ -8,7 +8,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CalendarEventForm } from "../src/components/calendar/CalendarEventForm";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // The portal regression test injects its own #root; never let it leak into sibling tests.
+  document.getElementById("root")?.remove();
+});
 
 describe("CalendarEventForm", () => {
   it("creates an all-day event for the selected date", async () => {
@@ -99,5 +103,62 @@ describe("CalendarEventForm", () => {
     expect(screen.getByRole("checkbox", { name: /All day/i })).not.toBeChecked();
     expect(screen.getByLabelText("Starts")).toHaveValue("14:00");
     expect(screen.getByLabelText(/Notes/)).toHaveValue("Review milestones");
+  });
+
+  it("keeps Tab inside the dialog and closes on Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <CalendarEventForm
+        initialDate="2026-08-05"
+        busy={false}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+        onClose={onClose}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Add event" });
+    const close = screen.getByRole("button", { name: "Close event form" });
+    const submit = screen.getByRole("button", { name: "Add event" });
+
+    expect(screen.getByLabelText("Event title")).toHaveFocus();
+
+    submit.focus();
+    fireEvent.keyDown(submit, { key: "Tab" });
+    expect(close).toHaveFocus();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("ignores Escape while the event is saving", () => {
+    const onClose = vi.fn();
+    render(
+      <CalendarEventForm initialDate="2026-08-05" busy onSubmit={vi.fn()} onClose={onClose} />,
+    );
+
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Add event" }), { key: "Escape" });
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("renders outside the application root so the root lock cannot disable it", () => {
+    const root = document.createElement("div");
+    root.id = "root";
+    document.body.append(root);
+
+    render(
+      <CalendarEventForm
+        initialDate="2026-08-05"
+        busy={false}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+        onClose={vi.fn()}
+      />,
+      { container: root },
+    );
+
+    expect(root).toHaveAttribute("aria-hidden", "true");
+    expect(root.inert ?? false).toBe(true);
+    expect(root.contains(screen.getByRole("dialog", { name: "Add event" }))).toBe(false);
   });
 });

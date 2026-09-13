@@ -143,7 +143,7 @@ describe("CalendarPage month views", () => {
     const { container } = renderPage();
 
     expect(await screen.findByRole("grid", { name: "Calendar for 2026-07" })).toBeVisible();
-    const toggle = screen.getByRole("separator");
+    const toggle = screen.getByRole("group", { name: "Next month" });
     expect(toggle).toHaveTextContent("August 2026");
     expect(screen.queryByRole("heading", { name: "August 2026" })).not.toBeInTheDocument();
     expect(screen.queryByRole("grid", { name: "Calendar for 2026-08" })).not.toBeInTheDocument();
@@ -164,7 +164,7 @@ describe("CalendarPage month views", () => {
   it("hides and shows the next month via its separator toggle", async () => {
     renderPage();
 
-    const toggle = await screen.findByRole("separator");
+    const toggle = await screen.findByRole("group", { name: "Next month" });
     fireEvent.click(within(toggle).getByRole("button"));
     expect(screen.getByRole("heading", { name: "August 2026" })).toBeVisible();
 
@@ -179,7 +179,7 @@ describe("CalendarPage month views", () => {
 
   it("selects a next-month date without navigating away from the current month", async () => {
     renderPage();
-    fireEvent.click(within(await screen.findByRole("separator")).getByRole("button"));
+    fireEvent.click(within(await screen.findByRole("group", { name: "Next month" })).getByRole("button"));
     const augustFifth = await screen.findByRole("button", { name: /August 5, 2026/i });
 
     fireEvent.click(augustFifth);
@@ -196,7 +196,7 @@ describe("CalendarPage month views", () => {
 
   it("opens the event form for the selected next-month date", async () => {
     renderPage();
-    fireEvent.click(within(await screen.findByRole("separator")).getByRole("button"));
+    fireEvent.click(within(await screen.findByRole("group", { name: "Next month" })).getByRole("button"));
     fireEvent.click(await screen.findByRole("button", { name: /August 5, 2026/i }));
     fireEvent.click(screen.getByRole("button", { name: "Add event" }));
 

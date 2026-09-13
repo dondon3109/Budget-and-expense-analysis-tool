@@ -1,10 +1,10 @@
 .quick-start-tutorial-card {
   margin-bottom: 1.5rem;
-  background-color: var(--surface-raised, #ffffff);
-  border: 1px solid var(--border-subtle, #e5e7eb);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg, 12px);
   padding: 1.25rem 1.5rem;
-  box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+  box-shadow: var(--shadow-card);
 }
 
 .quick-start-header {
@@ -28,9 +28,9 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--brand-dark, #065f46);
-  background-color: var(--brand-subtle, #ecfdf5);
-  border: 1px solid var(--brand-border, #a7f3d0);
+  color: var(--action-strong);
+  background-color: var(--action-soft);
+  border: 1px solid color-mix(in srgb, var(--action) 32%, transparent);
   border-radius: 9999px;
   padding: 0.2rem 0.6rem;
   width: fit-content;
@@ -39,13 +39,13 @@
 .quick-start-header h2 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--text-primary, #111827);
+  color: var(--ink);
   margin: 0;
 }
 
 .quick-start-header p {
   font-size: 0.875rem;
-  color: var(--text-muted, #4b5563);
+  color: var(--muted);
   margin: 0;
 }
 
@@ -72,8 +72,8 @@
 .quick-start-step {
   display: flex;
   flex-direction: column;
-  background-color: var(--surface-muted, #f9fafb);
-  border: 1px solid var(--border-subtle, #e5e7eb);
+  background-color: var(--surface-muted);
+  border: 1px solid var(--line);
   border-radius: var(--radius-md, 8px);
   padding: 1rem;
   position: relative;
@@ -86,8 +86,8 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background-color: var(--brand-subtle, #ecfdf5);
-  color: var(--brand-dark, #065f46);
+  background-color: var(--action-soft);
+  color: var(--action-strong);
   font-size: 0.75rem;
   font-weight: 700;
   display: flex;
@@ -110,20 +110,20 @@
 }
 
 .quick-start-step-icon {
-  color: var(--brand-primary, #0f766e);
+  color: var(--action);
   flex-shrink: 0;
 }
 
 .quick-start-step-details h3 {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: var(--text-primary, #111827);
+  color: var(--ink);
   margin: 0;
 }
 
 .quick-start-step-details p {
   font-size: 0.8125rem;
-  color: var(--text-muted, #4b5563);
+  color: var(--muted);
   line-height: 1.45;
   margin: 0 0 1rem 0;
   flex-grow: 1;
@@ -141,13 +141,13 @@
   display: flex;
   justify-content: flex-end;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--border-subtle, #e5e7eb);
+  border-top: 1px solid var(--line);
 }
 
 .quick-start-all-link {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--brand-primary, #0f766e);
+  color: var(--action);
   text-decoration: none;
 }
 
@@ -161,7 +161,7 @@
   gap: 0.5rem;
   background: none;
   border: none;
-  color: var(--brand-strong, #0f766e);
+  color: var(--brand-strong);
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
@@ -181,8 +181,8 @@
   gap: 0.75rem;
   margin-bottom: 1.25rem;
   padding: 0.625rem 1rem;
-  background-color: var(--surface-muted, #f3f4f6);
-  border: 1px solid var(--border-subtle, #e5e7eb);
+  background-color: var(--surface-muted);
+  border: 1px solid var(--line);
   border-radius: var(--radius-md, 8px);
 }
 
@@ -192,7 +192,7 @@
   gap: 0.5rem;
   background: none;
   border: none;
-  color: var(--brand-dark, #065f46);
+  color: var(--action-strong);
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
@@ -205,11 +205,25 @@
 
 .quick-start-reopen-link {
   font-size: 0.8125rem;
-  color: var(--text-muted, #6b7280);
+  color: var(--muted);
   text-decoration: none;
 }
 
 .quick-start-reopen-link:hover {
-  color: var(--brand-primary, #0f766e);
+  color: var(--action);
   text-decoration: underline;
+}
+
+@media (hover: none), (pointer: coarse) {
+  /* Inline text links on desktop, real tap targets on a phone. */
+  .quick-start-migration-link,
+  .quick-start-reopen-button,
+  .quick-start-reopen-link {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .quick-start-reopen-link {
+    display: inline-flex;
+  }
 }

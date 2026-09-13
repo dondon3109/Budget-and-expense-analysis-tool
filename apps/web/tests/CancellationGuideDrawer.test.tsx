@@ -69,4 +69,22 @@ describe("CancellationGuideDrawer", () => {
     fireEvent.click(screen.getByRole("presentation"));
     expect(handleClose).toHaveBeenCalledTimes(2);
   });
+
+  it("renders outside the inert application root so the root lock cannot disable it", () => {
+    const root = document.createElement("div");
+    root.id = "root";
+    document.body.append(root);
+
+    render(<CancellationGuideDrawer item={sampleItem} isOpen={true} onClose={vi.fn()} />, {
+      container: root,
+    });
+
+    expect(root).toHaveAttribute("aria-hidden", "true");
+    const dialog = screen.getByRole("dialog");
+    expect(root.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+
+    cleanup();
+    root.remove();
+  });
 });

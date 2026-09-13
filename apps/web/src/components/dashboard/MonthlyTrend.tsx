@@ -209,7 +209,12 @@ export function MonthlyTrend({
           ) : (
             <div className="trend-chart" aria-hidden="true">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.points} margin={{ top: 12, right: 6, left: -10, bottom: 0 }}>
+                {/* Decorative: the trend figures are stated in the surrounding copy. */}
+                <AreaChart
+                  accessibilityLayer={false}
+                  data={data.points}
+                  margin={{ top: 12, right: 6, left: -10, bottom: 0 }}
+                >
                   <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                   <XAxis
                     dataKey="date"

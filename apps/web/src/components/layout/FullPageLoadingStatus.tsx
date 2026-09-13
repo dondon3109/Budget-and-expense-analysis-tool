@@ -228,10 +228,9 @@ export function FullPageLoadingStatus({
         <div className="full-page-loading-status-track" aria-hidden="true">
           <div
             className="full-page-loading-status-fill"
-            style={{ width: `${percent}%` }}
-          >
-            <span className="full-page-loading-status-cursor" />
-          </div>
+            style={{ transform: `scaleX(${percent / 100})` }}
+          />
+          <span className="full-page-loading-status-cursor" style={{ left: `${percent}%` }} />
           {/* Milestone demarcation notches */}
           <span className="full-page-loading-notch notch-25" />
           <span className="full-page-loading-notch notch-50" />

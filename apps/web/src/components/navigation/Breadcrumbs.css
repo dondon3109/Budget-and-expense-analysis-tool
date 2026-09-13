@@ -14,7 +14,7 @@
   gap: 0.35rem;
   font-size: 0.8125rem;
   line-height: 1.4;
-  color: var(--muted, #5f6b66);
+  color: var(--muted);
 }
 
 .breadcrumb-item {
@@ -24,23 +24,23 @@
 }
 
 .breadcrumb-separator {
-  color: var(--border, #d9d5cb);
+  color: var(--line-strong);
   flex-shrink: 0;
   opacity: 0.7;
 }
 
 .breadcrumb-link {
-  color: var(--muted, #5f6b66);
+  color: var(--muted);
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
 .breadcrumb-link:hover {
-  color: var(--text, #17342e);
+  color: var(--ink);
   text-decoration: underline;
 }
 
 .breadcrumb-current {
-  color: var(--text, #17342e);
+  color: var(--ink);
   font-weight: 600;
 }

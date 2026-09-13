@@ -478,12 +478,17 @@ describe("assistant UI", () => {
     expect(send).toHaveBeenCalledOnce();
   });
 
-  it("removes the visual page header while retaining an accessible Assistant heading", async () => {
+  it("gives the assistant route a visible page heading in the chat topbar", async () => {
     renderPage();
 
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "AI Financial Assistant" }),
-    ).toHaveClass("sr-only");
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: "AI Financial Assistant",
+    });
+    // Regression: this was the only authenticated route whose <h1> was sr-only.
+    expect(heading).not.toHaveClass("sr-only");
+    expect(heading).toHaveClass("assistant-chat-title");
+    expect(heading.closest(".assistant-chat-status")).not.toBeNull();
     expect(
       screen.queryByRole("heading", { name: "Your MONEY, explained." }),
     ).not.toBeInTheDocument();

@@ -24,8 +24,14 @@
   overflow-y: auto;
   border-right: 1px solid var(--line);
   background: var(--paper);
-  transition:
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Layout-transparent wrapper for the drawer content: display: contents keeps the
+   sidebar's flex spacing intact while giving the mobile focus trap a boundary that
+   excludes the desktop-only chrome above it. */
+.sidebar-drawer {
+  display: contents;
 }
 
 .sidebar-toggle-row {
@@ -46,7 +52,9 @@
   height: 36px;
   flex: 0 0 auto;
   border-radius: 9px;
-  transition: transform 0.16s ease, background 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease;
 }
 
 .nav-collapse-toggle:hover {
@@ -256,7 +264,10 @@
   cursor: pointer;
   font-size: 11.5px;
   font-weight: 700;
-  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+  transition:
+    color 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease;
 }
 
 .sidebar-account-action:hover:not(:disabled),
@@ -426,6 +437,8 @@
   .app-shell.nav-collapsed {
     --mobile-header-height: 60px;
     --mobile-tab-bar-height: 68px;
+    /* Tab bar top (68px) to launcher top (78px + 52px tall), plus breathing room. */
+    --mobile-support-launcher-clearance: 74px;
     display: block;
     padding-top: calc(var(--mobile-header-height) + env(safe-area-inset-top));
   }
@@ -568,7 +581,12 @@
   }
 
   .back-link {
+    min-height: 44px;
     margin-top: 12px;
+    padding: 12px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
   }
 
@@ -598,7 +616,13 @@
 
   .app-main {
     width: 100%;
-    padding-bottom: calc(var(--mobile-tab-bar-height) + env(safe-area-inset-bottom));
+    /* The tab bar is 68px, but the support launcher floats 78px up and is 52px tall, so it covers
+       everything between 78px and 130px — which is where the footer's last links sit. Reserve past
+       the launcher so the end of the page is readable and tappable. */
+    padding-bottom: calc(
+      var(--mobile-tab-bar-height) + var(--mobile-support-launcher-clearance) +
+        env(safe-area-inset-bottom)
+    );
   }
 
   .dashboard-page {

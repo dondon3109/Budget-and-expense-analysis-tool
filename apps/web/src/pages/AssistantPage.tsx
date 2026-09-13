@@ -312,6 +312,9 @@ export function AssistantPage() {
   if (preferences.isLoading) {
     return (
       <AppShell>
+        {/* Every state of the route needs a heading: a loading page with none leaves a
+            screen-reader user with no idea what is loading. */}
+        <h1 className="sr-only">Loading the assistant</h1>
         <InlineLoader label="Preparing the assistant" />
       </AppShell>
     );
@@ -320,6 +323,7 @@ export function AssistantPage() {
     return (
       <AppShell>
         <div className="full-page-status error-state">
+          <h1 className="sr-only">The assistant could not be loaded</h1>
           <strong>The assistant could not be loaded.</strong>
           <span>{preferences.error.message}</span>
           <button
@@ -389,8 +393,6 @@ export function AssistantPage() {
   return (
     <AppShell>
       <div className="assistant-page">
-        <h1 className="sr-only">AI Financial Assistant</h1>
-
         <div className={`assistant-workspace ${historyOpen ? "history-open" : ""}`}>
           <AssistantThreadList
             assistantName={assistantName}
@@ -435,11 +437,16 @@ export function AssistantPage() {
                 )}
                 <span className="assistant-history-label">History</span>
               </button>
-              <span className="assistant-chat-status">
+              <div className="assistant-chat-status">
                 <span className="assistant-status-dot" aria-hidden="true" />
-                <strong>{assistantName}</strong>
-                <span className="assistant-status-readonly">Read only</span>
-              </span>
+                <div className="assistant-chat-identity">
+                  <h1 className="assistant-chat-title">AI Financial Assistant</h1>
+                  <p className="assistant-chat-meta">
+                    <strong>{assistantName}</strong>
+                    <span className="assistant-status-readonly">Read only</span>
+                  </p>
+                </div>
+              </div>
               {assistantUsage && (
                 <div className="assistant-chat-usage">
                   <PlanUsageIndicator

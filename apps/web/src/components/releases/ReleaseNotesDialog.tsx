@@ -1,7 +1,8 @@
 import { CheckCircle2, ChevronDown, ChevronUp, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import type { ProductRelease } from "../../releases/currentRelease";
 
@@ -12,68 +13,27 @@ interface ReleaseNotesDialogProps {
   onAcknowledge: () => void;
 }
 
-export function ReleaseNotesDialog({ releases, onAcknowledge }: ReleaseNotesDialogProps) {
+interface ReleaseNotesDialogContentProps {
+  latest: ProductRelease;
+  previousReleases: readonly ProductRelease[];
+  onAcknowledge: () => void;
+}
+
+function ReleaseNotesDialogContent({
+  latest,
+  previousReleases,
+  onAcknowledge,
+}: ReleaseNotesDialogContentProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-  const latest = releases[0];
-  const previousReleases = releases.slice(1);
   const [showPrevious, setShowPrevious] = useState(false);
 
-  useRootLock(Boolean(latest));
+  useRootLock(true);
 
-  useLayoutEffect(() => {
-    if (!latest) return;
-
-    const activeElement = document.activeElement;
-
-    if (
-      activeElement instanceof HTMLElement &&
-      activeElement !== document.body &&
-      !dialogRef.current?.contains(activeElement)
-    ) {
-      previousFocusRef.current = activeElement;
-    }
-
-    closeButtonRef.current?.focus();
-
-    return () => {
-      if (previousFocusRef.current?.isConnected) {
-        previousFocusRef.current.focus({ preventScroll: true });
-      }
-    };
-  }, [latest]);
-
-  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onAcknowledge();
-      return;
-    }
-    if (event.key !== "Tab") return;
-
-    const focusable = Array.from(
-      dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).filter((element) => element.tabIndex >= 0);
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (!first || !last) return;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    } else if (!dialogRef.current?.contains(document.activeElement)) {
-      event.preventDefault();
-      (event.shiftKey ? last : first).focus();
-    }
-  }
-
-  if (!latest || releases.length === 0) return null;
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: closeButtonRef,
+    onEscape: onAcknowledge,
+  });
 
   return createPortal(
     <div className="release-notes-layer">
@@ -178,5 +138,19 @@ export function ReleaseNotesDialog({ releases, onAcknowledge }: ReleaseNotesDial
       </section>
     </div>,
     document.body,
+  );
+}
+
+/** Mounts the dialog only while a release exists so the mount-only focus trap activates. */
+export function ReleaseNotesDialog({ releases, onAcknowledge }: ReleaseNotesDialogProps) {
+  const latest = releases[0];
+  if (!latest || releases.length === 0) return null;
+
+  return (
+    <ReleaseNotesDialogContent
+      latest={latest}
+      previousReleases={releases.slice(1)}
+      onAcknowledge={onAcknowledge}
+    />
   );
 }

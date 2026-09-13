@@ -29,7 +29,7 @@
   gap: clamp(24px, 4.5vh, 40px);
   padding: clamp(24px, 5vw, 64px);
   text-align: center;
-  background: var(--page, #f4f1e9);
+  background: var(--page);
   color: var(--ink);
   overflow: hidden;
   user-select: none;
@@ -43,18 +43,15 @@
   perspective: 1000px;
 }
 
-/* Subtle organic resonance aura (breathing ambient depth) */
+/* Subtle organic resonance aura (breathing ambient depth).
+   Flat token surface — no background gradients. */
 .full-page-loading-aura {
   position: absolute;
   width: clamp(240px, 46vmin, 340px);
   height: clamp(240px, 46vmin, 340px);
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
   border-radius: 50%;
-  background: radial-gradient(
-    circle at 50% 50%,
-    color-mix(in srgb, var(--brand) 10%, transparent) 0%,
-    color-mix(in srgb, var(--brand-glow) 6%, transparent) 45%,
-    transparent 72%
-  );
+  background: color-mix(in srgb, var(--brand) 5%, transparent);
   pointer-events: none;
   will-change: transform, opacity;
 }
@@ -64,11 +61,7 @@
   width: clamp(120px, 24vmin, 180px);
   height: clamp(120px, 24vmin, 180px);
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--income) 14%, transparent) 0%,
-    transparent 68%
-  );
+  background: color-mix(in srgb, var(--income) 9%, transparent);
   filter: blur(8px);
   pointer-events: none;
   will-change: transform, opacity;
@@ -326,25 +319,28 @@
 
 .full-page-loading-status-fill {
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, var(--brand), var(--income));
+  inset: 0;
+  background: var(--brand);
   border-radius: 2px;
+  transform: scaleX(0);
   transform-origin: left;
-  transition: width 100ms linear;
+  /* transform (not width) so the progress bar never triggers layout. */
+  transition: transform 100ms linear;
 }
 
-/* Leading luminous photon cursor */
+/* Leading luminous photon cursor. A sibling of the fill (not a child) so the
+   fill's scaleX transform cannot squash it; its left edge tracks progress.
+   --paper flips with the theme so the dot stays visible on --brand everywhere
+   (it used to be hardcoded white). */
 .full-page-loading-status-cursor {
   position: absolute;
-  right: -3px;
   top: 50%;
+  margin-left: -3px;
   transform: translateY(-50%);
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--paper);
   box-shadow: 0 0 8px var(--income), 0 0 2px var(--income);
 }
 
@@ -449,16 +445,16 @@
 
   /* Vertex jewels sequential illumination */
   .vertex-1 {
-    animation: zoption-vertex-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s backwards;
+    animation: zoption-vertex-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s backwards;
   }
   .vertex-2 {
-    animation: zoption-vertex-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s backwards;
+    animation: zoption-vertex-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.45s backwards;
   }
   .vertex-3 {
-    animation: zoption-vertex-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.85s backwards;
+    animation: zoption-vertex-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.85s backwards;
   }
   .vertex-4 {
-    animation: zoption-vertex-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 1.2s backwards;
+    animation: zoption-vertex-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 1.2s backwards;
   }
 
   /* 3D Multi-plane orbital rotations */

@@ -63,6 +63,13 @@ describe("ThankYouPage", () => {
     );
   });
 
+  it("uses the shared public header so navigation is consistent", () => {
+    renderThankYouPage("/thank-you?flow=pro");
+
+    expect(screen.getByRole("navigation", { name: "Learn more" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open navigation menu" })).toBeInTheDocument();
+  });
+
   it("renders bug report thank you content for flow=report", () => {
     renderThankYouPage("/thank-you?flow=report");
 

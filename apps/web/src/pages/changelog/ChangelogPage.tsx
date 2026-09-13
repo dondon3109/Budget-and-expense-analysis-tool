@@ -14,10 +14,9 @@ export function ChangelogPage() {
     >
       <div className="changelog-page-list">
         {releaseHistory.map((release, index) => (
-          <section
+          <article
             key={`${release.version}-${index}`}
             className={`changelog-release-card ${index === 0 ? "current-release" : ""}`}
-            aria-label={`Version ${release.version}`}
           >
             <header className="changelog-release-header">
               <div className="changelog-release-meta">
@@ -37,7 +36,7 @@ export function ChangelogPage() {
                 </li>
               ))}
             </ul>
-          </section>
+          </article>
         ))}
       </div>
 

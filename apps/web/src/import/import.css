@@ -19,7 +19,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--sage-strong, var(--sage));
+  color: var(--sage);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.06em;
@@ -102,8 +102,21 @@
     0 14px 34px -20px rgba(38, 55, 49, 0.16);
 }
 
+/* Dimming the whole card with opacity blended its text toward the page behind it, which took
+   the step heading to 4.43:1 and the small print to 2.63:1 — both under AA. Muting the surface
+   and the step badge instead keeps the disabled read without touching text contrast. */
 .disabled-card {
-  opacity: 0.64;
+  border-color: var(--line);
+  background: var(--surface-soft);
+}
+
+.disabled-card .import-step-heading > span {
+  opacity: 0.6;
+}
+
+.disabled-card .import-step-heading strong,
+.disabled-card .import-step-heading small {
+  color: var(--muted);
 }
 
 .import-step-heading {

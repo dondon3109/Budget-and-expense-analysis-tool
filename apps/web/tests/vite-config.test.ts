@@ -155,7 +155,7 @@ describe("environment-derived CSP", () => {
     const policy = createContentSecurityPolicy(resolved);
     const headers = addContentSecurityPolicy("/*\n  X-Frame-Options: DENY\n", policy);
 
-    expect(policy).toContain(`img-src 'self' data: blob: ${supabaseUrl}`);
+    expect(policy).toContain(`img-src 'self' data: blob: ${productionApiUrl} ${supabaseUrl}`);
     expect(policy).toContain(
       `connect-src 'self' ${supabaseUrl} ${productionApiUrl} wss://api.zoption.site`,
     );

@@ -2,10 +2,9 @@ import { ArrowRight, Check, Minus, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { BrandMark } from "../../components/brand/BrandMark";
 import { LegalFooter } from "../../components/legal/LegalFooter";
 import { Breadcrumbs } from "../../components/navigation/Breadcrumbs";
-import { ThemeToggle } from "../../components/theme/ThemeToggle";
+import { PublicHeader } from "../../components/navigation/PublicHeader";
 import "./PricingPage.css";
 
 const COMPARISON_ROWS = [
@@ -94,32 +93,18 @@ export function PricingPage() {
 
   return (
     <div className="pricing-page">
-      <header className="pricing-header-nav">
-        <Link className="brand" to="/" aria-label="Zoption home">
-          <BrandMark />
-          <span>Zoption</span>
-        </Link>
-        <nav className="pricing-header-links" aria-label="Main navigation">
-          <Link to="/">Overview</Link>
-          <Link to="/pricing" className="active">
-            Pricing
-          </Link>
-          <Link to="/changelog">Changelog</Link>
-          <Link to="/install">Android APK</Link>
-          <Link to="/faq">FAQ</Link>
-        </nav>
-        <div className="pricing-header-actions">
-          <ThemeToggle />
-          <Link className="pricing-sign-in" to="/login">
-            Sign in
-          </Link>
-          <Link className="button primary" to="/signup">
-            Start free
-          </Link>
-        </div>
-      </header>
+      <PublicHeader
+        navLabel="Main navigation"
+        links={[
+          { label: "Overview", to: "/" },
+          { label: "Pricing", to: "/pricing" },
+          { label: "Changelog", to: "/changelog" },
+          { label: "Android APK", to: "/install" },
+          { label: "FAQ", to: "/faq" },
+        ]}
+      />
 
-      <main className="pricing-main">
+      <main className="pricing-main" id="main-content" tabIndex={-1}>
         <Breadcrumbs
           items={[
             { label: "Home", to: "/" },

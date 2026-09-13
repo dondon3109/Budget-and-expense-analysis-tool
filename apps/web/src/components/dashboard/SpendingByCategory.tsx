@@ -69,9 +69,15 @@ export function SpendingByCategory({
       ) : (
         <>
           <div className="donut-layout">
-            <div className="chart-wrap" aria-hidden="true">
+            {/* Not aria-hidden: recharts hardcodes tabindex="-1" on every pie sector
+                (Pie.js:308/319) with no prop to remove it, so hiding this container left
+                focusable nodes inside a hidden subtree. The accessible equivalent of this
+                chart is the category list beside it; here the chart simply stays out of the
+                tab order instead of pretending to be hidden. */}
+            <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                {/* Decorative: the category list beside it carries the same data. */}
+                <PieChart accessibilityLayer={false}>
                   <Pie
                     data={data}
                     dataKey="amountMinor"
@@ -121,7 +127,10 @@ export function SpendingByCategory({
               className="category-list"
               role="region"
               aria-label="Category spending list"
-              tabIndex={data.length > 5 ? 0 : undefined}
+              // Always focusable. This is a capped scroll container (max-height 280px), and
+              // gating the tab stop on a row count was a guess at the row height, so a list
+              // that did overflow could still be unreachable by keyboard.
+              tabIndex={0}
             >
               {data.map((item) => (
                 <div className="category-row" key={item.categoryId}>
@@ -146,7 +155,7 @@ export function SpendingByCategory({
             <tbody>
               {data.map((item) => (
                 <tr key={item.categoryId}>
-                  <th>{item.name}</th>
+                  <th scope="row">{item.name}</th>
                   <td>{formatMoney(item.amountMinor)}</td>
                   <td>{item.sharePercent}%</td>
                 </tr>

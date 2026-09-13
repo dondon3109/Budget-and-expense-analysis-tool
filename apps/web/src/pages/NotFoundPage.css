@@ -1,10 +1,19 @@
 .not-found-page {
-  align-items: center;
-  background: var(--page);
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   min-height: 100vh;
-  padding: 2rem;
+  min-height: 100dvh;
+  background: var(--page);
+}
+
+.not-found-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(820px, calc(100% - 48px));
+  margin-inline: auto;
+  padding: clamp(48px, 8vw, 96px) 0;
 }
 
 .not-found-card {
@@ -14,10 +23,70 @@
 
 .not-found-card h1 {
   margin: 0.5rem 0 1rem;
+  font-family: var(--font-display);
+  font-size: clamp(44px, 7vw, 72px);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  text-wrap: balance;
+  color: var(--ink);
 }
 
-.not-found-card p:not(.eyebrow) {
+.not-found-lead {
+  max-width: 46ch;
+  margin: 0 auto 1.75rem;
   color: var(--muted);
-  line-height: 1.6;
-  margin: 0 0 1.5rem;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.not-found-destinations {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 20px;
+}
+
+.not-found-destinations a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--action);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.not-found-destinations a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 560px) {
+  .not-found-main {
+    width: calc(100% - 32px);
+    padding: 40px 0 56px;
+  }
+
+  .not-found-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .not-found-actions .button {
+    width: 100%;
+  }
 }

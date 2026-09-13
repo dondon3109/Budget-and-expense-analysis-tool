@@ -19,6 +19,7 @@ const apiMocks = vi.hoisted(() => ({
   updateAccount: vi.fn(),
   updateAccountInterest: vi.fn(),
   deleteAccount: vi.fn(),
+  getCategories: vi.fn(),
 }));
 const dashboardExperienceState = vi.hoisted(() => ({
   hasCompletedInitialDashboardExperience: true,
@@ -298,6 +299,7 @@ describe("Profile dashboard account management", () => {
     apiMocks.updateAccount.mockReset().mockResolvedValue({});
     apiMocks.updateAccountInterest.mockReset().mockResolvedValue({});
     apiMocks.deleteAccount.mockReset().mockResolvedValue(undefined);
+    apiMocks.getCategories.mockReset().mockResolvedValue([]);
   });
 
   afterEach(cleanup);
@@ -599,5 +601,76 @@ describe("Profile dashboard account management", () => {
         { from: "2026-06-01", to: "2026-06-30" },
       );
     });
+  });
+
+  it("renders a human account type label for every account type", async () => {
+    const typedAccounts = [
+      ["everyday", "Everyday", "checking"],
+      ["rainy-day", "Rainy day", "savings"],
+      ["wallet", "Wallet", "cash"],
+      ["travel-card", "Travel card", "credit"],
+      ["e-wallet", "E-wallet", "other"],
+    ] as const;
+    apiMocks.getDashboard.mockReset().mockResolvedValue({
+      ...dashboard,
+      accountBalances: {
+        ...dashboard.accountBalances!,
+        items: typedAccounts.map(([id, name, type]) => ({
+          id,
+          name,
+          type,
+          currency: "PHP" as const,
+          balanceMinor: 10_000,
+          balancesByCurrency: { PHP: 10_000, USD: 0 },
+          archived: false,
+          system: false,
+        })),
+      },
+    });
+    renderPage();
+
+    const accountManager = await screen.findByRole("region", { name: "Account management" });
+    for (const label of ["Bank account", "Savings", "Cash", "Credit card", "Other"]) {
+      expect(within(accountManager).getByText(label)).toBeInTheDocument();
+    }
+    for (const rawType of ["checking", "savings", "credit", "other"]) {
+      expect(within(accountManager).queryByText(rawType)).not.toBeInTheDocument();
+    }
+  });
+
+  it("confirms account removal with a danger action that states the balance consequence", async () => {
+    renderPage();
+    const accountManager = await screen.findByRole("region", { name: "Account management" });
+
+    fireEvent.click(within(accountManager).getByRole("button", { name: "Remove Maya Wallet" }));
+
+    const dialog = await screen.findByRole("alertdialog", { name: "Remove Maya Wallet?" });
+    const confirm = within(dialog).getByRole("button", { name: "Remove account" });
+    expect(confirm).toHaveClass("danger");
+    expect(confirm).not.toHaveClass("primary");
+    expect(dialog).toHaveTextContent("₱50");
+    expect(dialog).toHaveTextContent("₱400");
+    expect(dialog).toHaveTextContent(/does not change/);
+    expect(dialog).toHaveTextContent(/read-only records/);
+    expect(apiMocks.deleteAccount).not.toHaveBeenCalled();
+
+    fireEvent.click(confirm);
+
+    await waitFor(() =>
+      expect(apiMocks.deleteAccount).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        "custom",
+      ),
+    );
+  });
+
+  it("opens the existing adjust-balance flow from the first-run empty state", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Tell us what you already have" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Adjust current balance" }),
+    ).toBeInTheDocument();
   });
 });

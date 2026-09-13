@@ -1,9 +1,11 @@
-import { Check, Coffee, Moon, Sun } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Check, Coffee, Moon, Sun, X } from "lucide-react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { useTheme, type Theme } from "../../theme/ThemeProvider";
+import "./ThemeChoiceDialog.css";
 
 const THEME_OPTIONS = [
   {
@@ -40,33 +42,25 @@ export function ThemeChoiceDialog() {
     dark: null,
     coffee: null,
   });
+  const initialOptionRef = useRef<HTMLButtonElement | null>(null);
   const initialThemeRef = useRef(theme);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
   const isOpen = !hasThemePreference;
 
   useRootLock(isOpen);
 
-  useLayoutEffect(() => {
-    if (!isOpen) return;
+  /**
+   * Escape and the close control dismiss the dialog by keeping the default Light
+   * theme, exactly as confirming Light would, so the first visit can never trap
+   * someone who does not want to choose.
+   */
+  function dismissDialog() {
+    setTheme("light");
+  }
 
-    const activeElement = document.activeElement;
-
-    if (
-      !previousFocusRef.current &&
-      activeElement instanceof HTMLElement &&
-      activeElement !== document.body &&
-      !dialogRef.current?.contains(activeElement)
-    ) {
-      previousFocusRef.current = activeElement;
-    }
-
-    optionRefs.current[initialThemeRef.current]?.focus();
-
-    return () => {
-      const previousFocus = previousFocusRef.current;
-      if (previousFocus?.isConnected) previousFocus.focus();
-    };
-  }, [isOpen]);
+  const handleDialogKeyDown = useFocusTrap(dialogRef, {
+    onEscape: dismissDialog,
+    initialFocusRef: initialOptionRef,
+  });
 
   if (!isOpen) return null;
 
@@ -98,36 +92,6 @@ export function ThemeChoiceDialog() {
     optionRefs.current[nextOption.value]?.focus();
   }
 
-  function handleDialogKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-
-    if (event.key !== "Tab") return;
-
-    const focusable = Array.from(
-      dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).filter((element) => element.tabIndex >= 0);
-    const firstControl = focusable[0];
-    const lastControl = focusable.at(-1);
-    if (!firstControl || !lastControl) return;
-
-    if (event.shiftKey && document.activeElement === firstControl) {
-      event.preventDefault();
-      lastControl.focus();
-    } else if (!event.shiftKey && document.activeElement === lastControl) {
-      event.preventDefault();
-      firstControl.focus();
-    } else if (!dialogRef.current?.contains(document.activeElement)) {
-      event.preventDefault();
-      (event.shiftKey ? lastControl : firstControl).focus();
-    }
-  }
-
   const selectedOption = THEME_OPTIONS.find((option) => option.value === selectedTheme);
 
   return createPortal(
@@ -144,10 +108,19 @@ export function ThemeChoiceDialog() {
       >
         <header className="theme-choice-header">
           <p className="eyebrow">Appearance</p>
-          <h1 id="theme-choice-title">Choose how Zoption looks</h1>
+          <h2 id="theme-choice-title">Choose how Zoption looks</h2>
           <p id="theme-choice-description">
             Select a theme to preview it, then confirm your choice. You can change it anytime.
+            Closing keeps the default Light theme.
           </p>
+          <button
+            type="button"
+            className="icon-button theme-choice-close"
+            aria-label="Close and keep the default Light theme"
+            onClick={dismissDialog}
+          >
+            <X size={19} aria-hidden="true" />
+          </button>
         </header>
 
         <div className="theme-choice-options" role="radiogroup" aria-label="Theme options">
@@ -160,6 +133,7 @@ export function ThemeChoiceDialog() {
                 key={option.value}
                 ref={(element) => {
                   optionRefs.current[option.value] = element;
+                  if (option.value === initialThemeRef.current) initialOptionRef.current = element;
                 }}
                 type="button"
                 role="radio"
@@ -202,7 +176,7 @@ export function ThemeChoiceDialog() {
         </div>
 
         <footer className="theme-choice-footer">
-          <p className="theme-choice-note">Saved on this device after you confirm.</p>
+          <p className="theme-choice-note">Saved on this device. Closing keeps Light.</p>
           <button
             type="button"
             className="button primary theme-choice-confirm"

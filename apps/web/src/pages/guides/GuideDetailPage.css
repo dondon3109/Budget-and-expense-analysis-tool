@@ -32,7 +32,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--muted-strong);
+  color: var(--muted);
   margin: 0 0 12px;
 }
 
@@ -46,7 +46,7 @@
 
 .guide-toc-link {
   font-size: 14px;
-  color: var(--accent);
+  color: var(--action);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -85,9 +85,8 @@
 .guide-takeaways-box {
   padding: 18px 20px;
   border: 1px solid var(--line-strong);
-  border-left: 4px solid var(--accent);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--surface-soft);
   margin-top: 8px;
 }
 
@@ -107,7 +106,7 @@
   gap: 6px;
   font-size: 14px;
   line-height: 1.55;
-  color: var(--muted-strong);
+  color: var(--muted);
 }
 
 .guide-faqs-section {
@@ -143,7 +142,7 @@
 .guide-faq-answer {
   font-size: 14px;
   line-height: 1.6;
-  color: var(--muted-strong);
+  color: var(--muted);
   margin: 0;
 }
 
@@ -184,7 +183,7 @@
 }
 
 .guide-related-card:hover {
-  border-color: var(--accent);
+  border-color: var(--brand);
   transform: translateY(-2px);
 }
 
@@ -198,7 +197,7 @@
 .guide-related-card p {
   font-size: 13px;
   line-height: 1.5;
-  color: var(--muted-strong);
+  color: var(--muted);
   margin: 0;
   flex-grow: 1;
 }
@@ -220,7 +219,7 @@
 
 .guide-not-found p {
   font-size: 15px;
-  color: var(--muted-strong);
+  color: var(--muted);
   margin: 0 0 24px;
 }
 

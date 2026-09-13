@@ -121,5 +121,9 @@ describe("ReleaseNotesDialog", () => {
     gotIt.focus();
     fireEvent.keyDown(dialog, { key: "Tab" });
     expect(close).toHaveFocus();
+
+    fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+    expect(gotIt).toHaveFocus();
+    expect(dialog.contains(document.activeElement)).toBe(true);
   });
 });

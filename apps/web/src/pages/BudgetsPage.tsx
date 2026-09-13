@@ -1,17 +1,20 @@
 import { parseAmountToMinor, type BudgetMonthPlan, type BudgetUpsert } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleDollarSign, PiggyBank, Share2, TrendingDown } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { ShareBudgetModal } from "../components/budgets/ShareBudgetModal";
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
+import { Skeleton, SkeletonStatus } from "../components/common/Skeleton";
 import { AppShell } from "../components/layout/AppShell";
-import { InlineLoader } from "../components/layout/InlineLoader";
 import { MonthSelector } from "../components/month/MonthSelector";
 import { getBudgets, saveBudgets } from "../lib/api";
+import { clearBudgetDraft, persistBudgetDraft, readBudgetDraft } from "../lib/budgetDraft";
 import { currentMonth, isMonth } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
+import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 import { restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
@@ -31,6 +34,8 @@ export function BudgetsPage() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [clientError, setClientError] = useState<string>();
+  /** A month the user picked while the plan was dirty, waiting on confirmation. */
+  const [pendingMonth, setPendingMonth] = useState<string>();
   const initializedDraftShapeRef = useRef<string | undefined>(undefined);
   const monthStart = `${month}-01`;
   const budgetQuery = useQuery({
@@ -45,11 +50,13 @@ export function BudgetsPage() {
       .join(",")}`;
     if (initializedDraftShapeRef.current === draftShape) return;
     initializedDraftShapeRef.current = draftShape;
-    setDrafts(
-      Object.fromEntries(
-        budgetQuery.data.items.map((item) => [item.categoryId, toAmountText(item.limitMinor)]),
-      ),
+    const seeded = Object.fromEntries(
+      budgetQuery.data.items.map((item) => [item.categoryId, toAmountText(item.limitMinor)]),
     );
+    // A draft that outlived the component (Back button, refresh, a crashed tab) wins over
+    // the saved plan, so returning to the page finds the work still there.
+    const restored = readBudgetDraft(budgetQuery.data.month);
+    setDrafts(restored ? { ...seeded, ...restored } : seeded);
     setClientError(undefined);
   }, [budgetQuery.data]);
 
@@ -93,6 +100,8 @@ export function BudgetsPage() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.budgets(workspace, data.month), data);
+      // Saved work is no longer a draft, so nothing should be restored next visit.
+      clearBudgetDraft(data.month);
     },
     onSettled: () => {
       void Promise.all([
@@ -101,6 +110,23 @@ export function BudgetsPage() {
       ]);
     },
   });
+
+  function applyMonth(selectedMonth: string) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("month", selectedMonth);
+      return next;
+    });
+  }
+
+  function handlePendingMonthConfirm() {
+    const selectedMonth = pendingMonth;
+    setPendingMonth(undefined);
+    if (selectedMonth) {
+      clearBudgetDraft(monthStart);
+      applyMonth(selectedMonth);
+    }
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -119,6 +145,34 @@ export function BudgetsPage() {
   }
 
   const data = budgetQuery.data;
+
+  // Numeric comparison so "500" is not treated as a change to a saved "500.00".
+  const hasUnsavedEdits =
+    data !== undefined &&
+    data.items.some((item) => {
+      const raw = drafts[item.categoryId];
+      // Absent means the plan has not seeded this row yet, not that the user cleared it.
+      if (raw === undefined) return false;
+      const draft = raw.trim();
+      if (draft === "") return item.limitMinor !== 0;
+      const parsed = Number.parseFloat(draft);
+      return !Number.isFinite(parsed) || Math.round(parsed * 100) !== item.limitMinor;
+    });
+
+  // One source of truth for "leaving this page now would lose the draft": the browser
+  // unload prompt and both in-app guards (shell links and the month picker) read it.
+  const blockNavigation = hasUnsavedEdits && !saveMutation.isPending;
+
+  const discardDraft = useCallback(() => clearBudgetDraft(monthStart), [monthStart]);
+
+  useUnsavedChangesWarning(blockNavigation, { onDiscard: discardDraft });
+
+  useEffect(() => {
+    if (!data) return;
+    if (hasUnsavedEdits) persistBudgetDraft(monthStart, drafts);
+    else clearBudgetDraft(monthStart);
+  }, [data, drafts, hasUnsavedEdits, monthStart]);
+
   return (
     <AppShell>
       <div className="dashboard-page budgets-page">
@@ -141,17 +195,59 @@ export function BudgetsPage() {
               label="Budget month"
               value={month}
               onChange={(selectedMonth) => {
-                setSearchParams((current) => {
-                  const next = new URLSearchParams(current);
-                  next.set("month", selectedMonth);
-                  return next;
-                });
+                // Switching months re-seeds the drafts, so it loses the draft exactly
+                // like leaving the page does. Picking the month already shown changes
+                // nothing and stays unguarded.
+                if (selectedMonth !== month && blockNavigation) {
+                  setPendingMonth(selectedMonth);
+                  return;
+                }
+                applyMonth(selectedMonth);
               }}
             />
           </div>
         </header>
 
-        {budgetQuery.isPending && <InlineLoader label="Loading your monthly plan" />}
+        {budgetQuery.isPending && (
+          <SkeletonStatus label="Loading your monthly plan">
+            {/* Mirrors the real editor rows: category title, progress bar,
+                monthly limit field, and remaining column. */}
+            <section className="budget-editor-panel budget-editor-skeleton" aria-hidden="true">
+              <div className="budget-editor-heading">
+                <div>
+                  <Skeleton width="150px" height={18} />
+                  <Skeleton width="98px" height={12} />
+                </div>
+                <Skeleton width="168px" height={38} radius="var(--radius-sm)" />
+              </div>
+              <div className="budget-editor-list">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <article className="budget-editor-row" key={index}>
+                    <div className="budget-category-title">
+                      <Skeleton width={10} height={10} radius="50%" />
+                      <div>
+                        <Skeleton width="124px" height={13} />
+                        <Skeleton width="72px" height={10} />
+                      </div>
+                    </div>
+                    <div className="budget-editor-progress">
+                      <Skeleton height={8} radius="999px" />
+                      <Skeleton width="64px" height={10} />
+                    </div>
+                    <div className="budget-amount-input">
+                      <Skeleton width="72px" height={10} />
+                      <Skeleton height="var(--control-height)" radius="var(--radius-sm)" />
+                    </div>
+                    <div className="budget-remaining">
+                      <Skeleton width="56px" height={10} />
+                      <Skeleton width="84px" height={13} />
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </SkeletonStatus>
+        )}
         {budgetQuery.isError && (
           <div className="table-status error" role="alert">
             <strong>The monthly budget could not be loaded.</strong>
@@ -197,6 +293,11 @@ export function BudgetsPage() {
                   <div>
                     <strong>{formatFullMonth(month)}</strong>
                     <span>{data.usedPercent}% of the total plan used</span>
+                    {hasUnsavedEdits && !saveMutation.isPending && (
+                      <span className="budget-dirty-note" role="status">
+                        Unsaved changes
+                      </span>
+                    )}
                   </div>
                   <button
                     className="button primary"
@@ -287,6 +388,16 @@ export function BudgetsPage() {
               }))}
             />
           </>
+        )}
+        {pendingMonth && (
+          <ConfirmDialog
+            title="Discard unsaved changes?"
+            consequence="Your unsaved changes will be lost. This cannot be undone."
+            confirmLabel="Discard changes"
+            cancelLabel="Keep editing"
+            onConfirm={handlePendingMonthConfirm}
+            onClose={() => setPendingMonth(undefined)}
+          />
         )}
       </div>
     </AppShell>

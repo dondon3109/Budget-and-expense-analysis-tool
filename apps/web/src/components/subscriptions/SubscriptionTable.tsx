@@ -34,14 +34,15 @@ export function SubscriptionTable({
   return (
     <div className="subscription-table-wrap">
       <table className="subscription-table">
+        <caption className="sr-only">Subscription renewals</caption>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Amount</th>
-            <th>Billing date</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th scope="col">Name</th>
+            <th scope="col">Category</th>
+            <th scope="col">Amount</th>
+            <th scope="col">Billing date</th>
+            <th scope="col">Status</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody>

@@ -1,12 +1,12 @@
 .shared-budget-page {
-  --shared-bg: var(--surface-subtle, var(--cream, #f4f1e9));
-  --shared-surface: var(--surface-bg, var(--paper, #ffffff));
-  --shared-surface-soft: var(--surface-subtle, var(--surface-soft, #faf8f2));
-  --shared-border: var(--border-subtle, var(--line, #e4dfd3));
-  --shared-border-strong: var(--border-strong, var(--line-strong, #cfc7b8));
-  --shared-text: var(--text-main, var(--ink, #17342e));
-  --shared-muted: var(--text-muted, var(--muted, #69756f));
-  --shared-accent: var(--action, #0f6b5b);
+  --shared-bg: var(--page);
+  --shared-surface: var(--paper);
+  --shared-surface-soft: var(--surface-soft);
+  --shared-border: var(--line);
+  --shared-border-strong: var(--line-strong);
+  --shared-text: var(--ink);
+  --shared-muted: var(--muted);
+  --shared-accent: var(--action);
 
   min-height: 100vh;
   padding: 32px clamp(18px, 5vw, 64px);
@@ -280,7 +280,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--solid-text, #ffffff);
+  color: var(--solid-text);
   border: 1px solid var(--solid-bg, var(--shared-accent));
   border-radius: 10px;
   background: var(--solid-bg, var(--shared-accent));
@@ -290,8 +290,8 @@
 }
 
 .shared-budget-button:hover {
-  background: var(--solid-hover, #06473d);
-  border-color: var(--solid-hover, #06473d);
+  background: var(--solid-hover);
+  border-color: var(--solid-hover);
 }
 
 .shared-budget-error-page {
@@ -308,7 +308,7 @@
 }
 
 .shared-budget-error-card svg {
-  color: var(--danger, #b42318);
+  color: var(--danger);
 }
 
 @media (max-width: 900px) {

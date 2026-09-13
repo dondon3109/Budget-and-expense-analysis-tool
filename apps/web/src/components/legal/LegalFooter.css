@@ -68,7 +68,7 @@
 }
 
 .legal-footer a.legal-footer-preferred {
-  color: var(--accent);
+  color: var(--brand);
 }
 
 .legal-footer a.legal-footer-preferred:hover {

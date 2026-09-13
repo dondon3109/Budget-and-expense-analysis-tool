@@ -292,3 +292,21 @@
   color: var(--ink);
   border: 1px solid var(--line-strong);
 }
+
+@media (max-width: 760px) {
+  /* Row-level controls must meet the 44px touch floor, including the destructive
+     ones. The desktop layout only indents these, so raise them here. */
+  .subscription-actions {
+    gap: 8px;
+  }
+
+  .subscription-actions .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .subscription-status-action {
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+}

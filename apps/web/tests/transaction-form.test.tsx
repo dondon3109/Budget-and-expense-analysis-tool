@@ -3,7 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import type { CategoryRecord, TransactionListItem } from "@zoption/shared";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -354,6 +354,62 @@ describe("TransactionForm", () => {
           fromAccountId: "account-everyday",
           toAccountId: "account-savings",
         }),
+      ),
+    );
+  });
+});
+
+describe("TransactionForm keyboard and focus behaviour", () => {
+  function renderForm(overrides: Partial<Parameters<typeof TransactionForm>[0]> = {}) {
+    const onClose = vi.fn();
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[category]}
+        accounts={accounts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={onClose}
+        {...overrides}
+      />,
+    );
+    return { onClose, onSubmit };
+  }
+
+  it("focuses the first field and returns focus on close", () => {
+    renderForm();
+
+    expect(document.activeElement).toBe(screen.getByLabelText(/Description/));
+  });
+
+  it("closes on Escape and ignores Escape while busy", () => {
+    const { onClose } = renderForm();
+    const dialog = screen.getByRole("dialog", { name: "Add transaction" });
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays open on Escape while a save is in flight", () => {
+    const { onClose } = renderForm({ busy: true });
+
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Add transaction" }), { key: "Escape" });
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("submits with Cmd/Ctrl+Enter from a field", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm();
+
+    await user.type(screen.getByLabelText(/Description/), "Coffee");
+    await user.type(screen.getByLabelText("Amount (PHP)"), "120");
+    fireEvent.keyDown(screen.getByLabelText(/Description/), { key: "Enter", ctrlKey: true });
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "Coffee", amountMinor: 12_000 }),
       ),
     );
   });

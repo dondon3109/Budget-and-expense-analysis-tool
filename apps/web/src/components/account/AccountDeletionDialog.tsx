@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { PasswordField } from "../auth/PasswordField";
 import "./AccountDeletionDialog.css";
@@ -28,60 +29,21 @@ export function AccountDeletionDialog({
   const [confirmation, setConfirmation] = useState("");
   const dialogRef = useRef<HTMLElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
   const titleId = "account-deletion-title";
   const descriptionId = "account-deletion-description";
   const canSubmit = password.length > 0 && confirmation === "DELETE";
 
   useRootLock(true);
 
-  useLayoutEffect(() => {
-    const activeElement = document.activeElement;
-
-    if (returnFocus?.isConnected) {
-      openerRef.current = returnFocus;
-    } else if (activeElement instanceof HTMLElement && activeElement !== document.body) {
-      openerRef.current = activeElement;
-    }
-    passwordRef.current?.focus();
-
-    return () => {
-      if (openerRef.current?.isConnected) openerRef.current.focus();
-    };
-  }, []);
-
   function close() {
     if (!busy) onClose();
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-      return;
-    }
-    if (event.key !== "Tab") return;
-
-    const focusable = Array.from(
-      dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).filter((element) => element.tabIndex >= 0);
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (!first || !last) return;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    } else if (!dialogRef.current?.contains(document.activeElement)) {
-      event.preventDefault();
-      (event.shiftKey ? last : first).focus();
-    }
-  }
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: passwordRef,
+    returnFocus,
+    onEscape: close,
+  });
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

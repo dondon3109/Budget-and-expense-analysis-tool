@@ -489,7 +489,7 @@ export function CalendarPage() {
                 </div>
               )}
 
-            <div className="calendar-next-month-separator" role="separator">
+            <div className="calendar-next-month-separator" role="group" aria-label="Next month">
               <button
                 className="calendar-next-month-toggle"
                 type="button"

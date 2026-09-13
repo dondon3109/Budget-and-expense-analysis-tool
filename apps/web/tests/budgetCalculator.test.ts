@@ -22,11 +22,20 @@ describe("allocateBudget", () => {
   it("never loses or invents a centavo, for every amount up to one peso step", () => {
     // The whole point of centavo arithmetic: naive per-bucket rounding leaks a centavo
     // or two, so the three buckets would not reconcile with the income.
+    //
+    // Collect offenders and assert once. Calling expect() 200,000 times inside the loop
+    // made this the slowest test in the suite by two orders of magnitude, and it timed out
+    // under CPU contention. This keeps the same coverage, names the failing amounts, and
+    // runs in a few milliseconds.
+    const offenders: number[] = [];
     for (let minor = 0; minor <= 100_000; minor += 1) {
       const result = allocateBudget(minor);
-      expect(result.needs + result.wants + result.savings).toBe(minor);
-      expect(result.total).toBe(minor);
+      if (result.needs + result.wants + result.savings !== minor || result.total !== minor) {
+        offenders.push(minor);
+        if (offenders.length === 5) break;
+      }
     }
+    expect(offenders).toEqual([]);
   });
 
   it("gives leftover centavos to the buckets that lost the most to flooring", () => {

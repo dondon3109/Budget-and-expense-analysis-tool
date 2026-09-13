@@ -2,10 +2,9 @@ import { ArrowRight, ChevronRight, Clock } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { FINANCE_GUIDES, getFinanceGuideBySlug } from "@zoption/shared";
 
-import { BrandMark } from "../../components/brand/BrandMark";
 import { Breadcrumbs } from "../../components/navigation/Breadcrumbs";
+import { PublicHeader } from "../../components/navigation/PublicHeader";
 import { LegalFooter } from "../../components/legal/LegalFooter";
-import { ThemeToggle } from "../../components/theme/ThemeToggle";
 import "./GuideDetailPage.css";
 
 interface GuideDetailPageProps {
@@ -20,14 +19,8 @@ export function GuideDetailPage({ slug: propSlug }: GuideDetailPageProps = {}) {
   if (!guide) {
     return (
       <div className="legal-page">
-        <header className="legal-page-header">
-          <Link className="brand compact" to="/" aria-label="Zoption home">
-            <BrandMark />
-            <span className="brand-wordmark">Zoption</span>
-          </Link>
-          <ThemeToggle />
-        </header>
-        <main className="legal-page-main">
+        <PublicHeader />
+        <main className="legal-page-main" id="main-content" tabIndex={-1}>
           <article className="legal-article">
             <header className="legal-article-header">
               <Breadcrumbs
@@ -63,14 +56,8 @@ export function GuideDetailPage({ slug: propSlug }: GuideDetailPageProps = {}) {
 
   return (
     <div className="legal-page">
-      <header className="legal-page-header">
-        <Link className="brand compact" to="/" aria-label="Zoption home">
-          <BrandMark />
-          <span className="brand-wordmark">Zoption</span>
-        </Link>
-        <ThemeToggle />
-      </header>
-      <main className="legal-page-main">
+      <PublicHeader />
+      <main className="legal-page-main" id="main-content" tabIndex={-1}>
         <article className="legal-article">
           <header className="legal-article-header">
             <Breadcrumbs

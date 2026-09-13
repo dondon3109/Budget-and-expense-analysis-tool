@@ -74,6 +74,17 @@ describe("RemittanceCalculatorSection", () => {
     expect(screen.getByText("Best Value: Wise")).toBeInTheDocument();
   });
 
+  it("scopes every comparison header and names the table for assistive tech", () => {
+    render(<RemittanceCalculatorSection />);
+
+    const table = screen.getByRole("table", { name: "Provider spread and value comparison" });
+    const headers = within(table).getAllByRole("columnheader");
+    expect(headers).toHaveLength(5);
+    for (const header of headers) {
+      expect(header).toHaveAttribute("scope", "col");
+    }
+  });
+
   it("allows custom exchange rate override", async () => {
     const user = userEvent.setup();
     render(<RemittanceCalculatorSection />);

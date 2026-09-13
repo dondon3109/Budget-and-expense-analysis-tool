@@ -21,9 +21,12 @@ import {
   LoaderCircle,
   X,
 } from "lucide-react";
-import { useId, useMemo, useState, type ChangeEvent, type DragEvent } from "react";
+import { useId, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { createPortal } from "react-dom";
 
 import { useAuth } from "../../auth/AuthProvider";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 import { commitImport, createAccount, getAccounts, previewImport } from "../../lib/api";
 import { formatMoney } from "../../lib/formatters";
 import { queryKeys } from "../../lib/queryKeys";
@@ -57,15 +60,29 @@ function downloadSampleTemplate() {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Renders the open wizard through a mounted-only dialog so the focus trap's
+ * mount effect runs when the wizard opens rather than on its first render.
+ */
 export function SpreadsheetMigrationWizard({
   open,
   onClose,
   onComplete,
 }: SpreadsheetMigrationWizardProps) {
+  if (!open) return null;
+  return <SpreadsheetMigrationDialog onClose={onClose} onComplete={onComplete} />;
+}
+
+function SpreadsheetMigrationDialog({
+  onClose,
+  onComplete,
+}: Omit<SpreadsheetMigrationWizardProps, "open">) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const workspace = user ? userWorkspace(user) : undefined;
   const fileInputId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const dropzoneButtonRef = useRef<HTMLButtonElement>(null);
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [fileName, setFileName] = useState("");
@@ -103,7 +120,7 @@ export function SpreadsheetMigrationWizard({
   const accountsQuery = useQuery({
     queryKey: workspace ? queryKeys.accounts(workspace) : ["accounts"],
     queryFn: () => (workspace ? getAccounts(workspace) : Promise.resolve([])),
-    enabled: open && Boolean(workspace),
+    enabled: Boolean(workspace),
   });
   const accounts = accountsQuery.data ?? [];
   const activeAccounts = useMemo(() => accounts.filter((acc) => !acc.archived), [accounts]);
@@ -199,7 +216,7 @@ export function SpreadsheetMigrationWizard({
     if (file) void handleFile(file);
   }
 
-  function onDrop(event: DragEvent<HTMLDivElement>) {
+  function onDrop(event: DragEvent<HTMLButtonElement>) {
     event.preventDefault();
     setDragActive(false);
     const file = event.dataTransfer.files?.[0];
@@ -292,15 +309,31 @@ export function SpreadsheetMigrationWizard({
     },
   });
 
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: dropzoneButtonRef,
+    onEscape: () => {
+      if (fileBusy || previewLoading || commitMutation.isPending) return;
+      onClose();
+    },
+  });
+
   function handleComplete() {
     onClose();
     if (onComplete) onComplete();
   }
 
-  if (!open) return null;
-
-  return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="wizard-title">
+  // Portalled so the inert application root from useRootLock does not disable the wizard.
+  return createPortal(
+    <div
+      ref={dialogRef}
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wizard-title"
+      onKeyDown={handleKeyDown}
+    >
       <div className="migration-wizard-modal">
         <header className="migration-header">
           <div className="migration-header-titles">
@@ -343,16 +376,7 @@ export function SpreadsheetMigrationWizard({
         {step === 1 && (
           <div className="migration-step-body">
             {!fileName ? (
-              <div
-                className={`migration-dropzone ${dragActive ? "drag-active" : ""}`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragActive(true);
-                }}
-                onDragLeave={() => setDragActive(false)}
-                onDrop={onDrop}
-                onClick={() => document.getElementById(fileInputId)?.click()}
-              >
+              <>
                 <input
                   id={fileInputId}
                   type="file"
@@ -360,20 +384,33 @@ export function SpreadsheetMigrationWizard({
                   style={{ display: "none" }}
                   onChange={onFileInputChange}
                 />
-                <div className="migration-dropzone-icon">
-                  <FileSpreadsheet size={36} aria-hidden="true" />
-                </div>
-                <div className="migration-dropzone-text">
-                  <strong>Choose a CSV or Excel bank statement</strong>
-                  <span>Drag & drop or click to browse (.csv, .xlsx, .xls)</span>
-                </div>
-                {fileBusy && (
-                  <div className="migration-busy">
-                    <LoaderCircle className="spin" size={16} aria-hidden="true" />
-                    <span>Reading file…</span>
-                  </div>
-                )}
-              </div>
+                <button
+                  ref={dropzoneButtonRef}
+                  type="button"
+                  className={`migration-dropzone ${dragActive ? "drag-active" : ""}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragActive(true);
+                  }}
+                  onDragLeave={() => setDragActive(false)}
+                  onDrop={onDrop}
+                  onClick={() => document.getElementById(fileInputId)?.click()}
+                >
+                  <span className="migration-dropzone-icon">
+                    <FileSpreadsheet size={36} aria-hidden="true" />
+                  </span>
+                  <span className="migration-dropzone-text">
+                    <strong>Choose a CSV or Excel bank statement</strong>
+                    <span>Drag & drop or click to browse (.csv, .xlsx, .xls)</span>
+                  </span>
+                  {fileBusy && (
+                    <span className="migration-busy">
+                      <LoaderCircle className="spin" size={16} aria-hidden="true" />
+                      <span>Reading file…</span>
+                    </span>
+                  )}
+                </button>
+              </>
             ) : (
               <div className="migration-file-selected">
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -426,13 +463,19 @@ export function SpreadsheetMigrationWizard({
               </select>
 
               {targetAccountId === "new" && (
-                <input
-                  type="text"
-                  placeholder="New account name (e.g. BPI Savings)"
-                  value={newAccountName}
-                  onChange={(e) => setNewAccountName(e.target.value)}
-                  style={{ marginTop: "6px" }}
-                />
+                <>
+                  <label className="sr-only" htmlFor="migration-new-account-name">
+                    New account name
+                  </label>
+                  <input
+                    id="migration-new-account-name"
+                    type="text"
+                    placeholder="New account name (e.g. BPI Savings)"
+                    value={newAccountName}
+                    onChange={(e) => setNewAccountName(e.target.value)}
+                    style={{ marginTop: "6px" }}
+                  />
+                </>
               )}
             </div>
 
@@ -594,12 +637,13 @@ export function SpreadsheetMigrationWizard({
               <h4>Sample rows preview ({sampleRows.length} shown)</h4>
               <div className="migration-table-wrapper">
                 <table className="migration-table">
+                  <caption className="sr-only">Sample rows preview</caption>
                   <thead>
                     <tr>
-                      <th>Date ({mapping.date || "unmapped"})</th>
-                      <th>Description ({mapping.description || "unmapped"})</th>
-                      <th>Amount</th>
-                      <th>Category</th>
+                      <th scope="col">Date ({mapping.date || "unmapped"})</th>
+                      <th scope="col">Description ({mapping.description || "unmapped"})</th>
+                      <th scope="col">Amount</th>
+                      <th scope="col">Category</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -685,13 +729,14 @@ export function SpreadsheetMigrationWizard({
               style={{ maxHeight: "240px", overflowY: "auto" }}
             >
               <table className="migration-table">
+                <caption className="sr-only">Migration preview rows</caption>
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Amount</th>
-                    <th>Category</th>
-                    <th>Status</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -780,6 +825,7 @@ export function SpreadsheetMigrationWizard({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

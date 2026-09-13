@@ -3,7 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import type { SubscriptionMonthItem } from "@zoption/shared";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -169,5 +169,16 @@ describe("CashflowForecastSection", () => {
 
     // 10_000 starting balance - 50_000 bill => deficit risk badge
     expect(screen.getByText("Deficit risk")).toBeInTheDocument();
+  });
+
+  it("scopes every obligations header and names the table for assistive tech", () => {
+    render(<CashflowForecastSection items={[mockItem]} accounts={mockAccounts} />);
+
+    const table = screen.getByRole("table", { name: "Upcoming bill obligations" });
+    const headers = within(table).getAllByRole("columnheader");
+    expect(headers).toHaveLength(5);
+    for (const header of headers) {
+      expect(header).toHaveAttribute("scope", "col");
+    }
   });
 });

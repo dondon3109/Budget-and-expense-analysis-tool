@@ -9,7 +9,10 @@ import {
   type FormEvent,
   type MouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 import { formatFullMonth, formatMoney } from "../../lib/formatters";
 import "./ShareBudgetModal.css";
 
@@ -44,9 +47,12 @@ function shareUrlForToken(token: string): string {
   return `${window.location.origin}${path}`;
 }
 
-export function ShareBudgetModal({ isOpen, onClose, month, categories }: ShareBudgetModalProps) {
+type ShareBudgetDialogProps = Omit<ShareBudgetModalProps, "isOpen">;
+
+function ShareBudgetDialog({ onClose, month, categories }: ShareBudgetDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
+  const dialogRef = useRef<HTMLFormElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(defaultShareTitle(month));
@@ -60,8 +66,14 @@ export function ShareBudgetModal({ isOpen, onClose, month, categories }: ShareBu
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: titleInputRef,
+    onEscape: onClose,
+  });
+
   useEffect(() => {
-    if (!isOpen) return;
     setTitle(defaultShareTitle(month));
     setSelectedCategoryIds(categories.map((category) => category.id));
     setExpiration("30");
@@ -70,17 +82,7 @@ export function ShareBudgetModal({ isOpen, onClose, month, categories }: ShareBu
     setGeneratedLink("");
     setCopied(false);
     setError("");
-    window.setTimeout(() => titleInputRef.current?.focus(), 0);
-  }, [categories, isOpen, month]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [categories, month]);
 
   const selectedCategories = useMemo(
     () => categories.filter((category) => selectedCategoryIds.includes(category.id)),
@@ -91,8 +93,6 @@ export function ShareBudgetModal({ isOpen, onClose, month, categories }: ShareBu
     (total, category) => total + category.allocatedLimitMinor,
     0,
   );
-
-  if (!isOpen) return null;
 
   function toggleCategory(categoryId: string) {
     setGeneratedLink("");
@@ -139,14 +139,17 @@ export function ShareBudgetModal({ isOpen, onClose, month, categories }: ShareBu
     setCopied(true);
   }
 
-  return (
+  // Portalled so the inert application root from useRootLock does not disable the dialog.
+  return createPortal(
     <div className="share-budget-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
       <form
+        ref={dialogRef}
         className="share-budget-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
+        onKeyDown={handleKeyDown}
         onSubmit={handleSubmit}
       >
         <header className="share-budget-modal-header">
@@ -277,6 +280,12 @@ export function ShareBudgetModal({ isOpen, onClose, month, categories }: ShareBu
           </button>
         </footer>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
+}
+
+/** Mounts the dialog only while open so the mount-only focus trap activates on every open. */
+export function ShareBudgetModal({ isOpen, ...props }: ShareBudgetModalProps) {
+  return isOpen ? <ShareBudgetDialog {...props} /> : null;
 }

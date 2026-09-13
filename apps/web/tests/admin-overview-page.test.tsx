@@ -8,7 +8,7 @@ import type {
   SponsoredProSeatSummary,
 } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -198,10 +198,25 @@ describe("AdminOverviewPage", () => {
     ).toBeVisible();
     expect(screen.queryByRole("navigation", { name: "Admin areas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Sponsored Pro seats" })).not.toBeInTheDocument();
+    // A trail into a dead end would mislead, so the gate carries no breadcrumb.
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     expect(mocks.getSeats).not.toHaveBeenCalled();
     expect(mocks.getReviews).not.toHaveBeenCalled();
     expect(mocks.getHealth).not.toHaveBeenCalled();
     expect(mocks.getReports).not.toHaveBeenCalled();
+  });
+
+  it("orients the console under a Home > Admin console breadcrumb", async () => {
+    renderConsole();
+
+    const breadcrumbs = await screen.findByRole("navigation", { name: "Breadcrumb" });
+    expect(
+      within(breadcrumbs)
+        .getAllByRole("listitem")
+        .map((crumb) => crumb.textContent),
+    ).toEqual(["Home", "Admin console"]);
+    expect(within(breadcrumbs).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/app");
+    expect(within(breadcrumbs).getByText("Admin console")).toHaveAttribute("aria-current", "page");
   });
 
   it("shows the live state of every admin area with a way into the three that own a page", async () => {
@@ -293,6 +308,7 @@ describe("AdminOverviewPage", () => {
     expect(
       await screen.findByRole("heading", { name: "Administrator access could not be checked" }),
     ).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.refetchBilling).toHaveBeenCalled();

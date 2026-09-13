@@ -6,10 +6,11 @@ import {
 } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Check, Pencil, Plus, RotateCcw, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 
 import { useBillingSummary } from "../../hooks/useBillingSummary";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
@@ -54,7 +55,6 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
   const dialogRef = useRef<HTMLElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<TransactionKind>("expense");
   const [color, setColor] = useState(palette[0]!);
@@ -66,18 +66,10 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
 
   useRootLock(true);
 
-  useLayoutEffect(() => {
-    const activeElement = document.activeElement;
-
-    if (activeElement instanceof HTMLElement && activeElement !== document.body) {
-      openerRef.current = activeElement;
-    }
-    closeButtonRef.current?.focus();
-
-    return () => {
-      if (openerRef.current?.isConnected) openerRef.current.focus();
-    };
-  }, []);
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: closeButtonRef,
+    onEscape: onClose,
+  });
 
   const refresh = async () => {
     await Promise.all([
@@ -207,35 +199,6 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
     }
     const input: CategoryInput = { name, kind, color, iconEmoji: parsedIcon.data };
     createMutation.mutate(input);
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-    if (event.key !== "Tab") return;
-
-    const focusable = Array.from(
-      dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).filter((element) => element.tabIndex >= 0);
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (!first || !last) return;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    } else if (!dialogRef.current?.contains(document.activeElement)) {
-      event.preventDefault();
-      (event.shiftKey ? last : first).focus();
-    }
   }
 
   return createPortal(

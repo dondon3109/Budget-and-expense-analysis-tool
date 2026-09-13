@@ -1,7 +1,11 @@
 import type { CancellationGuide, SubscriptionMonthItem } from "@zoption/shared";
 import { findCancellationGuide } from "@zoption/shared";
 import { AlertCircle, ExternalLink, HelpCircle, ShieldAlert, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { createPortal } from "react-dom";
+
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 import "./CancellationGuideDrawer.css";
 
 interface CancellationGuideDrawerProps {
@@ -10,27 +14,36 @@ interface CancellationGuideDrawerProps {
   onClose: () => void;
 }
 
+/**
+ * Renders the open drawer through a mounted-only child so the focus trap's
+ * mount effect runs when the drawer actually opens rather than on first render.
+ */
 export function CancellationGuideDrawer({ item, isOpen, onClose }: CancellationGuideDrawerProps) {
-  const drawerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
-    }
-    if (isOpen) {
-      document.addEventListener("keydown", handleKeyDown);
-      drawerRef.current?.focus();
-    }
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen || !item) return null;
+  return <CancellationGuideContent item={item} onClose={onClose} />;
+}
+
+function CancellationGuideContent({
+  item,
+  onClose,
+}: {
+  item: SubscriptionMonthItem;
+  onClose: () => void;
+}) {
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(drawerRef, {
+    initialFocusRef: closeRef,
+    onEscape: onClose,
+  });
 
   const guide: CancellationGuide | null = findCancellationGuide(item.name);
 
-  return (
+  // Portalled so the inert application root from useRootLock does not disable the drawer.
+  return createPortal(
     <div className="cancellation-drawer-overlay" onClick={onClose} role="presentation">
       <div
         className="cancellation-drawer-content"
@@ -40,6 +53,7 @@ export function CancellationGuideDrawer({ item, isOpen, onClose }: CancellationG
         aria-modal="true"
         aria-labelledby="cancellation-drawer-title"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
       >
         <header className="cancellation-drawer-header">
           <div className="cancellation-drawer-title-group">
@@ -47,6 +61,7 @@ export function CancellationGuideDrawer({ item, isOpen, onClose }: CancellationG
             <h2 id="cancellation-drawer-title">{item.name}</h2>
           </div>
           <button
+            ref={closeRef}
             className="icon-button compact"
             type="button"
             onClick={onClose}
@@ -143,6 +158,7 @@ export function CancellationGuideDrawer({ item, isOpen, onClose }: CancellationG
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

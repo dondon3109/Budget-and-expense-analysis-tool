@@ -2,31 +2,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: var(--page, #f4f1e9);
-  color: var(--text, #17342e);
-}
-
-.thank-you-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem clamp(1.25rem, 5vw, 3.5rem);
-  border-bottom: 1px solid var(--border-light, #d9d5cb);
-  background: var(--surface, #fffdf8);
-}
-
-.thank-you-header .brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  text-decoration: none;
-  color: inherit;
-}
-
-.thank-you-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
+  background: var(--page);
+  color: var(--ink);
 }
 
 .thank-you-main {
@@ -45,9 +22,9 @@
 .thank-you-card {
   padding: clamp(2rem, 5vw, 3rem);
   border-radius: 20px;
-  border: 1px solid var(--border, #d9d5cb);
-  background: var(--surface, #fffdf8);
-  box-shadow: 0 16px 48px rgba(23, 52, 46, 0.06);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
   text-align: center;
 }
 
@@ -58,22 +35,25 @@
   width: 60px;
   height: 60px;
   border-radius: 16px;
-  background: var(--accent-subtle, #e8f5f0);
-  color: var(--accent, #06473d);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
   margin-bottom: 1.25rem;
 }
 
 .thank-you-card h1 {
   margin: 0.5rem 0 1rem;
-  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-size: clamp(34px, 5.2vw, 56px);
+  font-weight: 400;
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 .thank-you-description {
   margin: 0 auto 2rem;
   max-width: 42ch;
-  color: var(--muted, #5f6b66);
+  color: var(--muted);
   font-size: 1rem;
   line-height: 1.6;
 }
@@ -94,8 +74,8 @@
   margin: 0;
   padding: 0.65rem 1rem;
   border-radius: 10px;
-  background: var(--surface-muted, #f1ece1);
-  color: var(--muted-strong, #3a4742);
+  background: var(--surface-muted);
+  color: var(--ink);
   font-size: 0.8125rem;
   line-height: 1.4;
   text-align: left;

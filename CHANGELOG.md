@@ -11,16 +11,67 @@ All notable product changes are documented here.
 - Added a guided Spreadsheet Migration Onboarding Wizard with drag-and-drop file upload (CSV and Excel .xlsx/.xls), automatic bank preset recognition, visual column mapping with sample row preview, duplicate transaction detection, and one-click import into a new or existing account.
 - Added a first-run "Fork in the Road" experience across web and mobile dashboards giving new users a clear choice between bringing existing bank/Excel data or starting clean with guided setup.
 - Added full data portability export endpoint `GET /api/app/exports/account-archive.json` with web download and native mobile file share sheet under Account settings for unpaywalled, full JSON account backups (accounts, transactions, categories, budgets, subscriptions, goals, debts, and events).
+- Added bulk actions to the transaction ledger: a header checkbox selects the visible rows so they can be re-categorised or deleted together, with a running selected count.
+- Added a five-second Undo after deleting a transaction.
+- Added ledger keyboard shortcuts (`/` to search, `n` for a new transaction, `Cmd/Ctrl+Enter` to save) and date-range presets (This month, Last 30 days, Year to date).
+- Added categories and per-question anchors to the FAQ, so any answer can be linked directly and the page no longer lists every answer expanded at once.
+- Added a screen-level error boundary so a failure in one screen shows a recovery panel, with the technical detail behind a disclosure, instead of leaving a blank page.
+- Added a "Skip to content" link as the first focusable control on every shell, so keyboard users can jump past the navigation straight to the page.
+- Added an "Unsaved changes" marker to the monthly plan editor and a browser confirmation before leaving with untyped budget amounts still unsaved.
+- Added skeleton loading placeholders to the transaction ledger, the monthly plan editor and the dashboard refresh, so a loading screen shows the shape of the content that is arriving instead of bare "Loading…" text.
+- Added a position indicator to the transaction ledger showing which entries are on screen and how many there are in total, per-row keyboard navigation with j and k, and saved filter views that can be named, re-applied and deleted.
 
 ### Changed
 
+- Moved request-path rate limits onto a Durable Object, queued PayPal reconciliation, bug-report mail, and account-deletion follow-up, and stored profile pictures in R2 instead of Supabase Storage.
 - Moved sponsored Pro seat management from Account settings > Billing into the admin console, leaving a pointer to the console behind so that page loses nothing. The workbench also lists all five seats now, so open capacity is visible instead of counted.
+- Made the first-run theme chooser dismissible: Escape or the new close control keeps the Light default and remembers it, so no page is gated behind it any more.
+- Turned the cookie-consent prompt into a non-modal bottom bar that leaves the page readable and scrollable while a choice is still pending.
+- Routed every destructive confirmation through one dialog that names the record, states the consequence plainly, and disables itself while the action runs, replacing the browser's own confirm prompt for goals, debts and subscriptions.
+- Moved transaction filters into the URL so a filtered ledger is bookmarkable, shareable and reload-safe.
+- Replaced the separate headers on the landing, pricing, install, FAQ, guides, tutorials, legal, changelog, thank-you and not-found pages with one shared public header that carries a working mobile menu everywhere.
+- Labelled the sidebar entry for the dashboard "Home" so it matches the mobile tab bar, instead of "Profile".
+- Extended the unsaved-changes guard beyond closing the browser: switching pages, tapping a mobile tab or signing out with untyped budget amounts now asks first, and changing month no longer discards a draft silently.
+- Budget edits now survive leaving the page at all: an in-progress monthly plan is kept for the browser session and restored when you return, so the Back button, a refresh or a crashed tab can no longer lose typed amounts. Confirming a discard still clears it.
+- Promoted the AI Financial Assistant into the mobile tab bar, which is now Home, Transactions, Budgets, Assistant and More, so the assistant is one tap away instead of two. Calendar moved into the More drawer to keep the bar at five slots, so it is now two taps instead of one.
+- Added breadcrumbs to the nested admin console and bug report pages, which previously gave no indication of where they sat inside the app.
 
+- The customer review prompt is now a modal dialog. As a fixed side panel it covered primary content on most screens, including the ledger's Amount column, the budget inputs and the plan screen's spread column.
 ### Fixed
 
 - Fixed Revoke, Delete, and Cancel actions rendering as plain text on every screen except the AI and voice models desk, which held the only copy of their button styling.
 - Fixed the assistant chat history Select button on web, which only revealed per-chat trash icons: select mode now shows a checkbox on each chat, toggles chats instead of opening them, and deletes the selected chats together in one confirmed action.
 - Fixed the assistant chat history Select button on mobile, which made conversation taps do nothing and only offered a per-chat Delete: select mode now shows a checkbox on each conversation, taps toggle the selection, and a Delete selected bar removes the chosen conversations together after confirmation.
+- Fixed the dark and Coffee themes rendering near-white panels and borders: several stylesheets referenced colour variables that were never defined, so those declarations either fell back to hardcoded cold greys or were dropped entirely.
+- Fixed secondary text failing WCAG AA contrast on 13 of the 14 public routes by darkening the muted and subtle text tokens.
+- Fixed the 404 page, which shipped no header, no footer and a heading set at body-copy size; it now uses the public shell and the display type scale.
+- Fixed the pricing and install headers wrapping "Sign in" and "Start free" onto two lines on a phone, and the missing mobile menu on those pages.
+- Fixed five dialogs that disabled themselves: they took the application root lock without rendering outside the root, which made them unfocusable and invisible to assistive technology in a real browser.
+- Fixed the transaction delete confirmation, which was two unstyled text buttons inside the row with no danger styling and no statement of consequence.
+- Fixed the Add Transaction dialog letting Tab escape to the page behind it, and the low-contrast focus ring it overrode.
+- Fixed the assistant page having no visible heading, and the loading screens pulsing their label text indefinitely.
+- Fixed the goals and debt page nesting a second main landmark inside the application shell, which gave assistive technology two competing content regions.
+- Fixed workspace links that were only mouse-sized on touch devices.
+- Fixed the mobile navigation drawer letting Tab escape to the page behind it, and raised the drawer's back link to a 44px touch target.
+- Fixed the dashboard refresh state rendering an unstyled placeholder element that had no CSS anywhere in the project, so it was invisible while it ran.
+- Fixed the password strength meter on the sign-up form having no accessible name, so screen readers announced an unlabelled progress bar.
+- Fixed the savings interest switch on the landing page being unreachable: it sat inside a container hidden from assistive technology, so keyboard and screen-reader users could not toggle it.
+- Fixed the "Start from a file you already have" label on the landing page sitting below AA contrast against its own translucent pill background.
+- Fixed the feature comparison table on the landing page scrolling sideways on phones with no way to reach it by keyboard; it can now be focused and scrolled from the keyboard.
+- Fixed the "over budget" warning chip on the landing page rendering at 2.82:1 against its own fill, which made it hard to read.
+- Fixed the changelog making every release a page landmark, which flooded a screen reader's landmark list with more than a dozen entries and produced duplicated names when two entries shared a version number.
+- Fixed the share-budget and calendar-event dialogs letting Tab escape into the page behind them. They now hold focus while open and hand it back when closed, and every dialog in the app shares one focus-trap implementation instead of eleven hand-rolled copies.
+- Fixed 32 table headers across the import preview, subscriptions, cash flow, remittance, spending and spreadsheet-migration tables missing a scope, so a screen reader can associate each cell with its header. Those tables also gained accessible names.
+- Fixed touch targets below 44px centrally for compact icon buttons and small text buttons, rather than each screen patching its own.
+- Removed 48 dead CSS fallback chains that still named long-deleted colour variables, so a future edit cannot silently resolve a wrong colour through them.
+
+- Fixed the calendar month grid, whose grid role held the weekday headers and day cells as direct children with no row role, a structure assistive technology cannot navigate as a grid.
+- Fixed the calendar income and expense indicators and the import screen's disabled cards, all of which failed WCAG AA contrast; the disabled cards were dimmed with a whole-card opacity that blended their text toward the page behind them.
+- Fixed the dashboard charts, which exposed focusable pie sectors inside containers hidden from assistive technology.
+- Fixed the provider comparison table on the plan screen being unreachable by keyboard at tablet widths.
+- Fixed the next-month calendar toggle sitting inside a separator role, which ARIA defines as a leaf and so cannot contain a control.
+- Fixed the assistant route's loading and error states rendering no heading.
+- Fixed the support launcher covering the footer links on a phone, and the cookie banner covering the last stretch of every page.
 
 ## 2.30.2 — 2026-09-11
 

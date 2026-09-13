@@ -137,4 +137,22 @@ describe("AdjustBalanceModal", () => {
       expect(apiMocks.deleteTransaction).toHaveBeenCalledWith(expect.anything(), "tx-adjust-1");
     });
   });
+
+  it("focuses the balance field, traps Tab, and closes on Escape", async () => {
+    const onClose = vi.fn();
+    renderModal({ onClose });
+
+    const dialog = screen.getByRole("dialog", { name: "Adjust current balance" });
+    const input = screen.getByPlaceholderText("0.00");
+    await waitFor(() => expect(input).toHaveFocus());
+
+    const closeButton = screen.getByRole("button", { name: "Close adjust balance modal" });
+    const cancelButton = screen.getByRole("button", { name: "Cancel" });
+    cancelButton.focus();
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(closeButton).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

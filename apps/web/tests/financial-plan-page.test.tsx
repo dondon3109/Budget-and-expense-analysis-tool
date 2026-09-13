@@ -21,6 +21,8 @@ import {
   updateDebt,
   updateFinancialGoal,
 } from "../src/lib/api";
+import { DebtForm } from "../src/components/planning/DebtForm";
+import { FinancialGoalForm } from "../src/components/planning/FinancialGoalForm";
 import { FinancialPlanPage } from "../src/pages/FinancialPlanPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
@@ -174,5 +176,110 @@ describe("FinancialPlanPage", () => {
         { responseDetail: "standard", coachingStyle: "gentle" },
       ),
     );
+  });
+
+  it("deletes a goal through the shared confirm dialog and never calls window.confirm", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Emergency fund");
+
+    await user.click(screen.getByRole("button", { name: "Delete Emergency fund" }));
+
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Delete “Emergency fund”?",
+    });
+    expect(within(dialog).getByText(/cannot be undone/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(deleteFinancialGoal).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Delete goal" }));
+
+    await waitFor(() =>
+      expect(deleteFinancialGoal).toHaveBeenCalledWith(
+        { key: "user:test-user", userId: "test-user" },
+        "goal-1",
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it("deletes a debt through the shared confirm dialog and never calls window.confirm", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Main card");
+
+    await user.click(screen.getByRole("button", { name: "Delete Main card" }));
+
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete “Main card”?" });
+    expect(within(dialog).getByText(/cannot be undone/i)).toBeInTheDocument();
+    expect(deleteDebt).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Delete debt" }));
+
+    await waitFor(() =>
+      expect(deleteDebt).toHaveBeenCalledWith(
+        { key: "user:test-user", userId: "test-user" },
+        "debt-1",
+      ),
+    );
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it("keeps the record when the delete confirmation is cancelled", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Emergency fund");
+
+    await user.click(screen.getByRole("button", { name: "Delete Emergency fund" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Delete “Emergency fund”?",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(deleteFinancialGoal).not.toHaveBeenCalled();
+    expect(screen.getByText("Emergency fund")).toBeInTheDocument();
+  });
+
+  it("renders the goal form outside the inert application root", () => {
+    const root = document.createElement("div");
+    root.id = "root";
+    document.body.append(root);
+
+    render(
+      <FinancialGoalForm busy={false} onSubmit={vi.fn(async () => undefined)} onClose={vi.fn()} />,
+      { container: root },
+    );
+
+    expect(root).toHaveAttribute("aria-hidden", "true");
+    const dialog = screen.getByRole("dialog", { name: "Add a goal" });
+    expect(root.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+
+    cleanup();
+    root.remove();
+  });
+
+  it("renders the debt form outside the inert application root", () => {
+    const root = document.createElement("div");
+    root.id = "root";
+    document.body.append(root);
+
+    render(<DebtForm busy={false} onSubmit={vi.fn(async () => undefined)} onClose={vi.fn()} />, {
+      container: root,
+    });
+
+    expect(root).toHaveAttribute("aria-hidden", "true");
+    const dialog = screen.getByRole("dialog", { name: "Add a debt" });
+    expect(root.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+
+    cleanup();
+    root.remove();
   });
 });

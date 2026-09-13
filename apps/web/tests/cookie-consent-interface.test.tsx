@@ -8,12 +8,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
 import { CookieConsentExperience } from "../src/components/consent/CookieConsentExperience";
+import { ThemeChoiceDialog } from "../src/components/theme/ThemeChoiceDialog";
 import { CONSENT_STORAGE_KEY, createConsentRecord } from "../src/consent/consent";
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { resetConsentGateForTests } from "../src/consent/consentGate";
 import { THEME_STORAGE_KEY, ThemeProvider } from "../src/theme/ThemeProvider";
 
-function renderExperience(initialEntries = ["/"]) {
+function renderExperience(initialEntries = ["/"], onUnderlyingAction?: () => void) {
   const root = document.getElementById("root");
   if (!root) throw new Error("Test root is missing.");
 
@@ -21,7 +22,26 @@ function renderExperience(initialEntries = ["/"]) {
     <ThemeProvider>
       <CookieConsentProvider>
         <MemoryRouter initialEntries={initialEntries}>
-          <button type="button">Underlying action</button>
+          <button type="button" onClick={onUnderlyingAction}>
+            Underlying action
+          </button>
+          <CookieConsentExperience />
+        </MemoryRouter>
+      </CookieConsentProvider>
+    </ThemeProvider>,
+    { container: root },
+  );
+}
+
+function renderFirstVisit() {
+  const root = document.getElementById("root");
+  if (!root) throw new Error("Test root is missing.");
+
+  return render(
+    <ThemeProvider>
+      <CookieConsentProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <ThemeChoiceDialog />
           <CookieConsentExperience />
         </MemoryRouter>
       </CookieConsentProvider>
@@ -63,6 +83,46 @@ describe("cookie consent interface", () => {
     expect(cookiePolicy).toHaveAttribute("href", "/cookie-policy");
     expect(cookiePolicy).toHaveAttribute("target", "_blank");
     expect(cookiePolicy).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("keeps the page readable, scrollable and clickable while the bar is pending", async () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "light");
+    const user = userEvent.setup();
+    const onUnderlyingAction = vi.fn();
+    renderExperience(["/"], onUnderlyingAction);
+
+    const banner = screen.getByRole("complementary", {
+      name: "Choose what this browser may use",
+    });
+    expect(banner).toBeVisible();
+    expect(banner).not.toHaveAttribute("aria-modal");
+    expect(document.querySelector(".cookie-consent-backdrop")).toBeNull();
+    expect(document.getElementById("root")?.inert).not.toBe(true);
+    expect(document.getElementById("root")).not.toHaveAttribute("aria-hidden");
+    expect(document.body.style.overflow).toBe("");
+
+    await user.click(screen.getByRole("button", { name: "Underlying action" }));
+
+    expect(onUnderlyingAction).toHaveBeenCalledTimes(1);
+    expect(banner).toBeVisible();
+  });
+
+  it("shows the non-modal bar after the theme dialog is dismissed with Escape", async () => {
+    const user = userEvent.setup();
+    renderFirstVisit();
+
+    expect(screen.getByRole("dialog", { name: "Choose how Zoption looks" })).toBeVisible();
+    expect(document.getElementById("root")?.inert).toBe(true);
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+    expect(
+      screen.getByRole("complementary", { name: "Choose what this browser may use" }),
+    ).toBeVisible();
+    expect(document.getElementById("root")?.inert).toBe(false);
+    expect(document.body.style.overflow).toBe("");
   });
 
   it("rejects optional categories and closes the first-visit banner", async () => {

@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { SponsoredProSeatsSettings } from "../components/account/SponsoredProSeatsSettings";
 import { AppShell } from "../components/layout/AppShell";
+import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
   getAdminBugReports,
@@ -373,6 +374,8 @@ export function AdminOverviewPage() {
     <AppShell>
       <div className="admin-hub">
         <span hidden aria-hidden="true" dangerouslySetInnerHTML={{ __html: DIRECTION_CONTRACT }} />
+
+        <Breadcrumbs items={[{ label: "Home", to: "/app" }, { label: "Admin console" }]} />
 
         <header className="admin-hub-header">
           <div>

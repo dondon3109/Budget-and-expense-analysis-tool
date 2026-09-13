@@ -127,11 +127,15 @@ export function SupportReportsPage() {
     <AppShell>
       <div className="dashboard-page support-reports-page">
         <Breadcrumbs
-          items={[
-            { label: "Overview", to: "/app" },
-            { label: "Settings", to: "/app/settings" },
-            { label: "Bug reports" },
-          ]}
+          items={
+            requestedAdmin
+              ? [
+                  { label: "Home", to: "/app" },
+                  { label: "Admin console", to: "/app/admin" },
+                  { label: "Bug report inbox" },
+                ]
+              : [{ label: "Home", to: "/app" }, { label: "Your bug reports" }]
+          }
         />
         <header className="dashboard-header support-reports-header">
           <div>

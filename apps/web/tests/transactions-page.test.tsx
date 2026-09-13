@@ -204,3 +204,118 @@ describe("TransactionsPage sorting", () => {
     );
   });
 });
+
+describe("TransactionsPage loading state", () => {
+  beforeEach(() => {
+    // Never settles, so the pending branch stays on screen for the assertions.
+    apiMocks.getTransactions.mockReset().mockImplementation(() => new Promise(() => {}));
+    apiMocks.getCategories.mockReset().mockResolvedValue([]);
+    apiMocks.getAccounts.mockReset().mockResolvedValue([]);
+    apiMocks.downloadTransactions.mockReset().mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  it("renders skeleton table rows and keeps the loading state announced", () => {
+    renderPage();
+
+    const status = screen.getByRole("status", { name: "Loading transaction records" });
+    expect(status).toBeInTheDocument();
+    // Selection, Date, Description, Category, Type, Amount, row actions.
+    expect(status.querySelectorAll("tbody tr")).toHaveLength(6);
+    expect(status.querySelectorAll("tbody td")).toHaveLength(42);
+    expect(screen.queryByText("Loading transaction records…")).not.toBeInTheDocument();
+  });
+});
+
+describe("TransactionsPage pagination", () => {
+  beforeEach(() => {
+    apiMocks.getCategories.mockReset().mockResolvedValue([]);
+    apiMocks.getAccounts.mockReset().mockResolvedValue([]);
+    apiMocks.downloadTransactions.mockReset().mockResolvedValue(undefined);
+    apiMocks.getTransactions.mockReset().mockImplementation(
+      async (_workspace: unknown, request: { page: number; pageSize: number }) => ({
+        items: Array.from({ length: 10 }, (_, index) => ({
+          id: `transaction-${(request.page - 1) * 10 + index + 1}`,
+          description: `Transaction ${(request.page - 1) * 10 + index + 1}`,
+        })),
+        page: request.page,
+        pageSize: request.pageSize,
+        total: 240,
+        totalPages: 24,
+      }),
+    );
+  });
+
+  afterEach(cleanup);
+
+  it("announces the visible slice and page count as the page changes", async () => {
+    renderPage();
+
+    const firstPage = await screen.findByText(/Showing 1–10 of 240/);
+    expect(firstPage).toHaveAttribute("role", "status");
+    expect(firstPage).toHaveTextContent("Page 1 of 24");
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(await screen.findByText(/Showing 11–20 of 240/)).toHaveTextContent("Page 2 of 24");
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled();
+  });
+
+  it("reports a final partial page and disables Next", async () => {
+    apiMocks.getTransactions.mockReset().mockResolvedValue({
+      items: Array.from({ length: 5 }, (_, index) => ({ id: `transaction-${index + 1}` })),
+      page: 24,
+      pageSize: 10,
+      total: 235,
+      totalPages: 24,
+    });
+    renderPage();
+
+    const lastPage = await screen.findByText(/Showing 231–235 of 235/);
+    expect(lastPage).toHaveTextContent("Page 24 of 24");
+    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+  });
+
+  it("announces the position from a single live region", async () => {
+    renderPage();
+
+    const status = await screen.findByText(/Showing 1–10 of 240/);
+    const panel = status.closest(".transactions-panel");
+
+    expect(status).toHaveAttribute("role", "status");
+    expect(panel).not.toBeNull();
+    // The panel itself must stay non-live or the range would be announced twice.
+    expect(panel).not.toHaveAttribute("aria-live");
+    expect(panel!.querySelectorAll('[role="status"], [aria-live]')).toHaveLength(1);
+  });
+
+  it("does not re-announce the position on every keystroke", async () => {
+    renderPage();
+
+    const status = await screen.findByText(/Showing 1–10 of 240/);
+    const search = screen.getByRole("searchbox");
+
+    fireEvent.change(search, { target: { value: "m" } });
+    fireEvent.change(search, { target: { value: "ma" } });
+
+    // The same node keeps the same text until the settled query returns a new slice.
+    expect(screen.getByText(/Showing 1–10 of 240/)).toBe(status);
+  });
+
+  it("hands the announcement to the empty state when nothing matches", async () => {
+    apiMocks.getTransactions.mockReset().mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 10,
+      total: 0,
+      totalPages: 1,
+    });
+    renderPage();
+
+    const message = await screen.findByText("No transactions match these filters.");
+    expect(message).toHaveAttribute("role", "status");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+});

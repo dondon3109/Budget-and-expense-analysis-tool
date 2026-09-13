@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,11 +33,13 @@ vi.mock("../src/auth/AuthProvider", () => ({
   }),
 }));
 
+const billingState = vi.hoisted(() => ({ isAdmin: true, isPending: false, isError: false }));
+
 vi.mock("../src/hooks/useBillingSummary", () => ({
   useBillingSummary: () => ({
-    data: { canManageSponsoredSeats: true },
-    isPending: false,
-    isError: false,
+    data: billingState.isError ? undefined : { canManageSponsoredSeats: billingState.isAdmin },
+    isPending: billingState.isPending,
+    isError: billingState.isError,
   }),
 }));
 
@@ -53,6 +55,9 @@ describe("AdminProviderConfigsPage", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    billingState.isAdmin = true;
+    billingState.isPending = false;
+    billingState.isError = false;
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -123,16 +128,18 @@ describe("AdminProviderConfigsPage", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    document.body.innerHTML = "";
   });
 
-  function renderPage() {
-    return render(
+  function renderPage(container?: HTMLElement) {
+    const page = (
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
           <AdminProviderConfigsPage />
         </MemoryRouter>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
+    return container ? render(page, { container }) : render(page);
   }
 
   it("renders credentials with name and masked last4", async () => {
@@ -460,5 +467,90 @@ describe("AdminProviderConfigsPage", () => {
       expect.anything(),
       "cfg-google-inactive",
     );
+  });
+
+  it("closes a dialog on Escape and returns focus to the button that opened it", async () => {
+    renderPage();
+    const opener = await screen.findByRole("button", { name: /Add credential/i });
+    opener.focus();
+    fireEvent.click(opener);
+
+    const dialog = await screen.findByRole("dialog", { name: "Add credential" });
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(opener).toHaveFocus();
+  });
+
+  it("portals its dialogs outside the application root before locking it", async () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = document.getElementById("root");
+    if (!root) throw new Error("Test root is missing.");
+    renderPage(root);
+    await screen.findByText("Cloudflare Whisper");
+    await screen.findByText("Google Gemini 3.5 Transcribe Live");
+
+    const configDeleteButtons = screen.getAllByRole("button", {
+      name: /Delete configuration/i,
+    });
+    fireEvent.click(configDeleteButtons[1]!);
+
+    const dialog = await screen.findByRole("dialog", { name: "Delete configuration" });
+    // The dialog must live outside #root: inerting #root would otherwise inert
+    // the dialog itself.
+    expect(root.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+    expect(root.inert).toBe(true);
+    expect(root).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("scopes table headers and captions every admin provider table", async () => {
+    renderPage();
+    await screen.findByText("Cloudflare Whisper");
+
+    const tables = screen.getAllByRole("table");
+    expect(tables.length).toBeGreaterThan(0);
+    for (const table of tables) {
+      expect(within(table).getByRole("caption")).toHaveClass("sr-only");
+      const headers = within(table).getAllByRole("columnheader");
+      expect(headers.length).toBeGreaterThan(0);
+      for (const header of headers) {
+        expect(header).toHaveAttribute("scope", "col");
+      }
+    }
+  });
+
+  it("orients the model registry under Home > Admin console > AI & Voice Models", async () => {
+    renderPage();
+    await screen.findByText("Cloudflare Whisper");
+
+    const breadcrumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(
+      within(breadcrumbs)
+        .getAllByRole("listitem")
+        .map((crumb) => crumb.textContent),
+    ).toEqual(["Home", "Admin console", "AI & Voice Models"]);
+    expect(within(breadcrumbs).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/app");
+    expect(within(breadcrumbs).getByRole("link", { name: "Admin console" })).toHaveAttribute(
+      "href",
+      "/app/admin",
+    );
+    expect(within(breadcrumbs).getByText("AI & Voice Models")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("shows no breadcrumb trail in the administrator-access gate", async () => {
+    billingState.isAdmin = false;
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: "Platform administrator access required" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+    expect(apiMocks.getProviderConfigs).not.toHaveBeenCalled();
   });
 });

@@ -17,7 +17,7 @@
   appearance: none;
   border: 1px solid var(--line);
   background: var(--surface);
-  color: var(--muted-strong);
+  color: var(--muted);
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -33,9 +33,9 @@
 }
 
 .guides-category-pill.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast, #ffffff);
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--solid-text);
   font-weight: 600;
 }
 
@@ -58,9 +58,9 @@
 }
 
 .guide-card:hover {
-  border-color: var(--accent);
+  border-color: var(--brand);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.04));
+  box-shadow: var(--shadow-card);
 }
 
 .guide-card-header {
@@ -76,8 +76,8 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--accent-subtle);
-  color: var(--accent);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -104,7 +104,7 @@
 .guide-card-description {
   font-size: 14px;
   line-height: 1.55;
-  color: var(--muted-strong);
+  color: var(--muted);
   margin: 0 0 18px;
   flex-grow: 1;
 }
@@ -124,7 +124,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--accent);
+  color: var(--action);
   font-weight: 600;
   font-size: 13px;
 }
@@ -133,7 +133,7 @@
   padding: 28px;
   border: 1px solid var(--line-strong);
   border-radius: 16px;
-  background: var(--surface-raised, var(--surface));
+  background: var(--surface-soft);
   text-align: center;
   margin-top: 12px;
 }
@@ -147,7 +147,7 @@
 .guides-page-cta p {
   max-width: 58ch;
   margin: 0 auto 20px;
-  color: var(--muted-strong);
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.5;
 }

@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import type { CategoryRecord, SubscriptionMonthSummary, SubscriptionRecord } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -144,6 +144,30 @@ describe("SubscriptionsPage", () => {
     );
   });
 
+  it("scopes every subscription header and names the renewals table", async () => {
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [{ ...record, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
+    });
+    renderPage();
+
+    const table = await screen.findByRole("table", { name: "Subscription renewals" });
+    const headers = within(table).getAllByRole("columnheader");
+    expect(headers.map((header) => header.textContent)).toEqual([
+      "Name",
+      "Category",
+      "Amount",
+      "Billing date",
+      "Status",
+      "Actions",
+    ]);
+    for (const header of headers) {
+      expect(header).toHaveAttribute("scope", "col");
+    }
+  });
+
   it("shows the clean starting point and opens the add form from its CTA", async () => {
     vi.mocked(getSubscriptions).mockResolvedValue({
       month: "2026-07-01",
@@ -199,7 +223,7 @@ describe("SubscriptionsPage", () => {
     );
   });
 
-  it("deletes a subscription after confirming", async () => {
+  it("deletes a subscription through the shared confirm dialog and never calls window.confirm", async () => {
     const summary: SubscriptionMonthSummary = {
       month: "2026-07-01",
       currency: "PHP",
@@ -213,17 +237,25 @@ describe("SubscriptionsPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Delete Music streaming" }));
 
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Delete “Music streaming”?",
+    });
+    expect(within(dialog).getByText(/cannot be undone/i)).toBeInTheDocument();
+    expect(deleteSubscription).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Delete subscription" }));
+
     await waitFor(() =>
       expect(deleteSubscription).toHaveBeenCalledWith(
         { key: "user:test-user", userId: "test-user" },
         "subscription-1",
       ),
     );
-    expect(confirmSpy).toHaveBeenCalledWith("Delete “Music streaming”? This cannot be undone.");
+    expect(confirmSpy).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
   });
 
-  it("skips deletion when the user declines the confirmation", async () => {
+  it("skips deletion when the shared confirm dialog is cancelled", async () => {
     const summary: SubscriptionMonthSummary = {
       month: "2026-07-01",
       currency: "PHP",
@@ -231,14 +263,18 @@ describe("SubscriptionsPage", () => {
       items: [{ ...record, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
     };
     vi.mocked(getSubscriptions).mockResolvedValue(summary);
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     const user = userEvent.setup();
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Delete Music streaming" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Delete “Music streaming”?",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(deleteSubscription).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
+    expect(screen.getByText("Music streaming")).toBeInTheDocument();
   });
 
   it("switches to the visual renewal calendar interface and displays month grid, cash-flow impact, and payment schedule", async () => {

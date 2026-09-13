@@ -19,7 +19,7 @@ import { Link } from "react-router-dom";
 import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
-import { ThemeToggle } from "../components/theme/ThemeToggle";
+import { PublicHeader } from "../components/navigation/PublicHeader";
 import {
   useAndroidRelease,
   type AndroidReleaseSource,
@@ -197,28 +197,17 @@ export function InstallPage() {
 
   return (
     <div className="landing-page install-page">
-      <header className="landing-nav" id="top">
-        <Link className="brand" to="/" aria-label="Zoption home">
-          <BrandMark />
-          <span className="brand-wordmark">Zoption</span>
-        </Link>
-        <nav className="install-header-links" aria-label="Android download page">
-          <Link to="/">Home</Link>
-          <a href="#instructions">Install safely</a>
-          <a href="#troubleshooting">Troubleshooting</a>
-        </nav>
-        <div className="landing-account-actions">
-          <ThemeToggle />
-          <Link className="landing-sign-in" to="/login">
-            Sign in
-          </Link>
-          <Link className="button primary" to="/signup">
-            Create account
-          </Link>
-        </div>
-      </header>
+      <PublicHeader
+        navLabel="Android download page"
+        ctaLabel="Create account"
+        links={[
+          { label: "Home", to: "/" },
+          { label: "Install safely", href: "#instructions" },
+          { label: "Troubleshooting", href: "#troubleshooting" },
+        ]}
+      />
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <div style={{ maxWidth: "1120px", margin: "0 auto", padding: "1.5rem 1.5rem 0" }}>
           <Breadcrumbs
             items={[

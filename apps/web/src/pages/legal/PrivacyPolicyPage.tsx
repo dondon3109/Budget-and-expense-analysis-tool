@@ -148,12 +148,13 @@ export function PrivacyPolicyPage() {
         <p>Zoption uses service providers to operate the product:</p>
         <ul>
           <li>
-            <strong>Supabase</strong> for identity, authentication/session operation, profile
-            metadata, and avatar storage.
+            <strong>Supabase</strong> for identity, authentication/session operation, and profile
+            metadata.
           </li>
           <li>
-            <strong>Cloudflare</strong> for website and API hosting, and Cloudflare D1 storage of
-            tenant-isolated application and financial data.
+            <strong>Cloudflare</strong> for website and API hosting, Cloudflare D1 storage of
+            tenant-isolated application and financial data, and Cloudflare R2 storage of profile
+            pictures.
           </li>
           <li>
             <strong>
@@ -223,14 +224,15 @@ export function PrivacyPolicyPage() {
         <p>
           We use reasonable administrative and technical safeguards designed to protect personal
           data against unauthorized access, loss, alteration, disclosure, or misuse. Supabase
-          manages identity, sessions, profile metadata, and avatar storage. Cloudflare D1 stores
-          application and financial records behind Worker routes that derive the tenant from a
-          verified Supabase token and apply tenant predicates to database access. Supabase Storage
-          access policies restrict avatar uploads and deletion to the authenticated owner. Provider
-          backup and recovery controls apply according to the services and plans in use and may not
-          allow restoration of an individual record or account. We maintain a documented process for
-          assessing and responding to suspected security incidents. Despite these safeguards, no
-          internet-based service or method of electronic storage can guarantee absolute security.
+          manages identity, sessions, and profile metadata. Cloudflare D1 stores application and
+          financial records behind Worker routes that derive the tenant from a verified Supabase
+          token and apply tenant predicates to database access. Profile pictures are stored in
+          Cloudflare R2 and served through authenticated Worker upload and delete routes; anyone
+          who obtains the public picture URL may be able to view it. Provider backup and recovery
+          controls apply according to the services and plans in use and may not allow restoration
+          of an individual record or account. We maintain a documented process for assessing and
+          responding to suspected security incidents. Despite these safeguards, no internet-based
+          service or method of electronic storage can guarantee absolute security.
           Keep your login credentials confidential, use a unique password, protect the devices you
           use to access Zoption, and promptly report suspected unauthorized access to
           <a href="mailto:support@zoption.site">support@zoption.site</a>.
@@ -331,7 +333,7 @@ export function PrivacyPolicyPage() {
           turn. The thread, messages, response metadata, assistant run, and sanitized tool-call
           snapshots are deleted together when the thread expires or when you delete that chat, all
           chats, or your account. Account deletion purges the tenant&apos;s active D1 financial
-          records, goals, debts, chats, and assistant audits. Avatar or Supabase Auth cleanup can
+          records, goals, debts, chats, and assistant audits. Avatar or identity cleanup can
           remain pending and be retried if a provider step is temporarily unavailable; a minimal
           deletion tombstone is retained to stop an unexpired token from recreating the workspace.
           Specific records may be retained longer where required by law or reasonably necessary for
@@ -393,7 +395,8 @@ export function PrivacyPolicyPage() {
         <p>
           Zoption uses service providers that may process personal data outside the Philippines or
           the country where you live. Cloudflare hosts the application, API, and primary D1
-          financial database. Supabase processes identity, session, profile, and avatar information.
+          financial database, and stores profile pictures in R2. Supabase processes identity,
+          session, and profile metadata.
           If you start a Pro checkout or subscribe, PayPal processes subscription approval and
           payment information. When you enable the AI assistant or send a product-support chat
           message, the relevant request context described above may be transferred to and processed

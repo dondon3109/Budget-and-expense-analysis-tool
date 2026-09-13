@@ -51,6 +51,23 @@ describe("FullPageLoadingStatus", () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it("drives the progress gauge with transform and keeps the cursor as a sibling", () => {
+    render(
+      <FullPageLoadingStatus title="Preparing your workspace" description="Loading." />,
+    );
+
+    const fill = document.querySelector<HTMLElement>(".full-page-loading-status-fill");
+    const cursor = document.querySelector<HTMLElement>(".full-page-loading-status-cursor");
+    expect(fill).not.toBeNull();
+    expect(cursor).not.toBeNull();
+    // transform (not width) so the bar never triggers layout.
+    expect(fill?.getAttribute("style")).toContain("scaleX");
+    expect(fill?.getAttribute("style")).not.toContain("width");
+    // A child would be squashed by the fill's scaleX, so the cursor is a sibling.
+    expect(fill?.contains(cursor!)).toBe(false);
+    expect(cursor?.parentElement).toHaveClass("full-page-loading-status-track");
+  });
+
   it("completes animation and fires onComplete callback", () => {
     let now = 0;
     vi.spyOn(performance, "now").mockImplementation(() => now);

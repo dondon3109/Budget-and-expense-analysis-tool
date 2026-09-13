@@ -14,8 +14,11 @@ import {
   type TransactionVoiceDraft,
 } from "@zoption/shared";
 import { X } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import "./TransactionForm.css";
 import { localIsoDate } from "../../lib/calendar";
@@ -85,6 +88,8 @@ export function TransactionForm({
     initialDraft?.currency ?? item?.currency ?? "PHP",
   );
   const [clientError, setClientError] = useState<string>();
+  const dialogRef = useRef<HTMLElement>(null);
+  const descriptionRef = useRef<HTMLInputElement>(null);
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
   const defaultAccount = useMemo(
     () => preferredTransactionAccount(activeAccounts),
@@ -158,16 +163,16 @@ export function TransactionForm({
     if (!activeAccounts.some((account) => account.id === toAccountId))
       setToAccountId(activeAccounts.find((account) => account.id !== fromAccountId)?.id ?? "");
   }, [accountId, activeAccounts, defaultAccount, fromAccountId, toAccountId]);
-  useEffect(() => {
-    const handleKeydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) onClose();
-    };
-    window.addEventListener("keydown", handleKeydown);
-    return () => window.removeEventListener("keydown", handleKeydown);
-  }, [busy, onClose]);
+  useRootLock(true);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  const handleDialogKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: descriptionRef,
+    onEscape: () => {
+      if (!busy) onClose();
+    },
+  });
+
+  async function submitTransaction() {
     setClientError(undefined);
     let amountMinor: number;
     try {
@@ -204,6 +209,12 @@ export function TransactionForm({
       return;
     }
     await onSubmit(parsed.data);
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    await submitTransaction();
   }
 
   /** Applies an AI voice draft as review-only prefill, mirroring the mobile editor. */
@@ -256,7 +267,8 @@ export function TransactionForm({
     </label>
   );
 
-  return (
+  // Portalled so the inert application root from useRootLock does not disable the dialog.
+  return createPortal(
     <div
       className="modal-backdrop"
       role="presentation"
@@ -265,10 +277,12 @@ export function TransactionForm({
       }}
     >
       <section
+        ref={dialogRef}
         className="form-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="transaction-form-title"
+        onKeyDown={handleDialogKeyDown}
       >
         <header className="modal-header">
           <div>
@@ -285,7 +299,17 @@ export function TransactionForm({
             <X size={19} />
           </button>
         </header>
-        <form className="transaction-form" onSubmit={handleSubmit}>
+        <form
+          className="transaction-form"
+          onSubmit={handleSubmit}
+          onKeyDown={(event) => {
+            if (busy) return;
+            if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+              event.preventDefault();
+              void submitTransaction();
+            }
+          }}
+        >
           {!item && (
             <TransactionVoiceEntry
               workspace={workspace}
@@ -301,7 +325,7 @@ export function TransactionForm({
                 value={kind}
                 onChange={(event) => setKind(event.target.value as TransactionKind)}
               >
-                <option value="expense">Expenses</option>
+                <option value="expense">Expense</option>
                 <option value="income">Income</option>
                 <option value="transfer">Transfer</option>
               </select>
@@ -319,7 +343,7 @@ export function TransactionForm({
           <label>
             <span>Description {kind === "transfer" && <small>Optional</small>}</span>
             <input
-              autoFocus
+              ref={descriptionRef}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder={
@@ -454,6 +478,7 @@ export function TransactionForm({
           </div>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -206,4 +206,29 @@ describe("SubscriptionForm", () => {
       }),
     );
   });
+
+  it("renders outside the inert application root so the root lock cannot disable it", () => {
+    const root = document.createElement("div");
+    root.id = "root";
+    document.body.append(root);
+
+    render(
+      <SubscriptionForm
+        categories={categories}
+        accounts={accounts}
+        busy={false}
+        onSubmit={vi.fn(async () => undefined)}
+        onClose={vi.fn()}
+      />,
+      { container: root },
+    );
+
+    expect(root).toHaveAttribute("aria-hidden", "true");
+    const dialog = screen.getByRole("dialog", { name: "Add subscription" });
+    expect(root.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+
+    cleanup();
+    root.remove();
+  });
 });

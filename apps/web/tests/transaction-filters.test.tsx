@@ -44,26 +44,32 @@ const categories: CategoryRecord[] = [
   },
 ];
 
+function renderFilters(overrides: Partial<Parameters<typeof TransactionFilters>[0]> = {}) {
+  const props = {
+    search: "",
+    categories,
+    accounts: [],
+    hasFilters: false,
+    onSearchChange: vi.fn(),
+    onSearch: vi.fn(),
+    onKindChange: vi.fn(),
+    onCategoryChange: vi.fn(),
+    onAccountChange: vi.fn(),
+    onFromChange: vi.fn(),
+    onToChange: vi.fn(),
+    onDatePreset: vi.fn(),
+    onClear: vi.fn(),
+    ...overrides,
+  };
+  render(<TransactionFilters {...props} />);
+  return props;
+}
+
 describe("TransactionFilters", () => {
   afterEach(cleanup);
 
   it("distinguishes same-name system categories by transaction type", () => {
-    render(
-      <TransactionFilters
-        search=""
-        categories={categories}
-        accounts={[]}
-        hasFilters={false}
-        onSearchChange={vi.fn()}
-        onSearch={vi.fn()}
-        onKindChange={vi.fn()}
-        onCategoryChange={vi.fn()}
-        onAccountChange={vi.fn()}
-        onFromChange={vi.fn()}
-        onToChange={vi.fn()}
-        onClear={vi.fn()}
-      />,
-    );
+    renderFilters();
 
     expect(screen.getByRole("option", { name: "Uncategorized (Money in)" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Uncategorized (Money out)" })).toBeInTheDocument();
@@ -71,34 +77,50 @@ describe("TransactionFilters", () => {
   });
 
   it("exposes broad transaction search and immediate Enter submission", () => {
-    const onSearchChange = vi.fn();
-    const onSearch = vi.fn();
-    const onClear = vi.fn();
-    render(
-      <TransactionFilters
-        search="market"
-        categories={[]}
-        accounts={[]}
-        hasFilters
-        onSearchChange={onSearchChange}
-        onSearch={onSearch}
-        onKindChange={vi.fn()}
-        onCategoryChange={vi.fn()}
-        onAccountChange={vi.fn()}
-        onFromChange={vi.fn()}
-        onToChange={vi.fn()}
-        onClear={onClear}
-      />,
-    );
+    const props = renderFilters({ search: "market", hasFilters: true });
 
     const search = screen.getByRole("searchbox", {
       name: "Search transactions by description, notes, account, or category",
     });
     fireEvent.change(search, { target: { value: "groceries" } });
-    expect(onSearchChange).toHaveBeenCalledWith("groceries");
+    expect(props.onSearchChange).toHaveBeenCalledWith("groceries");
     fireEvent.submit(search.closest("form")!);
-    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(props.onSearch).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
-    expect(onClear).toHaveBeenCalledTimes(1);
+    expect(props.onClear).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers date presets that replace the whole range", () => {
+    const props = renderFilters({ from: "2026-01-01", to: "2026-01-31" });
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+      today.getDate(),
+    ).padStart(2, "0")}`;
+
+    const yearToDate = screen.getByRole("button", { name: "Year to date" });
+    expect(yearToDate).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(yearToDate);
+    expect(props.onDatePreset).toHaveBeenCalledWith({
+      from: `${todayIso.slice(0, 4)}-01-01`,
+      to: todayIso,
+    });
+  });
+
+  it("marks the preset whose range is applied", () => {
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+      today.getDate(),
+    ).padStart(2, "0")}`;
+    renderFilters({ from: todayIso, to: todayIso });
+
+    expect(screen.getByRole("button", { name: "Last 30 days" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "This month" })).toHaveAttribute(
+      "aria-pressed",
+      todayIso.endsWith("-01") ? "true" : "false",
+    );
   });
 });

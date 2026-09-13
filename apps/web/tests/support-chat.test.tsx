@@ -69,6 +69,7 @@ describe("Zoption Support chat", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    document.body.innerHTML = "";
   });
 
   it("opens from the chat head and sends page-aware messages to the public support endpoint", async () => {
@@ -272,6 +273,59 @@ describe("Zoption Support chat", () => {
     const budgetsLink = await screen.findByRole("link", { name: "Budgets" });
     expect(budgetsLink.closest("p")).toHaveTextContent("Open Budgets from the main navigation.");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("focuses the composer on open and confines Tab to the panel", () => {
+    renderSupport();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    const panel = screen.getByRole("dialog", { name: "Zoption Support" });
+    expect(screen.getByLabelText("Ask Zoption Support")).toHaveFocus();
+
+    const send = screen.getByRole("button", { name: "Send support message" });
+    send.focus();
+    fireEvent.keyDown(panel, { key: "Tab" });
+
+    expect(screen.getByRole("button", { name: "Start a new support conversation" })).toHaveFocus();
+  });
+
+  it("closes on Escape pressed inside the panel and returns focus to the launcher", () => {
+    renderSupport();
+
+    const launcher = screen.getByRole("button", { name: "Open Zoption Support" });
+    launcher.focus();
+    fireEvent.click(launcher);
+    const panel = screen.getByRole("dialog", { name: "Zoption Support" });
+
+    fireEvent.keyDown(panel, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(launcher).toHaveFocus();
+  });
+
+  it("stays non-modal: opening the panel never inerts the application root it renders inside", () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = document.getElementById("root");
+    if (!root) throw new Error("Test root is missing.");
+    render(
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <SupportChat surface="landing" />
+        </MemoryRouter>
+      </ThemeProvider>,
+      { container: root },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    const panel = screen.getByRole("dialog", { name: "Zoption Support" });
+
+    // SupportChat is deliberately non-modal (aria-modal="false") and renders
+    // inside #root, so it must never take the root lock: inerting #root would
+    // inert the panel itself.
+    expect(root.contains(panel)).toBe(true);
+    // jsdom does not implement the inert property, so assert it was never set.
+    expect(root.inert).toBeFalsy();
+    expect(root).not.toHaveAttribute("aria-hidden");
   });
 
   it("persists the conversation for the browser session and restores launcher focus on Escape", async () => {

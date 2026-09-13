@@ -7,7 +7,6 @@ import {
   Check,
   FileSpreadsheet,
   FileText,
-  Menu,
   Mic,
   PiggyBank,
   ShieldCheck,
@@ -24,14 +23,26 @@ import "./LandingPage.css";
 
 import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
+import { PublicHeader, type PublicHeaderLink } from "../components/navigation/PublicHeader";
 import { SupportChat } from "../components/support/SupportChat";
-import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { getPublicCustomerReviews } from "../lib/api";
 import { useAndroidRelease } from "../releases/useAndroidRelease";
 
+/** In-page anchors for the long marketing page; the shared header renders them. */
+const LANDING_HEADER_LINKS: PublicHeaderLink[] = [
+  { label: "Voice & Scan", href: "#fast-entry" },
+  { label: "Features", href: "#modules" },
+  { label: "Budget planner", href: "#calculator" },
+  { label: "Why Zoption", href: "#compare" },
+  { label: "Pricing", to: "/pricing" },
+  { label: "Android APK", href: "#install" },
+  { label: "Supported imports", href: "#banks" },
+  { label: "How it works", href: "#approach" },
+  { label: "Reviews", href: "#reviews" },
+  { label: "FAQ", href: "#faq" },
+];
+
 const previewBars = [42, 55, 38, 66, 50, 61];
-const previewMonths = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
-const previewAmounts = ["₱18,200", "₱22,500", "₱19,100", "₱26,400", "₱21,800", "₱21,400"];
 
 const voiceSamples = [
   {
@@ -135,16 +146,13 @@ export function LandingPage() {
   const accountDeleted = searchParams.get("accountDeleted");
   const [reviews, setReviews] = useState<PublicCustomerReview[]>([]);
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const androidSource = useAndroidRelease();
   const androidRelease = androidSource.release;
 
-  const [activeBarIndex, setActiveBarIndex] = useState<number | null>(5);
   const [savingsEnabled, setSavingsEnabled] = useState<boolean>(true);
   const [activeSavingsCadence, setActiveSavingsCadence] = useState<"monthly" | "daily" | "yearly">(
     "monthly",
   );
-  const [activeBudgetId, setActiveBudgetId] = useState<string>("groceries");
 
   // Fast Entry Spotlight State
   const [activeSpotlightTab, setActiveSpotlightTab] = useState<
@@ -177,19 +185,6 @@ export function LandingPage() {
     return () => controller.abort();
   }, []);
 
-  useEffect(() => {
-    if (!mobileNavOpen) return;
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setMobileNavOpen(false);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mobileNavOpen]);
-
   return (
     <div className="landing-page">
       {/*
@@ -200,100 +195,9 @@ export function LandingPage() {
         FORM: Persuade landing page crafted with museum-grade typography, dynamic interactive modules, rich tactile visual depth, accessible semantic hierarchy, and seamless responsive design across light, dark, and coffee themes.
       */}
 
-      <header className="landing-nav" id="top">
-        <a className="brand" href="#top" aria-label="Zoption home">
-          <BrandMark />
-          <span className="brand-wordmark">Zoption</span>
-        </a>
-        <nav className="landing-links" aria-label="Learn more">
-          <a href="#fast-entry">Voice &amp; Scan</a>
-          <a href="#modules">Features</a>
-          <a href="#calculator">Budget planner</a>
-          <a href="#compare">Why Zoption</a>
-          <Link to="/pricing">Pricing</Link>
-          <a href="#install">Android APK</a>
-          <a href="#banks">Supported imports</a>
-          <a href="#approach">How it works</a>
-          <a href="#reviews">Reviews</a>
-          <a href="#faq">FAQ</a>
-        </nav>
-        <div className="landing-account-actions">
-          <ThemeToggle />
-          <Link className="landing-sign-in" to="/login">
-            Sign in
-          </Link>
-          <Link className="button primary" to="/signup">
-            Start free
-          </Link>
-          <button
-            type="button"
-            className="landing-mobile-menu-toggle"
-            aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={mobileNavOpen}
-            aria-controls="landing-mobile-nav"
-            onClick={() => setMobileNavOpen((open) => !open)}
-          >
-            {mobileNavOpen ? (
-              <X size={20} aria-hidden="true" />
-            ) : (
-              <Menu size={20} aria-hidden="true" />
-            )}
-          </button>
-        </div>
+      <PublicHeader links={LANDING_HEADER_LINKS} />
 
-        {mobileNavOpen && (
-          <div
-            id="landing-mobile-nav"
-            className="landing-mobile-drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation menu"
-          >
-            <nav className="landing-mobile-links" aria-label="Mobile sections">
-              <a href="#fast-entry" onClick={() => setMobileNavOpen(false)}>
-                Voice &amp; Scan Entry
-              </a>
-              <a href="#modules" onClick={() => setMobileNavOpen(false)}>
-                Features
-              </a>
-              <a href="#calculator" onClick={() => setMobileNavOpen(false)}>
-                Budget planner
-              </a>
-              <a href="#compare" onClick={() => setMobileNavOpen(false)}>
-                Why Zoption
-              </a>
-              <Link to="/pricing" onClick={() => setMobileNavOpen(false)}>
-                Pricing
-              </Link>
-              <a href="#install" onClick={() => setMobileNavOpen(false)}>
-                Android APK
-              </a>
-              <a href="#banks" onClick={() => setMobileNavOpen(false)}>
-                Supported imports
-              </a>
-              <a href="#approach" onClick={() => setMobileNavOpen(false)}>
-                How it works
-              </a>
-              <a href="#reviews" onClick={() => setMobileNavOpen(false)}>
-                Reviews
-              </a>
-              <a href="#faq" onClick={() => setMobileNavOpen(false)}>
-                FAQ
-              </a>
-            </nav>
-            <div className="landing-mobile-actions">
-              <Link className="landing-sign-in" to="/login" onClick={() => setMobileNavOpen(false)}>
-                Sign in
-              </Link>
-              <Link className="button primary" to="/signup" onClick={() => setMobileNavOpen(false)}>
-                Start free
-              </Link>
-            </div>
-          </div>
-        )}
-      </header>
-
-      <main>
+      <main id="main-content" tabIndex={-1}>
         {accountDeleted && (
           <div className="account-deletion-notice" role="status">
             <strong>Account deletion requested.</strong>
@@ -308,11 +212,21 @@ export function LandingPage() {
 
         <section className="hero">
           <div className="hero-copy">
-            <p className="hero-eyebrow">
-              <Mic size={15} aria-hidden="true" /> Voice Entry &middot;{" "}
-              <Camera size={15} aria-hidden="true" /> Scan Receipt &middot;{" "}
-              <Sparkles size={15} aria-hidden="true" /> AI Assistant &middot; 100% Private
-            </p>
+            <ul
+              className="hero-eyebrow hero-eyebrow-pills"
+              role="list"
+              aria-label="Zoption capabilities"
+            >
+              <li>
+                <Mic size={15} aria-hidden="true" /> Voice Entry
+              </li>
+              <li>
+                <Camera size={15} aria-hidden="true" /> Scan Receipt
+              </li>
+              <li>
+                <Sparkles size={15} aria-hidden="true" /> AI Assistant &middot; 100% Private
+              </li>
+            </ul>
             <h1>
               Zoption makes your money clear. Decide <em>what comes next.</em>
             </h1>
@@ -376,22 +290,11 @@ export function LandingPage() {
             <div className="preview-chart">
               <div className="preview-chart-head">
                 <span>Spending rhythm</span>
-                <small>
-                  {activeBarIndex !== null
-                    ? `${previewMonths[activeBarIndex]}: ${previewAmounts[activeBarIndex]}`
-                    : "Six-month view"}
-                </small>
+                <small>Six-month view</small>
               </div>
               <div className="chart-bars" aria-hidden="true">
                 {previewBars.map((height, index) => (
-                  <span
-                    key={index}
-                    style={{ height: `${height}%` }}
-                    className={activeBarIndex === index ? "active" : ""}
-                    onMouseEnter={() => setActiveBarIndex(index)}
-                    onClick={() => setActiveBarIndex(index)}
-                    title={`${previewMonths[index]}: ${previewAmounts[index]}`}
-                  />
+                  <span key={index} aria-hidden="true" style={{ height: `${height}%` }} />
                 ))}
               </div>
             </div>
@@ -410,7 +313,9 @@ export function LandingPage() {
               <Mic size={20} />
             </div>
             <div>
-              <div className="pillar-badge">Top Feature</div>
+              <div className="pillar-badge-slot">
+                <span className="pillar-badge">Top Feature</span>
+              </div>
               <strong>Voice Transaction Entry</strong>
               <p>Speak naturally to log expenses — zero manual typing needed</p>
             </div>
@@ -420,7 +325,9 @@ export function LandingPage() {
               <Camera size={20} />
             </div>
             <div>
-              <div className="pillar-badge">Top Feature</div>
+              <div className="pillar-badge-slot">
+                <span className="pillar-badge">Top Feature</span>
+              </div>
               <strong>Instant Receipt Scanner</strong>
               <p>Snap a photo of paper or digital receipts to extract totals automatically</p>
             </div>
@@ -430,6 +337,7 @@ export function LandingPage() {
               <FileSpreadsheet size={20} />
             </div>
             <div>
+              <div className="pillar-badge-slot" />
               <strong>PDF, CSV &amp; Excel Importer</strong>
               <p>Universal statement mapper with exact centavo deduplication</p>
             </div>
@@ -439,6 +347,7 @@ export function LandingPage() {
               <Bot size={20} />
             </div>
             <div>
+              <div className="pillar-badge-slot" />
               <strong>Grounded AI Assistant</strong>
               <p>Ask questions about your numbers with evidence &amp; 0 bank passwords</p>
             </div>
@@ -1052,12 +961,7 @@ export function LandingPage() {
                   <span>July budget</span>
                   <span>₱4,800 of ₱6,500</span>
                 </div>
-                <div
-                  className={`progress row ${activeBudgetId === "groceries" ? "active-budget" : ""}`}
-                  onClick={() => setActiveBudgetId("groceries")}
-                  role="button"
-                  tabIndex={0}
-                >
+                <div className="progress row">
                   <span>Groceries</span>
                   <b>
                     ₱4,800 <small>/ ₱6,500</small>
@@ -1066,12 +970,7 @@ export function LandingPage() {
                     <em style={{ width: "74%" }} />
                   </i>
                 </div>
-                <div
-                  className={`progress row ${activeBudgetId === "utilities" ? "active-budget" : ""}`}
-                  onClick={() => setActiveBudgetId("utilities")}
-                  role="button"
-                  tabIndex={0}
-                >
+                <div className="progress row">
                   <span>Utilities</span>
                   <b>
                     ₱2,100 <small>/ ₱3,000</small>
@@ -1080,12 +979,7 @@ export function LandingPage() {
                     <em style={{ width: "70%" }} />
                   </i>
                 </div>
-                <div
-                  className={`progress row ${activeBudgetId === "transport" ? "active-budget" : ""}`}
-                  onClick={() => setActiveBudgetId("transport")}
-                  role="button"
-                  tabIndex={0}
-                >
+                <div className="progress row">
                   <span>Transport</span>
                   <b>
                     ₱900 <small>/ ₱1,200</small>
@@ -1216,13 +1110,13 @@ export function LandingPage() {
                   <span>Interest on</span>
                 </div>
               </div>
-              <div className="facet-visual" aria-hidden="true">
-                <div className="balance-row">
+              <div className="facet-visual">
+                <div className="balance-row" aria-hidden="true">
                   <span>Savings</span>
                   <b>₱28,500</b>
                 </div>
                 <div className="balance-row interest-row">
-                  <span>
+                  <span aria-hidden="true">
                     <PiggyBank size={14} aria-hidden="true" />{" "}
                     {savingsEnabled
                       ? `0.6% p.a. · ${
@@ -1259,7 +1153,7 @@ export function LandingPage() {
                     />
                   </i>
                 </div>
-                <div className="balance-row">
+                <div className="balance-row" aria-hidden="true">
                   <span>{savingsEnabled ? "Interest earned" : "Accrual status"}</span>
                   <span className={`chip ${savingsEnabled ? "in-soft" : "muted-chip"}`}>
                     <TrendingUp size={13} aria-hidden="true" />
@@ -1413,7 +1307,14 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="comparison-table-wrap">
+          {/* Scrolls horizontally on narrow screens, so it must be reachable and scrollable
+              by keyboard rather than only by touch. */}
+          <div
+            className="comparison-table-wrap"
+            role="region"
+            aria-label="Feature comparison table"
+            tabIndex={0}
+          >
             <table className="comparison-table">
               <colgroup>
                 <col style={{ width: "36%" }} />
@@ -1422,9 +1323,11 @@ export function LandingPage() {
               </colgroup>
               <thead>
                 <tr>
-                  <th>Capability &amp; Security Standard</th>
-                  <th>Typical Finance Apps</th>
-                  <th className="zoption-col">Zoption Private Workspace</th>
+                  <th scope="col">Capability &amp; Security Standard</th>
+                  <th scope="col">Typical Finance Apps</th>
+                  <th scope="col" className="zoption-col">
+                    Zoption Private Workspace
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1803,80 +1706,80 @@ export function LandingPage() {
               math.
             </p>
           </div>
-          <dl className="faq-list">
+          <div className="faq-list">
             <details className="faq-item">
               <summary>How does Voice Entry work?</summary>
-              <dd>
+              <p className="faq-answer">
                 Tap the microphone and speak naturally in English or Taglish, such as &ldquo;Spent
                 ₱540 for groceries at Robinsons Supermarket today&rdquo;. Zoption transcribes your
                 speech, extracts the amount, auto-detects the merchant, and assigns the correct
                 budget envelope. You review and save with a single tap — no typing required.
-              </dd>
+              </p>
             </details>
             <details className="faq-item">
               <summary>How does Receipt Photo Scanning work?</summary>
-              <dd>
+              <p className="faq-answer">
                 Snap a picture of any paper receipt or upload a digital invoice screenshot.
                 Zoption&rsquo;s vision engine extracts the store name, date, subtotal, sales tax,
                 and line items automatically, then suggests the appropriate category envelope for
                 your review.
-              </dd>
+              </p>
             </details>
             <details className="faq-item">
               <summary>What file formats can I import?</summary>
-              <dd>
+              <p className="faq-answer">
                 PDF bank statements, multi-sheet Excel workbooks (.xlsx, .xls), and CSV files. Pick
                 a document, map columns, filter duplicates, and preview every single row before
                 committing it to your private ledger.
-              </dd>
+              </p>
             </details>
             <details className="faq-item">
               <summary>How does the AI Financial Assistant work?</summary>
-              <dd>
+              <p className="faq-answer">
                 The assistant answers questions about your real numbers with grounded evidence and
                 verified mathematical calculations. It is strictly read-only, operates only with
                 your explicit consent, and never modifies your balances or records.
-              </dd>
+              </p>
             </details>
             <details className="faq-item">
               <summary>Can I use Zoption for free?</summary>
-              <dd>
+              <p className="faq-answer">
                 Yes. Create an account and use Zoption&rsquo;s Free plan without paying. It includes
                 core tracking features with plan limits; upgrade to Pro only if you want higher
                 limits and additional features.
-              </dd>
+              </p>
             </details>
             <details className="faq-item">
               <summary>Does Zoption connect to my bank?</summary>
-              <dd>
+              <p className="faq-answer">
                 No. Zoption never connects to banks or asks for banking credentials. You import a
                 PDF, CSV, Excel, or bank export file — or add rows yourself — and review every entry
                 before anything is saved.
-              </dd>
+              </p>
             </details>
             <details className="faq-item">
               <summary>Is my workspace private?</summary>
-              <dd>
+              <p className="faq-answer">
                 Your workspace starts empty and contains only the records you choose to add. For
                 details about how account, financial, and imported-transaction information is
                 handled, see the Privacy Policy.
-              </dd>
+              </p>
             </details>
             <details className="faq-item">
               <summary>How are money amounts stored?</summary>
-              <dd>
+              <p className="faq-answer">
                 Amounts are represented safely in integer centavos and totaled in plain language, so
                 the calculations stay transparent and easy to follow.
-              </dd>
+              </p>
             </details>
             <details className="faq-item">
               <summary>Do I need financial expertise to use Zoption?</summary>
-              <dd>
+              <p className="faq-answer">
                 No. Zoption keeps the language jargon-free and every calculation transparent, so you
                 can track expenses and set budgets without a finance background.
-              </dd>
+              </p>
             </details>
-          </dl>
+          </div>
           <Link className="faq-see-all" to="/faq">
             See all common questions <ArrowRight size={16} aria-hidden="true" />
           </Link>

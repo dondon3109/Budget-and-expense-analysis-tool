@@ -9,7 +9,11 @@ import {
   type DebtUpdate,
 } from "@zoption/shared";
 import { X } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
+
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 
 interface DebtFormProps {
   debt?: Debt;
@@ -34,14 +38,17 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
   const [balanceAsOf, setBalanceAsOf] = useState(debt?.balanceAsOf ?? "");
   const [status, setStatus] = useState<DebtStatus>(debt?.status ?? "active");
   const [clientError, setClientError] = useState<string>();
+  const dialogRef = useRef<HTMLElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) onClose();
-    }
-    window.addEventListener("keydown", handleKeydown);
-    return () => window.removeEventListener("keydown", handleKeydown);
-  }, [busy, onClose]);
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: nameRef,
+    onEscape: () => {
+      if (!busy) onClose();
+    },
+  });
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -79,7 +86,8 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
     await onSubmit(parsed.data);
   }
 
-  return (
+  // Portalled so the inert application root from useRootLock does not disable the dialog.
+  return createPortal(
     <div
       className="modal-backdrop"
       role="presentation"
@@ -88,10 +96,12 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
       }}
     >
       <section
+        ref={dialogRef}
         className="form-modal planning-form-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="debt-form-title"
+        onKeyDown={handleKeyDown}
       >
         <header className="modal-header">
           <div>
@@ -114,7 +124,7 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
             <label>
               <span>Debt name</span>
               <input
-                autoFocus
+                ref={nameRef}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="e.g. Main credit card"
@@ -222,6 +232,7 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
           </div>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

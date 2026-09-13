@@ -1,10 +1,9 @@
 import { ArrowRight, CheckCircle2, Heart, MessageSquareCheck, ShieldCheck, Sparkles } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
-import { ThemeToggle } from "../components/theme/ThemeToggle";
+import { PublicHeader } from "../components/navigation/PublicHeader";
 import "./ThankYouPage.css";
 
 interface FlowContent {
@@ -83,20 +82,9 @@ export function ThankYouPage() {
 
   return (
     <div className="thank-you-page">
-      <header className="thank-you-header">
-        <Link className="brand" to="/" aria-label="Zoption home">
-          <BrandMark />
-          <span className="brand-wordmark">Zoption</span>
-        </Link>
-        <div className="thank-you-header-actions">
-          <ThemeToggle />
-          <Link className="button secondary compact" to="/app">
-            Open workspace
-          </Link>
-        </div>
-      </header>
+      <PublicHeader />
 
-      <main className="thank-you-main">
+      <main className="thank-you-main" id="main-content" tabIndex={-1}>
         <div className="thank-you-container">
           <Breadcrumbs
             items={[

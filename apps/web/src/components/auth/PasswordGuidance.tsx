@@ -31,6 +31,7 @@ export function PasswordGuidance({
         <div
           className={`password-strength-meter strength-${evaluation.strength}`}
           role="progressbar"
+          aria-label="Password strength"
           aria-valuemin={0}
           aria-valuemax={evaluation.maxScore}
           aria-valuenow={evaluation.score}

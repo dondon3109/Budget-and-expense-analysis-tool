@@ -1172,14 +1172,17 @@ export function ImportPage() {
 
                     <div className="import-table-wrap">
                       <table className="import-table">
+                        <caption className="sr-only">Import preview rows</caption>
                         <thead>
                           <tr>
-                            <th className="import-select-column">Select</th>
-                            <th>Row</th>
-                            <th>Status</th>
-                            <th>Transaction</th>
-                            <th>Amount</th>
-                            <th>Details</th>
+                            <th scope="col" className="import-select-column">
+                              Select
+                            </th>
+                            <th scope="col">Row</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Transaction</th>
+                            <th scope="col">Amount</th>
+                            <th scope="col">Details</th>
                           </tr>
                         </thead>
                         <tbody>

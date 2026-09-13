@@ -202,23 +202,12 @@
   color: var(--ink);
   border: 1px solid var(--line-strong);
   border-radius: 10px;
-  outline: 0;
   background: var(--surface);
   font-size: 12px;
 }
 
 .transaction-form textarea {
   resize: vertical;
-}
-
-.transaction-form input:focus,
-.transaction-form select:focus,
-.transaction-form textarea:focus,
-.new-category-form input:focus,
-.new-category-form select:focus,
-.manager-category input:focus {
-  border-color: #76a994;
-  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
 }
 
 .form-row.split {
@@ -488,13 +477,4 @@
   .manager-category {
     grid-template-columns: 30px minmax(0, 1fr) auto;
   }
-}
-:root[data-theme="dark"] .transaction-form input:focus,
-:root[data-theme="dark"] .transaction-form select:focus,
-:root[data-theme="dark"] .transaction-form textarea:focus,
-:root[data-theme="dark"] .new-category-form input:focus,
-:root[data-theme="dark"] .new-category-form select:focus,
-:root[data-theme="dark"] .manager-category input:focus {
-  border-color: var(--focus);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
 }

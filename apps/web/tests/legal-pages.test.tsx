@@ -102,6 +102,15 @@ describe("legal pages", () => {
     expect(screen.getByRole("button", { name: "Cookie Settings" })).toBeInTheDocument();
   });
 
+  it("renders the shared public header instead of a per-page back link", () => {
+    renderPage(<PrivacyPolicyPage />);
+
+    const header = screen.getByRole("navigation", { name: "Learn more" });
+    expect(within(header).getByRole("link", { name: "Guides" })).toHaveAttribute("href", "/guides");
+    expect(screen.getByRole("button", { name: "Open navigation menu" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Back to Zoption/i })).not.toBeInTheDocument();
+  });
+
   it("renders breadcrumbs navigation on legal pages", () => {
     renderPage(<PrivacyPolicyPage />);
 

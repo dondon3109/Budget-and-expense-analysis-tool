@@ -8,7 +8,11 @@ import {
   type SubscriptionRecord,
 } from "@zoption/shared";
 import { X } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
+
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 
 interface SubscriptionFormProps {
   categories: CategoryRecord[];
@@ -54,7 +58,18 @@ export function SubscriptionForm({
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [accountId, setAccountId] = useState(initial?.accountId ?? "");
   const [clientError, setClientError] = useState<string>();
+  const dialogRef = useRef<HTMLElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const editing = Boolean(initial);
+
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: nameRef,
+    onEscape: () => {
+      if (!busy) onClose();
+    },
+  });
   const availableCategories = useMemo(
     () => categories.filter((category) => !category.archived && category.kind === "expense"),
     [categories],
@@ -79,14 +94,6 @@ export function SubscriptionForm({
       setAccountId(activeAccounts[0]?.id ?? "");
     }
   }, [accountId, activeAccounts]);
-
-  useEffect(() => {
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) onClose();
-    }
-    window.addEventListener("keydown", handleKeydown);
-    return () => window.removeEventListener("keydown", handleKeydown);
-  }, [busy, onClose]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -115,7 +122,8 @@ export function SubscriptionForm({
     await onSubmit(parsed.data);
   }
 
-  return (
+  // Portalled so the inert application root from useRootLock does not disable the dialog.
+  return createPortal(
     <div
       className="modal-backdrop"
       role="presentation"
@@ -124,10 +132,12 @@ export function SubscriptionForm({
       }}
     >
       <section
+        ref={dialogRef}
         className="form-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="subscription-form-title"
+        onKeyDown={handleKeyDown}
       >
         <header className="modal-header">
           <div>
@@ -151,7 +161,7 @@ export function SubscriptionForm({
           <label>
             <span>Name</span>
             <input
-              autoFocus
+              ref={nameRef}
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="e.g. Music streaming"
@@ -264,6 +274,7 @@ export function SubscriptionForm({
           </div>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

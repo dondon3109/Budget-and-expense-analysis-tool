@@ -1,8 +1,9 @@
 import { assistantIdentityNameSchema } from "@zoption/shared";
 import { Bot, Pencil, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 
 interface AssistantIdentityDialogProps {
@@ -37,60 +38,21 @@ export function AssistantIdentityDialog({
   const [clientError, setClientError] = useState<string>();
   const dialogRef = useRef<HTMLElement>(null);
   const assistantNameInputRef = useRef<HTMLInputElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
   const titleId = "assistant-identity-title";
   const descriptionId = "assistant-identity-description";
 
   useRootLock(true);
 
-  useLayoutEffect(() => {
-    const activeElement = document.activeElement;
-
-    if (
-      activeElement instanceof HTMLElement &&
-      activeElement !== document.body &&
-      !dialogRef.current?.contains(activeElement)
-    ) {
-      openerRef.current = activeElement;
-    }
-    assistantNameInputRef.current?.focus();
-
-    return () => {
-      if (!required && openerRef.current?.isConnected) openerRef.current.focus();
-    };
-  }, [required]);
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: assistantNameInputRef,
+    // The required variant is a blocking gate: Escape must not close it.
+    onEscape: () => {
+      if (!required && !busy) onClose?.();
+    },
+  });
 
   function close() {
     if (!required && !busy) onClose?.();
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      if (!required && !busy) close();
-      return;
-    }
-    if (event.key !== "Tab") return;
-
-    const focusable = Array.from(
-      dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).filter((element) => element.tabIndex >= 0);
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (!first || !last) return;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    } else if (!dialogRef.current?.contains(document.activeElement)) {
-      event.preventDefault();
-      (event.shiftKey ? last : first).focus();
-    }
   }
 
   function handleSubmit(event: FormEvent) {

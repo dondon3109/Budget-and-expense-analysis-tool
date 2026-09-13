@@ -9,9 +9,12 @@ import {
   type AccountRecord,
 } from "@zoption/shared";
 import { Check, RotateCcw, SlidersHorizontal, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useAuth } from "../../auth/AuthProvider";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 import { createTransaction, deleteTransaction, getCategories } from "../../lib/api";
 import { formatMoney } from "../../lib/formatters";
 import { queryKeys } from "../../lib/queryKeys";
@@ -38,6 +41,9 @@ export function AdjustBalanceModal({
   const [newBalance, setNewBalance] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [adjustmentId, setAdjustmentId] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const newBalanceRef = useRef<HTMLInputElement>(null);
+  const undoAdjustmentRef = useRef<HTMLButtonElement>(null);
 
   const currency = account.currency ?? "PHP";
   const currentBalanceMinor =
@@ -138,13 +144,30 @@ export function AdjustBalanceModal({
     },
   });
 
-  return (
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: newBalanceRef,
+    onEscape: () => {
+      if (!adjustMutation.isPending && !undoMutation.isPending) onClose();
+    },
+  });
+
+  // The balance field disappears once the adjustment is booked, so move focus to the
+  // result actions instead of letting it fall back to the document body.
+  useEffect(() => {
+    if (adjustmentId) undoAdjustmentRef.current?.focus();
+  }, [adjustmentId]);
+
+  return createPortal(
     <div className="modal-backdrop" role="presentation">
       <section
+        ref={dialogRef}
         className="form-modal adjust-balance-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="adjust-balance-title"
+        onKeyDown={handleKeyDown}
       >
         <header className="modal-header">
           <div>
@@ -214,6 +237,7 @@ export function AdjustBalanceModal({
               </p>
               <div className="adjust-balance-actions">
                 <button
+                  ref={undoAdjustmentRef}
                   type="button"
                   className="button secondary"
                   onClick={() => void undoMutation.mutate()}
@@ -246,7 +270,7 @@ export function AdjustBalanceModal({
                     setNewBalance(e.target.value);
                     setErrorMessage(null);
                   }}
-                  autoFocus
+                  ref={newBalanceRef}
                   disabled={adjustMutation.isPending}
                   required
                 />
@@ -318,6 +342,7 @@ export function AdjustBalanceModal({
           )}
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

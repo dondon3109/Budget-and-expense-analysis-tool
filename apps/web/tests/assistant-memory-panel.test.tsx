@@ -3,7 +3,8 @@
 import "@testing-library/jest-dom/vitest";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
@@ -45,6 +46,22 @@ function renderPanel(props: { open?: boolean; onClose?: () => void } = {}) {
     </QueryClientProvider>,
   );
   return { ...result, queryClient, onClose };
+}
+
+/** Mirrors AssistantPage: the panel mounts only while it is open, from a trigger button. */
+function MemoryPanelHarness() {
+  const [open, setOpen] = useState(false);
+  const queryClient = createQueryClient();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open memory
+      </button>
+      {open && (
+        <AssistantMemoryPanel workspace={mockWorkspace} open onClose={() => setOpen(false)} />
+      )}
+    </QueryClientProvider>
+  );
 }
 
 afterEach(cleanup);
@@ -131,6 +148,36 @@ describe("AssistantMemoryPanel", () => {
     expect(await screen.findByText("No remembered facts yet")).toBeInTheDocument();
     expect(screen.getByText(/Examples you can share in chat/)).toBeInTheDocument();
     expect(screen.getByText(/My emergency fund goal is ₱100,000/)).toBeInTheDocument();
+  });
+
+  it("confines Tab to the panel and starts on its first control", async () => {
+    renderPanel();
+
+    const dialog = await screen.findByRole("dialog", { name: "Memory & Preferences" });
+    const closeButton = screen.getByRole("button", { name: "Close assistant memory" });
+    expect(closeButton).toHaveFocus();
+
+    const buttons = within(dialog).getAllByRole("button");
+    const lastButton = buttons.at(-1);
+    if (!lastButton) throw new Error("Expected the panel to expose buttons.");
+    lastButton.focus();
+    fireEvent.keyDown(dialog, { key: "Tab" });
+
+    expect(closeButton).toHaveFocus();
+  });
+
+  it("closes on Escape and returns focus to the control that opened it", async () => {
+    render(<MemoryPanelHarness />);
+
+    const opener = screen.getByRole("button", { name: "Open memory" });
+    opener.focus();
+    fireEvent.click(opener);
+    const dialog = await screen.findByRole("dialog", { name: "Memory & Preferences" });
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
   });
 
   it("requires confirmation before clearing memory", async () => {

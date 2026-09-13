@@ -30,17 +30,13 @@
   perspective: 400px;
 }
 
-/* Subtle breathing ambient bloom */
+/* Subtle breathing ambient bloom — flat token surface, no background gradient */
 .inline-loader-bloom {
   position: absolute;
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--brand) 12%, transparent) 0%,
-    transparent 70%
-  );
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
   pointer-events: none;
   will-change: transform, opacity;
 }
@@ -204,10 +200,6 @@
   .plane-amber {
     animation: inline-orbit-ccw 8s linear infinite;
   }
-
-  .inline-loader-label {
-    animation: inline-pulse-text 2s ease-in-out infinite;
-  }
 }
 
 @keyframes inline-bloom {
@@ -288,16 +280,6 @@
   }
 }
 
-@keyframes inline-pulse-text {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 /* Reduced Motion */
 .inline-loader[data-reduced-motion] {
   animation: none;
@@ -314,11 +296,6 @@
 .inline-loader[data-reduced-motion] .inline-loader-reticle-inner,
 .inline-loader[data-reduced-motion] .plane-income,
 .inline-loader[data-reduced-motion] .plane-amber,
-.inline-loader[data-reduced-motion] .inline-loader-beacon::after,
-.inline-loader[data-reduced-motion] .inline-loader-label {
+.inline-loader[data-reduced-motion] .inline-loader-beacon::after {
   animation: none;
-}
-
-.inline-loader[data-reduced-motion] .inline-loader-label {
-  opacity: 1;
 }

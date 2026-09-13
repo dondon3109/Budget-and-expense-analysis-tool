@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import {
   clearAssistantMemory,
@@ -53,14 +54,9 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
   });
 
   useRootLock(open);
+  const handleKeyDown = useFocusTrap(dialogRef, { onEscape: onClose });
 
   if (!open) return null;
-
-  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key !== "Escape") return;
-    event.preventDefault();
-    onClose();
-  }
 
   const preferenceMutation = useMutation({
     mutationFn: (debtStrategy: "avalanche" | "snowball" | null) =>

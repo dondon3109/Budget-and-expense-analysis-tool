@@ -1,7 +1,7 @@
 .cancellation-drawer-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(15, 23, 42, 0.6);
+  background-color: var(--overlay);
   backdrop-filter: blur(4px);
   z-index: 999;
   display: flex;
@@ -10,8 +10,8 @@
 }
 
 .cancellation-drawer-content {
-  background: var(--surface-bg, #ffffff);
-  color: var(--text-main, #0f172a);
+  background: var(--paper);
+  color: var(--ink);
   width: 100%;
   max-width: 520px;
   height: 100%;
@@ -28,7 +28,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+  border-bottom: 1px solid var(--line);
 }
 
 .cancellation-drawer-title-group {
@@ -42,14 +42,14 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--primary, #2563eb);
+  color: var(--brand);
 }
 
 .cancellation-drawer-header h2 {
   font-size: 1.25rem;
   font-weight: 700;
   margin: 0;
-  color: var(--text-main, #0f172a);
+  color: var(--ink);
 }
 
 .cancellation-drawer-body {
@@ -61,8 +61,8 @@
 }
 
 .cancellation-guide-summary-card {
-  background: var(--surface-subtle, #f8fafc);
-  border: 1px solid var(--border-subtle, #e2e8f0);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
   border-radius: 0.75rem;
   padding: 1.25rem;
   display: flex;
@@ -79,7 +79,7 @@
 .cancellation-guide-summary-card p {
   font-size: 0.9rem;
   line-height: 1.5;
-  color: var(--text-muted, #64748b);
+  color: var(--muted);
   margin: 0;
 }
 
@@ -98,12 +98,11 @@
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  background: #fffbeb;
-  border: 1px solid #fef3c7;
-  border-left: 4px solid #d97706;
-  border-radius: 0.5rem;
+  background: var(--warning-soft);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  border-radius: var(--radius-md);
   padding: 0.875rem 1rem;
-  color: #92400e;
+  color: var(--warning);
 }
 
 .warning-icon {
@@ -134,7 +133,7 @@
   font-size: 0.95rem;
   font-weight: 600;
   margin: 0;
-  color: var(--text-main, #0f172a);
+  color: var(--ink);
 }
 
 .cancellation-steps-list {
@@ -148,7 +147,7 @@
 .cancellation-steps-list li {
   font-size: 0.875rem;
   line-height: 1.5;
-  color: var(--text-main, #334155);
+  color: var(--ink);
 }
 
 .generic-header {
@@ -158,19 +157,19 @@
 }
 
 .generic-icon {
-  color: var(--text-muted, #64748b);
+  color: var(--muted);
 }
 
 .cancellation-drawer-footer-note {
   margin-top: auto;
   padding-top: 1rem;
-  border-top: 1px solid var(--border-subtle, #e2e8f0);
+  border-top: 1px solid var(--line);
 }
 
 .cancellation-drawer-footer-note p {
   font-size: 0.8rem;
   line-height: 1.4;
-  color: var(--text-muted, #64748b);
+  color: var(--muted);
   margin: 0;
 }
 
@@ -195,5 +194,21 @@
 @media (max-width: 640px) {
   .cancellation-drawer-content {
     max-width: 100%;
+  }
+}
+
+/* Touch targets: the icon-only close control is 36px by default. */
+@media (max-width: 760px) {
+  .cancellation-drawer-header .icon-button.compact {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* The slide/fade is decorative chrome; the drawer stays fully usable without it. */
+@media (prefers-reduced-motion: reduce) {
+  .cancellation-drawer-overlay,
+  .cancellation-drawer-content {
+    animation: none;
   }
 }

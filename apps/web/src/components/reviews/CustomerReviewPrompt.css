@@ -221,3 +221,16 @@
     transform: translateY(18px);
   }
 }
+
+/* The panel is modal now, so it needs a layer and a backdrop like the app's other dialogs. */
+.review-prompt-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+
+.review-prompt-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+}

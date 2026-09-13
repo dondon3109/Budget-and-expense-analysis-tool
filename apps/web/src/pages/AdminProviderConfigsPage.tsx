@@ -18,12 +18,16 @@ import {
   Check,
   Info,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
+import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { useBillingSummary } from "../hooks/useBillingSummary";
+import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useRootLock } from "../hooks/useRootLock";
 import {
   activateProviderConfig,
   createProviderConfig,
@@ -121,6 +125,39 @@ function shortId(id: string): string {
   return id.slice(0, 8);
 }
 
+interface AdminProviderDialogProps {
+  /** Accessible name for the dialog; matches its visible heading. */
+  label: string;
+  onClose: () => void;
+  children: ReactNode;
+}
+
+/**
+ * Modal shell for this page's dialogs. Portals to document.body before taking
+ * the root lock: these dialogs used to render inside #root, so inerting #root
+ * would have inerted the dialog itself. Traps Tab, closes on Escape, and
+ * returns focus to whatever opened it.
+ */
+function AdminProviderDialog({ label, onClose, children }: AdminProviderDialogProps) {
+  const backdropRef = useRef<HTMLDivElement>(null);
+  useRootLock(true);
+  const handleKeyDown = useFocusTrap(backdropRef, { onEscape: onClose });
+
+  return createPortal(
+    <div
+      ref={backdropRef}
+      className="admin-provider-confirm-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+      onKeyDown={handleKeyDown}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 export function AdminProviderConfigsPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
@@ -129,7 +166,9 @@ export function AdminProviderConfigsPage() {
   const queryClient = useQueryClient();
   const [feedback, setFeedback] = useState<string>();
   const [errorMsg, setErrorMsg] = useState<string>();
-  const [selectedTab, setSelectedTab] = useState<"all" | "stt" | "assistant" | "tts" | "credentials">("all");
+  const [selectedTab, setSelectedTab] = useState<
+    "all" | "stt" | "assistant" | "tts" | "credentials"
+  >("all");
   const [confirmActivate, setConfirmActivate] = useState<ProviderConfig | null>(null);
   const [deleteConfig, setDeleteConfig] = useState<ProviderConfig | null>(null);
 
@@ -326,11 +365,14 @@ export function AdminProviderConfigsPage() {
           }
           const createdCred = await createProviderCredential(workspace, {
             provider: addProvider,
-            name: addNewCredName.trim() || (isGoogle ? "Google AI Studio Key" : `${addProvider} Key`),
+            name:
+              addNewCredName.trim() || (isGoogle ? "Google AI Studio Key" : `${addProvider} Key`),
             secret: addNewCredSecret.trim(),
           });
           credentialId = createdCred.id;
-          void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.providerCredentials(workspace),
+          });
         } else if (addCredMode === "existing") {
           if (!addCredentialId && !isGoogle) {
             throw new Error("Please select a saved credential or enter an API key.");
@@ -406,7 +448,9 @@ export function AdminProviderConfigsPage() {
             secret: editNewCredSecret.trim(),
           });
           credentialId = createdCred.id;
-          void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.providerCredentials(workspace),
+          });
         } else if (editCredMode === "existing") {
           if (!editConfigCredentialId && !isGoogle) {
             throw new Error("Please select a saved credential or enter an API key.");
@@ -618,11 +662,7 @@ export function AdminProviderConfigsPage() {
     const creds = credentialsByProvider.get(provider) ?? [];
     setAddCredentialId(creds[0]?.id ?? "");
     setAddCredMode(
-      provider === "cloudflare_workers_ai"
-        ? "none"
-        : creds.length > 0
-          ? "existing"
-          : "new",
+      provider === "cloudflare_workers_ai" ? "none" : creds.length > 0 ? "existing" : "new",
     );
     setAddNewCredName(
       provider === "google"
@@ -675,9 +715,48 @@ export function AdminProviderConfigsPage() {
     }
   }
 
+  // Escape and the visible Cancel button must leave the dialog in the same
+  // state, so both paths call these shared closers.
+  function closeEditConfig() {
+    setEditConfig(null);
+    setEditConfigDisplayName("");
+    setEditConfigCredentialId("");
+    setEditNewCredName("");
+    setEditNewCredSecret("");
+  }
+
+  function closeAddConfig() {
+    setAddFor(null);
+    setFetchedModels(null);
+    setAddCustomModel("");
+    setFetchModelsError(undefined);
+  }
+
+  function closeAddCred() {
+    setShowAddCred(false);
+    setCredName("");
+    setCredSecret("");
+    setShowAddCredSecret(false);
+  }
+
+  function closeEditCred() {
+    setEditCred(null);
+    setEditCredName("");
+    setEditCredSecret("");
+  }
+
   return (
     <AppShell>
       <div className="admin-provider-page">
+        {isAdmin && (
+          <Breadcrumbs
+            items={[
+              { label: "Home", to: "/app" },
+              { label: "Admin console", to: "/app/admin" },
+              { label: "AI & Voice Models" },
+            ]}
+          />
+        )}
         <header className="admin-provider-header">
           <div>
             <p>Platform Administration</p>
@@ -740,7 +819,11 @@ export function AdminProviderConfigsPage() {
             </div>
 
             {/* Navigation Tabs */}
-            <nav className="admin-provider-tabs-bar" role="tablist" aria-label="Provider configuration sections">
+            <nav
+              className="admin-provider-tabs-bar"
+              role="tablist"
+              aria-label="Provider configuration sections"
+            >
               <button
                 type="button"
                 role="tab"
@@ -797,9 +880,7 @@ export function AdminProviderConfigsPage() {
                 onClick={() => setSelectedTab("credentials")}
               >
                 <span>Credentials & Secrets</span>
-                <span className="tab-count">
-                  {credentialsQuery.data?.credentials.length ?? 0}
-                </span>
+                <span className="tab-count">{credentialsQuery.data?.credentials.length ?? 0}</span>
               </button>
             </nav>
 
@@ -834,14 +915,18 @@ export function AdminProviderConfigsPage() {
                 ) : (
                   <div className="admin-provider-table-wrap">
                     <table className="admin-provider-table">
+                      <caption className="sr-only">
+                        Saved provider credentials with the provider, name, masked secret, how many
+                        configurations use them, and when they were last updated
+                      </caption>
                       <thead>
                         <tr>
-                          <th>Provider</th>
-                          <th>Name</th>
-                          <th>Secret</th>
-                          <th>Used by</th>
-                          <th>Updated</th>
-                          <th>Actions</th>
+                          <th scope="col">Provider</th>
+                          <th scope="col">Name</th>
+                          <th scope="col">Secret</th>
+                          <th scope="col">Used by</th>
+                          <th scope="col">Updated</th>
+                          <th scope="col">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -915,317 +1000,336 @@ export function AdminProviderConfigsPage() {
               </section>
             )}
 
-            {SERVICES.filter((svc) => selectedTab === "all" || selectedTab === svc.id).map((svc) => {
-              const list = configsByService.get(svc.id) ?? [];
-              const active = list.find((c) => c.isActive);
-              const health = healthByService.get(svc.id);
-              const cred = SERVICE_CREDENTIALS[svc.id];
-              return (
-                <section key={svc.id} className="admin-provider-section">
-                  <div className="admin-provider-section-heading">
-                    <div>
-                      <h2>{svc.label}</h2>
-                      <p>{svc.description}</p>
-                    </div>
-                  </div>
-
-                  {/* Prominent Active Provider Card */}
-                  <div className="admin-active-hero-card">
-                    <div className="admin-active-hero-badge-row">
-                      <span className="active-glow-pill">
-                        <span className="active-dot-pulsing" /> Currently Active
-                      </span>
-                      {svc.id === "stt" && (
-                        <span
-                          className={`streaming-capability-pill ${
-                            active?.provider === "google" ? "supported" : "unsupported"
-                          }`}
-                        >
-                          {active?.provider === "google" ? (
-                            <>
-                              <Zap size={12} /> Realtime Live Streaming Active
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle size={12} /> Batch Only (Live Stream Disabled)
-                            </>
-                          )}
-                        </span>
-                      )}
-                      {health && (
-                        <span className={`health-badge ${health.hasCredential ? "ok" : "missing"}`}>
-                          {svc.id === "stt" && active?.provider === "cloudflare_workers_ai"
-                            ? health.hasCredential
-                              ? "● Workers AI binding ready"
-                              : "○ Binding missing"
-                            : health.hasCredential
-                              ? `● Key ••••${health.apiKeyLast4 ?? ""}`
-                              : "○ Credential missing"}
-                        </span>
-                      )}
+            {SERVICES.filter((svc) => selectedTab === "all" || selectedTab === svc.id).map(
+              (svc) => {
+                const list = configsByService.get(svc.id) ?? [];
+                const active = list.find((c) => c.isActive);
+                const health = healthByService.get(svc.id);
+                const cred = SERVICE_CREDENTIALS[svc.id];
+                return (
+                  <section key={svc.id} className="admin-provider-section">
+                    <div className="admin-provider-section-heading">
+                      <div>
+                        <h2>{svc.label}</h2>
+                        <p>{svc.description}</p>
+                      </div>
                     </div>
 
-                    <div className="admin-active-hero-content">
-                      <div className="admin-active-hero-info">
-                        <h3 className="admin-active-hero-title">
-                          Active: {active ? active.displayName : "No configuration active"}
-                        </h3>
-                        <div className="admin-active-hero-meta">
-                          Provider: <strong>{active ? active.provider : "—"}</strong>
-                          <span className="meta-sep">·</span>
-                          Model: <code>{active ? active.model : "—"}</code>
+                    {/* Prominent Active Provider Card */}
+                    <div className="admin-active-hero-card">
+                      <div className="admin-active-hero-badge-row">
+                        <span className="active-glow-pill">
+                          <span className="active-dot-pulsing" /> Currently Active
+                        </span>
+                        {svc.id === "stt" && (
+                          <span
+                            className={`streaming-capability-pill ${
+                              active?.provider === "google" ? "supported" : "unsupported"
+                            }`}
+                          >
+                            {active?.provider === "google" ? (
+                              <>
+                                <Zap size={12} /> Realtime Live Streaming Active
+                              </>
+                            ) : (
+                              <>
+                                <AlertTriangle size={12} /> Batch Only (Live Stream Disabled)
+                              </>
+                            )}
+                          </span>
+                        )}
+                        {health && (
+                          <span
+                            className={`health-badge ${health.hasCredential ? "ok" : "missing"}`}
+                          >
+                            {svc.id === "stt" && active?.provider === "cloudflare_workers_ai"
+                              ? health.hasCredential
+                                ? "● Workers AI binding ready"
+                                : "○ Binding missing"
+                              : health.hasCredential
+                                ? `● Key ••••${health.apiKeyLast4 ?? ""}`
+                                : "○ Credential missing"}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="admin-active-hero-content">
+                        <div className="admin-active-hero-info">
+                          <h3 className="admin-active-hero-title">
+                            Active: {active ? active.displayName : "No configuration active"}
+                          </h3>
+                          <div className="admin-active-hero-meta">
+                            Provider: <strong>{active ? active.provider : "—"}</strong>
+                            <span className="meta-sep">·</span>
+                            Model: <code>{active ? active.model : "—"}</code>
+                          </div>
+                        </div>
+
+                        <div className="admin-active-hero-actions">
+                          {svc.id === "stt" &&
+                            active?.provider === "cloudflare_workers_ai" &&
+                            (() => {
+                              const googleConfig = list.find(
+                                (c) => c.provider === "google" && !c.isActive,
+                              );
+                              if (googleConfig) {
+                                return (
+                                  <button
+                                    type="button"
+                                    className="button compact switch-to-live-btn"
+                                    onClick={() => setConfirmActivate(googleConfig)}
+                                    title="Switch to Google Gemini Live for instant voice streaming"
+                                  >
+                                    <Zap size={13} /> Switch to Gemini Live
+                                  </button>
+                                );
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  className="button compact switch-to-live-btn"
+                                  onClick={() => openAdd("stt")}
+                                >
+                                  <Plus size={13} /> Add Google Live Key
+                                </button>
+                              );
+                            })()}
                         </div>
                       </div>
 
-                      <div className="admin-active-hero-actions">
-                        {svc.id === "stt" && active?.provider === "cloudflare_workers_ai" && (() => {
-                          const googleConfig = list.find((c) => c.provider === "google" && !c.isActive);
-                          if (googleConfig) {
-                            return (
-                              <button
-                                type="button"
-                                className="button compact switch-to-live-btn"
-                                onClick={() => setConfirmActivate(googleConfig)}
-                                title="Switch to Google Gemini Live for instant voice streaming"
-                              >
-                                <Zap size={13} /> Switch to Gemini Live
-                              </button>
-                            );
-                          }
-                          return (
-                            <button
-                              type="button"
-                              className="button compact switch-to-live-btn"
-                              onClick={() => openAdd("stt")}
-                            >
-                              <Plus size={13} /> Add Google Live Key
-                            </button>
-                          );
-                        })()}
-                      </div>
+                      {svc.id === "stt" && active?.provider === "cloudflare_workers_ai" && (
+                        <div className="admin-active-hero-callout">
+                          <Info size={14} />
+                          <span>
+                            <strong>Cloudflare Whisper is currently active.</strong> It only
+                            transcribes audio after you finish speaking and tap stop. To see words
+                            transcribed live in real time as you speak, switch to{" "}
+                            <strong>Google Gemini Live</strong> below.
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    {svc.id === "stt" && active?.provider === "cloudflare_workers_ai" && (
-                      <div className="admin-active-hero-callout">
-                        <Info size={14} />
-                        <span>
-                          <strong>Cloudflare Whisper is currently active.</strong> It only transcribes audio after you finish speaking and tap stop. To see words transcribed live in real time as you speak, switch to <strong>Google Gemini Live</strong> below.
+                    <div className="admin-provider-section-actions">
+                      <button
+                        type="button"
+                        className="button secondary compact"
+                        onClick={() => openAdd(svc.id)}
+                      >
+                        <Plus size={14} /> Add configuration
+                      </button>
+                      {svc.id === "stt" ? (
+                        <span style={{ fontSize: 12, opacity: 0.7 }}>
+                          Cloudflare uses Workers AI edge binding; Google uses API key credential or
+                          Cloud Run bridge.
                         </span>
+                      ) : cred.expectsKey ? (
+                        <span style={{ fontSize: 12, opacity: 0.7 }}>
+                          Configurations require a {svc.label} credential of matching provider.
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 12, opacity: 0.7 }}>
+                          <Cpu size={14} /> Binding info
+                        </span>
+                      )}
+                    </div>
+
+                    {list.length === 0 ? (
+                      <div className="admin-provider-empty">
+                        No configurations for this service.
                       </div>
-                    )}
-                  </div>
-
-                  <div className="admin-provider-section-actions">
-                    <button
-                      type="button"
-                      className="button secondary compact"
-                      onClick={() => openAdd(svc.id)}
-                    >
-                      <Plus size={14} /> Add configuration
-                    </button>
-                    {svc.id === "stt" ? (
-                      <span style={{ fontSize: 12, opacity: 0.7 }}>
-                        Cloudflare uses Workers AI edge binding; Google uses API key credential or
-                        Cloud Run bridge.
-                      </span>
-                    ) : cred.expectsKey ? (
-                      <span style={{ fontSize: 12, opacity: 0.7 }}>
-                        Configurations require a {svc.label} credential of matching provider.
-                      </span>
                     ) : (
-                      <span style={{ fontSize: 12, opacity: 0.7 }}>
-                        <Cpu size={14} /> Binding info
-                      </span>
-                    )}
-                  </div>
-
-                  {list.length === 0 ? (
-                    <div className="admin-provider-empty">No configurations for this service.</div>
-                  ) : (
-                    <div className="admin-provider-table-wrap">
-                      <table className="admin-provider-table">
-                        <thead>
-                          <tr>
-                            <th>Priority</th>
-                            <th>Display name</th>
-                            <th>Provider / Model</th>
-                            <th>Credential</th>
-                            <th>Status</th>
-                            <th>Updated</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {list.map((cfg, idx) => {
-                            const linkedCred = (credentialsQuery.data?.credentials ?? []).find(
-                              (c) => c.id === cfg.credentialId,
-                            );
-                            return (
-                              <tr key={cfg.id} className={cfg.isActive ? "is-active" : ""}>
-                                <td>
-                                  <span className="priority-badge">{cfg.priority}</span>
-                                  {cfg.isActive && (
-                                    <span className="active-dot" title="Active">
-                                      ● Active
+                      <div className="admin-provider-table-wrap">
+                        <table className="admin-provider-table">
+                          <caption className="sr-only">
+                            {svc.label} provider configurations in priority order, with provider and
+                            model, linked credential, activation status, and last update
+                          </caption>
+                          <thead>
+                            <tr>
+                              <th scope="col">Priority</th>
+                              <th scope="col">Display name</th>
+                              <th scope="col">Provider / Model</th>
+                              <th scope="col">Credential</th>
+                              <th scope="col">Status</th>
+                              <th scope="col">Updated</th>
+                              <th scope="col">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {list.map((cfg, idx) => {
+                              const linkedCred = (credentialsQuery.data?.credentials ?? []).find(
+                                (c) => c.id === cfg.credentialId,
+                              );
+                              return (
+                                <tr key={cfg.id} className={cfg.isActive ? "is-active" : ""}>
+                                  <td>
+                                    <span className="priority-badge">{cfg.priority}</span>
+                                    {cfg.isActive && (
+                                      <span className="active-dot" title="Active">
+                                        ● Active
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <strong>{cfg.displayName}</strong>
+                                    <small className="mono">{shortId(cfg.id)}</small>
+                                  </td>
+                                  <td>
+                                    <div>
+                                      <strong>{cfg.provider}</strong> / <code>{cfg.model}</code>
+                                    </div>
+                                    {svc.id === "stt" && (
+                                      <div style={{ marginTop: 4 }}>
+                                        {cfg.provider === "google" ? (
+                                          <span className="table-cap-pill live">
+                                            <Zap size={10} /> Realtime Live
+                                          </span>
+                                        ) : (
+                                          <span className="table-cap-pill batch">Batch Only</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {cfg.provider === "cloudflare_workers_ai" ? (
+                                      <small>Workers AI binding</small>
+                                    ) : linkedCred ? (
+                                      <span>
+                                        <KeyRound size={12} /> {linkedCred.name} ••••
+                                        {linkedCred.apiKeyLast4}
+                                      </span>
+                                    ) : cfg.provider === "google" ? (
+                                      <small>Bridge ADC (no key linked)</small>
+                                    ) : (
+                                      <span className="provider-status disabled">Missing</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`provider-status ${cfg.enabled ? "enabled" : "disabled"}`}
+                                    >
+                                      {cfg.enabled ? "Enabled" : "Disabled"}
                                     </span>
-                                  )}
-                                </td>
-                                <td>
-                                  <strong>{cfg.displayName}</strong>
-                                  <small className="mono">{shortId(cfg.id)}</small>
-                                </td>
-                                <td>
-                                  <div>
-                                    <strong>{cfg.provider}</strong> / <code>{cfg.model}</code>
-                                  </div>
-                                  {svc.id === "stt" && (
-                                    <div style={{ marginTop: 4 }}>
-                                      {cfg.provider === "google" ? (
-                                        <span className="table-cap-pill live">
-                                          <Zap size={10} /> Realtime Live
+                                  </td>
+                                  <td>
+                                    <span>{formatDate(cfg.updatedAt)}</span>
+                                    <small>
+                                      {cfg.updatedBy ? `by ${shortId(cfg.updatedBy)}` : "system"}
+                                    </small>
+                                  </td>
+                                  <td>
+                                    <div className="provider-actions">
+                                      {cfg.isActive ? (
+                                        <span
+                                          className="active-tag-chip"
+                                          title="This model is currently active"
+                                        >
+                                          <Check size={12} /> Active
                                         </span>
                                       ) : (
-                                        <span className="table-cap-pill batch">
-                                          Batch Only
-                                        </span>
+                                        <button
+                                          type="button"
+                                          className="button small activate-row-btn"
+                                          disabled={activateMutation.isPending}
+                                          onClick={() => setConfirmActivate(cfg)}
+                                          title="Make this the active model"
+                                        >
+                                          <Zap size={12} /> Activate
+                                        </button>
                                       )}
-                                    </div>
-                                  )}
-                                </td>
-                                <td>
-                                  {cfg.provider === "cloudflare_workers_ai" ? (
-                                    <small>Workers AI binding</small>
-                                  ) : linkedCred ? (
-                                    <span>
-                                      <KeyRound size={12} /> {linkedCred.name} ••••
-                                      {linkedCred.apiKeyLast4}
-                                    </span>
-                                  ) : cfg.provider === "google" ? (
-                                    <small>Bridge ADC (no key linked)</small>
-                                  ) : (
-                                    <span className="provider-status disabled">Missing</span>
-                                  )}
-                                </td>
-                                <td>
-                                  <span
-                                    className={`provider-status ${cfg.enabled ? "enabled" : "disabled"}`}
-                                  >
-                                    {cfg.enabled ? "Enabled" : "Disabled"}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span>{formatDate(cfg.updatedAt)}</span>
-                                  <small>
-                                    {cfg.updatedBy ? `by ${shortId(cfg.updatedBy)}` : "system"}
-                                  </small>
-                                </td>
-                                <td>
-                                  <div className="provider-actions">
-                                    {cfg.isActive ? (
-                                      <span className="active-tag-chip" title="This model is currently active">
-                                        <Check size={12} /> Active
-                                      </span>
-                                    ) : (
                                       <button
                                         type="button"
-                                        className="button small activate-row-btn"
-                                        disabled={activateMutation.isPending}
-                                        onClick={() => setConfirmActivate(cfg)}
-                                        title="Make this the active model"
+                                        className="button small secondary"
+                                        onClick={() => {
+                                          const creds =
+                                            credentialsByProvider.get(cfg.provider) ?? [];
+                                          setEditConfig(cfg);
+                                          setEditConfigDisplayName(cfg.displayName);
+                                          setEditConfigCredentialId(cfg.credentialId ?? "");
+                                          setEditCredMode(
+                                            cfg.credentialId
+                                              ? "existing"
+                                              : cfg.provider === "google"
+                                                ? "none"
+                                                : creds.length > 0
+                                                  ? "existing"
+                                                  : "new",
+                                          );
+                                          setEditNewCredName(
+                                            cfg.provider === "google"
+                                              ? "Google AI Studio Key"
+                                              : (ASSISTANT_CREDENTIAL_LABELS[cfg.provider] ??
+                                                  `${cfg.provider} Key`),
+                                          );
+                                          setEditNewCredSecret("");
+                                          setShowEditSecret(false);
+                                        }}
+                                        title="Edit display name or linked credential"
                                       >
-                                        <Zap size={12} /> Activate
+                                        <Pencil size={12} /> Edit
                                       </button>
-                                    )}
-                                    <button
-                                      type="button"
-                                      className="button small secondary"
-                                      onClick={() => {
-                                        const creds = credentialsByProvider.get(cfg.provider) ?? [];
-                                        setEditConfig(cfg);
-                                        setEditConfigDisplayName(cfg.displayName);
-                                        setEditConfigCredentialId(cfg.credentialId ?? "");
-                                        setEditCredMode(
-                                          cfg.credentialId
-                                            ? "existing"
-                                            : cfg.provider === "google"
-                                              ? "none"
-                                              : creds.length > 0
-                                                ? "existing"
-                                                : "new",
-                                        );
-                                        setEditNewCredName(
-                                          cfg.provider === "google"
-                                            ? "Google AI Studio Key"
-                                            : (ASSISTANT_CREDENTIAL_LABELS[cfg.provider] ??
-                                              `${cfg.provider} Key`),
-                                        );
-                                        setEditNewCredSecret("");
-                                        setShowEditSecret(false);
-                                      }}
-                                      title="Edit display name or linked credential"
-                                    >
-                                      <Pencil size={12} /> Edit
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="button small secondary danger-btn"
-                                      disabled={cfg.isActive || deleteConfigMutation.isPending}
-                                      onClick={() => setDeleteConfig(cfg)}
-                                      title={
-                                        cfg.isActive
-                                          ? "Cannot delete active configuration. Activate another one first."
-                                          : "Delete configuration"
-                                      }
-                                      aria-label={`Delete configuration ${cfg.displayName}`}
-                                    >
-                                      <Trash2 size={12} /> Delete
-                                    </button>
-                                    <label className="toggle">
-                                      <input
-                                        type="checkbox"
-                                        checked={cfg.enabled}
-                                        disabled={cfg.isActive}
-                                        onChange={(e) =>
-                                          toggleMutation.mutate({
-                                            id: cfg.id,
-                                            enabled: e.target.checked,
-                                          })
+                                      <button
+                                        type="button"
+                                        className="button small secondary danger-btn"
+                                        disabled={cfg.isActive || deleteConfigMutation.isPending}
+                                        onClick={() => setDeleteConfig(cfg)}
+                                        title={
+                                          cfg.isActive
+                                            ? "Cannot delete active configuration. Activate another one first."
+                                            : "Delete configuration"
                                         }
-                                      />
-                                      <span>Enabled</span>
-                                    </label>
-                                    <div className="reorder">
-                                      <button
-                                        type="button"
-                                        aria-label="Move up"
-                                        disabled={idx === 0 || reorderMutation.isPending}
-                                        onClick={() => move(svc.id, list, idx, -1)}
+                                        aria-label={`Delete configuration ${cfg.displayName}`}
                                       >
-                                        <ArrowUp size={14} />
+                                        <Trash2 size={12} /> Delete
                                       </button>
-                                      <button
-                                        type="button"
-                                        aria-label="Move down"
-                                        disabled={
-                                          idx === list.length - 1 || reorderMutation.isPending
-                                        }
-                                        onClick={() => move(svc.id, list, idx, 1)}
-                                      >
-                                        <ArrowDown size={14} />
-                                      </button>
+                                      <label className="toggle">
+                                        <input
+                                          type="checkbox"
+                                          checked={cfg.enabled}
+                                          disabled={cfg.isActive}
+                                          onChange={(e) =>
+                                            toggleMutation.mutate({
+                                              id: cfg.id,
+                                              enabled: e.target.checked,
+                                            })
+                                          }
+                                        />
+                                        <span>Enabled</span>
+                                      </label>
+                                      <div className="reorder">
+                                        <button
+                                          type="button"
+                                          aria-label="Move up"
+                                          disabled={idx === 0 || reorderMutation.isPending}
+                                          onClick={() => move(svc.id, list, idx, -1)}
+                                        >
+                                          <ArrowUp size={14} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          aria-label="Move down"
+                                          disabled={
+                                            idx === list.length - 1 || reorderMutation.isPending
+                                          }
+                                          onClick={() => move(svc.id, list, idx, 1)}
+                                        >
+                                          <ArrowDown size={14} />
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </section>
-              );
-            })}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                );
+              },
+            )}
 
             <section className="admin-provider-section">
               <div className="admin-provider-section-heading">
@@ -1253,7 +1357,10 @@ export function AdminProviderConfigsPage() {
             </section>
 
             {confirmActivate && (
-              <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
+              <AdminProviderDialog
+                label="Confirm activation"
+                onClose={() => setConfirmActivate(null)}
+              >
                 <div className="admin-provider-confirm">
                   <h3>Confirm activation</h3>
                   <p>
@@ -1283,11 +1390,14 @@ export function AdminProviderConfigsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </AdminProviderDialog>
             )}
 
             {deleteConfig && (
-              <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
+              <AdminProviderDialog
+                label="Delete configuration"
+                onClose={() => setDeleteConfig(null)}
+              >
                 <div className="admin-provider-confirm">
                   <h3>Delete configuration</h3>
                   <p>
@@ -1319,11 +1429,11 @@ export function AdminProviderConfigsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </AdminProviderDialog>
             )}
 
             {editConfig && (
-              <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
+              <AdminProviderDialog label="Edit configuration" onClose={closeEditConfig}>
                 <div className="admin-provider-confirm add-dialog">
                   <h3>Edit configuration — {editConfig.displayName}</h3>
                   <p>
@@ -1350,7 +1460,11 @@ export function AdminProviderConfigsPage() {
                         const isGoogle = editConfig.provider === "google";
                         return (
                           <>
-                            <div className="cred-mode-picker" role="tablist" aria-label="Credential mode">
+                            <div
+                              className="cred-mode-picker"
+                              role="tablist"
+                              aria-label="Credential mode"
+                            >
                               <button
                                 type="button"
                                 className={`cred-mode-btn ${editCredMode === "existing" ? "active" : ""}`}
@@ -1407,7 +1521,9 @@ export function AdminProviderConfigsPage() {
                                     value={editNewCredSecret}
                                     onChange={(e) => setEditNewCredSecret(e.target.value)}
                                     placeholder={
-                                      isGoogle ? "AIzaSy... or AQ...." : "Paste new API key or secret..."
+                                      isGoogle
+                                        ? "AIzaSy... or AQ...."
+                                        : "Paste new API key or secret..."
                                     }
                                     autoComplete="off"
                                     spellCheck={false}
@@ -1421,7 +1537,8 @@ export function AdminProviderConfigsPage() {
                                 <span>Choose Credential</span>
                                 {creds.length === 0 && !isGoogle ? (
                                   <small>
-                                    No saved credentials for {editConfig.provider}. Switch to &ldquo;Enter new key&rdquo; above.
+                                    No saved credentials for {editConfig.provider}. Switch to
+                                    &ldquo;Enter new key&rdquo; above.
                                   </small>
                                 ) : (
                                   <select
@@ -1452,17 +1569,7 @@ export function AdminProviderConfigsPage() {
                     </div>
                   )}
                   <div className="confirm-actions">
-                    <button
-                      type="button"
-                      className="button secondary"
-                      onClick={() => {
-                        setEditConfig(null);
-                        setEditConfigDisplayName("");
-                        setEditConfigCredentialId("");
-                        setEditNewCredName("");
-                        setEditNewCredSecret("");
-                      }}
-                    >
+                    <button type="button" className="button secondary" onClick={closeEditConfig}>
                       Cancel
                     </button>
                     <button
@@ -1484,11 +1591,11 @@ export function AdminProviderConfigsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </AdminProviderDialog>
             )}
 
             {addFor && (
-              <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
+              <AdminProviderDialog label={`Add ${addFor} configuration`} onClose={closeAddConfig}>
                 <div className="admin-provider-confirm add-dialog">
                   <h3>Add {addFor} configuration</h3>
                   {(() => {
@@ -1541,7 +1648,7 @@ export function AdminProviderConfigsPage() {
                               const p = e.target.value;
                               setAddProvider(p);
                               setFetchedModels(null);
-      setAddCustomModel("");
+                              setAddCustomModel("");
                               setFetchModelsError(undefined);
                               const rem = remainingModels(addFor, p, existing);
                               setAddModel(rem[0] ?? "");
@@ -1583,9 +1690,7 @@ export function AdminProviderConfigsPage() {
                               </option>
                             ))}
                             {addFor === "assistant" && (
-                              <option value={CUSTOM_MODEL_VALUE}>
-                                Other (enter manually)…
-                              </option>
+                              <option value={CUSTOM_MODEL_VALUE}>Other (enter manually)…</option>
                             )}
                           </select>
                           {models.length === 0 && addModel !== CUSTOM_MODEL_VALUE && (
@@ -1665,7 +1770,9 @@ export function AdminProviderConfigsPage() {
                         {isCloudflare ? (
                           <div className="credential-notice-box">
                             <Cpu size={14} />
-                            <span>No API key required — uses Cloudflare Workers AI edge binding.</span>
+                            <span>
+                              No API key required — uses Cloudflare Workers AI edge binding.
+                            </span>
                           </div>
                         ) : (
                           <div className="credential-box">
@@ -1675,7 +1782,11 @@ export function AdminProviderConfigsPage() {
                               </span>
                             </div>
 
-                            <div className="cred-mode-picker" role="tablist" aria-label="Credential mode">
+                            <div
+                              className="cred-mode-picker"
+                              role="tablist"
+                              aria-label="Credential mode"
+                            >
                               <button
                                 type="button"
                                 className={`cred-mode-btn ${addCredMode === "new" ? "active" : ""}`}
@@ -1689,7 +1800,8 @@ export function AdminProviderConfigsPage() {
                                 onClick={() => setAddCredMode("existing")}
                                 disabled={credsForProvider.length === 0}
                               >
-                                Choose saved key {credsForProvider.length > 0 ? `(${credsForProvider.length})` : ""}
+                                Choose saved key{" "}
+                                {credsForProvider.length > 0 ? `(${credsForProvider.length})` : ""}
                               </button>
                               {isGoogle && (
                                 <button
@@ -1753,17 +1865,24 @@ export function AdminProviderConfigsPage() {
 
                             {addCredMode === "existing" && (
                               <label className="add-field">
-                                <span>{isGoogle ? "Credential (Google API key or OAuth)" : "Credential (must match provider)"}</span>
+                                <span>
+                                  {isGoogle
+                                    ? "Credential (Google API key or OAuth)"
+                                    : "Credential (must match provider)"}
+                                </span>
                                 {credsForProvider.length === 0 ? (
                                   <small>
-                                    No credentials for {addProvider}. Switch to &ldquo;Enter API key&rdquo; above.
+                                    No credentials for {addProvider}. Switch to &ldquo;Enter API
+                                    key&rdquo; above.
                                   </small>
                                 ) : (
                                   <select
                                     value={addCredentialId}
                                     onChange={(e) => setAddCredentialId(e.target.value)}
                                   >
-                                    {isGoogle && <option value="">None (Cloud Run ADC bridge)</option>}
+                                    {isGoogle && (
+                                      <option value="">None (Cloud Run ADC bridge)</option>
+                                    )}
                                     {credsForProvider.map((c) => (
                                       <option key={c.id} value={c.id}>
                                         {c.name} ••••{c.apiKeyLast4}
@@ -1791,7 +1910,8 @@ export function AdminProviderConfigsPage() {
                           <div>
                             <strong>Make this model active immediately</strong>
                             <small>
-                              Directly switches {addFor?.toUpperCase()} to this configuration upon saving
+                              Directly switches {addFor?.toUpperCase()} to this configuration upon
+                              saving
                             </small>
                           </div>
                         </label>
@@ -1800,12 +1920,7 @@ export function AdminProviderConfigsPage() {
                           <button
                             type="button"
                             className="button secondary"
-                            onClick={() => {
-                              setAddFor(null);
-                              setFetchedModels(null);
-      setAddCustomModel("");
-                              setFetchModelsError(undefined);
-                            }}
+                            onClick={closeAddConfig}
                           >
                             Cancel
                           </button>
@@ -1838,11 +1953,11 @@ export function AdminProviderConfigsPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </AdminProviderDialog>
             )}
 
             {showAddCred && (
-              <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
+              <AdminProviderDialog label="Add credential" onClose={closeAddCred}>
                 <div className="admin-provider-confirm add-dialog">
                   <h3>Add credential</h3>
                   <p>
@@ -1893,21 +2008,12 @@ export function AdminProviderConfigsPage() {
                     />
                     <small>
                       For Google, paste your Google AI Studio API key (AIzaSy... or AQ....), OAuth
-                      token, or service account JSON. Secrets are encrypted with AES-256-GCM and only
-                      ••••last4 is ever displayed.
+                      token, or service account JSON. Secrets are encrypted with AES-256-GCM and
+                      only ••••last4 is ever displayed.
                     </small>
                   </label>
                   <div className="confirm-actions">
-                    <button
-                      type="button"
-                      className="button secondary"
-                      onClick={() => {
-                        setShowAddCred(false);
-                        setCredName("");
-                        setCredSecret("");
-                        setShowAddCredSecret(false);
-                      }}
-                    >
+                    <button type="button" className="button secondary" onClick={closeAddCred}>
                       Cancel
                     </button>
                     <button
@@ -1931,11 +2037,11 @@ export function AdminProviderConfigsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </AdminProviderDialog>
             )}
 
             {editCred && (
-              <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
+              <AdminProviderDialog label="Edit credential" onClose={closeEditCred}>
                 <div className="admin-provider-confirm add-dialog">
                   <h3>
                     Edit credential — {editCred.provider} / {editCred.name}
@@ -1974,15 +2080,7 @@ export function AdminProviderConfigsPage() {
                     />
                   </label>
                   <div className="confirm-actions">
-                    <button
-                      type="button"
-                      className="button secondary"
-                      onClick={() => {
-                        setEditCred(null);
-                        setEditCredName("");
-                        setEditCredSecret("");
-                      }}
-                    >
+                    <button type="button" className="button secondary" onClick={closeEditCred}>
                       Cancel
                     </button>
                     <button
@@ -2005,11 +2103,11 @@ export function AdminProviderConfigsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </AdminProviderDialog>
             )}
 
             {deleteCred && (
-              <div className="admin-provider-confirm-backdrop" role="dialog" aria-modal="true">
+              <AdminProviderDialog label="Delete credential" onClose={() => setDeleteCred(null)}>
                 <div className="admin-provider-confirm">
                   <h3>Delete credential</h3>
                   <p>
@@ -2020,7 +2118,7 @@ export function AdminProviderConfigsPage() {
                     ?
                   </p>
                   {deleteCred.usedBy.length > 0 ? (
-                    <p style={{ color: "#a00" }}>
+                    <p style={{ color: "var(--danger)" }}>
                       Blocked — still used by {deleteCred.usedBy.length} configuration(s):
                       {deleteCred.usedBy
                         .map((u) => ` ${u.displayName} (${u.provider}/${u.model})`)
@@ -2048,7 +2146,7 @@ export function AdminProviderConfigsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </AdminProviderDialog>
             )}
           </>
         )}

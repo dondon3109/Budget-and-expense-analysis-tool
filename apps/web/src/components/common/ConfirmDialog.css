@@ -1,0 +1,20 @@
+.confirm-dialog {
+  width: min(460px, 100%);
+}
+
+.confirm-dialog-body {
+  padding-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.confirm-dialog-body p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.confirm-dialog .modal-actions {
+  padding-top: 20px;
+}

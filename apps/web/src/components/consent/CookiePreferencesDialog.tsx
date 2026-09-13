@@ -1,59 +1,39 @@
 import { LockKeyhole, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 
 import { useCookieConsent } from "../../consent/CookieConsentProvider";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 
+/**
+ * The open dialog is a separate component so it mounts together with its markup:
+ * useFocusTrap focuses and traps on mount, which cannot happen while the dialog
+ * markup is still behind an early return.
+ */
 export function CookiePreferencesDialog() {
-  const { preferences, preferencesOpen, acceptAll, rejectAll, savePreferences, closePreferences } =
+  const { preferencesOpen } = useCookieConsent();
+
+  if (!preferencesOpen) return null;
+
+  return <CookiePreferencesDialogContent />;
+}
+
+function CookiePreferencesDialogContent() {
+  const { preferences, acceptAll, rejectAll, savePreferences, closePreferences } =
     useCookieConsent();
   const [analytics, setAnalytics] = useState(preferences.analytics);
   const [marketing, setMarketing] = useState(preferences.marketing);
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  useRootLock(preferencesOpen);
+  useRootLock(true);
 
-  useLayoutEffect(() => {
-    if (!preferencesOpen) return;
-
-    setAnalytics(preferences.analytics);
-    setMarketing(preferences.marketing);
-    closeButtonRef.current?.focus();
-  }, [preferences, preferencesOpen]);
-
-  if (!preferencesOpen) return null;
-
-  function handleDialogKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closePreferences();
-      return;
-    }
-    if (event.key !== "Tab") return;
-
-    const focusable = Array.from(
-      dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).filter((element) => element.tabIndex >= 0);
-    const firstControl = focusable[0];
-    const lastControl = focusable.at(-1);
-    if (!firstControl || !lastControl) return;
-
-    if (event.shiftKey && document.activeElement === firstControl) {
-      event.preventDefault();
-      lastControl.focus();
-    } else if (!event.shiftKey && document.activeElement === lastControl) {
-      event.preventDefault();
-      firstControl.focus();
-    } else if (!dialogRef.current?.contains(document.activeElement)) {
-      event.preventDefault();
-      (event.shiftKey ? lastControl : firstControl).focus();
-    }
-  }
+  const handleDialogKeyDown = useFocusTrap(dialogRef, {
+    onEscape: closePreferences,
+    initialFocusRef: closeButtonRef,
+  });
 
   return createPortal(
     <div className="cookie-preferences-layer">

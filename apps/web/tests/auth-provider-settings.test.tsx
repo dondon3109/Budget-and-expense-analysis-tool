@@ -33,6 +33,8 @@ const supabaseMocks = vi.hoisted(() => {
     remove: vi.fn(),
     getPublicUrl: vi.fn(),
     storageFrom: vi.fn(),
+    uploadProfileAvatar: vi.fn(),
+    deleteProfileAvatarObject: vi.fn(),
   };
 });
 
@@ -62,6 +64,9 @@ vi.mock("../src/lib/supabase", () => {
 
 vi.mock("../src/lib/api", () => ({
   deleteCurrentAccount: vi.fn(async () => ({ status: "deleted" })),
+  uploadProfileAvatar: (...args: unknown[]) => supabaseMocks.uploadProfileAvatar(...args),
+  deleteProfileAvatarObject: (...args: unknown[]) =>
+    supabaseMocks.deleteProfileAvatarObject(...args),
 }));
 
 import { deleteCurrentAccount } from "../src/lib/api";
@@ -117,14 +122,10 @@ describe("AuthProvider account settings operations", () => {
     vi.mocked(deleteCurrentAccount).mockReset().mockResolvedValue({ status: "deleted" });
     supabaseMocks.updateUser.mockReset().mockResolvedValue({ data: {}, error: null });
     supabaseMocks.signInWithPassword.mockReset().mockResolvedValue({ data: {}, error: null });
-    supabaseMocks.upload.mockReset().mockResolvedValue({ data: {}, error: null });
-    supabaseMocks.remove.mockReset().mockResolvedValue({ data: {}, error: null });
-    supabaseMocks.getPublicUrl.mockReset().mockReturnValue({ data: { publicUrl: "avatar-url" } });
-    supabaseMocks.storageFrom.mockReset().mockReturnValue({
-      upload: supabaseMocks.upload,
-      remove: supabaseMocks.remove,
-      getPublicUrl: supabaseMocks.getPublicUrl,
+    supabaseMocks.uploadProfileAvatar.mockReset().mockResolvedValue({
+      path: "user-1/11111111-1111-4111-8111-111111111111.png",
     });
+    supabaseMocks.deleteProfileAvatarObject.mockReset().mockResolvedValue(undefined);
     supabaseMocks.getSession.mockReset().mockResolvedValue({
       data: { session: supabaseMocks.session },
       error: null,
@@ -154,17 +155,13 @@ describe("AuthProvider account settings operations", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Update avatar" }));
-    await waitFor(() => expect(supabaseMocks.upload).toHaveBeenCalledTimes(1));
-    const avatarPath = supabaseMocks.upload.mock.calls[0]?.[0] as string;
-    expect(avatarPath).toMatch(/^user-1\/[a-f0-9-]+\.png$/);
-    expect(supabaseMocks.storageFrom).toHaveBeenCalledWith("avatars");
-    expect(supabaseMocks.upload).toHaveBeenCalledWith(
-      avatarPath,
+    await waitFor(() => expect(supabaseMocks.uploadProfileAvatar).toHaveBeenCalledTimes(1));
+    expect(supabaseMocks.uploadProfileAvatar).toHaveBeenCalledWith(
+      { key: "user:user-1", userId: "user-1" },
       expect.any(File),
-      expect.objectContaining({ contentType: "image/png", upsert: false }),
     );
     expect(supabaseMocks.updateUser).toHaveBeenCalledWith({
-      data: { avatar_path: avatarPath },
+      data: { avatar_path: "user-1/11111111-1111-4111-8111-111111111111.png" },
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Remove avatar" }));

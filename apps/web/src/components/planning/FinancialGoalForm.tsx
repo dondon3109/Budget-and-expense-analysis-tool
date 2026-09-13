@@ -8,7 +8,11 @@ import {
   type FinancialGoalStatus,
 } from "@zoption/shared";
 import { X } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
+
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 
 interface FinancialGoalFormProps {
   goal?: FinancialGoal;
@@ -39,14 +43,17 @@ export function FinancialGoalForm({
   const [targetDate, setTargetDate] = useState(goal?.targetDate ?? "");
   const [status, setStatus] = useState<FinancialGoalStatus>(goal?.status ?? "active");
   const [clientError, setClientError] = useState<string>();
+  const dialogRef = useRef<HTMLElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) onClose();
-    }
-    window.addEventListener("keydown", handleKeydown);
-    return () => window.removeEventListener("keydown", handleKeydown);
-  }, [busy, onClose]);
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: nameRef,
+    onEscape: () => {
+      if (!busy) onClose();
+    },
+  });
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -71,7 +78,8 @@ export function FinancialGoalForm({
     await onSubmit(parsed.data);
   }
 
-  return (
+  // Portalled so the inert application root from useRootLock does not disable the dialog.
+  return createPortal(
     <div
       className="modal-backdrop"
       role="presentation"
@@ -80,10 +88,12 @@ export function FinancialGoalForm({
       }}
     >
       <section
+        ref={dialogRef}
         className="form-modal planning-form-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="financial-goal-form-title"
+        onKeyDown={handleKeyDown}
       >
         <header className="modal-header">
           <div>
@@ -105,7 +115,7 @@ export function FinancialGoalForm({
           <label>
             <span>Goal name</span>
             <input
-              autoFocus
+              ref={nameRef}
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="e.g. Emergency fund"
@@ -188,6 +198,7 @@ export function FinancialGoalForm({
           </div>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

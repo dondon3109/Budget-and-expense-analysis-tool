@@ -732,6 +732,22 @@
   .support-chat-suggestions button {
     min-height: 44px;
   }
+
+  /* Touch targets measured below 44px on this surface: composer textarea 36px,
+     report fields 40px, report actions 40px, error retry 34px, report-card
+     close 36x36. */
+  .support-chat-composer textarea,
+  .support-report-fields input,
+  .support-report-fields select,
+  .support-report-actions button,
+  .support-chat-error button {
+    min-height: 44px;
+  }
+
+  .support-report-review-heading > button {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 @media (max-width: 380px) {

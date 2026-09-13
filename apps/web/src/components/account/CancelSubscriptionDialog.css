@@ -8,6 +8,6 @@
 
 .cancel-subscription-dialog p:not(.eyebrow) {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--muted);
   line-height: 1.55;
 }

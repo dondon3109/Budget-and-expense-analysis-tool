@@ -9,6 +9,7 @@ import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
 import { AuthProvider } from "./auth/AuthProvider";
 import { CookieConsentExperience } from "./components/consent/CookieConsentExperience";
 import { InitialDashboardExperienceProvider } from "./components/dashboard/InitialDashboardExperienceProvider";
+import { AppErrorBoundary } from "./components/layout/AppErrorBoundary";
 import { ReleaseNotesExperience } from "./components/releases/ReleaseNotesExperience";
 import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
 import { CookieConsentProvider } from "./consent/CookieConsentProvider";
@@ -59,8 +60,10 @@ function BrowserApplication() {
                   <AssistantSessionProvider>
                     <ImportDraftProvider>
                       <BrowserRouter>
-                        <App />
-                        <ClientExperiences />
+                        <AppErrorBoundary>
+                          <App />
+                          <ClientExperiences />
+                        </AppErrorBoundary>
                       </BrowserRouter>
                     </ImportDraftProvider>
                   </AssistantSessionProvider>

@@ -712,9 +712,18 @@
 .admin-review-order-actions button:focus-visible,
 .admin-review-list > li > button:focus-visible,
 .admin-reviews-summary > button:focus-visible,
-.admin-review-filters select:focus-visible,
-.admin-review-search:focus-within {
+.admin-review-filters select:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--focus) 30%, transparent);
+  outline-offset: -3px;
+}
+
+/* The search label wraps the icon and the input, so it is the visible control
+   and owns the focus ring (the borderless input inside keeps outline: 0 so it
+   does not draw a second ring around the bare text line). This uses the solid
+   global ring colour from foundation.css — the previous 30%-alpha ring was
+   easy to miss at this size. */
+.admin-review-search:focus-within {
+  outline: 3px solid var(--focus);
   outline-offset: -3px;
 }
 

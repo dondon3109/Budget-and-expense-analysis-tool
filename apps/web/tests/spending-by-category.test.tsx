@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -59,5 +59,40 @@ describe("SpendingByCategory", () => {
       "tabindex",
       "0",
     );
+  });
+
+  it("scopes the accessible breakdown table row headers", () => {
+    render(
+      <MemoryRouter>
+        <SpendingByCategory
+          data={[
+            {
+              categoryId: "food",
+              name: "Food & dining",
+              color: "#dc8b3f",
+              amountMinor: 120_000,
+              sharePercent: 60,
+            },
+            {
+              categoryId: "transport",
+              name: "Transport",
+              color: "#2563eb",
+              amountMinor: 80_000,
+              sharePercent: 40,
+            },
+          ]}
+          month="2026-08"
+          maxMonth="2026-08"
+          onMonthChange={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    const table = screen.getByRole("table", { name: "Spending by category" });
+    const rowHeaders = within(table).getAllByRole("rowheader");
+    expect(rowHeaders).toHaveLength(2);
+    for (const header of rowHeaders) {
+      expect(header).toHaveAttribute("scope", "row");
+    }
   });
 });

@@ -1,83 +1,47 @@
-import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { useRef } from "react";
 import { createPortal } from "react-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import "./CancelSubscriptionDialog.css";
 
-export function CancelSubscriptionDialog({
-  open,
-  busy,
-  periodEndsAt,
-  returnFocus,
-  onClose,
-  onConfirm,
-}: {
+interface CancelSubscriptionDialogProps {
   open: boolean;
   busy: boolean;
   periodEndsAt: string | null;
   returnFocus?: HTMLElement | null;
   onClose: () => void;
   onConfirm: () => void;
-}) {
+}
+
+type CancelSubscriptionDialogContentProps = Omit<CancelSubscriptionDialogProps, "open">;
+
+function CancelSubscriptionDialogContent({
+  busy,
+  periodEndsAt,
+  returnFocus,
+  onClose,
+  onConfirm,
+}: CancelSubscriptionDialogContentProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const keepSubscriptionRef = useRef<HTMLButtonElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
   const titleId = "cancel-subscription-title";
   const descriptionId = "cancel-subscription-description";
 
-  useRootLock(open);
+  useRootLock(true);
 
-  useLayoutEffect(() => {
-    if (!open) return;
-
-    const activeElement = document.activeElement;
-
-    if (returnFocus?.isConnected) {
-      openerRef.current = returnFocus;
-    } else if (activeElement instanceof HTMLElement && activeElement !== document.body) {
-      openerRef.current = activeElement;
-    }
-    keepSubscriptionRef.current?.focus();
-
-    return () => {
-      if (openerRef.current?.isConnected) openerRef.current.focus();
-    };
-  }, [open, returnFocus]);
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: keepSubscriptionRef,
+    returnFocus: returnFocus ?? null,
+    onEscape: () => {
+      if (!busy) onClose();
+    },
+  });
 
   function close() {
     if (!busy) onClose();
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-      return;
-    }
-    if (event.key !== "Tab") return;
-
-    const focusable = Array.from(
-      dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).filter((element) => element.tabIndex >= 0);
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (!first || !last) return;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    } else if (!dialogRef.current?.contains(document.activeElement)) {
-      event.preventDefault();
-      (event.shiftKey ? last : first).focus();
-    }
-  }
-
-  if (!open) return null;
   const paidThrough = periodEndsAt
     ? new Intl.DateTimeFormat("en-PH", {
         month: "long",
@@ -87,6 +51,7 @@ export function CancelSubscriptionDialog({
       }).format(new Date(periodEndsAt))
     : "the end of your current paid period";
 
+  // Portalled so the inert application root from useRootLock does not disable the dialog.
   return createPortal(
     <div
       className="modal-backdrop cancel-subscription-backdrop"
@@ -128,4 +93,9 @@ export function CancelSubscriptionDialog({
     </div>,
     document.body,
   );
+}
+
+/** Mounts the dialog only while open so the mount-only focus trap activates on every open. */
+export function CancelSubscriptionDialog({ open, ...props }: CancelSubscriptionDialogProps) {
+  return open ? <CancelSubscriptionDialogContent {...props} /> : null;
 }

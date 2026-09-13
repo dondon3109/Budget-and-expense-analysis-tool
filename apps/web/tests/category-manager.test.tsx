@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import type { CategoryRecord } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,12 +38,12 @@ const category: CategoryRecord = {
   locked: false,
 };
 
-function renderManager(categories: CategoryRecord[] = [category]) {
+function renderManager(categories: CategoryRecord[] = [category], onClose: () => void = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <CategoryManager workspace={workspace} categories={categories} onClose={vi.fn()} />
+        <CategoryManager workspace={workspace} categories={categories} onClose={onClose} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -215,5 +215,24 @@ describe("CategoryManager", () => {
     expect(screen.getByText(/Required for imports/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rename Uncategorized" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Archive Uncategorized" })).not.toBeInTheDocument();
+  });
+
+  it("keeps Tab inside the dialog and closes on Escape", () => {
+    const onClose = vi.fn();
+    renderManager([category], onClose);
+
+    const dialog = screen.getByRole("dialog", { name: "Manage categories" });
+    const close = screen.getByRole("button", { name: "Close" });
+    const archive = screen.getByRole("button", { name: "Archive Food & dining" });
+
+    expect(close).toHaveFocus();
+
+    archive.focus();
+    fireEvent.keyDown(archive, { key: "Tab" });
+    expect(close).toHaveFocus();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

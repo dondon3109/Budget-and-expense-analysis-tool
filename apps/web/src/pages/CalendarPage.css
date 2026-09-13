@@ -227,11 +227,18 @@
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  /* One column of week rows. The 7-column track moved to .calendar-row so the grid has the
+     role="row" children ARIA requires without changing how the calendar looks. */
+  grid-template-columns: minmax(0, 1fr);
   border: 1px solid var(--line-strong);
   border-radius: 14px;
   overflow: hidden;
   background: var(--paper);
+}
+
+.calendar-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .calendar-weekday {
@@ -378,11 +385,14 @@
 }
 
 .calendar-indicator.income {
-  color: var(--chart-income);
+  /* Same reason as the expense indicator: the chart hue is for marks, not 11.5px text. */
+  color: var(--income);
 }
 
 .calendar-indicator.expense {
-  color: var(--chart-expense);
+  /* --chart-expense is tuned for chart marks; as 11.5px label text on --paper it measured
+     3.38:1. The text variant of the same hue clears AA at 6.18:1. */
+  color: var(--expense-text);
 }
 
 .calendar-indicator.transfer {

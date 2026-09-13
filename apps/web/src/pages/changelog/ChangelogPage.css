@@ -12,7 +12,7 @@
 }
 
 .changelog-release-card.current-release {
-  border-color: var(--accent);
+  border-color: var(--brand);
 }
 
 .changelog-release-header {
@@ -43,8 +43,8 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--accent-subtle);
-  color: var(--accent);
+  background: var(--brand-soft);
+  color: var(--brand);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -73,7 +73,7 @@
 
 .changelog-check-icon {
   margin-top: 3px;
-  color: var(--accent);
+  color: var(--brand);
   flex-shrink: 0;
 }
 
@@ -87,7 +87,7 @@
 .changelog-change-body p {
   font-size: 14px;
   line-height: 1.55;
-  color: var(--muted-strong);
+  color: var(--muted);
   margin: 0;
 }
 
@@ -95,7 +95,7 @@
   padding: 28px;
   border: 1px solid var(--line-strong);
   border-radius: 16px;
-  background: var(--surface-raised, var(--surface));
+  background: var(--surface);
   text-align: center;
   margin-top: 32px;
 }
@@ -109,7 +109,7 @@
 .changelog-page-cta p {
   max-width: 58ch;
   margin: 0 auto 20px;
-  color: var(--muted-strong);
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.5;
 }

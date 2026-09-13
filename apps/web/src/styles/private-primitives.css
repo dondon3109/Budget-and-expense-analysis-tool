@@ -355,3 +355,22 @@
     width: 100%;
   }
 }
+
+/*
+ * Touch floor, applied centrally so each feature does not have to remember it.
+ * Icon-only controls need both dimensions; text controls only need height, so their
+ * inline look survives. Desktop sizing above is untouched, and this rule comes last so
+ * it wins on equal specificity.
+ */
+@media (hover: none), (pointer: coarse) {
+  .icon-button.compact {
+    width: 44px;
+    height: 44px;
+  }
+
+  .text-button,
+  .refresh-button,
+  .table-status button {
+    min-height: 44px;
+  }
+}

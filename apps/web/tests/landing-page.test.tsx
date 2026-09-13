@@ -271,6 +271,67 @@ describe("landing page", () => {
     expect(within(spotlight).getByText(/ask your numbers, not a generic chatbot/i)).toBeInTheDocument();
     expect(within(spotlight).getByText(/grounded ai assistant/i)).toBeInTheDocument();
   });
+
+  it("keeps the illustrated dashboard decorative instead of focusable", () => {
+    const { container } = renderLanding();
+
+    const preview = screen.getByRole("img", {
+      name: "Illustrative preview of the Zoption monthly dashboard",
+    });
+    const bars = preview.querySelectorAll(".chart-bars > span");
+    expect(bars).toHaveLength(6);
+    for (const bar of bars) {
+      expect(bar).toHaveAttribute("aria-hidden", "true");
+      expect(bar).not.toHaveAttribute("tabindex");
+    }
+    expect(container.querySelectorAll('[role="button"]')).toHaveLength(0);
+  });
+
+  it("renders each hero capability as its own non-wrapping pill", () => {
+    const { container } = renderLanding();
+
+    const pills = container.querySelectorAll(".hero-eyebrow-pills > li");
+    expect(Array.from(pills).map((pill) => pill.textContent?.trim())).toEqual([
+      "Voice Entry",
+      "Scan Receipt",
+      "AI Assistant · 100% Private",
+    ]);
+  });
+
+  it("aligns the four trust-strip titles by reserving the badge slot", () => {
+    const { container } = renderLanding();
+
+    const items = container.querySelectorAll(".trust-pillars-strip .pillar-item");
+    expect(items).toHaveLength(4);
+    for (const item of items) {
+      const slot = item.querySelector(".pillar-badge-slot");
+      expect(slot).not.toBeNull();
+      expect(slot?.nextElementSibling?.tagName).toBe("STRONG");
+    }
+    expect(container.querySelectorAll(".trust-pillars-strip .pillar-badge")).toHaveLength(2);
+  });
+
+  it("gives the comparison table header cells an explicit column scope", () => {
+    const { container } = renderLanding();
+
+    const headers = container.querySelectorAll(".comparison-table th");
+    expect(headers.length).toBeGreaterThanOrEqual(3);
+    for (const header of headers) {
+      expect(header).toHaveAttribute("scope", "col");
+    }
+  });
+
+  it("uses a valid content model for the landing FAQ list", () => {
+    const { container } = renderLanding();
+
+    expect(container.querySelector("dl.faq-list")).toBeNull();
+    const items = container.querySelectorAll(".faq-list .faq-item");
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      expect(item.querySelector("summary")).not.toBeNull();
+      expect(item.querySelector("p.faq-answer")).not.toBeNull();
+    }
+  });
 });
 
 

@@ -1,29 +1,25 @@
-.cookie-consent-backdrop {
-  position: fixed;
-  z-index: 100;
-  inset: 0;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--ink) 18%, transparent);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
-}
-
+/* Non-modal consent bar. It must not cover the page or take it over: no backdrop,
+   no scroll lock, no aria-modal. Consent is still recorded exactly as before. */
 .cookie-consent-banner {
   position: fixed;
   z-index: 110;
-  top: 50%;
-  left: 50%;
-  width: min(590px, calc(100% - 40px));
-  transform: translate(-50%, -50%);
-  padding: 30px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 16px clamp(16px, 4vw, 32px) calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 28px;
   color: var(--ink);
-  border-radius: 16px;
+  border-top: 1px solid var(--line);
   background: var(--paper);
-  box-shadow: 0 30px 90px var(--shadow);
+  box-shadow: 0 -14px 40px color-mix(in srgb, var(--shadow) 76%, transparent);
 }
 
 .cookie-consent-copy {
-  max-width: 58ch;
+  max-width: 68ch;
 }
 
 .cookie-consent-heading {
@@ -33,8 +29,8 @@
 }
 
 .cookie-consent-icon {
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -48,18 +44,19 @@
 }
 
 .cookie-consent-copy h2 {
-  margin: 18px 0 0;
+  margin: 6px 0 0;
   font-family: var(--font-display);
-  font-size: clamp(26px, 4vw, 34px);
-  letter-spacing: -0.025em;
-  line-height: 1.1;
+  font-size: clamp(17px, 2.4vw, 20px);
+  letter-spacing: -0.015em;
+  line-height: 1.2;
 }
 
 .cookie-consent-copy p:last-child {
-  margin: 12px 0 0;
+  max-width: 78ch;
+  margin: 5px 0 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.65;
+  font-size: 12.5px;
+  line-height: 1.55;
 }
 
 .cookie-consent-copy a,
@@ -72,20 +69,15 @@
 }
 
 .cookie-consent-actions {
-  margin-top: 26px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
 .cookie-consent-actions .button {
   min-width: 0;
-}
-
-.cookie-consent-actions .button.secondary {
-  grid-column: 1 / -1;
-  min-height: 40px;
-  font-size: 13px;
+  min-height: 44px;
 }
 
 .cookie-preferences-layer {
@@ -197,11 +189,14 @@
   line-height: 1.55;
 }
 
+/* The track stays 48x28; the label grows to a 44px-tall touch target. */
 .cookie-switch {
   position: relative;
   width: 48px;
-  height: 28px;
+  height: 44px;
+  display: grid;
   flex: 0 0 auto;
+  place-items: center;
   cursor: pointer;
 }
 
@@ -213,8 +208,9 @@
 }
 
 .cookie-switch > span:last-child {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 48px;
+  height: 28px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: var(--surface-hover);
@@ -275,21 +271,32 @@
 
 @media (max-width: 760px) {
   .cookie-consent-banner {
-    width: calc(100% - 20px);
-    padding: 24px 20px;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    gap: 12px;
   }
 
-  .cookie-consent-copy h2 {
-    margin-top: 16px;
+  /* The authenticated mobile tab bar owns the bottom edge, so a first-visit choice
+     must sit above it instead of covering navigation. AppShell only shows that bar
+     inside this same breakpoint and uses the same 68px height. */
+  body:has(.mobile-tab-bar) .cookie-consent-banner {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    padding-bottom: 14px;
   }
 
   .cookie-consent-actions {
-    margin-top: 22px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .cookie-consent-actions .button {
     padding-inline: 12px;
-    font-size: 12px;
+    font-size: 12.5px;
+  }
+
+  .cookie-consent-actions .button.secondary {
+    grid-column: 1 / -1;
   }
 
   .cookie-preferences-layer {
@@ -345,7 +352,7 @@
 @keyframes cookie-consent-in {
   from {
     opacity: 0;
-    transform: translate(-50%, calc(-50% + 18px));
+    transform: translateY(14px);
   }
 }
 
@@ -353,5 +360,27 @@
   from {
     opacity: 0;
     transform: translateY(18px) scale(0.985);
+  }
+}
+
+/*
+ * The banner declares that it must not cover the page, but nothing reserved room for it, so it sat
+ * on top of the last stretch of every page until a choice was recorded. That is what made it cover
+ * the ledger's pagination and, during this audit, the sign-in button at mobile width.
+ *
+ * Reserve its height instead. The value tracks the banner's own layout — a single row on wide
+ * screens, more once it wraps — so it is calibrated rather than derived.
+ */
+body:has(.cookie-consent-banner) {
+  padding-bottom: var(--consent-bar-clearance);
+}
+
+:root {
+  --consent-bar-clearance: 150px;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --consent-bar-clearance: 300px;
   }
 }

@@ -1,0 +1,319 @@
+/* ============================================================
+   Shared public header
+   One header for every public route so navigation, the mobile
+   menu trigger, and label wrapping cannot drift per page.
+   ============================================================ */
+
+.public-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 74px;
+  padding: 8px clamp(16px, 3.5vw, 56px);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-translucent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.public-header .public-header-brand {
+  flex-shrink: 0;
+  gap: 12px;
+  font-family: var(--font-ui);
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.public-header .public-header-brand .brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.public-header .public-header-brand .brand-wordmark {
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.public-header-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 1.4vw, 24px);
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+}
+
+.public-header-links a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 2px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.18s ease;
+}
+
+.public-header-links a::after {
+  content: "";
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--brand);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s ease;
+}
+
+.public-header-links a:hover {
+  color: var(--ink);
+}
+
+.public-header-links a:hover::after,
+.public-header-links a:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.public-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.public-header .public-header-sign-in {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.public-header .public-header-sign-in:hover {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.public-header .button.public-header-cta {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.public-header .theme-toggle {
+  min-height: 44px;
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.public-header .theme-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  bottom: auto;
+  left: auto;
+  width: max-content;
+  min-width: 168px;
+}
+
+.public-header .theme-menu-option {
+  min-height: 44px;
+}
+
+.public-header-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: var(--ink);
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.public-header-menu-toggle:hover {
+  background: var(--surface-soft);
+  border-color: var(--brand);
+}
+
+.public-header-drawer {
+  position: fixed;
+  top: 74px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 39;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 24px calc(32px + env(safe-area-inset-bottom));
+  background: var(--surface-translucent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--line);
+  overflow-y: auto;
+  animation: publicHeaderDrawerFade 0.18s ease-out;
+}
+
+@keyframes publicHeaderDrawerFade {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.public-header-drawer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.public-header-drawer-links a {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.public-header-drawer-links a:hover,
+.public-header-drawer-links a:active {
+  background: var(--surface-soft);
+  color: var(--brand-strong);
+}
+
+.public-header-drawer-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.public-header-drawer-actions .public-header-sign-in {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.public-header-drawer-actions .button.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .public-header-links {
+    display: none;
+  }
+
+  .public-header-menu-toggle {
+    display: inline-flex;
+  }
+
+  .public-header .public-header-sign-in {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .public-header {
+    min-height: 64px;
+    gap: 8px;
+    padding: 6px 16px;
+  }
+
+  .public-header-drawer {
+    top: 64px;
+  }
+
+  .public-header .public-header-brand {
+    font-size: 17px;
+    gap: 10px;
+  }
+
+  .public-header .button.public-header-cta {
+    padding: 0 14px;
+  }
+}
+
+/* Phone widths: keep the theme control icon-only so the brand, primary action,
+   and menu trigger all fit the 393px-class viewport without wrapping or overflow. */
+@media (max-width: 470px) {
+  .public-header .theme-toggle {
+    width: 44px;
+    padding: 0;
+  }
+
+  .public-header .theme-toggle span {
+    display: none;
+  }
+}
+
+@media (max-width: 400px) {
+  .public-header .public-header-brand .brand-wordmark {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-header-drawer {
+    animation: none;
+  }
+}

@@ -14,14 +14,12 @@ import {
 import { normalizePasswordError, normalizeSignupError } from "./authErrors";
 import { saveSocialAuthDestination } from "./socialAuthDestination";
 import {
-  AVATAR_BUCKET,
   type AvatarOperationResult,
   avatarPathFromMetadata,
-  createAvatarPath,
   isOwnedAvatarPath,
   validateAvatarFile,
 } from "../lib/avatar";
-import { deleteCurrentAccount } from "../lib/api";
+import { deleteCurrentAccount, deleteProfileAvatarObject, uploadProfileAvatar } from "../lib/api";
 import { getSupabaseClient, isSupabaseConfigured, supabase } from "../lib/supabase";
 import { userWorkspace } from "../lib/workspace";
 
@@ -202,28 +200,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!user) throw new Error("Sign in again before updating your profile picture.");
 
       await validateAvatarFile(file);
-      const client = getSupabaseClient();
-      const bucket = client.storage.from(AVATAR_BUCKET);
+      const workspace = userWorkspace(user);
       const previousPath = avatarPathFromMetadata(user.user_metadata);
-      const nextPath = createAvatarPath(user.id, file.type);
-      const { error: uploadError } = await bucket.upload(nextPath, file, {
-        cacheControl: "31536000",
-        contentType: file.type,
-        upsert: false,
-      });
-      if (uploadError) throw uploadError;
-
-      const { error: metadataError } = await client.auth.updateUser({
+      const { path: nextPath } = await uploadProfileAvatar(workspace, file);
+      const { error: metadataError } = await getSupabaseClient().auth.updateUser({
         data: { avatar_path: nextPath },
       });
       if (metadataError) {
-        await bucket.remove([nextPath]);
+        await deleteProfileAvatarObject(workspace, nextPath).catch(() => undefined);
         throw metadataError;
       }
 
       if (isOwnedAvatarPath(previousPath, user.id)) {
-        const { error: cleanupError } = await bucket.remove([previousPath]);
-        if (cleanupError) {
+        try {
+          await deleteProfileAvatarObject(workspace, previousPath);
+        } catch {
           return {
             cleanupWarning:
               "Your new picture is active, but the previous file could not be cleaned up.",
@@ -248,10 +239,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (metadataError) throw metadataError;
 
     if (isOwnedAvatarPath(previousPath, user.id)) {
-      const { error: cleanupError } = await client.storage
-        .from(AVATAR_BUCKET)
-        .remove([previousPath]);
-      if (cleanupError) {
+      try {
+        await deleteProfileAvatarObject(userWorkspace(user), previousPath);
+      } catch {
         return {
           cleanupWarning:
             "Your picture was removed from the profile, but its old file could not be cleaned up.",

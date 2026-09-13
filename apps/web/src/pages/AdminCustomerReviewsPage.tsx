@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
+import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
   getAdminCustomerReviews,
@@ -243,6 +244,13 @@ export function AdminCustomerReviewsPage() {
 
   return renderPage(
     <>
+      <Breadcrumbs
+        items={[
+          { label: "Home", to: "/app" },
+          { label: "Admin console", to: "/app/admin" },
+          { label: "Customer reviews" },
+        ]}
+      />
       <header className="admin-reviews-header">
         <div>
           <p>Platform administration</p>

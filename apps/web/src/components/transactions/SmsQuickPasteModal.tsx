@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   parseSmsNotification,
   type AccountRecord,
   type CategoryRecord,
   type TransactionListItem,
 } from "@zoption/shared";
+
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 import "./SmsQuickPasteModal.css";
 
 export interface ParsedSmsTransaction {
@@ -69,24 +73,27 @@ export function parseSmsText(text: string): ParsedSmsTransaction {
   };
 }
 
-export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
-  isOpen,
+type SmsQuickPasteDialogProps = Omit<SmsQuickPasteModalProps, "isOpen">;
+
+const SmsQuickPasteDialog: React.FC<SmsQuickPasteDialogProps> = ({
   onClose,
   onApply,
   initialText = "",
   existingTransactions,
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [smsText, setSmsText] = useState(initialText);
   const [parsedData, setParsedData] = useState<ParsedSmsTransaction>(() =>
     parseSmsText(initialText),
   );
 
-  useEffect(() => {
-    if (isOpen) {
-      setSmsText(initialText);
-      setParsedData(parseSmsText(initialText));
-    }
-  }, [isOpen, initialText]);
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: textareaRef,
+    onEscape: onClose,
+  });
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
@@ -144,18 +151,17 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
     });
   }, [parsedData, existingTransactions]);
 
-  if (!isOpen) {
-    return null;
-  }
-
-  return (
-    <div
-      className="sms-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sms-modal-title"
-    >
-      <div className="sms-modal-container">
+  // Portalled so the inert application root from useRootLock does not disable the dialog.
+  return createPortal(
+    <div className="sms-modal-backdrop" role="presentation">
+      <div
+        ref={dialogRef}
+        className="sms-modal-container"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sms-modal-title"
+        onKeyDown={handleKeyDown}
+      >
         <div className="sms-modal-header">
           <h2 id="sms-modal-title" className="sms-modal-title">
             Quick Paste from SMS / Alert
@@ -178,6 +184,7 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
               </label>
               <div className="sms-textarea-wrapper">
                 <textarea
+                  ref={textareaRef}
                   id="sms-textarea-input"
                   className="sms-textarea"
                   value={smsText}
@@ -329,8 +336,16 @@ export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
+
+/**
+ * Mounts the dialog only while open so the focus trap activates on every open and the draft
+ * text is fresh each time.
+ */
+export const SmsQuickPasteModal: React.FC<SmsQuickPasteModalProps> = ({ isOpen, ...props }) =>
+  isOpen ? <SmsQuickPasteDialog {...props} /> : null;
 
 export default SmsQuickPasteModal;

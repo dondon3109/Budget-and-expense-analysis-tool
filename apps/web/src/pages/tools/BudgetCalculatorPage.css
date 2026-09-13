@@ -26,7 +26,7 @@
   display: block;
   margin: 0 0 6px;
   padding: 0;
-  color: var(--ink-muted);
+  color: var(--muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -40,11 +40,11 @@
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   padding: 8px 10px;
-  background: var(--surface-raised);
+  background: var(--surface);
 }
 
 .calc-currency {
-  color: var(--ink-muted);
+  color: var(--muted);
   font-size: 16px;
   font-weight: 700;
 }
@@ -60,13 +60,9 @@
   font-weight: 700;
 }
 
-.calc-input:focus {
-  outline: none;
-}
-
 .calc-hint {
   margin: 8px 0 0;
-  color: var(--ink-muted);
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -84,11 +80,11 @@
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   padding: 8px 10px;
-  background: var(--surface-raised);
+  background: var(--surface);
 }
 
 .calc-split-label {
-  color: var(--ink-muted);
+  color: var(--muted);
   font-size: 13px;
   font-weight: 600;
 }
@@ -104,12 +100,8 @@
   text-align: right;
 }
 
-.calc-split-input:focus {
-  outline: none;
-}
-
 .calc-split-pct {
-  color: var(--ink-muted);
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -118,7 +110,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: transparent;
-  color: var(--ink-muted);
+  color: var(--muted);
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
@@ -140,7 +132,7 @@
 
 .calc-result-label {
   margin: 0;
-  color: var(--ink-muted);
+  color: var(--muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -157,13 +149,13 @@
 
 .calc-result-pct {
   margin: 2px 0 0;
-  color: var(--ink-muted);
+  color: var(--muted);
   font-size: 12px;
 }
 
 .calc-result-blurb {
   margin: 10px 0 0;
-  color: var(--ink-muted);
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -171,8 +163,10 @@
 .calc-exact {
   margin: 14px 0 0;
   padding: 12px 14px;
-  border-left: 3px solid var(--line-strong);
-  color: var(--ink-muted);
+  border: 1px solid var(--subtle-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -191,7 +185,7 @@
 }
 
 .calc-table thead th {
-  color: var(--ink-muted);
+  color: var(--muted);
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -208,7 +202,9 @@
 }
 
 .calc-cta-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   border-radius: 999px;
   background: var(--ink);
   color: var(--page);

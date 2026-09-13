@@ -1,0 +1,35 @@
+/* ============================================================
+   SKELETON LOADERS
+   ------------------------------------------------------------
+   Flat token-based placeholder bars shared by the dashboard,
+   the transactions table, and the budget editor. The pulse is
+   opacity only — no shimmer gradient — and it opts out under
+   reduced motion, which foundation.css does not do for
+   animations.
+   ============================================================ */
+
+.skeleton {
+  display: block;
+  width: 100%;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

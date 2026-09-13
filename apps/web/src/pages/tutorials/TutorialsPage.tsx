@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   ArrowRight,
   BookOpen,
   Camera,
@@ -16,6 +15,7 @@ import { Link } from "react-router-dom";
 
 import { useOptionalAuth } from "../../auth/AuthProvider";
 import { LegalFooter } from "../../components/legal/LegalFooter";
+import { PublicHeader } from "../../components/navigation/PublicHeader";
 import "./TutorialsPage.css";
 
 interface TutorialSection {
@@ -379,16 +379,8 @@ export function TutorialsPage({ inAppShell = false }: { inAppShell?: boolean } =
 
   return (
     <div className="public-tutorials-layout">
-      <nav className="public-tutorials-topbar">
-        <Link to="/" className="public-tutorials-brand">
-          <ArrowLeft size={16} aria-hidden="true" />
-          <span>Back to Zoption Home</span>
-        </Link>
-        <Link to="/login" className="button primary compact-action">
-          Sign in
-        </Link>
-      </nav>
-      <main>{content}</main>
+      <PublicHeader />
+      <main id="main-content" tabIndex={-1}>{content}</main>
       <LegalFooter />
     </div>
   );

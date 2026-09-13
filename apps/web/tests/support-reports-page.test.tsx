@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import type { AdminBugReport, BugReport } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -97,6 +97,55 @@ describe("SupportReportsPage", () => {
     expect(screen.getAllByText(report.reference)).toHaveLength(2);
     expect(screen.getByText(report.actualBehavior)).toBeInTheDocument();
     expect(screen.queryByText(/Reporter:/)).not.toBeInTheDocument();
+  });
+
+  it("orients a signed-in reporter under Home > Your bug reports", () => {
+    renderPage();
+
+    const breadcrumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(
+      within(breadcrumbs)
+        .getAllByRole("listitem")
+        .map((crumb) => crumb.textContent),
+    ).toEqual(["Home", "Your bug reports"]);
+    expect(within(breadcrumbs).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/app");
+    expect(within(breadcrumbs).getByText("Your bug reports")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("orients the admin inbox under Home > Admin console > Bug report inbox", () => {
+    mocks.admin = true;
+    renderPage("/app/support/reports?view=admin");
+
+    const breadcrumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(
+      within(breadcrumbs)
+        .getAllByRole("listitem")
+        .map((crumb) => crumb.textContent),
+    ).toEqual(["Home", "Admin console", "Bug report inbox"]);
+    expect(within(breadcrumbs).getByRole("link", { name: "Admin console" })).toHaveAttribute(
+      "href",
+      "/app/admin",
+    );
+    expect(within(breadcrumbs).getByText("Bug report inbox")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("keeps a non-administrator on the personal trail when the admin view is requested", () => {
+    mocks.admin = false;
+    renderPage("/app/support/reports?view=admin");
+
+    expect(screen.getByRole("heading", { name: "Your bug reports" })).toBeInTheDocument();
+    const breadcrumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(
+      within(breadcrumbs)
+        .getAllByRole("listitem")
+        .map((crumb) => crumb.textContent),
+    ).toEqual(["Home", "Your bug reports"]);
   });
 
   it("allows a platform administrator to triage the shared inbox", async () => {

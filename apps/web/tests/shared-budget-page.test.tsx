@@ -11,7 +11,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShareBudgetModal } from "../src/components/budgets/ShareBudgetModal";
 import { SharedBudgetPage } from "../src/pages/shared/SharedBudgetPage";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // The portal regression test injects its own #root; never let it leak into sibling tests.
+  document.getElementById("root")?.remove();
+});
 
 const basePayload: SharedBudgetPayload = {
   version: 1,
@@ -168,5 +172,53 @@ describe("ShareBudgetModal", () => {
     expect(screen.getByRole("button", { name: "Copied" })).toBeInTheDocument();
 
     Reflect.deleteProperty(navigator, "clipboard");
+  });
+
+  it("keeps Tab inside the dialog and closes on Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <ShareBudgetModal
+        isOpen
+        onClose={onClose}
+        month="2026-09"
+        categories={[
+          {
+            id: "groceries",
+            name: "Groceries",
+            color: "#22c55e",
+            allocatedLimitMinor: 20_000,
+            spentMinor: 7_500,
+          },
+        ]}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Share envelopes" });
+    const close = screen.getByRole("button", { name: "Close share budget modal" });
+    const generate = screen.getByRole("button", { name: "Generate link" });
+
+    expect(screen.getByLabelText("Share title")).toHaveFocus();
+
+    generate.focus();
+    fireEvent.keyDown(generate, { key: "Tab" });
+    expect(close).toHaveFocus();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("renders outside the application root so the root lock cannot disable it", () => {
+    const root = document.createElement("div");
+    root.id = "root";
+    document.body.append(root);
+
+    render(<ShareBudgetModal isOpen onClose={vi.fn()} month="2026-09" categories={[]} />, {
+      container: root,
+    });
+
+    expect(root).toHaveAttribute("aria-hidden", "true");
+    expect(root.inert ?? false).toBe(true);
+    expect(root.contains(screen.getByRole("dialog", { name: "Share envelopes" }))).toBe(false);
   });
 });

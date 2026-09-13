@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import type { CustomerReview, CustomerReviewAdminDashboard } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -135,6 +135,26 @@ describe("AdminCustomerReviewsPage", () => {
     );
   });
 
+  it("orients the moderation desk under Home > Admin console > Customer reviews", async () => {
+    renderPage();
+
+    const breadcrumbs = await screen.findByRole("navigation", { name: "Breadcrumb" });
+    expect(
+      within(breadcrumbs)
+        .getAllByRole("listitem")
+        .map((crumb) => crumb.textContent),
+    ).toEqual(["Home", "Admin console", "Customer reviews"]);
+    expect(within(breadcrumbs).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/app");
+    expect(within(breadcrumbs).getByRole("link", { name: "Admin console" })).toHaveAttribute(
+      "href",
+      "/app/admin",
+    );
+    expect(within(breadcrumbs).getByText("Customer reviews")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
   it("reorders the landing lineup with keyboard-operable buttons", async () => {
     renderPage();
 
@@ -225,6 +245,7 @@ describe("AdminCustomerReviewsPage", () => {
     expect(
       screen.getByRole("heading", { name: "Platform administrator access required" }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     expect(mocks.getReviews).not.toHaveBeenCalled();
   });
 
@@ -235,6 +256,7 @@ describe("AdminCustomerReviewsPage", () => {
     expect(
       screen.getByRole("heading", { name: "Administrator access could not be checked" }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.refetchBilling).toHaveBeenCalledOnce();
     expect(mocks.getReviews).not.toHaveBeenCalled();

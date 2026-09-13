@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
 
-import { BrandMark } from "../brand/BrandMark";
 import { Breadcrumbs } from "../navigation/Breadcrumbs";
+import { PublicHeader } from "../navigation/PublicHeader";
 import { LegalFooter } from "./LegalFooter";
-import { ThemeToggle } from "../theme/ThemeToggle";
 import "./LegalPageLayout.css";
 
 export function LegalPageLayout({
@@ -21,14 +19,8 @@ export function LegalPageLayout({
 }) {
   return (
     <div className="legal-page">
-      <header className="legal-page-header">
-        <Link className="brand compact" to="/" aria-label="Zoption home">
-          <BrandMark />
-          <span className="brand-wordmark">Zoption</span>
-        </Link>
-        <ThemeToggle />
-      </header>
-      <main className="legal-page-main">
+      <PublicHeader />
+      <main className="legal-page-main" id="main-content" tabIndex={-1}>
         <article className="legal-article">
           <header className="legal-article-header">
             <Breadcrumbs
@@ -37,9 +29,6 @@ export function LegalPageLayout({
                 { label: title },
               ]}
             />
-            <Link className="legal-back-link" to="/">
-              ← Back to Zoption
-            </Link>
             <h1>{title}</h1>
             <p className="legal-summary">{summary}</p>
             <p className="legal-updated">Last updated: {lastUpdated}</p>

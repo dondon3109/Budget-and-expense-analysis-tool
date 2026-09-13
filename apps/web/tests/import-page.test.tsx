@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import type { ImportPreview } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -261,6 +261,24 @@ describe("ImportPage", () => {
         },
       },
     );
+  });
+
+  it("scopes every preview header and names the preview table", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    const csv = ["Date,Description,Amount,Category", "2026-07-20,Market,-50.00,Food & dining"].join(
+      "\n",
+    );
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+
+    const table = await screen.findByRole("table", { name: "Import preview rows" });
+    const headers = within(table).getAllByRole("columnheader");
+    expect(headers).toHaveLength(6);
+    for (const header of headers) {
+      expect(header).toHaveAttribute("scope", "col");
+    }
   });
 
   it("shows a required Description mapping error before previewing", async () => {

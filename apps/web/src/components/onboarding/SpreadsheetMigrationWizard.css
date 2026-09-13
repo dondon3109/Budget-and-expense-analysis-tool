@@ -77,13 +77,13 @@
 
 .migration-step-item.active .migration-step-circle {
   background: var(--brand-strong);
-  color: #fff;
+  color: var(--solid-text);
   border-color: var(--brand-strong);
 }
 
 .migration-step-item.completed .migration-step-circle {
   background: var(--success);
-  color: #fff;
+  color: var(--solid-text);
   border-color: var(--success);
 }
 
@@ -102,6 +102,8 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  font: inherit;
 }
 
 .migration-dropzone:hover,
@@ -111,7 +113,12 @@
 }
 
 .migration-dropzone-icon {
+  display: block;
   color: var(--brand);
+}
+
+.migration-dropzone-text {
+  display: block;
 }
 
 .migration-dropzone-text strong {
@@ -123,6 +130,14 @@
 
 .migration-dropzone-text span {
   font-size: 12.5px;
+  color: var(--muted);
+}
+
+.migration-busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -341,6 +356,14 @@
   font-size: 13.5px;
   color: var(--muted);
   line-height: 1.5;
+}
+
+/* Touch targets: the icon-only close control is 36px by default. */
+@media (max-width: 760px) {
+  .migration-header .icon-button.compact {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .migration-modal-actions {

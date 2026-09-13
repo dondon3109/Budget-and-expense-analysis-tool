@@ -355,7 +355,7 @@ export function CashflowForecastSection({
                   <div className="bar-track">
                     <div
                       className="bar-fill"
-                      style={{ height: `${heightPercent}%` }}
+                      style={{ transform: `scaleY(${heightPercent / 100})` }}
                     />
                   </div>
                   {hasBills && <span className="bar-bill-marker" aria-hidden="true" />}
@@ -435,13 +435,14 @@ export function CashflowForecastSection({
         ) : (
           <div className="obligations-table-wrapper">
             <table className="obligations-table">
+              <caption className="sr-only">Upcoming bill obligations</caption>
               <thead>
                 <tr>
-                  <th>Due Date</th>
-                  <th>Subscription / Obligation</th>
-                  <th className="text-right">Amount</th>
-                  <th className="text-right">Balance After</th>
-                  <th className="text-center">Risk Assessment</th>
+                  <th scope="col">Due Date</th>
+                  <th scope="col">Subscription / Obligation</th>
+                  <th scope="col" className="text-right">Amount</th>
+                  <th scope="col" className="text-right">Balance After</th>
+                  <th scope="col" className="text-center">Risk Assessment</th>
                 </tr>
               </thead>
               <tbody>

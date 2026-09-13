@@ -54,7 +54,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--sage-strong, var(--sage));
+  color: var(--sage);
   font-weight: 600;
 }
 

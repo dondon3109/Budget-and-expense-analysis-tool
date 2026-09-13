@@ -504,6 +504,15 @@
   text-align: right;
 }
 
+/* Touch targets: the calculator fields are 36-38px on desktop. */
+@media (max-width: 760px) {
+  .remittance-input-wrapper input,
+  .remittance-select-wrapper select,
+  .custom-rate-input-box input {
+    height: 44px;
+  }
+}
+
 @media (max-width: 860px) {
   .remittance-calculator-grid {
     grid-template-columns: 1fr;

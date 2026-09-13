@@ -8,7 +8,16 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useLocation } from "react-router-dom";
 
 import {
@@ -20,6 +29,7 @@ import {
   type SupportChatMessageInput,
   type SupportPageContext,
 } from "../../lib/api";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { currentRelease } from "../../releases/currentRelease";
 import { BugReportReviewCard } from "./BugReportReviewCard";
@@ -109,6 +119,43 @@ function pageContext(pathname: string, surface: SupportSurface): SupportPageCont
   return "app";
 }
 
+interface SupportChatPanelProps {
+  onEscape: () => void;
+  initialFocusRef: RefObject<HTMLTextAreaElement | null>;
+  returnFocus: HTMLElement | null;
+  children: ReactNode;
+}
+
+/**
+ * Mounts the panel only while it is open so useFocusTrap can run its
+ * focus/return-focus lifecycle on every open, and confines Tab to the panel.
+ * The panel is deliberately non-modal (aria-modal="false"), so it does NOT take
+ * the root lock: it renders inside #root, and inerting #root would inert the
+ * panel itself.
+ */
+function SupportChatPanel({
+  onEscape,
+  initialFocusRef,
+  returnFocus,
+  children,
+}: SupportChatPanelProps) {
+  const panelRef = useRef<HTMLElement>(null);
+  const handleKeyDown = useFocusTrap(panelRef, { onEscape, initialFocusRef, returnFocus });
+
+  return (
+    <section
+      ref={panelRef}
+      className="support-chat-panel"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="support-chat-title"
+      onKeyDown={handleKeyDown}
+    >
+      {children}
+    </section>
+  );
+}
+
 export function SupportChat({ surface, workspace }: SupportChatProps) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -167,12 +214,6 @@ export function SupportChat({ surface, workspace }: SupportChatProps) {
   }, [messages]);
 
   useEffect(() => {
-    if (!open) return;
-    const frame = window.requestAnimationFrame(() => composerRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, [open]);
-
-  useEffect(() => {
     const handleOpenRequest = () => setOpen(true);
     window.addEventListener(OPEN_SUPPORT_CHAT_EVENT, handleOpenRequest);
     return () => window.removeEventListener(OPEN_SUPPORT_CHAT_EVENT, handleOpenRequest);
@@ -183,6 +224,14 @@ export function SupportChat({ surface, workspace }: SupportChatProps) {
     conversationEndRef.current?.scrollIntoView({ block: "end" });
   }, [messages, open, sending, error]);
 
+  function closePanel() {
+    setOpen(false);
+    launcherRef.current?.focus();
+  }
+
+  // Escape also closes from outside the panel (e.g. after clicking the page
+  // behind it). Escape pressed inside the panel is handled by useFocusTrap,
+  // which stops propagation before this listener can fire twice.
   useEffect(() => {
     function closeOnEscape(event: globalThis.KeyboardEvent) {
       if (event.key !== "Escape" || !open) return;
@@ -312,11 +361,10 @@ export function SupportChat({ surface, workspace }: SupportChatProps) {
   return (
     <aside className={`support-chat-root ${surface} ${open ? "open" : ""}`}>
       {open && (
-        <section
-          className="support-chat-panel"
-          role="dialog"
-          aria-modal="false"
-          aria-labelledby="support-chat-title"
+        <SupportChatPanel
+          onEscape={closePanel}
+          initialFocusRef={composerRef}
+          returnFocus={launcherRef.current}
         >
           <header className="support-chat-header">
             <div className="support-chat-identity" aria-hidden="true">
@@ -341,10 +389,7 @@ export function SupportChat({ surface, workspace }: SupportChatProps) {
               <button
                 type="button"
                 className="support-chat-icon-button"
-                onClick={() => {
-                  setOpen(false);
-                  launcherRef.current?.focus();
-                }}
+                onClick={closePanel}
                 aria-label="Close Zoption Support"
               >
                 <X size={18} />
@@ -447,7 +492,7 @@ export function SupportChat({ surface, workspace }: SupportChatProps) {
               Submitted bug reports are reviewed by our team with a response within 24–48 hours.
             </p>
           </form>
-        </section>
+        </SupportChatPanel>
       )}
 
       <button

@@ -291,3 +291,41 @@
 :root[data-theme="dark"] .budget-editor-panel {
   box-shadow: var(--shadow-card);
 }
+
+.budget-dirty-note {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm);
+  color: var(--warning);
+  background: var(--warning-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Loading placeholders for the editor. The 28px top margin matches the gap the
+   summary grid leaves above the panel in the loaded state. */
+.budget-editor-skeleton {
+  margin-top: 28px;
+}
+
+.budget-editor-skeleton .budget-editor-row:hover {
+  background: transparent;
+}
+
+.budget-editor-skeleton .budget-category-title > .skeleton {
+  flex: 0 0 auto;
+}
+
+.budget-editor-skeleton .budget-remaining > .skeleton {
+  justify-self: end;
+}
+
+@media (max-width: 760px) {
+  .budget-editor-skeleton .budget-remaining > .skeleton {
+    justify-self: start;
+  }
+}

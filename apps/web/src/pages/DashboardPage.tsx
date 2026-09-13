@@ -23,12 +23,17 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { useBillingSummary } from "../hooks/useBillingSummary";
+import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useRootLock } from "../hooks/useRootLock";
 import { AdjustBalanceModal } from "../components/account/AdjustBalanceModal";
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
+import { Skeleton, SkeletonStatus } from "../components/common/Skeleton";
 import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
@@ -107,6 +112,51 @@ interface AccountOptimisticContext {
   dashboardSnapshot: OptimisticCacheSnapshot;
 }
 
+/** Human label for an account type, derived from the list that builds the select options. */
+function accountTypeLabel(type: AccountInput["type"]): string {
+  return accountTypes.find((option) => option.value === type)?.label ?? type;
+}
+
+interface DashboardFormModalProps {
+  labelledBy: string;
+  initialFocusRef?: RefObject<HTMLElement | null>;
+  onEscape: () => void;
+  children: ReactNode;
+}
+
+/**
+ * Chrome shared by the dashboard's inline form dialogs. It renders through a portal so the
+ * inert application root from useRootLock does not also disable the dialog, and it owns the
+ * Tab trap, Escape handling, and focus restore that these dialogs used to lack.
+ */
+function DashboardFormModal({
+  labelledBy,
+  initialFocusRef,
+  onEscape,
+  children,
+}: DashboardFormModalProps) {
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useRootLock(true);
+  const handleKeyDown = useFocusTrap(dialogRef, { initialFocusRef, onEscape });
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation">
+      <section
+        ref={dialogRef}
+        className="form-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        onKeyDown={handleKeyDown}
+      >
+        {children}
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
 function dashboardAccountFromRecord(
   account: AccountRecord,
   current?: AccountBalanceSummaryItem,
@@ -143,6 +193,7 @@ export function DashboardPage() {
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const dashboardHeadingRef = useRef<HTMLHeadingElement>(null);
+  const editAccountNameRef = useRef<HTMLInputElement>(null);
   const shouldRestoreDashboardFocusRef = useRef(!hasCompletedInitialDashboardExperience);
   const [isAddingAccount, setIsAddingAccount] = useState(false);
   const [accountName, setAccountName] = useState("");
@@ -492,8 +543,10 @@ export function DashboardPage() {
               }
             : current,
       );
-      setRemovingAccount(undefined);
       return { cache, form };
+    },
+    onSuccess: () => {
+      setRemovingAccount(undefined);
     },
     onError: (_error, _id, context) => {
       restoreAccountContext(context?.cache);
@@ -506,7 +559,7 @@ export function DashboardPage() {
   if (isError) {
     return (
       <AppShell>
-        <div className="full-page-status error-state">
+        <div className="full-page-status error-state" role="alert">
           <strong>The dashboard could not be loaded.</strong>
           <span>{error.message}</span>
           <button className="button primary" type="button" onClick={() => void refetch()}>
@@ -519,8 +572,13 @@ export function DashboardPage() {
   if (!data) {
     return hasCompletedInitialDashboardExperience ? (
       <AppShell>
-        <div className="dashboard-refetch-skeleton" role="status" aria-live="polite">
-          <span className="sr-only">Refreshing your dashboard</span>
+        <div className="dashboard-page dashboard-refetch-skeleton">
+          <SkeletonStatus label="Refreshing your dashboard" className="dashboard-refetch-grid">
+            <Skeleton height={124} radius="var(--radius-md)" />
+            <Skeleton height={124} radius="var(--radius-md)" />
+            <Skeleton height={124} radius="var(--radius-md)" />
+            <Skeleton height={280} radius="var(--radius-lg)" />
+          </SkeletonStatus>
         </div>
       </AppShell>
     ) : null;
@@ -539,6 +597,8 @@ export function DashboardPage() {
     transactionHistoryQuery.data !== undefined &&
     isDashboardEmpty(data, cashflowTrendQuery.data, transactionHistoryQuery.data.total);
   const accountActionError = updateAccountMutation.error ?? removeAccountMutation.error;
+  const overallBalanceMinor = accountBalances?.balancesByCurrency.PHP ?? 0;
+  const removalBalanceMinor = removingAccount?.balancesByCurrency.PHP ?? 0;
   const transferFeeInsight = transferFeeInsightQuery.data;
   const transferNoun =
     transferFeeInsight?.totalFeeChargedTransfers === 1 ? "transfer" : "transfers";
@@ -667,8 +727,8 @@ export function DashboardPage() {
         />
 
         {accountBalances && (
-          <section className="dashboard-balance" aria-labelledby="dashboard-balance-title">
-            <div className="dashboard-balance-total">
+          <div className="dashboard-balance">
+            <section className="dashboard-balance-total" aria-labelledby="dashboard-balance-title">
               <div className="dashboard-balance-heading">
                 <span className="dashboard-balance-icon" aria-hidden="true">
                   <WalletCards size={19} />
@@ -692,7 +752,7 @@ export function DashboardPage() {
               <p className="dashboard-balance-usd">
                 {formatMoney(accountBalances.balancesByCurrency.USD, "USD")} in US dollars
               </p>
-            </div>
+            </section>
             <section className="dashboard-account-breakdown" aria-label="Account management">
               <div className="dashboard-account-breakdown-heading">
                 <span>Account balances</span>
@@ -781,7 +841,7 @@ export function DashboardPage() {
                           {account.name === "Cash" && <em>Primary</em>}
                         </span>
                         <span className="dashboard-account-meta">
-                          {account.type}
+                          {accountTypeLabel(account.type)}
                           {account.system && <em>Permanent</em>}
                         </span>
                       </div>
@@ -870,259 +930,237 @@ export function DashboardPage() {
               <UpgradePrompt error={accountActionError} />
               {accountActionError && !isBillingEnforcementError(accountActionError) && (
                 <p className="dashboard-account-error" role="alert">
-                  {accountActionError.message}
+                  <strong>That account change did not go through.</strong>
+                  <span>{accountActionError.message}</span>
                 </p>
               )}
             </section>
-          </section>
+          </div>
         )}
 
         {editingAccount && (
-          <div className="modal-backdrop" role="presentation">
-            <section
-              className="form-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="edit-account-title"
-            >
-              <header className="modal-header">
-                <div>
-                  <p className="eyebrow">Custom account</p>
-                  <h2 id="edit-account-title">Edit account</h2>
-                </div>
-                <button
-                  className="icon-button"
-                  type="button"
-                  onClick={() => setEditingAccount(undefined)}
-                  disabled={updateAccountMutation.isPending}
-                  aria-label="Close edit account"
-                >
-                  <X size={19} />
-                </button>
-              </header>
-              <form
-                className="transaction-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  updateAccountMutation.mutate({
-                    id: editingAccount.id,
-                    name: editName,
-                    type: editType,
-                    ...(editType === "savings" && isPro
-                      ? {
-                          interest: {
-                            enabled: interestEnabled,
-                            annualRateBasisPoints:
-                              interestEnabled && Number(interestRate) > 0
-                                ? Math.round(Number(interestRate) * 100)
-                                : 0,
-                            frequency: interestEnabled ? interestFrequency : "monthly",
-                            payDay:
-                              interestEnabled && interestFrequency !== "daily"
-                                ? interestPayDay
-                                : null,
-                          },
-                        }
-                      : {}),
-                  });
-                }}
+          <DashboardFormModal
+            labelledBy="edit-account-title"
+            initialFocusRef={editAccountNameRef}
+            onEscape={() => {
+              if (!updateAccountMutation.isPending) setEditingAccount(undefined);
+            }}
+          >
+            <header className="modal-header">
+              <div>
+                <p className="eyebrow">Custom account</p>
+                <h2 id="edit-account-title">Edit account</h2>
+              </div>
+              <button
+                className="icon-button"
+                type="button"
+                onClick={() => setEditingAccount(undefined)}
+                disabled={updateAccountMutation.isPending}
+                aria-label="Close edit account"
               >
-                <fieldset>
-                  <legend>Details</legend>
-                  <label>
-                    <span>Account name</span>
-                    <input
-                      value={editName}
-                      onChange={(event) => setEditName(event.target.value)}
-                      maxLength={80}
-                      required
-                      autoFocus
-                    />
-                  </label>
-                  <label>
-                    <span>Account type</span>
-                    <select
-                      value={editType}
-                      onChange={(event) => setEditType(event.target.value as AccountInput["type"])}
-                    >
-                      {accountTypes.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </fieldset>
-                {editType === "savings" && (
-                  <fieldset className="account-interest-fieldset">
-                    <legend>Interest</legend>
-                    {isPro ? (
-                      <label className="checkbox-inline">
-                        <input
-                          type="checkbox"
-                          checked={interestEnabled}
-                          onChange={(event) => setInterestEnabled(event.target.checked)}
-                        />
-                        <span>Earn automatic interest</span>
-                      </label>
-                    ) : (
-                      <p className="account-interest-free-option">
-                        Earn automatic interest on this account
-                      </p>
-                    )}
-                    {isPro ? (
-                      interestEnabled && (
-                        <div className="account-interest-settings">
+                <X size={19} />
+              </button>
+            </header>
+            <form
+              className="transaction-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                updateAccountMutation.mutate({
+                  id: editingAccount.id,
+                  name: editName,
+                  type: editType,
+                  ...(editType === "savings" && isPro
+                    ? {
+                        interest: {
+                          enabled: interestEnabled,
+                          annualRateBasisPoints:
+                            interestEnabled && Number(interestRate) > 0
+                              ? Math.round(Number(interestRate) * 100)
+                              : 0,
+                          frequency: interestEnabled ? interestFrequency : "monthly",
+                          payDay:
+                            interestEnabled && interestFrequency !== "daily"
+                              ? interestPayDay
+                              : null,
+                        },
+                      }
+                    : {}),
+                });
+              }}
+            >
+              <fieldset>
+                <legend>Details</legend>
+                <label>
+                  <span>Account name</span>
+                  <input
+                    value={editName}
+                    onChange={(event) => setEditName(event.target.value)}
+                    maxLength={80}
+                    required
+                    ref={editAccountNameRef}
+                  />
+                </label>
+                <label>
+                  <span>Account type</span>
+                  <select
+                    value={editType}
+                    onChange={(event) => setEditType(event.target.value as AccountInput["type"])}
+                  >
+                    {accountTypes.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </fieldset>
+              {editType === "savings" && (
+                <fieldset className="account-interest-fieldset">
+                  <legend>Interest</legend>
+                  {isPro ? (
+                    <label className="checkbox-inline">
+                      <input
+                        type="checkbox"
+                        checked={interestEnabled}
+                        onChange={(event) => setInterestEnabled(event.target.checked)}
+                      />
+                      <span>Earn automatic interest</span>
+                    </label>
+                  ) : (
+                    <p className="account-interest-free-option">
+                      Earn automatic interest on this account
+                    </p>
+                  )}
+                  {isPro ? (
+                    interestEnabled && (
+                      <div className="account-interest-settings">
+                        <label>
+                          <span>Annual interest rate (%)</span>
+                          <input
+                            value={interestRate}
+                            onChange={(event) => setInterestRate(event.target.value)}
+                            type="number"
+                            min={0}
+                            max={100}
+                            step="0.01"
+                            inputMode="decimal"
+                            placeholder="e.g. 5.00"
+                            required
+                          />
+                        </label>
+                        <label>
+                          <span>Interest received</span>
+                          <select
+                            value={interestFrequency}
+                            onChange={(event) =>
+                              setInterestFrequency(event.target.value as InterestFrequency)
+                            }
+                          >
+                            {interestFrequencies.map((frequency) => (
+                              <option key={frequency} value={frequency}>
+                                {frequency === "daily"
+                                  ? "Daily"
+                                  : frequency === "monthly"
+                                    ? "Monthly"
+                                    : "Yearly"}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {interestFrequency !== "daily" && (
                           <label>
-                            <span>Annual interest rate (%)</span>
-                            <input
-                              value={interestRate}
-                              onChange={(event) => setInterestRate(event.target.value)}
-                              type="number"
-                              min={0}
-                              max={100}
-                              step="0.01"
-                              inputMode="decimal"
-                              placeholder="e.g. 5.00"
-                              required
-                            />
-                          </label>
-                          <label>
-                            <span>Interest received</span>
+                            <span>Pay day</span>
                             <select
-                              value={interestFrequency}
-                              onChange={(event) =>
-                                setInterestFrequency(event.target.value as InterestFrequency)
-                              }
+                              value={interestPayDay}
+                              onChange={(event) => setInterestPayDay(Number(event.target.value))}
                             >
-                              {interestFrequencies.map((frequency) => (
-                                <option key={frequency} value={frequency}>
-                                  {frequency === "daily"
-                                    ? "Daily"
-                                    : frequency === "monthly"
-                                      ? "Monthly"
-                                      : "Yearly"}
+                              {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+                                <option key={day} value={day}>
+                                  {day}
                                 </option>
                               ))}
                             </select>
                           </label>
-                          {interestFrequency !== "daily" && (
-                            <label>
-                              <span>Pay day</span>
-                              <select
-                                value={interestPayDay}
-                                onChange={(event) => setInterestPayDay(Number(event.target.value))}
-                              >
-                                {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
-                                  <option key={day} value={day}>
-                                    {day}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          )}
-                          <p className="form-hint">
-                            Interest is computed from the account's balance and credited
-                            automatically{" "}
-                            {interestFrequency === "daily"
-                              ? "each day"
-                              : `on the ${interestPayDay}${interestPayDay === 1 ? "st" : interestPayDay === 2 ? "nd" : interestPayDay === 3 ? "rd" : "th"}`}
-                            .
-                          </p>
-                        </div>
-                      )
-                    ) : (
-                      <p className="form-hint account-interest-pro-callout">
-                        Automatic interest is a Pro feature.{" "}
-                        <Link to="/app/settings#plan-and-billing">Upgrade to Zoption Pro</Link> to
-                        earn interest on this savings account.
-                      </p>
-                    )}
-                  </fieldset>
-                )}
-                <UpgradePrompt error={updateAccountMutation.error} />
-                {updateAccountMutation.error &&
-                  !isBillingEnforcementError(updateAccountMutation.error) && (
-                    <p className="form-error" role="alert">
-                      {updateAccountMutation.error.message}
+                        )}
+                        <p className="form-hint">
+                          Interest is computed from the account's balance and credited automatically{" "}
+                          {interestFrequency === "daily"
+                            ? "each day"
+                            : `on the ${interestPayDay}${interestPayDay === 1 ? "st" : interestPayDay === 2 ? "nd" : interestPayDay === 3 ? "rd" : "th"}`}
+                          .
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    <p className="form-hint account-interest-pro-callout">
+                      Automatic interest is a Pro feature.{" "}
+                      <Link to="/app/settings#plan-and-billing">Upgrade to Zoption Pro</Link> to
+                      earn interest on this savings account.
                     </p>
                   )}
-                <div className="edit-account-adjust-prompt">
-                  <span>Looking to adjust the current balance?</span>
-                  <button
-                    type="button"
-                    className="button secondary compact-action"
-                    onClick={() => {
-                      const target = editingAccount;
-                      setEditingAccount(undefined);
-                      setAdjustingAccount(target);
-                    }}
-                  >
-                    <SlidersHorizontal size={14} aria-hidden="true" /> Adjust balance
-                  </button>
-                </div>
-                <div className="modal-actions">
-                  <button
-                    className="button secondary"
-                    type="button"
-                    onClick={() => setEditingAccount(undefined)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="button primary"
-                    type="submit"
-                    disabled={updateAccountMutation.isPending}
-                  >
-                    {updateAccountMutation.isPending ? "Saving…" : "Save"}
-                  </button>
-                </div>
-              </form>
-            </section>
-          </div>
-        )}
-        {removingAccount && (
-          <div className="modal-backdrop" role="presentation">
-            <section
-              className="form-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="remove-account-title"
-            >
-              <header className="modal-header">
-                <div>
-                  <p className="eyebrow">Remove custom account</p>
-                  <h2 id="remove-account-title">Remove {removingAccount.name}?</h2>
-                </div>
-              </header>
-              <p>
-                It will no longer appear when adding new transactions. Your existing transactions
-                and its calculated balance will remain in your history.
-              </p>
-              {removeAccountMutation.error && (
-                <p className="form-error" role="alert">
-                  {removeAccountMutation.error.message}
-                </p>
+                </fieldset>
               )}
+              <UpgradePrompt error={updateAccountMutation.error} />
+              {updateAccountMutation.error &&
+                !isBillingEnforcementError(updateAccountMutation.error) && (
+                  <p className="form-error" role="alert">
+                    {updateAccountMutation.error.message}
+                  </p>
+                )}
+              <div className="edit-account-adjust-prompt">
+                <span>Looking to adjust the current balance?</span>
+                <button
+                  type="button"
+                  className="button secondary compact-action"
+                  onClick={() => {
+                    const target = editingAccount;
+                    setEditingAccount(undefined);
+                    setAdjustingAccount(target);
+                  }}
+                >
+                  <SlidersHorizontal size={14} aria-hidden="true" /> Adjust balance
+                </button>
+              </div>
               <div className="modal-actions">
                 <button
                   className="button secondary"
                   type="button"
-                  onClick={() => setRemovingAccount(undefined)}
+                  onClick={() => setEditingAccount(undefined)}
                 >
                   Cancel
                 </button>
                 <button
                   className="button primary"
-                  type="button"
-                  onClick={() => removeAccountMutation.mutate(removingAccount.id)}
-                  disabled={removeAccountMutation.isPending}
+                  type="submit"
+                  disabled={updateAccountMutation.isPending}
                 >
-                  {removeAccountMutation.isPending ? "Removing…" : "Remove account"}
+                  {updateAccountMutation.isPending ? "Saving…" : "Save"}
                 </button>
               </div>
-            </section>
-          </div>
+            </form>
+          </DashboardFormModal>
+        )}
+        {removingAccount && (
+          <ConfirmDialog
+            title={`Remove ${removingAccount.name}?`}
+            consequence={
+              <>
+                Removing <strong>{removingAccount.name}</strong> takes it out of your account list,
+                so it can no longer be chosen for new transactions. Its{" "}
+                {formatMoney(removalBalanceMinor, "PHP")} balance and every transaction recorded
+                against it stay in your history as read-only records, and because your overall
+                balance is calculated from recorded transactions, the{" "}
+                {formatMoney(overallBalanceMinor, "PHP")} total does not change. This cannot be
+                undone.
+              </>
+            }
+            confirmLabel="Remove account"
+            busyLabel="Removing…"
+            busy={removeAccountMutation.isPending}
+            error={removeAccountMutation.error?.message}
+            onConfirm={() => removeAccountMutation.mutate(removingAccount.id)}
+            onClose={() => setRemovingAccount(undefined)}
+          />
         )}
 
         {adjustingAccount && (
@@ -1141,8 +1179,8 @@ export function DashboardPage() {
               <h2 id="workspace-onboarding-title">Build your real financial picture</h2>
               <p>
                 Your workspace starts clean without fictional transactions. Choose how you want to
-                begin: migrate existing bank or Excel statements in under a minute, or build clean
-                as you go.
+                begin: tell us what your accounts already hold, migrate existing bank or Excel
+                statements in under a minute, or build clean as you go.
               </p>
               <div className="onboarding-actions">
                 <button
@@ -1156,6 +1194,14 @@ export function DashboardPage() {
                 <Link className="button secondary" to="/app/transactions?add=1">
                   <Plus size={17} aria-hidden="true" /> Add transactions manually
                 </Link>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
+                  disabled={activeAccounts.length === 0}
+                >
+                  <SlidersHorizontal size={17} aria-hidden="true" /> Tell us what you already have
+                </button>
               </div>
             </div>
             <div className="onboarding-steps" aria-label="Starting paths">
@@ -1171,6 +1217,14 @@ export function DashboardPage() {
               <div>
                 <strong>Option B: Start fresh</strong>
                 <p>Configure your accounts and track spending with voice or manual entries.</p>
+              </div>
+              <span>3</span>
+              <div>
+                <strong>Option C: Match your real balances</strong>
+                <p>
+                  Enter what your Cash, bank, and e-wallet accounts hold today so every number
+                  starts from reality.
+                </p>
               </div>
             </div>
           </section>

@@ -22,6 +22,10 @@
     "release": "semantic-release",
     "release:dry-run": "semantic-release --dry-run --no-ci",
     "smoke:production": "node scripts/smoke-production.mjs",
+    "audit:a11y": "node scripts/a11y-source-audit.mjs",
+    "audit:auth-stub": "node scripts/fake-supabase-auth.mjs",
+    "supabase:local": "node scripts/local-supabase.mjs",
+    "seed:local": "node scripts/seed-local-workspace.mjs",
     "paypal:sandbox:setup": "node --env-file=apps/api/.dev.vars scripts/setup-paypal-sandbox.mjs",
     "capture:screenshots": "node scripts/capture-portfolio.mjs",
     "ads:studio": "pnpm --filter @zoption/ads studio",
@@ -38,6 +42,7 @@
     "db:migrate:local": "pnpm --filter @zoption/api exec wrangler d1 migrations apply budget-expense-local --local"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.61.1",

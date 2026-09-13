@@ -118,18 +118,21 @@ export function CalendarMonthGrid({
     });
   }
 
-  return (
-    <div className="calendar-grid" role="grid" aria-label={`Calendar for ${month}`}>
-      {weekdays.map((weekday) => (
-        <div className="calendar-weekday" role="columnheader" key={weekday} title={weekday}>
-          <span aria-hidden="true">{weekday.slice(0, 3)}</span>
-          <span className="sr-only">{weekday}</span>
-        </div>
-      ))}
-      {Array.from({ length: leadingCells }, (_, index) => (
-        <div className="calendar-day-placeholder" role="gridcell" key={`leading-${index}`} />
-      ))}
-      {dates.map((date) => {
+  // ARIA requires role="grid" to hold role="row" children, so the cells are grouped one
+  // week per row. The day cells themselves are unchanged; only their grouping is new.
+  const allCells: Array<{ key: string; date: string | null }> = [
+    ...Array.from({ length: leadingCells }, (_, index) => ({
+      key: "leading-" + index,
+      date: null as string | null,
+    })),
+    ...dates.map((date) => ({ key: date, date: date as string | null })),
+  ];
+  const weeks: Array<typeof allCells> = [];
+  for (let index = 0; index < allCells.length; index += 7) {
+    weeks.push(allCells.slice(index, index + 7));
+  }
+
+  function renderDayCell(date: string) {
         const data = days.get(date);
         const selected = date === selectedDate;
         const isToday = date === today;
@@ -238,7 +241,29 @@ export function CalendarMonthGrid({
             </button>
           </div>
         );
-      })}
+  }
+
+  return (
+    <div className="calendar-grid" role="grid" aria-label={`Calendar for ${month}`}>
+      <div className="calendar-row" role="row">
+      {weekdays.map((weekday) => (
+        <div className="calendar-weekday" role="columnheader" key={weekday} title={weekday}>
+          <span aria-hidden="true">{weekday.slice(0, 3)}</span>
+          <span className="sr-only">{weekday}</span>
+        </div>
+      ))}
+      </div>
+      {weeks.map((week, weekIndex) => (
+        <div className="calendar-row" role="row" key={"week-" + weekIndex}>
+          {week.map((cell) =>
+            cell.date === null ? (
+              <div className="calendar-day-placeholder" role="gridcell" key={cell.key} />
+            ) : (
+              renderDayCell(cell.date)
+            ),
+          )}
+        </div>
+      ))}
     </div>
   );
 }

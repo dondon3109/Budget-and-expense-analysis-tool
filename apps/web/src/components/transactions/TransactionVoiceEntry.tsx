@@ -2,7 +2,10 @@ import { CURRENT_RECEIPT_CONSENT_VERSION, type TransactionVoiceDraft } from "@zo
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoaderCircle, Mic, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useRootLock } from "../../hooks/useRootLock";
 import { extractVoiceTransaction, getReceiptPreferences, grantReceiptConsent } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
 import {
@@ -33,6 +36,61 @@ function errorMessage(error: unknown, fallback: string): string {
 
 function formatElapsed(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+interface VoiceConsentDialogProps {
+  busy: boolean;
+  onCancel: () => void;
+  onAccept: () => void;
+}
+
+/**
+ * Extracted so the trap mounts with the dialog: useFocusTrap is mount-only and would not
+ * activate if it lived beside the always-mounted trigger.
+ */
+function VoiceConsentDialog({ busy, onCancel, onAccept }: VoiceConsentDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    onEscape: () => {
+      if (!busy) onCancel();
+    },
+  });
+
+  // Portalled so the inert application root from useRootLock does not disable the dialog.
+  return createPortal(
+    <div
+      ref={dialogRef}
+      className="transaction-voice-consent"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Enable AI-assisted entry?"
+      onKeyDown={handleKeyDown}
+    >
+      <strong>Enable AI-assisted entry?</strong>
+      <p>
+        Zoption sends only the voice recording, receipt photo, or PDF you choose to AI during that
+        request to draft editable entries. These source files are not stored. You review every
+        result before it is saved.
+      </p>
+      <div className="transaction-voice-consent-actions">
+        <button
+          type="button"
+          className="button secondary compact"
+          disabled={busy}
+          onClick={onCancel}
+        >
+          Not now
+        </button>
+        <button type="button" className="button primary compact" disabled={busy} onClick={onAccept}>
+          {busy ? "Enabling…" : "Accept and enable"}
+        </button>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
 export function TransactionVoiceEntry({
@@ -451,37 +509,11 @@ export function TransactionVoiceEntry({
         </small>
       )}
       {showConsent && (
-        <div
-          className="transaction-voice-consent"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Enable AI-assisted entry?"
-        >
-          <strong>Enable AI-assisted entry?</strong>
-          <p>
-            Zoption sends only the voice recording, receipt photo, or PDF you choose to AI during
-            that request to draft editable entries. These source files are not stored. You review
-            every result before it is saved.
-          </p>
-          <div className="transaction-voice-consent-actions">
-            <button
-              type="button"
-              className="button secondary compact"
-              disabled={consentMutation.isPending}
-              onClick={() => setShowConsent(false)}
-            >
-              Not now
-            </button>
-            <button
-              type="button"
-              className="button primary compact"
-              disabled={consentMutation.isPending}
-              onClick={() => void acceptConsent()}
-            >
-              {consentMutation.isPending ? "Enabling…" : "Accept and enable"}
-            </button>
-          </div>
-        </div>
+        <VoiceConsentDialog
+          busy={consentMutation.isPending}
+          onCancel={() => setShowConsent(false)}
+          onAccept={() => void acceptConsent()}
+        />
       )}
     </section>
   );

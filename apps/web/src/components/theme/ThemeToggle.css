@@ -79,3 +79,12 @@
     display: none;
   }
 }
+
+/* Touch devices get the 44px craft floor instead of the compact mouse sizing. */
+@media (pointer: coarse) {
+  .theme-pill button,
+  .theme-sw button {
+    min-width: 44px;
+    height: 44px;
+  }
+}
