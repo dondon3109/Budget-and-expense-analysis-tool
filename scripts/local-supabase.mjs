@@ -38,8 +38,6 @@ const TARGETS = [
   },
 ];
 
-const LOCAL_URL = "http://127.0.0.1:54321";
-
 function readEnv(file) {
   if (!existsSync(file)) return null;
   return readFileSync(file, "utf8");

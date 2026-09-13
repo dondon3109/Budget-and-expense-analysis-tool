@@ -18,7 +18,7 @@
  *
  * Run directly for a report:  node scripts/a11y-source-audit.mjs
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, relative } from "node:path";
 import { realpathSync } from "node:fs";

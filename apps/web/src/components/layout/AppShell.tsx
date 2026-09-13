@@ -207,7 +207,7 @@ export function AppShell({ children }: AppShellProps) {
     // The user chose to throw the edits away, so let the page drop anything it persisted
     // for them. Without this a restored draft would reappear on the next visit.
     discardUnsavedChanges();
-    if (pending.action.kind === "route") navigate(pending.action.to);
+    if (pending.action.kind === "route") void navigate(pending.action.to);
     else void handleSignOut();
   }
 
