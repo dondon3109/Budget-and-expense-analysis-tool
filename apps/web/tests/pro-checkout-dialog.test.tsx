@@ -143,6 +143,22 @@ describe("ProCheckoutDialog", () => {
     expect(openBillingCheckout).not.toHaveBeenCalled();
   });
 
+  it("confines Tab to the dialog", () => {
+    renderDialog();
+
+    const dialog = screen.getByRole("dialog", {
+      name: "Choose how you want to use Zoption Pro",
+    });
+    const close = screen.getByRole("button", { name: "Close subscription options" });
+    const continueFree = screen.getByRole("button", { name: "Continue using free plan" });
+
+    expect(continueFree).toHaveFocus();
+
+    fireEvent.keyDown(continueFree, { key: "Tab" });
+    expect(close).toHaveFocus();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
   it("starts at the free-plan action and lets the user continue without checkout", () => {
     const onClose = renderDialog();
     const continueButton = screen.getByRole("button", {

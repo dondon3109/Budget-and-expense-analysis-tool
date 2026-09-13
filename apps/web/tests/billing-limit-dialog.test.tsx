@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -78,6 +78,30 @@ describe("BillingLimitDialog", () => {
     expect(root.inert ?? false).toBe(false);
     expect(root).not.toHaveAttribute("aria-hidden");
     expect(document.body.style.overflow).toBe("");
+  });
+
+  it("confines Tab to the dialog", async () => {
+    const user = userEvent.setup();
+    const root = document.getElementById("root");
+    if (!root) throw new Error("Test root is missing.");
+    render(<Harness />, { container: root });
+
+    await user.click(screen.getByRole("button", { name: "Open limit" }));
+
+    const dialog = screen.getByRole("dialog", {
+      name: "No AI questions remaining this 14-day period",
+    });
+    const close = screen.getByRole("button", { name: "Close" });
+    const review = screen.getByRole("link", { name: "Review Plan and billing" });
+
+    expect(review).toHaveFocus();
+
+    fireEvent.keyDown(review, { key: "Tab" });
+    expect(close).toHaveFocus();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+    expect(review).toHaveFocus();
   });
 
   it("does not lock the document for an unrelated error", () => {

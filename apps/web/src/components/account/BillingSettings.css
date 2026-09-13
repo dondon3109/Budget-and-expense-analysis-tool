@@ -240,7 +240,7 @@
   border: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--warning) 9%, transparent);
-  color: var(--text);
+  color: var(--ink);
   font-size: 13px;
   font-weight: 650;
   line-height: 1.5;

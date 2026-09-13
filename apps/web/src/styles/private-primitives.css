@@ -258,6 +258,27 @@
   border-radius: var(--radius-xl);
   background: var(--paper);
   box-shadow: var(--shadow-dialog);
+  /* This element both scrolls and has rounded corners. When the platform paints scroll bar
+     tracks rather than overlaying them (macOS "always show scroll bars"), the track is a plain
+     rectangle whose square corner cuts across the rounded corner of the card. A transparent
+     track with a rounded, inset thumb keeps the scroll bar inside the curve. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.form-modal::-webkit-scrollbar {
+  width: 10px;
+}
+
+.form-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.form-modal::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+  background-color: var(--line-strong);
 }
 
 .modal-header {

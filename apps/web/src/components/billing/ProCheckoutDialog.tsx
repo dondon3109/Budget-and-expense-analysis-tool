@@ -12,12 +12,12 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type KeyboardEvent,
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { getBillingProviderConfig, startBillingCheckout } from "../../lib/api";
 import { openBillingCheckout } from "../../lib/billingCheckout";
@@ -264,17 +264,29 @@ function PayPalCheckoutBoundary({ interval, workspace, onBusyChange }: PayPalChe
   );
 }
 
-export function ProCheckoutDialog({
-  open,
+interface ProCheckoutDialogContentProps {
+  summary: BillingSummary;
+  workspace: AuthenticatedWorkspace;
+  returnFocus?: HTMLElement | null;
+  onClose: () => void;
+}
+
+/** Narrow screens show the Pro plan first, so its selected interval is the better entry point. */
+function prefersCompactProAction(): boolean {
+  return (
+    typeof window !== "undefined" && Boolean(window.matchMedia?.("(max-width: 700px)").matches)
+  );
+}
+
+function ProCheckoutDialogContent({
   summary,
   workspace,
   returnFocus,
   onClose,
-}: ProCheckoutDialogProps) {
+}: ProCheckoutDialogContentProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const initialActionRef = useRef<HTMLButtonElement>(null);
   const initialProActionRef = useRef<HTMLInputElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [selectedInterval, setSelectedInterval] = useState<BillingInterval>("month");
@@ -286,10 +298,16 @@ export function ProCheckoutDialog({
       ? "Review your existing subscription before starting another checkout."
       : "Checkout is temporarily unavailable for this account.";
 
-  useRootLock(open);
+  useRootLock(true);
+
+  const handleKeyDown = useFocusTrap(dialogRef, {
+    initialFocusRef: prefersCompactProAction() ? initialProActionRef : initialActionRef,
+    returnFocus: returnFocus ?? null,
+    onEscape: onClose,
+  });
 
   useEffect(() => {
-    if (!open || !canCheckout) return;
+    if (!canCheckout) return;
 
     let cancelled = false;
     setError(undefined);
@@ -305,57 +323,14 @@ export function ProCheckoutDialog({
     return () => {
       cancelled = true;
     };
-  }, [canCheckout, open, workspace]);
+  }, [canCheckout, workspace]);
 
+  // The trap focuses the entry action; opening a long dialog should still start at the top.
   useLayoutEffect(() => {
-    if (!open) return;
-
-    const activeElement = document.activeElement;
-
-    if (returnFocus?.isConnected) openerRef.current = returnFocus;
-    else if (activeElement instanceof HTMLElement && activeElement !== document.body) {
-      openerRef.current = activeElement;
-    }
-    const preferProAction = window.matchMedia?.("(max-width: 700px)").matches;
-    const targetAction = preferProAction ? initialProActionRef.current : initialActionRef.current;
-    targetAction?.focus({ preventScroll: true });
     if (dialogRef.current) {
       dialogRef.current.scrollTop = 0;
     }
-
-    return () => {
-      if (openerRef.current?.isConnected) openerRef.current.focus();
-    };
-  }, [open, returnFocus]);
-
-  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-    if (event.key !== "Tab") return;
-
-    const focusable = Array.from(
-      dialogRef.current?.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).filter((element) => element.tabIndex >= 0);
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (!first || !last) return;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    } else if (!dialogRef.current?.contains(document.activeElement)) {
-      event.preventDefault();
-      (event.shiftKey ? last : first).focus();
-    }
-  }
+  }, []);
 
   async function handleFallbackCheckout() {
     if (!canCheckout) return;
@@ -370,8 +345,6 @@ export function ProCheckoutDialog({
       setBusy(false);
     }
   }
-
-  if (!open) return null;
 
   const titleId = "pro-checkout-title";
   const descriptionId = "pro-checkout-description";
@@ -583,4 +556,9 @@ export function ProCheckoutDialog({
     </div>,
     document.body,
   );
+}
+
+/** Mounts the dialog only while open so the mount-only focus trap activates on every open. */
+export function ProCheckoutDialog({ open, ...props }: ProCheckoutDialogProps) {
+  return open ? <ProCheckoutDialogContent {...props} /> : null;
 }
