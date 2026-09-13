@@ -93,9 +93,32 @@ export interface AppRouteAudit {
  * useRootLock sets #root inert + aria-hidden while an overlay is open, and in that state
  * axe only sees the overlay — which is how a page full of violations once reported clean.
  * Dismiss any first-run dialog, then refuse to analyse if the root is still inert.
+ *
+ * The theme chooser mounts one commit after React does (ClientExperiences holds it until its own
+ * effect runs), so a check straight after domcontentloaded races it and, losing the race, reports
+ * the page as ready while the overlay is still coming. When no theme preference is stored — the
+ * only case that renders the chooser — wait for it before deciding there is nothing to dismiss.
  */
 export async function dismissOverlays(page: Page) {
+  const themeChosen = await page.evaluate(
+    () => window.localStorage.getItem("zoption-theme") !== null,
+  );
+  if (!themeChosen) {
+    // Bounded, so a page that never renders the chooser does not hold up the scan.
+    await page
+      .getByRole("button", { name: /close and keep the default/i })
+      .waitFor({ state: "visible", timeout: 5_000 })
+      .catch(() => undefined);
+  }
+
   for (let attempt = 0; attempt < 5; attempt += 1) {
+    // The chooser's control sits outside the inert root, whereas Escape only reaches the dialog
+    // while focus is inside it, so prefer the control. The sign-in fixture does the same.
+    const closeThemeChooser = page.getByRole("button", { name: /close and keep the default/i });
+    if (await closeThemeChooser.isVisible().catch(() => false)) {
+      await closeThemeChooser.click({ timeout: 5_000 }).catch(() => undefined);
+      await page.waitForTimeout(250);
+    }
     const inert = await page.evaluate(() => document.getElementById("root")?.inert === true);
     if (!inert) break;
     await page.keyboard.press("Escape");
@@ -139,16 +162,24 @@ export async function waitForAppReady(page: Page, route: string): Promise<void> 
       undefined,
       { timeout: 20_000 },
     );
-    // Then confirm it stays visible. Without this the wait can pass in the instant before React
-    // sets inert, which is exactly the race that made /app/assistant look like it had no heading.
-    await page.waitForTimeout(600);
-    if (await isHidden()) {
-      throw new Error("the splash reappeared after a brief clear");
-    }
-  } catch {
+  } catch (error) {
+    // Only a timeout means the splash never cleared. A crashed page or a failed evaluate arrives
+    // with another name and is rethrown as itself, because renaming it here would send the next
+    // reader looking at the splash instead of the real failure.
+    if (!(error instanceof Error) || error.name !== "TimeoutError") throw error;
     throw new Error(
       `${route}: the startup splash never cleared after 20s, so the route was never actually shown. ` +
         "The splash keeps the app content inert and aria-hidden, so a scan here would be measuring a hidden page.",
+      { cause: error },
+    );
+  }
+
+  // Then confirm it stays visible. Without this the wait can pass in the instant before React
+  // sets inert, which is exactly the race that made /app/assistant look like it had no heading.
+  await page.waitForTimeout(600);
+  if (await isHidden()) {
+    throw new Error(
+      `${route}: the splash reappeared after a brief clear, so the route was never stably shown.`,
     );
   }
 }
@@ -159,7 +190,17 @@ export async function waitForAppReady(page: Page, route: string): Promise<void> 
  * nothing, redirects, or throws with real data fails loudly here instead of passing a scan
  * over an empty shell.
  */
-export async function auditAppRoute(page: Page, route: string): Promise<AppRouteAudit> {
+export async function auditAppRoute(
+  page: Page,
+  route: string,
+  options: {
+    /**
+     * Reveals a view the route keeps behind a control — a tab, a toggle, a disclosure — before the
+     * scan, so the audit reaches it. Everything after this runs exactly as for the default view.
+     */
+    reveal?: (page: Page) => Promise<void>;
+  } = {},
+): Promise<AppRouteAudit> {
   const consoleErrors: string[] = [];
   const failedRequests: string[] = [];
   const collect = (message: ConsoleMessage) => {
@@ -182,6 +223,12 @@ export async function auditAppRoute(page: Page, route: string): Promise<AppRoute
     await waitForAppReady(page, route);
     // Once more, now that late-arriving overlays have had their chance to open.
     await dismissOverlays(page);
+    if (options.reveal) {
+      await options.reveal(page);
+      // The revealed view may fetch its own data; give it the same bounded settle window.
+      await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
+      await dismissOverlays(page);
+    }
     await page.waitForTimeout(400);
 
     const heading = await page.evaluate(() =>
@@ -243,6 +290,14 @@ export async function captureRoute(page: Page, route: string, label: string): Pr
 }
 
 /**
+ * Runaway guard for the scroll-stepped scan, not a routine ceiling. The tallest routes measured
+ * are /changelog at 18 viewports (393px) and the landing page at 16, so real pages are walked in
+ * full; a page several times that tall (an infinite list, say) fails the scan instead of turning
+ * one route into hundreds of axe runs.
+ */
+const MAX_SCROLL_STEPS = 40;
+
+/**
  * axe evaluates the whole document at every scroll position, including elements that are
  * far off-screen and not painted. For those it can guess the wrong backdrop: the landing
  * page chat bubbles were reported as dark-on-dark 1.26:1 when they are really ~13:1, and
@@ -277,8 +332,14 @@ export async function analyseVisible(page: Page, label: string): Promise<Finding
   });
 
   const steps = await page.evaluate(() =>
-    Math.min(Math.max(Math.ceil(document.documentElement.scrollHeight / window.innerHeight), 1), 14),
+    Math.max(Math.ceil(document.documentElement.scrollHeight / window.innerHeight), 1),
   );
+  if (steps > MAX_SCROLL_STEPS) {
+    throw new Error(
+      `${label}: the page is ${steps} viewports tall, past the ${MAX_SCROLL_STEPS}-step runaway guard, ` +
+        "so the scan refused rather than dropping everything below the guard silently.",
+    );
+  }
 
   const found = new Map<string, Finding>();
   const advisory: string[] = [];
@@ -297,11 +358,13 @@ export async function analyseVisible(page: Page, label: string): Promise<Finding
         return targets.map((selector) => {
           try {
             const element = document.querySelector(selector);
-            if (!element) return false;
+            // An unresolvable target is kept, not treated as off-screen: axe found a real element,
+            // and dropping it here is a finding disappearing without anyone noticing.
+            if (!element) return true;
             const rect = element.getBoundingClientRect();
             return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
           } catch {
-            return false;
+            return true;
           }
         });
       }, selectors);

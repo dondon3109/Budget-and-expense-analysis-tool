@@ -16,8 +16,9 @@
  * Then point the app at it. The API's e2e config already targets http://127.0.0.1:54321, so only
  * the web env needs the same URL and any non-empty publishable key.
  */
-import { createServer } from "node:http";
+import { Buffer } from "node:buffer";
 import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
+import { createServer } from "node:http";
 
 const args = process.argv.slice(2);
 const readArg = (name, fallback) => {
@@ -35,6 +36,7 @@ for (let index = 0; index < args.length; index += 1) {
 }
 
 const port = Number(readArg("port", "54321"));
+const defaultEmail = "audit@example.com";
 const userId = readArg("user", "08060c19-8a55-4046-a2e7-7384808dd81c");
 const issuer = `http://127.0.0.1:${port}/auth/v1`;
 const ttlSeconds = Number(readArg("ttl", "3600"));
@@ -47,6 +49,11 @@ const jwk = { ...publicKey.export({ format: "jwk" }), kid: keyId, use: "sig", al
 const base64url = (input) => Buffer.from(input).toString("base64url");
 
 const subjectFor = (email) => userOverrides.get(String(email ?? "").toLowerCase()) ?? userId;
+
+// A refresh presents only its refresh token, so remember which email each token was issued to.
+// Without this the refresh grant falls back to the default identity and silently moves the
+// empty-workspace account onto the seeded one.
+const sessionsByRefreshToken = new Map();
 
 function mintToken(email, sessionId) {
   const issuedAt = Math.floor(Date.now() / 1000);
@@ -86,13 +93,15 @@ function userFor(email) {
 }
 
 function sessionFor(email) {
+  const refreshToken = `refresh-${randomUUID()}`;
+  sessionsByRefreshToken.set(refreshToken, email);
   const accessToken = mintToken(email, randomUUID());
   return {
     access_token: accessToken,
     token_type: "bearer",
     expires_in: ttlSeconds,
     expires_at: Math.floor(Date.now() / 1000) + ttlSeconds,
-    refresh_token: `refresh-${randomUUID()}`,
+    refresh_token: refreshToken,
     user: userFor(email),
   };
 }
@@ -141,13 +150,36 @@ const server = createServer((request, response) => {
       body += chunk;
     });
     request.on("end", () => {
-      let email = "audit@example.com";
+      let parsed = {};
       try {
-        const parsed = JSON.parse(body || "{}");
-        if (typeof parsed.email === "string" && parsed.email) email = parsed.email;
+        parsed = JSON.parse(body || "{}");
       } catch {
         // Fall back to the default identity; the client only needs a session back.
       }
+      const grantType = url.searchParams.get("grant_type") ?? parsed.grant_type;
+
+      if (grantType === "refresh_token") {
+        const email = sessionsByRefreshToken.get(parsed.refresh_token);
+        if (!email) {
+          // GoTrue answers an unusable refresh token with 400 invalid_grant. Minting a session
+          // here is what let a refresh change identity instead of failing.
+          send(
+            response,
+            400,
+            { error: "invalid_grant", error_description: "Invalid Refresh Token" },
+            origin,
+            requestedHeaders,
+          );
+          return;
+        }
+        // Rotate: a refresh token is single-use, like the real service.
+        sessionsByRefreshToken.delete(parsed.refresh_token);
+        send(response, 200, sessionFor(email), origin, requestedHeaders);
+        return;
+      }
+
+      const email =
+        typeof parsed.email === "string" && parsed.email ? parsed.email : defaultEmail;
       send(response, 200, sessionFor(email), origin, requestedHeaders);
     });
     return;

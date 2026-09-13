@@ -94,6 +94,53 @@ test.describe("accessibility — authenticated routes (desktop)", () => {
       }
     }
   });
+
+  test.describe("views behind a toggle", () => {
+    test("/app/subscriptions renewal calendar is accessible", async ({ browser }) => {
+      test.skip(!state, "Sign-in was unavailable, so app routes cannot be inspected.");
+
+      const context = await browser.newContext({ storageState: state });
+      const page = await context.newPage();
+      try {
+        const audit = await auditAppRoute(page, "/app/subscriptions", {
+          // The route opens on the table view. This toggle is the only way the renewal calendar is
+          // ever rendered, which is how its invalid grid stayed out of every earlier scan.
+          reveal: async (openPage) => {
+            await openPage.getByRole("button", { name: "Renewal calendar" }).click();
+            await openPage.locator(".renewal-calendar-grid").waitFor();
+          },
+        });
+        await captureRoute(page, "/app/subscriptions/renewal-calendar", "desktop-toggled");
+
+        expect(audit.heading, "/app/subscriptions rendered no h1").not.toBe("");
+        expect(audit.findings).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+
+    test("/app/calendar expanded next month is accessible", async ({ browser }) => {
+      test.skip(!state, "Sign-in was unavailable, so app routes cannot be inspected.");
+
+      const context = await browser.newContext({ storageState: state });
+      const page = await context.newPage();
+      try {
+        const audit = await auditAppRoute(page, "/app/calendar", {
+          // The next-month grid is collapsed by default, so a scan of the route never saw it.
+          reveal: async (openPage) => {
+            await openPage.getByRole("group", { name: "Next month" }).getByRole("button").click();
+            await openPage.locator(".calendar-next-month [role='grid']").waitFor();
+          },
+        });
+        await captureRoute(page, "/app/calendar/next-month", "desktop-toggled");
+
+        expect(audit.heading, "/app/calendar rendered no h1").not.toBe("");
+        expect(audit.findings).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+  });
 });
 
 test.describe("accessibility — empty workspace (desktop)", () => {
