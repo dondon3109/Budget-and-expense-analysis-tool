@@ -25,7 +25,10 @@ const TARGETS = [
     label: "api",
     file: `${ROOT}/apps/api/.dev.vars`,
     backup: `${ROOT}/apps/api/.dev.vars.zoption-cloud-backup`,
-    keys: { SUPABASE_URL: "url" },
+    // The publishable key matters as much as the URL: the Worker sends it as the apikey header
+    // when it verifies an identity, and a real GoTrue rejects a placeholder. Without this the
+    // wrangler vars fallback silently wins and every /api/app/identity call fails.
+    keys: { SUPABASE_URL: "url", SUPABASE_PUBLISHABLE_KEY: "key" },
   },
   {
     label: "web",
