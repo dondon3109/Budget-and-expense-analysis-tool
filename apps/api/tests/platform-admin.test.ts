@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createPlatformAdminService,
@@ -7,12 +7,25 @@ import {
 } from "../src/platform-admin";
 import { platformAdminRepository, type PlatformAdminRepository } from "../src/db/platform-admin";
 import type { Bindings } from "../src/types";
+import { createD1TestDatabase } from "./helpers/d1-test-harness";
 
 const env = {
   DB: {} as D1Database,
   SUPABASE_URL: "https://project.supabase.co",
   SUPABASE_PUBLISHABLE_KEY: "publishable-key",
 } satisfies Bindings;
+
+const databases: Array<{ close(): void }> = [];
+
+afterEach(() => {
+  for (const database of databases.splice(0)) database.close();
+});
+
+function identityEnvironment(): { env: Bindings; database: ReturnType<typeof createD1TestDatabase>["database"] } {
+  const { binding, database } = createD1TestDatabase();
+  databases.push(database);
+  return { env: { DB: binding }, database };
+}
 
 function repositoryMock(overrides: Partial<PlatformAdminRepository> = {}): PlatformAdminRepository {
   return {
@@ -172,5 +185,38 @@ describe("platform-admin sponsored-seat safety", () => {
       "lease-token",
       true,
     );
+  });
+});
+
+describe("platform-admin verified identity storage", () => {
+  it("releases a stale row that owns the same email under another user id", async () => {
+    const { env, database } = identityEnvironment();
+    database.exec(
+      "INSERT INTO app_user_identities (user_id, verified_email) VALUES ('previous-user', 'person@example.com')",
+    );
+
+    // Before the fix this insert violated app_user_identities_verified_email_unique and threw.
+    await expect(
+      platformAdminRepository.syncVerifiedIdentity(env, "current-user", "person@example.com"),
+    ).resolves.toBeUndefined();
+
+    expect(
+      database
+        .prepare("SELECT user_id AS userId FROM app_user_identities WHERE verified_email = ?")
+        .all("person@example.com"),
+    ).toEqual([{ userId: "current-user" }]);
+  });
+
+  it("keeps refusing to record an identity for a deleted account", async () => {
+    const { env, database } = identityEnvironment();
+    database.exec("INSERT INTO account_deletions (user_id) VALUES ('deleted-user')");
+
+    await expect(
+      platformAdminRepository.syncVerifiedIdentity(env, "deleted-user", "gone@example.com"),
+    ).resolves.toBeUndefined();
+
+    expect(database.prepare("SELECT count(*) AS count FROM app_user_identities").get()).toEqual({
+      count: 0,
+    });
   });
 });

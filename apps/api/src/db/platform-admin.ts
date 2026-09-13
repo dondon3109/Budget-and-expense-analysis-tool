@@ -194,15 +194,23 @@ export const platformAdminRepository: PlatformAdminRepository = {
   },
 
   async syncVerifiedIdentity(env, userId, verifiedEmail) {
-    await env.DB.prepare(
-      `INSERT INTO app_user_identities (user_id, verified_email, verified_at, updated_at)
-       SELECT ?, ?, datetime('now'), datetime('now')
-       WHERE NOT EXISTS (SELECT 1 FROM account_deletions WHERE user_id = ?)
-       ON CONFLICT(user_id) DO UPDATE SET verified_email = excluded.verified_email,
-         verified_at = datetime('now'), updated_at = datetime('now')`,
-    )
-      .bind(userId, verifiedEmail, userId)
-      .run();
+    await env.DB.batch([
+      // A previous account can still own this email under a different user id, and the
+      // unique verified_email index makes the insert below fail. Release the email (and
+      // any row for this user) first; the delete and insert share one transaction.
+      env.DB.prepare(
+        `DELETE FROM app_user_identities
+         WHERE (user_id = ? OR verified_email = ?)
+           AND NOT EXISTS (SELECT 1 FROM account_deletions WHERE user_id = ?)`,
+      ).bind(userId, verifiedEmail, userId),
+      env.DB.prepare(
+        `INSERT INTO app_user_identities (user_id, verified_email, verified_at, updated_at)
+         SELECT ?, ?, datetime('now'), datetime('now')
+         WHERE NOT EXISTS (SELECT 1 FROM account_deletions WHERE user_id = ?)
+         ON CONFLICT(user_id) DO UPDATE SET verified_email = excluded.verified_email,
+           verified_at = datetime('now'), updated_at = datetime('now')`,
+      ).bind(userId, verifiedEmail, userId),
+    ]);
   },
 
   async claimPendingSeat(env, userId, verifiedEmail) {
