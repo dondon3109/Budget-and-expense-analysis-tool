@@ -267,7 +267,12 @@ export function PricingPage() {
             Compare all features across Free and Pro tiers to pick what matches your tracking style.
           </p>
 
-          <div className="pricing-table-container">
+          <div
+            className="pricing-table-container"
+            role="region"
+            aria-label="Detailed plan comparison table"
+            tabIndex={0}
+          >
             <table className="pricing-comparison-table">
               <thead>
                 <tr>

@@ -293,6 +293,11 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
 }
 
+.pricing-table-container:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .pricing-comparison-table {
   width: 100%;
   border-collapse: collapse;
