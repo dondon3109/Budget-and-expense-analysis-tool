@@ -23,6 +23,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Prepared Android Beta 0.2.26 (versionCode 20326) mobile release and refreshed in-app patch notes.
 - Moved request-path rate limits onto a Durable Object, queued PayPal reconciliation, bug-report mail, and account-deletion follow-up, and stored profile pictures in R2 instead of Supabase Storage.
 - Moved sponsored Pro seat management from Account settings > Billing into the admin console, leaving a pointer to the console behind so that page loses nothing. The workbench also lists all five seats now, so open capacity is visible instead of counted.
 - Made the first-run theme chooser dismissible: Escape or the new close control keeps the Light default and remembers it, so no page is gated behind it any more.

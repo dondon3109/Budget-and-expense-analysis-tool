@@ -11,27 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 11, 2026",
+  releasedOn: "September 13, 2026",
   changes: [
     {
-      title: "Resilient home-screen mic widget voice capture",
+      title: "Guided spreadsheet migration and full data portability",
       description:
-        "Cold-starting the app from the home-screen mic widget preserves your voice recording and review payload without dropping notes during session restore or on devices with full-screen speech UI.",
+        "Import transactions smoothly from Excel or CSV with bank preset recognition and column mapping, and export complete unpaywalled JSON account backups on web and mobile.",
     },
     {
-      title: "Context-aware spoken accounts and categories",
+      title: "Platform admin console",
       description:
-        "Mic widget voice notes now detect the target account directly from what you speak and suggest matching categories with semantic matching instead of defaulting to Uncategorized.",
+        "Manage sponsored Pro seats, customer reviews, AI and voice models, and support report triage from a central dashboard.",
     },
     {
-      title: "Safer balance adjustments from widget notes",
+      title: "Assistant chat history multi-delete",
       description:
-        "Balance updates initiated from the mic widget now wait for the account balance to load from the dashboard before computing adjustments.",
+        "Select and delete multiple assistant conversation threads at once with single-action confirmation on web and mobile.",
     },
     {
-      title: "Android Beta 0.2.24",
+      title: "Android Beta 0.2.26",
       description:
-        "The official Android Beta includes improved home-screen mic widget voice capture, speech recognition fixes for Android 11+, and context-aware account and category detection.",
+        "The official Android Beta includes the guided spreadsheet migration flow, complete JSON account export share sheet, and multi-chat deletion in assistant history.",
     },
   ],
 };
@@ -43,6 +43,53 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.31.0",
+    releasedOn: "September 12, 2026",
+    changes: [
+      {
+        title: "Safe-to-spend guidance and cash-flow projection",
+        description:
+          "Know what is safe to spend this week based on your balance, upcoming renewals, and remaining envelope budgets with neutral forward-looking guidance.",
+      },
+      {
+        title: "Fast-path voice draft preview with auto-save",
+        description:
+          "Voice-logged expenses now show a 3-second auto-saving preview card with one-tap edit or cancel escape hatches.",
+      },
+      {
+        title: "Calm plan guidance replacing over-budget alerts",
+        description:
+          "Budget limits now provide constructive pacing guidance instead of alarming red warnings, keeping you focused on forward progress.",
+      },
+    ],
+  },
+  {
+    version: "2.30.1",
+    releasedOn: "September 11, 2026",
+    changes: [
+      {
+        title: "Resilient home-screen mic widget voice capture",
+        description:
+          "Cold-starting the app from the home-screen mic widget preserves your voice recording and review payload without dropping notes during session restore or on devices with full-screen speech UI.",
+      },
+      {
+        title: "Context-aware spoken accounts and categories",
+        description:
+          "Mic widget voice notes now detect the target account directly from what you speak and suggest matching categories with semantic matching instead of defaulting to Uncategorized.",
+      },
+      {
+        title: "Safer balance adjustments from widget notes",
+        description:
+          "Balance updates initiated from the mic widget now wait for the account balance to load from the dashboard before computing adjustments.",
+      },
+      {
+        title: "Android Beta 0.2.24",
+        description:
+          "The official Android Beta includes improved home-screen mic widget voice capture, speech recognition fixes for Android 11+, and context-aware account and category detection.",
+      },
+    ],
+  },
   {
     version: "2.30.0",
     releasedOn: "September 9, 2026",

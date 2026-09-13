@@ -3,17 +3,51 @@ import { describe, expect, it } from "vitest";
 import { currentRelease, releaseHistory } from "../src/releases/currentRelease";
 
 describe("current release notes", () => {
-  it("highlights mic widget voice capture, spoken accounts, safer balance adjustments, and Android Beta", () => {
+  it("highlights spreadsheet migration, admin console, assistant multi-delete, and Android Beta", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Guided spreadsheet migration and full data portability",
+      "Platform admin console",
+      "Assistant chat history multi-delete",
+      "Android Beta 0.2.26",
+    ]);
+
+    const notes = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(notes).toMatch(/spreadsheet migration/i);
+    expect(notes).toMatch(/admin console/i);
+    expect(notes).toMatch(/chat history/i);
+    expect(notes).toMatch(/Android Beta/i);
+  });
+
+  it("keeps safe-to-spend, voice draft auto-save, and calm plan guidance as 2.31.0 release history", () => {
+    const prevRelease = releaseHistory[1];
+    expect(prevRelease?.version).toBe("2.31.0");
+    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
+      "Safe-to-spend guidance and cash-flow projection",
+      "Fast-path voice draft preview with auto-save",
+      "Calm plan guidance replacing over-budget alerts",
+    ]);
+
+    const notes =
+      prevRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ?? "";
+    expect(notes).toMatch(/safe-to-spend/i);
+    expect(notes).toMatch(/voice draft preview/i);
+    expect(notes).toMatch(/calm plan guidance/i);
+  });
+
+  it("keeps mic widget voice capture, spoken accounts, safer balance adjustments, and 0.2.24 beta as 2.30.1 release history", () => {
+    const prevRelease = releaseHistory[2];
+    expect(prevRelease?.version).toBe("2.30.1");
+    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
       "Resilient home-screen mic widget voice capture",
       "Context-aware spoken accounts and categories",
       "Safer balance adjustments from widget notes",
       "Android Beta 0.2.24",
     ]);
 
-    const notes = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
+    const notes =
+      prevRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ?? "";
     expect(notes).toMatch(/mic widget voice capture/i);
     expect(notes).toMatch(/spoken accounts/i);
     expect(notes).toMatch(/balance adjustments/i);
@@ -21,7 +55,7 @@ describe("current release notes", () => {
   });
 
   it("keeps tutorials, quick start guides, balance adjustments, budget controls, and 0.2.23 beta as 2.30.0 release history", () => {
-    const prevRelease = releaseHistory[1];
+    const prevRelease = releaseHistory[3];
     expect(prevRelease?.version).toBe("2.30.0");
     expect(prevRelease?.changes.map((change) => change.title)).toEqual([
       "Interactive user guides and tutorials page",
@@ -41,7 +75,7 @@ describe("current release notes", () => {
   });
 
   it("keeps voice entry, SMS quick-paste, mic widget, CSV import, and 0.2.22 beta as 2.29.0 release history", () => {
-    const prevRelease = releaseHistory[2];
+    const prevRelease = releaseHistory[4];
     expect(prevRelease?.version).toBe("2.29.0");
     expect(prevRelease?.changes.map((change) => change.title)).toEqual([
       "Fast-path voice transaction entry",
@@ -53,7 +87,7 @@ describe("current release notes", () => {
   });
 
   it("keeps the renewal calendar and 0.2.20 beta as 2.27.0 release history", () => {
-    const prevRelease = releaseHistory[3];
+    const prevRelease = releaseHistory[5];
     expect(prevRelease?.version).toBe("2.27.0");
     expect(prevRelease?.changes.map((change) => change.title)).toEqual([
       "Visual Renewal Calendar for Subscriptions",
@@ -65,7 +99,7 @@ describe("current release notes", () => {
   });
 
   it("keeps the touch-first cash flow and voice states as 2.2.1 release history", () => {
-    const mobileRelease = releaseHistory[4];
+    const mobileRelease = releaseHistory[6];
     expect(mobileRelease?.version).toBe("2.2.1");
     expect(mobileRelease?.changes.map((change) => change.title)).toEqual([
       "Cash flow chart built for your phone",
@@ -82,7 +116,7 @@ describe("current release notes", () => {
   });
 
   it("keeps review-first receipt scanning as 2.2.0 release history", () => {
-    const receiptRelease = releaseHistory[5];
+    const receiptRelease = releaseHistory[7];
     expect(receiptRelease?.version).toBe("2.2.0");
     expect(receiptRelease?.changes.map((change) => change.title)).toEqual([
       "Turn a receipt photo into a transaction draft",
@@ -100,7 +134,7 @@ describe("current release notes", () => {
   });
 
   it("keeps the assistant voice implementation as 2.1.0 release history", () => {
-    const voiceRelease = releaseHistory[6];
+    const voiceRelease = releaseHistory[8];
     expect(voiceRelease?.version).toBe("2.1.0");
     expect(voiceRelease?.changes.map((change) => change.title)).toEqual([
       "Talk naturally with your Financial Assistant",
