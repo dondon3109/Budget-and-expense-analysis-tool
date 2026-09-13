@@ -7,7 +7,10 @@ without a real account.
 
 This document describes the local-Supabase route: the real Supabase stack running
 in Docker, so the real sign-in, JWT, refresh and tenant-resolution paths are
-exercised with no application code changes.
+exercised with no application code changes. A real stack now runs on this machine,
+so **this is the primary path**. The auth stub near the end is a fallback for
+machines with no container runtime. Read the open identity issue below before
+treating an authenticated audit run as a pass.
 
 ## Why not the dummy dev token?
 
@@ -25,49 +28,106 @@ Use it only if you specifically want mobile-style dummy data with no Supabase at
 
 ## Prerequisites
 
-A container runtime. At the time of writing this machine has none:
+Installed with Homebrew (already present); all binaries are in `/opt/homebrew/bin`:
 
-```
-docker       NOT RUNNING
-supabase CLI: NOT AVAILABLE
-```
+| Tool | Version |
+|---|---|
+| colima | 0.10.3 (with lima 2.2.0) |
+| docker CLI | 29.8.0 |
+| supabase CLI | 2.117.0 |
 
-Install Docker Desktop (or colima / OrbStack) and the Supabase CLI, then confirm:
+The container runtime is colima, not Docker Desktop. Start it first — no `docker`
+or `supabase` command works until the VM is up:
 
 ```bash
+colima start --cpu 4 --memory 6 --disk 30
 docker info          # daemon reachable
 supabase --version   # CLI present
 ```
 
+The limits are deliberately modest: the host has 8 GB RAM and only about 11 GB free
+disk.
+
+### Image pulls fail: the leftover `credsStore`
+
+`~/.docker/config.json` still carried `"credsStore": "desktop"`, left behind by a
+Docker Desktop install that no longer exists. `docker-credential-desktop` is
+therefore missing, and **every image pull** failed with:
+
+```
+error getting credentials - err: exec: "docker-credential-desktop": executable file not found in $PATH
+```
+
+Removing the `credsStore` key fixes it. The original file is backed up at
+`~/.docker/config.json.zoption-backup`.
+
 ## Steps
 
-1. Start the local stack from the repo root and apply the storage migration:
+1. Start the stack from the repo root, excluding the services Zoption does not use:
 
    ```bash
-   supabase start
-   supabase db reset          # applies supabase/migrations/
+   supabase start -x studio,edge-runtime,logflare,vector,supavisor,realtime,mailpit,postgres-meta
    ```
 
-2. Switch both apps onto it. This backs up the current cloud values first:
+   Zoption keeps its data in Cloudflare D1 and uses Supabase for authentication only,
+   so the running services are `db`, `auth`, `kong`, `rest` and `storage`. Excluding
+   the rest matters for disk and RAM.
+
+   On a first run, `supabase db reset` applies `supabase/migrations/` (the avatar
+   storage bucket). It recreates the database, so run it before creating accounts.
+
+2. Create an account with the GoTrue admin API. Local signup requires email
+   confirmation and mailpit is excluded, so `/auth/v1/signup` cannot be used. Read the
+   keys from the running stack, then POST with the service role key in **both** the
+   `apikey` and `Authorization` headers:
+
+   ```bash
+   supabase status -o json   # SERVICE_ROLE_KEY, ANON_KEY, API_URL
+
+   curl -sS -X POST http://127.0.0.1:54321/auth/v1/admin/users \
+     -H 'Content-Type: application/json' \
+     -H 'apikey: <service-role-key>' \
+     -H 'Authorization: Bearer <service-role-key>' \
+     -d '{"email":"audit@example.com","password":"Audit-Pass-1234!","email_confirm":true}'
+   ```
+
+   Local passwords must satisfy GoTrue's policy: at least one lowercase, uppercase,
+   digit and symbol character. Two throwaway accounts already exist for the audit and
+   are safe to reuse:
+
+   | Email | Password | UUID |
+   |---|---|---|
+   | `audit@example.com` | `Audit-Pass-1234!` | `d56d6661-1c15-43a0-9faa-5909d3e2053a` |
+   | `empty@example.com` | `Empty-Pass-1234!` | `6db3a570-0636-4761-906e-fa6309e857a1` |
+
+3. Switch both apps onto it. This backs up the current cloud values first:
 
    ```bash
    node scripts/local-supabase.mjs status   # show what is configured now
    node scripts/local-supabase.mjs enable   # point api + web at 127.0.0.1:54321
    ```
 
-   The script reads the URL and publishable key from `supabase status`, so no key is
-   hardcoded. It refuses to run when a backup already exists, and it only ever writes
-   a loopback URL.
+   The script reads the URL and publishable key from `supabase status -o json`, so no
+   key is hardcoded, and it only ever writes a loopback URL. It writes
+   `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` for the API, plus
+   `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for the web app.
 
-3. Restart both dev servers, then create an account at `/signup` using the local
-   stack. Copy the new user's UUID (`supabase status`, or the Auth table in Studio at
-   http://127.0.0.1:54323).
+   Two caveats:
 
-4. Seed that user's D1 workspace so the screens have real data rather than empty
-   states:
+   - `enable` refuses to run while a backup exists, and that is deliberate: run
+     `disable` first. Do **not** use `--force` — it overwrites the cloud backup with
+     the local values, so the cloud configuration is lost.
+   - The API's publishable key matters as much as the URL. Without it the Worker falls
+     back to a placeholder key in `apps/api/wrangler.e2e.jsonc`, which a real GoTrue
+     rejects.
+
+4. Restart both dev servers.
+
+5. Seed the audit account's D1 workspace so the screens have real data rather than
+   empty states:
 
    ```bash
-   node scripts/seed-local-workspace.mjs --user <uuid>
+   node scripts/seed-local-workspace.mjs --user d56d6661-1c15-43a0-9faa-5909d3e2053a
    ```
 
    This mirrors what the API bootstraps on the first authenticated request
@@ -77,7 +137,31 @@ supabase --version   # CLI present
    budgets, three subscriptions, a savings goal, a credit-card debt and two calendar
    events.
 
-5. Sign in and review the app routes.
+6. Run the authenticated audit (or sign in and review the app routes by hand):
+
+   ```bash
+   E2E_EMAIL=audit@example.com E2E_PASSWORD='Audit-Pass-1234!' \
+   E2E_EMPTY_EMAIL=empty@example.com E2E_EMPTY_PASSWORD='Empty-Pass-1234!' \
+     npx playwright test e2e/accessibility.spec.ts
+   ```
+
+## Known issue: `POST /api/app/identity` returns 500
+
+Against the real stack, every authenticated page load ends with
+`POST /api/app/identity` answering **HTTP 500**, so the authenticated routes
+currently fail the audit's "no failed requests" assertion. Sign-in and rendering
+are real, and the axe results still mean what they say — but that assertion is red for
+this reason, so an authenticated run cannot be read as a clean pass.
+
+Ruled out so far:
+
+- Upstream identity verification is fine: `GET /auth/v1/user` returns 200 with all
+  the fields the Worker needs.
+- The Worker sees both Supabase variables.
+- All D1 migrations are applied.
+
+The cause is still under investigation. **This is not fixed** — do not paper over it
+or assume the routes themselves regressed.
 
 ## Undo
 
@@ -105,18 +189,21 @@ Verify those as UI states only, not as live behaviour.
 
 ## Auditing without Docker: the auth stub
 
-`supabase start` needs a container runtime. When one is not available, `scripts/fake-supabase-auth.mjs`
-serves just enough of the GoTrue surface for the web client to sign in and for the API to verify
-the token — the API already accepts a loopback Supabase and verifies through JWKS, so **no
-application code changes are involved**.
+This is the fallback when no container runtime is available, not the primary route.
+`scripts/fake-supabase-auth.mjs` serves just enough of the GoTrue surface for the
+web client to sign in and for the API to verify the token — the API already accepts a
+loopback Supabase and verifies through JWKS, so **no application code changes are
+involved**.
 
 ```bash
 # 1. the stub, on the port the API's e2e config already targets
 pnpm audit:auth-stub -- --port 54321
 
-# 2. point the web app at it (backed up, reversible)
-#    the stub ignores the publishable key, so any non-empty value works
-#    (see the fake-status note below, or set VITE_SUPABASE_URL by hand)
+# 2. point the web app at it (backed up, reversible).
+#    the stub ignores the publishable key, so any non-empty value works.
+#    node scripts/local-supabase.mjs enable reads a real "supabase status", so it
+#    cannot configure the stub; see the fake-status-on-PATH technique in
+#    docs/a11y-remediation-review.md, or set VITE_SUPABASE_URL by hand.
 
 # 3. give the stub's user a workspace
 node scripts/seed-local-workspace.mjs --user 08060c19-8a55-4046-a2e7-7384808dd81c
@@ -125,29 +212,30 @@ node scripts/seed-local-workspace.mjs --user 08060c19-8a55-4046-a2e7-7384808dd81
 E2E_EMAIL=audit@example.com E2E_PASSWORD=anything npx playwright test e2e/accessibility.spec.ts
 ```
 
-The stub signs RS256 tokens with a keypair generated per process and publishes the matching JWKS,
-so the API's verification path is exercised for real. **It is a test double, not a replacement:**
-token lifetimes, refresh races and provider metadata still belong to the local-Supabase run above.
-Nothing under `apps/` references it.
+The stub signs RS256 tokens with a keypair generated per process and publishes the
+matching JWKS, so the API's verification path is exercised for real. **It is a test
+double, not a replacement:** token lifetimes, refresh races and provider metadata
+still belong to the local-Supabase run above. Nothing under `apps/` references it.
 
 ## Automated checks
 
-`e2e/accessibility.spec.ts` (desktop) and `e2e/accessibility.mobile.spec.ts` (phone width)
-run axe-core over the public routes always, and over the authenticated routes when a local
-session is available. The suite **skips** the authenticated portion rather than failing when
-Supabase is not running, so CI stays green without a stack.
+`e2e/accessibility.spec.ts` (desktop) and `e2e/accessibility.mobile.spec.ts` (phone
+width) run axe-core over the public routes always, and over the authenticated routes
+when a local session is available. The suite **skips** the authenticated portion rather
+than failing when Supabase is not running, so CI stays green without a stack.
 
-Run the full authenticated pass with:
+Run the full suite with:
 
 ```bash
-E2E_EMAIL=you@example.com E2E_PASSWORD=... pnpm test:e2e
+E2E_EMAIL=audit@example.com E2E_PASSWORD='Audit-Pass-1234!' pnpm test:e2e
 ```
 
-What the authenticated pass covers, per route:
+`pnpm test:e2e` first applies the local D1 migrations (`pnpm test:e2e:prepare`),
+then runs every Playwright project. The authenticated pass covers, per route:
 
 | State | Routes | Notes |
 |---|---|---|
-| Settled | all 11 `/app/*` routes | Also asserts the route rendered an `h1` and logged **no console errors** — a blank page or a redirect would otherwise pass a scan over nothing |
+| Settled | all 11 `/app/*` routes | Also asserts the route rendered an `h1`, made **no failed requests** and logged **no console errors** — a blank page, a redirect or a refused API call would otherwise pass a scan over nothing. The identity 500 above currently trips this |
 | Loading | 5 representative routes | Every API call is left unanswered so the skeletons stay on screen; they cannot be scanned once data arrives |
 | Failed | 5 representative routes | Every API call is aborted, so the error panels render |
 | Empty workspace | 3 routes | Needs a second, unseeded account: `E2E_EMPTY_EMAIL` / `E2E_EMPTY_PASSWORD`. Skips when unset |

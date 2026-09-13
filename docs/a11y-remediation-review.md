@@ -26,10 +26,10 @@ pnpm --filter @zoption/web typecheck
 pnpm -s exec tsc -p tsconfig.e2e.json --noEmit
 ```
 
-The end-to-end audit needs an authenticated session. Docker and the Supabase CLI are unavailable in
-this environment, so `scripts/fake-supabase-auth.mjs` substitutes a local GoTrue-compatible auth
-server. It is a stub: real Cloudflare Worker, real D1, emulated identity provider. See
-`docs/local-supabase.md`.
+The end-to-end audit needs an authenticated session. Docker and the Supabase CLI are now installed,
+so the audit runs against a real local Supabase stack — see `docs/local-supabase.md` for account
+creation and the `enable`/`disable` workflow. `scripts/fake-supabase-auth.mjs` remains as a
+no-Docker fallback but is no longer the primary path.
 
 ```bash
 # One command block: the stub dies when the shell exits.
@@ -96,14 +96,17 @@ Earlier rounds of this work produced false results. The audit now:
 
 ## Known open items
 
-1. **Identity sync can sign users out.** `App.tsx` calls `syncVerifiedIdentity` for every user on
-   load; `lib/api.ts` signs the user out on **any** 401, before the call site's own `.catch` runs.
-   The endpoint re-verifies identity upstream and returns 401 on mismatch. The coupling is real;
-   how often it fires in production is **not** established. This was found while chasing the
-   empty-workspace blocker and is a product decision, not an a11y one.
-2. **The auth stub is a stub.** The audit ran against an emulated identity provider, not Supabase
-   proper. The JWT/JWKS contract is real and the Worker plus D1 are real, but this is a substitution
-   worth weighing.
+1. **Identity conflicts are fixed; the sign-out coupling is not.** `POST /api/app/identity`
+   returned 500 whenever a stale row held the same `verified_email` under a different user id,
+   because the upsert declared `ON CONFLICT(user_id)` while the table also has a unique index on
+   `verified_email`. That broke every authenticated page for the affected user. The repository now
+   releases the stale row first, verified against a live D1 runtime. Still open: `lib/api.ts` ends
+   the session on any 401, so a transient failure on this optional identity sync signs the user out
+   instead of degrading. That is a product decision, not an a11y one.
+2. **Now verified against a real Supabase stack.** Docker was unavailable when this work began, so
+   an emulated identity provider was used initially. The suite has since been re-run against a real
+   local Supabase stack (db, auth, kong, rest, storage) and passes at all three widths, so these
+   results no longer rest on the stub.
 3. **advisories left in place:** `aria-allowed-role` on `.customer-review-prompt` and
    `landmark-unique` on `.sidebar`. Both are non-blocking and appear on every authenticated route.
 
