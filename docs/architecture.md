@@ -2,7 +2,7 @@
 
 ## System shape
 
-Zoption is a React/Vite SPA backed by a Hono Cloudflare Worker and D1. Supabase Auth is the identity provider. The browser obtains a Supabase session and sends its access token to authenticated Worker routes; the Worker verifies the JWT against the project's JWKS before resolving the user's D1 tenant. Zod schemas, money handling, fingerprints, and aggregate calculations live in the shared package.
+Zoption is a React/Vite SPA backed by a Hono Cloudflare Worker and D1. Supabase Auth is the identity provider. The browser obtains a Supabase session and sends its access token to authenticated Worker routes; the Worker verifies the JWT against the project's JWKS before resolving the user's D1 tenant. Rate limits use a Durable Object when bound, with D1 as fallback. Background PayPal reconciliation, bug-report mail, and account-deletion follow-up run on a Cloudflare Queue, with the existing crons as a safety net. Profile pictures live in R2 and are served at `/api/public/avatars/*`. Zod schemas, money handling, fingerprints, and aggregate calculations live in the shared package.
 
 The public landing page contains a static dashboard illustration only. It does not request financial data. All real financial reads and writes require authentication.
 
@@ -51,13 +51,16 @@ The public landing page contains a static dashboard illustration only. It does n
 Public:
 
 - `GET /health` — verifies that the Worker can reach D1.
+- `GET /api/public/avatars/:userId/:file` — public profile picture bytes from R2, with a
+  Supabase Storage fallback for objects uploaded before the R2 cutover.
 - `POST /api/support/chat` — bounded, rate-limited product help through the configured DeepSeek
   provider, without authentication, financial tools, tenant data, or server-side conversation
   storage.
 
 Authenticated (`Authorization: Bearer <Supabase access token>`):
 
-- `DELETE /api/app/account` — server-reauthenticated, permanent account deletion; it purges the authenticated D1 tenant, clears owned avatar Storage objects, and hard-deletes the Supabase Auth identity. A minimal tombstone retains only subject/cleanup state for security and retry handling.
+- `DELETE /api/app/account` — server-reauthenticated, permanent account deletion; it purges the authenticated D1 tenant, clears owned R2 (and leftover Supabase Storage) avatar objects, and hard-deletes the Supabase Auth identity. A minimal tombstone retains only subject/cleanup state for security and retry handling.
+- `POST/DELETE /api/app/profile/avatar` — authenticated profile-picture upload to R2 and owned-object deletion.
 - `GET /api/app/me` — verified identity and resolved D1 tenant.
 - `GET /api/app/dashboard?from=&to=` — tenant-scoped dashboard aggregates.
 - `GET/POST/PATCH/DELETE /api/app/transactions/*` — transaction search and CRUD.

@@ -13,7 +13,7 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
 5. Require email confirmation before first sign-in. Keep signup responses neutral for both new and existing addresses so the public form does not disclose whether an account exists.
 6. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
 7. Record the project URL and `sb_publishable_…` key from **Project Settings > API**. A legacy JWT `anon` key remains supported during Supabase's migration window, but a secret, `sb_secret_…`, or legacy `service_role` key is never valid browser configuration.
-8. Configure `SUPABASE_PUBLISHABLE_KEY` as a non-secret Worker variable. It must match the project represented by `SUPABASE_URL`. Store `SUPABASE_SERVICE_ROLE_KEY` only as a Worker secret; the account-deletion workflow uses it to clear the user-owned avatar folder and hard-delete the Auth identity after D1 data is purged:
+8. Configure `SUPABASE_PUBLISHABLE_KEY` as a non-secret Worker variable. It must match the project represented by `SUPABASE_URL`. Store `SUPABASE_SERVICE_ROLE_KEY` only as a Worker secret; the account-deletion workflow uses it to hard-delete the Auth identity and to clear any leftover Supabase Storage avatar objects after D1 data and R2 pictures are purged:
 
    ```bash
    pnpm --filter @zoption/api exec wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config wrangler.deploy.jsonc --env preview
@@ -30,7 +30,7 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    pnpm dlx supabase db push --linked
    ```
 
-   The migration creates a public `avatars` bucket limited to 2 MB JPEG, PNG, and WebP files. Public retrieval is intentional for profile pictures; authenticated Storage policies restrict insert and delete operations to the current user's own folder. Relink before pushing when preview and production use separate Supabase projects.
+   The migration creates a public `avatars` bucket kept only as a read fallback for pictures uploaded before the R2 cutover. New uploads go to Cloudflare R2 through the Worker. Relink before pushing when preview and production use separate Supabase projects.
 
 After changing redirect or template settings, request a fresh recovery email; previously issued links retain their original destination and reset links are short-lived and single-use. Open the fresh link once in the same browser profile that requested it so the PKCE verifier is available. If a newly issued link immediately returns `otp_expired`, check whether the email provider's click tracking or security scanner is opening the link before the user.
 
@@ -50,27 +50,37 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
 1. Authenticate locally with `pnpm --filter @zoption/api exec wrangler login`.
 2. Create `budget-expense-preview` and `budget-expense-production` with `wrangler d1 create`; retain the returned database IDs.
-3. Copy `apps/api/wrangler.deploy.example.jsonc` to ignored `apps/api/wrangler.deploy.jsonc`.
-4. Replace each environment's D1 ID, allowed origins, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise. The publishable key is public configuration, but secret and service-role key types remain forbidden in Wrangler `vars`.
-5. Validate the real config before any migration or deploy. The validator reports only environment and binding names; it never prints configured values:
+3. Create separate preview and production R2 buckets and Queues. The tracked names are `zoption-avatars-preview`, `zoption-avatars-production`, `budget-expense-jobs-preview`, and `budget-expense-jobs-production`:
+
+   ```bash
+   pnpm --filter @zoption/api exec wrangler r2 bucket create zoption-avatars-preview
+   pnpm --filter @zoption/api exec wrangler r2 bucket create zoption-avatars-production
+   pnpm --filter @zoption/api exec wrangler queues create budget-expense-jobs-preview
+   pnpm --filter @zoption/api exec wrangler queues create budget-expense-jobs-production
+   ```
+
+   Durable Object rate-limit storage is created by the Worker migration on deploy; do not create it by hand.
+4. Copy `apps/api/wrangler.deploy.example.jsonc` to ignored `apps/api/wrangler.deploy.jsonc`.
+5. Replace each environment's D1 ID, allowed origins, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise. The publishable key is public configuration, but secret and service-role key types remain forbidden in Wrangler `vars`.
+6. Validate the real config before any migration or deploy. The validator reports only environment and binding names; it never prints configured values:
 
    ```bash
    node scripts/validate-deployment-config.mjs
    ```
 
-   It checks Preview and Production D1 bindings, exact HTTPS web/Supabase origins, production routing, publishable-key type, distinct Supabase origins and keys across environments, PayPal namespace and distinct monthly/annual plan variables, optional PostHog enable/environment values and the exact approved US Cloud origin, placeholders, and forbidden secret values in `vars`. Production PayPal must use `production`; Preview and Staging may intentionally use either `sandbox` or `production`. It also validates Staging when an `env.staging` block exists.
+   It checks Preview and Production D1 bindings, RATE_LIMIT Durable Object, AVATARS R2, and JOBS queue bindings, exact HTTPS web/Supabase origins, production routing, publishable-key type, distinct Supabase origins, keys, R2 buckets, and queues across environments, PayPal namespace and distinct monthly/annual plan variables, optional PostHog enable/environment values and the exact approved US Cloud origin, placeholders, and forbidden secret values in `vars`. Production PayPal must use `production`; Preview and Staging may intentionally use either `sandbox` or `production`. It also validates Staging when an `env.staging` block exists.
 
-6. Create separate preview and production Pages projects. Attach `zoption.site` and `www.zoption.site` to the production Pages project in the Cloudflare dashboard. Pages custom domains are dashboard-managed; this repository does not use an `apps/web/wrangler.jsonc` file.
-7. Keep the production Worker custom domain route for `api.zoption.site` in `apps/api/wrangler.deploy.jsonc`; the tracked example documents the same route.
-8. Store the DeepSeek key as a Worker secret in each environment; never add it to Wrangler `vars`, D1, browser configuration, or the repository:
+7. Create separate preview and production Pages projects. Attach `zoption.site` and `www.zoption.site` to the production Pages project in the Cloudflare dashboard. Pages custom domains are dashboard-managed; this repository does not use an `apps/web/wrangler.jsonc` file.
+8. Keep the production Worker custom domain route for `api.zoption.site` in `apps/api/wrangler.deploy.jsonc`; the tracked example documents the same route.
+9. Store the DeepSeek key as a Worker secret in each environment; never add it to Wrangler `vars`, D1, browser configuration, or the repository:
 
    ```bash
    pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY --config wrangler.deploy.jsonc --env preview
    pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY --config wrangler.deploy.jsonc --env production
    ```
 
-9. Keep `DEEPSEEK_MODEL=deepseek-v4-flash`, `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
-10. Create a dedicated PostHog US Cloud project for AI Observability, verify and disclose its actual event-retention plan, and leave `POSTHOG_AI_OBSERVABILITY_ENABLED=false` until Preview payloads are verified and the matching assistant consent version is deployed. The current project uses PostHog's 12-month event-retention plan; Session Replay's separate 30-day setting does not apply to `$ai_generation` events. Keep `POSTHOG_HOST=https://us.i.posthog.com` and the exact `POSTHOG_AI_ENVIRONMENT` (`preview` or `production`) in Worker `vars`. Store the project token only as a Worker secret:
+10. Keep `DEEPSEEK_MODEL=deepseek-v4-flash`, `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
+11. Create a dedicated PostHog US Cloud project for AI Observability, verify and disclose its actual event-retention plan, and leave `POSTHOG_AI_OBSERVABILITY_ENABLED=false` until Preview payloads are verified and the matching assistant consent version is deployed. The current project uses PostHog's 12-month event-retention plan; Session Replay's separate 30-day setting does not apply to `$ai_generation` events. Keep `POSTHOG_HOST=https://us.i.posthog.com` and the exact `POSTHOG_AI_ENVIRONMENT` (`preview` or `production`) in Worker `vars`. Store the project token only as a Worker secret:
 
     ```bash
     pnpm --filter @zoption/api exec wrangler secret put POSTHOG_PROJECT_TOKEN --config wrangler.deploy.jsonc --env preview
@@ -79,8 +89,8 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
     PostHog is server-side and metadata-only. Do not add a browser SDK, `VITE_POSTHOG_*`, PostHog web cookies, identify/group events, or Pages CSP origins. The Worker uses random trace IDs, disables person-profile processing and GeoIP enrichment, replaces the capture source address with the non-routable `0.0.0.0` placeholder, and excludes questions, answers, financial records, tool payloads, credentials, and internal IDs.
 
-11. Before enabling sponsored-seat invitations or bug-report notifications, onboard the sender domain in Resend and store the `RESEND_API_KEY` as a Worker secret (`wrangler secret put RESEND_API_KEY`) in each deployment environment. Set `WEB_APP_URL` to the exact HTTPS Pages origin, `EMAIL_FROM` to the verified sender address, and `BUG_REPORT_TO` to the private support inbox; none belongs in browser `VITE_*` configuration. This works on the Cloudflare Free plan because delivery goes through the Resend REST API (no `send_email` binding). Send a controlled invitation and bug report to addresses you manage before enabling production use.
-12. Configure PayPal subscriptions before enabling paid checkout:
+12. Before enabling sponsored-seat invitations or bug-report notifications, onboard the sender domain in Resend and store the `RESEND_API_KEY` as a Worker secret (`wrangler secret put RESEND_API_KEY`) in each deployment environment. Set `WEB_APP_URL` to the exact HTTPS Pages origin, `EMAIL_FROM` to the verified sender address, and `BUG_REPORT_TO` to the private support inbox; none belongs in browser `VITE_*` configuration. This works on the Cloudflare Free plan because delivery goes through the Resend REST API (no `send_email` binding). Send a controlled invitation and bug report to addresses you manage before enabling production use.
+13. Configure PayPal subscriptions before enabling paid checkout:
     - Choose the PayPal namespace independently for each non-production environment: `sandbox` or `production`. Preview currently intentionally uses PayPal Live, so its `PAYPAL_ENVIRONMENT` is `production`; do not change it to Sandbox merely because the Worker environment is named Preview. Production must always use `production`.
     - Create a separate PayPal API app and separate product, plans, and webhook for every deployment environment in its selected namespace. Do not share credentials, webhook IDs, products, or plans between Preview and Production, even when both use PayPal Live.
     - Create two recurring PHP plans per environment: ₱149 monthly and ₱1,299 annually, with no trial. Confirm the PayPal account can approve those PHP subscription plans before release.
@@ -98,7 +108,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
     Register one webhook per environment at `https://PREVIEW_API_HOST/api/billing/paypal/webhook` and `https://api.zoption.site/api/billing/paypal/webhook`. Subscribe only to `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, and `PAYMENT.SALE.COMPLETED`. Record the matching webhook ID as the environment secret. Never copy OAuth tokens, webhook headers, payer data, or secret values into source code, tracked configuration, or logs.
 
-13. Store `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` as a Worker secret in each environment. This is the AES-256-GCM master key that encrypts the AI and voice provider credentials admins save at `/app/admin/provider-configs`. Only ciphertext is written to D1; the key itself never is. Generate a fresh value per environment:
+14. Store `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` as a Worker secret in each environment. This is the AES-256-GCM master key that encrypts the AI and voice provider credentials admins save at `/app/admin/provider-configs`. Only ciphertext is written to D1; the key itself never is. Generate a fresh value per environment:
 
     ```bash
     openssl rand -base64 32 | pnpm --filter @zoption/api exec wrangler secret put PROVIDER_CREDENTIAL_ENCRYPTION_KEY --config wrangler.deploy.jsonc --env preview

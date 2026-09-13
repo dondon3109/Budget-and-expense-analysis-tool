@@ -261,6 +261,41 @@ function validateEnvironment(environment, config) {
     throw new Error(`${environment} DB database ID still contains a deployment placeholder.`);
   }
 
+  const durableObjects = Array.isArray(config.durable_objects?.bindings)
+    ? config.durable_objects.bindings
+    : [];
+  if (
+    !durableObjects.some(
+      (binding) =>
+        binding?.name === "RATE_LIMIT" && binding.class_name === "RateLimitDurableObject",
+    )
+  ) {
+    throw new Error(`${environment} is missing the RATE_LIMIT Durable Object binding.`);
+  }
+
+  const avatars = Array.isArray(config.r2_buckets) ? config.r2_buckets : [];
+  const avatarBucket = avatars.find((candidate) => candidate?.binding === "AVATARS");
+  if (
+    !avatarBucket ||
+    typeof avatarBucket.bucket_name !== "string" ||
+    !avatarBucket.bucket_name.trim()
+  ) {
+    throw new Error(`${environment} is missing the AVATARS R2 bucket binding.`);
+  }
+  if (/REPLACE_WITH|YOUR_[A-Z_]+/.test(avatarBucket.bucket_name)) {
+    throw new Error(`${environment} AVATARS bucket name still contains a deployment placeholder.`);
+  }
+
+  const queueProducers = Array.isArray(config.queues?.producers) ? config.queues.producers : [];
+  const jobsQueue = queueProducers.find((candidate) => candidate?.binding === "JOBS");
+  if (!jobsQueue || typeof jobsQueue.queue !== "string" || !jobsQueue.queue.trim()) {
+    throw new Error(`${environment} is missing the JOBS queue producer binding.`);
+  }
+  const queueConsumers = Array.isArray(config.queues?.consumers) ? config.queues.consumers : [];
+  if (!queueConsumers.some((candidate) => candidate?.queue === jobsQueue.queue)) {
+    throw new Error(`${environment} must consume the same JOBS queue it produces to.`);
+  }
+
   if (environment === "production") {
     const actualOrigins = [...allowedOrigins].sort();
     if (JSON.stringify(actualOrigins) !== JSON.stringify(productionWebOrigins)) {
@@ -278,7 +313,12 @@ function validateEnvironment(environment, config) {
     throw new Error(`${environment} ALLOWED_ORIGINS must not include production web origins.`);
   }
 
-  return { supabaseOrigin, publishableKey };
+  return {
+    supabaseOrigin,
+    publishableKey,
+    avatarBucket: avatarBucket.bucket_name.trim(),
+    jobsQueue: jobsQueue.queue.trim(),
+  };
 }
 
 export function validateWranglerDeploymentConfig(config) {
@@ -310,6 +350,12 @@ export function validateWranglerDeploymentConfig(config) {
         throw new Error(
           `${leftName} and ${rightName} must use different Supabase publishable keys.`,
         );
+      }
+      if (left.avatarBucket === right.avatarBucket) {
+        throw new Error(`${leftName} and ${rightName} must use different AVATARS R2 buckets.`);
+      }
+      if (left.jobsQueue === right.jobsQueue) {
+        throw new Error(`${leftName} and ${rightName} must use different JOBS queues.`);
       }
     }
   }

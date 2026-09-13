@@ -13,7 +13,7 @@ const expectedPosthogHost = "https://us.i.posthog.com";
 const csp = [
   "default-src 'self'",
   "script-src 'self'",
-  `img-src 'self' data: blob: ${expectedSupabaseUrl}`,
+  `img-src 'self' data: blob: ${apiUrl} ${expectedSupabaseUrl}`,
   `connect-src 'self' ${expectedSupabaseUrl} ${apiUrl} wss://api.preview.example.com ${expectedPosthogHost}`,
   "object-src 'none'",
 ].join("; ");

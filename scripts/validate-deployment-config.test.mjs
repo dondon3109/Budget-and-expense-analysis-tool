@@ -8,9 +8,32 @@ function environment({
   key = "sb_publishable_shared",
   paypalEnvironment = "production",
 } = {}) {
+  const resourceName = production ? "production" : project.replace(/-ref$/, "");
   return {
     ...(production ? { routes: [{ pattern: "api.zoption.site", custom_domain: true }] } : {}),
     ai: { binding: "AI" },
+    durable_objects: {
+      bindings: [{ name: "RATE_LIMIT", class_name: "RateLimitDurableObject" }],
+    },
+    r2_buckets: [
+      {
+        binding: "AVATARS",
+        bucket_name: `zoption-avatars-${resourceName}`,
+      },
+    ],
+    queues: {
+      producers: [
+        {
+          binding: "JOBS",
+          queue: `budget-expense-jobs-${resourceName}`,
+        },
+      ],
+      consumers: [
+        {
+          queue: `budget-expense-jobs-${resourceName}`,
+        },
+      ],
+    },
     d1_databases: [
       {
         binding: "DB",
@@ -58,6 +81,26 @@ describe("Wrangler deployment config validation", () => {
 
   it("accepts complete preview and production binding metadata", () => {
     expect(validateWranglerDeploymentConfig(validConfig())).toEqual(["preview", "production"]);
+  });
+
+  it("requires Durable Object, R2, and Queue bindings in every environment", () => {
+    const missingRateLimit = validConfig();
+    delete missingRateLimit.env.preview.durable_objects;
+    expect(() => validateWranglerDeploymentConfig(missingRateLimit)).toThrow(
+      "preview is missing the RATE_LIMIT Durable Object binding",
+    );
+
+    const missingAvatars = validConfig();
+    delete missingAvatars.env.production.r2_buckets;
+    expect(() => validateWranglerDeploymentConfig(missingAvatars)).toThrow(
+      "production is missing the AVATARS R2 bucket binding",
+    );
+
+    const sharedQueue = validConfig();
+    sharedQueue.env.production.queues = sharedQueue.env.preview.queues;
+    expect(() => validateWranglerDeploymentConfig(sharedQueue)).toThrow(
+      "preview and production must use different JOBS queues",
+    );
   });
 
   it("requires the AI binding wherever voice transcription is enabled", () => {

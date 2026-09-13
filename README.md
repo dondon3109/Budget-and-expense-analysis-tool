@@ -1,6 +1,6 @@
 # Zoption — Budget and Expense Analysis
 
-Zoption is a privacy-conscious budgeting web application that turns imported or manually entered transactions into understandable monthly totals, category spending, budget progress, and trends. Supabase Auth provides email/password and Google accounts and sessions, while a Cloudflare Worker stores each user's financial records in an isolated D1 tenant.
+Zoption is a privacy-conscious budgeting web application that turns imported or manually entered transactions into understandable monthly totals, category spending, budget progress, and trends. Supabase Auth provides email/password and Google accounts and sessions, while a Cloudflare Worker stores each user's financial records in an isolated D1 tenant and profile pictures in R2.
 
 ## Hosted app
 
@@ -45,6 +45,9 @@ flowchart LR
   Browser -->|Bearer token| Worker["Hono Cloudflare Worker"]
   Worker -->|Verify JWT via JWKS| Supabase
   Worker --> D1["Cloudflare D1 tenant data"]
+  Worker --> R2["Cloudflare R2 avatars"]
+  Worker --> Queue["Cloudflare Queue"]
+  Worker --> RateLimit["Rate-limit Durable Object"]
   Worker -->|Allowlisted read-only tools| DeepSeek["DeepSeek v4 Flash"]
   Browser -. shared contracts .-> Shared["Shared Zod schemas and calculations"]
   Worker -. shared contracts .-> Shared

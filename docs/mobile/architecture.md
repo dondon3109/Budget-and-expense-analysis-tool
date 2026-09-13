@@ -2,7 +2,7 @@
 
 ## Verified baseline
 
-The repository is a pnpm monorepo with React/Vite in `apps/web`, a Hono Cloudflare Worker in `apps/api`, tenant-isolated financial data in D1, Supabase Auth for identity/session management, approved avatar responsibilities in Supabase Storage, reusable TypeScript in `packages/shared`, and the native mobile client in `apps/mobile`.
+The repository is a pnpm monorepo with React/Vite in `apps/web`, a Hono Cloudflare Worker in `apps/api`, tenant-isolated financial data in D1, Supabase Auth for identity/session management, profile pictures in Cloudflare R2, reusable TypeScript in `packages/shared`, and the native mobile client in `apps/mobile`.
 
 The native application is the supported Android and iOS mobile client under `apps/mobile`. The website remains the browser client, and both clients use the same authenticated Worker boundary and tenant-scoped data model.
 

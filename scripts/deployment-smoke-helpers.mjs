@@ -63,6 +63,7 @@ export function assertDeploymentContentSecurityPolicy(
     [connectSources, apiWebSocketOrigin, "connect-src API WebSocket origin"],
     [connectSources, expectedSupabaseOrigin, "connect-src Supabase origin"],
     [connectSources, expectedPosthogOrigin, "connect-src PostHog origin"],
+    [imageSources, apiOrigin, "img-src API origin"],
     [imageSources, expectedSupabaseOrigin, "img-src Supabase origin"],
   ]) {
     if (!sources.includes(expected)) throw new Error(`CSP is missing the expected ${label}.`);

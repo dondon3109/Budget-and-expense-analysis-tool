@@ -4,33 +4,34 @@ These flags reduce solo-maintainer load without silently deleting product capabi
 planning labels only: **keep** means maintain normally, **freeze** means security/correctness fixes
 only, and **review** means collect usage and operating-cost evidence before expanding or retiring it.
 
-Last reviewed: 2026-08-22.
+Last reviewed: 2026-09-13.
 
 ## Keep isolated
 
-| System                 | Flag | Reason and boundary                                                                                                            |
-| ---------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Read-only AI assistant | Keep | Active product capability. Provider failure must never block financial reads/writes, readiness, deletion, or export.           |
-| Receipt entry          | Keep | Active review-before-commit workflow. Images remain in flight; transaction commit continues through the canonical import path. |
-| Signed APK updater     | Keep | Current native release and repair channel. Package, version, hash, signer, and installer checks remain mandatory.              |
+| System                                      | Flag | Reason and boundary                                                                                                            |
+| ------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Read-only AI assistant                      | Keep | Active product capability. Provider failure must never block financial reads/writes, readiness, deletion, or export.           |
+| Spoken assistant replies through Fish Audio | Keep | Active voice feature. Spoken replies are part of the consented assistant voice path, not a trial add-on.                       |
+| Public AI support chat                      | Keep | Active product-help surface on public and in-app pages. Provider failure must not affect financial routes.                     |
+| PostHog AI observability                    | Keep | Active metadata-only AI operational stream after assistant consent. Do not attach prompts, answers, or financial records.      |
+| Receipt entry                               | Keep | Active review-before-commit workflow. Images remain in flight; transaction commit continues through the canonical import path. |
+| Signed APK updater                          | Keep | Current native release and repair channel. Package, version, hash, signer, and installer checks remain mandatory.              |
 
 ## Freeze
 
-| System                                           | Flag            | Reconsider when                                                                                                                                                                                                       |
-| ------------------------------------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Expo OTA publishing                              | Removed         | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                 |
-| `apps/ads` Remotion renderer and generated media | Freeze          | A concrete campaign requires refreshed product claims and assets. It stays outside runtime/release-critical ownership. Consider moving rendered outputs out of the main source tree in a separately approved cleanup. |
-| PostHog AI observability                         | Freeze disabled | Preview payload allow-list, retention disclosure, and provider-side privacy behavior are reverified. Do not enable merely because the integration exists.                                                             |
+| System                                           | Flag             | Reconsider when                                                                                                                                                                                                       |
+| ------------------------------------------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Expo OTA publishing                              | Removed          | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                 |
+| `apps/ads` Remotion renderer and generated media | Freeze           | A concrete campaign requires refreshed product claims and assets. It stays outside runtime/release-critical ownership. Consider moving rendered outputs out of the main source tree in a separately approved cleanup. |
+| Cloud Run Chirp 3 STT bridge                     | Freeze unshipped | Workers AI Whisper remains the runtime transcription path. Do not deploy the Cloud Run bridge unless measured voice usage clearly beats Whisper on latency and cost.                                                  |
 
 ## Review before further investment
 
-| System                                      | Flag   | Evidence needed                                                                                                                                                                                       |
-| ------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Spoken assistant replies through Fish Audio | Review | Usage, completion benefit, provider cost/failure rate, and whether text plus transcription covers the same need.                                                                                      |
-| Public AI support chat                      | Review | Deflection/helpfulness, abuse and rate-limit load, provider cost, and whether static FAQ/support reporting is sufficient.                                                                             |
-| Voice and PDF financial entry modes         | Review | Per-mode preview-to-commit conversion, correction rate, extraction failures, privacy support burden, and overlap with receipt/import workflows. Keep review-before-commit mandatory while evaluating. |
-| Customer reviews and administration         | Review | Actual moderation frequency and acquisition value compared with its authenticated/admin surface and maintenance cost.                                                                                 |
-| Mobile crash/product telemetry              | Review | Demonstrated diagnostic value, retention/privacy burden, and a documented response workflow for collected events.                                                                                     |
+| System                              | Flag   | Evidence needed                                                                                                                                                                                       |
+| ----------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Voice and PDF financial entry modes | Review | Per-mode preview-to-commit conversion, correction rate, extraction failures, privacy support burden, and overlap with receipt/import workflows. Keep review-before-commit mandatory while evaluating. |
+| Customer reviews and administration | Review | Actual moderation frequency and acquisition value compared with its authenticated/admin surface and maintenance cost.                                                                                 |
+| Mobile crash/product telemetry      | Review | Demonstrated diagnostic value, retention/privacy burden, and a documented response workflow for collected events.                                                                                     |
 
 ## Retire
 
