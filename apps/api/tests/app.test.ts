@@ -369,6 +369,7 @@ function createAccountDeletionService(): AccountDeletionService {
   return {
     deleteAccount: vi.fn(async () => "deleted" as const),
     reconcile: vi.fn(async () => 0),
+    reconcileUser: vi.fn(async () => "deleted" as const),
   };
 }
 

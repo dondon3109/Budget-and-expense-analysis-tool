@@ -53,6 +53,7 @@ function bugReportServiceMock(): BugReportService {
     listForAdmin: vi.fn(),
     updateStatus: vi.fn(),
     retryPendingNotifications: vi.fn(),
+    retryNotification: vi.fn(),
     cleanupExpired: vi.fn(),
   };
 }

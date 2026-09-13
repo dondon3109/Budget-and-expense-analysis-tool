@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitest/config";
 
@@ -11,6 +12,13 @@ if (typeof rootPackage.version !== "string" || !rootPackage.version.trim()) {
 }
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "cloudflare:workers": fileURLToPath(
+        new URL("./tests/cloudflare-workers-shim.ts", import.meta.url),
+      ),
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(rootPackage.version),
     __ASSISTANT_VOICE_ENABLED__: false,

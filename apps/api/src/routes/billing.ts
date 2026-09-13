@@ -10,6 +10,7 @@ import {
 import { reconcilePayPalCheckout } from "../billing/reconciliation";
 import type { BillingRepository } from "../db/billing";
 import { HttpError } from "../errors";
+import { enqueueJob } from "../jobs";
 import { readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
@@ -100,6 +101,7 @@ export function createBillingRoutes(repository: BillingRepository) {
         { billingPath: "/app/settings#plan-and-billing" },
       );
     }
+    await enqueueJob(context.env, { type: "paypal-reconcile", tenantId }, { delaySeconds: 30 });
     return context.json(
       { approvalUrl: subscription.approvalUrl, subscriptionId: subscription.id },
       201,

@@ -7,6 +7,7 @@ import type {
 
 import { bugReportRepository, type BugReportRepository } from "../db/bug-reports";
 import { HttpError } from "../errors";
+import { enqueueJob } from "../jobs";
 import { createResendSender, ResendError } from "../resend";
 import type { AuthUser, Bindings, EmailSender } from "../types";
 
@@ -27,6 +28,7 @@ export interface BugReportService {
     env: Bindings,
     limit: number,
   ): Promise<{ claimed: number; sent: number; failed: number }>;
+  retryNotification(env: Bindings, reportId: string): Promise<boolean>;
   cleanupExpired(env: Bindings, limit: number): Promise<number>;
 }
 
@@ -170,8 +172,14 @@ export function createBugReportService(
         input,
       });
       if (result.created) {
-        const claimed = await repository.claimNotification(env, result.report.id);
-        if (claimed) await deliver(env, claimed);
+        const queued = await enqueueJob(env, {
+          type: "bug-report-notify",
+          reportId: result.report.id,
+        });
+        if (!queued) {
+          const claimed = await repository.claimNotification(env, result.report.id);
+          if (claimed) await deliver(env, claimed);
+        }
       }
       return reporterView(result.report);
     },
@@ -201,6 +209,12 @@ export function createBugReportService(
       let sent = 0;
       for (const report of claimed) if (await deliver(env, report)) sent += 1;
       return { claimed: claimed.length, sent, failed: claimed.length - sent };
+    },
+
+    async retryNotification(env, reportId) {
+      const claimed = await repository.claimNotification(env, reportId);
+      if (!claimed) return false;
+      return deliver(env, claimed);
     },
 
     cleanupExpired(env, limit) {

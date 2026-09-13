@@ -4,6 +4,24 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
   "ai": { "binding": "AI", "remote": true },
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }],
+  },
+  "migrations": [
+    { "tag": "v1-rate-limit", "new_sqlite_classes": ["RateLimitDurableObject"] },
+  ],
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "budget-expense-jobs-local" }],
+    "consumers": [
+      {
+        "queue": "budget-expense-jobs-local",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+      },
+    ],
+  },
+  "r2_buckets": [{ "binding": "AVATARS", "bucket_name": "zoption-avatars-local" }],
   "d1_databases": [
     {
       "binding": "DB",

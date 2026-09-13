@@ -1,8 +1,7 @@
-import { supabase } from "./supabase";
-
-export const AVATAR_BUCKET = "avatars";
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 export const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp";
+
+const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "";
 
 const MAX_AVATAR_SIDE = 4096;
 const MAX_AVATAR_PIXELS = 16_000_000;
@@ -39,8 +38,9 @@ export function createAvatarPath(userId: string, mimeType: string): string {
 }
 
 export function avatarPublicUrl(path: string | undefined): string | undefined {
-  if (!path || !supabase) return undefined;
-  return supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path).data.publicUrl;
+  const parsed = avatarPathFromMetadata({ avatar_path: path });
+  if (!parsed) return undefined;
+  return `${apiUrl}/api/public/avatars/${parsed}`;
 }
 
 export function avatarInitials(displayName: string | undefined, email: string | undefined): string {

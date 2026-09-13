@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { d1RateLimiter, deleteExpiredRateLimits } from "../src/rate-limit";
+import { d1RateLimiter, deleteExpiredRateLimits, nextRateLimitState } from "../src/rate-limit";
 
 function createDatabase() {
   const queries: Array<{ query: string; bindings: unknown[] }> = [];
@@ -28,6 +28,30 @@ function createDatabase() {
   } as unknown as D1Database;
   return { queries, db };
 }
+
+describe("nextRateLimitState", () => {
+  it("increments the current window and reports remaining capacity", () => {
+    const first = nextRateLimitState(
+      undefined,
+      { scope: "tenant-write", limit: 2, windowSeconds: 60 },
+      1_700_000_030,
+    );
+    expect(first.decision).toMatchObject({ allowed: true, remaining: 1, retryAfterSeconds: 10 });
+    const second = nextRateLimitState(
+      first.entry,
+      { scope: "tenant-write", limit: 2, windowSeconds: 60 },
+      1_700_000_030,
+    );
+    expect(second.decision).toMatchObject({ allowed: true, remaining: 0 });
+    const third = nextRateLimitState(
+      second.entry,
+      { scope: "tenant-write", limit: 2, windowSeconds: 60 },
+      1_700_000_030,
+    );
+    expect(third.decision.allowed).toBe(false);
+    expect(third.key).toBe(first.key);
+  });
+});
 
 describe("d1RateLimiter.consume", () => {
   it("counts the window with a single upsert and never deletes on the request path", async () => {

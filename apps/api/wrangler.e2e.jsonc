@@ -4,6 +4,24 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
   // Browser tests exercise non-AI routes and must remain independent of Cloudflare credentials.
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }],
+  },
+  "migrations": [
+    { "tag": "v1-rate-limit", "new_sqlite_classes": ["RateLimitDurableObject"] },
+  ],
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "budget-expense-jobs-e2e" }],
+    "consumers": [
+      {
+        "queue": "budget-expense-jobs-e2e",
+        "max_batch_size": 10,
+        "max_batch_timeout": 1,
+        "max_retries": 3,
+      },
+    ],
+  },
+  "r2_buckets": [{ "binding": "AVATARS", "bucket_name": "zoption-avatars-e2e" }],
   "d1_databases": [
     {
       "binding": "DB",

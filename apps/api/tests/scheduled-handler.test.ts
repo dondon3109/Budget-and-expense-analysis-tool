@@ -21,11 +21,15 @@ vi.mock("../src/db/billing", () => ({
 }));
 vi.mock("../src/interest/scheduled-credit", () => ({ creditDueInterest }));
 vi.mock("../src/account-deletion", () => ({
-  createAccountDeletionService: () => ({ reconcile: reconcileAccountDeletions }),
+  createAccountDeletionService: () => ({
+    reconcile: reconcileAccountDeletions,
+    reconcileUser: vi.fn(),
+  }),
 }));
 vi.mock("../src/support/bug-reports", () => ({
   bugReportService: {
     retryPendingNotifications: retryPendingBugReportNotifications,
+    retryNotification: vi.fn(),
     cleanupExpired: cleanupExpiredBugReports,
   },
 }));

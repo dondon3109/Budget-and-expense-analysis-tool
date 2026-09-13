@@ -1,3 +1,4 @@
+import { purgeUserAvatars } from "./avatars";
 import type { AuthUser, Bindings } from "./types";
 import {
   accountDeletionRepository,
@@ -39,6 +40,7 @@ export interface AccountDeletionService {
     password: string;
   }): Promise<AccountDeletionStatus>;
   reconcile(env: Bindings, limit: number): Promise<number>;
+  reconcileUser(env: Bindings, userId: string): Promise<AccountDeletionStatus | null>;
 }
 
 function requiredBinding(
@@ -211,6 +213,13 @@ async function finishExternalCleanup(
   try {
     const gateway = gatewayFactory(env);
     if (!record.storagePurgedAt) {
+      if (env.AVATARS) {
+        try {
+          await purgeUserAvatars(env.AVATARS, record.userId);
+        } catch {
+          throw new AccountDeletionGatewayError("storage_unavailable");
+        }
+      }
       await gateway.purgeAvatars(record.userId);
       await repository.markStoragePurged(env, record.userId);
     }
@@ -284,6 +293,13 @@ export function createAccountDeletionService(
         }
       }
       return completed;
+    },
+
+    async reconcileUser(env, userId) {
+      const record = await repository.find(env, userId);
+      if (!record) return null;
+      if (record.storagePurgedAt && record.authDeletedAt) return "deleted";
+      return finishExternalCleanup(env, record, repository, gatewayFactory);
     },
   };
 }

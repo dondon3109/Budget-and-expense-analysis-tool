@@ -56,7 +56,9 @@ import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
 import { createAiEntryService, type AiEntryService } from "./entry/ai-entry-service";
 import { HttpError } from "./errors";
-import { d1RateLimiter, type RateLimitPolicy, type RateLimiter } from "./rate-limit";
+import { servePublicAvatar } from "./avatars";
+import { boundRateLimiter, type RateLimitPolicy, type RateLimiter } from "./rate-limit";
+import { createAvatarRoutes } from "./routes/avatars";
 import { checkApiReadiness } from "./readiness";
 import { createPlatformAdminService, type PlatformAdminService } from "./platform-admin";
 import { createAccountDeletionRoutes } from "./routes/account-deletion";
@@ -99,6 +101,7 @@ const JSON_METHODS = new Set(["POST", "PATCH", "PUT"]);
 const DEFAULT_JSON_BODY_LIMIT = 64 * 1024;
 const IMPORT_PREVIEW_BODY_LIMIT = 3 * 1024 * 1024;
 const ASSISTANT_VOICE_BODY_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
+const AVATAR_BODY_LIMIT = 2 * 1024 * 1024 + 64 * 1024;
 const RECEIPT_IMAGE_BODY_LIMIT = 8 * 1024 * 1024 + 64 * 1024;
 const AI_ENTRY_PDF_BODY_LIMIT = 5 * 1024 * 1024 + 64 * 1024;
 const PAYPAL_WEBHOOK_BODY_LIMIT = 128 * 1024;
@@ -229,7 +232,7 @@ export function createApp(options: AppOptions = {}) {
   const debtStore = options.debts ?? debtRepository;
   const importStore = options.imports ?? createImportRepository(billingStore);
   const mobileSyncStore = options.mobileSync ?? mobileSyncRepository;
-  const rateLimiter = options.rateLimiter ?? d1RateLimiter;
+  const rateLimiter = options.rateLimiter ?? boundRateLimiter;
   const authVerifier = options.authVerifier ?? supabaseAuthVerifier;
   const resolveTenant = options.tenantResolver ?? tenantResolver;
   const assistantStore = options.assistantRepository ?? assistantRepository;
@@ -310,11 +313,7 @@ export function createApp(options: AppOptions = {}) {
     options.receiptService ?? createReceiptService(receiptRepository, cloudflareVisionProvider);
   const aiEntryService =
     options.aiEntryService ??
-    createAiEntryService(
-      receiptRepository,
-      importStore,
-      dynamicVoiceProviders.transcription,
-    );
+    createAiEntryService(receiptRepository, importStore, dynamicVoiceProviders.transcription);
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =
     options.platformAdminService ?? createPlatformAdminService(platformAdminStore);
@@ -344,12 +343,7 @@ export function createApp(options: AppOptions = {}) {
         requestOrigin.startsWith("http://192.168.") ||
         requestOrigin.startsWith("http://10."));
 
-    if (
-      requestOrigin &&
-      !isSameOrigin &&
-      !isLocalDev &&
-      !allowedOrigins.includes(requestOrigin)
-    ) {
+    if (requestOrigin && !isSameOrigin && !isLocalDev && !allowedOrigins.includes(requestOrigin)) {
       return context.json({ error: "origin_not_allowed" }, 403);
     }
 
@@ -377,6 +371,11 @@ export function createApp(options: AppOptions = {}) {
 
     if (context.req.method === "OPTIONS") return context.body(null, 204);
     await next();
+  });
+
+  app.get("/api/public/avatars/:userId/:file", (context) => {
+    const path = `${context.req.param("userId")}/${context.req.param("file")}`;
+    return servePublicAvatar(context.env, path);
   });
 
   app.use("/api/app/*", async (context, next) => {
@@ -445,30 +444,36 @@ export function createApp(options: AppOptions = {}) {
     const requestContentType = context.req.header("Content-Type")?.toLowerCase() ?? "";
     const isVoiceJson = isVoiceEntry && isJsonContentType(requestContentType);
 
-    const multipartRoute = isVoiceJson
-      ? undefined
-      : {
-          "/api/app/assistant/voice/transcriptions": {
-            maxSize: ASSISTANT_VOICE_BODY_LIMIT,
-            typeMessage: "Send voice recordings as multipart form data.",
-            sizeMessage: "The voice recording is too large.",
-          },
-          "/api/app/receipts/extract": {
-            maxSize: RECEIPT_IMAGE_BODY_LIMIT,
-            typeMessage: "Send the receipt photo as multipart form data.",
-            sizeMessage: "The receipt photo is too large.",
-          },
-          "/api/app/entry/voice": {
-            maxSize: ASSISTANT_VOICE_BODY_LIMIT,
-            typeMessage: "Send voice recordings as multipart form data or JSON transcript.",
-            sizeMessage: "The voice recording is too large.",
-          },
-          "/api/app/entry/pdf-preview": {
-            maxSize: AI_ENTRY_PDF_BODY_LIMIT,
-            typeMessage: "Send the statement PDF as multipart form data.",
-            sizeMessage: "The statement PDF is too large.",
-          },
-        }[context.req.path];
+    const multipartRoute =
+      context.req.method !== "POST" || isVoiceJson
+        ? undefined
+        : {
+            "/api/app/assistant/voice/transcriptions": {
+              maxSize: ASSISTANT_VOICE_BODY_LIMIT,
+              typeMessage: "Send voice recordings as multipart form data.",
+              sizeMessage: "The voice recording is too large.",
+            },
+            "/api/app/receipts/extract": {
+              maxSize: RECEIPT_IMAGE_BODY_LIMIT,
+              typeMessage: "Send the receipt photo as multipart form data.",
+              sizeMessage: "The receipt photo is too large.",
+            },
+            "/api/app/entry/voice": {
+              maxSize: ASSISTANT_VOICE_BODY_LIMIT,
+              typeMessage: "Send voice recordings as multipart form data or JSON transcript.",
+              sizeMessage: "The voice recording is too large.",
+            },
+            "/api/app/entry/pdf-preview": {
+              maxSize: AI_ENTRY_PDF_BODY_LIMIT,
+              typeMessage: "Send the statement PDF as multipart form data.",
+              sizeMessage: "The statement PDF is too large.",
+            },
+            "/api/app/profile/avatar": {
+              maxSize: AVATAR_BODY_LIMIT,
+              typeMessage: "Send the profile picture as multipart form data.",
+              sizeMessage: "The profile picture is too large.",
+            },
+          }[context.req.path];
     if (multipartRoute) {
       const contentType = context.req.header("Content-Type")?.toLowerCase() ?? "";
       if (!contentType.startsWith("multipart/form-data;")) {
@@ -487,7 +492,9 @@ export function createApp(options: AppOptions = {}) {
     }
     const requiresJson =
       JSON_METHODS.has(context.req.method) ||
-      (context.req.method === "DELETE" && context.req.path === "/api/app/account");
+      (context.req.method === "DELETE" &&
+        (context.req.path === "/api/app/account" ||
+          context.req.path === "/api/app/profile/avatar"));
     if (!requiresJson) {
       await next();
       return;
@@ -744,10 +751,17 @@ export function createApp(options: AppOptions = {}) {
     createAuthenticatedSupportRoutes(supportProvider, bugReportService),
   );
   app.route("/api/app/account", createAccountDeletionRoutes(accountDeletionService));
+  app.route("/api/app/profile/avatar", createAvatarRoutes());
   app.route("/api/app/identity", createIdentityRoutes(platformAdminService));
   app.route("/api/app/admin", createPlatformAdminRoutes(platformAdminService));
-  app.route("/api/app/admin/provider-configs", createAdminProviderConfigRoutes(platformAdminService));
-  app.route("/api/app/admin/provider-credentials", createProviderCredentialRoutes(platformAdminService));
+  app.route(
+    "/api/app/admin/provider-configs",
+    createAdminProviderConfigRoutes(platformAdminService),
+  );
+  app.route(
+    "/api/app/admin/provider-credentials",
+    createProviderCredentialRoutes(platformAdminService),
+  );
   app.route("/api/app/assistant/voice", createAssistantVoiceRoutes(assistantVoiceService));
   app.route("/api/app/assistant/voice", createVoiceStreamRoutes());
   app.route("/api/app/assistant", createAssistantRoutes(assistantService));

@@ -6,10 +6,15 @@ import { billingRepository } from "./db/billing";
 import { compactMobileSyncChanges } from "./db/mobile-sync";
 import { refreshDailyFxRate } from "./fx/rates";
 import { creditDueInterest } from "./interest/scheduled-credit";
+import { handleQueuedJob } from "./job-handler";
+import type { JobMessage } from "./jobs";
+import { RateLimitDurableObject } from "./rate-limit-do";
 import { deleteExpiredRateLimits } from "./rate-limit";
 import { validateRequiredApiBindings } from "./readiness";
 import { bugReportService } from "./support/bug-reports";
 import type { Bindings } from "./types";
+
+export { RateLimitDurableObject };
 
 const app = createApp();
 const accountDeletionService = createAccountDeletionService();
@@ -19,6 +24,27 @@ const DAILY_INTEREST_CRON = "17 4 * * *";
 
 export default {
   fetch: app.fetch,
+  async queue(batch, env) {
+    validateRequiredApiBindings(env);
+    for (const message of batch.messages) {
+      try {
+        await handleQueuedJob(env, message.body as JobMessage);
+        message.ack();
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            message: "Queued job failed",
+            type:
+              message.body && typeof message.body === "object" && "type" in message.body
+                ? message.body.type
+                : undefined,
+            errorCode: error instanceof Error ? error.name : "unknown_error",
+          }),
+        );
+        message.retry();
+      }
+    }
+  },
   async scheduled(controller, env) {
     validateRequiredApiBindings(env);
     if (controller.cron === BILLING_RECONCILIATION_CRON) {
@@ -34,7 +60,9 @@ export default {
       }
       const expiredCounters = await deleteExpiredRateLimits(env);
       if (expiredCounters > 0) {
-        console.log(JSON.stringify({ message: "Expired rate limit counters deleted", expiredCounters }));
+        console.log(
+          JSON.stringify({ message: "Expired rate limit counters deleted", expiredCounters }),
+        );
       }
       return;
     }

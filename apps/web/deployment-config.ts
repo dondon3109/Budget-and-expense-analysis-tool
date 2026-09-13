@@ -188,7 +188,14 @@ const APPROVED_CSP_WILDCARD_SOURCES = new Set<string>(
 
 export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): string {
   const scriptSources = ["'self'", ...PAYPAL_CSP_SOURCES];
-  const imageSources = ["'self'", "data:", "blob:", config.supabaseOrigin, ...PAYPAL_CSP_SOURCES];
+  const imageSources = [
+    "'self'",
+    "data:",
+    "blob:",
+    config.apiOrigin,
+    config.supabaseOrigin,
+    ...PAYPAL_CSP_SOURCES,
+  ];
   // A scheme-qualified https: source does NOT cover wss: — browsers treat them
   // as different schemes, so the live voice WebSocket is blocked unless its
   // wss: origin is listed explicitly.

@@ -3,12 +3,30 @@
   "name": "budget-expense-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
+  "migrations": [
+    { "tag": "v1-rate-limit", "new_sqlite_classes": ["RateLimitDurableObject"] },
+  ],
   "triggers": { "crons": ["*/5 * * * *", "17 3 * * *", "17 4 * * *"] },
   "env": {
     "preview": {
       "name": "budget-expense-api-preview",
       "ai": { "binding": "AI" },
       "triggers": { "crons": ["*/5 * * * *", "17 3 * * *"] },
+      "durable_objects": {
+        "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }],
+      },
+      "r2_buckets": [{ "binding": "AVATARS", "bucket_name": "zoption-avatars-preview" }],
+      "queues": {
+        "producers": [{ "binding": "JOBS", "queue": "budget-expense-jobs-preview" }],
+        "consumers": [
+          {
+            "queue": "budget-expense-jobs-preview",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+          },
+        ],
+      },
       "d1_databases": [
         {
           "binding": "DB",
@@ -47,6 +65,21 @@
       "name": "budget-expense-api-production",
       "ai": { "binding": "AI" },
       "routes": [{ "pattern": "api.zoption.site", "custom_domain": true }],
+      "durable_objects": {
+        "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }],
+      },
+      "r2_buckets": [{ "binding": "AVATARS", "bucket_name": "zoption-avatars-production" }],
+      "queues": {
+        "producers": [{ "binding": "JOBS", "queue": "budget-expense-jobs-production" }],
+        "consumers": [
+          {
+            "queue": "budget-expense-jobs-production",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+          },
+        ],
+      },
       "d1_databases": [
         {
           "binding": "DB",

@@ -10,6 +10,9 @@ export interface EmailSender {
 
 export interface Bindings {
   DB: D1Database;
+  RATE_LIMIT?: DurableObjectNamespace;
+  JOBS?: Queue;
+  AVATARS?: R2Bucket;
   AI?: Ai;
   ALLOWED_ORIGINS?: string;
   SUPABASE_URL?: string;
