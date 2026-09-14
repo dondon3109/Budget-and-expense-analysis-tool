@@ -22,7 +22,7 @@ export function UserAvatar({
 }: UserAvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const rawImageUrl = previewUrl ?? avatarPublicUrl(avatarPath);
-  const imageUrl = isSafeAvatarUrl(rawImageUrl) ? rawImageUrl : undefined;
+  const imageUrl = isSafeAvatarUrl(rawImageUrl) ? encodeURI(rawImageUrl) : undefined;
 
   useEffect(() => {
     setImageFailed(false);
@@ -31,7 +31,7 @@ export function UserAvatar({
   return (
     <span className={`user-avatar ${size}`}>
       {imageUrl && !imageFailed ? (
-        <img src={imageUrl} alt={alt} onError={() => setImageFailed(true)} />
+        <img src={encodeURI(imageUrl)} alt={alt} onError={() => setImageFailed(true)} />
       ) : (
         <span
           className="user-avatar-fallback"

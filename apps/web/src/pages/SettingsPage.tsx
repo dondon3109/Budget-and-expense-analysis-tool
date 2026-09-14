@@ -127,7 +127,7 @@ export function SettingsPage() {
       return;
     }
 
-    const previewUrl = URL.createObjectURL(selectedAvatar);
+    const previewUrl = encodeURI(URL.createObjectURL(selectedAvatar));
     setAvatarPreviewUrl(previewUrl);
     return () => URL.revokeObjectURL(previewUrl);
   }, [selectedAvatar]);
