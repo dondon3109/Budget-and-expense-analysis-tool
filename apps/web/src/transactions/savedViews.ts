@@ -18,7 +18,16 @@ export interface SavedTransactionView {
 }
 
 export function savedViewId(): string {
-  return `view-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `view-${crypto.randomUUID()}`;
+  }
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return `view-${Date.now().toString(36)}-${hex}`;
+  }
+  return `view-${Date.now().toString(36)}`;
 }
 
 function optionalParam(value: unknown): string | undefined {
@@ -63,9 +72,7 @@ export function readSavedViews(
     if (!value) return [];
     const parsed: unknown = JSON.parse(value);
     if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map(parseSavedView)
-      .filter((view): view is SavedTransactionView => view !== null);
+    return parsed.map(parseSavedView).filter((view): view is SavedTransactionView => view !== null);
   } catch {
     return [];
   }

@@ -73,6 +73,30 @@ function assertPublicSeoDocument(html, path, canonical, label) {
   assertPublicStructuredDataGraph(JSON.parse(structuredData), { path, canonical });
 }
 
+function assertNoLegacyAnalytics(html, label) {
+  const scriptSources = [...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)].map(
+    (match) => match[1],
+  );
+  for (const src of scriptSources) {
+    try {
+      const { hostname } = new URL(src, "https://zoption.site");
+      if (
+        hostname === "googletagmanager.com" ||
+        hostname.endsWith(".googletagmanager.com") ||
+        hostname === "cloudflareinsights.com" ||
+        hostname.endsWith(".cloudflareinsights.com")
+      ) {
+        throw new Error(`${label} contained legacy analytics scripts.`);
+      }
+    } catch {
+      // ignore unparseable URL
+    }
+  }
+  if (/(?:googletagmanager|cloudflareinsights)/i.test(html)) {
+    throw new Error(`${label} contained legacy analytics scripts.`);
+  }
+}
+
 const apiHeaders = { Origin: origin };
 const publicPages = [
   ["landing page", "/", "Zoption makes your money clear. Decide"],
@@ -101,9 +125,7 @@ for (const [label, path, heading] of publicPages) {
     assertIncludes(html, '<meta property="og:title"', label);
     assertIncludes(html, '<meta name="twitter:card" content="summary_large_image"', label);
     assertIncludes(html, heading, label);
-    if (html.includes("googletagmanager.com") || html.includes("cloudflareinsights.com")) {
-      throw new Error(`${label} contained legacy analytics scripts.`);
-    }
+    assertNoLegacyAnalytics(html, label);
 
     if (path === "/") await expectFrontendDeploymentOrigins(html);
   });

@@ -43,6 +43,27 @@ export function avatarPublicUrl(path: string | undefined): string | undefined {
   return `${apiUrl}/api/public/avatars/${parsed}`;
 }
 
+export function isSafeAvatarUrl(url: string | undefined): url is string {
+  if (!url) return false;
+  if (
+    !url.startsWith("blob:") &&
+    !url.startsWith("https://") &&
+    !url.startsWith("http://") &&
+    !url.startsWith("/")
+  ) {
+    return false;
+  }
+  try {
+    const base = typeof window !== "undefined" ? window.location.origin : "https://zoption.site";
+    const parsed = new URL(url, base);
+    return (
+      parsed.protocol === "http:" || parsed.protocol === "https:" || parsed.protocol === "blob:"
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function avatarInitials(displayName: string | undefined, email: string | undefined): string {
   const words = displayName?.trim().split(/\s+/).filter(Boolean) ?? [];
   if (words.length > 0) {

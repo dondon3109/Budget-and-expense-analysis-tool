@@ -4,6 +4,13 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Hardened avatar URL handling in `UserAvatar` with strict protocol verification against DOM XSS.
+- Replaced insecure pseudo-random generation in transaction saved views with `crypto.randomUUID()`.
+- Upgraded `sharp` to 0.35.4 to resolve upstream libheif vulnerabilities (GHSA-rgj7-g3m4-5g8c).
+- Replaced unparsed domain substring matching with structured host URL validation in deployment smoke checks.
+
 ## 2.32.0 — 2026-09-13
 
 ### Added

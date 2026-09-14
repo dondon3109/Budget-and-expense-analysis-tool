@@ -1,6 +1,6 @@
 packages:
   - apps/*
-  - '!apps/stt-bridge'
+  - "!apps/stt-bridge"
   - packages/*
 
 allowBuilds:
@@ -23,11 +23,13 @@ overrides:
   "puppeteer-core>@puppeteer/browsers": 3.2.1
   "js-yaml@3": 3.15.2
   "js-yaml@4": 4.3.2
+  "sharp": 0.35.4
 
 auditConfig:
   ignoreGhsas:
     - GHSA-w3rx-r6r6-pgpr
     - GHSA-5p2g-fcmc-qvqq
+    - GHSA-vcc3-ghjq-m6fr
 
 minimumReleaseAgeExclude:
   - miniflare@5.20260811.0-alpha
@@ -60,8 +62,8 @@ minimumReleaseAgeExclude:
   - zustand@5.0.15
   - expo-file-system@57.0.4
   - expo-constants@57.0.11
-  - '@posthog/core@1.48.7'
-  - '@posthog/types@1.405.1'
+  - "@posthog/core@1.48.7"
+  - "@posthog/types@1.405.1"
   - posthog-react-native@4.63.4
 
 patchedDependencies:

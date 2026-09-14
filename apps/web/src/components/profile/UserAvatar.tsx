@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import "./UserAvatar.css";
-import { avatarInitials, avatarPublicUrl } from "../../lib/avatar";
+import { avatarInitials, avatarPublicUrl, isSafeAvatarUrl } from "../../lib/avatar";
 
 interface UserAvatarProps {
   avatarPath?: string;
@@ -21,7 +21,8 @@ export function UserAvatar({
   size = "small",
 }: UserAvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const imageUrl = previewUrl ?? avatarPublicUrl(avatarPath);
+  const rawImageUrl = previewUrl ?? avatarPublicUrl(avatarPath);
+  const imageUrl = isSafeAvatarUrl(rawImageUrl) ? rawImageUrl : undefined;
 
   useEffect(() => {
     setImageFailed(false);
