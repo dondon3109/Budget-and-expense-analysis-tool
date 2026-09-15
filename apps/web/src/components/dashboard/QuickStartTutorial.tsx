@@ -63,29 +63,7 @@ export function QuickStartTutorial({
   }
 
   if (dismissed) {
-    return (
-      <aside className="quick-start-reopen" aria-label="Tutorial guide prompt">
-        <button
-          type="button"
-          className="quick-start-reopen-button"
-          onClick={() => {
-            setDismissed(false);
-            setCollapsed(false);
-            try {
-              localStorage.setItem(STORAGE_KEY, "expanded");
-            } catch {
-              // Storage unavailable
-            }
-          }}
-        >
-          <BookOpen size={16} aria-hidden="true" />
-          <span>New to Zoption? View Quick Start Tutorial</span>
-        </button>
-        <Link to="/app/tutorials" className="quick-start-reopen-link">
-          Browse all tutorials →
-        </Link>
-      </aside>
-    );
+    return null;
   }
 
   return (

@@ -13,32 +13,7 @@ export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: strin
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) {
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Reopen quick start guide"
-        onPress={() => {
-          setDismissed(false);
-          setCollapsed(false);
-        }}
-        style={[
-          styles.reopenBanner,
-          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
-        ]}
-      >
-        <MaterialCommunityIcons
-          name="book-open-page-variant-outline"
-          size={18}
-          color={theme.colors.brand}
-        />
-        <Text
-          style={[typography.caption, { color: theme.colors.brand, fontWeight: "600", flex: 1 }]}
-        >
-          New to Zoption? View quick start guide
-        </Text>
-        <MaterialCommunityIcons name="chevron-down" size={18} color={theme.colors.textMuted} />
-      </Pressable>
-    );
+    return null;
   }
 
   return (
@@ -274,14 +249,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-start",
     marginTop: spacing.xxs,
-  },
-  reopenBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radii.md,
-    borderWidth: StyleSheet.hairlineWidth,
   },
 });

@@ -76,9 +76,19 @@ export function SafeToSpendHero({
       <View style={styles.headerRow}>
         <View style={styles.titleGroup}>
           <View style={[styles.iconWrap, { backgroundColor: theme.colors.brandSoft }]}>
-            <MaterialCommunityIcons name="shield-check-outline" size={18} color={theme.colors.brand} />
+            <MaterialCommunityIcons
+              name="shield-check-outline"
+              size={18}
+              color={theme.colors.brand}
+            />
           </View>
-          <Text style={[typography.label, { color: theme.colors.brand, textTransform: "uppercase" }]}>
+          <Text
+            style={[
+              typography.label,
+              styles.titleText,
+              { color: theme.colors.brand, textTransform: "uppercase" },
+            ]}
+          >
             Safe to spend this week
           </Text>
         </View>
@@ -101,11 +111,7 @@ export function SafeToSpendHero({
       </View>
 
       <View style={styles.amountRow}>
-        <MoneyValue
-          amountMinor={safeAmountMinor}
-          currency={currency}
-          style={styles.heroAmount}
-        />
+        <MoneyValue amountMinor={safeAmountMinor} currency={currency} style={styles.heroAmount} />
         <View style={[styles.pacePill, { backgroundColor: theme.colors.canvasMuted }]}>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
             {daysLeftInWeek} day{daysLeftInWeek === 1 ? "" : "s"} left
@@ -133,9 +139,14 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   titleGroup: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+    minWidth: 0,
+  },
+  titleText: {
+    flexShrink: 1,
   },
   iconWrap: {
     alignItems: "center",
@@ -143,14 +154,16 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: radii.sm,
+    flexShrink: 0,
   },
   renewalsButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xxs,
     borderRadius: radii.round,
+    flexShrink: 0,
   },
   amountRow: {
     flexDirection: "row",

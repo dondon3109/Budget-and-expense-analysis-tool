@@ -173,57 +173,10 @@
   text-decoration: underline;
 }
 
-.quick-start-reopen {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-  padding: 0.625rem 1rem;
-  background-color: var(--surface-muted);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md, 8px);
-}
-
-.quick-start-reopen-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: none;
-  border: none;
-  color: var(--action-strong);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-}
-
-.quick-start-reopen-button:hover {
-  text-decoration: underline;
-}
-
-.quick-start-reopen-link {
-  font-size: 0.8125rem;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.quick-start-reopen-link:hover {
-  color: var(--action);
-  text-decoration: underline;
-}
-
 @media (hover: none), (pointer: coarse) {
   /* Inline text links on desktop, real tap targets on a phone. */
-  .quick-start-migration-link,
-  .quick-start-reopen-button,
-  .quick-start-reopen-link {
+  .quick-start-migration-link {
     min-height: 44px;
     align-items: center;
-  }
-
-  .quick-start-reopen-link {
-    display: inline-flex;
   }
 }

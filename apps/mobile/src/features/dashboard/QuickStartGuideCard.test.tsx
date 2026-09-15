@@ -40,13 +40,14 @@ describe("QuickStartGuideCard", () => {
     expect(router.push).toHaveBeenCalledWith("/(app)/tutorials");
   });
 
-  it("can be collapsed, expanded, dismissed, and reopened", async () => {
+  it("can be collapsed and expanded, and disappears when dismissed", async () => {
     await render(<QuickStartGuideCard firstAccountId="acc-cash-1" />);
 
     const collapseBtn = screen.getByRole("button", { name: "Collapse guide" });
     await fireEvent.press(collapseBtn);
 
     expect(screen.queryByText("Adjust starting balances")).toBeNull();
+    expect(screen.getByText("Quick start guide")).toBeTruthy();
 
     const expandBtn = screen.getByRole("button", { name: "Expand guide" });
     await fireEvent.press(expandBtn);
@@ -56,11 +57,8 @@ describe("QuickStartGuideCard", () => {
     const dismissBtn = screen.getByRole("button", { name: "Dismiss guide" });
     await fireEvent.press(dismissBtn);
 
+    expect(screen.queryByText("Quick start guide")).toBeNull();
     expect(screen.queryByText("Adjust starting balances")).toBeNull();
-    const reopenBanner = screen.getByRole("button", { name: "Reopen quick start guide" });
-    expect(reopenBanner).toBeTruthy();
-
-    await fireEvent.press(reopenBanner);
-    expect(screen.getByText("Adjust starting balances")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reopen quick start guide" })).toBeNull();
   });
 });

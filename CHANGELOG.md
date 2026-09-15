@@ -4,6 +4,11 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Made the Quick Start Guide disappear completely on web and mobile when dismissed via the close (`x`) button instead of leaving a persistent reopen banner.
+- Fixed the Renewals action button in the mobile Safe-to-Spend card overflowing outside the card container on narrower screens by constraining the title group with flex layout and preventing the button from extending out.
+
 ## 2.32.3 — 2026-09-15
 
 ### Changed

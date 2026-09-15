@@ -52,23 +52,31 @@ describe("QuickStartTutorial", () => {
     expect(screen.getByText("Adjust your balances")).toBeInTheDocument();
   });
 
-  it("can be dismissed and reopened", () => {
-    render(
+  it("disappears when dismissed with the close button and persists dismissed state", () => {
+    const { unmount } = render(
       <MemoryRouter>
         <QuickStartTutorial />
       </MemoryRouter>,
     );
 
+    expect(screen.getByRole("heading", { name: /Quick Start Guide/i })).toBeInTheDocument();
+
     const dismissButton = screen.getByRole("button", { name: "Dismiss Quick Start Tutorial" });
     fireEvent.click(dismissButton);
 
-    expect(screen.queryByText("Adjust your balances")).not.toBeInTheDocument();
-    const reopenPrompt = screen.getByRole("button", {
-      name: /New to Zoption\? View Quick Start Tutorial/i,
-    });
-    expect(reopenPrompt).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Quick Start Guide/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("quick-start-tutorial")).not.toBeInTheDocument();
+    expect(localStorage.getItem("zoption:quick-start-tutorial-state")).toBe("dismissed");
 
-    fireEvent.click(reopenPrompt);
-    expect(screen.getByText("Adjust your balances")).toBeInTheDocument();
+    unmount();
+
+    // Re-rendering with persisted dismissed state stays hidden
+    render(
+      <MemoryRouter>
+        <QuickStartTutorial />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("heading", { name: /Quick Start Guide/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("quick-start-tutorial")).not.toBeInTheDocument();
   });
 });
