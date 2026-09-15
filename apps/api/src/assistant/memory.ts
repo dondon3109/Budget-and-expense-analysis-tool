@@ -33,7 +33,11 @@ export interface ExtractionResult {
 
 const SECRET_PATTERNS: RegExp[] = [
   /\b(?:password|passphrase|secret|api[_-]?key|token)\b\s*[:=]/i,
-  /\b(?:[1-9]\d{3}[-\s]?){3}[1-9]\d{3}\b/,
+  // Card numbers: 13-19 digits, contiguous or grouped by single spaces or dashes. The
+  // grouped form also needs a network prefix, because unrelated four-digit groups are
+  // also how people write years and IDs ("Plan fees for 2026 2027 2028 2029").
+  /\b\d{13,19}\b/,
+  /\b(?:2[2-7]\d{2}|[3-6]\d{3})(?:[ -]\d{3,4}){3}(?:[ -]\d{1,3})?\b/,
   /\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b/,
   /\b09\d{2}[-\s]?\d{3}[-\s]?\d{4}\b/,
   /(?:client[_-]?secret|service[_-]?role)/i,
@@ -447,12 +451,12 @@ function parseModelMemories(content: string): ExtractedMemory[] {
         if (!value || isSensitiveMemory(value) || containsPromptInjection(value)) continue;
         const canonical = canonicalizeMemoryKey(record.key);
         if (!canonical) continue;
-        // debt_strategy belongs to the preference control: an enum value updates the
-        // preference the panel reads, and any other payoff wording is stored as a
-        // debt_rule fact instead of shadowing the control.
-        const strategyValue =
-          canonical === "debt_strategy" && DEBT_STRATEGY_VALUES.has(value.trim().toLowerCase());
-        const key = canonical === "debt_strategy" && !strategyValue ? "debt_rule" : canonical;
+        // The payoff preference (the Memory panel control) may only be written by that
+        // panel and the deterministic extractor, so a model-inferred strategy value is
+        // dropped; other payoff wording is still useful as a debt_rule fact.
+        if (canonical === "debt_strategy" && DEBT_STRATEGY_VALUES.has(value.trim().toLowerCase()))
+          continue;
+        const key = canonical === "debt_strategy" ? "debt_rule" : canonical;
         const supersedes = Array.isArray(record.supersedes)
           ? record.supersedes
               .filter((entry): entry is string => typeof entry === "string")
@@ -461,7 +465,7 @@ function parseModelMemories(content: string): ExtractedMemory[] {
               .slice(0, 5)
           : undefined;
         results.push({
-          kind: strategyValue ? "preference" : "fact",
+          kind: "fact",
           key,
           value,
           ...(supersedes?.length ? { supersedes } : {}),

@@ -43,7 +43,18 @@ describe("assistant memory sanitization", () => {
     expect(isSensitiveMemory("my password: hunter2")).toBe(true);
     expect(isSensitiveMemory("api_key=abc")).toBe(true);
     expect(isSensitiveMemory("card 4111-1111-1111-1111")).toBe(true);
+    expect(isSensitiveMemory("card 4111 1111 1111 1111")).toBe(true);
+    expect(isSensitiveMemory("card 4111111111111111")).toBe(true);
     expect(isSensitiveMemory("I prefer avalanche payoff")).toBe(false);
+  });
+
+  it("does not read unrelated four-digit groups as a card number", () => {
+    // Four-digit groups are also how people write years and IDs, so grouping alone
+    // must not outrank an ordinary memory ("2026 2027 2028 2029" is not a card).
+    expect(isSensitiveMemory("Plan fees for 2026 2027 2028 2029")).toBe(false);
+    expect(isSensitiveMemory("Order IDs 1234 5678 9012 3456")).toBe(false);
+    // The grouped card form still needs real card-length digits, not three short groups.
+    expect(isSensitiveMemory("card 4111 11 11")).toBe(false);
   });
 });
 
@@ -272,12 +283,23 @@ describe("memory extraction quality", () => {
       ),
       "I always pay the smallest balance first",
     );
-    // The prose rule is re-keyed as a fact; the enum value is stored as the
-    // preference the Memory panel control and the prompt both read.
+    // The prose rule is re-keyed as a fact; the enum value is dropped, because the
+    // Memory panel control and the deterministic pass are the only writers of the
+    // payoff preference.
     expect(memories.map((memory) => [memory.kind, memory.key, memory.value])).toEqual([
       ["fact", "debt_rule", "Pays the smallest balance first"],
-      ["preference", "debt_strategy", "snowball"],
     ]);
+  });
+
+  it("never stores a model-inferred payoff preference, under any key alias", async () => {
+    const memories = await runModelMemoryPass(
+      { ...env, ASSISTANT_MEMORY_MODEL_PASS: "on" },
+      providerWith(
+        '{"memories":[{"key":"debt_strategy","value":"snowball"},{"key":"avalanche_method","value":"avalanche"}]}',
+      ),
+      "I want to pay off my smallest balance first",
+    );
+    expect(memories).toEqual([]);
   });
 
   it("keeps the payoff preference out of the fact lines for legacy aliases too", () => {
