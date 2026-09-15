@@ -14,6 +14,11 @@ export const currentRelease: ProductRelease = {
   releasedOn: "September 15, 2026",
   changes: [
     {
+      title: "Quick start guide and mobile dashboard fixes",
+      description:
+        "The quick start guide now disappears completely when dismissed instead of leaving a reopen banner behind, and the mobile Safe-to-Spend renewals button no longer overflows its card on narrow screens.",
+    },
+    {
       title: "Guided spreadsheet migration and full data portability",
       description:
         "Import transactions smoothly from Excel or CSV with bank preset recognition and column mapping, and export complete unpaywalled JSON account backups on web and mobile.",
@@ -29,9 +34,9 @@ export const currentRelease: ProductRelease = {
         "Select and delete multiple assistant conversation threads at once with single-action confirmation on web and mobile.",
     },
     {
-      title: "Android Beta 0.2.27",
+      title: "Android Beta 0.2.28",
       description:
-        "The official Android Beta includes the guided spreadsheet migration flow, complete JSON account export share sheet, and multi-chat deletion in assistant history, plus same-day transactions that stay in the order you recorded them.",
+        "The official Android Beta carries the quick start guide and renewals fixes, plus the guided spreadsheet migration flow, complete JSON account export share sheet, multi-chat deletion in assistant history, and same-day transactions that stay in the order you recorded them.",
     },
   ],
 };

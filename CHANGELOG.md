@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Prepared Android Beta 0.2.28 (versionCode 20328) mobile release and refreshed in-app patch notes.
+
 ### Fixed
 
 - Made the Quick Start Guide disappear completely on web and mobile when dismissed via the close (`x`) button instead of leaving a persistent reopen banner.

@@ -3,17 +3,19 @@ import { describe, expect, it } from "vitest";
 import { currentRelease, releaseHistory } from "../src/releases/currentRelease";
 
 describe("current release notes", () => {
-  it("highlights spreadsheet migration, admin console, assistant multi-delete, and Android Beta", () => {
+  it("highlights the dashboard hotfix, spreadsheet migration, admin console, assistant multi-delete, and Android Beta", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Quick start guide and mobile dashboard fixes",
       "Guided spreadsheet migration and full data portability",
       "Platform admin console",
       "Assistant chat history multi-delete",
-      "Android Beta 0.2.27",
+      "Android Beta 0.2.28",
     ]);
 
     const notes = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
+    expect(notes).toMatch(/quick start guide/i);
     expect(notes).toMatch(/spreadsheet migration/i);
     expect(notes).toMatch(/admin console/i);
     expect(notes).toMatch(/chat history/i);
