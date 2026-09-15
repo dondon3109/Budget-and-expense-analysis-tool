@@ -125,6 +125,19 @@ describe("encrypted local workspace repository", () => {
     );
   });
 
+  it("orders same-date transactions by local insert order so the newest entry is first", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([]);
+    const repository = new LocalWorkspaceRepository({ getAllAsync } as never);
+
+    await repository.queryTransactions({});
+    const [listSql] = getAllAsync.mock.calls[0] as [string, ...Array<string | number>];
+    expect(listSql).toContain("ORDER BY transaction_row.date DESC, transaction_row.rowid DESC");
+
+    await repository.getDashboardData();
+    const [dashboardSql] = getAllAsync.mock.calls[1] as [string, ...Array<string | number>];
+    expect(dashboardSql).toContain("ORDER BY t.date DESC, t.rowid DESC");
+  });
+
   it("decodes native account and category setup rows without financial state in memory stores", async () => {
     const database = {
       getAllAsync: jest

@@ -682,13 +682,8 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
 
 function RecentActivityCard({ transactions }: { transactions: TransactionRecord[] }) {
   const theme = useZoptionTheme();
-  const recent = useMemo(
-    () =>
-      [...transactions]
-        .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
-        .slice(0, 3),
-    [transactions],
-  );
+  // The dashboard read already returns transactions newest first.
+  const recent = transactions.slice(0, 3);
 
   if (recent.length === 0) return null;
 

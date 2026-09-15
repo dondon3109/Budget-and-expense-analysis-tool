@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Fixed mobile transactions appearing out of order within the same date: same-day entries were ranked by an internal id, so a transaction recorded later could land at the bottom of its day instead of the top. The ledger, the monthly list and the dashboard's Recent activity card now order same-day entries newest first.
 - Hardened avatar URL handling in `UserAvatar` with strict protocol verification against DOM XSS.
 - Replaced insecure pseudo-random generation in transaction saved views with `crypto.randomUUID()`.
 - Upgraded `sharp` to 0.35.4 to resolve upstream libheif vulnerabilities (GHSA-rgj7-g3m4-5g8c).

@@ -552,9 +552,11 @@ export class LocalWorkspaceRepository {
 
     params.push(limit);
     const where = conditions.join(" AND ");
+    // Transaction ids are random UUIDs, so they cannot order a day by recency.
+    // rowid follows the local insert order, which puts the newest entry first.
     const sql = `${transactionListSelect}
 WHERE ${where}
-ORDER BY transaction_row.date DESC, transaction_row.id DESC
+ORDER BY transaction_row.date DESC, transaction_row.rowid DESC
 LIMIT ?`;
     return mapTransactionRows(await this.database.getAllAsync(sql, ...params));
   }
@@ -778,7 +780,8 @@ LIMIT ?`;
       INNER JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
       LEFT JOIN accounts a ON a.id = t.account_id AND a.deleted_at IS NULL
       WHERE t.deleted_at IS NULL
-      ORDER BY t.date, t.id
+      -- Newest first; rowid breaks a same-date tie by local insert order.
+      ORDER BY t.date DESC, t.rowid DESC
     `);
 
     const accountRows = await this.database.getAllAsync(`
