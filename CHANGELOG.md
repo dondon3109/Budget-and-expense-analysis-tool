@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Prepared Android Beta 0.2.27 (versionCode 20327) mobile release and refreshed in-app patch notes.
+
 ### Fixed
 
 - Fixed the web ledger reshuffling same-day transactions right after a save: the optimistic re-sort ranked rows by id, promoted edited rows, and compared signed amounts while the API orders by absolute amount and breaks same-date ties on creation time. Transaction lists now carry the server's `createdAt`, so a saved row lands exactly where the next page read puts it.

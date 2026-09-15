@@ -11,7 +11,7 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 13, 2026",
+  releasedOn: "September 15, 2026",
   changes: [
     {
       title: "Guided spreadsheet migration and full data portability",
@@ -29,9 +29,9 @@ export const currentRelease: ProductRelease = {
         "Select and delete multiple assistant conversation threads at once with single-action confirmation on web and mobile.",
     },
     {
-      title: "Android Beta 0.2.26",
+      title: "Android Beta 0.2.27",
       description:
-        "The official Android Beta includes the guided spreadsheet migration flow, complete JSON account export share sheet, and multi-chat deletion in assistant history.",
+        "The official Android Beta includes the guided spreadsheet migration flow, complete JSON account export share sheet, and multi-chat deletion in assistant history, plus same-day transactions that stay in the order you recorded them.",
     },
   ],
 };

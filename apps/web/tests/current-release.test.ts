@@ -8,7 +8,7 @@ describe("current release notes", () => {
       "Guided spreadsheet migration and full data portability",
       "Platform admin console",
       "Assistant chat history multi-delete",
-      "Android Beta 0.2.26",
+      "Android Beta 0.2.27",
     ]);
 
     const notes = currentRelease.changes
