@@ -79,6 +79,98 @@ describe("ChatCompletionsProvider (openai/gemini/meta/muse_spark/deepseek)", () 
     expect(body).toMatchObject({ model: "gpt-4o-mini", stream: false, temperature: 0.15 });
   });
 
+  it("echoes a Gemini thought signature back with the tool call", async () => {
+    const signature = { google: { thought_signature: "sig-1" } };
+    // A fresh Response per call: bodies are single-use.
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () =>
+      chatCompletionResponse(
+        {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              id: "call-1",
+              type: "function",
+              function: { name: "period_summary", arguments: '{"from":"2026-09-01"}' },
+              extra_content: signature,
+            },
+          ],
+        },
+        "tool_calls",
+      ),
+    );
+    const provider = new ChatCompletionsProvider(
+      {
+        provider: "gemini",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        model: "gemini-3.5-flash-lite",
+        apiKey: "gemini-key",
+      },
+      fetcher,
+    );
+    const env = { DB: {} as D1Database } as Bindings;
+
+    const completion = await provider.complete(env, request);
+    expect(completion.message.tool_calls?.[0]?.providerExtras).toEqual(signature);
+
+    // The continuation has to carry the signature under Google's own field name, or
+    // Gemini 3 rejects the request outright.
+    await provider.complete(env, {
+      ...request,
+      messages: [
+        { role: "user", content: "How much did I spend?" },
+        completion.message,
+        { role: "tool", tool_call_id: "call-1", content: '{"total":1}' },
+      ],
+    });
+    const body = JSON.parse(fetcher.mock.calls[1]![1]?.body as string) as {
+      messages: Array<{ tool_calls?: Array<Record<string, unknown>> }>;
+    };
+    expect(body.messages[1]!.tool_calls![0]).toMatchObject({ extra_content: signature });
+    expect(body.messages[1]!.tool_calls![0]).not.toHaveProperty("providerExtras");
+  });
+
+  it("keeps provider tool-call extras away from other vendors", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(chatCompletionResponse({ role: "assistant", content: "Done." }));
+    const provider = new ChatCompletionsProvider(
+      {
+        provider: "openai",
+        endpoint: "https://api.openai.com/v1/chat/completions",
+        model: "gpt-4o-mini",
+        apiKey: "sk-test-openai",
+      },
+      fetcher,
+    );
+
+    await provider.complete({ DB: {} as D1Database } as Bindings, {
+      ...request,
+      messages: [
+        { role: "user", content: "How much did I spend?" },
+        {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              id: "call-1",
+              type: "function",
+              function: { name: "period_summary", arguments: "{}" },
+              providerExtras: { google: { thought_signature: "sig-1" } },
+            },
+          ],
+        },
+        { role: "tool", tool_call_id: "call-1", content: "{}" },
+      ],
+    });
+
+    const body = JSON.parse(fetcher.mock.calls[0]![1]?.body as string) as {
+      messages: Array<{ tool_calls?: Array<Record<string, unknown>> }>;
+    };
+    expect(body.messages[1]!.tool_calls![0]).not.toHaveProperty("extra_content");
+    expect(body.messages[1]!.tool_calls![0]).not.toHaveProperty("providerExtras");
+  });
+
   it("parses tool calls without exposing secrets in errors", async () => {
     const toolCalls = [
       {

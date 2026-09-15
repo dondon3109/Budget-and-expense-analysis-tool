@@ -11,6 +11,8 @@ const toolCallSchema = z.object({
     name: z.string().min(1),
     arguments: z.string(),
   }),
+  // Google attaches an opaque thought signature that must be echoed with the call.
+  extra_content: z.record(z.string(), z.unknown()).optional(),
 });
 
 const responseSchema = z.object({
@@ -21,7 +23,8 @@ const responseSchema = z.object({
         finish_reason: z.string(),
         message: z.object({
           role: z.literal("assistant"),
-          content: z.string().nullable(),
+          // Gemini omits the key entirely on a tool-call response; DeepSeek sends null.
+          content: z.string().nullable().optional(),
           tool_calls: z.array(toolCallSchema).optional(),
           reasoning_content: z.unknown().optional(),
         }),
@@ -75,6 +78,27 @@ function classifyStatus(
  * (OpenAI-compatible endpoint), Meta Llama API, and Muse Spark. All of these
  * vendors accept the same messages/tools/tool_choice shape and Bearer auth.
  */
+/**
+ * Re-attach provider-specific tool-call data on the way out. Only Google requires it
+ * (a continuation without the thought signature is rejected), and other vendors
+ * reject unknown fields, so the extras stay scoped to Gemini.
+ */
+function outgoingMessages(
+  messages: ProviderCompletionRequest["messages"],
+  providerName: string,
+): unknown[] {
+  const echoExtras = providerName === "gemini";
+  return messages.map((message) => {
+    if (message.role !== "assistant" || !message.tool_calls) return message;
+    return {
+      ...message,
+      tool_calls: message.tool_calls.map(({ providerExtras, ...call }) =>
+        echoExtras && providerExtras ? { ...call, extra_content: providerExtras } : call,
+      ),
+    };
+  });
+}
+
 export class ChatCompletionsProvider implements AssistantProvider {
   readonly providerName: string;
 
@@ -116,7 +140,7 @@ export class ChatCompletionsProvider implements AssistantProvider {
         },
         body: JSON.stringify({
           model: this.options.model,
-          messages: request.messages,
+          messages: outgoingMessages(request.messages, this.providerName),
           tools: request.tools,
           ...(toolChoice === undefined ? {} : { tool_choice: toolChoice }),
           temperature: 0.15,
@@ -191,8 +215,15 @@ export class ChatCompletionsProvider implements AssistantProvider {
       model: parsed.data.model,
       message: {
         role: "assistant",
-        content: choice.message.content,
-        ...(choice.message.tool_calls ? { tool_calls: choice.message.tool_calls } : {}),
+        content: choice.message.content ?? null,
+        ...(choice.message.tool_calls
+          ? {
+              tool_calls: choice.message.tool_calls.map(({ extra_content, ...call }) => ({
+                ...call,
+                ...(extra_content ? { providerExtras: extra_content } : {}),
+              })),
+            }
+          : {}),
       },
       finishReason: choice.finish_reason,
       ...(parsed.data.usage

@@ -7,6 +7,11 @@ export interface AssistantToolCall {
     name: string;
     arguments: string;
   };
+  /**
+   * Opaque provider data that has to travel back with the call. Gemini 3 rejects a
+   * tool continuation whose function call is missing its thought signature.
+   */
+  providerExtras?: Record<string, unknown>;
 }
 
 export type AssistantProviderMessage =

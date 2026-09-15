@@ -10,6 +10,10 @@ ASSISTANT_PROVIDER_TIMEOUT_MS=30000
 
 DEEPSEEK_API_KEY=
 
+# Optional local-only alternative to DeepSeek (Google AI Studio). An active provider
+# config for gemini is still needed in D1; the key alone does not switch providers.
+GEMINI_API_KEY=
+
 # Required for spoken assistant replies. Voice recording and Cloudflare transcription can still
 # run without it, but the UI will keep replies text-only until this server-side key is configured.
 FISH_AUDIO_API_KEY=
