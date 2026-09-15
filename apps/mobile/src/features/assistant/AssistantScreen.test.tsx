@@ -29,6 +29,7 @@ jest.mock("@/api/assistant", () => ({
   clearAssistantMemory: jest.fn(),
   createAssistantThreadTurn: jest.fn(),
   deleteAllAssistantThreads: jest.fn(),
+  deleteAssistantMemory: jest.fn(),
   deleteAssistantThread: jest.fn(),
   getAssistantMemory: jest.fn(),
   getAssistantMemoryPreferences: jest.fn(),
@@ -36,6 +37,7 @@ jest.mock("@/api/assistant", () => ({
   listAssistantMessages: jest.fn(),
   listAssistantThreads: jest.fn(),
   sendAssistantTurn: jest.fn(),
+  updateAssistantMemory: jest.fn(),
   updateAssistantMemoryPreferences: jest.fn(),
   updateAssistantPreferences: jest.fn(),
 }));
@@ -61,7 +63,10 @@ const voiceApi = jest.requireMock("@/api/assistant-voice") as {
 };
 
 const api = jest.requireMock("@/api/assistant") as {
+  deleteAssistantMemory: jest.Mock;
   deleteAssistantThread: jest.Mock;
+  getAssistantMemory: jest.Mock;
+  getAssistantMemoryPreferences: jest.Mock;
   getAssistantPreferences: jest.Mock;
   getAssistantVoicePreferences?: jest.Mock;
   listAssistantMessages: jest.Mock;
@@ -139,5 +144,46 @@ describe("assistant screen multi-select", () => {
       { accessToken: "access-token" },
       "thread-2",
     );
+  });
+
+  it("deletes a single remembered fact after confirmation", async () => {
+    api.getAssistantMemory.mockResolvedValue([
+      {
+        id: "mem-1",
+        kind: "fact",
+        key: "monthly_budget_cap",
+        value: "Monthly budget PHP 30,000",
+        source: "user_stated",
+        createdAt: "2026-08-15T08:00:00.000Z",
+        updatedAt: "2026-08-15T08:00:00.000Z",
+      },
+    ]);
+    api.getAssistantMemoryPreferences.mockResolvedValue({
+      debtStrategy: null,
+      responseDetail: "concise",
+      coachingStyle: "direct",
+    });
+    api.deleteAssistantMemory.mockResolvedValue(undefined);
+
+    await render(<AssistantScreen />);
+    await screen.findByText("Budget review");
+    await fireEvent.press(screen.getByRole("button", { name: "Assistant settings" }));
+
+    await fireEvent.press(
+      await screen.findByRole("button", {
+        name: "Delete remembered fact: Monthly budget PHP 30,000",
+      }),
+    );
+    expect(screen.getByRole("header", { name: "Delete this memory?" })).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(api.deleteAssistantMemory).toHaveBeenCalledWith(
+        { accessToken: "access-token" },
+        "mem-1",
+      ),
+    );
+    await waitFor(() => expect(screen.queryByText("Monthly budget PHP 30,000")).toBeNull());
   });
 });

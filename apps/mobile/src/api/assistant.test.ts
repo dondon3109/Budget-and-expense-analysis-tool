@@ -1,10 +1,12 @@
 import {
   createAssistantThreadTurn,
+  deleteAssistantMemory,
   deleteAssistantThread,
   getAssistantMemory,
   getAssistantPreferences,
   listAssistantThreads,
   sendAssistantTurn,
+  updateAssistantMemory,
   updateAssistantMemoryPreferences,
   updateAssistantPreferences,
 } from "./assistant";
@@ -211,6 +213,36 @@ describe("assistant api transport", () => {
       { debtStrategy: "avalanche" },
     );
     expect(preferences.debtStrategy).toBe("avalanche");
+  });
+
+  it("updates and deletes one memory through the item path", async () => {
+    const updated = {
+      id: "mem-1",
+      kind: "fact",
+      key: "monthly_budget_cap",
+      value: "Monthly budget PHP 25,000",
+      source: "user_stated",
+      createdAt: "2026-05-01T08:00:00.000Z",
+      updatedAt: "2026-05-02T08:00:00.000Z",
+    };
+    const fetchMock = jest.fn(async () => jsonResponse(updated));
+
+    const memory = await updateAssistantMemory(
+      { accessToken: token, fetchImpl: fetchMock },
+      "mem-1",
+      "Monthly budget PHP 25,000",
+    );
+    expect(memory.value).toBe("Monthly budget PHP 25,000");
+    const [updateUrl, updateInit] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(updateUrl).toBe(apiBase + "/api/app/assistant/memory/mem-1");
+    expect(updateInit.method).toBe("PATCH");
+    expect(JSON.parse(String(updateInit.body))).toEqual({ value: "Monthly budget PHP 25,000" });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(undefined, 204));
+    await deleteAssistantMemory({ accessToken: token, fetchImpl: fetchMock }, "mem-1");
+    const [deleteUrl, deleteInit] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+    expect(deleteUrl).toBe(apiBase + "/api/app/assistant/memory/mem-1");
+    expect(deleteInit.method).toBe("DELETE");
   });
 
   it("lets a slow turn resolve within the extended ceiling", async () => {

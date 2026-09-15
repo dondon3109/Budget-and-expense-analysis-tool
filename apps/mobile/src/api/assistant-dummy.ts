@@ -296,6 +296,19 @@ export function clearDummyAssistantMemory(): Promise<void> {
   return Promise.resolve();
 }
 
+export function updateDummyAssistantMemory(id: string, value: string): Promise<AssistantMemory> {
+  const existing = dummyMemories.find((memory) => memory.id === id);
+  if (!existing) return Promise.reject(new Error("That memory was not found."));
+  const updated: AssistantMemory = { ...existing, value, updatedAt: new Date().toISOString() };
+  dummyMemories = dummyMemories.map((memory) => (memory.id === id ? updated : memory));
+  return Promise.resolve(updated);
+}
+
+export function deleteDummyAssistantMemory(id: string): Promise<void> {
+  dummyMemories = dummyMemories.filter((memory) => memory.id !== id);
+  return Promise.resolve();
+}
+
 // 4. Threads & Messages API
 export function listDummyAssistantThreads(
   query: { cursor?: string; limit?: number } = {},

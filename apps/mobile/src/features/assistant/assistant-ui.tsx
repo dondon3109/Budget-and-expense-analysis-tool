@@ -521,6 +521,8 @@ export function MemoryPreferencesBlock({
   coachingStyle,
   savingMemory,
   onDebtStrategy,
+  onEditMemory,
+  onDeleteMemory,
   onClearMemory,
 }: {
   memory: AssistantMemory[];
@@ -529,9 +531,13 @@ export function MemoryPreferencesBlock({
   coachingStyle: string;
   savingMemory: boolean;
   onDebtStrategy: (strategy: "avalanche" | "snowball" | null) => void;
+  onEditMemory: (id: string, value: string) => void;
+  onDeleteMemory: (id: string) => void;
   onClearMemory: () => void;
 }) {
   const theme = useZoptionTheme();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
   const facts = memory.filter((item) => item.kind !== "summary");
   const debtOptions: SelectionOption[] = [
     { id: "avalanche", label: "Avalanche", detail: "Highest interest first" },
@@ -558,14 +564,68 @@ export function MemoryPreferencesBlock({
       {facts.length > 0 ? (
         <View className="gap-2">
           <Text style={[typography.label, { color: theme.colors.text }]}>Remembered facts</Text>
-          {facts.map((item) => (
-            <View key={item.id} style={[styles.factRow, { borderColor: theme.colors.border }]}>
-              <Text style={[typography.body, { color: theme.colors.text }]}>{item.value}</Text>
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                {item.source === "user_stated" ? "You shared this" : "Learned from context"}
-              </Text>
-            </View>
-          ))}
+          {facts.map((item) => {
+            const editing = editingId === item.id;
+            return (
+              <View key={item.id} style={[styles.factRow, { borderColor: theme.colors.border }]}>
+                {editing ? (
+                  <FormField
+                    label="Edit remembered fact"
+                    value={draft}
+                    maxLength={240}
+                    onChangeText={setDraft}
+                  />
+                ) : (
+                  <Text style={[typography.body, { color: theme.colors.text }]}>{item.value}</Text>
+                )}
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                  {item.source === "user_stated" ? "You shared this" : "Learned from context"}
+                </Text>
+                <View className="flex-row gap-2">
+                  {editing ? (
+                    <>
+                      <Button
+                        size="compact"
+                        variant="secondary"
+                        disabled={savingMemory || draft.trim().length === 0}
+                        onPress={() => {
+                          onEditMemory(item.id, draft.trim());
+                          setEditingId(null);
+                        }}
+                      >
+                        Save
+                      </Button>
+                      <Button size="compact" variant="quiet" onPress={() => setEditingId(null)}>
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        size="compact"
+                        variant="secondary"
+                        accessibilityLabel={`Edit remembered fact: ${item.value}`}
+                        onPress={() => {
+                          setEditingId(item.id);
+                          setDraft(item.value);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="compact"
+                        variant="quiet"
+                        accessibilityLabel={`Delete remembered fact: ${item.value}`}
+                        onPress={() => onDeleteMemory(item.id)}
+                      >
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                </View>
+              </View>
+            );
+          })}
         </View>
       ) : (
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>

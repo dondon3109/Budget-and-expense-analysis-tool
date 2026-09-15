@@ -6,7 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
-- The financial assistant now remembers budget caps, checking buffers, payday schedules, and recurring bills across chats, ranks saved memories by relevance to the current question, and lets you edit or delete individual remembered facts from the assistant Memory panel.
+- The financial assistant now remembers budget caps, checking buffers, payday schedules, and recurring bills across chats, ranks saved memories by relevance to the current question, and lets you edit or delete individual remembered facts from the assistant Memory panel on web and mobile.
 
 ### Fixed
 

@@ -21,6 +21,7 @@ import {
   createDummyAssistantThreadTurn,
   deleteAllDummyAssistantThreads,
   deleteDummyAssistantThread,
+  deleteDummyAssistantMemory,
   getDummyAssistantMemory,
   getDummyAssistantMemoryPreferences,
   getDummyAssistantPreferences,
@@ -28,6 +29,7 @@ import {
   listDummyAssistantMessages,
   listDummyAssistantThreads,
   sendDummyAssistantTurn,
+  updateDummyAssistantMemory,
   updateDummyAssistantMemoryPreferences,
   updateDummyAssistantPreferences,
 } from "./assistant-dummy";
@@ -179,6 +181,45 @@ export async function clearAssistantMemory(api: AssistantApi): Promise<void> {
   } catch (error) {
     if (isDummyAssistantToken(api.accessToken)) {
       return clearDummyAssistantMemory();
+    }
+    throw error;
+  }
+}
+
+export async function updateAssistantMemory(
+  api: AssistantApi,
+  id: string,
+  value: string,
+): Promise<AssistantMemory> {
+  try {
+    return await apiRequest({
+      ...api,
+      path: `/api/app/assistant/memory/${encodeURIComponent(id)}`,
+      method: "PATCH",
+      body: { value },
+      fallback: assistantFallback,
+      decode: (payload) => assistantMemoryItemSchema.parse(payload),
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return updateDummyAssistantMemory(id, value);
+    }
+    throw error;
+  }
+}
+
+export async function deleteAssistantMemory(api: AssistantApi, id: string): Promise<void> {
+  try {
+    await apiRequest({
+      ...api,
+      path: `/api/app/assistant/memory/${encodeURIComponent(id)}`,
+      method: "DELETE",
+      fallback: assistantFallback,
+      decode: (payload) => payload,
+    });
+  } catch (error) {
+    if (isDummyAssistantToken(api.accessToken)) {
+      return deleteDummyAssistantMemory(id);
     }
     throw error;
   }

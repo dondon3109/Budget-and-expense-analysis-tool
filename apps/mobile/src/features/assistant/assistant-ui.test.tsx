@@ -1,3 +1,4 @@
+import type { AssistantMemory } from "@zoption/shared";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import {
@@ -9,9 +10,41 @@ import {
   AssistantUnavailableView,
   AssistantUpgradeBanner,
   formatRecordingElapsed,
+  MemoryPreferencesBlock,
   VoiceModelField,
   VoiceRecordButton,
 } from "./assistant-ui";
+
+const rememberedFact: AssistantMemory = {
+  id: "mem-1",
+  kind: "fact",
+  key: "monthly_budget_cap",
+  value: "Monthly budget PHP 30,000",
+  source: "user_stated",
+  createdAt: "2026-08-15T08:00:00.000Z",
+  updatedAt: "2026-08-15T08:00:00.000Z",
+};
+
+function renderMemoryBlock(
+  overrides: {
+    onEditMemory?: (id: string, value: string) => void;
+    onDeleteMemory?: (id: string) => void;
+  } = {},
+) {
+  return render(
+    <MemoryPreferencesBlock
+      memory={[rememberedFact]}
+      debtStrategy={null}
+      responseDetail="concise"
+      coachingStyle="direct"
+      savingMemory={false}
+      onDebtStrategy={jest.fn()}
+      onEditMemory={overrides.onEditMemory ?? jest.fn()}
+      onDeleteMemory={overrides.onDeleteMemory ?? jest.fn()}
+      onClearMemory={jest.fn()}
+    />,
+  );
+}
 
 describe("assistant accessibility-critical interactions", () => {
   it("exposes the consent heading and a working accept button", async () => {
@@ -324,5 +357,44 @@ describe("assistant status and unavailable UI", () => {
     );
     expect(screen.queryByLabelText("Voice conversation")).toBeNull();
     expect(screen.queryByText("Voice")).toBeNull();
+  });
+});
+
+describe("assistant memory facts", () => {
+  it("edits a remembered fact through the inline editor", async () => {
+    const onEditMemory = jest.fn();
+    await renderMemoryBlock({ onEditMemory });
+
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Edit remembered fact: Monthly budget PHP 30,000" }),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText("Edit remembered fact"),
+      "Monthly budget PHP 25,000",
+    );
+    await fireEvent.press(screen.getByRole("button", { name: "Save" }));
+
+    expect(onEditMemory).toHaveBeenCalledWith("mem-1", "Monthly budget PHP 25,000");
+    // The editor closes and the row returns to read-only mode.
+    expect(screen.queryByLabelText("Edit remembered fact")).toBeNull();
+  });
+
+  it("keeps an empty edit unsavable and asks for confirmation before deleting", async () => {
+    const onEditMemory = jest.fn();
+    const onDeleteMemory = jest.fn();
+    await renderMemoryBlock({ onEditMemory, onDeleteMemory });
+
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Edit remembered fact: Monthly budget PHP 30,000" }),
+    );
+    await fireEvent.changeText(screen.getByLabelText("Edit remembered fact"), "   ");
+    await fireEvent.press(screen.getByRole("button", { name: "Save" }));
+    expect(onEditMemory).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Delete remembered fact: Monthly budget PHP 30,000" }),
+    );
+    expect(onDeleteMemory).toHaveBeenCalledWith("mem-1");
   });
 });

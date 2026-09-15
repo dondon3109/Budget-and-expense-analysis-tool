@@ -29,6 +29,7 @@ import {
   clearAssistantMemory,
   createAssistantThreadTurn,
   deleteAllAssistantThreads,
+  deleteAssistantMemory,
   deleteAssistantThread,
   getAssistantMemory,
   getAssistantMemoryPreferences,
@@ -36,6 +37,7 @@ import {
   listAssistantMessages,
   listAssistantThreads,
   sendAssistantTurn,
+  updateAssistantMemory,
   updateAssistantMemoryPreferences,
   updateAssistantPreferences,
   type AssistantWireMessage,
@@ -130,6 +132,7 @@ export function AssistantScreen() {
   } | null>(null);
   const [confirmClearChats, setConfirmClearChats] = useState(false);
   const [pendingDeleteThread, setPendingDeleteThread] = useState<string | null>(null);
+  const [pendingDeleteMemory, setPendingDeleteMemory] = useState<AssistantMemory | null>(null);
   const [managingThreads, setManagingThreads] = useState(false);
   const [selectedThreadIds, setSelectedThreadIds] = useState<string[]>([]);
   const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
@@ -530,6 +533,46 @@ export function AssistantScreen() {
       if (mounted.current) setBusyAction(null);
     }
   }, [withToken]);
+
+  const saveMemoryValue = useCallback(
+    async (id: string, value: string) => {
+      setBusyAction("memory");
+      try {
+        const updated = await withToken((token) =>
+          updateAssistantMemory({ accessToken: token }, id, value),
+        );
+        if (!mounted.current) return;
+        setMemory((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      } catch (error) {
+        setInlineError(
+          error instanceof ApiTransportError ? error.message : "Memory could not be updated.",
+        );
+      } finally {
+        if (mounted.current) setBusyAction(null);
+      }
+    },
+    [withToken],
+  );
+
+  const confirmDeleteMemory = useCallback(async () => {
+    const target = pendingDeleteMemory;
+    if (!target) return;
+    setBusyAction("memory");
+    try {
+      await withToken((token) => deleteAssistantMemory({ accessToken: token }, target.id));
+      if (!mounted.current) return;
+      setMemory((current) => current.filter((item) => item.id !== target.id));
+    } catch (error) {
+      setInlineError(
+        error instanceof ApiTransportError ? error.message : "Memory could not be deleted.",
+      );
+    } finally {
+      if (mounted.current) {
+        setBusyAction(null);
+        setPendingDeleteMemory(null);
+      }
+    }
+  }, [pendingDeleteMemory, withToken]);
 
   const toggleThreadSelection = useCallback((threadId: string) => {
     setSelectedThreadIds((current) =>
@@ -1183,6 +1226,10 @@ export function AssistantScreen() {
               coachingStyle={memoryPreferences.coachingStyle}
               savingMemory={busyAction === "memory"}
               onDebtStrategy={(strategy) => void saveDebtStrategy(strategy)}
+              onEditMemory={(id, value) => void saveMemoryValue(id, value)}
+              onDeleteMemory={(id) =>
+                setPendingDeleteMemory(memory.find((item) => item.id === id) ?? null)
+              }
               onClearMemory={() => void confirmClearMemory()}
             />
           ) : (
@@ -1207,6 +1254,19 @@ export function AssistantScreen() {
         </View>
       </BottomSheet>
 
+      <ConfirmationDialog
+        visible={pendingDeleteMemory !== null}
+        title="Delete this memory?"
+        message={
+          pendingDeleteMemory
+            ? `“${pendingDeleteMemory.value}” is removed from what the assistant remembers.`
+            : ""
+        }
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setPendingDeleteMemory(null)}
+        onConfirm={() => void confirmDeleteMemory()}
+      />
       <ConfirmationDialog
         visible={pendingDeleteThread !== null}
         title="Delete conversation?"
