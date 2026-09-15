@@ -187,10 +187,11 @@ describe("runModelMemoryPass", () => {
       ),
       "I always pay the smallest debt first",
     );
+    // "debt_rule" is the model's wording for the same concept as "debt_strategy".
     expect(memories).toEqual([
       expect.objectContaining({
         kind: "fact",
-        key: "debt_rule",
+        key: "debt_strategy",
         source: "model_assisted",
       }),
     ]);
@@ -258,7 +259,8 @@ describe("memory extraction quality", () => {
         (memory) => memory.key === "recurring_bill",
       ),
     ).toBe(true);
-    expect(canonicalizeMemoryKey("pay_smallest_first")).toBe("debt_rule");
+    expect(canonicalizeMemoryKey("pay_smallest_first")).toBe("debt_strategy");
+    expect(canonicalizeMemoryKey("debt_rule")).toBe("debt_strategy");
     expect(canonicalizeMemoryKey("Monthly Budget!")).toBe("monthly_budget_cap");
   });
 

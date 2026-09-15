@@ -401,7 +401,7 @@ describe("assistant service model-memory pass usage", () => {
       tenantId,
       expect.objectContaining({
         kind: "fact",
-        key: "debt_rule",
+        key: "debt_strategy",
         source: "model_assisted",
       }),
     );

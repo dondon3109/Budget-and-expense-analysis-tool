@@ -24,7 +24,6 @@ interface AssistantMemoryPanelProps {
 
 const MEMORY_KEY_LABELS: Record<string, string> = {
   debt_strategy: "Debt payoff preference",
-  debt_rule: "Debt rule",
   emergency_fund_target: "Emergency fund target",
   savings_target: "Savings target",
   savings_rule: "Savings rule",
