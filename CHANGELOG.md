@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Changed
 
 - Prepared Android Beta 0.2.28 (versionCode 20328) mobile release and refreshed in-app patch notes.
+- Refreshed web install page metadata and direct APK links to Android Beta 0.2.28 (versionCode 20328).
 
 ### Fixed
 

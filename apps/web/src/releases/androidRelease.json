@@ -1,12 +1,12 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.27-beta",
-  "versionCode": 20327,
-  "filename": "zoption-beta-0.2.27.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.27.apk",
-  "sha256": "e44347c3abc68245a5e04d0a51e7719ef9660daea651dc263eff58534128d7e0",
-  "sizeBytes": 139305186,
-  "sizeLabel": "139,305,186 bytes (132.85 MiB)",
+  "versionName": "0.2.28-beta",
+  "versionCode": 20328,
+  "filename": "zoption-beta-0.2.28.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.28.apk",
+  "sha256": "0d6a5f893978d66f679e408b9c4dd60318abf6617370306181d32acc287d74a4",
+  "sizeBytes": 139306126,
+  "sizeLabel": "139,306,126 bytes (132.85 MiB)",
   "releaseDate": "2026-09-15",
   "releaseDateLabel": "September 15, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
@@ -14,10 +14,8 @@
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Same-day transactions now keep the order you recorded them in",
-    "Import from Excel or CSV with the guided spreadsheet migration wizard",
-    "Save a complete JSON backup of your account from the share sheet",
-    "Delete several assistant conversations at once",
-    "Safe-to-spend guidance and voice draft auto-save on the dashboard"
+    "Quick start guide now disappears completely when dismissed",
+    "Renewals button no longer overflows the mobile Safe-to-Spend card on narrow screens",
+    "Includes Android Beta 0.2.27: spreadsheet migration, JSON account backup, same-day transaction ordering"
   ]
 }
