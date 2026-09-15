@@ -25,15 +25,26 @@ const rememberedFact: AssistantMemory = {
   updatedAt: "2026-08-15T08:00:00.000Z",
 };
 
+const payoffPreference: AssistantMemory = {
+  id: "mem-preference",
+  kind: "preference",
+  key: "debt_strategy",
+  value: "avalanche",
+  source: "user_stated",
+  createdAt: "2026-08-15T08:00:00.000Z",
+  updatedAt: "2026-08-15T08:00:00.000Z",
+};
+
 function renderMemoryBlock(
   overrides: {
+    memory?: AssistantMemory[];
     onEditMemory?: (id: string, value: string) => void;
     onDeleteMemory?: (id: string) => void;
   } = {},
 ) {
   return render(
     <MemoryPreferencesBlock
-      memory={[rememberedFact]}
+      memory={overrides.memory ?? [rememberedFact]}
       debtStrategy={null}
       responseDetail="concise"
       coachingStyle="direct"
@@ -377,6 +388,15 @@ describe("assistant memory facts", () => {
     expect(onEditMemory).toHaveBeenCalledWith("mem-1", "Monthly budget PHP 25,000");
     // The editor closes and the row returns to read-only mode.
     expect(screen.queryByLabelText("Edit remembered fact")).toBeNull();
+  });
+
+  it("leaves the payoff preference to the strategy control", async () => {
+    await renderMemoryBlock({ memory: [payoffPreference, rememberedFact] });
+
+    // Only the fact row offers edit and delete; the preference stays on the control.
+    expect(screen.getByText("Monthly budget PHP 30,000")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /^Edit remembered fact/ })).toHaveLength(1);
+    expect(screen.queryByText("avalanche")).toBeNull();
   });
 
   it("keeps an empty edit unsavable and asks for confirmation before deleting", async () => {

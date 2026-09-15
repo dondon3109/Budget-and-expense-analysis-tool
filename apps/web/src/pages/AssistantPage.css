@@ -2243,6 +2243,35 @@ main:has(.assistant-page) > .legal-footer,
   font-weight: 500;
 }
 
+.fact-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fact-edit-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.fact-meta {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--subtle);
+}
+
+.fact-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .assistant-memory-actions {
   margin-top: 22px;
   display: flex;

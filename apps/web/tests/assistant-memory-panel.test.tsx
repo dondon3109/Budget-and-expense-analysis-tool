@@ -241,7 +241,9 @@ describe("AssistantMemoryPanel", () => {
     expect(screen.getByText("Monthly budget cap · from “Car savings”")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     const input = screen.getByLabelText("Edit remembered fact");
-    fireEvent.change(input, { target: { value: "Updated goal" } });
+    fireEvent.change(input, { target: { value: "   " } });
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    fireEvent.change(input, { target: { value: "  Updated goal  " } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => {
       expect(apiMocks.updateAssistantMemory).toHaveBeenCalledWith(
@@ -250,9 +252,42 @@ describe("AssistantMemoryPanel", () => {
         "Updated goal",
       );
     });
+
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(apiMocks.deleteAssistantMemory).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
     await waitFor(() => {
       expect(apiMocks.deleteAssistantMemory).toHaveBeenCalledWith(mockWorkspace, "mem-1");
     });
+  });
+
+  it("keeps the payoff preference out of the editable facts", async () => {
+    apiMocks.getAssistantMemory.mockResolvedValue([
+      {
+        id: "mem-preference",
+        kind: "preference",
+        key: "debt_strategy",
+        value: "avalanche",
+        source: "user_stated",
+        createdAt: "2026-07-27T10:00:00.000Z",
+        updatedAt: "2026-07-27T10:00:00.000Z",
+      },
+      {
+        id: "mem-fact",
+        kind: "fact",
+        key: "debt_rule",
+        value: "Pays the smallest balance first",
+        source: "model_assisted",
+        createdAt: "2026-07-27T10:00:00.000Z",
+        updatedAt: "2026-07-27T10:00:00.000Z",
+      },
+    ]);
+    renderPanel();
+
+    expect(await screen.findByText("Pays the smallest balance first")).toBeInTheDocument();
+    // The preference is owned by the strategy control above, so only the fact row
+    // offers edit and delete.
+    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(1);
+    expect(screen.getByText("Debt rule")).toBeInTheDocument();
   });
 });

@@ -95,6 +95,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftValue, setDraftValue] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, value }: { id: string; value: string }) =>
@@ -120,6 +121,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
         (previous: { id: string }[] | undefined) =>
           (previous ?? []).filter((item) => item.id !== id),
       );
+      setDeletingId(null);
       setError(undefined);
     },
     onError: (cause) =>
@@ -138,7 +140,11 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
   });
 
   const currentStrategy = preferences.data?.debtStrategy ?? null;
-  const facts = (memories.data ?? []).filter((memory) => memory.kind !== "summary");
+  // Only facts are editable here. Preferences belong to the controls above, and
+  // debt_strategy rows stored before the key split would duplicate that control.
+  const facts = (memories.data ?? []).filter(
+    (memory) => memory.kind === "fact" && memory.key !== "debt_strategy",
+  );
 
   return createPortal(
     <div className="modal-backdrop" role="presentation">
@@ -321,9 +327,9 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
                         <button
                           type="button"
                           className="button secondary compact"
-                          disabled={updateMutation.isPending}
+                          disabled={updateMutation.isPending || draftValue.trim().length === 0}
                           onClick={() =>
-                            updateMutation.mutate({ id: memory.id, value: draftValue })
+                            updateMutation.mutate({ id: memory.id, value: draftValue.trim() })
                           }
                         >
                           Save
@@ -358,11 +364,36 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
                         <button
                           type="button"
                           className="button secondary compact"
-                          disabled={deleteMutation.isPending}
-                          onClick={() => deleteMutation.mutate(memory.id)}
+                          onClick={() => setDeletingId(memory.id)}
                         >
                           Delete
                         </button>
+                      </div>
+                    )}
+                    {deletingId === memory.id && (
+                      <div className="assistant-memory-clear-confirm">
+                        <div className="confirm-text">
+                          <strong>Delete this memory?</strong>
+                          <p>“{memory.value}” is removed from what the assistant remembers.</p>
+                        </div>
+                        <div className="confirm-buttons">
+                          <button
+                            type="button"
+                            className="button secondary compact"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => setDeletingId(null)}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="button danger compact"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => deleteMutation.mutate(memory.id)}
+                          >
+                            {deleteMutation.isPending ? "Deleting…" : "Yes, delete"}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </li>

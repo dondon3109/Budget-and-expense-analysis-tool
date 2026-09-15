@@ -538,7 +538,9 @@ export function MemoryPreferencesBlock({
   const theme = useZoptionTheme();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const facts = memory.filter((item) => item.kind !== "summary");
+  // Only facts are editable here. The payoff preference belongs to the control
+  // above, and debt_strategy rows stored before the key split would duplicate it.
+  const facts = memory.filter((item) => item.kind === "fact" && item.key !== "debt_strategy");
   const debtOptions: SelectionOption[] = [
     { id: "avalanche", label: "Avalanche", detail: "Highest interest first" },
     { id: "snowball", label: "Snowball", detail: "Smallest balance first" },
