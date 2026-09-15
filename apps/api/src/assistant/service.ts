@@ -322,10 +322,19 @@ export function createAssistantService(
       .replace(/\s+/g, " ")
       .trim();
     if (!combined) return;
-    // Rolling summary: keep the tail so recent decisions survive, cap growth.
+    // The summary embeds raw user text, so it passes the same guards as every other
+    // memory: a message carrying secrets is not worth retaining for the thread's
+    // lifetime, and the prior summary stays as it was.
+    if (isSensitiveMemory(combined) || containsPromptInjection(combined)) return;
+    // Rolling summary: keep the tail so recent decisions survive, cap growth. The cut
+    // is trimmed to a word boundary so the injected line never opens mid-word.
+    const limit = THREAD_SUMMARY_MAX_CHARACTERS * 2;
     const bounded =
-      combined.length > THREAD_SUMMARY_MAX_CHARACTERS * 2
-        ? combined.slice(-THREAD_SUMMARY_MAX_CHARACTERS * 2)
+      combined.length > limit
+        ? combined
+            .slice(-limit)
+            .replace(/^\S*\s/, "")
+            .trim()
         : combined;
     await repository.upsertMemory(env, tenantId, {
       kind: "summary",

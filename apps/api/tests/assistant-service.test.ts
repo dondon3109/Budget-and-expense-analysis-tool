@@ -415,6 +415,24 @@ describe("assistant service model-memory pass usage", () => {
     ).toBe(false);
   });
 
+  it("keeps secrets out of the rolling thread summary", async () => {
+    const repository = createRepository();
+    const service = createAssistantService(repository, successfulOrchestrator());
+
+    await expect(
+      service.sendTurn(env, tenantId, threadId, {
+        ...input,
+        message: "my card is 4111 1111 1111 1111",
+      }),
+    ).resolves.toEqual(completed);
+
+    expect(
+      vi
+        .mocked(repository.upsertMemory)
+        .mock.calls.filter(([, , memory]) => memory.kind === "summary"),
+    ).toEqual([]);
+  });
+
   it("never lets a superseded key delete the payoff preference", async () => {
     const repository = createRepository();
     const assistantProvider: AssistantProvider = {
@@ -443,7 +461,12 @@ describe("assistant service model-memory pass usage", () => {
     );
 
     // Superseding may replace a stored fact, but the preference is the user's choice.
-    expect(repository.deleteMemory).toHaveBeenCalledWith(memoryEnv, tenantId, "fact", "debt_strategy");
+    expect(repository.deleteMemory).toHaveBeenCalledWith(
+      memoryEnv,
+      tenantId,
+      "fact",
+      "debt_strategy",
+    );
     expect(repository.deleteMemory).not.toHaveBeenCalledWith(
       memoryEnv,
       tenantId,

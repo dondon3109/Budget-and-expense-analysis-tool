@@ -779,9 +779,9 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
     const row = await env.DB.prepare(
       `SELECT id, kind, key, value, thread_id, source, created_at, updated_at
        FROM assistant_memories
-       WHERE tenant_id = ? AND kind = ? AND key = ?`,
+       WHERE tenant_id = ? AND kind = ? AND key = ? AND (expires_at IS NULL OR expires_at > ?)`,
     )
-      .bind(tenantId, kind, key)
+      .bind(tenantId, kind, key, new Date().toISOString())
       .first<MemoryRow>();
     return row ? memoryFromRow(row) : null;
   },
@@ -802,7 +802,7 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
     const now = new Date().toISOString();
     const expiresAt = addDays(now, DEFAULT_RETENTION_DAYS);
     const updated = await env.DB.prepare(
-      `UPDATE assistant_memories SET value = ?, updated_at = ?, expires_at = ?
+      `UPDATE assistant_memories SET value = ?, source = 'user_stated', updated_at = ?, expires_at = ?
        WHERE tenant_id = ? AND id = ? AND kind IN ('fact', 'preference')`,
     )
       .bind(value, now, expiresAt, tenantId, id)
@@ -829,28 +829,33 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
   },
 
   async compactFacts(env, tenantId, retain) {
-    const count = await this.countFacts(env, tenantId);
-    const overflow = Math.max(0, count - retain);
-    if (overflow === 0) return 0;
-    // Delete the oldest facts beyond the cap in one bounded batch. Preferences are
-    // never evicted: the user set them explicitly in the assistant Memory panel.
-    const victims = await env.DB.prepare(
-      `SELECT id FROM assistant_memories
-       WHERE tenant_id = ? AND kind = 'fact'
-       ORDER BY updated_at ASC LIMIT ?`,
-    )
-      .bind(tenantId, Math.min(overflow, 25))
-      .all<{ id: string }>();
-    if (victims.results.length === 0) return 0;
-    await env.DB.batch(
-      victims.results.map((row) =>
-        env.DB.prepare(`DELETE FROM assistant_memories WHERE tenant_id = ? AND id = ?`).bind(
-          tenantId,
-          row.id,
+    // Delete the oldest facts beyond the cap in bounded batches until the tenant is
+    // back under it. Preferences are never evicted: the user set them explicitly in
+    // the assistant Memory panel.
+    let removed = 0;
+    for (let pass = 0; pass < 20; pass += 1) {
+      const count = await this.countFacts(env, tenantId);
+      const overflow = Math.max(0, count - retain);
+      if (overflow === 0) return removed;
+      const victims = await env.DB.prepare(
+        `SELECT id FROM assistant_memories
+         WHERE tenant_id = ? AND kind = 'fact'
+         ORDER BY updated_at ASC, created_at ASC, id ASC LIMIT ?`,
+      )
+        .bind(tenantId, Math.min(overflow, 25))
+        .all<{ id: string }>();
+      if (victims.results.length === 0) return removed;
+      await env.DB.batch(
+        victims.results.map((row) =>
+          env.DB.prepare(`DELETE FROM assistant_memories WHERE tenant_id = ? AND id = ?`).bind(
+            tenantId,
+            row.id,
+          ),
         ),
-      ),
-    );
-    return victims.results.length;
+      );
+      removed += victims.results.length;
+    }
+    return removed;
   },
 
   async upsertMemory(env, tenantId, input) {
@@ -861,7 +866,8 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
        (id, tenant_id, kind, key, value, thread_id, source, created_at, updated_at, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(tenant_id, kind, key) DO UPDATE SET
-         value = excluded.value, thread_id = excluded.thread_id,
+         value = excluded.value,
+         thread_id = COALESCE(assistant_memories.thread_id, excluded.thread_id),
          source = excluded.source,
          updated_at = excluded.updated_at, expires_at = excluded.expires_at`,
     )

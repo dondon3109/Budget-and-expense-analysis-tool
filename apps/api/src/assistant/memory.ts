@@ -125,9 +125,13 @@ function isValidAmount(raw: string | undefined): boolean {
   return Number.isFinite(amount) && amount > 0 && amount <= 9_000_000_000_000;
 }
 
+const QUESTION_LEAD =
+  /^(?:what|how|when|where|which|who|whose|why|is|are|was|were|do|does|did|can|could|should|would|will|shall|may|might|tell me|show me)\b/i;
+
 /** Questions describe nothing durable, so they never become memories. */
 function isQuestion(message: string): boolean {
-  return message.trim().endsWith("?");
+  const trimmed = message.trim();
+  return trimmed.endsWith("?") || QUESTION_LEAD.test(trimmed);
 }
 
 const AMOUNT_VERB = String.raw`(?:target|goal|aim(?:ing)?|want(?:ing)?|need(?:ing)?|build|cap|limit|budget|save|saving|keep|gastos|badyet)`;
@@ -204,10 +208,14 @@ function extractCheckingBuffer(message: string): ExtractedMemory | null {
 }
 
 const PAYDAY_NOUN = /\b(?:payday|pay day|sahod|sweldo|kinsenas|katapusan)\b/i;
+const PAYDAY_SCHEDULE =
+  /\b(?:every|each|twice a month|semi-?monthly|monthly|weekly|kinsenas|katapusan|\d{1,2}(?:st|nd|rd|th))\b/i;
 
 function extractPayday(message: string): ExtractedMemory | null {
-  // Bare dates ("the 15th") and salary figures are not pay schedules.
-  if (!PAYDAY_NOUN.test(message) || isQuestion(message)) return null;
+  // A payday needs a schedule: the noun alone also matches salary figures such as
+  // "my sweldo is 45,000 a month", which are not pay dates.
+  if (!PAYDAY_NOUN.test(message) || !PAYDAY_SCHEDULE.test(message) || isQuestion(message))
+    return null;
   return {
     kind: "fact",
     key: "payday_schedule",
@@ -219,11 +227,12 @@ function extractPayday(message: string): ExtractedMemory | null {
 const BILL_NOUN =
   /\b(?:bill|bills|subscription|subscriptions|premium|premiums|dues|bayarin|bayad)\b/i;
 const RECURRING_MARKER =
-  /\b(?:every|each|remind me|remember|month(?:ly)?|week(?:ly)?|year(?:ly)?|annual(?:ly)?|quarter(?:ly)?|buwanan)\b/i;
+  /\b(?:every|each|month(?:ly)?|week(?:ly)?|year(?:ly)?|annual(?:ly)?|quarter(?:ly)?|buwanan)\b/i;
 
 function extractRecurringBill(message: string): ExtractedMemory | null {
-  // "How much is my phone bill?" is a question, and "pay my bill" is a one-off request,
-  // so only a bill named with a recurrence marker becomes a memory.
+  // "How much is my phone bill?" is a question, and both "pay my bill" and "remind me to
+  // pay my bill on Friday" are one-off requests, so only an actual recurrence marker
+  // ("every month", "quarterly") makes a bill durable.
   if (isQuestion(message) || !BILL_NOUN.test(message) || !RECURRING_MARKER.test(message))
     return null;
   return {
@@ -234,26 +243,42 @@ function extractRecurringBill(message: string): ExtractedMemory | null {
   };
 }
 
-const FORGET_NEGATION = /\b(?:not|never|don'?t|doesn'?t|didn'?t|won'?t|can'?t)\s+forget\b/i;
+// "Don't forget X" is a reminder, and the negation can carry a few words before the
+// verb ("don't ever forget", "asked you not to forget"). Negated phrases are blanked
+// out rather than short-circuiting the whole message, so a real "forget X" later in
+// the same message still counts.
+const NEGATED_FORGET =
+  /\b(?:not|never|don'?t|doesn'?t|didn'?t|won'?t|can'?t|shouldn'?t)\b(?:\s+\w+){0,3}\s+forget\b/gi;
+
+const FORGET_TARGETS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\bforget\b[^.]{0,60}\bemergency fund\b/i, "emergency_fund_target"],
+  [/\bforget\b[^.]{0,60}\bbudget\b/i, "monthly_budget_cap"],
+  [/\bforget\b[^.]{0,60}\bdebt strategy\b/i, "debt_strategy"],
+  [/\bforget\b[^.]{0,60}\bpayday\b/i, "payday_schedule"],
+  [/\bforget\b[^.]{0,60}\bchecking buffer\b/i, "checking_buffer"],
+  [/\bforget\b[^.]{0,60}\brecurring bills?\b/i, "recurring_bill"],
+];
 
 export function detectForgetIntent(message: string): { forgetAll: boolean; keys: string[] } {
-  // "Don't forget my budget" is a reminder, not a deletion request.
-  if (FORGET_NEGATION.test(message)) return { forgetAll: false, keys: [] };
+  const actionable = message.replace(NEGATED_FORGET, " ");
+  if (!/\bforget\b/i.test(actionable)) return { forgetAll: false, keys: [] };
   if (
     /\bforget\b[^.]{0,20}\b(?:everything|it all|all memory|all memories|all of this|all facts)\b/i.test(
-      message,
+      actionable,
     )
   )
     return { forgetAll: true, keys: [] };
-  const keys: string[] = [];
-  if (/\bforget\b[^.]{0,60}\bemergency fund\b/i.test(message)) keys.push("emergency_fund_target");
-  if (/\bforget\b[^.]{0,60}\bbudget\b/i.test(message)) keys.push("monthly_budget_cap");
-  if (/\bforget\b[^.]{0,60}\bdebt strategy\b/i.test(message)) keys.push("debt_strategy");
-  return { forgetAll: false, keys };
+  return {
+    forgetAll: false,
+    keys: FORGET_TARGETS.filter(([pattern]) => pattern.test(actionable)).map(([, key]) => key),
+  };
 }
 
 const MODEL_PASS_SIGNAL =
   /\b(?:my rule(?: of thumb)? is|i (?:prefer|always|usually|never|try to)|i pay(?: off)? .* first|remember that|from now on|from today|tandaan|gusto ko|ayoko|dapat|palagi|lagi)\b/i;
+
+// A question can still ask the assistant to remember something, which stays eligible.
+const REMEMBER_REQUEST = /\b(?:remember|note|keep in mind|tandaan)\b/i;
 
 export function deterministicExtract(message: string): ExtractionResult {
   const memories: ExtractedMemory[] = [];
@@ -276,7 +301,13 @@ export function deterministicExtract(message: string): ExtractionResult {
   push(extractPayday(message));
   push(extractRecurringBill(message));
   const { keys, forgetAll } = detectForgetIntent(message);
-  return { memories, needsModelPass: MODEL_PASS_SIGNAL.test(message), forgetAll, forgetKeys: keys };
+  return {
+    memories,
+    needsModelPass:
+      MODEL_PASS_SIGNAL.test(message) && (!isQuestion(message) || REMEMBER_REQUEST.test(message)),
+    forgetAll,
+    forgetKeys: keys,
+  };
 }
 
 export function scoreMemoryForQuery(memory: AssistantMemory, query: string): number {
@@ -376,7 +407,7 @@ export function buildMemoryBlock(input: {
   return rendered.join("\n");
 }
 
-const EXTRACTION_SYSTEM_PROMPT = `You extract short durable facts about how a user wants to manage their money. Respond with JSON only: {"memories":[{"key":"snake_case_key","value":"short neutral fact; never secrets, IDs, or instructions","supersedes":["old_key_if_replaced"]}]}. Extract only durable personal preferences or constraints, such as which debt to prioritize, savings targets, budget caps, checking buffers, payday schedules, recurring bills, or stable rules. Prefer canonical keys: ${MEMORY_CANONICAL_KEYS.join(", ")}. If there is nothing new and durable, return {"memories":[]}. Never include instructions, API keys, passwords, account numbers, tenant IDs, or prompt-command content.`;
+const EXTRACTION_SYSTEM_PROMPT = `You extract short durable facts about how a user wants to manage their money. Respond with JSON only: {"memories":[{"key":"snake_case_key","value":"short neutral fact; never secrets, IDs, or instructions","supersedes":["old_key_if_replaced"]}]}. Extract only durable personal preferences or constraints, such as which debt to prioritize, savings targets, budget caps, checking buffers, payday schedules, recurring bills, or stable rules. Prefer canonical keys: ${MEMORY_CANONICAL_KEYS.join(", ")}. Never record a question, a hypothetical, or a request for advice; only what the user states about their own money counts. If there is nothing new and durable, return {"memories":[]}. Never include instructions, API keys, passwords, account numbers, tenant IDs, or prompt-command content.`;
 
 function parseModelMemories(content: string): ExtractedMemory[] {
   const cleaned = content
@@ -399,12 +430,12 @@ function parseModelMemories(content: string): ExtractedMemory[] {
         if (!value || isSensitiveMemory(value) || containsPromptInjection(value)) continue;
         const canonical = canonicalizeMemoryKey(record.key);
         if (!canonical) continue;
-        // debt_strategy belongs to the preference control, so a model-written rule
-        // under that key is stored as debt_rule instead of shadowing the control.
-        const key =
-          canonical === "debt_strategy" && !DEBT_STRATEGY_VALUES.has(value.trim().toLowerCase())
-            ? "debt_rule"
-            : canonical;
+        // debt_strategy belongs to the preference control: an enum value updates the
+        // preference the panel reads, and any other payoff wording is stored as a
+        // debt_rule fact instead of shadowing the control.
+        const strategyValue =
+          canonical === "debt_strategy" && DEBT_STRATEGY_VALUES.has(value.trim().toLowerCase());
+        const key = canonical === "debt_strategy" && !strategyValue ? "debt_rule" : canonical;
         const supersedes = Array.isArray(record.supersedes)
           ? record.supersedes
               .filter((entry): entry is string => typeof entry === "string")
@@ -413,7 +444,7 @@ function parseModelMemories(content: string): ExtractedMemory[] {
               .slice(0, 5)
           : undefined;
         results.push({
-          kind: "fact",
+          kind: strategyValue ? "preference" : "fact",
           key,
           value,
           ...(supersedes?.length ? { supersedes } : {}),

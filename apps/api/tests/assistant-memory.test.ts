@@ -272,10 +272,11 @@ describe("memory extraction quality", () => {
       ),
       "I always pay the smallest balance first",
     );
-    // The prose rule is re-keyed; the enum value would be stored under the key itself.
-    expect(memories.map((memory) => [memory.key, memory.value])).toEqual([
-      ["debt_rule", "Pays the smallest balance first"],
-      ["debt_strategy", "snowball"],
+    // The prose rule is re-keyed as a fact; the enum value is stored as the
+    // preference the Memory panel control and the prompt both read.
+    expect(memories.map((memory) => [memory.kind, memory.key, memory.value])).toEqual([
+      ["fact", "debt_rule", "Pays the smallest balance first"],
+      ["preference", "debt_strategy", "snowball"],
     ]);
   });
 
@@ -312,19 +313,51 @@ describe("memory extraction quality", () => {
       "My salary is 45000 a month",
       "My checking balance is 5000",
       "Card limit is 50000",
+      // A question without a trailing question mark is still a question.
+      "What is my monthly budget of 30000",
+      // One-off reminders are not recurrences.
+      "Remind me to pay my Meralco bill on Friday",
+      "Remember to pay my credit card bill tomorrow",
+      // A salary figure is not a pay schedule.
+      "My sweldo is 45000 a month",
+      "Ang sahod ko ay 45000 kada buwan",
     ]) {
       expect(deterministicExtract(message).memories).toEqual([]);
     }
   });
 
+  it("does not ask the model to extract from questions", () => {
+    expect(deterministicExtract("Should I prefer to keep my budget at 30000?").needsModelPass).toBe(
+      false,
+    );
+    expect(deterministicExtract("What is my monthly budget of 30000").needsModelPass).toBe(false);
+    // Asking the assistant to remember something stays eligible.
+    expect(
+      deterministicExtract("Can you remember that my monthly budget is 30000?").needsModelPass,
+    ).toBe(true);
+  });
+
   it("treats a negated forget as a reminder, not a deletion", () => {
-    expect(detectForgetIntent("Don't forget about my emergency fund").keys).toEqual([]);
-    expect(detectForgetIntent("Dont forget my budget").keys).toEqual([]);
-    expect(detectForgetIntent("Please do not forget my debt strategy").keys).toEqual([]);
+    for (const reminder of [
+      "Don't forget about my emergency fund",
+      "Dont forget my budget",
+      "Please do not forget my debt strategy",
+      "Please don't ever forget my emergency fund",
+      "I asked you not to forget my budget",
+      "Don't you forget my budget",
+    ]) {
+      expect(detectForgetIntent(reminder)).toEqual({ forgetAll: false, keys: [] });
+    }
     expect(detectForgetIntent("Forget my emergency fund please").keys).toContain(
       "emergency_fund_target",
     );
+    expect(detectForgetIntent("Forget my payday").keys).toEqual(["payday_schedule"]);
+    expect(detectForgetIntent("Forget my recurring bill").keys).toEqual(["recurring_bill"]);
     expect(detectForgetIntent("Forget all memories").forgetAll).toBe(true);
+    // A reminder does not mask a real deletion request later in the same message.
+    expect(detectForgetIntent("I won't forget my budget. Forget my emergency fund.").keys).toEqual([
+      "emergency_fund_target",
+    ]);
   });
 
   it("ranks relevant memories and keeps the debt preference out of the fact lines", () => {

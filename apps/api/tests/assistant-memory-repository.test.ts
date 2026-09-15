@@ -93,6 +93,65 @@ describe("assistantRepository memory writes", () => {
     ).resolves.toMatchObject({ value: "Earlier in this chat" });
   });
 
+  it("marks a user-edited fact as user-stated", async () => {
+    const { env } = environment();
+    const fact = await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "fact",
+      key: "payday_schedule",
+      value: "Paid every 15th",
+      source: "deterministic",
+    });
+
+    const updated = await assistantRepository.updateMemoryValue(
+      env,
+      TENANT_A,
+      fact.id,
+      "Paid every 30th",
+    );
+
+    expect(updated?.source).toBe("user_stated");
+  });
+
+  it("keeps the thread that first produced a memory as its provenance", async () => {
+    const { env } = environment();
+    const firstThread = "11111111-1111-4111-8111-111111111111";
+    const secondThread = "22222222-2222-4222-8222-222222222222";
+    const fact = await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "fact",
+      key: "checking_buffer",
+      value: "Keep 5,000 in checking",
+      source: "deterministic",
+      threadId: firstThread,
+    });
+
+    const updated = await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "fact",
+      key: "checking_buffer",
+      value: "Keep 6,000 in checking",
+      source: "deterministic",
+      threadId: secondThread,
+    });
+
+    expect(updated.id).toBe(fact.id);
+    expect(updated.threadId).toBe(firstThread);
+  });
+
+  it("drains an overflow larger than a single compaction batch", async () => {
+    const { env } = environment();
+    for (let index = 0; index < 60; index += 1) {
+      await assistantRepository.upsertMemory(env, TENANT_A, {
+        kind: "fact",
+        key: `fact_${index}`,
+        value: `Fact ${index}`,
+        source: "deterministic",
+      });
+    }
+
+    await expect(assistantRepository.countFacts(env, TENANT_A)).resolves.toBe(60);
+    await expect(assistantRepository.compactFacts(env, TENANT_A, 5)).resolves.toBe(55);
+    await expect(assistantRepository.countFacts(env, TENANT_A)).resolves.toBe(5);
+  });
+
   it("keeps thread summaries out of the bounded memory list", async () => {
     const { env, database } = environment();
     const fact = await assistantRepository.upsertMemory(env, TENANT_A, {
