@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Renamed the mobile Transactions month figure from Balance to Net, with a question-mark explanation of how it is calculated, because it is the month's income minus expenses and not the account balance.
+
 ## 2.32.5 — 2026-09-15
 
 ### Changed

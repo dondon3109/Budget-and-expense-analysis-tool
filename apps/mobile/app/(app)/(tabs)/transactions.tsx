@@ -34,6 +34,7 @@ import {
 import { SmsQuickPasteModal } from "@/features/transactions/SmsQuickPasteModal";
 import { useSyncState } from "@/sync/sync-state";
 import {
+  BottomSheet,
   Button,
   ErrorState,
   MoneyValue,
@@ -392,6 +393,7 @@ export default function TransactionsScreen() {
   const [kind, setKind] = useState<TransactionKindFilter>("all");
   const [view, setView] = useState<ViewMode>("daily");
   const [smsQuickPasteVisible, setSmsQuickPasteVisible] = useState(false);
+  const [netInfoVisible, setNetInfoVisible] = useState(false);
   const deferredSearch = useDeferredValue(search);
   const local = useLocalTransactions(deferredSearch, kind, month);
   const sync = useSyncState();
@@ -631,7 +633,24 @@ export default function TransactionsScreen() {
           <TotalsValue totals={totals} field="expenseMinor" tone="expense" />
         </View>
         <View style={styles.monthTotalColumn}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Balance</Text>
+          <View style={styles.monthTotalLabel}>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Net</Text>
+            <Pressable
+              accessibilityHint="Opens an explanation of how Net is calculated"
+              accessibilityLabel="What is Net?"
+              accessibilityRole="button"
+              hitSlop={12}
+              onPress={() => setNetInfoVisible(true)}
+              style={styles.netInfoButton}
+            >
+              <MaterialCommunityIcons
+                accessibilityElementsHidden
+                color={theme.colors.textMuted}
+                name="help-circle-outline"
+                size={14}
+              />
+            </Pressable>
+          </View>
           <TotalsValue totals={totals} field="netMinor" tone="default" />
         </View>
       </View>
@@ -748,6 +767,27 @@ export default function TransactionsScreen() {
         </Pressable>
       </View>
 
+      <BottomSheet
+        visible={netInfoVisible}
+        title="What is Net?"
+        onDismiss={() => setNetInfoVisible(false)}
+      >
+        <View style={styles.netInfoBody}>
+          <Text style={[typography.body, { color: theme.colors.text }]}>
+            Net is income minus expenses for {monthLabel(month)}. It shows how much this month
+            changed your money, not how much you have.
+          </Text>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+            Total Balance on Home is a different figure. It adds up every transaction ever recorded
+            on each account.
+          </Text>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+            A balance adjustment counts as income or an expense, so correcting an account moves Net
+            even when no money changed hands.
+          </Text>
+        </View>
+      </BottomSheet>
+
       <SmsQuickPasteModal
         existingTransactions={existingTransactions}
         visible={smsQuickPasteVisible}
@@ -840,6 +880,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xxs,
   },
   totalValues: { alignItems: "center", minWidth: 0 },
+  monthTotalLabel: { flexDirection: "row", alignItems: "center", gap: spacing.xxs },
+  netInfoButton: {
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.round,
+  },
+  netInfoBody: { gap: spacing.sm },
   totalMoney: { fontSize: 16, lineHeight: 21, fontWeight: "600" },
   filterPanel: {
     gap: spacing.xs,
