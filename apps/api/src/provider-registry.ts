@@ -9,6 +9,7 @@ import { createCloudflareWhisperProvider } from "./assistant/cloudflare-whisper"
 import { createFishAudioProvider } from "./assistant/fish-audio";
 import { createGoogleSttProvider } from "./assistant/google-stt";
 import type { AssistantProvider } from "./assistant/provider";
+import { createAssistantStubProvider, isAssistantStubEnabled } from "./assistant/stub";
 import type { AssistantVoiceProviders } from "./assistant/voice-provider";
 import type { Bindings } from "./types";
 import type { ProviderConfigRepository } from "./db/provider-configs";
@@ -199,6 +200,12 @@ export function createProviderRegistry(
       config: ProviderConfig | null;
       credential: ResolvedCredential | null;
     }> {
+      // Dev/CI only: the explicit stub flag short-circuits D1 and env resolution
+      // so a turn can run with no credential and no network. isAssistantStubEnabled
+      // refuses to activate when POSTHOG_AI_ENVIRONMENT is production.
+      if (isAssistantStubEnabled(env)) {
+        return { provider: createAssistantStubProvider(), config: null, credential: null };
+      }
       const cfg = await this.getActive(env, "assistant");
       const cred = await resolveCredential(env, cfg);
       const providerName = cfg?.provider ?? "deepseek";

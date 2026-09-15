@@ -8,6 +8,11 @@ DEV_USER_ID=
 # Optional provider timeout override in milliseconds (default 12000; recommended 30000 in dev).
 ASSISTANT_PROVIDER_TIMEOUT_MS=30000
 
+# Optional local/CI offline assistant. Set to `stub` to route every assistant turn through a
+# deterministic in-process provider (tool loop included) with no provider key and no network
+# access. Ignored whenever POSTHOG_AI_ENVIRONMENT is production.
+ASSISTANT_PROVIDER=
+
 DEEPSEEK_API_KEY=
 
 # Optional local-only alternative to DeepSeek (Google AI Studio). An active provider

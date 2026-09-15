@@ -134,6 +134,8 @@ Free tenants receive 10 provider-backed assistant questions per 14-day cycle, an
 
 Deterministic clarifications, date-resolution prompts, and compliance redirects do not consume assistant usage. Provider-backed usage is consumed immediately before the provider call, so an upstream timeout or provider failure still counts. File imports remain on their separate Manila calendar-month allowance.
 
+Local development and CI can set `ASSISTANT_PROVIDER=stub` to route provider-backed turns to a deterministic offline stub that still runs the real tool loop and answer validation, with no key and no network access. The flag is ignored when `POSTHOG_AI_ENVIRONMENT=production`, so the stub is never selectable in production.
+
 ## Security controls
 
 - Supabase credentials and sessions remain in Supabase and the browser's authenticated session flow.
