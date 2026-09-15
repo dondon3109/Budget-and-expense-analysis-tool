@@ -133,6 +133,7 @@ export function AssistantScreen() {
   const [confirmClearChats, setConfirmClearChats] = useState(false);
   const [pendingDeleteThread, setPendingDeleteThread] = useState<string | null>(null);
   const [pendingDeleteMemory, setPendingDeleteMemory] = useState<AssistantMemory | null>(null);
+  const [confirmClearMemoryOpen, setConfirmClearMemoryOpen] = useState(false);
   const [managingThreads, setManagingThreads] = useState(false);
   const [selectedThreadIds, setSelectedThreadIds] = useState<string[]>([]);
   const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
@@ -525,6 +526,10 @@ export function AssistantScreen() {
       await withToken((token) => clearAssistantMemory({ accessToken: token }));
       if (!mounted.current) return;
       setMemory([]);
+      // The stored payoff preference goes with the facts, so the control must not
+      // keep showing a strategy the assistant no longer has.
+      setMemoryPreferences((current) => (current ? { ...current, debtStrategy: null } : current));
+      setConfirmClearMemoryOpen(false);
     } catch (error) {
       setInlineError(
         error instanceof ApiTransportError ? error.message : "Memory could not be cleared.",
@@ -1230,7 +1235,7 @@ export function AssistantScreen() {
               onDeleteMemory={(id) =>
                 setPendingDeleteMemory(memory.find((item) => item.id === id) ?? null)
               }
-              onClearMemory={() => void confirmClearMemory()}
+              onClearMemory={() => setConfirmClearMemoryOpen(true)}
             />
           ) : (
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -1254,6 +1259,15 @@ export function AssistantScreen() {
         </View>
       </BottomSheet>
 
+      <ConfirmationDialog
+        visible={confirmClearMemoryOpen}
+        title="Clear all assistant memory?"
+        message="This removes all remembered facts and resets your debt payoff preference. Your recorded transactions, accounts, and budgets are never affected."
+        confirmLabel="Yes, clear memory"
+        destructive
+        onCancel={() => setConfirmClearMemoryOpen(false)}
+        onConfirm={() => void confirmClearMemory()}
+      />
       <ConfirmationDialog
         visible={pendingDeleteMemory !== null}
         title="Delete this memory?"

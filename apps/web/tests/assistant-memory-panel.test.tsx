@@ -221,6 +221,11 @@ describe("AssistantMemoryPanel", () => {
     await waitFor(() => {
       expect(apiMocks.clearAssistantMemory).toHaveBeenCalledWith(mockWorkspace);
     });
+    // The server drops the stored preference with the facts, so the control must not
+    // keep showing the strategy it had (the preferences query never goes stale).
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /No preference/ })).toBeChecked();
+    });
   });
 
   it("edits and deletes a single remembered fact", async () => {

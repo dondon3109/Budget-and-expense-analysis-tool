@@ -63,6 +63,7 @@ const voiceApi = jest.requireMock("@/api/assistant-voice") as {
 };
 
 const api = jest.requireMock("@/api/assistant") as {
+  clearAssistantMemory: jest.Mock;
   deleteAssistantMemory: jest.Mock;
   deleteAssistantThread: jest.Mock;
   getAssistantMemory: jest.Mock;
@@ -144,6 +145,44 @@ describe("assistant screen multi-select", () => {
       { accessToken: "access-token" },
       "thread-2",
     );
+  });
+
+  it("confirms before clearing memory and resets the payoff control", async () => {
+    api.getAssistantMemory.mockResolvedValue([
+      {
+        id: "mem-1",
+        kind: "fact",
+        key: "monthly_budget_cap",
+        value: "Monthly budget PHP 30,000",
+        source: "user_stated",
+        createdAt: "2026-08-15T08:00:00.000Z",
+        updatedAt: "2026-08-15T08:00:00.000Z",
+      },
+    ]);
+    api.getAssistantMemoryPreferences.mockResolvedValue({
+      debtStrategy: "avalanche",
+      responseDetail: "concise",
+      coachingStyle: "direct",
+    });
+    api.clearAssistantMemory.mockResolvedValue(undefined);
+
+    await render(<AssistantScreen />);
+    await screen.findByText("Budget review");
+    await fireEvent.press(screen.getByRole("button", { name: "Assistant settings" }));
+
+    expect(await screen.findByText("Avalanche")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Clear memory" }));
+
+    // Clearing is destructive, so it asks first, like the web panel does.
+    expect(api.clearAssistantMemory).not.toHaveBeenCalled();
+    expect(screen.getByRole("header", { name: "Clear all assistant memory?" })).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Yes, clear memory" }));
+
+    await waitFor(() =>
+      expect(api.clearAssistantMemory).toHaveBeenCalledWith({ accessToken: "access-token" }),
+    );
+    await waitFor(() => expect(screen.queryByText("Monthly budget PHP 30,000")).toBeNull());
+    expect(screen.getByText("No preference")).toBeTruthy();
   });
 
   it("deletes a single remembered fact after confirmation", async () => {

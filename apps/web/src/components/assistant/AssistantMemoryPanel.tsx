@@ -13,6 +13,8 @@ import {
   updateAssistantMemory,
   updateAssistantMemoryPreferences,
 } from "../../lib/api";
+import type { AssistantMemoryPreferences } from "@zoption/shared";
+
 import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 
@@ -132,6 +134,13 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
     mutationFn: () => clearAssistantMemory(workspace),
     onSuccess: () => {
       queryClient.setQueryData(queryKeys.assistantMemory(workspace), []);
+      // Clearing memory also clears the stored payoff preference, and this query
+      // never goes stale on its own, so the control has to be reset here.
+      queryClient.setQueryData(
+        queryKeys.assistantMemoryPreferences(workspace),
+        (previous: AssistantMemoryPreferences | undefined) =>
+          previous ? { ...previous, debtStrategy: null } : previous,
+      );
       setConfirmingClear(false);
       setError(undefined);
     },
