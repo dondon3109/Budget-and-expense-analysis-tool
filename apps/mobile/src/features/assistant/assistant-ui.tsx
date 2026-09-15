@@ -531,7 +531,7 @@ export function MemoryPreferencesBlock({
   coachingStyle: string;
   savingMemory: boolean;
   onDebtStrategy: (strategy: "avalanche" | "snowball" | null) => void;
-  onEditMemory: (id: string, value: string) => void;
+  onEditMemory: (id: string, value: string) => Promise<boolean>;
   onDeleteMemory: (id: string) => void;
   onClearMemory: () => void;
 }) {
@@ -589,10 +589,14 @@ export function MemoryPreferencesBlock({
                       <Button
                         size="compact"
                         variant="secondary"
-                        disabled={savingMemory || draft.trim().length === 0}
+                        loading={savingMemory}
+                        disabled={draft.trim().length === 0}
                         onPress={() => {
-                          onEditMemory(item.id, draft.trim());
-                          setEditingId(null);
+                          // The editor stays open until the save lands, so a failed
+                          // request does not discard what the user typed.
+                          void onEditMemory(item.id, draft.trim()).then((saved) => {
+                            if (saved) setEditingId(null);
+                          });
                         }}
                       >
                         Save

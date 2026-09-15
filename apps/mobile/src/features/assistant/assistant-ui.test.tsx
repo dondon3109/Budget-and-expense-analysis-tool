@@ -1,5 +1,5 @@
 import type { AssistantMemory } from "@zoption/shared";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import {
   AssistantConsentCard,
@@ -38,7 +38,7 @@ const payoffPreference: AssistantMemory = {
 function renderMemoryBlock(
   overrides: {
     memory?: AssistantMemory[];
-    onEditMemory?: (id: string, value: string) => void;
+    onEditMemory?: (id: string, value: string) => Promise<boolean>;
     onDeleteMemory?: (id: string) => void;
   } = {},
 ) {
@@ -50,7 +50,7 @@ function renderMemoryBlock(
       coachingStyle="direct"
       savingMemory={false}
       onDebtStrategy={jest.fn()}
-      onEditMemory={overrides.onEditMemory ?? jest.fn()}
+      onEditMemory={overrides.onEditMemory ?? jest.fn(async () => true)}
       onDeleteMemory={overrides.onDeleteMemory ?? jest.fn()}
       onClearMemory={jest.fn()}
     />,
@@ -373,7 +373,7 @@ describe("assistant status and unavailable UI", () => {
 
 describe("assistant memory facts", () => {
   it("edits a remembered fact through the inline editor", async () => {
-    const onEditMemory = jest.fn();
+    const onEditMemory = jest.fn(async () => true);
     await renderMemoryBlock({ onEditMemory });
 
     await fireEvent.press(
@@ -390,6 +390,25 @@ describe("assistant memory facts", () => {
     expect(screen.queryByLabelText("Edit remembered fact")).toBeNull();
   });
 
+  it("keeps the editor open when a save fails", async () => {
+    const onEditMemory = jest.fn(async () => false);
+    await renderMemoryBlock({ onEditMemory });
+
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Edit remembered fact: Monthly budget PHP 30,000" }),
+    );
+    await fireEvent.changeText(
+      screen.getByLabelText("Edit remembered fact"),
+      "Monthly budget PHP 25,000",
+    );
+    await fireEvent.press(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onEditMemory).toHaveBeenCalled());
+    // A failed save must not discard what the user typed.
+    expect(screen.getByLabelText("Edit remembered fact")).toBeTruthy();
+    expect(screen.getByDisplayValue("Monthly budget PHP 25,000")).toBeTruthy();
+  });
+
   it("leaves the payoff preference to the strategy control", async () => {
     await renderMemoryBlock({ memory: [payoffPreference, rememberedFact] });
 
@@ -400,7 +419,7 @@ describe("assistant memory facts", () => {
   });
 
   it("keeps an empty edit unsavable and asks for confirmation before deleting", async () => {
-    const onEditMemory = jest.fn();
+    const onEditMemory = jest.fn(async () => true);
     const onDeleteMemory = jest.fn();
     await renderMemoryBlock({ onEditMemory, onDeleteMemory });
 

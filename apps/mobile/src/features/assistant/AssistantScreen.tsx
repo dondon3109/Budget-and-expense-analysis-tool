@@ -540,18 +540,20 @@ export function AssistantScreen() {
   }, [withToken]);
 
   const saveMemoryValue = useCallback(
-    async (id: string, value: string) => {
+    async (id: string, value: string): Promise<boolean> => {
       setBusyAction("memory");
       try {
         const updated = await withToken((token) =>
           updateAssistantMemory({ accessToken: token }, id, value),
         );
-        if (!mounted.current) return;
+        if (!mounted.current) return false;
         setMemory((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+        return true;
       } catch (error) {
         setInlineError(
           error instanceof ApiTransportError ? error.message : "Memory could not be updated.",
         );
+        return false;
       } finally {
         if (mounted.current) setBusyAction(null);
       }
@@ -1231,7 +1233,7 @@ export function AssistantScreen() {
               coachingStyle={memoryPreferences.coachingStyle}
               savingMemory={busyAction === "memory"}
               onDebtStrategy={(strategy) => void saveDebtStrategy(strategy)}
-              onEditMemory={(id, value) => void saveMemoryValue(id, value)}
+              onEditMemory={(id, value) => saveMemoryValue(id, value)}
               onDeleteMemory={(id) =>
                 setPendingDeleteMemory(memory.find((item) => item.id === id) ?? null)
               }

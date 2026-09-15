@@ -189,7 +189,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
             <p>
               Your assistant remembers key facts across conversations so you don't have to repeat
               yourself. Data is private to this workspace, retained for up to 90 days, and never
-              alters your transactions or accounts.
+              alters your transactions or accounts. You can edit or remove what it remembers below.
             </p>
           </div>
         </div>
@@ -380,7 +380,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
                       </div>
                     )}
                     {deletingId === memory.id && (
-                      <div className="assistant-memory-clear-confirm">
+                      <div className="assistant-memory-clear-confirm" role="alert">
                         <div className="confirm-text">
                           <strong>Delete this memory?</strong>
                           <p>“{memory.value}” is removed from what the assistant remembers.</p>
