@@ -1954,4 +1954,99 @@ describe("API foundation", () => {
     expect(deleteResponse.status).toBe(204);
     expect(debts.remove).toHaveBeenCalledWith(undefined, TENANT_ID, "debt-1");
   });
+
+  describe("assistant memory routes", () => {
+    const assistantEnv = { DB: {} as D1Database, ASSISTANT_ENABLED: "true" };
+    const memoryId = "11111111-1111-4111-8111-111111111111";
+    const memory = {
+      id: memoryId,
+      kind: "fact" as const,
+      key: "monthly_budget_cap",
+      value: "Monthly budget PHP 30,000",
+      source: "deterministic" as const,
+      createdAt: "2026-08-02T00:00:00.000Z",
+      updatedAt: "2026-08-02T00:00:00.000Z",
+    };
+
+    it("updates a remembered fact for the authenticated tenant", async () => {
+      const updateMemory = vi.fn(async () => memory);
+      const app = createTestApp({
+        assistantService: { updateMemory } as unknown as AssistantService,
+      });
+
+      const response = await app.request(
+        `/api/app/assistant/memory/${memoryId}`,
+        {
+          method: "PATCH",
+          headers: privateHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ value: memory.value }),
+        },
+        assistantEnv,
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual(memory);
+      expect(updateMemory).toHaveBeenCalledWith(assistantEnv, TENANT_ID, memoryId, memory.value);
+    });
+
+    it("rejects an invalid memory id or blank value before reaching the service", async () => {
+      const updateMemory = vi.fn(async () => memory);
+      const app = createTestApp({
+        assistantService: { updateMemory } as unknown as AssistantService,
+      });
+
+      const invalidId = await app.request(
+        "/api/app/assistant/memory/not-a-uuid",
+        {
+          method: "PATCH",
+          headers: privateHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ value: memory.value }),
+        },
+        assistantEnv,
+      );
+      expect(invalidId.status).toBe(400);
+
+      const blankValue = await app.request(
+        `/api/app/assistant/memory/${memoryId}`,
+        {
+          method: "PATCH",
+          headers: privateHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ value: "   " }),
+        },
+        assistantEnv,
+      );
+      expect(blankValue.status).toBe(400);
+
+      expect(updateMemory).not.toHaveBeenCalled();
+    });
+
+    it("maps a missing memory to 404 and deletes for the authenticated tenant", async () => {
+      const updateMemory = vi.fn(async () => {
+        throw new HttpError(404, "memory_not_found", "That memory was not found.");
+      });
+      const deleteMemoryFact = vi.fn(async () => undefined);
+      const app = createTestApp({
+        assistantService: { updateMemory, deleteMemoryFact } as unknown as AssistantService,
+      });
+
+      const missing = await app.request(
+        `/api/app/assistant/memory/${memoryId}`,
+        {
+          method: "PATCH",
+          headers: privateHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ value: memory.value }),
+        },
+        assistantEnv,
+      );
+      expect(missing.status).toBe(404);
+
+      const deleted = await app.request(
+        `/api/app/assistant/memory/${memoryId}`,
+        { method: "DELETE", headers: AUTHORIZATION },
+        assistantEnv,
+      );
+      expect(deleted.status).toBe(204);
+      expect(deleteMemoryFact).toHaveBeenCalledWith(assistantEnv, TENANT_ID, memoryId);
+    });
+  });
 });
