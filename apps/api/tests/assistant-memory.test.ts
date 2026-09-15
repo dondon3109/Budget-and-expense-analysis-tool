@@ -326,6 +326,17 @@ describe("memory extraction quality", () => {
     }
   });
 
+  it("extracts the statement from a message that also asks a question", () => {
+    // A message-level question check used to discard the statement beside the question.
+    const result = deterministicExtract(
+      "My monthly budget is PHP 30,000. How much did I spend on groceries?",
+    );
+    expect(result.memories.map((memory) => memory.key)).toEqual(["monthly_budget_cap"]);
+
+    const questionOnly = deterministicExtract("How much did I spend on groceries?");
+    expect(questionOnly.memories).toEqual([]);
+  });
+
   it("does not ask the model to extract from questions", () => {
     expect(deterministicExtract("Should I prefer to keep my budget at 30000?").needsModelPass).toBe(
       false,

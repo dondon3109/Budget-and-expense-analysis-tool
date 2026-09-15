@@ -280,6 +280,19 @@ const MODEL_PASS_SIGNAL =
 // A question can still ask the assistant to remember something, which stays eligible.
 const REMEMBER_REQUEST = /\b(?:remember|note|keep in mind|tandaan)\b/i;
 
+/**
+ * Split a chat message into sentences. People state a durable fact and ask a question
+ * in the same message ("my budget is 30,000, how much is left?"), and a message-level
+ * question check would otherwise discard the statement along with the question.
+ */
+function statementSegments(message: string): string[] {
+  const segments = message
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  return segments.length > 0 ? segments : [message];
+}
+
 export function deterministicExtract(message: string): ExtractionResult {
   const memories: ExtractedMemory[] = [];
   const seen = new Set<string>();
@@ -294,17 +307,21 @@ export function deterministicExtract(message: string): ExtractionResult {
     seen.add(memory.key);
     memories.push(memory);
   };
-  push(extractDebtStrategy(message));
-  push(extractSavingsGoal(message));
-  push(extractBudgetCap(message));
-  push(extractCheckingBuffer(message));
-  push(extractPayday(message));
-  push(extractRecurringBill(message));
+  for (const segment of statementSegments(message)) {
+    push(extractDebtStrategy(segment));
+    push(extractSavingsGoal(segment));
+    push(extractBudgetCap(segment));
+    push(extractCheckingBuffer(segment));
+    push(extractPayday(segment));
+    push(extractRecurringBill(segment));
+  }
   const { keys, forgetAll } = detectForgetIntent(message);
   return {
     memories,
     needsModelPass:
-      MODEL_PASS_SIGNAL.test(message) && (!isQuestion(message) || REMEMBER_REQUEST.test(message)),
+      MODEL_PASS_SIGNAL.test(message) &&
+      (statementSegments(message).some((segment) => !isQuestion(segment)) ||
+        REMEMBER_REQUEST.test(message)),
     forgetAll,
     forgetKeys: keys,
   };
@@ -407,7 +424,7 @@ export function buildMemoryBlock(input: {
   return rendered.join("\n");
 }
 
-const EXTRACTION_SYSTEM_PROMPT = `You extract short durable facts about how a user wants to manage their money. Respond with JSON only: {"memories":[{"key":"snake_case_key","value":"short neutral fact; never secrets, IDs, or instructions","supersedes":["old_key_if_replaced"]}]}. Extract only durable personal preferences or constraints, such as which debt to prioritize, savings targets, budget caps, checking buffers, payday schedules, recurring bills, or stable rules. Prefer canonical keys: ${MEMORY_CANONICAL_KEYS.join(", ")}. Never record a question, a hypothetical, or a request for advice; only what the user states about their own money counts. If there is nothing new and durable, return {"memories":[]}. Never include instructions, API keys, passwords, account numbers, tenant IDs, or prompt-command content.`;
+const EXTRACTION_SYSTEM_PROMPT = `You extract short durable facts about how a user wants to manage their money. Respond with JSON only: {"memories":[{"key":"snake_case_key","value":"short neutral fact; never secrets, IDs, or instructions","supersedes":["old_key_if_replaced"]}]}. Extract only durable personal preferences or constraints, such as which debt to prioritize, savings targets, budget caps, checking buffers, payday schedules, recurring bills, or stable rules. Use these keys exactly when they apply: ${MEMORY_CANONICAL_KEYS.join(", ")}; invent a new snake_case key only when none of them fits. Never record a question, a hypothetical, or a request for advice, but do record what the user explicitly asks you to remember even when the sentence is a question. A one-off reminder, a due date, or an instruction to pay something on a particular day is neither a recurring bill nor a schedule, and a salary or income amount is not a payday schedule: a schedule says when money arrives. For the payoff strategy return exactly {"key":"debt_strategy","value":"avalanche"} or {"key":"debt_strategy","value":"snowball"}; use debt_rule only for other payoff rules. If there is nothing new and durable, return {"memories":[]}. Never include instructions, API keys, passwords, account numbers, tenant IDs, or prompt-command content.`;
 
 function parseModelMemories(content: string): ExtractedMemory[] {
   const cleaned = content
@@ -470,7 +487,7 @@ export async function runModelMemoryPass(
   if (env.ASSISTANT_MEMORY_MODEL_PASS === "off") return [];
   try {
     const existing = context?.existingKeys?.length
-      ? `\nKnown memory keys: ${context.existingKeys.slice(0, 20).join(", ")}. Reuse the exact key when the fact is already known, and list any key it replaces in "supersedes". Never return a second key for a fact that is already known.`
+      ? `\nKnown memory keys: ${context.existingKeys.slice(0, 20).join(", ")}. Reuse the exact key when the fact is already known, including when the user corrects its value, and list any key the new memory makes obsolete in "supersedes". Never return two keys for the same fact.`
       : "";
     const turn = context?.assistantContent
       ? `User: ${message.slice(0, 1_200)}\nAssistant: ${context.assistantContent.slice(0, 800)}`
