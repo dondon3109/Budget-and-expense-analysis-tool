@@ -7,8 +7,10 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import {
   clearAssistantMemory,
+  deleteAssistantMemory,
   getAssistantMemory,
   getAssistantMemoryPreferences,
+  updateAssistantMemory,
   updateAssistantMemoryPreferences,
 } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
@@ -18,6 +20,29 @@ interface AssistantMemoryPanelProps {
   workspace: AuthenticatedWorkspace;
   open: boolean;
   onClose: () => void;
+}
+
+const MEMORY_KEY_LABELS: Record<string, string> = {
+  debt_strategy: "Debt payoff preference",
+  debt_rule: "Debt rule",
+  emergency_fund_target: "Emergency fund target",
+  savings_target: "Savings target",
+  savings_rule: "Savings rule",
+  monthly_budget_cap: "Monthly budget cap",
+  budget_preference: "Budget preference",
+  checking_buffer: "Checking buffer",
+  payday_schedule: "Payday schedule",
+  recurring_bill: "Recurring bill",
+  spending_rule: "Spending rule",
+  coaching_preference: "Coaching preference",
+};
+
+/** Stored keys are snake_case; users see a readable label instead. */
+function memoryLabel(key: string): string {
+  const known = MEMORY_KEY_LABELS[key];
+  if (known) return known;
+  const words = key.replace(/[_:]+/g, " ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : key;
 }
 
 function formatMemoryDate(isoString?: string): string {
@@ -67,6 +92,39 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
     },
     onError: (cause) =>
       setError(cause instanceof Error ? cause.message : "The preference could not be saved."),
+  });
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftValue, setDraftValue] = useState("");
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, value }: { id: string; value: string }) =>
+      updateAssistantMemory(workspace, id, value),
+    onSuccess: (data) => {
+      queryClient.setQueryData(
+        queryKeys.assistantMemory(workspace),
+        (previous: { id: string }[] | undefined) =>
+          (previous ?? []).map((item) => (item.id === data.id ? data : item)),
+      );
+      setEditingId(null);
+      setError(undefined);
+    },
+    onError: (cause) =>
+      setError(cause instanceof Error ? cause.message : "Memory could not be updated."),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteAssistantMemory(workspace, id),
+    onSuccess: (_data, id) => {
+      queryClient.setQueryData(
+        queryKeys.assistantMemory(workspace),
+        (previous: { id: string }[] | undefined) =>
+          (previous ?? []).filter((item) => item.id !== id),
+      );
+      setError(undefined);
+    },
+    onError: (cause) =>
+      setError(cause instanceof Error ? cause.message : "Memory could not be deleted."),
   });
 
   const clearMutation = useMutation({
@@ -244,6 +302,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
               {facts.map((memory) => {
                 const dateLabel = formatMemoryDate(memory.createdAt || memory.updatedAt);
                 const isUserStated = memory.source === "user_stated";
+                const isEditing = editingId === memory.id;
                 return (
                   <li key={memory.id} className="fact-item-card">
                     <div className="fact-header">
@@ -252,7 +311,61 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
                       </span>
                       {dateLabel ? <span className="fact-date">{dateLabel}</span> : null}
                     </div>
-                    <p className="fact-content">{memory.value}</p>
+                    {isEditing ? (
+                      <div className="fact-edit-row">
+                        <input
+                          aria-label="Edit remembered fact"
+                          value={draftValue}
+                          maxLength={240}
+                          onChange={(event) => setDraftValue(event.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="button secondary compact"
+                          disabled={updateMutation.isPending}
+                          onClick={() =>
+                            updateMutation.mutate({ id: memory.id, value: draftValue })
+                          }
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="button secondary compact"
+                          onClick={() => setEditingId(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="fact-content">{memory.value}</p>
+                    )}
+                    <p className="fact-meta">
+                      {memoryLabel(memory.key)}
+                      {memory.threadTitle ? ` · from “${memory.threadTitle}”` : null}
+                    </p>
+                    {!isEditing && (
+                      <div className="fact-actions">
+                        <button
+                          type="button"
+                          className="button secondary compact"
+                          onClick={() => {
+                            setEditingId(memory.id);
+                            setDraftValue(memory.value);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="button secondary compact"
+                          disabled={deleteMutation.isPending}
+                          onClick={() => deleteMutation.mutate(memory.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </li>
                 );
               })}

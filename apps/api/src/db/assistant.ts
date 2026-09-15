@@ -62,6 +62,8 @@ interface MemoryRow {
   kind: AssistantMemoryKind;
   key: string;
   value: string;
+  thread_id?: string | null;
+  thread_title?: string | null;
   source: AssistantMemorySource;
   created_at: string;
   updated_at: string;
@@ -178,8 +180,25 @@ export interface AssistantRepository {
   upsertMemory(
     env: Bindings,
     tenantId: string,
-    input: { kind: AssistantMemoryKind; key: string; value: string; source: AssistantMemorySource },
+    input: {
+      kind: AssistantMemoryKind;
+      key: string;
+      value: string;
+      supersedes?: string[];
+      threadId?: string | null;
+      source: AssistantMemorySource;
+    },
   ): Promise<AssistantMemory>;
+  getMemoryById(env: Bindings, tenantId: string, id: string): Promise<AssistantMemory | null>;
+  updateMemoryValue(
+    env: Bindings,
+    tenantId: string,
+    id: string,
+    value: string,
+  ): Promise<AssistantMemory | null>;
+  deleteMemoryById(env: Bindings, tenantId: string, id: string): Promise<void>;
+  countFacts(env: Bindings, tenantId: string): Promise<number>;
+  compactFacts(env: Bindings, tenantId: string, retain: number): Promise<number>;
   deleteMemory(
     env: Bindings,
     tenantId: string,
@@ -245,6 +264,8 @@ function memoryFromRow(row: MemoryRow): AssistantMemory {
     key: row.key,
     value: row.value,
     source: row.source,
+    ...(row.thread_id ? { threadId: row.thread_id } : {}),
+    ...(row.thread_id && row.thread_title ? { threadTitle: row.thread_title } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -711,9 +732,7 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
   },
 
   async deleteThread(env, tenantId, threadId) {
-    await env.DB.prepare(
-      `DELETE FROM assistant_threads WHERE id = ? AND tenant_id = ?`,
-    )
+    await env.DB.prepare(`DELETE FROM assistant_threads WHERE id = ? AND tenant_id = ?`)
       .bind(threadId, tenantId)
       .run();
     // Deleting is idempotent: an already-absent conversation has already reached
@@ -733,20 +752,20 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
   },
 
   async listMemories(env, tenantId, kind) {
+    const select =
+      "SELECT m.id, m.kind, m.key, m.value, m.thread_id, m.source, m.created_at, m.updated_at, t.title AS thread_title FROM assistant_memories m LEFT JOIN assistant_threads t ON t.id = m.thread_id AND t.tenant_id = m.tenant_id";
     const rows = kind
       ? await env.DB.prepare(
-          `SELECT id, kind, key, value, source, created_at, updated_at
-           FROM assistant_memories
-           WHERE tenant_id = ? AND kind = ? AND (expires_at IS NULL OR expires_at > ?)
-           ORDER BY updated_at DESC`,
+          `${select}
+           WHERE m.tenant_id = ? AND m.kind = ? AND (m.expires_at IS NULL OR m.expires_at > ?)
+           ORDER BY m.updated_at DESC LIMIT 100`,
         )
           .bind(tenantId, kind, new Date().toISOString())
           .all<MemoryRow>()
       : await env.DB.prepare(
-          `SELECT id, kind, key, value, source, created_at, updated_at
-           FROM assistant_memories
-           WHERE tenant_id = ? AND (expires_at IS NULL OR expires_at > ?)
-           ORDER BY updated_at DESC`,
+          `${select}
+           WHERE m.tenant_id = ? AND (m.expires_at IS NULL OR m.expires_at > ?)
+           ORDER BY m.updated_at DESC LIMIT 100`,
         )
           .bind(tenantId, new Date().toISOString())
           .all<MemoryRow>();
@@ -755,7 +774,7 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
 
   async getMemory(env, tenantId, kind, key) {
     const row = await env.DB.prepare(
-      `SELECT id, kind, key, value, source, created_at, updated_at
+      `SELECT id, kind, key, value, thread_id, source, created_at, updated_at
        FROM assistant_memories
        WHERE tenant_id = ? AND kind = ? AND key = ?`,
     )
@@ -764,15 +783,83 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
     return row ? memoryFromRow(row) : null;
   },
 
+  async getMemoryById(env, tenantId, id) {
+    const row = await env.DB.prepare(
+      `SELECT m.id, m.kind, m.key, m.value, m.thread_id, m.source, m.created_at, m.updated_at, t.title AS thread_title
+       FROM assistant_memories m
+       LEFT JOIN assistant_threads t ON t.id = m.thread_id AND t.tenant_id = m.tenant_id
+       WHERE m.tenant_id = ? AND m.id = ?`,
+    )
+      .bind(tenantId, id)
+      .first<MemoryRow>();
+    return row ? memoryFromRow(row) : null;
+  },
+
+  async updateMemoryValue(env, tenantId, id, value) {
+    const now = new Date().toISOString();
+    const expiresAt = addDays(now, DEFAULT_RETENTION_DAYS);
+    const updated = await env.DB.prepare(
+      `UPDATE assistant_memories SET value = ?, updated_at = ?, expires_at = ?
+       WHERE tenant_id = ? AND id = ? AND kind IN ('fact', 'preference')`,
+    )
+      .bind(value, now, expiresAt, tenantId, id)
+      .run();
+    if ((updated.meta?.changes ?? 0) === 0) return null;
+    return this.getMemoryById(env, tenantId, id);
+  },
+
+  async deleteMemoryById(env, tenantId, id) {
+    await env.DB.prepare(
+      `DELETE FROM assistant_memories WHERE tenant_id = ? AND id = ? AND kind IN ('fact', 'preference')`,
+    )
+      .bind(tenantId, id)
+      .run();
+  },
+
+  async countFacts(env, tenantId) {
+    const row = await env.DB.prepare(
+      `SELECT COUNT(*) AS count FROM assistant_memories WHERE tenant_id = ? AND kind = 'fact'`,
+    )
+      .bind(tenantId)
+      .first<{ count: number }>();
+    return row?.count ?? 0;
+  },
+
+  async compactFacts(env, tenantId, retain) {
+    const count = await this.countFacts(env, tenantId);
+    const overflow = Math.max(0, count - retain);
+    if (overflow === 0) return 0;
+    // Delete the oldest facts beyond the cap in one bounded batch. Preferences are
+    // never evicted: the user set them explicitly in the assistant Memory panel.
+    const victims = await env.DB.prepare(
+      `SELECT id FROM assistant_memories
+       WHERE tenant_id = ? AND kind = 'fact'
+       ORDER BY updated_at ASC LIMIT ?`,
+    )
+      .bind(tenantId, Math.min(overflow, 25))
+      .all<{ id: string }>();
+    if (victims.results.length === 0) return 0;
+    await env.DB.batch(
+      victims.results.map((row) =>
+        env.DB.prepare(`DELETE FROM assistant_memories WHERE tenant_id = ? AND id = ?`).bind(
+          tenantId,
+          row.id,
+        ),
+      ),
+    );
+    return victims.results.length;
+  },
+
   async upsertMemory(env, tenantId, input) {
     const now = new Date().toISOString();
     const expiresAt = addDays(now, DEFAULT_RETENTION_DAYS);
     await env.DB.prepare(
       `INSERT INTO assistant_memories
-       (id, tenant_id, kind, key, value, source, created_at, updated_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (id, tenant_id, kind, key, value, thread_id, source, created_at, updated_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(tenant_id, kind, key) DO UPDATE SET
-         value = excluded.value, source = excluded.source,
+         value = excluded.value, thread_id = excluded.thread_id,
+         source = excluded.source,
          updated_at = excluded.updated_at, expires_at = excluded.expires_at`,
     )
       .bind(
@@ -781,6 +868,7 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
         input.kind,
         input.key,
         input.value,
+        input.threadId ?? null,
         input.source,
         now,
         now,

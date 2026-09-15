@@ -425,6 +425,7 @@ describe("assistant service maps new-provider failures like DeepSeek", () => {
         coachingStyle: "gentle",
       })),
       listMemories: vi.fn(async () => []),
+      getMemory: vi.fn(async () => null),
       beginTurn: vi.fn(async () => ({
         thread: { id: "t", title: "t", lastMessageAt: "", createdAt: "" },
         userMessage: {

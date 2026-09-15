@@ -1,5 +1,7 @@
 import {
+  assistantMemoryIdSchema,
   assistantMemoryPreferencesUpdateSchema,
+  assistantMemoryUpdateSchema,
   assistantMessageInputSchema,
   assistantMessageListQuerySchema,
   assistantPreferenceUpdateSchema,
@@ -82,6 +84,35 @@ export function createAssistantRoutes(service: AssistantService) {
 
   routes.delete("/memory", async (context) => {
     await service.clearMemory(context.env, context.get("tenant").tenantId);
+    return context.body(null, 204);
+  });
+
+  routes.patch("/memory/:id", async (context) => {
+    const parsed = assistantMemoryUpdateSchema.safeParse(await readJson(context));
+    if (!parsed.success) {
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Provide a valid memory value.",
+        parsed.error.flatten(),
+      );
+    }
+    return context.json(
+      await service.updateMemory(
+        context.env,
+        context.get("tenant").tenantId,
+        parsePathParameter(context.req.param("id"), assistantMemoryIdSchema),
+        parsed.data.value,
+      ),
+    );
+  });
+
+  routes.delete("/memory/:id", async (context) => {
+    await service.deleteMemoryFact(
+      context.env,
+      context.get("tenant").tenantId,
+      parsePathParameter(context.req.param("id"), assistantMemoryIdSchema),
+    );
     return context.body(null, 204);
   });
 

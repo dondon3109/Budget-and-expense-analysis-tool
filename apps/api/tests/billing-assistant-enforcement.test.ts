@@ -113,8 +113,31 @@ function repository(beginTurn: AssistantRepository["beginTurn"] = vi.fn(async ()
     listMemories: vi.fn(async () => []),
     getMemory: vi.fn(async () => null),
     upsertMemory: vi.fn(
-      async (_env: Bindings, _tenantId: string, memory: AssistantMemory) => memory,
+      async (
+        _env: Bindings,
+        _tenantId: string,
+        input: {
+          kind: "preference" | "fact" | "summary";
+          key: string;
+          value: string;
+          source: string;
+        },
+      ) =>
+        ({
+          id: "00000000-0000-4000-8000-000000000000",
+          kind: input.kind,
+          key: input.key,
+          value: input.value,
+          source: input.source,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }) as AssistantMemory,
     ),
+    getMemoryById: vi.fn(async () => null),
+    updateMemoryValue: vi.fn(async () => null),
+    deleteMemoryById: vi.fn(async () => undefined),
+    countFacts: vi.fn(async () => 0),
+    compactFacts: vi.fn(async () => 0),
     deleteMemory: vi.fn(async () => undefined),
     clearMemories: vi.fn(async () => undefined),
   } satisfies AssistantRepository;

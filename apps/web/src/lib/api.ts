@@ -1341,6 +1341,26 @@ export function clearAssistantMemory(workspace: AuthenticatedWorkspace): Promise
   return requestJson(workspace, "/api/app/assistant/memory", { method: "DELETE" });
 }
 
+export function updateAssistantMemory(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+  value: string,
+): Promise<AssistantMemory> {
+  return requestJson(workspace, `/api/app/assistant/memory/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ value }),
+  });
+}
+
+export function deleteAssistantMemory(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+): Promise<void> {
+  return requestJson(workspace, `/api/app/assistant/memory/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 export function createCategory(
   workspace: AuthenticatedWorkspace,
   input: CategoryInput,

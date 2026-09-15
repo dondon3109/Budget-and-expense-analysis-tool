@@ -576,6 +576,7 @@ export const assistantMemories = sqliteTable(
     kind: text("kind", { enum: ["preference", "fact", "summary"] }).notNull(),
     key: text("key").notNull(),
     value: text("value").notNull(),
+    threadId: text("thread_id"),
     source: text("source", {
       enum: ["user_stated", "deterministic", "model_assisted"],
     }).notNull(),
@@ -594,6 +595,8 @@ export const assistantMemories = sqliteTable(
       table.kind,
       table.key,
     ),
+    index("assistant_memories_tenant_updated_idx").on(table.tenantId, table.updatedAt),
+    index("assistant_memories_thread_idx").on(table.threadId),
   ],
 );
 

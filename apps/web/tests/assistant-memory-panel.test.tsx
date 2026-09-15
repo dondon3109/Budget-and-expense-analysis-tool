@@ -12,6 +12,8 @@ const apiMocks = vi.hoisted(() => ({
   getAssistantMemory: vi.fn(),
   getAssistantMemoryPreferences: vi.fn(),
   updateAssistantMemoryPreferences: vi.fn(),
+  updateAssistantMemory: vi.fn(),
+  deleteAssistantMemory: vi.fn(),
 }));
 
 vi.mock("../src/lib/api", async (importOriginal) => ({
@@ -75,6 +77,18 @@ describe("AssistantMemoryPanel", () => {
       responseDetail: "concise",
       coachingStyle: "gentle",
     });
+    apiMocks.updateAssistantMemory
+      .mockReset()
+      .mockImplementation(async (_w: unknown, id: string, value: string) => ({
+        id,
+        kind: "fact",
+        key: "goal",
+        value,
+        source: "user_stated",
+        createdAt: "2026-07-27T10:00:00.000Z",
+        updatedAt: "2026-07-27T10:00:00.000Z",
+      }));
+    apiMocks.deleteAssistantMemory.mockReset().mockResolvedValue(undefined);
     apiMocks.updateAssistantMemoryPreferences.mockReset().mockResolvedValue({
       debtStrategy: "snowball",
       responseDetail: "concise",
@@ -206,6 +220,39 @@ describe("AssistantMemoryPanel", () => {
 
     await waitFor(() => {
       expect(apiMocks.clearAssistantMemory).toHaveBeenCalledWith(mockWorkspace);
+    });
+  });
+
+  it("edits and deletes a single remembered fact", async () => {
+    apiMocks.getAssistantMemory.mockResolvedValue([
+      {
+        id: "mem-1",
+        kind: "fact",
+        key: "monthly_budget_cap",
+        value: "Car downpayment goal",
+        source: "user_stated",
+        threadTitle: "Car savings",
+        createdAt: "2026-07-27T10:00:00.000Z",
+        updatedAt: "2026-07-27T10:00:00.000Z",
+      },
+    ]);
+    renderPanel();
+    expect(await screen.findByText("Car downpayment goal")).toBeInTheDocument();
+    expect(screen.getByText("Monthly budget cap · from “Car savings”")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const input = screen.getByLabelText("Edit remembered fact");
+    fireEvent.change(input, { target: { value: "Updated goal" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => {
+      expect(apiMocks.updateAssistantMemory).toHaveBeenCalledWith(
+        mockWorkspace,
+        "mem-1",
+        "Updated goal",
+      );
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => {
+      expect(apiMocks.deleteAssistantMemory).toHaveBeenCalledWith(mockWorkspace, "mem-1");
     });
   });
 });

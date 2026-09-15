@@ -23,7 +23,16 @@ import {
   type AssistantProviderErrorKind,
   type AssistantProviderFailureReason,
 } from "./provider-error";
-import { buildMemoryBlock, deterministicExtract, runModelMemoryPass } from "./memory";
+import {
+  buildMemoryBlock,
+  canonicalizeMemoryKey,
+  containsPromptInjection,
+  deterministicExtract,
+  isSensitiveMemory,
+  MAX_MEMORY_FACTS_STORED,
+  runModelMemoryPass,
+  sanitizeMemoryValue,
+} from "./memory";
 import type { AssistantOrchestrator } from "./orchestrator";
 import {
   createPostHogAiTelemetry,
@@ -80,6 +89,13 @@ export interface AssistantService {
     input: AssistantMemoryPreferencesUpdate,
   ): Promise<AssistantMemoryPreferences>;
   clearMemory(env: Bindings, tenantId: string): Promise<void>;
+  updateMemory(
+    env: Bindings,
+    tenantId: string,
+    id: string,
+    value: string,
+  ): Promise<AssistantMemory>;
+  deleteMemoryFact(env: Bindings, tenantId: string, id: string): Promise<void>;
 }
 
 export interface AssistantProviderFailureEvent {
@@ -175,17 +191,21 @@ export function createAssistantService(
     return { ...preferences, assistantName, userPreferredName };
   }
 
-  async function loadMemoryContext(env: Bindings, tenantId: string, threadId: string) {
-    const [memories, preferences] = await Promise.all([
+  async function loadMemoryContext(
+    env: Bindings,
+    tenantId: string,
+    threadId: string,
+    currentMessage?: string,
+  ) {
+    const [memories, preferences, threadSummaryMemory] = await Promise.all([
       repository.listMemories(env, tenantId),
       repository.getPreferences(env, tenantId),
+      repository.getMemory(env, tenantId, "summary", `thread:${threadId}`),
     ]);
     const facts = memories.filter(
       (memory) => memory.kind === "fact" || memory.kind === "preference",
     );
-    const threadSummary =
-      memories.find((memory) => memory.kind === "summary" && memory.key === `thread:${threadId}`)
-        ?.value ?? null;
+    const threadSummary = threadSummaryMemory?.value ?? null;
     const debtMemory = memories.find(
       (memory) => memory.kind === "preference" && memory.key === "debt_strategy",
     );
@@ -198,6 +218,7 @@ export function createAssistantService(
       responseDetail: preferences.responseDetail,
       coachingStyle: preferences.coachingStyle,
       facts,
+      query: currentMessage,
       threadSummary,
     });
     return { block };
@@ -208,12 +229,57 @@ export function createAssistantService(
     tenantId: string,
     message: string,
     telemetry?: AssistantAiTelemetry,
+    context?: { threadId: string; assistantContent?: string },
   ) {
     const extraction = deterministicExtract(message);
+    if (extraction.forgetAll) {
+      await repository.clearMemories(env, tenantId, "fact");
+      await repository.clearMemories(env, tenantId, "summary");
+    } else {
+      for (const key of extraction.forgetKeys) {
+        const canonical = canonicalizeMemoryKey(key);
+        await repository.deleteMemory(env, tenantId, "fact", canonical);
+        await repository.deleteMemory(env, tenantId, "preference", canonical);
+      }
+    }
+    // A "forget" turn is deletion-only: never persist new facts from it.
+    const forgetOnly =
+      (extraction.forgetAll || extraction.forgetKeys.length > 0) &&
+      extraction.memories.length === 0;
+    const persist = async (memory: {
+      kind: "preference" | "fact" | "summary";
+      key: string;
+      value: string;
+      supersedes?: string[];
+      source: "user_stated" | "deterministic" | "model_assisted";
+    }) => {
+      const clean = sanitizeMemoryValue(memory.value);
+      if (!clean || isSensitiveMemory(clean) || containsPromptInjection(clean)) return;
+      await repository.upsertMemory(env, tenantId, {
+        ...memory,
+        key: canonicalizeMemoryKey(memory.key),
+        value: clean,
+        ...(context?.threadId ? { threadId: context.threadId } : {}),
+      });
+      for (const old of memory.supersedes ?? []) {
+        const canonical = canonicalizeMemoryKey(old);
+        const next = canonicalizeMemoryKey(memory.key);
+        if (canonical && canonical !== next) {
+          await repository.deleteMemory(env, tenantId, "fact", canonical);
+          await repository.deleteMemory(env, tenantId, "preference", canonical);
+        }
+      }
+    };
     for (const memory of extraction.memories) {
-      await repository.upsertMemory(env, tenantId, memory);
+      await persist(memory);
+    }
+    // Storage cap with oldest-first eviction. Preferences are never evicted.
+    const storedFacts = await repository.countFacts(env, tenantId);
+    if (storedFacts > MAX_MEMORY_FACTS_STORED) {
+      await repository.compactFacts(env, tenantId, MAX_MEMORY_FACTS_STORED);
     }
     if (
+      !forgetOnly &&
       extraction.needsModelPass &&
       env.ASSISTANT_MEMORY_MODEL_PASS !== "off" &&
       provider &&
@@ -221,9 +287,13 @@ export function createAssistantService(
     ) {
       const consumed = await modelMemoryUsage.tryConsumePass(env, tenantId);
       if (!consumed) return;
-      const extracted = await runModelMemoryPass(env, provider, message, telemetry);
+      const existing = await repository.listMemories(env, tenantId, "fact");
+      const extracted = await runModelMemoryPass(env, provider, message, telemetry, {
+        ...(context?.assistantContent ? { assistantContent: context.assistantContent } : {}),
+        existingKeys: existing.map((item) => item.key),
+      });
       for (const memory of extracted) {
-        await repository.upsertMemory(env, tenantId, memory);
+        await persist(memory);
       }
     }
   }
@@ -232,19 +302,32 @@ export function createAssistantService(
     env: Bindings,
     tenantId: string,
     threadId: string,
+    userMessage: string,
     assistantContent: string,
   ) {
-    const summary = assistantContent.replace(/\s+/g, " ").trim();
-    if (!summary) return;
+    const prior =
+      (await repository.getMemory(env, tenantId, "summary", `thread:${threadId}`))?.value ?? "";
+    const combined = [
+      prior,
+      `User: ${userMessage.slice(0, 200)}`,
+      `Assistant: ${assistantContent.slice(0, 300)}`,
+    ]
+      .filter(Boolean)
+      .join(" | ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!combined) return;
+    // Rolling summary: keep the tail so recent decisions survive, cap growth.
     const bounded =
-      summary.length > THREAD_SUMMARY_MAX_CHARACTERS
-        ? `${summary.slice(0, THREAD_SUMMARY_MAX_CHARACTERS - 1).trimEnd()}…`
-        : summary;
+      combined.length > THREAD_SUMMARY_MAX_CHARACTERS * 2
+        ? combined.slice(-THREAD_SUMMARY_MAX_CHARACTERS * 2)
+        : combined;
     await repository.upsertMemory(env, tenantId, {
       kind: "summary",
       key: `thread:${threadId}`,
       value: bounded,
       source: "deterministic",
+      threadId,
     });
   }
 
@@ -288,7 +371,7 @@ export function createAssistantService(
       } catch {
         // Optional observability configuration must never block an assistant turn.
       }
-      const { block } = await loadMemoryContext(env, tenantId, start.thread.id);
+      const { block } = await loadMemoryContext(env, tenantId, start.thread.id, input.message);
       const answer = await orchestrator.answer(
         env,
         tenantId,
@@ -313,8 +396,11 @@ export function createAssistantService(
         audit: answer.audit,
       });
       try {
-        await persistExtractedMemories(env, tenantId, input.message, telemetry);
-        await updateThreadSummary(env, tenantId, start.thread.id, answer.content);
+        await persistExtractedMemories(env, tenantId, input.message, telemetry, {
+          threadId: start.thread.id,
+          assistantContent: answer.content,
+        });
+        await updateThreadSummary(env, tenantId, start.thread.id, input.message, answer.content);
       } catch {
         // Memory updates are best-effort and must never fail a completed turn.
       }
@@ -399,6 +485,20 @@ export function createAssistantService(
 
     async clearMemory(env, tenantId) {
       await repository.clearMemories(env, tenantId);
+    },
+
+    async updateMemory(env, tenantId, id, value) {
+      const clean = sanitizeMemoryValue(value);
+      if (!clean || isSensitiveMemory(clean) || containsPromptInjection(clean)) {
+        throw new HttpError(400, "invalid_request", "That memory value cannot be saved.");
+      }
+      const updated = await repository.updateMemoryValue(env, tenantId, id, clean);
+      if (!updated) throw new HttpError(404, "memory_not_found", "That memory was not found.");
+      return updated;
+    },
+
+    async deleteMemoryFact(env, tenantId, id) {
+      await repository.deleteMemoryById(env, tenantId, id);
     },
   };
 }

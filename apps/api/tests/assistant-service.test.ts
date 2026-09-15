@@ -121,8 +121,31 @@ function createRepository(): AssistantRepository {
     listMemories: vi.fn(async () => []),
     getMemory: vi.fn(async () => null),
     upsertMemory: vi.fn(
-      async (_env: Bindings, _tenantId: string, memory: AssistantMemory) => memory,
+      async (
+        _env: Bindings,
+        _tenantId: string,
+        input: {
+          kind: "preference" | "fact" | "summary";
+          key: string;
+          value: string;
+          source: string;
+        },
+      ) =>
+        ({
+          id: "00000000-0000-4000-8000-000000000000",
+          kind: input.kind,
+          key: input.key,
+          value: input.value,
+          source: input.source,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }) as AssistantMemory,
     ),
+    getMemoryById: vi.fn(async () => null),
+    updateMemoryValue: vi.fn(async () => null),
+    deleteMemoryById: vi.fn(async () => undefined),
+    countFacts: vi.fn(async () => 0),
+    compactFacts: vi.fn(async () => 0),
     deleteMemory: vi.fn(async () => undefined),
     clearMemories: vi.fn(async () => undefined),
   };
@@ -378,16 +401,48 @@ describe("assistant service model-memory pass usage", () => {
       tenantId,
       expect.objectContaining({
         kind: "fact",
-        key: "smallest_debt_first",
+        key: "debt_rule",
         source: "model_assisted",
       }),
     );
-    expect(repository.getMemory).not.toHaveBeenCalled();
+    expect(repository.listMemories).toHaveBeenCalledWith(memoryEnv, tenantId, "fact");
     expect(
       vi
         .mocked(repository.upsertMemory)
         .mock.calls.some(([, , memory]) => memory.key === "model_memory_pass_count"),
     ).toBe(false);
+  });
+
+  it("clears facts and summaries for a forget-all turn without persisting or running the model pass", async () => {
+    const repository = createRepository();
+    const assistantProvider = provider();
+    const tryConsumePass = vi.fn(async () => true);
+    const service = createAssistantService(
+      repository,
+      successfulOrchestrator(),
+      undefined,
+      undefined,
+      assistantProvider,
+      modelUsage(tryConsumePass),
+    );
+    const memoryEnv = { ...env, ASSISTANT_MEMORY_MODEL_PASS: "on" as const };
+
+    await expect(
+      service.sendTurn(memoryEnv, tenantId, threadId, {
+        ...input,
+        message: "Forget everything, from now on I prefer a clean slate",
+      }),
+    ).resolves.toEqual(completed);
+
+    expect(repository.clearMemories).toHaveBeenCalledWith(memoryEnv, tenantId, "fact");
+    expect(repository.clearMemories).toHaveBeenCalledWith(memoryEnv, tenantId, "summary");
+    expect(tryConsumePass).not.toHaveBeenCalled();
+    expect(assistantProvider.complete).not.toHaveBeenCalled();
+    expect(
+      vi
+        .mocked(repository.upsertMemory)
+        .mock.calls.filter(([, , memory]) => memory.kind !== "summary"),
+    ).toEqual([]);
   });
 
   it("does not reserve model-pass usage while model-assisted memory is disabled", async () => {

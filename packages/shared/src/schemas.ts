@@ -363,6 +363,16 @@ export const assistantMemoryPreferencesUpdateSchema = z
   })
   .strict();
 
+export const assistantMemoryIdSchema = z.string().uuid();
+
+export const assistantMemoryUpdateSchema = z
+  .object({
+    value: z.string().trim().min(1).max(240),
+  })
+  .strict();
+
+export type AssistantMemoryUpdate = z.infer<typeof assistantMemoryUpdateSchema>;
+
 export const assistantThreadListQuerySchema = z
   .object({
     cursor: z.string().datetime().optional(),

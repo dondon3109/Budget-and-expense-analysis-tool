@@ -4,8 +4,13 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- The financial assistant now remembers budget caps, checking buffers, payday schedules, and recurring bills across chats, ranks saved memories by relevance to the current question, and lets you edit or delete individual remembered facts from the assistant Memory panel.
+
 ### Fixed
 
+- Assistant memory no longer stores questions such as "What did I spend on the 15th?" or "What is my biggest bill this month?" as durable facts, and "Don't forget my emergency fund" no longer deletes the saved target.
 - Renamed the mobile Transactions month figure from Balance to Net, with a question-mark explanation of how it is calculated, because it is the month's income minus expenses and not the account balance.
 
 ## 2.32.5 — 2026-09-15

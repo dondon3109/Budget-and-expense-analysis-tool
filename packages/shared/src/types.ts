@@ -555,6 +555,8 @@ export interface AssistantMemory {
   key: string;
   value: string;
   source: AssistantMemorySource;
+  threadId?: string | null;
+  threadTitle?: string | null;
   createdAt: string;
   updatedAt: string;
 }
