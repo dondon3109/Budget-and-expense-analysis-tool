@@ -18,6 +18,7 @@ import type {
   AssistantAiTelemetry,
   AssistantAiTelemetryFactory,
 } from "../src/assistant/posthog-ai";
+import { MAX_MEMORY_FACTS_STORED } from "../src/assistant/memory";
 import type { AssistantProvider } from "../src/assistant/provider";
 import {
   createAssistantService,
@@ -401,16 +402,50 @@ describe("assistant service model-memory pass usage", () => {
       tenantId,
       expect.objectContaining({
         kind: "fact",
-        key: "debt_strategy",
+        key: "debt_rule",
         source: "model_assisted",
       }),
     );
-    expect(repository.listMemories).toHaveBeenCalledWith(memoryEnv, tenantId, "fact");
+    // Facts and preferences, so the model can reuse or supersede either key.
+    expect(repository.listMemories).toHaveBeenCalledWith(memoryEnv, tenantId);
     expect(
       vi
         .mocked(repository.upsertMemory)
         .mock.calls.some(([, , memory]) => memory.key === "model_memory_pass_count"),
     ).toBe(false);
+  });
+
+  it("compacts stored facts after the model-assisted pass has persisted", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.countFacts).mockResolvedValue(MAX_MEMORY_FACTS_STORED + 1);
+    const assistantProvider = provider();
+    const service = createAssistantService(
+      repository,
+      successfulOrchestrator(),
+      undefined,
+      undefined,
+      assistantProvider,
+      modelUsage(vi.fn(async () => true)),
+    );
+    const memoryEnv = { ...env, ASSISTANT_MEMORY_MODEL_PASS: "on" as const };
+
+    await expect(service.sendTurn(memoryEnv, tenantId, threadId, memoryInput)).resolves.toEqual(
+      completed,
+    );
+
+    const upserts = vi.mocked(repository.upsertMemory).mock;
+    const modelPassIndex = upserts.calls.findIndex(
+      ([, , memory]) => memory.source === "model_assisted",
+    );
+    expect(modelPassIndex).toBeGreaterThanOrEqual(0);
+    expect(upserts.invocationCallOrder[modelPassIndex]!).toBeLessThan(
+      vi.mocked(repository.compactFacts).mock.invocationCallOrder[0]!,
+    );
+    expect(repository.compactFacts).toHaveBeenCalledWith(
+      memoryEnv,
+      tenantId,
+      MAX_MEMORY_FACTS_STORED,
+    );
   });
 
   it("clears facts and summaries for a forget-all turn without persisting or running the model pass", async () => {

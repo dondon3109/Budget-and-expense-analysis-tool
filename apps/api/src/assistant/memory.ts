@@ -72,10 +72,13 @@ export function containsPromptInjection(value: string): boolean {
   return PROMPT_INJECTION_PATTERNS.some((pattern) => pattern.test(value));
 }
 
-// One key per concept: duplicate keys for the same fact would let the
-// deterministic and model-assisted passes store two memories for one statement.
+// One key per concept, and one storage kind per key. debt_strategy is the payoff
+// preference the Memory panel control writes (avalanche or snowball), and debt_rule
+// carries every other payoff rule as a fact. Duplicate keys or kinds for one concept
+// would let the deterministic and model-assisted passes record one statement twice.
 const MEMORY_CANONICAL_KEYS = [
   "debt_strategy",
+  "debt_rule",
   "emergency_fund_target",
   "savings_target",
   "monthly_budget_cap",
@@ -88,10 +91,11 @@ const MEMORY_CANONICAL_KEYS = [
   "coaching_preference",
 ] as const;
 
+const DEBT_STRATEGY_VALUES = new Set(["avalanche", "snowball"]);
+
 const KEY_ALIASES: Record<string, string> = {
-  pay_smallest_first: "debt_strategy",
-  smallest_debt_first: "debt_strategy",
-  debt_rule: "debt_strategy",
+  pay_smallest_first: "debt_rule",
+  smallest_debt_first: "debt_rule",
   avalanche_method: "debt_strategy",
   snowball_method: "debt_strategy",
   emergency_savings: "emergency_fund_target",
@@ -333,15 +337,17 @@ export function buildMemoryBlock(input: {
   const ranked = input.query
     ? selectRelevantMemories(input.facts, input.query)
     : input.facts.slice(0, MAX_MEMORY_FACTS_INJECTED);
-  // "debt_rule" is only reachable for memories stored before the key consolidation.
-  const debtKeys = new Set(["debt_strategy", "debt_rule"]);
-  const debtValues = new Set(["avalanche", "snowball"]);
   const facts = ranked
     .filter((memory) => !isSensitiveMemory(memory.value))
-    // Debt preference already renders as the canonical preference line below.
-    .filter((memory) => !(memory.kind === "preference" && memory.key === "debt_strategy"))
+    // The payoff preference renders as the canonical line below, and keys are
+    // canonicalized here so rows stored under the pre-split aliases cannot repeat it.
+    .filter((memory) => canonicalizeMemoryKey(memory.key) !== "debt_strategy")
     .filter(
-      (memory) => !(debtKeys.has(memory.key) && debtValues.has(memory.value.trim().toLowerCase())),
+      (memory) =>
+        !(
+          canonicalizeMemoryKey(memory.key) === "debt_rule" &&
+          DEBT_STRATEGY_VALUES.has(memory.value.trim().toLowerCase())
+        ),
     )
     .map((memory) => `- ${memory.value}`);
 
@@ -391,8 +397,14 @@ function parseModelMemories(content: string): ExtractedMemory[] {
         if (typeof record.key !== "string" || typeof record.value !== "string") continue;
         const value = sanitizeMemoryValue(record.value);
         if (!value || isSensitiveMemory(value) || containsPromptInjection(value)) continue;
-        const key = canonicalizeMemoryKey(record.key);
-        if (!key) continue;
+        const canonical = canonicalizeMemoryKey(record.key);
+        if (!canonical) continue;
+        // debt_strategy belongs to the preference control, so a model-written rule
+        // under that key is stored as debt_rule instead of shadowing the control.
+        const key =
+          canonical === "debt_strategy" && !DEBT_STRATEGY_VALUES.has(value.trim().toLowerCase())
+            ? "debt_rule"
+            : canonical;
         const supersedes = Array.isArray(record.supersedes)
           ? record.supersedes
               .filter((entry): entry is string => typeof entry === "string")

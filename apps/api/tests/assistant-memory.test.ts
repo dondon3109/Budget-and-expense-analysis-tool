@@ -187,11 +187,10 @@ describe("runModelMemoryPass", () => {
       ),
       "I always pay the smallest debt first",
     );
-    // "debt_rule" is the model's wording for the same concept as "debt_strategy".
     expect(memories).toEqual([
       expect.objectContaining({
         kind: "fact",
-        key: "debt_strategy",
+        key: "debt_rule",
         source: "model_assisted",
       }),
     ]);
@@ -259,9 +258,46 @@ describe("memory extraction quality", () => {
         (memory) => memory.key === "recurring_bill",
       ),
     ).toBe(true);
-    expect(canonicalizeMemoryKey("pay_smallest_first")).toBe("debt_strategy");
-    expect(canonicalizeMemoryKey("debt_rule")).toBe("debt_strategy");
+    expect(canonicalizeMemoryKey("pay_smallest_first")).toBe("debt_rule");
+    expect(canonicalizeMemoryKey("smallest_debt_first")).toBe("debt_rule");
+    expect(canonicalizeMemoryKey("avalanche_method")).toBe("debt_strategy");
     expect(canonicalizeMemoryKey("Monthly Budget!")).toBe("monthly_budget_cap");
+  });
+
+  it("keeps the payoff preference key reserved for the two strategy values", async () => {
+    const memories = await runModelMemoryPass(
+      { ...env, ASSISTANT_MEMORY_MODEL_PASS: "on" },
+      providerWith(
+        '{"memories":[{"key":"debt_strategy","value":"Pays the smallest balance first"},{"key":"debt_strategy","value":"snowball"}]}',
+      ),
+      "I always pay the smallest balance first",
+    );
+    // The prose rule is re-keyed; the enum value would be stored under the key itself.
+    expect(memories.map((memory) => [memory.key, memory.value])).toEqual([
+      ["debt_rule", "Pays the smallest balance first"],
+      ["debt_strategy", "snowball"],
+    ]);
+  });
+
+  it("keeps the payoff preference out of the fact lines for legacy aliases too", () => {
+    const legacyAlias = {
+      id: "legacy",
+      kind: "fact" as const,
+      key: "avalanche_method",
+      value: "avalanche",
+      source: "model_assisted" as const,
+      createdAt: "",
+      updatedAt: "",
+    };
+    const block = buildMemoryBlock({
+      debtStrategy: "avalanche",
+      responseDetail: "standard",
+      coachingStyle: "direct",
+      facts: [legacyAlias],
+      query: "debt",
+    });
+    expect(block.match(/Debt payoff preference/g)).toHaveLength(1);
+    expect(block).not.toContain("- avalanche");
   });
 
   it("ignores questions, one-off requests, and balance snapshots", () => {

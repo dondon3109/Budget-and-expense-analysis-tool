@@ -762,9 +762,12 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
         )
           .bind(tenantId, kind, new Date().toISOString())
           .all<MemoryRow>()
-      : await env.DB.prepare(
+      : // Thread summaries are written every turn, so ordering them against facts
+        // would push durable facts out of the bounded window. The current thread's
+        // summary is read by key through getMemory instead.
+        await env.DB.prepare(
           `${select}
-           WHERE m.tenant_id = ? AND (m.expires_at IS NULL OR m.expires_at > ?)
+           WHERE m.tenant_id = ? AND m.kind IN ('fact', 'preference') AND (m.expires_at IS NULL OR m.expires_at > ?)
            ORDER BY m.updated_at DESC LIMIT 100`,
         )
           .bind(tenantId, new Date().toISOString())

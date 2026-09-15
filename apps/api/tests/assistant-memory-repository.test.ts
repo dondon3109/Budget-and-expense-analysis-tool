@@ -93,6 +93,39 @@ describe("assistantRepository memory writes", () => {
     ).resolves.toMatchObject({ value: "Earlier in this chat" });
   });
 
+  it("keeps thread summaries out of the bounded memory list", async () => {
+    const { env, database } = environment();
+    const fact = await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "fact",
+      key: "monthly_budget_cap",
+      value: "Monthly budget PHP 30,000",
+      source: "deterministic",
+    });
+    // Summaries are rewritten every turn, so ordering them against facts would let
+    // them fill the LIMIT window and hide durable facts from the panel and prompt.
+    for (let index = 0; index < 3; index += 1) {
+      const summary = await assistantRepository.upsertMemory(env, TENANT_A, {
+        kind: "summary",
+        key: `thread:${index}`,
+        value: `Summary ${index}`,
+        source: "deterministic",
+      });
+      database
+        .prepare("UPDATE assistant_memories SET updated_at = ? WHERE id = ?")
+        .run(`2026-09-0${index + 1}T00:00:00.000Z`, summary.id);
+    }
+    database
+      .prepare("UPDATE assistant_memories SET updated_at = ? WHERE id = ?")
+      .run("2026-01-01T00:00:00.000Z", fact.id);
+
+    const listed = await assistantRepository.listMemories(env, TENANT_A);
+    expect(listed.map((memory) => memory.key)).toEqual(["monthly_budget_cap"]);
+    // The current thread summary stays reachable by key.
+    await expect(
+      assistantRepository.getMemory(env, TENANT_A, "summary", "thread:1"),
+    ).resolves.toMatchObject({ value: "Summary 1" });
+  });
+
   it("compacts the oldest facts and keeps preferences", async () => {
     const { env, database } = environment();
     const preference = await assistantRepository.upsertMemory(env, TENANT_A, {

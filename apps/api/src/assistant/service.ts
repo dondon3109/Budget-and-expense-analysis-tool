@@ -273,11 +273,6 @@ export function createAssistantService(
     for (const memory of extraction.memories) {
       await persist(memory);
     }
-    // Storage cap with oldest-first eviction. Preferences are never evicted.
-    const storedFacts = await repository.countFacts(env, tenantId);
-    if (storedFacts > MAX_MEMORY_FACTS_STORED) {
-      await repository.compactFacts(env, tenantId, MAX_MEMORY_FACTS_STORED);
-    }
     if (
       !forgetOnly &&
       extraction.needsModelPass &&
@@ -286,15 +281,24 @@ export function createAssistantService(
       modelMemoryUsage
     ) {
       const consumed = await modelMemoryUsage.tryConsumePass(env, tenantId);
-      if (!consumed) return;
-      const existing = await repository.listMemories(env, tenantId, "fact");
-      const extracted = await runModelMemoryPass(env, provider, message, telemetry, {
-        ...(context?.assistantContent ? { assistantContent: context.assistantContent } : {}),
-        existingKeys: existing.map((item) => item.key),
-      });
-      for (const memory of extracted) {
-        await persist(memory);
+      if (consumed) {
+        // Facts and preferences both, so the model can reuse or supersede either key.
+        const existing = await repository.listMemories(env, tenantId);
+        const extracted = await runModelMemoryPass(env, provider, message, telemetry, {
+          ...(context?.assistantContent ? { assistantContent: context.assistantContent } : {}),
+          existingKeys: existing.map((item) => item.key),
+        });
+        for (const memory of extracted) {
+          await persist(memory);
+        }
       }
+    }
+    // Storage cap with oldest-first eviction, applied after every writer so a model
+    // pass cannot leave the tenant over the cap until a later turn. Preferences are
+    // never evicted.
+    const storedFacts = await repository.countFacts(env, tenantId);
+    if (storedFacts > MAX_MEMORY_FACTS_STORED) {
+      await repository.compactFacts(env, tenantId, MAX_MEMORY_FACTS_STORED);
     }
   }
 
