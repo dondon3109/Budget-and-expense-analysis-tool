@@ -4,10 +4,17 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.32.5 — 2026-09-15
+
+### Changed
+
+- Refreshed web install page metadata and direct APK links to Android Beta 0.2.28 (versionCode 20328).
+
+## 2.32.4 — 2026-09-15
+
 ### Changed
 
 - Prepared Android Beta 0.2.28 (versionCode 20328) mobile release and refreshed in-app patch notes.
-- Refreshed web install page metadata and direct APK links to Android Beta 0.2.28 (versionCode 20328).
 
 ### Fixed
 
