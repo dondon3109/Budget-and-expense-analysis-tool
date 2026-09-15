@@ -246,6 +246,8 @@ describe("AssistantMemoryPanel", () => {
     expect(screen.getByText("Monthly budget cap · from “Car savings”")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     const input = screen.getByLabelText("Edit remembered fact");
+    // The editor replaces the Edit button, so focus must follow it into the input.
+    expect(input).toHaveFocus();
     fireEvent.change(input, { target: { value: "   " } });
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     fireEvent.change(input, { target: { value: "  Updated goal  " } });
@@ -257,6 +259,10 @@ describe("AssistantMemoryPanel", () => {
         "Updated goal",
       );
     });
+    // Saving rebuilds the row, so focus has to land back on its Edit button.
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus();
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(apiMocks.deleteAssistantMemory).not.toHaveBeenCalled();
@@ -264,6 +270,39 @@ describe("AssistantMemoryPanel", () => {
     await waitFor(() => {
       expect(apiMocks.deleteAssistantMemory).toHaveBeenCalledWith(mockWorkspace, "mem-1");
     });
+  });
+
+  it("returns focus to the edited row's own Edit button when the editor closes", async () => {
+    apiMocks.getAssistantMemory.mockResolvedValue([
+      {
+        id: "mem-1",
+        kind: "fact",
+        key: "goal",
+        value: "Car downpayment goal",
+        source: "user_stated",
+        createdAt: "2026-07-27T10:00:00.000Z",
+        updatedAt: "2026-07-27T10:00:00.000Z",
+      },
+      {
+        id: "mem-2",
+        kind: "fact",
+        key: "goal",
+        value: "House downpayment goal",
+        source: "user_stated",
+        createdAt: "2026-07-27T10:00:00.000Z",
+        updatedAt: "2026-07-27T10:00:00.000Z",
+      },
+    ]);
+    renderPanel();
+
+    const editButtons = await screen.findAllByRole("button", { name: "Edit" });
+    fireEvent.click(editButtons[0]!);
+    expect(screen.getByLabelText("Edit remembered fact")).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    // Focus belongs to the row that was edited, not to whichever Edit button rendered last.
+    expect(screen.getAllByRole("button", { name: "Edit" })[0]).toHaveFocus();
   });
 
   it("keeps the payoff preference out of the editable facts", async () => {
@@ -294,5 +333,36 @@ describe("AssistantMemoryPanel", () => {
     // offers edit and delete.
     expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(1);
     expect(screen.getByText("Debt rule")).toBeInTheDocument();
+  });
+
+  it("keeps legacy payoff alias rows out of the editable facts", async () => {
+    apiMocks.getAssistantMemory.mockResolvedValue([
+      {
+        id: "mem-legacy",
+        kind: "fact",
+        key: "avalanche_method",
+        value: "Prefers the avalanche method",
+        source: "model_assisted",
+        createdAt: "2026-07-27T10:00:00.000Z",
+        updatedAt: "2026-07-27T10:00:00.000Z",
+      },
+      {
+        id: "mem-rule",
+        kind: "fact",
+        key: "pay_smallest_first",
+        value: "Pays the smallest balance first",
+        source: "model_assisted",
+        createdAt: "2026-07-27T10:00:00.000Z",
+        updatedAt: "2026-07-27T10:00:00.000Z",
+      },
+    ]);
+    renderPanel();
+
+    // The alias row names the payoff preference the strategy control owns, and the API
+    // canonicalizes keys on write only, so it can still reach the client under that key.
+    // The debt_rule alias is a real rule and stays editable.
+    expect(await screen.findByText("Pays the smallest balance first")).toBeInTheDocument();
+    expect(screen.queryByText("Prefers the avalanche method")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(1);
   });
 });

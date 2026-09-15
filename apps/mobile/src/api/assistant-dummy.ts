@@ -92,8 +92,8 @@ let dummyMemories: AssistantMemory[] = [
   {
     id: "mem-debt-avalanche",
     kind: "preference",
-    key: "debt_strategy_priority",
-    value: "Prefers the avalanche method to eliminate highest interest rates first.",
+    key: "debt_strategy",
+    value: "avalanche",
     source: "user_stated",
     createdAt: "2026-08-16T09:30:00.000Z",
     updatedAt: "2026-08-16T09:30:00.000Z",

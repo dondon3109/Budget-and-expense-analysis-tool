@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
@@ -37,6 +37,12 @@ const MEMORY_KEY_LABELS: Record<string, string> = {
   spending_rule: "Spending rule",
   coaching_preference: "Coaching preference",
 };
+
+// Rows stored before the debt_strategy/debt_rule key split can still carry these alias
+// keys, because the API canonicalizes keys on write only. They all mean the payoff
+// preference, which the strategy control above owns. The debt_rule aliases
+// (pay_smallest_first, smallest_debt_first) are absent on purpose: those are real rules.
+const PAYOFF_PREFERENCE_KEYS = new Set(["debt_strategy", "avalanche_method", "snowball_method"]);
 
 /** Stored keys are snake_case; users see a readable label instead. */
 function memoryLabel(key: string): string {
@@ -98,6 +104,21 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftValue, setDraftValue] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const factInputRef = useRef<HTMLInputElement>(null);
+  const editTriggersRef = useRef(new Map<string, HTMLButtonElement>());
+  const lastEditingIdRef = useRef<string | null>(null);
+
+  // The editor replaces the row's Edit button, so focus follows it in and back out.
+  // React drops a plain ref when that button unmounts to make room for the editor, so
+  // the rebuilt buttons are tracked by memory id instead.
+  useEffect(() => {
+    if (editingId) {
+      factInputRef.current?.focus();
+      return;
+    }
+    const editedId = lastEditingIdRef.current;
+    if (editedId) editTriggersRef.current.get(editedId)?.focus();
+  }, [editingId]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, value }: { id: string; value: string }) =>
@@ -149,10 +170,9 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
   });
 
   const currentStrategy = preferences.data?.debtStrategy ?? null;
-  // Only facts are editable here. Preferences belong to the controls above, and
-  // debt_strategy rows stored before the key split would duplicate that control.
+  // Only facts are editable here; payoff preference rows belong to the control above.
   const facts = (memories.data ?? []).filter(
-    (memory) => memory.kind === "fact" && memory.key !== "debt_strategy",
+    (memory) => memory.kind === "fact" && !PAYOFF_PREFERENCE_KEYS.has(memory.key),
   );
 
   return createPortal(
@@ -328,6 +348,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
                     {isEditing ? (
                       <div className="fact-edit-row">
                         <input
+                          ref={factInputRef}
                           aria-label="Edit remembered fact"
                           value={draftValue}
                           maxLength={240}
@@ -362,8 +383,13 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
                       <div className="fact-actions">
                         <button
                           type="button"
+                          ref={(node) => {
+                            if (node) editTriggersRef.current.set(memory.id, node);
+                            else editTriggersRef.current.delete(memory.id);
+                          }}
                           className="button secondary compact"
                           onClick={() => {
+                            lastEditingIdRef.current = memory.id;
                             setEditingId(memory.id);
                             setDraftValue(memory.value);
                           }}

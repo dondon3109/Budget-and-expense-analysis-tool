@@ -418,6 +418,32 @@ describe("assistant memory facts", () => {
     expect(screen.queryByText("avalanche")).toBeNull();
   });
 
+  it("keeps legacy payoff alias rows out of the editable facts", async () => {
+    await renderMemoryBlock({
+      memory: [
+        {
+          ...payoffPreference,
+          id: "mem-legacy",
+          kind: "fact",
+          key: "avalanche_method",
+          value: "Prefers the avalanche method",
+        },
+        {
+          ...rememberedFact,
+          key: "pay_smallest_first",
+          value: "Pays the smallest balance first",
+        },
+      ],
+    });
+
+    // The alias row names the payoff preference the control above owns, and the API
+    // canonicalizes keys on write only, so it can still reach the client under that key.
+    // The debt_rule alias is a real rule and stays editable.
+    expect(screen.getByText("Pays the smallest balance first")).toBeTruthy();
+    expect(screen.queryByText("Prefers the avalanche method")).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^Edit remembered fact/ })).toHaveLength(1);
+  });
+
   it("keeps an empty edit unsavable and asks for confirmation before deleting", async () => {
     const onEditMemory = jest.fn(async () => true);
     const onDeleteMemory = jest.fn();
