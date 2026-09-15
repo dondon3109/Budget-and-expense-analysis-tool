@@ -1,22 +1,23 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.24-beta",
-  "versionCode": 20324,
-  "filename": "zoption-beta-0.2.24.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.24.apk",
-  "sha256": "e4c893d5e065fb436f978beba593a70c3b8b4b02254aea6dde3ec83ab8ed8a81",
-  "sizeBytes": 139164369,
-  "sizeLabel": "139,164,369 bytes (132.72 MiB)",
-  "releaseDate": "2026-09-11",
-  "releaseDateLabel": "September 11, 2026",
+  "versionName": "0.2.27-beta",
+  "versionCode": 20327,
+  "filename": "zoption-beta-0.2.27.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.27.apk",
+  "sha256": "e44347c3abc68245a5e04d0a51e7719ef9660daea651dc263eff58534128d7e0",
+  "sizeBytes": 139305186,
+  "sizeLabel": "139,305,186 bytes (132.85 MiB)",
+  "releaseDate": "2026-09-15",
+  "releaseDateLabel": "September 15, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Resilient home-screen mic widget voice capture with session restore protection",
-    "Reliable speech recognition visibility for Android 11 and newer",
-    "Context-aware spoken account and category detection in widget notes",
-    "Safe balance adjustments waiting for live account data"
+    "Same-day transactions now keep the order you recorded them in",
+    "Import from Excel or CSV with the guided spreadsheet migration wizard",
+    "Save a complete JSON backup of your account from the share sheet",
+    "Delete several assistant conversations at once",
+    "Safe-to-spend guidance and voice draft auto-save on the dashboard"
   ]
 }
