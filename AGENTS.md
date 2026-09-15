@@ -30,6 +30,18 @@ When releasing new changes however small it may be, always treat it as a new ver
 - Prefer focused tests over broad, repetitive regression suites.
 - If a request is phrased as a question, answer it without editing files and offer implementation separately.
 
+## Implementation
+
+- Write the smallest change that preserves behavior and contracts. Prefer fewer new files, types, hooks, and wrappers.
+- Correctness outranks brevity. Do not remove boundary validation, fail-closed auth, tenant scoping, integer-money handling, or sync/outbox atomicity to shorten code. See `docs/maintainability.md`.
+- Protect boundaries, streamline internals. Validate at I/O (HTTP bodies, env, storage, third-party APIs, user input). After schema/type validation, do not repeat the same null/shape checks in internal code.
+- Subtraction over addition. When replacing logic, delete the old path instead of wrapping it. Do not delete adjacent error or compatibility handling you have not verified as dead.
+- Do not add single-use wrappers, adapter types, or helper functions for logic used once. Extract only when the logic is reused, independently testable, or makes a domain rule obvious.
+- In UI code, derive values during render. Do not add extra `useState` plus a sync `useEffect` to copy props or query data. Keep effects for subscriptions, one-time setup, imperative APIs, and true external synchronization.
+- Prefer early returns over nested `if/else`. Do not replace clear domain branches with clever maps or dense ternaries.
+- Comments explain constraints and non-obvious why. Do not add comments that only narrate the next line. Keep existing useful comments current.
+- Match the local file’s style. Do not introduce a new abstraction layer for a one-off change.
+
 ## Design Preferences
 
 - Prefer not to use gradient coloring on card, floating card and backgrounds
