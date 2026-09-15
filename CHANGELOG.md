@@ -4,15 +4,27 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.32.3 — 2026-09-15
+
+### Changed
+
+- Refreshed web install page metadata and direct APK links to Android Beta 0.2.27 (versionCode 20327).
+
+## 2.32.2 — 2026-09-15
+
 ### Changed
 
 - Prepared Android Beta 0.2.27 (versionCode 20327) mobile release and refreshed in-app patch notes.
-- Refreshed web install page metadata and direct APK links to Android Beta 0.2.27 (versionCode 20327).
 
 ### Fixed
 
 - Fixed the web ledger reshuffling same-day transactions right after a save: the optimistic re-sort ranked rows by id, promoted edited rows, and compared signed amounts while the API orders by absolute amount and breaks same-date ties on creation time. Transaction lists now carry the server's `createdAt`, so a saved row lands exactly where the next page read puts it.
 - Fixed mobile transactions appearing out of order within the same date: same-day entries were ranked by an internal id, so a transaction recorded later could land at the bottom of its day instead of the top. The ledger, the monthly list and the dashboard's Recent activity card now order same-day entries newest first.
+
+## 2.32.1 — 2026-09-14
+
+### Fixed
+
 - Hardened avatar URL handling in `UserAvatar` with strict protocol verification against DOM XSS.
 - Replaced insecure pseudo-random generation in transaction saved views with `crypto.randomUUID()`.
 - Upgraded `sharp` to 0.35.4 to resolve upstream libheif vulnerabilities (GHSA-rgj7-g3m4-5g8c).
