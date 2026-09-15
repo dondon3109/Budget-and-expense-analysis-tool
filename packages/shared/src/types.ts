@@ -27,6 +27,8 @@ export interface TransactionRecord {
 export interface TransactionListItem extends TransactionRecord {
   accountId: string | null;
   notes: string | null;
+  /** Server `created_at`; ties same-date rows. Absent on rows built from local-only storage. */
+  createdAt?: string;
   transferGroupId?: string | null;
   fromAccountId?: string | null;
   fromAccountName?: string | null;

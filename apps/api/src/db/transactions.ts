@@ -58,6 +58,7 @@ type TransactionRow = {
   accountId: string | null;
   accountName: string | null;
   notes: string | null;
+  createdAt: string;
   transferFeeMinor: number | null;
   transferGroupId: string | null;
   toAccountId: string | null;
@@ -100,6 +101,7 @@ const LOGICAL_ROWS_SELECT = `SELECT
   t.account_id AS accountId,
   a.name AS accountName,
   t.notes AS notes,
+  t.created_at AS createdAt,
   t.transfer_group_id AS transferGroupId,
   peer.account_id AS toAccountId,
   destination.name AS toAccountName`;

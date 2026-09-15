@@ -44,6 +44,76 @@ describe("optimistic transaction lists", () => {
     });
   });
 
+  it("keeps same-date rows in the API's newest-created-first order", () => {
+    const older = { ...item, id: "transaction-older", createdAt: "2026-08-26 08:00:00" };
+    const newer = { ...item, id: "transaction-newer", createdAt: "2026-08-26 09:00:00" };
+    const pending = {
+      ...item,
+      id: "optimistic:transaction:1",
+      createdAt: "2026-08-26 10:00:00",
+    };
+
+    const next = saveOptimisticTransaction(
+      { ...page, items: [older, newer], total: 2 },
+      query,
+      pending,
+    );
+
+    expect(next?.items.map((row) => row.id)).toEqual([
+      "optimistic:transaction:1",
+      "transaction-newer",
+      "transaction-older",
+    ]);
+  });
+
+  it("leaves an edited row where the API created it", () => {
+    const oldest = { ...item, id: "transaction-oldest", createdAt: "2026-08-26 07:00:00" };
+    const newest = { ...item, id: "transaction-newest", createdAt: "2026-08-26 09:00:00" };
+    const edited = { ...item, id: "transaction-oldest", createdAt: oldest.createdAt };
+
+    const next = saveOptimisticTransaction(
+      { ...page, items: [newest, oldest], total: 2 },
+      query,
+      edited,
+      oldest.id,
+    );
+
+    expect(next?.items.map((row) => row.id)).toEqual(["transaction-newest", "transaction-oldest"]);
+  });
+
+  it("ranks amounts by magnitude the way the API's ABS() ordering does", () => {
+    const expense = {
+      ...item,
+      id: "transaction-expense",
+      amountMinor: -5_000,
+      createdAt: "2026-08-26 09:00:00",
+    };
+    const income = {
+      ...item,
+      id: "transaction-income",
+      amountMinor: 4_000,
+      createdAt: "2026-08-26 10:00:00",
+    };
+    const small = {
+      ...item,
+      id: "transaction-small",
+      amountMinor: 100,
+      createdAt: "2026-08-26 11:00:00",
+    };
+
+    const next = saveOptimisticTransaction(
+      { ...page, items: [income, expense], total: 2 },
+      { ...query, sortBy: "amount" as const },
+      small,
+    );
+
+    expect(next?.items.map((row) => row.id)).toEqual([
+      "transaction-expense",
+      "transaction-income",
+      "transaction-small",
+    ]);
+  });
+
   it("removes an edited transaction when it no longer matches the active filter", () => {
     const filteredQuery = { ...query, kind: "income" as const };
     const current = { ...page, items: [item], total: 1 };

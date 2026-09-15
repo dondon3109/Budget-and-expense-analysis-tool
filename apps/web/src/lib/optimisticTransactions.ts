@@ -7,17 +7,29 @@ import type {
   TransactionPage,
 } from "@zoption/shared";
 
+/**
+ * Mirrors the API's ORDER BY: the chosen column carries the sort direction, then
+ * date, creation time and id always break ties newest first. An optimistic row
+ * then lands where the next page read would put it instead of jumping around.
+ */
 function compareTransactions(
   left: TransactionListItem,
   right: TransactionListItem,
   query: TransactionListQuery,
 ): number {
-  let result: number;
-  if (query.sortBy === "amount") result = left.amountMinor - right.amountMinor;
-  else if (query.sortBy === "description")
-    result = left.description.localeCompare(right.description);
-  else result = left.date.localeCompare(right.date) || left.id.localeCompare(right.id);
-  return query.sortDirection === "asc" ? result : -result;
+  const direction = query.sortDirection === "asc" ? 1 : -1;
+  const primary =
+    query.sortBy === "amount"
+      ? Math.abs(left.amountMinor) - Math.abs(right.amountMinor)
+      : query.sortBy === "description"
+        ? left.description.localeCompare(right.description)
+        : left.date.localeCompare(right.date);
+  if (primary !== 0) return primary * direction;
+  return (
+    right.date.localeCompare(left.date) ||
+    (right.createdAt ?? "").localeCompare(left.createdAt ?? "") ||
+    right.id.localeCompare(left.id)
+  );
 }
 
 export function transactionMatchesQuery(
@@ -41,11 +53,20 @@ export function transactionMatchesQuery(
   );
 }
 
+/**
+ * Stands in for the API's `created_at` while a save is in flight, in the same
+ * `datetime('now')` shape so a pending row compares against server rows directly.
+ */
+function pendingCreatedAt(): string {
+  return new Date().toISOString().slice(0, 19).replace("T", " ");
+}
+
 export function optimisticTransaction(
   id: string,
   input: TransactionInput,
   categories: readonly CategoryRecord[],
   accounts: readonly AccountRecord[],
+  createdAt: string = pendingCreatedAt(),
 ): TransactionListItem {
   const category = categories.find((item) => item.id === input.categoryId);
   const account =
@@ -71,6 +92,7 @@ export function optimisticTransaction(
       account?.name ??
       (fromAccount && toAccount ? `${fromAccount.name} → ${toAccount.name}` : "Account"),
     notes: input.notes ?? null,
+    createdAt,
     transferGroupId: null,
     fromAccountId: fromAccount?.id ?? null,
     fromAccountName: fromAccount?.name ?? null,

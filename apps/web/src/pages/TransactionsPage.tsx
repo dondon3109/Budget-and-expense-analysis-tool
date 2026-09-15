@@ -409,6 +409,7 @@ export function TransactionsPage() {
         input,
         categoriesQuery.data ?? [],
         accountsQuery.data ?? [],
+        form?.createdAt,
       );
       const snapshot = await updateOptimistically<TransactionPage>(
         queryClient,
