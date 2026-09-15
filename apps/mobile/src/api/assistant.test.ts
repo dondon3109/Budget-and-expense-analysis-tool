@@ -215,6 +215,33 @@ describe("assistant api transport", () => {
     expect(preferences.debtStrategy).toBe("avalanche");
   });
 
+  it("decodes memory provenance on list and update responses", async () => {
+    const item = {
+      id: "mem-1",
+      kind: "fact",
+      key: "monthly_budget_cap",
+      value: "Monthly budget PHP 30,000",
+      source: "deterministic",
+      threadId: "11111111-1111-4111-8111-111111111111",
+      threadTitle: "Budget review",
+      createdAt: "2026-05-01T08:00:00.000Z",
+      updatedAt: "2026-05-02T08:00:00.000Z",
+    };
+    const fetchMock = jest.fn(async () => jsonResponse([item]));
+
+    const memory = await getAssistantMemory({ accessToken: token, fetchImpl: fetchMock });
+    expect(memory[0]?.threadId).toBe(item.threadId);
+    expect(memory[0]?.threadTitle).toBe("Budget review");
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(item));
+    const updated = await updateAssistantMemory(
+      { accessToken: token, fetchImpl: fetchMock },
+      "mem-1",
+      item.value,
+    );
+    expect(updated.threadTitle).toBe("Budget review");
+  });
+
   it("updates and deletes one memory through the item path", async () => {
     const updated = {
       id: "mem-1",

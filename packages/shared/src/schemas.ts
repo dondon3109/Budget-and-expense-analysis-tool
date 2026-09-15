@@ -1066,6 +1066,8 @@ export const assistantMemoryItemSchema = z
     key: z.string().max(240),
     value: z.string().max(20_000),
     source: z.enum(["user_stated", "deterministic", "model_assisted"]),
+    threadId: z.string().min(1).max(180).nullable().optional(),
+    threadTitle: z.string().max(240).nullable().optional(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
