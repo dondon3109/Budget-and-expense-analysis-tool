@@ -415,6 +415,43 @@ describe("assistant service model-memory pass usage", () => {
     ).toBe(false);
   });
 
+  it("never lets a superseded key delete the payoff preference", async () => {
+    const repository = createRepository();
+    const assistantProvider: AssistantProvider = {
+      complete: vi.fn(async () => ({
+        model: "deepseek-v4-flash",
+        finishReason: "stop",
+        message: {
+          role: "assistant" as const,
+          content:
+            '{"memories":[{"key":"debt_rule","value":"Pays the smallest balance first","supersedes":["debt_strategy"]}]}',
+        },
+      })),
+    };
+    const service = createAssistantService(
+      repository,
+      successfulOrchestrator(),
+      undefined,
+      undefined,
+      assistantProvider,
+      modelUsage(vi.fn(async () => true)),
+    );
+    const memoryEnv = { ...env, ASSISTANT_MEMORY_MODEL_PASS: "on" as const };
+
+    await expect(service.sendTurn(memoryEnv, tenantId, threadId, memoryInput)).resolves.toEqual(
+      completed,
+    );
+
+    // Superseding may replace a stored fact, but the preference is the user's choice.
+    expect(repository.deleteMemory).toHaveBeenCalledWith(memoryEnv, tenantId, "fact", "debt_strategy");
+    expect(repository.deleteMemory).not.toHaveBeenCalledWith(
+      memoryEnv,
+      tenantId,
+      "preference",
+      "debt_strategy",
+    );
+  });
+
   it("compacts stored facts after the model-assisted pass has persisted", async () => {
     const repository = createRepository();
     vi.mocked(repository.countFacts).mockResolvedValue(MAX_MEMORY_FACTS_STORED + 1);

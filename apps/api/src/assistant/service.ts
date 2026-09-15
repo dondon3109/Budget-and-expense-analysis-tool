@@ -265,8 +265,9 @@ export function createAssistantService(
         const canonical = canonicalizeMemoryKey(old);
         const next = canonicalizeMemoryKey(memory.key);
         if (canonical && canonical !== next) {
+          // Only facts are replaced. Preferences belong to the Memory panel control,
+          // and a model-assisted suggestion must never delete the user's choice.
           await repository.deleteMemory(env, tenantId, "fact", canonical);
-          await repository.deleteMemory(env, tenantId, "preference", canonical);
         }
       }
     };
