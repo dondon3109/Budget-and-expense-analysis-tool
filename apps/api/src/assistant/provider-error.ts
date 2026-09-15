@@ -4,6 +4,7 @@ export type AssistantProviderErrorKind =
 export type AssistantProviderFailureReason =
   | "missing_api_key"
   | "credentials_rejected"
+  | "insufficient_credits"
   | "rate_limited"
   | "upstream_unavailable"
   | "fetch_failed"

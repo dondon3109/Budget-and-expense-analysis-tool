@@ -69,6 +69,11 @@ function classifyStatus(
   if (status === 429) return { kind: "rate_limit", reason: "rate_limited" };
   if (status === 401 || status === 403)
     return { kind: "configuration", reason: "credentials_rejected" };
+  // HTTP 402 is an unfunded account ("Insufficient Balance", Google billing errors).
+  // Like rejected credentials that is an account-state problem the caller cannot
+  // retry away, so it reuses the `configuration` kind and stays distinguishable
+  // through its own reason.
+  if (status === 402) return { kind: "configuration", reason: "insufficient_credits" };
   if (status >= 500) return { kind: "unavailable", reason: "upstream_unavailable" };
   return { kind: "invalid_response", reason: "request_rejected" };
 }
@@ -175,6 +180,7 @@ export class ChatCompletionsProvider implements AssistantProvider {
       const messages: Record<AssistantProviderError["reason"], string> = {
         missing_api_key: "The assistant provider is not configured.",
         credentials_rejected: "The assistant provider rejected its credentials.",
+        insufficient_credits: "The assistant provider account has no remaining credit.",
         rate_limited: "The assistant provider is temporarily rate limited.",
         upstream_unavailable: "The assistant provider is temporarily unavailable.",
         fetch_failed: "The assistant provider is unavailable.",

@@ -266,13 +266,14 @@ describe("ChatCompletionsProvider (openai/gemini/meta/muse_spark/deepseek)", () 
 
   it.each([
     [401, "configuration", "credentials_rejected"],
+    [402, "configuration", "insufficient_credits"],
     [429, "rate_limit", "rate_limited"],
     [500, "unavailable", "upstream_unavailable"],
     [400, "invalid_response", "request_rejected"],
-  ] as const)("maps HTTP %i to %s/%s", async (status, kind, reason) => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(new Response("sensitive-body", { status }));
+  ] as const)("maps HTTP %i to %s/%s without reading the body", async (status, kind, reason) => {
+    const response = new Response("sensitive-body", { status });
+    const jsonSpy = vi.spyOn(response, "json");
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response);
     const provider = new ChatCompletionsProvider(
       {
         provider: "muse_spark",
@@ -285,6 +286,7 @@ describe("ChatCompletionsProvider (openai/gemini/meta/muse_spark/deepseek)", () 
     await expect(
       provider.complete({ DB: {} as D1Database } as Bindings, request),
     ).rejects.toMatchObject({ kind, reason, provider: "muse_spark", providerStatus: status });
+    expect(jsonSpy).not.toHaveBeenCalled();
   });
 });
 

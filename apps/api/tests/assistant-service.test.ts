@@ -178,6 +178,14 @@ const cases: Array<{
     message: "The assistant is temporarily unavailable. Try again later.",
   },
   {
+    kind: "configuration",
+    reason: "insufficient_credits",
+    providerStatus: 402,
+    status: 503,
+    code: "assistant_provider_unfunded",
+    message: "The assistant is unavailable because its provider account is out of credit.",
+  },
+  {
     kind: "rate_limit",
     reason: "rate_limited",
     providerStatus: 429,

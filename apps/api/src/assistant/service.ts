@@ -132,6 +132,15 @@ function reportProviderFailure(
 
 function mapProviderError(error: unknown): never {
   if (!(error instanceof AssistantProviderError)) throw error;
+  // Retrying cannot fix an unfunded provider account, so it gets its own code and
+  // copy instead of the retry guidance every other mapping gives.
+  if (error.reason === "insufficient_credits") {
+    throw new HttpError(
+      503,
+      "assistant_provider_unfunded",
+      "The assistant is unavailable because its provider account is out of credit.",
+    );
+  }
   if (error.kind === "blocked") {
     throw new HttpError(
       422,
