@@ -61,6 +61,14 @@ const MONTH_NAME =
   "jan(?:uary)?|enero|feb(?:ruary)?|pebrero|mar(?:ch)?|marso|apr(?:il)?|abril|mayo?|jun(?:e)?|hunyo|jul(?:y)?|hulyo|aug(?:ust)?|agosto|sep(?:t(?:ember)?)?|set(?:y|i)embre|oct(?:ober)?|oktubre|nov(?:ember)?|nob(?:y|i)embre|dec(?:ember)?|dis(?:y|i)embre";
 const DEFAULT_CLARIFICATION =
   "Which month or date range should I use? For example, August 2026 or July 1 to August 2, 2026.";
+const DEFAULT_CLARIFICATION_TAGALOG =
+  "Aling buwan o petsa ang nais mong gamitin? Halimbawa, Agosto 2026 o Hulyo 1 hanggang Agosto 2, 2026.";
+
+export function isTagalogMessage(message: string): boolean {
+  return /\b(?:mga|ang|ng|sa|ko|akin|aking|ako|mo|inyo|kanila|ano|magkano|alin|saan|bakit|paano|kumusta|gastos|nagastos|nagasta|kinita|kita|sweldo|sahod|pera|bangko|utang|badyet|buwan|taon|araw|kahapon|ngayon|kanina|subukan|ipakita|pakita|hanapin|meron|mayroon|walang|kabuuan)\b/i.test(
+    message,
+  );
+}
 
 function dateFromIso(value: string): Date {
   return new Date(`${value}T00:00:00Z`);
@@ -141,9 +149,11 @@ function namedMonthRange(message: string): PeriodResolution | undefined {
   const match = pattern.exec(message);
   if (!match) return undefined;
   if (!match[2] && !match[4]) {
+    const isTagalog = isTagalogMessage(message);
     return {
-      clarification:
-        "Which year should I use for that month range? For example, July to August 2026.",
+      clarification: isTagalog
+        ? "Aling taon ang dapat kong gamitin para sa saklaw ng buwan? Halimbawa, Hulyo hanggang Agosto 2026."
+        : "Which year should I use for that month range? For example, July to August 2026.",
     };
   }
 
@@ -155,7 +165,12 @@ function namedMonthRange(message: string): PeriodResolution | undefined {
   const to = monthEnd(toYear, toMonth);
 
   if (from > to) {
-    return { clarification: "The start of the month range must be before the end." };
+    const isTagalog = isTagalogMessage(message);
+    return {
+      clarification: isTagalog
+        ? "Ang simula ng saklaw ng buwan ay dapat bago ang katapusan."
+        : "The start of the month range must be before the end.",
+    };
   }
   return { period: { from, to, label: label(from, to) } };
 }
@@ -164,7 +179,12 @@ function namedMonth(message: string): PeriodResolution | undefined {
   const match = new RegExp(`\\b(${MONTH_NAME})(?:\\s+((?:19|20)\\d{2}))?\\b`, "i").exec(message);
   if (!match) return undefined;
   if (!match[2]) {
-    return { clarification: "Which year should I use for that month? For example, August 2026." };
+    const isTagalog = isTagalogMessage(message);
+    return {
+      clarification: isTagalog
+        ? "Aling taon ang dapat kong gamitin para sa buwang iyon? Halimbawa, Agosto 2026."
+        : "Which year should I use for that month? For example, August 2026.",
+    };
   }
   const month = MONTHS[match[1]!.toLocaleLowerCase("en")]!;
   const year = Number(match[2]);
@@ -200,7 +220,7 @@ function relativePeriod(
     return { period: { from: day, to: day, label: "yesterday" } };
   }
   if (
-    /\b(?:this month|current month|month[ -]to[ -]date|mtd|ngayong buwan|kasalukuyang buwan)\b/i.test(
+    /\b(?:this month|current month|month[ -]to[ -]date|mtd|ngayong buwan|kasalukuyang buwan|sa buwang ito)\b/i.test(
       message,
     )
   ) {
@@ -217,7 +237,7 @@ function relativePeriod(
     };
   }
   if (
-    /\b(?:this year|current year|year[ -]to[ -]date|ytd|ngayong taon|kasalukuyang taon)\b/i.test(
+    /\b(?:this year|current year|year[ -]to[ -]date|ytd|ngayong taon|kasalukuyang taon|sa taong ito)\b/i.test(
       message,
     )
   ) {
@@ -256,8 +276,13 @@ function relativePeriod(
     /\b(?:nakalipas|nakaraang|huling)(?:\s+na)?\s+(\d{1,3})\s+araw\b/i.exec(message);
   if (days) {
     const count = Number(days[1]);
+    const isTagalog = isTagalogMessage(message);
     if (count < 1 || count > 730) {
-      return { clarification: "Choose a period between 1 and 730 days." };
+      return {
+        clarification: isTagalog
+          ? "Pumili ng panahon sa pagitan ng 1 at 730 araw."
+          : "Choose a period between 1 and 730 days.",
+      };
     }
     return {
       period: {
@@ -273,8 +298,13 @@ function relativePeriod(
     /\b(?:nakalipas|nakaraang|huling)(?:\s+na)?\s+(\d{1,2})\s+buwan\b/i.exec(message);
   if (months) {
     const count = Number(months[1]);
+    const isTagalog = isTagalogMessage(message);
     if (count < 1 || count > 24) {
-      return { clarification: "Choose a period between 1 and 24 months." };
+      return {
+        clarification: isTagalog
+          ? "Pumili ng panahon sa pagitan ng 1 at 24 buwan."
+          : "Choose a period between 1 and 24 months.",
+      };
     }
     return {
       period: {
@@ -286,12 +316,17 @@ function relativePeriod(
   }
 
   if (
-    /\b(?:all[ -]time|all\s+(?:recorded\s+)?history|since\s+(?:i\s+)?started|lahat ng transaksyon|simula nang magsimula|buong kasaysayan)\b/i.test(
+    /\b(?:all[ -]time|all\s+(?:recorded\s+)?history|since\s+(?:i\s+)?started|lahat ng (?:transaksyon|gastos|tala)|simula nang magsimula|buong kasaysayan|mula simula)\b/i.test(
       message,
     )
   ) {
     if (!bounds || bounds.transactionCount === 0) {
-      return { deterministicResponse: "I don't have any recorded transactions to analyze yet." };
+      const isTagalog = isTagalogMessage(message);
+      return {
+        deterministicResponse: isTagalog
+          ? "Wala pa akong naitalang mga transaksyon na susuriin."
+          : "I don't have any recorded transactions to analyze yet.",
+      };
     }
     return {
       period: { from: bounds.from, to: bounds.to, label: "all recorded history" },
@@ -320,7 +355,12 @@ export function resolveAssistantPeriod(
   if (month) return month;
 
   if (/\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/.test(message)) {
-    return { clarification: "Please use an unambiguous date such as 2026-08-02." };
+    const isTagalog = isTagalogMessage(message);
+    return {
+      clarification: isTagalog
+        ? "Mangyaring gumamit ng malinaw na petsa tulad ng 2026-08-02."
+        : "Please use an unambiguous date such as 2026-08-02.",
+    };
   }
 
   const yearMatch = /\b((?:19|20)\d{2})\b/.exec(message);
@@ -340,5 +380,8 @@ export function resolveAssistantPeriod(
 
   if (!requiresPeriod) return {};
   const inherited = inheritedPeriod(history);
-  return inherited ? { period: inherited } : { clarification: DEFAULT_CLARIFICATION };
+  const isTagalog = isTagalogMessage(message);
+  return inherited
+    ? { period: inherited }
+    : { clarification: isTagalog ? DEFAULT_CLARIFICATION_TAGALOG : DEFAULT_CLARIFICATION };
 }

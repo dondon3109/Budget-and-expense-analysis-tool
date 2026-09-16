@@ -1103,6 +1103,7 @@ export function grantAssistantVoiceConsent(
 export async function transcribeAssistantVoice(
   workspace: AuthenticatedWorkspace,
   audio: Blob,
+  language?: VoiceLanguage,
 ): Promise<AssistantVoiceTranscription> {
   const form = new FormData();
   const extension = audio.type.includes("mp4")
@@ -1111,6 +1112,7 @@ export async function transcribeAssistantVoice(
       ? "ogg"
       : "webm";
   form.set("audio", audio, `voice-input.${extension}`);
+  form.set("lang", language || "fil");
   const response = await workspaceFetch(
     workspace,
     "/api/app/assistant/voice/transcriptions",
@@ -1141,7 +1143,7 @@ export async function openVoiceStreamWebSocket(
   const base = apiUrl
     ? apiUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:")
     : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
-  const langParam = language ? `&lang=${encodeURIComponent(language)}` : "";
+  const langParam = language ? `&lang=${encodeURIComponent(language)}` : "&lang=fil";
   const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(token)}${langParam}`;
   return new WebSocket(wsUrl);
 }
@@ -1456,6 +1458,7 @@ export async function extractVoiceTransaction(
   workspace: AuthenticatedWorkspace,
   audioOrTranscript: Blob | { transcript: string },
   categories?: string[],
+  language?: VoiceLanguage,
 ): Promise<TransactionVoiceDraft> {
   const isDirectTranscript =
     !(audioOrTranscript instanceof Blob) &&
@@ -1469,6 +1472,7 @@ export async function extractVoiceTransaction(
         body: JSON.stringify({
           transcript: audioOrTranscript.transcript,
           ...(categories && categories.length > 0 ? { categories } : {}),
+          lang: language || "fil",
         }),
       }
     : (() => {
@@ -1480,6 +1484,7 @@ export async function extractVoiceTransaction(
             ? "ogg"
             : "webm";
         form.set("audio", audio, `voice-input.${extension}`);
+        form.set("lang", language || "fil");
         if (categories && categories.length > 0) {
           form.set("categories", JSON.stringify(categories));
         }

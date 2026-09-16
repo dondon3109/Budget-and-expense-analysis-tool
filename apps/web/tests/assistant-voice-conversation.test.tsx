@@ -649,4 +649,55 @@ describe("AssistantVoiceConversation", () => {
     );
     await stopListening();
   });
+
+  it("syncs voice language on zoption-voice-lang-change event in conversation", async () => {
+    installRecordingMocks();
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+
+    const tagalogBtn = screen.getByRole("button", { name: "Tagalog" });
+    const englishBtn = screen.getByRole("button", { name: "English" });
+    expect(tagalogBtn).toHaveClass("active");
+
+    window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "en" }));
+    await waitFor(() => {
+      expect(englishBtn).toHaveClass("active");
+      expect(tagalogBtn).not.toHaveClass("active");
+    });
+  });
+
+  it("passes voice language when falling back to batch transcription", async () => {
+    installRecordingMocks();
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      speechAvailable: true,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
+      ttsModel: "s2.1-pro-free",
+    });
+    apiMocks.transcribeAssistantVoice.mockResolvedValue({
+      text: "Magkano ang nagastos ko ngayong buwan?",
+      durationSeconds: 2,
+    });
+    apiMocks.createAssistantThread.mockResolvedValue({
+      thread: { id: "thread-1" },
+      assistantMessage: { id: "msg-1", content: "Nagastos mo ay PHP 1,000." },
+    });
+    apiMocks.getAssistantVoiceSpeech.mockResolvedValue(new Blob(["audio"]));
+
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+
+    await startListening();
+    await stopListening();
+
+    await waitFor(() =>
+      expect(apiMocks.transcribeAssistantVoice).toHaveBeenCalledWith(
+        workspace,
+        expect.any(Blob),
+        "fil",
+      ),
+    );
+  });
 });

@@ -10,11 +10,11 @@ const ISO_DATE_PATTERN = /\b\d{4}-\d{2}-\d{2}\b/g;
 const COUNT_OR_DURATION_PATTERN =
   /\b\d+(?:\.\d+)?(?:\s+na)?\s+(?:transactions?|records?|categories|debts?|goals?|charges?|days?|months?|years?|payments?|transaksyon|kategorya|utang|layunin|bayarin|araw|buwan|taon|bayad)\b/gi;
 const SHAMING_PATTERN =
-  /\b(?:irresponsible|a failure|bad with money|reckless spender|financially careless)\b/i;
+  /\b(?:irresponsible|a failure|bad with money|reckless spender|financially careless|iresponsable|bobo sa pera|aksaya sa pera|pabaya sa pera)\b/i;
 const INTERNAL_TOOL_PATTERN =
   /\b(?:get_account_balances|get_period_summary|get_spending_by_category|get_budget_vs_actual|detect_recurring_charges|detect_spending_anomalies|calculate_debt_payoff|calculate_savings_goal|list_transactions|list_categories)\b/i;
 const REGULATED_RECOMMENDATION_PATTERN =
-  /\b(?:you should|i recommend|best for you|right choice for you)\b.{0,80}\b(?:buy|sell|invest|allocate|file|deduct|insurance|coverage|retirement|will|trust|legal structure)\b/i;
+  /\b(?:you should|i recommend|best for you|right choice for you|dapat kang|inirerekomenda ko|pinakamainam para sa iyo)\b.{0,80}\b(?:buy|sell|invest|allocate|file|deduct|insurance|coverage|retirement|will|trust|legal structure|bumili|ibenta|mamuhunan|mag-invest|seguro|buwis|huling habilin|pensyon)\b/i;
 
 const TOOL_GROUPS: Record<string, RequiredToolGroup | undefined> = {
   get_account_balances: "account_balance",

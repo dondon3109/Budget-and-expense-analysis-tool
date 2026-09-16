@@ -585,6 +585,11 @@ describe("AssistantVoiceControl", () => {
       finishTranscription({ text: "Hello", durationSeconds: 1 });
       await Promise.resolve();
     });
+    expect(apiMocks.transcribeAssistantVoice).toHaveBeenCalledWith(
+      workspace,
+      expect.any(Blob),
+      "fil",
+    );
     expect(screen.getByRole("button", { name: "Start voice recording" })).toBeInTheDocument();
   });
 
@@ -618,5 +623,33 @@ describe("AssistantVoiceControl", () => {
     fireEvent.click(toggleBtn);
     expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
     expect(toggleBtn).toHaveTextContent("TL");
+  });
+
+  it("syncs voice language on zoption-voice-lang-change event in control", async () => {
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "gemini-3.5-transcribe-live",
+      ttsModel: "s2.1-pro-free",
+    });
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+    await act(async () => Promise.resolve());
+
+    const toggleBtn = screen.getByRole("button", { name: /Switch voice language/i });
+    expect(toggleBtn).toHaveTextContent("TL");
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "en" }));
+    });
+    expect(toggleBtn).toHaveTextContent("EN");
   });
 });

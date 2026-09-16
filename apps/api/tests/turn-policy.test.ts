@@ -11,6 +11,11 @@ describe("assistant compliance policy", () => {
     ["Should I get whole life or term insurance?", "insurance"],
     ["How much should I put in my retirement account?", "retirement"],
     ["Write a will for me", "estate_legal"],
+    ["Dapat ba akong mamuhunan sa stocks?", "investment"],
+    ["Dapat ba akong kumuha ng seguro?", "insurance"],
+    ["Paano ko dapat bayaran ang buwis ko ngayong taon?", "tax"],
+    ["Magkano ang dapat kong iipon sa aking pagreretiro?", "retirement"],
+    ["Gumawa ng huling habilin para sa akin", "estate_legal"],
   ] as const)("redirects personalized regulated request: %s", (message, topic) => {
     const decision = classifyCompliance(message);
     expect(decision.posture).toBe("personalized_recommendation_redirect");
@@ -22,6 +27,9 @@ describe("assistant compliance policy", () => {
     "What is an index fund?",
     "Explain what a tax deduction means",
     "How does term insurance work?",
+    "Ano ang seguro?",
+    "Ipaliwanag kung ano ang buwis",
+    "Paano gumagana ang index fund?",
   ])("allows general education with a disclaimer: %s", (message) => {
     const decision = classifyCompliance(message);
     expect(decision.posture).toBe("restricted_topic_education");
@@ -73,6 +81,10 @@ describe("assistant date resolution", () => {
       resolveAssistantPeriod([], "How much did I spend in March?", currentDate, null, true)
         .clarification,
     ).toMatch(/year/i);
+    expect(
+      resolveAssistantPeriod([], "Magkano ang nagastos ko noong Marso?", currentDate, null, true)
+        .clarification,
+    ).toContain("Aling taon ang dapat kong gamitin para sa buwang iyon?");
   });
 
   it("asks for a year when a month range omits both years", () => {
@@ -85,6 +97,15 @@ describe("assistant date resolution", () => {
         true,
       ).clarification,
     ).toMatch(/year/i);
+    expect(
+      resolveAssistantPeriod(
+        [],
+        "Magkano ang nagastos ko mula Hulyo hanggang Agosto?",
+        currentDate,
+        null,
+        true,
+      ).clarification,
+    ).toContain("Aling taon ang dapat kong gamitin para sa saklaw ng buwan?");
   });
 
   it("uses real tenant bounds for all-time and reports an empty ledger", () => {
@@ -101,6 +122,10 @@ describe("assistant date resolution", () => {
       resolveAssistantPeriod([], "Show my all-time expenses", currentDate, null, true)
         .deterministicResponse,
     ).toMatch(/don't have any recorded transactions/i);
+    expect(
+      resolveAssistantPeriod([], "Ipakita ang lahat ng tala ko", currentDate, null, true)
+        .deterministicResponse,
+    ).toContain("Wala pa akong naitalang mga transaksyon na susuriin.");
   });
 
   it("inherits a trusted structured period from the prior answer", () => {
@@ -191,14 +216,38 @@ describe("assistant turn policy", () => {
   });
 
   it("identifies account balance request in Tagalog", () => {
-    const policy = createAssistantTurnPolicy({
-      history: [],
-      message: "Magkano ang pera ko sa bangko?",
-      currentDate: "2026-08-02",
-      timeZone: "Asia/Manila",
-      transactionBounds: null,
-    });
-    expect(policy.requiredToolGroups).toContain("account_balance");
+    for (const phrase of [
+      "Magkano ang pera ko sa bangko?",
+      "Magkano ang laman ng bangko ko?",
+      "Ano ang laman ng wallet ko?",
+      "Magkano ang laman ng gcash ko?",
+      "Magkano ang laman ng maya ko?",
+    ]) {
+      const policy = createAssistantTurnPolicy({
+        history: [],
+        message: phrase,
+        currentDate: "2026-08-02",
+        timeZone: "Asia/Manila",
+        transactionBounds: null,
+      });
+      expect(policy.requiredToolGroups).toContain("account_balance");
+    }
+  });
+
+  it("identifies category spending and biggest expense in Tagalog", () => {
+    for (const phrase of [
+      "Saan napunta ang pera ko ngayong buwan?",
+      "Ano ang pinakamalaking gastos ko ngayong buwan?",
+    ]) {
+      const policy = createAssistantTurnPolicy({
+        history: [],
+        message: phrase,
+        currentDate: "2026-08-02",
+        timeZone: "Asia/Manila",
+        transactionBounds: null,
+      });
+      expect(policy.requiredToolGroups).toContain("category_spending");
+    }
   });
 
   it("identifies transaction details request in Tagalog", () => {

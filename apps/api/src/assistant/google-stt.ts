@@ -83,7 +83,7 @@ export function createGoogleSttProvider(
   apiKeyOverride?: string,
 ): AssistantVoiceTranscriptionProvider {
   return {
-    async transcribe(env, audio) {
+    async transcribe(env, audio, options) {
       const secret = apiKeyOverride?.trim() || "";
       if (!secret) throw new AssistantVoiceProviderError("google", "configuration");
 
@@ -128,7 +128,10 @@ export function createGoogleSttProvider(
                 {
                   parts: [
                     {
-                      text: "Transcribe this audio verbatim. The audio may be in Tagalog, Filipino, English, or Taglish. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
+                      text:
+                        options?.language === "en"
+                          ? "Transcribe this audio verbatim in English. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes."
+                          : "Transcribe this audio verbatim. The audio may be in Tagalog, Filipino, English, or Taglish. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
                     },
                     { inlineData: { mimeType: audioMime, data: b64 } },
                   ],
@@ -190,13 +193,14 @@ export function createGoogleSttProvider(
             headers["Authorization"] = `Bearer ${token}`;
           }
 
+          const isEnglish = options?.language === "en";
           const res = await fetch(endpoint, {
             method: "POST",
             headers,
             body: JSON.stringify({
               config: {
                 autoDecodingConfig: {},
-                languageCodes: ["fil-PH", "en-US"],
+                languageCodes: isEnglish ? ["en-US", "fil-PH"] : ["fil-PH", "en-US"],
                 model: effectiveModel,
               },
               content: b64,
@@ -218,19 +222,20 @@ export function createGoogleSttProvider(
           } | null;
           const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
           if (!transcript) throw new AssistantVoiceProviderError("google", "invalid_response");
-          return { text: transcript, durationSeconds: 0, languageCode: "fil-PH" };
+          return { text: transcript, durationSeconds: 0, languageCode: isEnglish ? "en-US" : "fil-PH" };
         }
 
         // Fallback for raw API key without projectId using Speech V1
         if (isGoogleGenerativeLanguageApiKey(token)) {
+          const isEnglish = options?.language === "en";
           const endpoint = `https://speech.googleapis.com/v1/speech:recognize?key=${encodeURIComponent(token)}`;
           const res = await fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               config: {
-                languageCode: "fil-PH",
-                alternativeLanguageCodes: ["en-US", "en-PH"],
+                languageCode: isEnglish ? "en-US" : "fil-PH",
+                alternativeLanguageCodes: isEnglish ? ["fil-PH", "en-PH"] : ["en-US", "en-PH"],
                 model: "latest_long",
               },
               audio: { content: b64 },

@@ -679,7 +679,7 @@ describe("API foundation", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ text: "Review this transcript" });
-    expect(transcribe).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
+    expect(transcribe).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File), "fil");
   });
 
   it("rejects JSON on the multipart voice transcription route", async () => {
@@ -889,7 +889,13 @@ describe("API foundation", () => {
       description: "Lunch",
       amountMinor: 25_000,
     });
-    expect(extractVoice).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
+    expect(extractVoice).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      expect.any(File),
+      undefined,
+      "fil",
+    );
 
     const jsonResponse = await app.request("/api/app/entry/voice", {
       method: "POST",

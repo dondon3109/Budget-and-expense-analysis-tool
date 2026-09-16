@@ -194,6 +194,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     };
 
     const micStart = context.req.header("x-t-mic-start") || String(tWorkerOpen);
+    const requestedLang = context.req.query("lang");
 
     // ==========================================
     // OPTION A: Google Gemini Multimodal Live API
@@ -210,13 +211,10 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       const modelName = sttCfg.model.includes("/") ? sttCfg.model : `models/${sttCfg.model}`;
 
       const isTranscribeLive = sttCfg.model === "gemini-3.5-transcribe-live";
-      const requestedLang = context.req.query("lang");
       const languageCodes =
-        requestedLang === "fil"
-          ? ["fil-PH", "en-US"]
-          : requestedLang === "en"
-            ? ["en-US", "fil-PH"]
-            : [];
+        requestedLang === "en"
+          ? ["en-US", "fil-PH"]
+          : ["fil-PH", "en-US"];
       const setupPayload = isTranscribeLive
         ? {
             setup: {
@@ -528,6 +526,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           "x-t-mic-start": micStart,
           "x-zoption-tenant": tenant?.tenantId ? String(tenant.tenantId).slice(0, 8) : "anon",
           "x-zoption-user": authUser?.id ? String(authUser.id).slice(0, 8) : "anon",
+          "x-language": requestedLang || "fil",
         },
       } as unknown as RequestInit)) as unknown as {
         status: number;

@@ -25,7 +25,12 @@ const PHILIPPINE_PESO_AMOUNT =
 export interface AssistantVoiceService {
   getPreferences(env: Bindings, tenantId: string): Promise<AssistantVoicePreferences>;
   grantConsent(env: Bindings, tenantId: string): Promise<AssistantVoicePreferences>;
-  transcribe(env: Bindings, tenantId: string, audio: File): Promise<AssistantVoiceTranscription>;
+  transcribe(
+    env: Bindings,
+    tenantId: string,
+    audio: File,
+    language?: string,
+  ): Promise<AssistantVoiceTranscription>;
   synthesize(
     env: Bindings,
     tenantId: string,
@@ -238,10 +243,14 @@ export function createAssistantVoiceService(
       await repository.grantVoiceConsent(env, tenantId);
       return preferences(env, tenantId);
     },
-    async transcribe(env, tenantId, audio) {
+    async transcribe(env, tenantId, audio, language) {
       await requireConsent(env, tenantId);
       try {
-        return await providers.transcription.transcribe(env, audio);
+        return await providers.transcription.transcribe(
+          env,
+          audio,
+          language ? { language } : undefined,
+        );
       } catch (error) {
         return mapProviderError(error, reporter);
       }

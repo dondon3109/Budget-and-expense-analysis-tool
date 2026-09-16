@@ -209,7 +209,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
         setup: {
           model: "models/gemini-3.5-transcribe-live",
           generationConfig: { responseModalities: ["TEXT"] },
-          inputAudioTranscription: { languageCodes: [] },
+          inputAudioTranscription: { languageCodes: ["fil-PH", "en-US"] },
         },
       });
 

@@ -75,6 +75,7 @@ export function createAiEntryRoutes(service: AiEntryService) {
 
     const form = await context.req.formData();
     const categories = parseCategoryList(form.get("categories"));
+    const lang = (form.get("lang") as string | null) || context.req.query("lang") || "fil";
     const transcriptField = form.get("transcript");
     if (typeof transcriptField === "string" && transcriptField.trim().length > 0) {
       return context.json(
@@ -112,8 +113,15 @@ export function createAiEntryRoutes(service: AiEntryService) {
             context.get("tenant").tenantId,
             audio,
             categories,
+            lang,
           )
-        : await service.extractVoice(context.env, context.get("tenant").tenantId, audio),
+        : await service.extractVoice(
+            context.env,
+            context.get("tenant").tenantId,
+            audio,
+            undefined,
+            lang,
+          ),
     );
   });
 

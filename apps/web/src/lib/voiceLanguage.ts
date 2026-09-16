@@ -43,6 +43,7 @@ export function setStoredVoiceLanguage(lang: VoiceLanguage): void {
   if (typeof window === "undefined" || !window.localStorage) return;
   try {
     window.localStorage.setItem(VOICE_LANGUAGE_STORAGE_KEY, lang);
+    window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: lang }));
   } catch {
     // Ignore quota or private browsing storage failures
   }

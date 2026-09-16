@@ -277,9 +277,9 @@ export function createApp(options: AppOptions = {}) {
     options.assistantVoiceProviders ??
     ({
       transcription: {
-        async transcribe(env, audio) {
+        async transcribe(env, audio, options) {
           const { providers } = await providerRegistry.getVoiceProviders(env);
-          return providers.transcription.transcribe(env, audio);
+          return providers.transcription.transcribe(env, audio, options);
         },
       },
       speech: {

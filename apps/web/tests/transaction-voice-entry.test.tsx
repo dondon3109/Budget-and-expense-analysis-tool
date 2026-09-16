@@ -221,9 +221,12 @@ describe("TransactionVoiceEntry", () => {
     await user.click(await screen.findByRole("button", { name: "Stop and review" }));
 
     await waitFor(() =>
-      expect(apiMocks.extractVoiceTransaction).toHaveBeenCalledWith(workspace, {
-        transcript: "Spent 250 pesos on lunch today",
-      }),
+      expect(apiMocks.extractVoiceTransaction).toHaveBeenCalledWith(
+        workspace,
+        { transcript: "Spent 250 pesos on lunch today" },
+        undefined,
+        "fil",
+      ),
     );
     expect(onDraft).toHaveBeenCalledWith(draft);
   });
@@ -249,6 +252,7 @@ describe("TransactionVoiceEntry", () => {
         workspace,
         { transcript: "Spent 250 pesos on lunch today" },
         testCats,
+        "fil",
       ),
     );
     expect(onDraft).toHaveBeenCalledWith(draft);
@@ -293,5 +297,18 @@ describe("TransactionVoiceEntry", () => {
       expect.anything(),
       "fil",
     );
+  });
+
+  it("syncs voice language on zoption-voice-lang-change window event", async () => {
+    renderEntry();
+    const tagalogBtn = await screen.findByRole("button", { name: "Tagalog" });
+    const englishBtn = await screen.findByRole("button", { name: "English" });
+    expect(tagalogBtn).toHaveClass("active");
+
+    window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "en" }));
+    await waitFor(() => {
+      expect(englishBtn).toHaveClass("active");
+      expect(tagalogBtn).not.toHaveClass("active");
+    });
   });
 });

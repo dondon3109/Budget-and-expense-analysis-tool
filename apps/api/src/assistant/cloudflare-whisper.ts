@@ -49,25 +49,31 @@ function providerStatus(error: unknown): number | undefined {
 
 function createWhisperProvider(model: string = CLOUDFLARE_WHISPER_MODEL): AssistantVoiceTranscriptionProvider {
   return {
-    async transcribe(env, audio) {
+    async transcribe(env, audio, options) {
       if (!env.AI) {
         throw new AssistantVoiceProviderError("cloudflare_workers_ai", "configuration");
       }
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs(env));
-    try {
-      const result = await env.AI.run(
-        model,
-        {
-          audio: encodeBase64(await audio.arrayBuffer()),
-          task: "transcribe",
-          vad_filter: true,
-          condition_on_previous_text: false,
-        },
-        { signal: controller.signal },
-      );
-      const parsed = transcriptionSchema.safeParse(result);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs(env));
+      try {
+        const isEnglish = options?.language === "en";
+        const initialPrompt = isEnglish
+          ? "English financial transcription: budget, expenses, payments, income, groceries, salary, pesos, PHP."
+          : "Transkripsyon sa Tagalog, Filipino, at Taglish: gastos, bayad, bili, sweldo, pera, ipon, utang, kahapon, kanina, Php, pesos.";
+
+        const result = await env.AI.run(
+          model,
+          {
+            audio: encodeBase64(await audio.arrayBuffer()),
+            task: "transcribe",
+            vad_filter: true,
+            condition_on_previous_text: false,
+            initial_prompt: initialPrompt,
+          },
+          { signal: controller.signal },
+        );
+        const parsed = transcriptionSchema.safeParse(result);
       if (!parsed.success) {
         throw new AssistantVoiceProviderError("cloudflare_workers_ai", "invalid_response");
       }

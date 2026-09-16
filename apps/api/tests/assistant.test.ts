@@ -125,6 +125,29 @@ describe("assistant orchestration", () => {
     expect(reader.getPeriodSummary).not.toHaveBeenCalled();
   });
 
+  it("clarifies an ambiguous aggregate period in Tagalog without calling the provider", async () => {
+    const provider: AssistantProvider = {
+      complete: vi.fn(async (): Promise<ProviderCompletion> => {
+        throw new Error("The provider should not be called for deterministic clarification.");
+      }),
+    };
+    const reader = createReader();
+    const orchestrator = createAssistantOrchestrator(provider, reader);
+
+    const planned = await orchestrator.plan(
+      env,
+      "tenant-1",
+      [],
+      "Magkano ang kinita ko sa aking bangko?",
+    );
+
+    expect(planned.deterministicResponse).toBe(
+      "Aling buwan o petsa ang nais mong gamitin? Halimbawa, Agosto 2026 o Hulyo 1 hanggang Agosto 2, 2026.",
+    );
+    expect(provider.complete).not.toHaveBeenCalled();
+    expect(reader.getPeriodSummary).not.toHaveBeenCalled();
+  });
+
   it("requires and audits a trusted-period tool before accepting grounded figures", async () => {
     const requests: ProviderCompletionRequest[] = [];
     const provider: AssistantProvider = {

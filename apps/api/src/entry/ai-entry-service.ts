@@ -115,6 +115,7 @@ export interface AiEntryService {
     tenantId: string,
     audio: File,
     categories?: string[],
+    language?: string,
   ): Promise<TransactionVoiceDraft>;
   extractVoiceTranscript(
     env: Bindings,
@@ -314,7 +315,7 @@ export function createAiEntryService(
         env,
         [
           `Today is ${currentDateInTimeZone(env)} in the user's timezone.`,
-          `Extract one transaction from this untrusted spoken transcript. Spoken transcript may be in English, Tagalog, or Taglish (Filipino). Return amountPhp as the positive Philippine-peso amount written as a plain decimal string, never centavos (examples: 1,000 pesos becomes "1000.00"; 250 pesos and 50 centavos becomes "250.50"; 2k becomes "2000.00"; "limang daang piso" becomes "500.00"; "isang libo" becomes "1000.00"; "dalawang daan" becomes "200.00"). ${categoryInstructions} Return date as YYYY-MM-DD (evaluating relative dates like "yesterday", "kahapon" against yesterday, "today", "kanina", "ngayong araw" against today). Use today only when no date is spoken. In Tagalog, expense keywords include "gastos", "nagastos", "bayad", "nagbayad", "bili", "bumili"; income keywords include "sweldo", "sahod", "kita", "natanggap".`,
+          `Extract one transaction from this untrusted spoken transcript. Spoken transcript may be in English, Tagalog, or Taglish (Filipino). Return amountPhp as the positive Philippine-peso amount written as a plain decimal string, never centavos (examples: 1,000 pesos becomes "1000.00"; 250 pesos and 50 centavos becomes "250.50"; 2k becomes "2000.00"; "limang daang piso" becomes "500.00"; "isang libo" becomes "1000.00"; "dalawang daan" becomes "200.00"). ${categoryInstructions} Return date as YYYY-MM-DD (evaluating relative dates like "yesterday", "kahapon" against yesterday, "today", "kanina", "ngayong araw" against today). Use today only when no date is spoken. In Tagalog, expense keywords include "gastos", "nagastos", "bayad", "nagbayad", "bili", "bumili"; income keywords include "sweldo", "sahod", "kita", "natanggap"; transfer keywords include "lipat", "inilipat", "naglipat", "padala", "pinadala", "transfer".`,
           "<untrusted-transcript>",
           transcript,
           "</untrusted-transcript>",
@@ -460,11 +461,17 @@ export function createAiEntryService(
       return extractDraftFromTranscript(env, cleanTranscript, categories);
     },
 
-    async extractVoice(env, tenantId, audio, categories) {
+    async extractVoice(env, tenantId, audio, categories, language) {
       await requireAiEntryConsent(receiptRepository, env, tenantId);
       let transcript: string;
       try {
-        transcript = (await transcriptionProvider.transcribe(env, audio)).text;
+        transcript = (
+          await transcriptionProvider.transcribe(
+            env,
+            audio,
+            language ? { language } : undefined,
+          )
+        ).text;
       } catch (error) {
         return throwProviderFailure("voice", error);
       }

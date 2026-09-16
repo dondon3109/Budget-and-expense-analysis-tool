@@ -48,7 +48,7 @@ function requiredGroups(message: string): RequiredToolGroup[] {
   const personalized = PERSONAL_DATA_PATTERN.test(message);
 
   if (
-    /\b(?:account|wallet|cash|bank|credit|bangko|pera|kuwenta)\b.*\b(?:balances?|balanse)\b|\b(?:current balances?|balanse ng account|balanse ko|pera ko)\b/i.test(
+    /\b(?:account|wallet|cash|bank|credit|bangko|pera|kuwenta|gcash|maya)\b.*\b(?:balances?|balanse|laman)\b|\b(?:current balances?|balanse ng account|balanse ko|pera ko|laman ng (?:bangko|wallet|account|pera|gcash|maya)(?: ko)?)\b/i.test(
       message,
     )
   ) {
@@ -66,7 +66,7 @@ function requiredGroups(message: string): RequiredToolGroup[] {
     /\b(?:savings? goal|target|emergency fund|sinking fund|layunin(?:\s+sa\s+ipon)?|ipon goal)\b/i.test(
       message,
     ) &&
-    /\b(?:monthly|per month|contribut|save|reach|by|bawat buwan|kada buwan|buwan-buwan|mag-ipon|maabot|hulog)\b/i.test(
+    /\b(?:monthly|per month|contribut|save|reach|by|bawat buwan|kada buwan|buwan-buwan|mag-ipon|maabot|makamit|hulog|iipon|maiipon)\b/i.test(
       message,
     )
   ) {
@@ -112,7 +112,7 @@ function requiredGroups(message: string): RequiredToolGroup[] {
   }
   if (
     personalized &&
-    /\b(?:by category|category breakdown|which category|dining|grocer(?:y|ies)|transport|rent|bawat kategorya|kada kategorya|aling kategorya|pagkain|pamamalengke|groseri|transportasyon|upa)\b/i.test(
+    /\b(?:by category|category breakdown|which category|dining|grocer(?:y|ies)|transport|rent|bawat kategorya|kada kategorya|aling kategorya|pagkain|pamamalengke|groseri|transportasyon|upa|where did (?:most of )?my money go|saan napunta ang pera ko|pinakamalaki(?:ng)? (?:gastos|kategorya|pinagkakagastusan)|biggest expense|top expense|highest spend(?:ing)?)\b/i.test(
       message,
     )
   ) {
@@ -128,7 +128,7 @@ function requiredGroups(message: string): RequiredToolGroup[] {
   }
   if (
     groups.has("anomaly") &&
-    /\b(?:overspend|over budget|budget|sumobra|lumagpas|badyet)\b/i.test(message)
+    /\b(?:overspend|over budget|budget|sumobra|lumagpas|badyet|gastos|gastusin)\b/i.test(message)
   ) {
     groups.add("budget_comparison");
     groups.add("category_spending");

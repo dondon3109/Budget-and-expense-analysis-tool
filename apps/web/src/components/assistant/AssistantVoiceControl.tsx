@@ -228,10 +228,24 @@ export function AssistantVoiceControl({
     setMessage(undefined);
   }, [disabled]);
 
+  useEffect(() => {
+    function onLangChange(e: Event) {
+      const detail = (e as CustomEvent<VoiceLanguage>).detail;
+      if (detail === "fil" || detail === "en") {
+        setVoiceLanguage(detail);
+        if (speechRecognitionRef.current) {
+          speechRecognitionRef.current.lang = speechRecognitionLang(detail);
+        }
+      }
+    }
+    window.addEventListener("zoption-voice-lang-change", onLangChange);
+    return () => window.removeEventListener("zoption-voice-lang-change", onLangChange);
+  }, []);
+
   async function transcribe(blob: Blob) {
     setStatus("transcribing");
     try {
-      const result = await transcribeAssistantVoice(workspace, blob);
+      const result = await transcribeAssistantVoice(workspace, blob, voiceLanguage);
       if (!mountedRef.current) return;
       onTranscript(result.text, TEXT_TRANSCRIPT_OPTIONS);
       setMessage("Transcript ready — review or edit it, then press Send.");
@@ -453,7 +467,10 @@ export function AssistantVoiceControl({
             let full = "";
             for (let i = 0; i < event.results.length; ++i) {
               const item = event.results[i];
-              if (item && item[0]) full += item[0].transcript;
+              if (item && item[0]) {
+                const chunk = item[0].transcript.trim();
+                if (chunk) full = full ? `${full} ${chunk}` : chunk;
+              }
             }
             const trimmed = full.trim();
             if (trimmed) {
@@ -464,9 +481,15 @@ export function AssistantVoiceControl({
           };
 
           recognition.onspeechend = () => {
-            if (recorderRef.current?.state === "recording") {
-              stopRecording("silence");
-            }
+            window.setTimeout(() => {
+              if (
+                mountedRef.current &&
+                recorderRef.current?.state === "recording" &&
+                liveTranscriptRef.current
+              ) {
+                stopRecording("silence");
+              }
+            }, 1000);
           };
 
           recognition.onerror = () => {};
@@ -484,15 +507,21 @@ export function AssistantVoiceControl({
         {
           onPartial: (partial) => {
             if (!mountedRef.current) return;
-            liveTranscriptRef.current = partial;
-            setLiveTranscript(partial);
-            onPartialTranscript?.(partial);
+            const text = partial.trim();
+            if (text) {
+              liveTranscriptRef.current = text;
+              setLiveTranscript(text);
+              onPartialTranscript?.(text);
+            }
           },
           onFinal: (final) => {
             if (!mountedRef.current) return;
-            liveTranscriptRef.current = final;
-            setLiveTranscript(final);
-            onPartialTranscript?.(final);
+            const text = final.trim();
+            if (text) {
+              liveTranscriptRef.current = text;
+              setLiveTranscript(text);
+              onPartialTranscript?.(text);
+            }
           },
           onLatency: (metrics) => {
             // Latency instrumentation for Phase 2 — forwarded from worker (t_worker_first_partial)

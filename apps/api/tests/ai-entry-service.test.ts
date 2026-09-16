@@ -240,4 +240,48 @@ describe("AI entry service", () => {
     expect(toMarkdown).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
   });
+
+  it("extracts Tagalog voice transaction and forwards language option to transcription provider", async () => {
+    const mockTranscribe = vi.fn(async () => ({
+      text: "Naglipat ako ng 500 pesos sa Maya kanina",
+      durationSeconds: 3,
+    }));
+    const run = vi.fn(async () => ({
+      response: {
+        draft: {
+          description: "Transfer to Maya",
+          amountPhp: "500.00",
+          kind: "transfer",
+          categoryName: "Transfer",
+        },
+      },
+    }));
+    const customTranscriptionProvider = {
+      transcribe: mockTranscribe,
+    };
+    const service = createAiEntryService(
+      repository(),
+      imports(),
+      customTranscriptionProvider,
+    );
+
+    const result = await service.extractVoice(
+      env(run, vi.fn()),
+      "tenant-id",
+      new File([new Uint8Array([1, 2, 3])], "voice.m4a", { type: "audio/mp4" }),
+      ["Transfer", "Food & dining"],
+      "fil",
+    );
+
+    expect(result).toMatchObject({
+      transcript: "Naglipat ako ng 500 pesos sa Maya kanina",
+      amountMinor: 50_000,
+      kind: "transfer",
+    });
+    expect(mockTranscribe).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { language: "fil" },
+    );
+  });
 });

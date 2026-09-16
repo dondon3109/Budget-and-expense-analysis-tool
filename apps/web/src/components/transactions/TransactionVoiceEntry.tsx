@@ -171,6 +171,20 @@ export function TransactionVoiceEntry({
     }
   }
 
+  useEffect(() => {
+    function onLangChange(e: Event) {
+      const detail = (e as CustomEvent<VoiceLanguage>).detail;
+      if (detail === "fil" || detail === "en") {
+        setVoiceLanguage(detail);
+        if (speechRecognitionRef.current) {
+          speechRecognitionRef.current.lang = speechRecognitionLang(detail);
+        }
+      }
+    }
+    window.addEventListener("zoption-voice-lang-change", onLangChange);
+    return () => window.removeEventListener("zoption-voice-lang-change", onLangChange);
+  }, []);
+
   const preferencesQuery = useQuery({
     queryKey: queryKeys.receiptPreferences(workspace),
     queryFn: () => getReceiptPreferences(workspace),
@@ -223,8 +237,8 @@ export function TransactionVoiceEntry({
     setStatus("transcribing");
     try {
       const draft = await (categories && categories.length > 0
-        ? extractVoiceTransaction(workspace, blob, categories)
-        : extractVoiceTransaction(workspace, blob));
+        ? extractVoiceTransaction(workspace, blob, categories, voiceLanguage)
+        : extractVoiceTransaction(workspace, blob, undefined, voiceLanguage));
       if (!mountedRef.current) return;
       onDraft(draft);
       setMessage(`Draft filled from: “${draft.transcript}”`);
@@ -365,8 +379,18 @@ export function TransactionVoiceEntry({
             setStatus("transcribing");
             try {
               const draft = await (categories && categories.length > 0
-                ? extractVoiceTransaction(workspace, { transcript: liveText }, categories)
-                : extractVoiceTransaction(workspace, { transcript: liveText }));
+                ? extractVoiceTransaction(
+                    workspace,
+                    { transcript: liveText },
+                    categories,
+                    voiceLanguage,
+                  )
+                : extractVoiceTransaction(
+                    workspace,
+                    { transcript: liveText },
+                    undefined,
+                    voiceLanguage,
+                  ));
               if (!mountedRef.current) return;
               onDraft(draft);
               setMessage(`Draft filled from: “${draft.transcript}”`);
@@ -414,7 +438,10 @@ export function TransactionVoiceEntry({
             let full = "";
             for (let i = 0; i < event.results.length; ++i) {
               const item = event.results[i];
-              if (item && item[0]) full += item[0].transcript;
+              if (item && item[0]) {
+                const chunk = item[0].transcript.trim();
+                if (chunk) full = full ? `${full} ${chunk}` : chunk;
+              }
             }
             const trimmed = full.trim();
             if (trimmed) {
@@ -424,9 +451,15 @@ export function TransactionVoiceEntry({
           };
 
           recognition.onspeechend = () => {
-            if (recorderRef.current?.state === "recording") {
-              stopRecording("silence");
-            }
+            window.setTimeout(() => {
+              if (
+                mountedRef.current &&
+                recorderRef.current?.state === "recording" &&
+                liveTranscriptRef.current
+              ) {
+                stopRecording("silence");
+              }
+            }, 1000);
           };
 
           recognition.onerror = () => {};

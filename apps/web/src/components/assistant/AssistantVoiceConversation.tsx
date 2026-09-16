@@ -194,6 +194,20 @@ export function AssistantVoiceConversation({
     }
   }
 
+  useEffect(() => {
+    function onLangChange(e: Event) {
+      const detail = (e as CustomEvent<VoiceLanguage>).detail;
+      if (detail === "fil" || detail === "en") {
+        setVoiceLanguage(detail);
+        if (speechRecognitionRef.current) {
+          speechRecognitionRef.current.lang = speechRecognitionLang(detail);
+        }
+      }
+    }
+    window.addEventListener("zoption-voice-lang-change", onLangChange);
+    return () => window.removeEventListener("zoption-voice-lang-change", onLangChange);
+  }, []);
+
   function setVoiceStatus(next: VoiceStatus) {
     statusRef.current = next;
     setStatus(next);
@@ -450,7 +464,7 @@ export function AssistantVoiceConversation({
 
   async function transcribeFallback(blob: Blob) {
     try {
-      const result = await transcribeAssistantVoice(workspace, blob);
+      const result = await transcribeAssistantVoice(workspace, blob, voiceLanguage);
       if (!mountedRef.current) return;
       await handleFinalTranscript(result.text);
     } catch (error) {
@@ -671,7 +685,8 @@ export function AssistantVoiceConversation({
             for (let i = 0; i < event.results.length; ++i) {
               const item = event.results[i];
               if (item && item[0]) {
-                full += item[0].transcript;
+                const chunk = item[0].transcript.trim();
+                if (chunk) full = full ? `${full} ${chunk}` : chunk;
               }
             }
             const trimmed = full.trim();

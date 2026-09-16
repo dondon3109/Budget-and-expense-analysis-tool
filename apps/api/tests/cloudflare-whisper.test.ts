@@ -37,6 +37,8 @@ describe("Cloudflare Whisper provider", () => {
       task: "transcribe",
       vad_filter: true,
       condition_on_previous_text: false,
+      initial_prompt:
+        "Transkripsyon sa Tagalog, Filipino, at Taglish: gastos, bayad, bili, sweldo, pera, ipon, utang, kahapon, kanina, Php, pesos.",
     });
     expect(call[2].signal).toBeInstanceOf(AbortSignal);
     expect(result).toEqual({

@@ -21,6 +21,7 @@ export interface AssistantVoiceTranscriptionProvider {
   transcribe(
     env: Bindings,
     audio: File,
+    options?: { language?: string },
   ): Promise<{ text: string; durationSeconds: number; languageCode?: string }>;
 }
 
