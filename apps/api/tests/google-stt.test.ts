@@ -56,7 +56,42 @@ describe("createGoogleSttProvider", () => {
       expect(interceptedUrl).toContain("gemini-3.5-transcribe:generateContent");
       expect(interceptedUrl).toContain("key=AIzaSySecretVoiceKey9999");
       expect(interceptedBody.contents[0].parts[1].inlineData.mimeType).toBe("audio/webm");
+      expect(interceptedBody.contents[0].parts[0].text).toContain("in English");
       expect(res.text).toBe("Spent fifty pesos at Jollibee");
+      expect(res.languageCode).toBe("en-US");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("uses Tagalog prompt and languageCode fil-PH when language is fil on Gemini endpoint", async () => {
+    const originalFetch = globalThis.fetch;
+    let interceptedBody: any = null;
+
+    globalThis.fetch = vi.fn(async (_url: string, init: any) => {
+      interceptedBody = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: "Nagbayad ng limampung piso" }],
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as any;
+
+    try {
+      const provider = createGoogleSttProvider("gemini-3.5-transcribe", "AIzaSySecretVoiceKey9999");
+      const audioBlob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "audio/webm" });
+      const res = await provider.transcribe({} as any, audioBlob as any, { language: "fil" });
+
+      expect(interceptedBody.contents[0].parts[0].text).toContain("Tagalog, Filipino");
+      expect(res.text).toBe("Nagbayad ng limampung piso");
+      expect(res.languageCode).toBe("fil-PH");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -204,6 +239,78 @@ describe("createGoogleSttProvider", () => {
       expect(interceptedUrl).toContain("speech.googleapis.com/v1/speech:recognize");
       expect(interceptedUrl).toContain("key=AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ");
       expect(res.text).toBe("V1 AQ transcribed text");
+      expect(res.languageCode).toBe("en-US");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("configures fil-PH and returns fil-PH on Speech V2 when language is fil", async () => {
+    const originalFetch = globalThis.fetch;
+    let interceptedBody: any = null;
+
+    globalThis.fetch = vi.fn(async (_url: string, init: any) => {
+      interceptedBody = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          results: [
+            {
+              alternatives: [{ transcript: "Speech V2 Tagalog text" }],
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as any;
+
+    try {
+      const jsonSecret = JSON.stringify({
+        projectId: "test-gcp-project",
+        apiKey: "AIzaSyKey1234",
+        location: "us",
+      });
+      const provider = createGoogleSttProvider("chirp_3", jsonSecret);
+      const audioBlob = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" });
+      const res = await provider.transcribe({} as any, audioBlob as any, { language: "fil" });
+
+      expect(interceptedBody.config.languageCodes).toEqual(["fil-PH", "en-US"]);
+      expect(res.text).toBe("Speech V2 Tagalog text");
+      expect(res.languageCode).toBe("fil-PH");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("configures fil-PH and returns fil-PH on Speech V1 fallback when language is fil", async () => {
+    const originalFetch = globalThis.fetch;
+    let interceptedBody: any = null;
+
+    globalThis.fetch = vi.fn(async (_url: string, init: any) => {
+      interceptedBody = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({
+          results: [
+            {
+              alternatives: [{ transcript: "Speech V1 Tagalog text" }],
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as any;
+
+    try {
+      const provider = createGoogleSttProvider(
+        "chirp_3",
+        "AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ",
+      );
+      const audioBlob = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" });
+      const res = await provider.transcribe({} as any, audioBlob as any, { language: "fil" });
+
+      expect(interceptedBody.config.languageCode).toBe("fil-PH");
+      expect(interceptedBody.config.alternativeLanguageCodes).toEqual(["en-US", "en-PH"]);
+      expect(res.text).toBe("Speech V1 Tagalog text");
+      expect(res.languageCode).toBe("fil-PH");
     } finally {
       globalThis.fetch = originalFetch;
     }

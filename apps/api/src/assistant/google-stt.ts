@@ -120,6 +120,7 @@ export function createGoogleSttProvider(
             headers["Authorization"] = `Bearer ${token}`;
           }
 
+          const isTagalog = options?.language === "fil" || options?.language === "tl";
           const res = await fetch(endpoint, {
             method: "POST",
             headers,
@@ -129,7 +130,7 @@ export function createGoogleSttProvider(
                   parts: [
                     {
                       text:
-                        options?.language === "fil"
+                        isTagalog
                           ? "Transcribe this audio verbatim. The audio may be in Tagalog, Filipino, English, or Taglish. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes."
                           : "Transcribe this audio verbatim in English. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
                     },
@@ -169,7 +170,7 @@ export function createGoogleSttProvider(
           } | null;
           const transcript = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
           if (!transcript) throw new AssistantVoiceProviderError("google", "invalid_response");
-          return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
+          return { text: transcript, durationSeconds: 0, languageCode: isTagalog ? "fil-PH" : "en-US" };
         }
 
         // Speech-to-Text V2 / chirp_3 path
@@ -193,7 +194,7 @@ export function createGoogleSttProvider(
             headers["Authorization"] = `Bearer ${token}`;
           }
 
-          const isTagalog = options?.language === "fil";
+          const isTagalog = options?.language === "fil" || options?.language === "tl";
           const res = await fetch(endpoint, {
             method: "POST",
             headers,
@@ -227,7 +228,7 @@ export function createGoogleSttProvider(
 
         // Fallback for raw API key without projectId using Speech V1
         if (isGoogleGenerativeLanguageApiKey(token)) {
-          const isTagalog = options?.language === "fil";
+          const isTagalog = options?.language === "fil" || options?.language === "tl";
           const endpoint = `https://speech.googleapis.com/v1/speech:recognize?key=${encodeURIComponent(token)}`;
           const res = await fetch(endpoint, {
             method: "POST",
@@ -257,7 +258,7 @@ export function createGoogleSttProvider(
           } | null;
           const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
           if (!transcript) throw new AssistantVoiceProviderError("google", "invalid_response");
-          return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
+          return { text: transcript, durationSeconds: 0, languageCode: isTagalog ? "fil-PH" : "en-US" };
         }
 
         // Without projectId or valid API key, fail as configuration error

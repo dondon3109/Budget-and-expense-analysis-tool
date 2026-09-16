@@ -211,10 +211,10 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       const modelName = sttCfg.model.includes("/") ? sttCfg.model : `models/${sttCfg.model}`;
 
       const isTranscribeLive = sttCfg.model === "gemini-3.5-transcribe-live";
-      const languageCodes =
-        requestedLang === "fil"
-          ? ["fil-PH", "en-US"]
-          : ["en-US", "fil-PH"];
+      const isTagalog = requestedLang === "fil" || requestedLang === "tl";
+      const languageCodes = isTagalog
+        ? ["fil-PH", "en-US"]
+        : ["en-US", "fil-PH"];
       const setupPayload = isTranscribeLive
         ? {
             setup: {
@@ -237,7 +237,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               systemInstruction: {
                 parts: [
                   {
-                    text: "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time. The user may speak in Tagalog, Filipino, English, or Taglish. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech.",
+                    text: isTagalog
+                      ? "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time. The user may speak in Tagalog, Filipino, English, or Taglish. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech."
+                      : "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time in English. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech.",
                   },
                 ],
               },
@@ -526,7 +528,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           "x-t-mic-start": micStart,
           "x-zoption-tenant": tenant?.tenantId ? String(tenant.tenantId).slice(0, 8) : "anon",
           "x-zoption-user": authUser?.id ? String(authUser.id).slice(0, 8) : "anon",
-          "x-language": requestedLang || "en",
+          "x-language": isTagalog ? "fil" : "en",
         },
       } as unknown as RequestInit)) as unknown as {
         status: number;

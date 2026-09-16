@@ -110,6 +110,7 @@ function installRecordingMocks() {
 }
 
 beforeEach(() => {
+  window.localStorage?.clear();
   sampleLevel = 128;
   apiMocks.getAssistantVoicePreferences.mockResolvedValue({
     enabled: true,
@@ -124,6 +125,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  window.localStorage?.clear();
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
