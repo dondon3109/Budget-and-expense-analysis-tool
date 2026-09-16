@@ -319,6 +319,8 @@ a {
   font: inherit;
 }
 button {
+  -webkit-appearance: none;
+  appearance: none;
   color: inherit;
 }
 a {
@@ -587,6 +589,8 @@ textarea:focus-visible {
 }
 
 .button {
+  -webkit-appearance: none;
+  appearance: none;
   min-height: var(--control-height);
   display: inline-flex;
   align-items: center;

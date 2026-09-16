@@ -139,17 +139,17 @@ function CookiePreferencesDialogContent() {
 
         <footer className="cookie-preferences-actions">
           <button type="button" className="button secondary" onClick={rejectAll}>
-            Reject All
+            <span>Reject All</span>
           </button>
           <button type="button" className="button secondary" onClick={acceptAll}>
-            Accept All
+            <span>Accept All</span>
           </button>
           <button
             type="button"
             className="button primary"
             onClick={() => savePreferences({ analytics, marketing })}
           >
-            Save Preferences
+            <span>Save Preferences</span>
           </button>
         </footer>
       </section>

@@ -44,10 +44,10 @@ export function CookieConsentBanner() {
       </div>
       <div className="cookie-consent-actions">
         <button type="button" className="button primary" onClick={acceptAll}>
-          Accept All
+          <span>Accept All</span>
         </button>
         <button type="button" className="button primary" onClick={rejectAll}>
-          Reject All
+          <span>Reject All</span>
         </button>
         <button
           type="button"
@@ -55,7 +55,7 @@ export function CookieConsentBanner() {
           data-cookie-preferences-trigger
           onClick={(event) => openPreferences(event.currentTarget)}
         >
-          Manage Preferences
+          <span>Manage Preferences</span>
         </button>
       </div>
     </aside>
