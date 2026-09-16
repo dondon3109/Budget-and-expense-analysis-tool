@@ -1,3 +1,4 @@
+import { assistantPayoffPreferenceKeys } from "@zoption/shared";
 import type {
   AssistantDebtStrategy,
   AssistantMemory,
@@ -43,10 +44,11 @@ const SECRET_PATTERNS: RegExp[] = [
   // sensitive. Pinned by a test.
   /\b\d{13,19}\b/,
   /\b(?:2[2-7]\d{2}|[3-6]\d{3})(?:[ -]\d{3,4}){3}(?:[ -]\d{1,3})?\b/,
-  // The Amex 4-6-5 grouping ("3714 496353 98431", "3782-822463-10005") is a real card
-  // shape the prefix pattern above cannot reach: a six-digit group never matches a 3-4
-  // digit one. The shape itself is the signal, so it needs no network prefix.
-  /\b\d{4}[ -]\d{6}[ -]\d{5}\b/,
+  // Card shapes the prefix pattern above cannot reach, because a six-digit group never
+  // matches a 3-4 digit one: Amex 4-6-5 ("3714 496353 98431") and Diners Club 4-6-4
+  // ("3056 930902 5904"). The shape itself is the signal, so no network prefix is needed
+  // — a false positive only drops one memory.
+  /\b\d{4}[ -]\d{6}[ -]\d{4,5}\b/,
   /\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b/,
   /\b09\d{2}[-\s]?\d{3}[-\s]?\d{4}\b/,
   /(?:client[_-]?secret|service[_-]?role)/i,
@@ -106,11 +108,19 @@ const MEMORY_CANONICAL_KEYS = [
 
 const DEBT_STRATEGY_VALUES = new Set(["avalanche", "snowball"]);
 
+/** The key every payoff-preference alias collapses into. */
+const PAYOFF_PREFERENCE_KEY = "debt_strategy";
+
 const KEY_ALIASES: Record<string, string> = {
+  // Derived from the shared set both Memory panels filter on, so the API and the
+  // clients cannot drift apart about which keys mean the payoff preference.
+  ...Object.fromEntries(
+    [...assistantPayoffPreferenceKeys]
+      .filter((key) => key !== PAYOFF_PREFERENCE_KEY)
+      .map((key) => [key, PAYOFF_PREFERENCE_KEY]),
+  ),
   pay_smallest_first: "debt_rule",
   smallest_debt_first: "debt_rule",
-  avalanche_method: "debt_strategy",
-  snowball_method: "debt_strategy",
   emergency_savings: "emergency_fund_target",
   emergency_savings_target: "emergency_fund_target",
   monthly_budget: "monthly_budget_cap",

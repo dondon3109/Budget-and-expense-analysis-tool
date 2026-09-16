@@ -1,4 +1,4 @@
-import type { AssistantMemory } from "@zoption/shared";
+import { assistantPayoffPreferenceKeys, type AssistantMemory } from "@zoption/shared";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -37,6 +37,23 @@ describe("assistant memory sanitization", () => {
     const sanitized = sanitizeMemoryValue(value);
     expect(sanitized.length).toBeLessThanOrEqual(240);
     expect(sanitized.endsWith("…")).toBe(true);
+  });
+
+  it("flags the four-six card groupings vendors actually use", () => {
+    expect(isSensitiveMemory("Amex 3714 496353 98431")).toBe(true);
+    expect(isSensitiveMemory("Amex 3782-822463-10005")).toBe(true);
+    expect(isSensitiveMemory("Diners 3056 930902 5904")).toBe(true);
+    expect(isSensitiveMemory("Diners 3056-930902-5904")).toBe(true);
+  });
+
+  it("keeps the API's payoff aliases in step with the shared client set", () => {
+    // The Memory panels hide these keys and the API folds them into one; deriving the
+    // aliases from the shared set is what stops the two from drifting apart.
+    for (const key of assistantPayoffPreferenceKeys) {
+      expect(canonicalizeMemoryKey(key)).toBe("debt_strategy");
+    }
+    // A payoff rule is a different concept and must keep canonicalizing to debt_rule.
+    expect(canonicalizeMemoryKey("pay_smallest_first")).toBe("debt_rule");
   });
 
   it("flags secrets and card-like numbers", () => {
