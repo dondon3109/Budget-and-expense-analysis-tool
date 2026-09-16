@@ -174,7 +174,7 @@ export function TransactionVoiceEntry({
   useEffect(() => {
     function onLangChange(e: Event) {
       const detail = (e as CustomEvent<VoiceLanguage>).detail;
-      if (detail === "fil" || detail === "en") {
+      if (detail === "auto" || detail === "fil" || detail === "en") {
         setVoiceLanguage(detail);
         if (speechRecognitionRef.current) {
           speechRecognitionRef.current.lang = speechRecognitionLang(detail);
@@ -608,7 +608,9 @@ export function TransactionVoiceEntry({
           <small>
             {voiceLanguage === "fil"
               ? "Subukan: “Gumastos ng 250 pesos sa tanghalian kanina.” Nothing saves until you review this form."
-              : "Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form."}
+              : voiceLanguage === "auto"
+                ? "Try “Spent 250 pesos on lunch today” or “Gumastos ng 250 kahapon”. Nothing saves until you review this form."
+                : "Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form."}
           </small>
         </div>
         <div
@@ -616,6 +618,15 @@ export function TransactionVoiceEntry({
           role="group"
           aria-label="Voice input language"
         >
+          <button
+            type="button"
+            className={`transaction-voice-lang-btn ${voiceLanguage === "auto" ? "active" : ""}`}
+            onClick={() => handleLanguageChange("auto")}
+            aria-pressed={voiceLanguage === "auto"}
+            title="Auto (English & Tagalog)"
+          >
+            Auto
+          </button>
           <button
             type="button"
             className={`transaction-voice-lang-btn ${voiceLanguage === "en" ? "active" : ""}`}

@@ -121,6 +121,7 @@ export function createGoogleSttProvider(
           }
 
           const isTagalog = options?.language === "fil" || options?.language === "tl";
+          const isEnglish = options?.language === "en";
           const res = await fetch(endpoint, {
             method: "POST",
             headers,
@@ -132,7 +133,9 @@ export function createGoogleSttProvider(
                       text:
                         isTagalog
                           ? "Transcribe this audio verbatim. The audio may be in Tagalog, Filipino, English, or Taglish. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes."
-                          : "Transcribe this audio verbatim in English. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
+                          : isEnglish
+                            ? "Transcribe this audio verbatim in English. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes."
+                            : "Transcribe this audio verbatim. The audio may be in English, Tagalog, Filipino, or Taglish. Automatically detect the spoken language. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
                     },
                     { inlineData: { mimeType: audioMime, data: b64 } },
                   ],

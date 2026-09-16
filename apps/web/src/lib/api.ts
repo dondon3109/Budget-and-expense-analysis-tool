@@ -1112,7 +1112,7 @@ export async function transcribeAssistantVoice(
       ? "ogg"
       : "webm";
   form.set("audio", audio, `voice-input.${extension}`);
-  form.set("lang", language || "en");
+  form.set("lang", language || "auto");
   const response = await workspaceFetch(
     workspace,
     "/api/app/assistant/voice/transcriptions",
@@ -1143,7 +1143,7 @@ export async function openVoiceStreamWebSocket(
   const base = apiUrl
     ? apiUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:")
     : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
-  const langParam = language ? `&lang=${encodeURIComponent(language)}` : "&lang=en";
+  const langParam = language ? `&lang=${encodeURIComponent(language)}` : "&lang=auto";
   const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(token)}${langParam}`;
   return new WebSocket(wsUrl);
 }
@@ -1472,7 +1472,7 @@ export async function extractVoiceTransaction(
         body: JSON.stringify({
           transcript: audioOrTranscript.transcript,
           ...(categories && categories.length > 0 ? { categories } : {}),
-          lang: language || "en",
+          lang: language || "auto",
         }),
       }
     : (() => {
@@ -1484,7 +1484,7 @@ export async function extractVoiceTransaction(
             ? "ogg"
             : "webm";
         form.set("audio", audio, `voice-input.${extension}`);
-        form.set("lang", language || "en");
+        form.set("lang", language || "auto");
         if (categories && categories.length > 0) {
           form.set("categories", JSON.stringify(categories));
         }

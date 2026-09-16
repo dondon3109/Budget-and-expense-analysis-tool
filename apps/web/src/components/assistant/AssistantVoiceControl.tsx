@@ -231,7 +231,7 @@ export function AssistantVoiceControl({
   useEffect(() => {
     function onLangChange(e: Event) {
       const detail = (e as CustomEvent<VoiceLanguage>).detail;
-      if (detail === "fil" || detail === "en") {
+      if (detail === "auto" || detail === "fil" || detail === "en") {
         setVoiceLanguage(detail);
         if (speechRecognitionRef.current) {
           speechRecognitionRef.current.lang = speechRecognitionLang(detail);
@@ -738,17 +738,34 @@ export function AssistantVoiceControl({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          const next = voiceLanguage === "fil" ? "en" : "fil";
+          const next: VoiceLanguage =
+            voiceLanguage === "auto"
+              ? "en"
+              : voiceLanguage === "en"
+                ? "fil"
+                : "auto";
           setVoiceLanguage(next);
           setStoredVoiceLanguage(next);
           if (speechRecognitionRef.current) {
             speechRecognitionRef.current.lang = speechRecognitionLang(next);
           }
         }}
-        title={`Voice language: ${voiceLanguage === "fil" ? "Tagalog (click to switch to English)" : "English (click to switch to Tagalog)"}`}
-        aria-label={`Switch voice language from ${voiceLanguage === "fil" ? "Tagalog" : "English"}`}
+        title={`Voice language: ${
+          voiceLanguage === "auto"
+            ? "Auto (click to switch to English)"
+            : voiceLanguage === "en"
+              ? "English (click to switch to Tagalog)"
+              : "Tagalog (click to switch to Auto)"
+        }`}
+        aria-label={`Switch voice language from ${
+          voiceLanguage === "auto"
+            ? "Auto"
+            : voiceLanguage === "en"
+              ? "English"
+              : "Tagalog"
+        }`}
       >
-        {voiceLanguage === "fil" ? "TL" : "EN"}
+        {voiceLanguage === "auto" ? "AUTO" : voiceLanguage === "fil" ? "TL" : "EN"}
       </button>
       {showNotice && (
         <div

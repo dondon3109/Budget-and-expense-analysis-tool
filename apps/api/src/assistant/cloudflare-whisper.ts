@@ -58,9 +58,12 @@ function createWhisperProvider(model: string = CLOUDFLARE_WHISPER_MODEL): Assist
       const timer = setTimeout(() => controller.abort(), timeoutMs(env));
       try {
         const isTagalog = options?.language === "fil" || options?.language === "tl";
+        const isEnglish = options?.language === "en";
         const initialPrompt = isTagalog
           ? "Transkripsyon sa Tagalog, Filipino, at Taglish: gastos, bayad, bili, sweldo, pera, ipon, utang, kahapon, kanina, Php, pesos."
-          : "English financial transcription: budget, expenses, payments, income, groceries, salary, pesos, PHP.";
+          : isEnglish
+            ? "English financial transcription: budget, expenses, payments, income, groceries, salary, pesos, PHP."
+            : "Bilingual English and Filipino / Taglish financial transcription: budget, expenses, payments, income, groceries, salary, gastos, bayad, bili, sweldo, pera, ipon, utang, Php, pesos.";
 
         const result = await env.AI.run(
           model,

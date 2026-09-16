@@ -8,32 +8,42 @@ export interface VoiceLanguageOption {
   label: string;
   nativeLabel: string;
   speechRecognitionLang: string;
+  description: string;
 }
 
 export const VOICE_LANGUAGES: readonly VoiceLanguageOption[] = [
+  {
+    code: "auto",
+    label: "Auto",
+    nativeLabel: "Auto (EN / TL)",
+    speechRecognitionLang: "en-US",
+    description: "Automatically detects whether you are speaking English or Tagalog/Filipino.",
+  },
   {
     code: "en",
     label: "English",
     nativeLabel: "English",
     speechRecognitionLang: "en-US",
+    description: "Optimized for English voice input and financial terminology.",
   },
   {
     code: "fil",
     label: "Tagalog",
     nativeLabel: "Tagalog",
     speechRecognitionLang: "fil-PH",
+    description: "Optimized for Tagalog, Filipino, and Taglish expressions.",
   },
 ] as const;
 
 /**
  * Retrieves the user's preferred voice input language from localStorage.
- * Defaults to "en" (English) and Tagalog is an option.
+ * Defaults to "auto" (bilingual auto-detect for English and Tagalog).
  */
 export function getStoredVoiceLanguage(): VoiceLanguage {
-  if (typeof window === "undefined" || !window.localStorage) return "en";
+  if (typeof window === "undefined" || !window.localStorage) return "auto";
   const stored = window.localStorage.getItem(VOICE_LANGUAGE_STORAGE_KEY);
-  if (stored === "en" || stored === "fil") return stored;
-  return "en";
+  if (stored === "auto" || stored === "en" || stored === "fil") return stored;
+  return "auto";
 }
 
 /**

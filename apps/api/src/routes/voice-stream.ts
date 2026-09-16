@@ -196,6 +196,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const micStart = context.req.header("x-t-mic-start") || String(tWorkerOpen);
     const requestedLang = context.req.query("lang");
     const isTagalog = requestedLang === "fil" || requestedLang === "tl";
+    const isEnglishOnly = requestedLang === "en";
 
     // ==========================================
     // OPTION A: Google Gemini Multimodal Live API
@@ -214,7 +215,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       const isTranscribeLive = sttCfg.model === "gemini-3.5-transcribe-live";
       const languageCodes = isTagalog
         ? ["fil-PH", "en-US"]
-        : ["en-US", "fil-PH"];
+        : isEnglishOnly
+          ? ["en-US"]
+          : ["en-US", "fil-PH"];
       const setupPayload = isTranscribeLive
         ? {
             setup: {
@@ -239,7 +242,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                   {
                     text: isTagalog
                       ? "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time. The user may speak in Tagalog, Filipino, English, or Taglish. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech."
-                      : "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time in English. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech.",
+                      : isEnglishOnly
+                        ? "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time in English. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech."
+                        : "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time. The user may speak in English, Tagalog, Filipino, or Taglish. Automatically detect the spoken language. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech.",
                   },
                 ],
               },

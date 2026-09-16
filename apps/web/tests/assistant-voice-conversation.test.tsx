@@ -629,21 +629,32 @@ describe("AssistantVoiceConversation", () => {
     renderConversation();
     await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
 
+    const autoBtn = screen.getByRole("button", { name: "Auto" });
     const tagalogBtn = screen.getByRole("button", { name: "Tagalog" });
     const englishBtn = screen.getByRole("button", { name: "English" });
+    expect(autoBtn).toBeInTheDocument();
     expect(tagalogBtn).toBeInTheDocument();
     expect(englishBtn).toBeInTheDocument();
-    expect(englishBtn).toHaveClass("active");
+    expect(autoBtn).toHaveClass("active");
+    expect(englishBtn).not.toHaveClass("active");
     expect(tagalogBtn).not.toHaveClass("active");
 
     fireEvent.click(tagalogBtn);
     expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
     expect(tagalogBtn).toHaveClass("active");
     expect(englishBtn).not.toHaveClass("active");
+    expect(autoBtn).not.toHaveClass("active");
 
     fireEvent.click(englishBtn);
     expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
     expect(englishBtn).toHaveClass("active");
+    expect(tagalogBtn).not.toHaveClass("active");
+    expect(autoBtn).not.toHaveClass("active");
+
+    fireEvent.click(autoBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("auto");
+    expect(autoBtn).toHaveClass("active");
+    expect(englishBtn).not.toHaveClass("active");
     expect(tagalogBtn).not.toHaveClass("active");
 
     fireEvent.click(tagalogBtn);
@@ -664,14 +675,24 @@ describe("AssistantVoiceConversation", () => {
     renderConversation();
     await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
 
+    const autoBtn = screen.getByRole("button", { name: "Auto" });
     const tagalogBtn = screen.getByRole("button", { name: "Tagalog" });
     const englishBtn = screen.getByRole("button", { name: "English" });
-    expect(englishBtn).toHaveClass("active");
+    expect(autoBtn).toHaveClass("active");
+    expect(englishBtn).not.toHaveClass("active");
     expect(tagalogBtn).not.toHaveClass("active");
 
     window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "fil" }));
     await waitFor(() => {
       expect(tagalogBtn).toHaveClass("active");
+      expect(englishBtn).not.toHaveClass("active");
+      expect(autoBtn).not.toHaveClass("active");
+    });
+
+    window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "auto" }));
+    await waitFor(() => {
+      expect(autoBtn).toHaveClass("active");
+      expect(tagalogBtn).not.toHaveClass("active");
       expect(englishBtn).not.toHaveClass("active");
     });
   });
@@ -706,7 +727,7 @@ describe("AssistantVoiceConversation", () => {
       expect(apiMocks.transcribeAssistantVoice).toHaveBeenCalledWith(
         workspace,
         expect.any(Blob),
-        "en",
+        "auto",
       ),
     );
   });

@@ -590,12 +590,12 @@ describe("AssistantVoiceControl", () => {
     expect(apiMocks.transcribeAssistantVoice).toHaveBeenCalledWith(
       workspace,
       expect.any(Blob),
-      "en",
+      "auto",
     );
     expect(screen.getByRole("button", { name: "Start voice recording" })).toBeInTheDocument();
   });
 
-  it("toggles voice language between EN and TL via the badge", async () => {
+  it("toggles voice language between AUTO, EN, and TL via the badge", async () => {
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
       enabled: true,
       consentedAt: "2026-08-12T10:00:00.000Z",
@@ -616,6 +616,10 @@ describe("AssistantVoiceControl", () => {
 
     const toggleBtn = screen.getByRole("button", { name: /Switch voice language/i });
     expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveTextContent("AUTO");
+
+    fireEvent.click(toggleBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
     expect(toggleBtn).toHaveTextContent("EN");
 
     fireEvent.click(toggleBtn);
@@ -623,8 +627,8 @@ describe("AssistantVoiceControl", () => {
     expect(toggleBtn).toHaveTextContent("TL");
 
     fireEvent.click(toggleBtn);
-    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
-    expect(toggleBtn).toHaveTextContent("EN");
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("auto");
+    expect(toggleBtn).toHaveTextContent("AUTO");
   });
 
   it("syncs voice language on zoption-voice-lang-change event in control", async () => {
@@ -647,11 +651,21 @@ describe("AssistantVoiceControl", () => {
     await act(async () => Promise.resolve());
 
     const toggleBtn = screen.getByRole("button", { name: /Switch voice language/i });
-    expect(toggleBtn).toHaveTextContent("EN");
+    expect(toggleBtn).toHaveTextContent("AUTO");
 
     act(() => {
       window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "fil" }));
     });
     expect(toggleBtn).toHaveTextContent("TL");
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "en" }));
+    });
+    expect(toggleBtn).toHaveTextContent("EN");
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "auto" }));
+    });
+    expect(toggleBtn).toHaveTextContent("AUTO");
   });
 });

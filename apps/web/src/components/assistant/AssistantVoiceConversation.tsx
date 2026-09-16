@@ -197,7 +197,7 @@ export function AssistantVoiceConversation({
   useEffect(() => {
     function onLangChange(e: Event) {
       const detail = (e as CustomEvent<VoiceLanguage>).detail;
-      if (detail === "fil" || detail === "en") {
+      if (detail === "auto" || detail === "fil" || detail === "en") {
         setVoiceLanguage(detail);
         if (speechRecognitionRef.current) {
           speechRecognitionRef.current.lang = speechRecognitionLang(detail);
@@ -841,6 +841,15 @@ export function AssistantVoiceConversation({
           <div className="assistant-voice-lang-picker" role="group" aria-label="Voice language">
             <button
               type="button"
+              className={`assistant-voice-lang-btn ${voiceLanguage === "auto" ? "active" : ""}`}
+              onClick={() => handleLanguageChange("auto")}
+              aria-pressed={voiceLanguage === "auto"}
+              title="Auto (English & Tagalog)"
+            >
+              Auto
+            </button>
+            <button
+              type="button"
               className={`assistant-voice-lang-btn ${voiceLanguage === "en" ? "active" : ""}`}
               onClick={() => handleLanguageChange("en")}
               aria-pressed={voiceLanguage === "en"}
@@ -963,9 +972,9 @@ export function AssistantVoiceConversation({
                   role="group"
                   aria-label="Suggested questions"
                 >
-                  {(voiceLanguage === "fil"
-                    ? [...VOICE_SUGGESTED_PROMPTS_TAGALOG, ...VOICE_SUGGESTED_PROMPTS]
-                    : VOICE_SUGGESTED_PROMPTS
+                  {(voiceLanguage === "en"
+                    ? VOICE_SUGGESTED_PROMPTS
+                    : [...VOICE_SUGGESTED_PROMPTS_TAGALOG, ...VOICE_SUGGESTED_PROMPTS]
                   ).map((prompt) => (
                     <button
                       key={prompt}
@@ -1139,7 +1148,9 @@ export function AssistantVoiceConversation({
                 {status === "idle" &&
                   (voiceLanguage === "fil"
                     ? "Tap to speak in Tagalog or English"
-                    : "Tap to speak with your assistant")}
+                    : voiceLanguage === "auto"
+                      ? "Tap to speak in English or Tagalog"
+                      : "Tap to speak with your assistant")}
                 {status === "listening" && "Tap to finish speaking"}
                 {status === "thinking" && "Looking up financial records…"}
                 {status === "speaking" && "Tap orb to interrupt playback"}

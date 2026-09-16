@@ -603,7 +603,7 @@ export interface AssistantPreferences {
   coachingStyle: AssistantCoachingStyle;
 }
 
-export type VoiceLanguage = "en" | "fil";
+export type VoiceLanguage = "auto" | "en" | "fil";
 
 export interface AssistantVoicePreferences {
   enabled: boolean;

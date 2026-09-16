@@ -63,9 +63,13 @@ function renderSettings(entry = "/app/settings") {
 }
 
 describe("SettingsPage", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+  });
 
   beforeEach(() => {
+    window.localStorage.clear();
     scrollIntoView.mockReset();
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
@@ -116,6 +120,7 @@ describe("SettingsPage", () => {
     ["help and contact", "/app/settings#help-and-contact", "help-and-contact"],
     ["help", "/app/settings#help", "help"],
     ["contact", "/app/settings#contact", "contact"],
+    ["voice language", "/app/settings#voice-language", "voice-language"],
   ])("scrolls to and focuses the %s section from its hash", async (_label, entry, sectionId) => {
     renderSettings(entry);
 
@@ -468,6 +473,81 @@ describe("SettingsPage", () => {
     await waitFor(() => {
       expect(downloadSpy).toHaveBeenCalled();
       expect(screen.getByRole("status")).toHaveTextContent("Account archive downloaded successfully.");
+    });
+  });
+
+  it("renders Voice Language setting with Auto as default mode", () => {
+    renderSettings();
+
+    const heading = screen.getByRole("heading", { name: "Voice language" });
+    expect(heading).toBeInTheDocument();
+
+    const autoRadio = screen.getByRole("radio", { name: /^Auto/i });
+    const englishRadio = screen.getByRole("radio", { name: /^English/i });
+    const tagalogRadio = screen.getByRole("radio", { name: /^Tagalog/i });
+
+    expect(autoRadio).toBeInTheDocument();
+    expect(englishRadio).toBeInTheDocument();
+    expect(tagalogRadio).toBeInTheDocument();
+
+    expect(autoRadio).toHaveAttribute("aria-checked", "true");
+    expect(autoRadio).toHaveClass("selected");
+    expect(englishRadio).toHaveAttribute("aria-checked", "false");
+    expect(englishRadio).not.toHaveClass("selected");
+    expect(tagalogRadio).toHaveAttribute("aria-checked", "false");
+    expect(tagalogRadio).not.toHaveClass("selected");
+  });
+
+  it("allows switching voice language between Auto, English, and Tagalog in Account Settings", () => {
+    renderSettings();
+
+    const autoRadio = screen.getByRole("radio", { name: /^Auto/i });
+    const englishRadio = screen.getByRole("radio", { name: /^English/i });
+    const tagalogRadio = screen.getByRole("radio", { name: /^Tagalog/i });
+
+    fireEvent.click(tagalogRadio);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
+    expect(tagalogRadio).toHaveAttribute("aria-checked", "true");
+    expect(tagalogRadio).toHaveClass("selected");
+    expect(autoRadio).toHaveAttribute("aria-checked", "false");
+    expect(englishRadio).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(englishRadio);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
+    expect(englishRadio).toHaveAttribute("aria-checked", "true");
+    expect(englishRadio).toHaveClass("selected");
+    expect(tagalogRadio).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(autoRadio);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("auto");
+    expect(autoRadio).toHaveAttribute("aria-checked", "true");
+    expect(autoRadio).toHaveClass("selected");
+    expect(englishRadio).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("syncs Voice Language setting when zoption-voice-lang-change event fires", async () => {
+    renderSettings();
+
+    const autoRadio = screen.getByRole("radio", { name: /^Auto/i });
+    const englishRadio = screen.getByRole("radio", { name: /^English/i });
+    const tagalogRadio = screen.getByRole("radio", { name: /^Tagalog/i });
+
+    expect(autoRadio).toHaveAttribute("aria-checked", "true");
+
+    fireEvent(window, new CustomEvent("zoption-voice-lang-change", { detail: "fil" }));
+
+    await waitFor(() => {
+      expect(tagalogRadio).toHaveAttribute("aria-checked", "true");
+      expect(tagalogRadio).toHaveClass("selected");
+      expect(autoRadio).toHaveAttribute("aria-checked", "false");
+    });
+
+    fireEvent(window, new CustomEvent("zoption-voice-lang-change", { detail: "en" }));
+
+    await waitFor(() => {
+      expect(englishRadio).toHaveAttribute("aria-checked", "true");
+      expect(englishRadio).toHaveClass("selected");
+      expect(tagalogRadio).toHaveAttribute("aria-checked", "false");
     });
   });
 });

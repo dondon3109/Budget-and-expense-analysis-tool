@@ -6,7 +6,8 @@ All notable product changes are documented here.
 
 ### Added
 
-- Added Tagalog (Filipino) voice input and AI Assistant language support on web with toggleable language switching between English (default) and Tagalog across text chat voice control, hands-free voice conversation, and transaction voice entry.
+- Added Tagalog (Filipino) voice input and AI Assistant language support on web with bilingual Auto detection as the default mode, while keeping quick language toggles accessible across text chat voice control, hands-free voice conversation, and transaction voice entry.
+- Added a Voice Language setting in Account Settings to configure the preferred voice language between Auto (bilingual), English, and Tagalog.
 
 ## 2.33.1 — 2026-09-16
 
