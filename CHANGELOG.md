@@ -4,6 +4,14 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.33.1 — 2026-09-16
+
+### Changed
+
+- Refreshed web install page metadata and direct APK links to Android Beta 0.2.29 (versionCode 20329).
+
+## 2.33.0 — 2026-09-16
+
 ### Added
 
 - The financial assistant now remembers budget caps, checking buffers, payday schedules, and recurring bills across chats, ranks saved memories by relevance to the current question, and lets you edit or delete individual remembered facts from the assistant Memory panel on web and mobile.
@@ -11,7 +19,6 @@ All notable product changes are documented here.
 ### Changed
 
 - Prepared Android Beta 0.2.29 (versionCode 20329) mobile release and refreshed in-app patch notes.
-- Refreshed web install page metadata and direct APK links to Android Beta 0.2.29 (versionCode 20329).
 
 ### Fixed
 
