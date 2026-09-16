@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
   preferredTransactionAccount,
+  type Currency,
   type ReceiptDraft,
   type TransactionInput,
 } from "@zoption/shared";
@@ -28,7 +29,7 @@ import {
   parseTransactionForm,
 } from "@/features/transactions/transaction-form";
 import { useSyncState } from "@/sync/sync-state";
-import { Button, Card, ErrorState, FormField, SelectionField } from "@/ui/components";
+import { Button, Card, ErrorState, FormField, SelectionField, formatDateInput, formatMoneyMinor } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -70,8 +71,8 @@ function defaultCategoryId(categories: ReceiptReviewCategory[], kind: ReceiptKin
   );
 }
 
-function peso(amountMinor: number): string {
-  return `₱${formatMinorForInput(amountMinor)}`;
+function formatReceiptAmount(amountMinor: number, currency: Currency): string {
+  return formatMoneyMinor(amountMinor, currency);
 }
 
 function ItemKindSelector({
@@ -177,6 +178,11 @@ export default function ReceiptScanScreen() {
       })),
     [accounts],
   );
+  const selectedAccount = useMemo(
+    () => accounts.find((account) => account.id === accountId),
+    [accountId, accounts],
+  );
+  const activeCurrency: Currency = (selectedAccount?.currency as Currency) ?? "PHP";
   const reviewedTotalMinor = useMemo(() => reviewedItemsTotalMinor(items), [items]);
   const receiptTotalMinor = draft ? Math.abs(draft.amountMinor) : null;
   const hasExtractedLines = Boolean(draft?.items?.length);
@@ -380,7 +386,7 @@ export default function ReceiptScanScreen() {
     }
     if (hasExtractedLines && !totalsMatch) {
       setMessage(
-        `The items add to ${peso(reviewedTotalMinor)}, but the receipt total is ${peso(receiptTotalMinor ?? 0)}. Correct the amounts or add the missing fee or discount before saving.`,
+        `The items add to ${formatReceiptAmount(reviewedTotalMinor, activeCurrency)}, but the receipt total is ${formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}. Correct the amounts or add the missing fee or discount before saving.`,
       );
       return;
     }
@@ -396,7 +402,7 @@ export default function ReceiptScanScreen() {
         description: receiptItemDescription(merchant, item.description),
         amount: item.amount,
         transferFee: "",
-        currency: "PHP",
+        currency: activeCurrency,
         notes: "Scanned receipt",
       });
       if (!parsed.success) {
@@ -595,8 +601,8 @@ export default function ReceiptScanScreen() {
                 accessibilityRole="summary"
                 accessibilityLabel={
                   totalsMatch
-                    ? `Item total ${peso(reviewedTotalMinor ?? 0)} matches the receipt total.`
-                    : `Items need review. Receipt total is ${peso(receiptTotalMinor ?? 0)}.`
+                    ? `Item total ${formatReceiptAmount(reviewedTotalMinor ?? 0, activeCurrency)} matches the receipt total.`
+                    : `Items need review. Receipt total is ${formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}.`
                 }
                 style={[
                   styles.reconciliation,
@@ -622,8 +628,8 @@ export default function ReceiptScanScreen() {
                         : "Items need review before saving"}
                   </Text>
                   <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                    Items: {reviewedTotalMinor === null ? "—" : peso(reviewedTotalMinor)} · Receipt:{" "}
-                    {peso(receiptTotalMinor ?? 0)}
+                    Items: {reviewedTotalMinor === null ? "—" : formatReceiptAmount(reviewedTotalMinor, activeCurrency)} · Receipt:{" "}
+                    {formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}
                   </Text>
                   {!hasExtractedLines ? (
                     <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -655,10 +661,14 @@ export default function ReceiptScanScreen() {
                   maxLength={140}
                 />
                 <FormField
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="numbers-and-punctuation"
                   label="Date"
+                  maxLength={10}
                   value={date}
                   onChangeText={(value) => {
-                    setDate(value);
+                    setDate(formatDateInput(value));
                     setMessage(null);
                   }}
                   placeholder="YYYY-MM-DD"
@@ -799,6 +809,15 @@ export default function ReceiptScanScreen() {
                     </Text>
                   ) : null}
                 </View>
+              ) : null}
+
+              {message ? (
+                <Text
+                  accessibilityRole="alert"
+                  style={[typography.callout, { color: theme.colors.danger, textAlign: "center" }]}
+                >
+                  {message}
+                </Text>
               ) : null}
 
               <Button

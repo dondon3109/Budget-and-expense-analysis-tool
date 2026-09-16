@@ -35,6 +35,7 @@ export function GoalsScreen() {
         </Button>
       }
       description="Save toward a target. Changes sync when you reconnect."
+      hasHeader
       onRefresh={handleRefresh}
       refreshing={sync.status === "syncing"}
       title="Goals"

@@ -10,9 +10,11 @@ import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
   Button,
+  Card,
   ConfirmationDialog,
   ErrorState,
   FormField,
+  formatDateInput,
   SelectionField,
   Skeleton,
 } from "@/ui/components";
@@ -201,11 +203,15 @@ export function GoalEditorScreen() {
                 value={currentAmount}
               />
               <FormField
+                autoCapitalize="none"
+                autoCorrect={false}
                 editable={!saving}
                 error={errors.targetDate}
+                keyboardType="numbers-and-punctuation"
                 label="Target date"
+                maxLength={10}
                 onChangeText={(value) => {
-                  setTargetDate(value);
+                  setTargetDate(formatDateInput(value));
                   setErrors((current) => ({ ...current, targetDate: undefined }));
                   setMessage(null);
                 }}
@@ -221,13 +227,37 @@ export function GoalEditorScreen() {
                 sheetTitle="Choose a status"
                 value={status}
               />
-              {blocked ? (
-                <Text
-                  accessibilityRole="alert"
-                  style={[typography.callout, { color: theme.colors.warning }]}
-                >
-                  Resolve this goal&apos;s synchronization state before editing it.
-                </Text>
+              {goalState.goal?.syncState === "conflicted" ? (
+                <Card style={{ backgroundColor: theme.colors.warningSoft }}>
+                  <Text style={[typography.headline, { color: theme.colors.text }]}>
+                    Conflict preserved
+                  </Text>
+                  <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                    Zoption kept both versions. Resolve the conflict to resume editing.
+                  </Text>
+                  {id ? (
+                    <Button
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(app)/goal-conflict",
+                          params: { id },
+                        })
+                      }
+                      variant="secondary"
+                    >
+                      Review conflict
+                    </Button>
+                  ) : null}
+                </Card>
+              ) : goalState.goal?.syncState === "failed" ? (
+                <Card style={{ backgroundColor: theme.colors.dangerSoft }}>
+                  <Text style={[typography.headline, { color: theme.colors.text }]}>
+                    Sync needs repair
+                  </Text>
+                  <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                    This goal change could not be synchronized safely.
+                  </Text>
+                </Card>
               ) : null}
               {message ? (
                 <Text

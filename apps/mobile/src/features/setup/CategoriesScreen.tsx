@@ -146,6 +146,7 @@ export function CategoriesScreen() {
 
   return (
     <Screen
+      hasHeader
       title="Categories"
       description="Customize category names, colors, and emoji icons. Changes sync automatically."
     >

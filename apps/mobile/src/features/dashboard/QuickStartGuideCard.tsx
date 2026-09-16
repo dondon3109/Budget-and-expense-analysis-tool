@@ -1,16 +1,38 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Button, Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
+const QUICK_START_GUIDE_DISMISSED_KEY = "zoption_quick_start_guide_dismissed";
+
 export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: string }) {
   const theme = useZoptionTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void SecureStore.getItemAsync(QUICK_START_GUIDE_DISMISSED_KEY)
+      .then((val) => {
+        if (active && val === "true") {
+          setDismissed(true);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    void SecureStore.setItemAsync(QUICK_START_GUIDE_DISMISSED_KEY, "true").catch(() => undefined);
+  };
 
   if (dismissed) {
     return null;
@@ -53,7 +75,7 @@ export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: strin
             accessibilityRole="button"
             accessibilityLabel="Dismiss guide"
             hitSlop={8}
-            onPress={() => setDismissed(true)}
+            onPress={handleDismiss}
             style={styles.iconBtn}
           >
             <MaterialCommunityIcons name="close" size={20} color={theme.colors.textMuted} />

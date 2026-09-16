@@ -10,6 +10,7 @@ import {
   ConfirmationDialog,
   ErrorState,
   FormField,
+  formatDateInput,
   Skeleton,
 } from "@/ui/components";
 import { spacing, typography } from "@/ui/tokens";
@@ -21,7 +22,7 @@ function single(value: string | string[] | undefined): string | undefined {
 }
 
 export function EventEditorScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; date?: string | string[] }>();
   const id = single(params.id);
   const editing = Boolean(id);
   const local = useLocalWorkspace();
@@ -31,7 +32,7 @@ export function EventEditorScreen() {
   const initialized = useRef(false);
 
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(() => todayIso());
+  const [date, setDate] = useState(() => single(params.date) ?? todayIso());
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
@@ -133,9 +134,16 @@ export function EventEditorScreen() {
             <FormField
               accessibilityHint="Use YYYY-MM-DD"
               autoCapitalize="none"
+              autoCorrect={false}
               error={errors.date}
+              keyboardType="numbers-and-punctuation"
               label="Date"
-              onChangeText={setDate}
+              maxLength={10}
+              onChangeText={(value) => {
+                setDate(formatDateInput(value));
+                setErrors((current) => ({ ...current, date: undefined }));
+                setMessage(null);
+              }}
               placeholder="2026-08-20"
               value={date}
             />

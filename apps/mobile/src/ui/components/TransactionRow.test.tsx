@@ -51,4 +51,19 @@ describe("TransactionRow", () => {
     );
     expect(screen.getByText("🍔", { includeHiddenElements: true })).toBeOnTheScreen();
   });
+
+  it("renders transfer transactions with net-neutral default tone", async () => {
+    await render(
+      <TransactionRow
+        transaction={{
+          ...transaction,
+          kind: "transfer",
+          description: "Transfer to Savings",
+          amountMinor: -50_000,
+        }}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(screen.getByText("Transfer to Savings")).toBeOnTheScreen();
+  });
 });

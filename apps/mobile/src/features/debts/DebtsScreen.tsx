@@ -8,7 +8,7 @@ import { calculateDebtPayoff, type DebtPayoffStrategy } from "@zoption/shared";
 import { useDebts, useLocalWorkspace } from "@/db/local-workspace-state";
 import type { LocalDebtItem } from "@/db/repository";
 import { useSyncState } from "@/sync/sync-state";
-import { Button, Card, EmptyState, ErrorState, FormField, MoneyValue, SelectionField, Skeleton } from "@/ui/components";
+import { Button, Card, EmptyState, ErrorState, FormField, MoneyValue, moneyAccessibilityLabel, SelectionField, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
@@ -42,6 +42,7 @@ export function DebtsScreen() {
         </Button>
       }
       description="Track balances and compare payoff strategies offline."
+      hasHeader
       onRefresh={handleRefresh}
       refreshing={sync.status === "syncing"}
       title="Debts"
@@ -166,7 +167,7 @@ function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }
       onPress={onPress}
     >
       <Card
-        accessibilityLabel={debt.name + ", balance " + debt.balanceMinor}
+        accessibilityLabel={`${debt.name}, balance ${moneyAccessibilityLabel(debt.balanceMinor, "PHP")}`}
         style={{
           borderColor: conflicted ? theme.colors.warning : failed ? theme.colors.danger : undefined,
         }}

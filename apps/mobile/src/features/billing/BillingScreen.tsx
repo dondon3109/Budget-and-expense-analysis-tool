@@ -136,7 +136,7 @@ export function BillingScreen() {
 
   if (phase === "loading") {
     return (
-      <Screen title="Plan and billing">
+      <Screen hasHeader title="Plan and billing">
         <SkeletonLines lines={4} />
       </Screen>
     );
@@ -144,7 +144,7 @@ export function BillingScreen() {
 
   if (phase === "error" || summary === null) {
     return (
-      <Screen title="Plan and billing">
+      <Screen hasHeader title="Plan and billing">
         <ErrorState
           title="Plan unavailable"
           message={message ?? "Billing could not be loaded."}
@@ -155,7 +155,7 @@ export function BillingScreen() {
   }
 
   return (
-    <Screen title="Plan and billing" description="Limits are enforced by the Zoption server">
+    <Screen hasHeader title="Plan and billing" description="Limits are enforced by the Zoption server">
       <Card accessibilityLabel="Current plan">
         <View className="gap-3">
           <View className="flex-row items-center gap-2">

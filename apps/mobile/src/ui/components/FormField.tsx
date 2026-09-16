@@ -4,6 +4,17 @@ import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-na
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
+export function formatDateInput(val: string): string {
+  const trimmed = val.trim();
+  if (/^\d{8}$/.test(trimmed)) {
+    return `${trimmed.slice(0, 4)}-${trimmed.slice(4, 6)}-${trimmed.slice(6, 8)}`;
+  }
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(trimmed)) {
+    return trimmed.replace(/\//g, "-");
+  }
+  return val;
+}
+
 interface FormFieldProps extends TextInputProps {
   label: string;
   error?: string;
@@ -50,6 +61,7 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
                   : theme.colors.border,
               borderWidth: error || isFocused ? 1.5 : 1,
               color: theme.colors.text,
+              textAlignVertical: props.multiline ? "top" : "center",
             },
             trailing ? styles.withTrailing : null,
             style,

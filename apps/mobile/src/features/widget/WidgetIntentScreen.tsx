@@ -607,7 +607,7 @@ export function WidgetIntentScreen() {
 
   if (resolved.status === "failed") {
     return (
-      <Screen title="Voice widget" description="Review a voice note from the home-screen mic">
+      <Screen hasHeader title="Voice widget" description="Review a voice note from the home-screen mic">
         <ErrorState
           title="Voice note unclear"
           message={resolved.message}
@@ -671,7 +671,7 @@ export function WidgetIntentScreen() {
   }
 
   return (
-    <Screen title="Voice widget" description="Review a voice note from the home-screen mic">
+    <Screen hasHeader title="Voice widget" description="Review a voice note from the home-screen mic">
       {resolved.transcript ? (
         <Card accessibilityLabel="Spoken voice note">
           <View className="flex-row items-center gap-3">

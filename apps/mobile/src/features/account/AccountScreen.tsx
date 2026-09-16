@@ -135,7 +135,7 @@ export function AccountScreen() {
         localStats.stats.categoryCount;
 
   return (
-    <Screen title="Account" description="Account deletion is online-only and permanent">
+    <Screen hasHeader title="Account" description="Account deletion is online-only and permanent">
       <Card accessibilityLabel="Account overview">
         <View className="gap-2">
           <Text style={[typography.headline, { color: theme.colors.text }]}>Signed-in account</Text>

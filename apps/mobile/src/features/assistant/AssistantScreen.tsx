@@ -785,9 +785,27 @@ export function AssistantScreen() {
     </Pressable>
   );
 
+  const backAction = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      onPress={() => {
+        if (router.canGoBack?.()) {
+          router.back();
+        } else {
+          router.replace("/(app)/(tabs)");
+        }
+      }}
+      hitSlop={8}
+      style={styles.iconButton}
+    >
+      <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
+    </Pressable>
+  );
+
   if (phase === "loading") {
     return (
-      <Screen title="AI Assistant">
+      <Screen title="AI Assistant" action={backAction}>
         <SkeletonLines lines={5} />
       </Screen>
     );
@@ -795,7 +813,7 @@ export function AssistantScreen() {
 
   if (phase === "error" || isOffline) {
     return (
-      <Screen title="AI Assistant">
+      <Screen title="AI Assistant" action={backAction}>
         <AssistantUnavailableView
           errorMessage={fatalError}
           isOffline={isOffline}
@@ -809,7 +827,7 @@ export function AssistantScreen() {
 
   if (showConsent || showIdentity) {
     return (
-      <Screen title="AI Assistant" scroll>
+      <Screen title="AI Assistant" scroll action={backAction}>
         {showConsent ? (
           <AssistantConsentCard
             retentionDays={preferences?.retentionDays ?? 90}
@@ -853,7 +871,22 @@ export function AssistantScreen() {
                 >
                   <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
                 </Pressable>
-              ) : null}
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Back"
+                  onPress={() => {
+                    if (router.canGoBack?.()) {
+                      router.back();
+                    } else {
+                      router.replace("/(app)/(tabs)");
+                    }
+                  }}
+                  hitSlop={8}
+                >
+                  <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
+                </Pressable>
+              )}
               <Text
                 accessibilityRole="header"
                 numberOfLines={1}

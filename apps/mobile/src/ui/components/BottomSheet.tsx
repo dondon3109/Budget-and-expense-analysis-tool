@@ -1,9 +1,12 @@
-import type { PropsWithChildren } from "react";
+import { createContext, useContext, type PropsWithChildren } from "react";
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
+
+export const BottomSheetContext = createContext<boolean>(false);
+export const useIsInBottomSheet = (): boolean => useContext(BottomSheetContext);
 
 interface BottomSheetProps extends PropsWithChildren {
   visible: boolean;
@@ -57,7 +60,9 @@ export function BottomSheet({ visible, title, onDismiss, children }: BottomSheet
             showsVerticalScrollIndicator
             style={styles.scroll}
           >
-            {children}
+            <BottomSheetContext.Provider value={true}>
+              {children}
+            </BottomSheetContext.Provider>
           </ScrollView>
         </SafeAreaView>
       </View>

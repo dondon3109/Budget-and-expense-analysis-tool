@@ -1,5 +1,6 @@
+import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
-import { Clipboard, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { createSharedBudgetPayload, encodeSharedBudgetToken } from "@zoption/shared";
 import { BottomSheet, Button, MoneyValue } from "@/ui/components";
@@ -27,7 +28,7 @@ interface ShareBudgetSheetProps {
 }
 
 const defaultCopyLink = (url: string): void => {
-  Clipboard.setString(url);
+  void Clipboard.setStringAsync(url);
 };
 
 export function ShareBudgetSheet({

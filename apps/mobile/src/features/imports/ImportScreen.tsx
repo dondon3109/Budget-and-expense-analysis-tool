@@ -507,6 +507,7 @@ export function ImportScreen() {
 
   return (
     <Screen
+      hasHeader
       scroll={step !== "preview"}
       title={firstRun ? "Import your first statement" : "Import transactions"}
       description={
@@ -719,7 +720,7 @@ export function ImportScreen() {
             </View>
           </Card>
           <FlatList
-            style={{ flexGrow: 0 }}
+            style={{ flex: 1, minHeight: 180 }}
             contentContainerStyle={{ flexGrow: 1 }}
             data={preview.rows.slice(0, MAX_IMPORT_ROWS)}
             keyExtractor={(row) => String(row.rowNumber)}

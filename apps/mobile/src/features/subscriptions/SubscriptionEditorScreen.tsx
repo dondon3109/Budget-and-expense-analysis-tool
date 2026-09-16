@@ -11,9 +11,11 @@ import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
   Button,
+  Card,
   ConfirmationDialog,
   ErrorState,
   FormField,
+  formatDateInput,
   SelectionField,
   Skeleton,
 } from "@/ui/components";
@@ -253,11 +255,15 @@ export function SubscriptionEditorScreen() {
                 value={billingCycle}
               />
               <FormField
+                autoCapitalize="none"
+                autoCorrect={false}
                 editable={!saving}
                 error={errors.nextBillingDate}
+                keyboardType="numbers-and-punctuation"
                 label="Next billing date"
+                maxLength={10}
                 onChangeText={(value) => {
-                  setNextBillingDate(value);
+                  setNextBillingDate(formatDateInput(value));
                   setErrors((current) => ({ ...current, nextBillingDate: undefined }));
                   setMessage(null);
                 }}
@@ -303,13 +309,37 @@ export function SubscriptionEditorScreen() {
                   value={status}
                 />
               ) : null}
-              {blocked ? (
-                <Text
-                  accessibilityRole="alert"
-                  style={[typography.callout, { color: theme.colors.warning }]}
-                >
-                  Resolve this subscription&apos;s synchronization state before editing it.
-                </Text>
+              {subscriptionState.subscription?.syncState === "conflicted" ? (
+                <Card style={{ backgroundColor: theme.colors.warningSoft }}>
+                  <Text style={[typography.headline, { color: theme.colors.text }]}>
+                    Conflict preserved
+                  </Text>
+                  <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                    Zoption kept both versions. Resolve the conflict to resume editing.
+                  </Text>
+                  {id ? (
+                    <Button
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(app)/subscription-conflict",
+                          params: { id },
+                        })
+                      }
+                      variant="secondary"
+                    >
+                      Review conflict
+                    </Button>
+                  ) : null}
+                </Card>
+              ) : subscriptionState.subscription?.syncState === "failed" ? (
+                <Card style={{ backgroundColor: theme.colors.dangerSoft }}>
+                  <Text style={[typography.headline, { color: theme.colors.text }]}>
+                    Sync needs repair
+                  </Text>
+                  <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                    This subscription change could not be synchronized safely.
+                  </Text>
+                </Card>
               ) : null}
               {message ? (
                 <Text

@@ -71,4 +71,34 @@ describe("Screen", () => {
     expect(scrollViews).toHaveLength(0);
     expect(screen.getByText("Non-scrollable content")).toBeTruthy();
   });
+
+  it("suppresses title display when hasHeader is true but retains description and action", async () => {
+    await render(
+      <Screen
+        action={<Text>Action Btn</Text>}
+        description="Pushed Screen Description"
+        hasHeader
+        title="Pushed Title"
+      >
+        <Text>Screen Body</Text>
+      </Screen>,
+    );
+
+    // Title header should not be displayed because native stack header handles it
+    expect(screen.queryByRole("header", { name: "Pushed Title" })).toBeNull();
+    // Description, action and content should still be rendered
+    expect(screen.getByText("Pushed Screen Description")).toBeTruthy();
+    expect(screen.getByText("Action Btn")).toBeTruthy();
+    expect(screen.getByText("Screen Body")).toBeTruthy();
+  });
+
+  it("renders overlay outside scroll view when provided", async () => {
+    await render(
+      <Screen overlay={<Text testID="pinned-fab">FAB</Text>} title="Screen with Overlay">
+        <Text>Content</Text>
+      </Screen>,
+    );
+
+    expect(screen.getByTestId("pinned-fab")).toBeTruthy();
+  });
 });

@@ -98,7 +98,7 @@ export function TransactionRow({
       <MoneyValue
         amountMinor={transaction.amountMinor}
         currency={transaction.currency}
-        tone={transaction.amountMinor < 0 ? "expense" : "income"}
+        tone={transaction.kind === "transfer" ? "default" : transaction.amountMinor < 0 ? "expense" : "income"}
         style={typography.headline}
       />
     </Pressable>

@@ -4,7 +4,7 @@ import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } 
 
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { BottomSheet } from "./BottomSheet";
+import { BottomSheet, useIsInBottomSheet } from "./BottomSheet";
 
 export interface SelectionOption {
   id: string;
@@ -37,6 +37,7 @@ export function SelectionField({
   onSelect,
 }: SelectionFieldProps) {
   const theme = useZoptionTheme();
+  const inSheet = useIsInBottomSheet();
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.id === value);
 
@@ -146,7 +147,7 @@ export function SelectionField({
         <MaterialCommunityIcons
           accessibilityElementsHidden
           color={theme.colors.textMuted}
-          name="chevron-down"
+          name={open ? "chevron-up" : "chevron-down"}
           size={22}
         />
       </Pressable>
@@ -160,14 +161,78 @@ export function SelectionField({
       ) : hint ? (
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>{hint}</Text>
       ) : null}
-      <BottomSheet visible={open} title={sheetTitle} onDismiss={() => setOpen(false)}>
-        <FlatList
-          data={options}
-          keyExtractor={(option) => option.id}
-          keyboardShouldPersistTaps="handled"
-          renderItem={renderOption}
-        />
-      </BottomSheet>
+      {inSheet && open ? (
+        <View
+          accessibilityRole="radiogroup"
+          style={[
+            styles.inlineMenu,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          {options.map((option) => {
+            const isSelected = option.id === value;
+            return (
+              <Pressable
+                key={option.id}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isSelected }}
+                accessibilityLabel={option.label}
+                accessibilityHint={option.detail}
+                android_ripple={{
+                  color: theme.colors.brandSoft ? "rgba(15, 107, 91, 0.12)" : "rgba(0,0,0,0.06)",
+                  borderless: false,
+                }}
+                onPress={() => {
+                  onSelect(option.id);
+                  setOpen(false);
+                }}
+                style={[
+                  styles.option,
+                  {
+                    backgroundColor: isSelected ? theme.colors.brandSoft : "transparent",
+                  },
+                ]}
+              >
+                {option.color ? (
+                  <View
+                    accessibilityElementsHidden
+                    style={[styles.dot, { backgroundColor: option.color }]}
+                  />
+                ) : null}
+                <View className="min-w-0 flex-1">
+                  <Text style={[typography.body, { color: theme.colors.text }]}>{option.label}</Text>
+                  {option.detail ? (
+                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                      {option.detail}
+                    </Text>
+                  ) : null}
+                </View>
+                {isSelected ? (
+                  <MaterialCommunityIcons
+                    accessibilityElementsHidden
+                    color={theme.colors.brand}
+                    name="check"
+                    size={22}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+      {!inSheet ? (
+        <BottomSheet visible={open} title={sheetTitle} onDismiss={() => setOpen(false)}>
+          <FlatList
+            data={options}
+            keyExtractor={(option) => option.id}
+            keyboardShouldPersistTaps="handled"
+            renderItem={renderOption}
+          />
+        </BottomSheet>
+      ) : null}
     </View>
   );
 }
@@ -202,4 +267,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   dot: { width: 10, height: 10, borderRadius: radii.round },
+  inlineMenu: {
+    borderWidth: 1,
+    borderRadius: radii.md,
+    padding: spacing.xs,
+    marginTop: spacing.xs,
+    gap: spacing.xxs,
+  },
 });

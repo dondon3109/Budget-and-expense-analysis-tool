@@ -169,6 +169,7 @@ export function TutorialsScreen() {
 
   return (
     <Screen
+      edges={["bottom", "left", "right"]}
       title="Tutorials & user guide"
       description="Practical walkthroughs to help you get the most out of Zoption."
     >

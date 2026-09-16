@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { Clipboard } from "react-native";
+import * as Clipboard from "expo-clipboard";
 
 import { decodeSharedBudgetToken } from "@zoption/shared";
 import { useBudgetMonth, useLocalWorkspace } from "@/db/local-workspace-state";
@@ -150,7 +150,7 @@ describe("ShareBudgetSheet", () => {
   });
 
   it("copies the generated link to the clipboard with one tap", async () => {
-    const setString = jest.spyOn(Clipboard, "setString").mockImplementation(() => undefined);
+    const setStringAsync = jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
     try {
       await render(
         <ShareBudgetSheet
@@ -165,11 +165,11 @@ describe("ShareBudgetSheet", () => {
       await fireEvent.press(screen.getByRole("button", { name: "Generate share link" }));
       await fireEvent.press(screen.getByRole("button", { name: "Copy Link" }));
 
-      expect(setString).toHaveBeenCalledTimes(1);
-      expect(setString).toHaveBeenCalledWith(generatedUrl());
+      expect(setStringAsync).toHaveBeenCalledTimes(1);
+      expect(setStringAsync).toHaveBeenCalledWith(generatedUrl());
       expect(screen.getByText("Link copied to clipboard.")).toBeOnTheScreen();
     } finally {
-      setString.mockRestore();
+      setStringAsync.mockRestore();
     }
   });
 

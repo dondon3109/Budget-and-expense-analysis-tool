@@ -89,10 +89,10 @@ export const themes: Record<ThemeName, ThemeTokens> = {
     name: "light",
     dark: false,
     colors: {
-      canvas: "#ffffff",
-      canvasMuted: "#f8fafc",
+      canvas: "#f8fafc",
+      canvasMuted: "#f1f5f9",
       surface: "#ffffff",
-      surfaceRaised: "#f1f5f9",
+      surfaceRaised: "#ffffff",
       text: "#0f172a",
       textMuted: "#64748b",
       border: "#e2e8f0",

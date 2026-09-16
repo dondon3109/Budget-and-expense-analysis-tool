@@ -154,6 +154,11 @@ describe("SubscriptionsScreen", () => {
     await fireEvent.press(headerAdd);
     expect(router.push).toHaveBeenCalledWith("/(app)/subscription");
 
+    // Pinned FAB button in overlay also navigates to editor
+    const fabAdd = screen.getByRole("button", { name: "Add subscription" });
+    await fireEvent.press(fabAdd);
+    expect(router.push).toHaveBeenCalledWith("/(app)/subscription");
+
     // Pressing a row opens the subscription for editing
     const netflixRow = screen.getByLabelText("Netflix, 54900 minor, active");
     await fireEvent.press(netflixRow);

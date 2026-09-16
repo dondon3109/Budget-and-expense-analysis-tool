@@ -76,7 +76,11 @@ export function BudgetConflictScreen() {
     try {
       await local.workspace.transactionMutations.resolveBudgetConflict(id, choice);
       setChoice(null);
-      router.dismissTo("/budgets");
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(app)/(tabs)/budgets");
+      }
       sync.retry();
     } catch (error) {
       setMessage(
@@ -95,7 +99,7 @@ export function BudgetConflictScreen() {
       edges={["bottom", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
-      <Stack.Screen options={{ title: "Review budget conflict" }} />
+      <Stack.Screen options={{ title: "Review budget conflict", headerShown: true }} />
       {state.error ? (
         <View className="flex-1 justify-center px-4">
           <ErrorState title="Conflict unavailable" message={state.error} onRetry={state.retry} />

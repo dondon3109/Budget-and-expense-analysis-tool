@@ -258,6 +258,7 @@ export function SupportScreen() {
 
   return (
     <Screen
+      hasHeader
       title="Help & support"
       description="Support chat is online-only and never reads your financial records"
       scroll={false}
@@ -463,63 +464,70 @@ function BugReportReview({
   const valid = useMemo(() => validateBugDraft(draft) === null, [draft]);
   return (
     <Card>
-      <View className="gap-3">
-        <Text style={[typography.headline, { color: theme.colors.text }]}>Bug report draft</Text>
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Review every field and remove anything sensitive. Nothing is saved until you submit.
-        </Text>
-        <FormField
-          label="Title"
-          value={draft.title}
-          onChangeText={(title) => patch({ title })}
-          maxLength={120}
-        />
-        <SelectionField
-          label="Category"
-          value={draft.category}
-          options={[...bugCategories]}
-          placeholder="Choose a category"
-          sheetTitle="Report category"
-          onSelect={(category) => patch({ category: category as BugReportDraft["category"] })}
-        />
-        <FormField
-          label="What happened?"
-          value={draft.actualBehavior}
-          onChangeText={(actualBehavior) => patch({ actualBehavior })}
-          multiline
-          maxLength={2000}
-        />
-        <FormField
-          label="What did you expect?"
-          value={draft.expectedBehavior}
-          onChangeText={(expectedBehavior) => patch({ expectedBehavior })}
-          multiline
-          maxLength={2000}
-        />
-        <FormField
-          label="Steps to reproduce"
-          value={draft.stepsToReproduce}
-          onChangeText={(stepsToReproduce) => patch({ stepsToReproduce })}
-          multiline
-          maxLength={2000}
-        />
-        <SelectionField
-          label="How often?"
-          value={draft.frequency}
-          options={[...bugFrequencies]}
-          placeholder="How often does it happen?"
-          sheetTitle="Frequency"
-          onSelect={(frequency) => patch({ frequency: frequency as BugReportDraft["frequency"] })}
-        />
-        <View className="flex-row gap-2">
-          <Button variant="quiet" onPress={onCancel}>
-            Discard
-          </Button>
-          <Button loading={busy} disabled={!valid} onPress={onSubmit}>
-            Submit report
-          </Button>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
+        style={styles.reviewScroll}
+        contentContainerStyle={styles.reviewScrollContent}
+      >
+        <View className="gap-3">
+          <Text style={[typography.headline, { color: theme.colors.text }]}>Bug report draft</Text>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Review every field and remove anything sensitive. Nothing is saved until you submit.
+          </Text>
+          <FormField
+            label="Title"
+            value={draft.title}
+            onChangeText={(title) => patch({ title })}
+            maxLength={120}
+          />
+          <SelectionField
+            label="Category"
+            value={draft.category}
+            options={[...bugCategories]}
+            placeholder="Choose a category"
+            sheetTitle="Report category"
+            onSelect={(category) => patch({ category: category as BugReportDraft["category"] })}
+          />
+          <FormField
+            label="What happened?"
+            value={draft.actualBehavior}
+            onChangeText={(actualBehavior) => patch({ actualBehavior })}
+            multiline
+            maxLength={2000}
+          />
+          <FormField
+            label="What did you expect?"
+            value={draft.expectedBehavior}
+            onChangeText={(expectedBehavior) => patch({ expectedBehavior })}
+            multiline
+            maxLength={2000}
+          />
+          <FormField
+            label="Steps to reproduce"
+            value={draft.stepsToReproduce}
+            onChangeText={(stepsToReproduce) => patch({ stepsToReproduce })}
+            multiline
+            maxLength={2000}
+          />
+          <SelectionField
+            label="How often?"
+            value={draft.frequency}
+            options={[...bugFrequencies]}
+            placeholder="How often does it happen?"
+            sheetTitle="Frequency"
+            onSelect={(frequency) => patch({ frequency: frequency as BugReportDraft["frequency"] })}
+          />
+          <View className="flex-row gap-2">
+            <Button variant="quiet" onPress={onCancel}>
+              Discard
+            </Button>
+            <Button loading={busy} disabled={!valid} onPress={onSubmit}>
+              Submit report
+            </Button>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </Card>
   );
 }
@@ -600,7 +608,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     marginBottom: spacing.sm,
   },
-  draftWrap: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
+  draftWrap: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    flexShrink: 1,
+    maxHeight: "75%",
+  },
+  reviewScroll: { maxHeight: "100%" },
+  reviewScrollContent: { flexGrow: 1, paddingBottom: spacing.xs },
   notice: {
     flexDirection: "row",
     alignItems: "center",

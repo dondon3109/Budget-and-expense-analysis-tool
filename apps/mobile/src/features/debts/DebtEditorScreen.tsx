@@ -10,9 +10,11 @@ import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
   Button,
+  Card,
   ConfirmationDialog,
   ErrorState,
   FormField,
+  formatDateInput,
   SelectionField,
   Skeleton,
 } from "@/ui/components";
@@ -233,11 +235,15 @@ export function DebtEditorScreen() {
                 value={minimumPayment}
               />
               <FormField
+                autoCapitalize="none"
+                autoCorrect={false}
                 editable={!saving}
                 error={errors.balanceAsOf}
+                keyboardType="numbers-and-punctuation"
                 label="Balance as of"
+                maxLength={10}
                 onChangeText={(value) => {
-                  setBalanceAsOf(value);
+                  setBalanceAsOf(formatDateInput(value));
                   setErrors((current) => ({ ...current, balanceAsOf: undefined }));
                   setMessage(null);
                 }}
@@ -253,13 +259,37 @@ export function DebtEditorScreen() {
                 sheetTitle="Choose a status"
                 value={status}
               />
-              {blocked ? (
-                <Text
-                  accessibilityRole="alert"
-                  style={[typography.callout, { color: theme.colors.warning }]}
-                >
-                  Resolve this debt&apos;s synchronization state before editing it.
-                </Text>
+              {debtState.debt?.syncState === "conflicted" ? (
+                <Card style={{ backgroundColor: theme.colors.warningSoft }}>
+                  <Text style={[typography.headline, { color: theme.colors.text }]}>
+                    Conflict preserved
+                  </Text>
+                  <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                    Zoption kept both versions. Resolve the conflict to resume editing.
+                  </Text>
+                  {id ? (
+                    <Button
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(app)/debt-conflict",
+                          params: { id },
+                        })
+                      }
+                      variant="secondary"
+                    >
+                      Review conflict
+                    </Button>
+                  ) : null}
+                </Card>
+              ) : debtState.debt?.syncState === "failed" ? (
+                <Card style={{ backgroundColor: theme.colors.dangerSoft }}>
+                  <Text style={[typography.headline, { color: theme.colors.text }]}>
+                    Sync needs repair
+                  </Text>
+                  <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                    This debt change could not be synchronized safely.
+                  </Text>
+                </Card>
               ) : null}
               {message ? (
                 <Text

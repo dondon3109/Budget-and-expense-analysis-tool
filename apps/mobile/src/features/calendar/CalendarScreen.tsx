@@ -90,7 +90,13 @@ function DayCard({ date, day }: { date: string; day?: LocalCalendarDay }) {
           </Text>
           <MoneyValue
             amountMinor={transaction.amountMinor}
-            tone={transaction.kind === "income" ? "income" : "expense"}
+            tone={
+              transaction.kind === "transfer"
+                ? "default"
+                : transaction.kind === "income"
+                  ? "income"
+                  : "expense"
+            }
           />
         </View>
       ))}
@@ -194,7 +200,7 @@ export function CalendarScreen() {
         <View style={styles.addRow}>
           <Button
             accessibilityHint="Opens the event editor"
-            onPress={() => router.push("/(app)/event")}
+            onPress={() => router.push({ pathname: "/(app)/event", params: { date: selectedDate } })}
           >
             Add event
           </Button>

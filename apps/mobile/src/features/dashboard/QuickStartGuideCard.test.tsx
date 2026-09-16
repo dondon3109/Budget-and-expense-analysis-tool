@@ -1,6 +1,16 @@
+const mockSecureValues = new Map<string, string>();
+
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn((key: string) => Promise.resolve(mockSecureValues.get(key) ?? null)),
+  setItemAsync: jest.fn((key: string, value: string) => {
+    mockSecureValues.set(key, value);
+    return Promise.resolve();
+  }),
+}));
+
+import * as SecureStore from "expo-secure-store";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { router } from "expo-router";
-
 import { QuickStartGuideCard } from "./QuickStartGuideCard";
 
 jest.mock("expo-router", () => ({
@@ -12,6 +22,7 @@ jest.mock("expo-router", () => ({
 describe("QuickStartGuideCard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSecureValues.clear();
   });
 
   it("renders 4 onboarding steps and triggers navigation", async () => {
@@ -60,5 +71,17 @@ describe("QuickStartGuideCard", () => {
     expect(screen.queryByText("Quick start guide")).toBeNull();
     expect(screen.queryByText("Adjust starting balances")).toBeNull();
     expect(screen.queryByRole("button", { name: "Reopen quick start guide" })).toBeNull();
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+      "zoption_quick_start_guide_dismissed",
+      "true",
+    );
+  });
+
+  it("does not render when already dismissed in SecureStore", async () => {
+    mockSecureValues.set("zoption_quick_start_guide_dismissed", "true");
+
+    await render(<QuickStartGuideCard firstAccountId="acc-cash-1" />);
+
+    expect(screen.queryByText("Quick start guide")).toBeNull();
   });
 });

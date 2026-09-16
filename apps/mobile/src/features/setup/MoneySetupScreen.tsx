@@ -170,6 +170,7 @@ export function MoneySetupScreen() {
 
   return (
     <Screen
+      hasHeader
       title="Accounts & categories"
       description="Changes save to encrypted storage first and synchronize when reachable. Tap any account to edit details or adjust its current balance."
     >

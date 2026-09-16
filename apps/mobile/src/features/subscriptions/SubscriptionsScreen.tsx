@@ -89,6 +89,26 @@ export function SubscriptionsScreen() {
     await new Promise((resolve) => setTimeout(resolve, 650));
   }, [reference, state, sync]);
 
+  const fabOverlay =
+    state.subscriptions.length > 0 ? (
+      <View style={styles.fabPosition}>
+        <Pressable
+          accessibilityLabel="Add subscription"
+          accessibilityRole="button"
+          android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 28 }}
+          onPress={addSubscription}
+          style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
+        >
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.onBrand}
+            name="plus"
+            size={28}
+          />
+        </Pressable>
+      </View>
+    ) : null;
+
   return (
     <Screen
       action={
@@ -96,7 +116,9 @@ export function SubscriptionsScreen() {
           + Add
         </Button>
       }
+      hasHeader
       onRefresh={handleRefresh}
+      overlay={fabOverlay}
       refreshing={sync.status === "syncing"}
       title="Subscriptions"
     >
@@ -242,26 +264,6 @@ export function SubscriptionsScreen() {
         visible={guideSubscription !== null}
         onDismiss={() => setGuideSubscription(null)}
       />
-
-      {/* Floating Action Button for easy one-handed subscription creation */}
-      {state.subscriptions.length > 0 ? (
-        <View style={styles.fabPosition}>
-          <Pressable
-            accessibilityLabel="Add subscription"
-            accessibilityRole="button"
-            android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 28 }}
-            onPress={addSubscription}
-            style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
-          >
-            <MaterialCommunityIcons
-              accessibilityElementsHidden
-              color={theme.colors.onBrand}
-              name="plus"
-              size={28}
-            />
-          </Pressable>
-        </View>
-      ) : null}
     </Screen>
   );
 }

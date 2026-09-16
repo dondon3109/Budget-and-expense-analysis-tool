@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useZoptionTheme } from "./theme-provider";
 import { spacing, typography } from "./tokens";
@@ -20,6 +20,9 @@ export interface ScreenProps extends PropsWithChildren {
   refreshing?: boolean;
   onRefresh?: () => void | Promise<void>;
   refreshControl?: ReactElement;
+  hasHeader?: boolean;
+  edges?: readonly Edge[];
+  overlay?: ReactNode;
 }
 
 export function Screen({
@@ -31,10 +34,18 @@ export function Screen({
   refreshing,
   onRefresh,
   refreshControl: customRefreshControl,
+  hasHeader = false,
+  edges,
+  overlay,
   children,
 }: ScreenProps) {
   const theme = useZoptionTheme();
   const [internalRefreshing, setInternalRefreshing] = useState(false);
+
+  const resolvedEdges =
+    edges ?? (hasHeader ? (["bottom", "left", "right"] as const) : (["top", "left", "right"] as const));
+
+  const shouldRenderHeading = showHeading && (!hasHeader || Boolean(description || action));
 
   const handleRefresh = useCallback(async () => {
     if (!onRefresh) return;
@@ -66,27 +77,33 @@ export function Screen({
     ) : undefined);
   const body = (
     <View className="w-full gap-6 px-4 pb-8 pt-3" style={[styles.content, !scroll && styles.fill]}>
-      {showHeading ? (
+      {shouldRenderHeading ? (
         <View
           style={[
             styles.headingRow,
             description ? styles.headingRowWithDescription : styles.headingRowCentered,
           ]}
         >
-          <View className="gap-1" style={styles.titleBlock}>
-            <Text
-              accessibilityRole="header"
-              numberOfLines={1}
-              style={[typography.display, { color: theme.colors.text }]}
-            >
-              {title}
-            </Text>
-            {description ? (
-              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                {description}
-              </Text>
-            ) : null}
-          </View>
+          {!hasHeader || description ? (
+            <View className="gap-1" style={styles.titleBlock}>
+              {!hasHeader ? (
+                <Text
+                  accessibilityRole="header"
+                  numberOfLines={1}
+                  style={[typography.display, { color: theme.colors.text }]}
+                >
+                  {title}
+                </Text>
+              ) : null}
+              {description ? (
+                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                  {description}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.titleBlock} />
+          )}
           {action ? <View style={styles.actionBlock}>{action}</View> : null}
         </View>
       ) : null}
@@ -96,7 +113,7 @@ export function Screen({
 
   return (
     <SafeAreaView
-      edges={["top", "left", "right"]}
+      edges={resolvedEdges}
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
       {scroll ? (
@@ -112,6 +129,7 @@ export function Screen({
       ) : (
         body
       )}
+      {overlay}
     </SafeAreaView>
   );
 }
