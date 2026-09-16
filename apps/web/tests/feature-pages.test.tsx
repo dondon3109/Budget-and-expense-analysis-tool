@@ -9,7 +9,12 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { FeaturePage } from "../src/pages/features/FeaturePage";
-import { FEATURE_PAGES, findFeaturePage } from "../src/pages/features/featurePages";
+import {
+  FEATURE_PAGES,
+  FEATURE_PAGES_LAST_MODIFIED,
+  FEATURE_PAGES_LAST_UPDATED,
+  findFeaturePage,
+} from "../src/pages/features/featurePages";
 import { PUBLIC_ROUTE_METADATA, PUBLIC_ROUTE_PATHS } from "../src/seo/siteMetadata";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
@@ -53,6 +58,15 @@ describe("feature explainer pages", () => {
       expect(PUBLIC_ROUTE_METADATA[page.path]?.canonical).toBe(`https://zoption.site${page.path}`);
       expect(PUBLIC_ROUTE_METADATA[page.path]?.robots).toBe("index,follow");
     }
+  });
+
+  it("keeps the displayed date in step with the ISO date the sitemap publishes", () => {
+    const longForm = new Intl.DateTimeFormat("en-US", {
+      dateStyle: "long",
+      timeZone: "UTC",
+    }).format(new Date(`${FEATURE_PAGES_LAST_MODIFIED}T00:00:00Z`));
+
+    expect(FEATURE_PAGES_LAST_UPDATED).toBe(longForm);
   });
 
   it("links each page to its related guide and its sibling explainer", () => {
