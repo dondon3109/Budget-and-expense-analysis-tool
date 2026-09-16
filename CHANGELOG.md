@@ -25,6 +25,7 @@ All notable product changes are documented here.
 - Corrected screen reader accessibility labels in debts, budgets, and subscriptions to announce formatted currency rather than raw minor unit integers.
 - Styled net-neutral account transfers with neutral color tones instead of expense or income colors on the mobile dashboard and calendar.
 - Auto-normalized date inputs across entity editors and aligned Android multiline text inputs to the top.
+- Fixed mobile cookie consent banner on iOS Safari where action buttons stretched into oversized blocks with missing text and pushed preference controls off-screen.
 
 ## 2.32.5 — 2026-09-15
 
