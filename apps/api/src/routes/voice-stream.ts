@@ -195,6 +195,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
 
     const micStart = context.req.header("x-t-mic-start") || String(tWorkerOpen);
     const requestedLang = context.req.query("lang");
+    const isTagalog = requestedLang === "fil" || requestedLang === "tl";
 
     // ==========================================
     // OPTION A: Google Gemini Multimodal Live API
@@ -211,7 +212,6 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       const modelName = sttCfg.model.includes("/") ? sttCfg.model : `models/${sttCfg.model}`;
 
       const isTranscribeLive = sttCfg.model === "gemini-3.5-transcribe-live";
-      const isTagalog = requestedLang === "fil" || requestedLang === "tl";
       const languageCodes = isTagalog
         ? ["fil-PH", "en-US"]
         : ["en-US", "fil-PH"];
