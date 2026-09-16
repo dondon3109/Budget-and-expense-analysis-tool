@@ -11,32 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 15, 2026",
+  releasedOn: "September 16, 2026",
   changes: [
     {
-      title: "Quick start guide and mobile dashboard fixes",
+      title: "Cross-chat assistant memory and editor",
       description:
-        "The quick start guide now disappears completely when dismissed instead of leaving a reopen banner behind, and the mobile Safe-to-Spend renewals button no longer overflows its card on narrow screens.",
+        "The financial assistant now remembers key budget caps, payday schedules, checking buffers, and recurring bills across chats, ranks saved facts by relevance to your questions, and lets you view, edit, or delete individual remembered facts in the Memory panel on web and mobile.",
     },
     {
-      title: "Guided spreadsheet migration and full data portability",
+      title: "Mobile navigation and UI ergonomics",
       description:
-        "Import transactions smoothly from Excel or CSV with bank preset recognition and column mapping, and export complete unpaywalled JSON account backups on web and mobile.",
+        "Pushed screens now feature modal conflict navigation, responsive review forms, inline bottom-sheet pickers, screen reader currency announcements, and eliminated double-header insets.",
     },
     {
-      title: "Platform admin console",
+      title: "Monthly transaction Net totals",
       description:
-        "Manage sponsored Pro seats, customer reviews, AI and voice models, and support report triage from a central dashboard.",
+        "Renamed the mobile Transactions month summary to Net with a clear explanation of how income minus expenses differs from your account balance.",
     },
     {
-      title: "Assistant chat history multi-delete",
+      title: "Mobile cookie consent banner fix",
       description:
-        "Select and delete multiple assistant conversation threads at once with single-action confirmation on web and mobile.",
+        "Cookie consent action buttons on iOS Safari now render at the intended size with visible text labels and easy access to preference controls.",
     },
     {
-      title: "Android Beta 0.2.28",
+      title: "Android Beta 0.2.29",
       description:
-        "The official Android Beta carries the quick start guide and renewals fixes, plus the guided spreadsheet migration flow, complete JSON account export share sheet, multi-chat deletion in assistant history, and same-day transactions that stay in the order you recorded them.",
+        "The official Android Beta includes cross-chat assistant memory management, mobile navigation and layout ergonomics, monthly Net explanations, and mobile cookie consent fixes.",
     },
   ],
 };
@@ -48,6 +48,37 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.32.0",
+    releasedOn: "September 13, 2026",
+    changes: [
+      {
+        title: "Quick start guide and mobile dashboard fixes",
+        description:
+          "The quick start guide now disappears completely when dismissed instead of leaving a reopen banner behind, and the mobile Safe-to-Spend renewals button no longer overflows its card on narrow screens.",
+      },
+      {
+        title: "Guided spreadsheet migration and full data portability",
+        description:
+          "Import transactions smoothly from Excel or CSV with bank preset recognition and column mapping, and export complete unpaywalled JSON account backups on web and mobile.",
+      },
+      {
+        title: "Platform admin console",
+        description:
+          "Manage sponsored Pro seats, customer reviews, AI and voice models, and support report triage from a central dashboard.",
+      },
+      {
+        title: "Assistant chat history multi-delete",
+        description:
+          "Select and delete multiple assistant conversation threads at once with single-action confirmation on web and mobile.",
+      },
+      {
+        title: "Android Beta 0.2.28",
+        description:
+          "The official Android Beta carries the quick start guide and renewals fixes, plus the guided spreadsheet migration flow, complete JSON account export share sheet, multi-chat deletion in assistant history, and same-day transactions that stay in the order you recorded them.",
+      },
+    ],
+  },
   {
     version: "2.31.0",
     releasedOn: "September 12, 2026",
