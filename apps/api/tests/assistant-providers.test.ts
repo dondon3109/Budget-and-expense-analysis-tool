@@ -117,6 +117,36 @@ describe("ChatCompletionsProvider (openai/gemini/meta/muse_spark/deepseek)", () 
     expect(body).toMatchObject({ model: "gpt-4o-mini", stream: false, temperature: 0.15 });
   });
 
+  it("gives Gemini a larger output cap than the plain-model default", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => chatCompletionResponse({ role: "assistant", content: "ok" }));
+    const env = { DB: {} as D1Database } as Bindings;
+
+    await createAssistantProviderForConfig(
+      "gemini",
+      "gemini-3.5-flash-lite",
+      "key",
+      env,
+      fetcher,
+    ).complete(env, request);
+    await createAssistantProviderForConfig("openai", "gpt-4o-mini", "key", env, fetcher).complete(
+      env,
+      request,
+    );
+
+    const geminiBody = JSON.parse(fetcher.mock.calls[0]![1]?.body as string) as {
+      max_tokens: number;
+    };
+    const openaiBody = JSON.parse(fetcher.mock.calls[1]![1]?.body as string) as {
+      max_tokens: number;
+    };
+    // Gemini counts its reasoning toward the cap, and a bigger cap also lets a long
+    // answer finish instead of being cut short.
+    expect(geminiBody.max_tokens).toBe(4_096);
+    expect(openaiBody.max_tokens).toBe(800);
+  });
+
   it("echoes a Gemini thought signature back with the tool call", async () => {
     const signature = { google: { thought_signature: "sig-1" } };
     // A fresh Response per call: bodies are single-use.

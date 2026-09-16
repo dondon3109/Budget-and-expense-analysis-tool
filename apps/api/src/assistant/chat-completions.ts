@@ -47,6 +47,11 @@ export interface ChatCompletionsOptions {
   /** Extra vendor-specific body fields (e.g. DeepSeek `thinking`). */
   extraBody?: Record<string, unknown>;
   /**
+   * Output-token cap. Thinking models count their reasoning toward it, so a cap that
+   * suits a plain model can be spent before any answer is produced.
+   */
+  maxOutputTokens?: number;
+  /**
    * `"auto-only"` omits `tool_choice` from every request. Meta's Chat
    * Completions endpoint only supports the default auto behavior —
    * `"required"`, `"none"`, and named-function choices return HTTP 400.
@@ -149,7 +154,7 @@ export class ChatCompletionsProvider implements AssistantProvider {
           tools: request.tools,
           ...(toolChoice === undefined ? {} : { tool_choice: toolChoice }),
           temperature: 0.15,
-          max_tokens: 800,
+          max_tokens: this.options.maxOutputTokens ?? 800,
           stream: false,
           ...this.options.extraBody,
         }),
