@@ -97,6 +97,7 @@ describe("DeepSeekProvider", () => {
 
   it.each([
     [401, "configuration", "credentials_rejected"],
+    [402, "configuration", "insufficient_credits"],
     [403, "configuration", "credentials_rejected"],
     [429, "rate_limit", "rate_limited"],
     [500, "unavailable", "upstream_unavailable"],

@@ -51,6 +51,9 @@ function classifyStatus(
   if (status === 429) return { kind: "rate_limit", reason: "rate_limited" };
   if (status === 401 || status === 403)
     return { kind: "configuration", reason: "credentials_rejected" };
+  // HTTP 402 is an unfunded account. Like rejected credentials that is account
+  // state the admin cannot retry away, so it reuses the `configuration` kind.
+  if (status === 402) return { kind: "configuration", reason: "insufficient_credits" };
   if (status >= 500) return { kind: "unavailable", reason: "upstream_unavailable" };
   return { kind: "invalid_response", reason: "request_rejected" };
 }
@@ -98,11 +101,13 @@ async function getJson(
     const message =
       mapped.reason === "credentials_rejected"
         ? "The provider rejected this key."
-        : mapped.reason === "rate_limited"
-          ? "The provider is temporarily rate limited."
-          : mapped.reason === "upstream_unavailable"
-            ? "The provider is temporarily unavailable."
-            : "The provider rejected the model-list request.";
+        : mapped.reason === "insufficient_credits"
+          ? "The provider account has no remaining credit."
+          : mapped.reason === "rate_limited"
+            ? "The provider is temporarily rate limited."
+            : mapped.reason === "upstream_unavailable"
+              ? "The provider is temporarily unavailable."
+              : "The provider rejected the model-list request.";
     throw new AssistantProviderError(
       mapped.kind,
       mapped.reason,
