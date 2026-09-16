@@ -52,9 +52,6 @@ const STUB_NOT_FOUND =
 const POLICY_PATTERN = /TRUSTED SERVER POLICY\n(\{[^\n]*\})/;
 const CURRENT_DATE_PATTERN = /Today is (\d{4}-\d{2}-\d{2})/;
 
-/** Env shape for the local-only flag, which stays out of the shared Bindings type. */
-type StubBindings = Bindings & { ASSISTANT_PROVIDER?: string };
-
 /**
  * True only when `ASSISTANT_PROVIDER=stub` is set outside production. The
  * production guard uses the same environment signal auth.ts relies on for its
@@ -63,7 +60,7 @@ type StubBindings = Bindings & { ASSISTANT_PROVIDER?: string };
  */
 export function isAssistantStubEnabled(env: Bindings): boolean {
   if (env.POSTHOG_AI_ENVIRONMENT === "production") return false;
-  return (env as StubBindings).ASSISTANT_PROVIDER?.trim().toLowerCase() === STUB_ASSISTANT_PROVIDER;
+  return env.ASSISTANT_PROVIDER?.trim().toLowerCase() === STUB_ASSISTANT_PROVIDER;
 }
 
 interface StubTurnPolicy {

@@ -39,6 +39,7 @@ export interface Bindings {
   MUSE_SPARK_API_URL?: string;
   DEEPSEEK_API_URL?: string;
   ASSISTANT_ENABLED?: string;
+  ASSISTANT_PROVIDER?: string;
   ASSISTANT_TIME_ZONE?: string;
   ASSISTANT_PROVIDER_TIMEOUT_MS?: string;
   ASSISTANT_OVERALL_TIMEOUT_MS?: string;

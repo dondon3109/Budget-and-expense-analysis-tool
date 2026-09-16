@@ -9,7 +9,12 @@ import { createCloudflareWhisperProvider } from "./assistant/cloudflare-whisper"
 import { createFishAudioProvider } from "./assistant/fish-audio";
 import { createGoogleSttProvider } from "./assistant/google-stt";
 import type { AssistantProvider } from "./assistant/provider";
-import { createAssistantStubProvider, isAssistantStubEnabled } from "./assistant/stub";
+import {
+  STUB_ASSISTANT_MODEL,
+  STUB_ASSISTANT_PROVIDER,
+  createAssistantStubProvider,
+  isAssistantStubEnabled,
+} from "./assistant/stub";
 import type { AssistantVoiceProviders } from "./assistant/voice-provider";
 import type { Bindings } from "./types";
 import type { ProviderConfigRepository } from "./db/provider-configs";
@@ -251,8 +256,11 @@ export function createProviderRegistry(
     },
 
     async getHealth(env: Bindings): Promise<ProviderHealthStatus[]> {
+      // The stub short-circuits D1 in getAssistantProvider, so health must
+      // report it too instead of the env fallback it never serves from.
+      const assistantStub = isAssistantStubEnabled(env);
       const [assistantCfg, sttCfg, ttsCfg] = await Promise.all([
-        this.getActive(env, "assistant"),
+        assistantStub ? Promise.resolve(null) : this.getActive(env, "assistant"),
         this.getActive(env, "stt"),
         this.getActive(env, "tts"),
       ]);
@@ -368,7 +376,20 @@ export function createProviderRegistry(
       };
 
       return [
-        build("assistant", assistantCfg, assistantCred, "deepseek", "deepseek-v4-flash"),
+        assistantStub
+          ? {
+              service: "assistant",
+              provider: STUB_ASSISTANT_PROVIDER,
+              model: STUB_ASSISTANT_MODEL,
+              configId: null,
+              hasCredential: false,
+              credentialName: null,
+              credentialId: null,
+              apiKeyLast4: null,
+              credentialSource: "none",
+              details: "Local/CI stub — no external provider or credential is used",
+            }
+          : build("assistant", assistantCfg, assistantCred, "deepseek", "deepseek-v4-flash"),
         build("stt", sttCfg, sttCred, "cloudflare_workers_ai", "@cf/openai/whisper-large-v3-turbo"),
         build("tts", ttsCfg, ttsCred, "fish_audio", "s2.1-pro-free"),
       ];
