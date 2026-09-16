@@ -56,6 +56,22 @@ describe("assistant memory sanitization", () => {
     // The grouped card form still needs real card-length digits, not three short groups.
     expect(isSensitiveMemory("card 4111 11 11")).toBe(false);
   });
+
+  it("flags the Amex 4-6-5 card grouping", () => {
+    expect(isSensitiveMemory("card 3714 496353 98431")).toBe(true);
+    expect(isSensitiveMemory("card 3782-822463-10005")).toBe(true);
+  });
+
+  it("accepts the card-shaped false positive that privacy outranks", () => {
+    // "5000 6000 7000 8000" is 16 digits under a live Mastercard prefix, so only a Luhn
+    // check tells it apart from a real card, and a Luhn failure may not clear a
+    // card-looking value. The cost of the false positive is one dropped memory; the cost
+    // of the false negative is a stored card number. Decision, not an accident.
+    expect(isSensitiveMemory("5000 6000 7000 8000")).toBe(true);
+    // The trade-off is only acceptable while real grouped cards, 5-series included,
+    // stay caught.
+    expect(isSensitiveMemory("card 5105 1051 0510 5100")).toBe(true);
+  });
 });
 
 describe("deterministicExtract", () => {
@@ -368,6 +384,47 @@ describe("memory extraction quality", () => {
     expect(
       deterministicExtract("Can you remember that my monthly budget is 30000?").needsModelPass,
     ).toBe(true);
+  });
+
+  it("extracts a fact the user explicitly asks the assistant to remember", () => {
+    expect(
+      deterministicExtract("Can you remember that I prefer the avalanche method?").memories,
+    ).toEqual([
+      expect.objectContaining({ kind: "preference", key: "debt_strategy", value: "avalanche" }),
+    ]);
+    expect(
+      deterministicExtract("Can you remember that my monthly budget is 30000?").memories,
+    ).toEqual([
+      expect.objectContaining({
+        key: "monthly_budget_cap",
+        value: expect.stringContaining("30000"),
+      }),
+    ]);
+    // One rule for every extractor: a remember request that names a savings target,
+    // buffer, payday, or bill stores the same key a plain statement would.
+    for (const [message, key] of [
+      ["Can you remember that my emergency fund target is 100000?", "emergency_fund_target"],
+      ["Can you remember that I keep 5000 in my checking account?", "checking_buffer"],
+      ["Can you remember that my payday is every 15th?", "payday_schedule"],
+      ["Can you remember that my insurance dues are every month?", "recurring_bill"],
+    ] as const) {
+      expect(deterministicExtract(message).memories.map((memory) => memory.key)).toEqual([key]);
+    }
+  });
+
+  it("keeps a question about what the assistant remembers ineligible", () => {
+    for (const message of [
+      "Do you remember my budget of 30000?",
+      "Do you remember that my payday is every 15th?",
+      "Do you remember that I prefer the avalanche method?",
+      "Do you remember my emergency fund target of 100000?",
+    ]) {
+      const result = deterministicExtract(message);
+      expect(result.memories).toEqual([]);
+      // The model pass is gated by the same rule, so a memory question cannot recover a
+      // fact the deterministic extractors declined to store.
+      expect(result.needsModelPass).toBe(false);
+    }
   });
 
   it("treats a negated forget as a reminder, not a deletion", () => {
