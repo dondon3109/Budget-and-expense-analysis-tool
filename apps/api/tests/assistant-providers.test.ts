@@ -33,6 +33,44 @@ function chatCompletionResponse(message: Record<string, unknown>, finishReason =
   });
 }
 
+/**
+ * A failing response whose body records consumption, so a test can prove a
+ * client never touched it or stopped at its read cap. `json`/`text` spies
+ * cover whole-body reads and `pulledChunks` covers streaming reads. The zero
+ * high-water mark keeps pulls demand-driven: an untouched body pulls nothing.
+ */
+function trackedFailureResponse(status: number, chunks: string[]) {
+  const encoder = new TextEncoder();
+  let pulled = 0;
+  let drained = false;
+  const response = new Response(
+    new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          const chunk = chunks[pulled];
+          if (chunk === undefined) {
+            drained = true;
+            controller.close();
+            return;
+          }
+          pulled += 1;
+          controller.enqueue(encoder.encode(chunk));
+        },
+      },
+      // A non-zero queue would prefetch a chunk before any consumer reads it.
+      { highWaterMark: 0 },
+    ),
+    { status },
+  );
+  return {
+    response,
+    jsonSpy: vi.spyOn(response, "json"),
+    textSpy: vi.spyOn(response, "text"),
+    pulledChunks: () => pulled,
+    drained: () => drained,
+  };
+}
+
 describe("assistant multi-provider allowlist", () => {
   it("allowlist assistant providers and models for testing", () => {
     expect(providerAllowlist.assistant.deepseek).toContain("deepseek-v4-flash");
@@ -77,6 +115,36 @@ describe("ChatCompletionsProvider (openai/gemini/meta/muse_spark/deepseek)", () 
     expect(init?.headers).toMatchObject({ Authorization: "Bearer sk-test-openai" });
     const body = JSON.parse(init?.body as string) as Record<string, unknown>;
     expect(body).toMatchObject({ model: "gpt-4o-mini", stream: false, temperature: 0.15 });
+  });
+
+  it("gives Gemini a larger output cap than the plain-model default", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => chatCompletionResponse({ role: "assistant", content: "ok" }));
+    const env = { DB: {} as D1Database } as Bindings;
+
+    await createAssistantProviderForConfig(
+      "gemini",
+      "gemini-3.5-flash-lite",
+      "key",
+      env,
+      fetcher,
+    ).complete(env, request);
+    await createAssistantProviderForConfig("openai", "gpt-4o-mini", "key", env, fetcher).complete(
+      env,
+      request,
+    );
+
+    const geminiBody = JSON.parse(fetcher.mock.calls[0]![1]?.body as string) as {
+      max_tokens: number;
+    };
+    const openaiBody = JSON.parse(fetcher.mock.calls[1]![1]?.body as string) as {
+      max_tokens: number;
+    };
+    // Gemini counts its reasoning toward the cap, and a bigger cap also lets a long
+    // answer finish instead of being cut short.
+    expect(geminiBody.max_tokens).toBe(4_096);
+    expect(openaiBody.max_tokens).toBe(800);
   });
 
   it("echoes a Gemini thought signature back with the tool call", async () => {
@@ -361,12 +429,92 @@ describe("AnthropicProvider", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
-  it("maps 401 to credentials_rejected", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response("nope", { status: 401 }));
-    const provider = new AnthropicProvider("claude-3-5-haiku-latest", "bad", undefined, fetcher);
+  it.each([
+    [401, "configuration", "credentials_rejected"],
+    // Anthropic reports an unfunded account as 400, so 402 keeps the generic
+    // mapping; what matters here is that its body stays untouched.
+    [402, "invalid_response", "request_rejected"],
+    [403, "configuration", "credentials_rejected"],
+    [429, "rate_limit", "rate_limited"],
+    [500, "unavailable", "upstream_unavailable"],
+  ] as const)(
+    "maps Anthropic HTTP %i to %s/%s without reading the body",
+    async (status, kind, reason) => {
+      const tracked = trackedFailureResponse(status, ["sensitive-provider-body"]);
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(tracked.response);
+      const provider = new AnthropicProvider("claude-3-5-haiku-latest", "bad", undefined, fetcher);
+
+      const error = await provider
+        .complete({ DB: {} as D1Database } as Bindings, request)
+        .catch((thrown) => thrown);
+
+      expect(error).toMatchObject({
+        kind,
+        reason,
+        provider: "anthropic",
+        providerStatus: status,
+      });
+      expect(tracked.jsonSpy).not.toHaveBeenCalled();
+      expect(tracked.textSpy).not.toHaveBeenCalled();
+      expect(tracked.pulledChunks()).toBe(0);
+      expect(JSON.stringify(error)).not.toContain("sensitive-provider-body");
+    },
+  );
+
+  it.each([
+    "Your credit balance is too low to access the API.",
+    "Insufficient credit: purchase credits to continue.",
+  ])("classifies an Anthropic 400 credit message as insufficient_credits", async (message) => {
+    const tracked = trackedFailureResponse(400, [JSON.stringify({ error: { message } })]);
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(tracked.response);
+    const provider = new AnthropicProvider("claude-3-5-haiku-latest", "k", undefined, fetcher);
+
+    const error = await provider
+      .complete({ DB: {} as D1Database } as Bindings, request)
+      .catch((thrown) => thrown);
+
+    expect(error).toMatchObject({
+      kind: "configuration",
+      reason: "insufficient_credits",
+      provider: "anthropic",
+      providerStatus: 400,
+    });
+    expect(error.message).not.toContain(message);
+    expect(JSON.stringify(error)).not.toContain(message);
+  });
+
+  it("caps the Anthropic 400 body read and falls through on a miss", async () => {
+    const chunks = Array.from({ length: 64 }, () => "x".repeat(1024));
+    const tracked = trackedFailureResponse(400, chunks);
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(tracked.response);
+    const provider = new AnthropicProvider("claude-3-5-haiku-latest", "k", undefined, fetcher);
+
     await expect(
       provider.complete({ DB: {} as D1Database } as Bindings, request),
-    ).rejects.toMatchObject({ kind: "configuration", reason: "credentials_rejected" });
+    ).rejects.toMatchObject({ kind: "invalid_response", reason: "request_rejected" });
+
+    expect(tracked.pulledChunks()).toBeGreaterThan(0);
+    expect(tracked.pulledChunks()).toBeLessThan(chunks.length);
+    expect(tracked.drained()).toBe(false);
+  });
+
+  it("falls back to request_rejected when the Anthropic 400 body cannot be read", async () => {
+    const errored = new Response(
+      new ReadableStream({
+        pull(controller) {
+          controller.error(new Error("body unavailable"));
+        },
+      }),
+      { status: 400 },
+    );
+    const empty = new Response(null, { status: 400 });
+    for (const response of [errored, empty]) {
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response);
+      const provider = new AnthropicProvider("claude-3-5-haiku-latest", "k", undefined, fetcher);
+      await expect(
+        provider.complete({ DB: {} as D1Database } as Bindings, request),
+      ).rejects.toMatchObject({ kind: "invalid_response", reason: "request_rejected" });
+    }
   });
 });
 

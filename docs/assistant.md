@@ -231,6 +231,6 @@ For local development, put provider secrets in ignored `apps/api/.dev.vars`. Nev
 
 ## Failure behavior
 
-Provider timeouts, outages, invalid responses, and blocked responses are mapped to stable user-safe API errors. DeepSeek response bodies and authorization headers are not returned or logged. PostHog receives only stable error kind/reason categories and an HTTP status when known; capture errors and response bodies are ignored. `/health` checks D1 only and does not depend on DeepSeek or PostHog availability.
+Provider timeouts, outages, invalid responses, and blocked responses are mapped to stable user-safe API errors. DeepSeek response bodies and authorization headers are not returned or logged. The only provider error body any client reads is Anthropic's HTTP 400, which is how Anthropic reports an unfunded account: at most a few KB are matched against a credit-exhaustion marker and then discarded without reaching errors, logs, telemetry, or diagnostics. PostHog receives only stable error kind/reason categories and an HTTP status when known; capture errors and response bodies are ignored. `/health` checks D1 only and does not depend on DeepSeek or PostHog availability.
 
 The assistant provides educational budgeting and financial-wellness information, not personalized financial, investment, tax, legal, retirement-allocation, or insurance advice.

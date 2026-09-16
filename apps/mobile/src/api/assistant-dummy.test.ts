@@ -1,3 +1,5 @@
+import type { AssistantDebtStrategy } from "@zoption/shared";
+
 import {
   clearDummyAssistantMemory,
   createDummyAssistantThreadTurn,
@@ -52,6 +54,17 @@ describe("assistant dummy service", () => {
       debtStrategy: "snowball",
     });
     expect(updated.debtStrategy).toBe("snowball");
+  });
+
+  it("seeds the payoff preference under the canonical key and a valid strategy", async () => {
+    const memories = await getDummyAssistantMemory();
+    const payoff = memories.find((memory) => memory.kind === "preference");
+    // The payoff control hides this row and only understands these strategies, so a
+    // non-canonical key or an unknown value would leave the control disagreeing with it.
+    const validStrategies: AssistantDebtStrategy[] = ["avalanche", "snowball"];
+
+    expect(payoff?.key).toBe("debt_strategy");
+    expect(validStrategies).toContain(payoff?.value);
   });
 
   it("lists, clears, and reads memories", async () => {

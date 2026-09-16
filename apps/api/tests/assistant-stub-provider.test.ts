@@ -66,7 +66,7 @@ describe("assistant stub provider selection", () => {
     const { provider, config, credential } = await registry.getAssistantProvider({
       ...env,
       ASSISTANT_PROVIDER: "stub",
-    } as unknown as Bindings);
+    });
 
     expect(provider.providerName).toBe(STUB_ASSISTANT_PROVIDER);
     expect(config).toBeNull();
@@ -93,12 +93,57 @@ describe("assistant stub provider selection", () => {
       ...env,
       ASSISTANT_PROVIDER: "stub",
       POSTHOG_AI_ENVIRONMENT: "production",
-    } as unknown as Bindings;
+    };
 
     expect(isAssistantStubEnabled(productionEnv)).toBe(false);
     const { registry } = createRegistry();
     const { provider } = await registry.getAssistantProvider(productionEnv);
     expect(provider.providerName).toBe("deepseek");
+  });
+});
+
+describe("assistant stub provider health", () => {
+  it("reports the stub for the assistant service when the flag is set", async () => {
+    const { registry, repository } = createRegistry();
+    const health = await registry.getHealth({ ...env, ASSISTANT_PROVIDER: "stub" });
+
+    const assistant = health.find((entry) => entry.service === "assistant");
+    expect(assistant).toMatchObject({
+      provider: STUB_ASSISTANT_PROVIDER,
+      model: STUB_ASSISTANT_MODEL,
+      configId: null,
+      hasCredential: false,
+      credentialName: null,
+      apiKeyLast4: null,
+      credentialSource: "none",
+    });
+    expect(assistant?.details).toContain("stub");
+    expect(repository.getActive).not.toHaveBeenCalledWith(expect.anything(), "assistant");
+    // Other services keep their own fallbacks.
+    expect(health.find((entry) => entry.service === "stt")?.provider).toBe("cloudflare_workers_ai");
+    expect(health.find((entry) => entry.service === "tts")?.provider).toBe("fish_audio");
+  });
+
+  it("reports the deepseek env fallback when the flag is absent", async () => {
+    const { registry } = createRegistry();
+    const health = await registry.getHealth(env);
+
+    expect(health.find((entry) => entry.service === "assistant")).toMatchObject({
+      provider: "deepseek",
+      model: "deepseek-v4-flash",
+      configId: "env-fallback-assistant",
+    });
+  });
+
+  it("never reports the stub in production", async () => {
+    const { registry } = createRegistry();
+    const health = await registry.getHealth({
+      ...env,
+      ASSISTANT_PROVIDER: "stub",
+      POSTHOG_AI_ENVIRONMENT: "production",
+    });
+
+    expect(health.find((entry) => entry.service === "assistant")?.provider).toBe("deepseek");
   });
 });
 

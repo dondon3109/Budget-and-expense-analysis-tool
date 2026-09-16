@@ -561,6 +561,19 @@ export interface AssistantMemory {
   updatedAt: string;
 }
 
+/**
+ * Aliases the API folds into `debt_strategy` when it canonicalizes memory keys on write, so
+ * rows stored earlier can still reach clients under these keys. They all mean the payoff
+ * preference, which the memory panel's strategy control owns; the `debt_rule` aliases
+ * (`pay_smallest_first`, `smallest_debt_first`) are absent on purpose because those are real
+ * rules. Keep in step with KEY_ALIASES in apps/api/src/assistant/memory.ts.
+ */
+export const assistantPayoffPreferenceKeys: ReadonlySet<string> = new Set([
+  "debt_strategy",
+  "avalanche_method",
+  "snowball_method",
+]);
+
 export interface AssistantMemoryPreferences {
   debtStrategy: AssistantDebtStrategy | null;
   responseDetail: AssistantResponseDetail;

@@ -1,3 +1,4 @@
+import { assistantPayoffPreferenceKeys } from "@zoption/shared";
 import type {
   AssistantDebtStrategy,
   AssistantMemory,
@@ -35,9 +36,19 @@ const SECRET_PATTERNS: RegExp[] = [
   /\b(?:password|passphrase|secret|api[_-]?key|token)\b\s*[:=]/i,
   // Card numbers: 13-19 digits, contiguous or grouped by single spaces or dashes. The
   // grouped form also needs a network prefix, because unrelated four-digit groups are
-  // also how people write years and IDs ("Plan fees for 2026 2027 2028 2029").
+  // also how people write years and IDs ("Plan fees for 2026 2027 2028 2029"). Accepted
+  // false positive for that grouped form: four uniform four-digit groups under a
+  // card-range prefix ("5000 6000 7000 8000") are flagged although they are not a real
+  // card. Only a Luhn check separates them from a card, and a Luhn failure may not clear
+  // a card-looking value (a mistyped real card is still a leak), so the value stays
+  // sensitive. Pinned by a test.
   /\b\d{13,19}\b/,
   /\b(?:2[2-7]\d{2}|[3-6]\d{3})(?:[ -]\d{3,4}){3}(?:[ -]\d{1,3})?\b/,
+  // Card shapes the prefix pattern above cannot reach, because a six-digit group never
+  // matches a 3-4 digit one: Amex 4-6-5 ("3714 496353 98431") and Diners Club 4-6-4
+  // ("3056 930902 5904"). The shape itself is the signal, so no network prefix is needed
+  // — a false positive only drops one memory.
+  /\b\d{4}[ -]\d{6}[ -]\d{4,5}\b/,
   /\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b/,
   /\b09\d{2}[-\s]?\d{3}[-\s]?\d{4}\b/,
   /(?:client[_-]?secret|service[_-]?role)/i,
@@ -97,11 +108,19 @@ const MEMORY_CANONICAL_KEYS = [
 
 const DEBT_STRATEGY_VALUES = new Set(["avalanche", "snowball"]);
 
+/** The key every payoff-preference alias collapses into. */
+const PAYOFF_PREFERENCE_KEY = "debt_strategy";
+
 const KEY_ALIASES: Record<string, string> = {
+  // Derived from the shared set both Memory panels filter on, so the API and the
+  // clients cannot drift apart about which keys mean the payoff preference.
+  ...Object.fromEntries(
+    [...assistantPayoffPreferenceKeys]
+      .filter((key) => key !== PAYOFF_PREFERENCE_KEY)
+      .map((key) => [key, PAYOFF_PREFERENCE_KEY]),
+  ),
   pay_smallest_first: "debt_rule",
   smallest_debt_first: "debt_rule",
-  avalanche_method: "debt_strategy",
-  snowball_method: "debt_strategy",
   emergency_savings: "emergency_fund_target",
   emergency_savings_target: "emergency_fund_target",
   monthly_budget: "monthly_budget_cap",
@@ -132,10 +151,27 @@ function isValidAmount(raw: string | undefined): boolean {
 const QUESTION_LEAD =
   /^(?:what|how|when|where|which|who|whose|why|is|are|was|were|do|does|did|can|could|should|would|will|shall|may|might|tell me|show me)\b/i;
 
-/** Questions describe nothing durable, so they never become memories. */
+/** Questions describe nothing durable, so only an explicit remember request survives them. */
 function isQuestion(message: string): boolean {
   const trimmed = message.trim();
   return trimmed.endsWith("?") || QUESTION_LEAD.test(trimmed);
+}
+
+// An explicit request to remember keeps a question eligible: "Can you remember that I
+// prefer the avalanche method?" states a durable fact in question form. "Do you
+// remember ...?" asks what is already stored rather than asking for a fact to be
+// stored, so that interrogative shape is not a request.
+const REMEMBER_REQUEST = /\b(?:remember|note|keep in mind|tandaan)\b/i;
+const REMEMBER_QUESTION = /\b(?:do|did|does|have|has|had)\s+(?:you|u)\b[^?]{0,40}\bremember\b/i;
+
+/**
+ * A segment is extractable when it states something durable or explicitly asks the
+ * assistant to remember it. Every extractor and the model-pass gate share this rule, so
+ * a bare question never becomes a memory.
+ */
+function isExtractable(message: string): boolean {
+  if (!isQuestion(message)) return true;
+  return REMEMBER_REQUEST.test(message) && !REMEMBER_QUESTION.test(message);
 }
 
 const AMOUNT_VERB = String.raw`(?:target|goal|aim(?:ing)?|want(?:ing)?|need(?:ing)?|build|cap|limit|budget|save|saving|keep|gastos|badyet)`;
@@ -146,14 +182,14 @@ function snippetAround(message: string, index: number | undefined): string {
 }
 
 function extractDebtStrategy(message: string): ExtractedMemory | null {
-  if (isQuestion(message) || !/\b(?:avalanche|snowball)\b/i.test(message)) return null;
+  if (!isExtractable(message) || !/\b(?:avalanche|snowball)\b/i.test(message)) return null;
   const strategy: AssistantDebtStrategy = /\bavalanche\b/i.test(message) ? "avalanche" : "snowball";
   return { kind: "preference", key: "debt_strategy", value: strategy, source: "deterministic" };
 }
 
 function extractSavingsGoal(message: string): ExtractedMemory | null {
   if (
-    isQuestion(message) ||
+    !isExtractable(message) ||
     !/\b(?:emergency fund|sinking fund|emergency savings|rainy day|ipon|target savings)\b/i.test(
       message,
     )
@@ -174,7 +210,7 @@ function extractSavingsGoal(message: string): ExtractedMemory | null {
 
 function extractBudgetCap(message: string): ExtractedMemory | null {
   // Generic "cap"/"limit" wording is usually a credit or transfer limit, not a budget.
-  if (isQuestion(message) || !/\b(?:budget|badyet|gastos|spending limit)\b/i.test(message))
+  if (!isExtractable(message) || !/\b(?:budget|badyet|gastos|spending limit)\b/i.test(message))
     return null;
   const amount = new RegExp(
     `${AMOUNT_VERB}[^0-9]{0,40}(?:₱|php\\s?)?\\s?([0-9][0-9,.]*)`,
@@ -196,7 +232,7 @@ const BUFFER_AMOUNT =
 function extractCheckingBuffer(message: string): ExtractedMemory | null {
   // A balance snapshot ("my checking is 5,000") is not a buffer; the user must state a rule.
   if (
-    isQuestion(message) ||
+    !isExtractable(message) ||
     !/\b(?:checking|buffer|account)\b/i.test(message) ||
     !BUFFER_VERB.test(message)
   )
@@ -218,7 +254,7 @@ const PAYDAY_SCHEDULE =
 function extractPayday(message: string): ExtractedMemory | null {
   // A payday needs a schedule: the noun alone also matches salary figures such as
   // "my sweldo is 45,000 a month", which are not pay dates.
-  if (!PAYDAY_NOUN.test(message) || !PAYDAY_SCHEDULE.test(message) || isQuestion(message))
+  if (!PAYDAY_NOUN.test(message) || !PAYDAY_SCHEDULE.test(message) || !isExtractable(message))
     return null;
   return {
     kind: "fact",
@@ -237,7 +273,7 @@ function extractRecurringBill(message: string): ExtractedMemory | null {
   // "How much is my phone bill?" is a question, and both "pay my bill" and "remind me to
   // pay my bill on Friday" are one-off requests, so only an actual recurrence marker
   // ("every month", "quarterly") makes a bill durable.
-  if (isQuestion(message) || !BILL_NOUN.test(message) || !RECURRING_MARKER.test(message))
+  if (!isExtractable(message) || !BILL_NOUN.test(message) || !RECURRING_MARKER.test(message))
     return null;
   return {
     kind: "fact",
@@ -281,9 +317,6 @@ export function detectForgetIntent(message: string): { forgetAll: boolean; keys:
 const MODEL_PASS_SIGNAL =
   /\b(?:my rule(?: of thumb)? is|i (?:prefer|always|usually|never|try to)|i pay(?: off)? .* first|remember that|from now on|from today|tandaan|gusto ko|ayoko|dapat|palagi|lagi)\b/i;
 
-// A question can still ask the assistant to remember something, which stays eligible.
-const REMEMBER_REQUEST = /\b(?:remember|note|keep in mind|tandaan)\b/i;
-
 /**
  * Split a chat message into sentences. People state a durable fact and ask a question
  * in the same message ("my budget is 30,000, how much is left?"), and a message-level
@@ -311,7 +344,8 @@ export function deterministicExtract(message: string): ExtractionResult {
     seen.add(memory.key);
     memories.push(memory);
   };
-  for (const segment of statementSegments(message)) {
+  const segments = statementSegments(message);
+  for (const segment of segments) {
     push(extractDebtStrategy(segment));
     push(extractSavingsGoal(segment));
     push(extractBudgetCap(segment));
@@ -323,9 +357,7 @@ export function deterministicExtract(message: string): ExtractionResult {
   return {
     memories,
     needsModelPass:
-      MODEL_PASS_SIGNAL.test(message) &&
-      (statementSegments(message).some((segment) => !isQuestion(segment)) ||
-        REMEMBER_REQUEST.test(message)),
+      MODEL_PASS_SIGNAL.test(message) && segments.some((segment) => isExtractable(segment)),
     forgetAll,
     forgetKeys: keys,
   };

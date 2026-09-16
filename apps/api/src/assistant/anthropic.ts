@@ -134,6 +134,38 @@ function configuredNumber(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+const CREDIT_EXHAUSTION_MARKER = /credit balance is too low|insufficient credit|purchase credits/i;
+const ERROR_BODY_READ_LIMIT_BYTES = 4_096;
+
+/**
+ * Anthropic reports an unfunded account as HTTP 400, which is otherwise an
+ * ordinary rejected request. Read at most a few KB of that one response and
+ * match the credit marker. The text only picks the error category: it is
+ * discarded on the spot and never logged, stored, or attached to the error.
+ */
+async function reportsCreditExhaustion(response: Response): Promise<boolean> {
+  if (!response.body) return false;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let read = 0;
+  try {
+    while (read < ERROR_BODY_READ_LIMIT_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      read += value.byteLength;
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+  } catch {
+    return false;
+  } finally {
+    // A read that stopped at the cap leaves the rest of the body unread.
+    await reader.cancel().catch(() => undefined);
+  }
+  return CREDIT_EXHAUSTION_MARKER.test(text);
+}
+
 /**
  * Native Anthropic Messages API client. Unlike the OpenAI-compatible vendors,
  * Anthropic uses `x-api-key` auth, a top-level `system` prompt, and
@@ -233,6 +265,18 @@ export class AnthropicProvider implements AssistantProvider {
           "unavailable",
           "upstream_unavailable",
           "The assistant provider is temporarily unavailable.",
+          this.providerName,
+          response.status,
+        );
+      }
+      // Anthropic reports an unfunded account as HTTP 400, so that single status
+      // gets a bounded peek instead of falling through to request_rejected.
+      // Every other status stays body-free.
+      if (response.status === 400 && (await reportsCreditExhaustion(response))) {
+        throw new AssistantProviderError(
+          "configuration",
+          "insufficient_credits",
+          "The assistant provider account has no remaining credit.",
           this.providerName,
           response.status,
         );

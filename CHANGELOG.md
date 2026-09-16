@@ -12,7 +12,8 @@ All notable product changes are documented here.
 
 - Assistant memory no longer stores questions such as "What did I spend on the 15th?" or "What is my biggest bill this month?" as durable facts, and "Don't forget my emergency fund" no longer deletes the saved target.
 - Assistant memory keeps statements that sit beside a question, no longer mistakes a list of four-digit numbers (years, order IDs) for a card number, and only the Memory panel or an explicit "I prefer avalanche/snowball" statement can change the debt payoff preference.
-- When the assistant's AI provider account runs out of credit, the assistant now says so instead of reporting an invalid response and suggesting a retry that cannot help.
+- When the assistant's AI provider account runs out of credit, the assistant now says so instead of reporting an invalid response and suggesting a retry that cannot help. This covers every provider we can detect it from, including the ones that report it as a rejected request rather than a payment error.
+- Assistant memory now keeps a fact the user explicitly asks it to remember even when the request is phrased as a question, and recognises American Express and Diners Club card groupings when deciding that a value is too sensitive to store.
 - The Memory panel on web and mobile no longer offers leftover duplicate payoff rows from an earlier release as editable facts, and the web inline editor moves focus into the field and back to the row it belongs to.
 - Renamed the mobile Transactions month figure from Balance to Net, with a question-mark explanation of how it is calculated, because it is the month's income minus expenses and not the account balance.
 - Fixed mobile navigation traps: registered the missing `budget-conflict` route with modal presentation and safe-area insets, and added back navigation to the AI Assistant across loading, error, consent, and threads states.

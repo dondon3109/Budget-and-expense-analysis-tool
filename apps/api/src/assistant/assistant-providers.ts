@@ -76,6 +76,9 @@ export function createAssistantProviderForConfig(
       model: resolvedModel,
       apiKey: secret,
       ...(provider === "deepseek" ? { extraBody: { thinking: { type: "disabled" } } } : {}),
+      // Gemini 3 flash reasons before answering and that reasoning counts toward the
+      // output cap, so the default 800 can be consumed without producing an answer.
+      ...(provider === "gemini" ? { maxOutputTokens: 4_096 } : {}),
       // Meta rejects every tool_choice value except the default auto behavior.
       ...(provider === "muse_spark" ? { toolChoiceStrategy: "auto-only" as const } : {}),
     },

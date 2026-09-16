@@ -148,6 +148,7 @@ describe("listAssistantModels", () => {
 
   it.each([
     [401, "configuration", "credentials_rejected"],
+    [402, "configuration", "insufficient_credits"],
     [429, "rate_limit", "rate_limited"],
     [500, "unavailable", "upstream_unavailable"],
     [400, "invalid_response", "request_rejected"],
@@ -158,6 +159,23 @@ describe("listAssistantModels", () => {
       reason,
       provider: "openai",
     });
+  });
+
+  it("tells an unfunded account apart from a rejected key", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("sensitive-provider-body", { status: 402 }));
+    const error = await listAssistantModels(undefined, "openai", "k", fetcher).catch(
+      (thrown) => thrown,
+    );
+    expect(error).toMatchObject({
+      kind: "configuration",
+      reason: "insufficient_credits",
+      provider: "openai",
+      providerStatus: 402,
+    });
+    expect(error.message).toBe("The provider account has no remaining credit.");
+    expect(JSON.stringify(error)).not.toContain("sensitive-provider-body");
   });
 
   it("maps network failures and unusable payloads without leaking the key", async () => {
