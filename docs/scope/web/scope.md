@@ -126,8 +126,8 @@ New public pages that answer demand `docs/seo.md` named and never built: the Phi
   - [x] 50/30/20 in pesos guide with calculator links
   - [x] `/features/` route family in the manifest and the router
   - [x] Receipt scanning and voice entry pages with cross links
-- [ ] Verify it: `/check verify search demand pages`
-- [ ] Test it: `/test search demand pages`
+- [x] Verify it: `/check verify search demand pages`
+- [x] Test it: `/test search demand pages`
 
 Spec [0001](../specs/web/0001-search-demand-pages.md) · code in `apps/web/src/pages/features/`, `packages/shared/src/financeGuides.ts`, `apps/web/src/seo/siteMetadata.ts`
 
@@ -142,10 +142,10 @@ Make the path from a new page visit to a first import readable. Today the public
   - [x] Signup and first app load events
   - [x] Workspace transaction total read and the first import event
   - [x] Assistant consent and first question events, plus policy copy
-- [ ] Verify it: `/check verify signup funnel measurement`
-- [ ] Test it: `/test signup funnel measurement`
-- [ ] Review it: `/check review signup funnel measurement`
-- [ ] Document it: `/document signup funnel measurement`
+- [x] Verify it: `/check verify signup funnel measurement`
+- [x] Test it: `/test signup funnel measurement`
+- [x] Review it: `/check review signup funnel measurement`
+- [x] Document it: `/document signup funnel measurement`
 
 Spec [0002](../specs/web/0002-signup-funnel-measurement.md) · code in `apps/web/src/analytics/funnel.ts`, `apps/web/src/pages/SignupPage.tsx`, `apps/web/src/pages/ImportPage.tsx`
 

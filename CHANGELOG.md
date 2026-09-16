@@ -10,7 +10,7 @@ All notable product changes are documented here.
 - Added a Voice Language setting in Account Settings to configure the preferred voice language between Auto (bilingual), English, and Tagalog.
 - Added two Philippine peso budgeting guides, "How to Budget a Monthly Salary in the Philippines" and "The 50/30/20 Rule in Pesos", and linked the 50/30/20 calculator to the guide.
 - Added public explainer pages for receipt scanning and voice expense entry, linked from the landing page.
-- Added anonymous, cookieless conversion measurement for the signup path (signup page view, signup outcome, first app load, first import into an empty workspace, assistant consent, and first assistant question), named in the Cookie Policy and Privacy Policy.
+- Added anonymous, cookieless conversion measurement for the signup path (signup page view, signup outcome, first app load, first import into an empty workspace, assistant consent, and first assistant question). The steps carry no financial detail, no identifiers, and no page addresses or query parameters, and the Cookie Policy and Privacy Policy describe them in plain words.
 
 ## 2.33.1 — 2026-09-16
 

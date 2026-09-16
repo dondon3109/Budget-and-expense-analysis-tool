@@ -164,4 +164,7 @@ The accepted tradeoff is cookieless identity. PostHog rotates the anonymous iden
 ## Follow-up
 
 - [ ] Build the PostHog insight or dashboard that draws the funnel from these events.
+- [ ] The runtime proof for `assistant_consent_granted` and the chat `assistant_first_question` is still missing: `apps/api/wrangler.e2e.jsonc` declares neither `ASSISTANT_ENABLED` nor `ASSISTANT_VOICE_ENABLED`, so those surfaces answer 404 in the project's own end to end stack. Run the API with both vars set, or turn them on in the e2e config, before claiming those two surfaces at runtime.
+- [ ] A runtime funnel test needs the Playwright automation flags disabled and a normal user agent: posthog-js drops every event when `navigator.webdriver` is true or the headless browser brands are present, which makes the module look inert under the repo's current Playwright setup.
+- [ ] Nothing was sent with `VITE_POSTHOG_KEY` unset at runtime; only the unit test covers that branch.
 - [ ] If session level funnels prove too coarse, revisit a server side activation count rather than a persistent client identifier.
