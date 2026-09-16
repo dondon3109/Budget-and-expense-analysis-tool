@@ -8,7 +8,9 @@ import { ApiTransportError } from "@/api/authenticated";
 import { getReceiptPreferences, grantReceiptConsent } from "@/api/receipt-scan";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useVoiceRecorder } from "@/features/assistant/assistant-voice-hooks";
+import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
+import { VoiceLanguageToggleGroup } from "@/ui/voice-language-picker";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
@@ -30,6 +32,8 @@ export function TransactionVoiceEntry({
   const [message, setMessage] = useState<string | null>(null);
   const [showConsent, setShowConsent] = useState(false);
   const [consentBusy, setConsentBusy] = useState(false);
+  const voiceLanguage = useVoiceLanguageStore((s) => s.language);
+  const setVoiceLanguage = useVoiceLanguageStore((s) => s.setLanguage);
 
   const withToken = useCallback(
     async <Result,>(operation: (accessToken: string) => Promise<Result>): Promise<Result> => {
@@ -78,11 +82,12 @@ export function TransactionVoiceEntry({
 
   const recorder = useVoiceRecorder<TransactionVoiceDraft>({
     getAccessToken: session.getAccessToken,
+    language: voiceLanguage,
     transcribe: (token, recording) =>
-      extractVoiceTransaction(token, recording, undefined, categories),
+      extractVoiceTransaction(token, recording, undefined, { categories, language: voiceLanguage }),
     liveTranscribeResult: async (transcript) => {
       const token = await session.getAccessToken(false);
-      return extractVoiceTransactionFromTranscript(token, transcript, undefined, categories);
+      return extractVoiceTransactionFromTranscript(token, transcript, undefined, categories, voiceLanguage);
     },
     onPartialTranscript: (partial) => {
       setMessage(`Listening: “${partial}”`);
@@ -172,10 +177,15 @@ export function TransactionVoiceEntry({
               Say it, then inspect it
             </Text>
             <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-              Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form.
+              {voiceLanguage === "fil"
+                ? "Subukan: “Gumastos ng 250 pesos sa tanghalian kanina.” Nothing saves until you review this form."
+                : voiceLanguage === "auto"
+                  ? "Try “Spent 250 pesos on lunch today” or “Gumastos ng 250 kahapon”. Nothing saves until you review this form."
+                  : "Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form."}
             </Text>
           </View>
         </View>
+        <VoiceLanguageToggleGroup language={voiceLanguage} onLanguageChange={setVoiceLanguage} />
         {recording ? (
           <View
             accessible

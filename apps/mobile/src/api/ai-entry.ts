@@ -1,4 +1,8 @@
-import { transactionVoiceDraftSchema, type TransactionVoiceDraft } from "@zoption/shared";
+import {
+  transactionVoiceDraftSchema,
+  type TransactionVoiceDraft,
+  type VoiceLanguage,
+} from "@zoption/shared";
 import { File } from "expo-file-system";
 
 import { publicConfig } from "@/config/public-config";
@@ -26,6 +30,7 @@ export interface ExtractVoiceTransactionOptions {
    */
   noStore?: boolean;
   categories?: string[];
+  language?: VoiceLanguage;
 }
 
 /** Uploads one temporary voice clip and returns a review-only transaction draft. */
@@ -48,6 +53,7 @@ export async function extractVoiceTransaction(
   const form = new FormData();
   try {
     form.append("audio", new File(recording.uri) as unknown as Blob, recording.fileName);
+    form.append("lang", options.language ?? "auto");
     if (categories && categories.length > 0) {
       form.append("categories", JSON.stringify(categories));
     }
@@ -94,6 +100,7 @@ export async function extractVoiceTransactionFromTranscript(
   transcript: string,
   fetchImpl: typeof fetch = fetch,
   categories?: string[],
+  language?: VoiceLanguage,
 ): Promise<TransactionVoiceDraft> {
   if (isDummyAssistantToken(accessToken)) {
     return extractDummyVoiceTransaction();
@@ -113,6 +120,7 @@ export async function extractVoiceTransactionFromTranscript(
         body: JSON.stringify({
           transcript,
           ...(categories && categories.length > 0 ? { categories } : {}),
+          lang: language ?? "auto",
         }),
         signal: controller.signal,
       });

@@ -50,7 +50,27 @@ describe("mobile AI-entry voice transport", () => {
     expect(url.endsWith("/api/app/entry/voice")).toBe(true);
     expect(init.headers).toMatchObject({ Authorization: "Bearer token" });
     expect((init.body as FormData).get("audio")).toBeInstanceOf(Blob);
+    expect((init.body as FormData).get("lang")).toBe("auto");
     expect(mockDelete).toHaveBeenCalledTimes(1);
+
+    const fetchMockLang = jest.fn(async () =>
+      jsonResponse({
+        transcript: "Gumastos ng 250",
+        description: "Tanghalian",
+        date: "2026-08-20",
+        amountMinor: 25_000,
+        currency: "PHP",
+        kind: "expense",
+      }),
+    );
+    await extractVoiceTransaction(
+      "token",
+      { uri: "file:///recording.m4a", fileName: "voice-entry.m4a" },
+      fetchMockLang,
+      { language: "fil" },
+    );
+    const [, initLang] = fetchMockLang.mock.calls[0] as unknown as [string, RequestInit];
+    expect((initLang.body as FormData).get("lang")).toBe("fil");
   });
 
   it("discards a recording after the Worker rejects it", async () => {
@@ -95,11 +115,12 @@ describe("mobile AI-entry voice transport", () => {
     });
     expect(JSON.parse(init.body as string)).toEqual({
       transcript: "Spent 250 pesos on lunch today",
+      lang: "auto",
     });
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
-  it("submits categories in json body when provided", async () => {
+  it("submits categories and language in json body when provided", async () => {
     const fetchMock = jest.fn(async () =>
       jsonResponse({
         transcript: "Spent 250 pesos on lunch today",
@@ -116,11 +137,13 @@ describe("mobile AI-entry voice transport", () => {
       "Spent 250 pesos on lunch today",
       fetchMock,
       ["Food & dining", "Transport"],
+      "fil",
     );
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({
       transcript: "Spent 250 pesos on lunch today",
       categories: ["Food & dining", "Transport"],
+      lang: "fil",
     });
   });
 });

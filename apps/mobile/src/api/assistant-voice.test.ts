@@ -165,7 +165,20 @@ describe("transcribeVoice error mapping", () => {
     const audio = (init.body as FormData).get("audio");
     expect(audio).toBeInstanceOf(Blob);
     expect((audio as globalThis.File).name).toBe(RECORDING.fileName);
+    expect((init.body as FormData).get("lang")).toBe("auto");
     expect(mockDelete).toHaveBeenCalledWith(RECORDING.uri);
+
+    // Explicit language option
+    const fetchMockLang = jest.fn(async () =>
+      jsonResponse({ text: "Magkano ang nagastos?", durationSeconds: 2, languageCode: "fil" }),
+    );
+    await transcribeVoice(
+      { accessToken: token, fetchImpl: fetchMockLang },
+      RECORDING,
+      { language: "fil" },
+    );
+    const [, initLang] = fetchMockLang.mock.calls[0] as unknown as [string, RequestInit];
+    expect((initLang.body as FormData).get("lang")).toBe("fil");
   });
 
   it("surfaces a server timeout (504) accurately instead of connectivity", async () => {

@@ -5,6 +5,7 @@ import {
   type AssistantSpeechVoice,
   type AssistantVoicePreferences,
   type AssistantVoiceTranscription,
+  type VoiceLanguage,
 } from "@zoption/shared";
 import { File } from "expo-file-system";
 
@@ -275,6 +276,7 @@ export interface TranscribeVoiceOptions {
    *   must treat the payload as uncacheable and unstorable.
    */
   noStore?: boolean;
+  language?: VoiceLanguage;
 }
 
 export async function transcribeVoice(
@@ -289,6 +291,7 @@ export async function transcribeVoice(
   // Blob byte contract used by Winter and keeps the upload on-device/in-flight.
   try {
     form.append("audio", new File(recording.uri) as unknown as Blob, recording.fileName);
+    form.append("lang", options.language ?? "auto");
   } catch (error) {
     discardTemporarySourceFile(recording.uri);
     throw error;

@@ -1,4 +1,5 @@
 import { AudioModule } from "expo-audio";
+import type { VoiceLanguage } from "@zoption/shared";
 import { publicConfig } from "@/config/public-config";
 
 export interface MobileVoiceStreamCallbacks {
@@ -19,6 +20,8 @@ export interface MobileVoiceStreamOptions {
   minRecordMs?: number;
   /** Fallback silence threshold before noise-floor calibration (default 500). */
   silenceRms?: number;
+  /** Language for speech recognition (default "auto"). */
+  language?: VoiceLanguage;
 }
 
 export const MOBILE_VOICE_SILENCE_MS = 1400;
@@ -94,9 +97,12 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return output;
 }
 
-export function openMobileVoiceStreamWebSocket(accessToken: string): WebSocket {
+export function openMobileVoiceStreamWebSocket(
+  accessToken: string,
+  lang: VoiceLanguage = "auto",
+): WebSocket {
   const base = publicConfig.apiUrl.replace(/^http/, "ws");
-  const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(accessToken)}`;
+  const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(accessToken)}&lang=${encodeURIComponent(lang)}`;
   console.warn("[voice] connecting ws to", wsUrl);
   return new WebSocket(wsUrl);
 }
@@ -318,7 +324,7 @@ export async function startMobileVoiceStream(
       streamStartMs = Date.now();
     }
 
-    ws = openMobileVoiceStreamWebSocket(accessToken);
+    ws = openMobileVoiceStreamWebSocket(accessToken, options.language ?? "auto");
 
     // Listen for incoming transcripts (with latency instrumentation from worker)
     const handleMessage = (event: { data: unknown }) => {

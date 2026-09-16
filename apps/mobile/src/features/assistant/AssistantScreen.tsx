@@ -81,6 +81,7 @@ import {
 import { useAssistantRecorder } from "./assistant-voice-hooks";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
+import { VoiceLanguageBadgeButton } from "@/ui/voice-language-picker";
 
 type AssistantView = "threads" | "chat" | "voice";
 
@@ -1142,14 +1143,17 @@ export function AssistantScreen() {
             ]}
           >
             {voicePreferences?.enabled === true ? (
-              <VoiceRecordButton
-                phase={recorder.phase}
-                onPress={() => {
-                  if (recorder.phase === "recording") void recorder.stopAndTranscribe();
-                  else if (voicePreferences.consentedAt === null) void enableVoice();
-                  else if (recorder.phase === "idle") void recorder.startRecording();
-                }}
-              />
+              <>
+                <VoiceRecordButton
+                  phase={recorder.phase}
+                  onPress={() => {
+                    if (recorder.phase === "recording") void recorder.stopAndTranscribe();
+                    else if (voicePreferences.consentedAt === null) void enableVoice();
+                    else if (recorder.phase === "idle") void recorder.startRecording();
+                  }}
+                />
+                <VoiceLanguageBadgeButton disabled={recorder.phase !== "idle"} />
+              </>
             ) : null}
             <TextInput
               accessibilityLabel="Message the assistant"

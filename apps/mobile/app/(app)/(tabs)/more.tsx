@@ -13,8 +13,9 @@ import { useSyncState } from "@/sync/sync-state";
 import { AssistantStatusBadge } from "@/features/assistant/assistant-ui";
 import { UpdateSettingsCard } from "@/features/updates";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
-import { ThemePicker } from "@/ui/theme-picker";
 import { Screen } from "@/ui/screen";
+import { ThemePicker } from "@/ui/theme-picker";
+import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 
@@ -259,6 +260,22 @@ export default function MoreScreen() {
         </Text>
         <Card>
           <ThemePicker />
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
+          VOICE LANGUAGE
+        </Text>
+        <Card accessibilityLabel="Voice language settings">
+          <View className="gap-2">
+            <Text style={[typography.headline, { color: theme.colors.text }]}>Voice language</Text>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Choose your default voice language for AI assistant voice chats and transaction voice
+              entry. Auto mode automatically detects English and Tagalog.
+            </Text>
+            <VoiceLanguagePicker />
+          </View>
         </Card>
       </View>
 

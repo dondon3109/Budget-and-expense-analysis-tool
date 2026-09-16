@@ -15,6 +15,7 @@ import { Button, Card, ConfirmationDialog, FormField, SkeletonLines } from "@/ui
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
+import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
 
 export function AccountScreen() {
   const theme = useZoptionTheme();
@@ -150,6 +151,17 @@ export function AccountScreen() {
               workspace version {local.workspace?.schemaVersion ?? "unknown"}.
             </Text>
           )}
+        </View>
+      </Card>
+
+      <Card accessibilityLabel="Voice language settings">
+        <View className="gap-2">
+          <Text style={[typography.headline, { color: theme.colors.text }]}>Voice language</Text>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+            Choose your default voice language for AI assistant voice chats and transaction voice
+            entry. Auto mode automatically detects English and Tagalog.
+          </Text>
+          <VoiceLanguagePicker />
         </View>
       </Card>
 

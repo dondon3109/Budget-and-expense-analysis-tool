@@ -15,8 +15,10 @@ import {
 } from "@/api/assistant";
 import { getAssistantVoicePreferences, grantAssistantVoiceConsent } from "@/api/assistant-voice";
 import { ApiTransportError } from "@/api/authenticated";
+import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { VoiceLanguageToggleGroup } from "@/ui/voice-language-picker";
 import { newClientRequestId } from "./assistant-forms";
 import { useAssistantRecorder, useSpokenReplies } from "./assistant-voice-hooks";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
@@ -81,6 +83,15 @@ export const VOICE_SUGGESTED_PROMPTS = [
   "Which debt should I pay first?",
 ] as const;
 
+export const VOICE_SUGGESTED_PROMPTS_TAGALOG = [
+  "Magkano ang nagastos ko ngayong buwan?",
+  "Ano ang pinakamalaking kategorya ng gastos ko?",
+  "Kumusta ang mga budget ko?",
+  "Aling utang ang dapat kong unahing bayaran?",
+] as const;
+
+export const VOICE_SUGGESTED_PROMPTS_ENGLISH = VOICE_SUGGESTED_PROMPTS;
+
 function newCaptionId(): string {
   return `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
 }
@@ -112,6 +123,9 @@ export function AssistantVoiceConversation({
   // the audio instead of the full text popping in before the voice starts.
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [typedCount, setTypedCount] = useState(0);
+
+  const voiceLanguage = useVoiceLanguageStore((state) => state.language);
+  const setVoiceLanguage = useVoiceLanguageStore((state) => state.setLanguage);
 
   const setVoiceStatus = useCallback((next: VoiceStatus) => {
     statusRef.current = next;
@@ -342,6 +356,7 @@ export function AssistantVoiceConversation({
   transcriptRef.current = handleFinalTranscript;
 
   const recorder = useAssistantRecorder({
+    language: voiceLanguage,
     getAccessToken,
     onTranscribed: (text) => void transcriptRef.current(text),
     onError: handleRecorderError,
@@ -632,178 +647,193 @@ export function AssistantVoiceConversation({
         </View>
       </View>
 
-      <FlatList
-        ref={listRef}
-        data={captions}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.captions}
-        accessibilityLabel="Conversation captions"
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-        ListEmptyComponent={
-          livePartial || captions.length > 0 ? null : historyLoading ? (
-            <View style={styles.emptyContainer}>
-              <ActivityIndicator color={theme.colors.brand} />
-              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                Loading previous conversation…
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
+      <View style={[styles.languageBar, { borderBottomColor: theme.colors.border }]}>
+        <VoiceLanguageToggleGroup
+          value={voiceLanguage}
+          onChange={setVoiceLanguage}
+          disabled={status === "thinking"}
+        />
+      </View>
+
+      <View style={{ flex: 1 }} accessibilityLabel="Conversation captions">
+        {captions.length > 0 ? (
+          <FlatList
+            ref={listRef}
+            data={captions}
+            extraData={voiceLanguage}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.captions}
+            accessibilityLabel="Conversation captions"
+            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+            renderItem={({ item }) => (
               <View
                 style={[
-                  styles.emptyIconBadge,
-                  { backgroundColor: theme.colors.brandSoft, borderColor: theme.colors.border },
-                ]}
-              >
-                <MaterialCommunityIcons name="waveform" size={30} color={theme.colors.brand} />
-              </View>
-              <Text style={[typography.headline, styles.emptyTitle, { color: theme.colors.text }]}>
-                Ready to talk
-              </Text>
-              <Text
-                style={[
-                  typography.callout,
-                  styles.emptySubtext,
-                  { color: theme.colors.textMuted },
-                ]}
-              >
-                Speak now, or tap a question below:
-              </Text>
-              <View style={styles.promptChipsContainer}>
-                {VOICE_SUGGESTED_PROMPTS.map((prompt) => (
-                  <Pressable
-                    key={prompt}
-                    accessibilityRole="button"
-                    accessibilityLabel={prompt}
-                    accessibilityState={{ disabled: historyLoading }}
-                    disabled={historyLoading}
-                    onPress={() => handlePromptChip(prompt)}
-                    style={[
-                      styles.promptChip,
-                      {
+                  styles.caption,
+                  item.role === "user" ? styles.captionUser : styles.captionAssistant,
+                  item.role === "user"
+                    ? { backgroundColor: theme.colors.brand }
+                    : {
                         backgroundColor: theme.colors.surface,
+                        borderColor: theme.colors.border,
+                      },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.speakerBadge,
+                    item.role === "user" ? styles.speakerBadgeUser : styles.speakerBadgeAssistant,
+                    item.role === "assistant" && {
+                      backgroundColor: theme.colors.surfaceRaised,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={item.role === "user" ? "account" : "creation"}
+                    size={12}
+                    color={item.role === "user" ? theme.colors.onBrand : theme.colors.brand}
+                  />
+                  <Text
+                    style={[
+                      typography.caption,
+                      styles.speakerBadgeText,
+                      { color: item.role === "user" ? theme.colors.onBrand : theme.colors.textMuted },
+                    ]}
+                  >
+                    {item.role === "user" ? "You" : assistantName}
+                  </Text>
+                </View>
+                {item.role === "user" ? (
+                  <Text style={[typography.body, { color: theme.colors.onBrand }]}>
+                    {item.text}
+                  </Text>
+                ) : (
+                  <Text style={[typography.body, { color: theme.colors.text }]}>
+                    {item.id === speakingId && status === "speaking" && typedCount < typingFull.length
+                      ? renderMobileVoiceCaption(
+                          `${typingFull.slice(0, typedCount)}▍`,
+                          [typography.body, { color: theme.colors.text }],
+                          styles.boldCaption,
+                        )
+                      : renderMobileVoiceCaption(
+                          item.text,
+                          [typography.body, { color: theme.colors.text }],
+                          styles.boldCaption,
+                        )}
+                  </Text>
+                )}
+              </View>
+            )}
+            ListFooterComponent={
+              status === "thinking" ? (
+                <View
+                  style={[
+                    styles.caption,
+                    styles.captionAssistant,
+                    styles.thinkingBubble,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.speakerBadge,
+                      styles.speakerBadgeAssistant,
+                      {
+                        backgroundColor: theme.colors.surfaceRaised,
                         borderColor: theme.colors.border,
                       },
                     ]}
                   >
-                    <MaterialCommunityIcons
-                      name="comment-text-outline"
-                      size={15}
-                      color={theme.colors.brand}
-                    />
+                    <MaterialCommunityIcons name="creation" size={12} color={theme.colors.brand} />
                     <Text
                       style={[
-                        typography.callout,
-                        styles.promptChipText,
-                        { color: theme.colors.text },
+                        typography.caption,
+                        styles.speakerBadgeText,
+                        { color: theme.colors.textMuted },
                       ]}
                     >
-                      “{prompt}”
+                      {assistantName}
                     </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          )
-        }
-        renderItem={({ item }) => (
-          <View
-            style={[
-              styles.caption,
-              item.role === "user" ? styles.captionUser : styles.captionAssistant,
-              item.role === "user"
-                ? { backgroundColor: theme.colors.brand }
-                : {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
-                  },
-            ]}
-          >
-            <View
-              style={[
-                styles.speakerBadge,
-                item.role === "user" ? styles.speakerBadgeUser : styles.speakerBadgeAssistant,
-                item.role === "assistant" && {
-                  backgroundColor: theme.colors.surfaceRaised,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={item.role === "user" ? "account" : "creation"}
-                size={12}
-                color={item.role === "user" ? theme.colors.onBrand : theme.colors.brand}
-              />
-              <Text
-                style={[
-                  typography.caption,
-                  styles.speakerBadgeText,
-                  { color: item.role === "user" ? theme.colors.onBrand : theme.colors.textMuted },
-                ]}
-              >
-                {item.role === "user" ? "You" : assistantName}
-              </Text>
-            </View>
-            {item.role === "user" ? (
-              <Text style={[typography.body, { color: theme.colors.onBrand }]}>
-                {item.text}
-              </Text>
-            ) : (
-              <Text style={[typography.body, { color: theme.colors.text }]}>
-                {item.id === speakingId && status === "speaking" && typedCount < typingFull.length
-                  ? renderMobileVoiceCaption(
-                      `${typingFull.slice(0, typedCount)}▍`,
-                      [typography.body, { color: theme.colors.text }],
-                      styles.boldCaption,
-                    )
-                  : renderMobileVoiceCaption(
-                      item.text,
-                      [typography.body, { color: theme.colors.text }],
-                      styles.boldCaption,
-                    )}
-              </Text>
-            )}
+                  </View>
+                  <CheckingRecordsIndicator size="medium" />
+                </View>
+              ) : null
+            }
+          />
+        ) : historyLoading ? (
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator color={theme.colors.brand} />
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+              Loading previous conversation…
+            </Text>
           </View>
-        )}
-        ListFooterComponent={
-          status === "thinking" ? (
+        ) : (
+          <View style={styles.emptyContainer}>
             <View
               style={[
-                styles.caption,
-                styles.captionAssistant,
-                styles.thinkingBubble,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                },
+                styles.emptyIconBadge,
+                { backgroundColor: theme.colors.brandSoft, borderColor: theme.colors.border },
               ]}
             >
-              <View
-                style={[
-                  styles.speakerBadge,
-                  styles.speakerBadgeAssistant,
-                  {
-                    backgroundColor: theme.colors.surfaceRaised,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons name="creation" size={12} color={theme.colors.brand} />
-                <Text
+              <MaterialCommunityIcons name="waveform" size={30} color={theme.colors.brand} />
+            </View>
+            <Text style={[typography.headline, styles.emptyTitle, { color: theme.colors.text }]}>
+              Ready to talk
+            </Text>
+            <Text
+              style={[
+                typography.callout,
+                styles.emptySubtext,
+                { color: theme.colors.textMuted },
+              ]}
+            >
+              Speak now, or tap a question below:
+            </Text>
+            <View style={styles.promptChipsContainer}>
+              {(voiceLanguage === "fil"
+                ? VOICE_SUGGESTED_PROMPTS_TAGALOG
+                : voiceLanguage === "en"
+                  ? VOICE_SUGGESTED_PROMPTS_ENGLISH
+                  : [...VOICE_SUGGESTED_PROMPTS_TAGALOG, ...VOICE_SUGGESTED_PROMPTS_ENGLISH]
+              ).map((prompt) => (
+                <Pressable
+                  key={prompt}
+                  accessibilityRole="button"
+                  accessibilityLabel={prompt}
+                  accessibilityState={{ disabled: historyLoading }}
+                  disabled={historyLoading}
+                  onPress={() => handlePromptChip(prompt)}
                   style={[
-                    typography.caption,
-                    styles.speakerBadgeText,
-                    { color: theme.colors.textMuted },
+                    styles.promptChip,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                    },
                   ]}
                 >
-                  {assistantName}
-                </Text>
-              </View>
-              <CheckingRecordsIndicator size="medium" />
+                  <MaterialCommunityIcons
+                    name="comment-text-outline"
+                    size={15}
+                    color={theme.colors.brand}
+                  />
+                  <Text
+                    style={[
+                      typography.callout,
+                      styles.promptChipText,
+                      { color: theme.colors.text },
+                    ]}
+                  >
+                    “{prompt}”
+                  </Text>
+                </Pressable>
+              ))}
             </View>
-          ) : null
-        }
-      />
+          </View>
+        )}
+      </View>
 
       {(livePartial !== "" ||
         notice !== null ||
@@ -1010,7 +1040,12 @@ export function AssistantVoiceConversation({
         </View>
         <Text style={[typography.label, { color: theme.colors.text }]}>{STATUS_LABEL[status]}</Text>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {status === "idle" && "Tap to speak with your assistant"}
+          {status === "idle" &&
+            (voiceLanguage === "fil"
+              ? "Tap to speak in Tagalog or English"
+              : voiceLanguage === "auto"
+                ? "Tap to speak in English or Tagalog"
+                : "Tap to speak with your assistant")}
           {status === "preparing" && "Warming up the microphone…"}
           {status === "listening" && "Tap button when done"}
           {status === "thinking" && "Looking up financial records…"}
@@ -1024,6 +1059,13 @@ export function AssistantVoiceConversation({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  languageBar: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   centered: {
     flex: 1,

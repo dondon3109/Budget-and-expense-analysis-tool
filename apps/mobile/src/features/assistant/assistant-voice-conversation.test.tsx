@@ -10,6 +10,7 @@ import {
   mapAssistantMessagesToVoiceCaptions,
 } from "./AssistantVoiceConversation";
 import { ApiTransportError } from "@/api/authenticated";
+import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 
 jest.mock("./assistant-voice-hooks", () => ({
   useAssistantRecorder: jest.fn(),
@@ -149,6 +150,7 @@ function installHookMocks() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  useVoiceLanguageStore.getState().setLanguage("auto");
   const m = mocks();
   m.getAssistantVoicePreferences.mockResolvedValue(consentedPreferences());
   m.grantAssistantVoiceConsent.mockResolvedValue(consentedPreferences());
@@ -538,5 +540,56 @@ describe("AssistantVoiceConversation", () => {
 
     await waitFor(() => expect(m.createAssistantThreadTurn).toHaveBeenCalled());
   });
+
+  it("renders voice language toggles with Auto default and passes language to recorder", async () => {
+    installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+
+    expect(await screen.findByText("Ready to talk")).toBeTruthy();
+    expect(screen.getByLabelText("Auto voice language")).toBeTruthy();
+    expect(screen.getByLabelText("English voice language")).toBeTruthy();
+    expect(screen.getByLabelText("Tagalog voice language")).toBeTruthy();
+    expect(
+      screen.getByLabelText("Auto voice language").props.accessibilityState?.selected,
+    ).toBe(true);
+
+    expect(mocks().useAssistantRecorder).toHaveBeenCalledWith(
+      expect.objectContaining({ language: "auto" }),
+    );
+  });
+
+  it("switches language to Tagalog and updates prompts", async () => {
+    const { recorder } = installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+
+    expect(await screen.findByText("Ready to talk")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Tagalog voice language"));
+
+    expect(useVoiceLanguageStore.getState().language).toBe("fil");
+    expect(await screen.findByText(/Magkano ang nagastos ko/)).toBeTruthy();
+
+    // Cancel warming to return to idle and check status caption
+    fireEvent.press(screen.getByLabelText("Preparing microphone"));
+    expect(await screen.findByText("Tap to speak in Tagalog or English")).toBeTruthy();
+  });
+
+  it("switches language to English and displays only English prompts", async () => {
+    const { recorder } = installHookMocks();
+    await render(<AssistantVoiceConversation {...baseProps} />);
+
+    expect(await screen.findByText("Ready to talk")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("English voice language"));
+
+    expect(useVoiceLanguageStore.getState().language).toBe("en");
+    await waitFor(() => {
+      expect(screen.queryByText(/Magkano ang nagastos ko/)).toBeNull();
+    });
+    expect(await screen.findByText(/How much did I spend this month/)).toBeTruthy();
+
+    // Cancel warming to return to idle and check status caption
+    fireEvent.press(screen.getByLabelText("Preparing microphone"));
+    expect(await screen.findByText("Tap to speak with your assistant")).toBeTruthy();
+  });
 });
+
 

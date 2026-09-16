@@ -26,9 +26,20 @@ jest.mock("@/files/temporary-source-file", () => ({
   discardTemporarySourceFile: jest.fn(),
 }));
 
+jest.mock("@/api/assistant-voice", () => {
+  const actual = jest.requireActual("@/api/assistant-voice");
+  return {
+    ...actual,
+    transcribeVoice: jest.fn(async () => ({ text: "transcribed", durationSeconds: 2 })),
+  };
+});
+
 import { act, renderHook } from "@testing-library/react-native";
 
-import { useVoiceRecorder } from "./assistant-voice-hooks";
+import { transcribeVoice } from "@/api/assistant-voice";
+import { startMobileVoiceStream } from "@/api/voice-stream";
+import { useVoiceLanguageStore } from "@/stores/voice-language-store";
+import { useAssistantRecorder, useVoiceRecorder } from "./assistant-voice-hooks";
 import {
   armAssistantRecorder,
   playbackAudioMode,
@@ -167,3 +178,97 @@ describe("useVoiceRecorder unmount during recording", () => {
     expect(result.current.phase).toBe("idle");
   });
 });
+
+describe("voice language forwarding in recorder hooks", () => {
+  function audioMocks() {
+    return jest.requireMock("expo-audio") as {
+      AudioModule: { requestRecordingPermissionsAsync: jest.Mock };
+      useAudioRecorder: jest.Mock;
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useVoiceLanguageStore.setState({ language: "auto" });
+    audioMocks().AudioModule.requestRecordingPermissionsAsync.mockResolvedValue({ granted: true });
+    audioMocks().useAudioRecorder.mockReturnValue({
+      prepareToRecordAsync: jest.fn(async () => undefined),
+      record: jest.fn(),
+      stop: jest.fn(async () => undefined),
+      uri: "file://test.m4a",
+    });
+  });
+
+  it("forwards default auto language to startMobileVoiceStream", async () => {
+    const { result } = await renderHook(() =>
+      useVoiceRecorder<string>({
+        getAccessToken: async () => "test-token",
+        onTranscribed: jest.fn(),
+        onError: jest.fn(),
+        transcribe: jest.fn(async () => "done"),
+        onPartialTranscript: jest.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    expect(startMobileVoiceStream).toHaveBeenCalledWith(
+      "test-token",
+      expect.any(Object),
+      { language: "auto" },
+    );
+  });
+
+  it("forwards configured or explicit language to startMobileVoiceStream", async () => {
+    useVoiceLanguageStore.setState({ language: "fil" });
+
+    const { result } = await renderHook(() =>
+      useVoiceRecorder<string>({
+        getAccessToken: async () => "test-token",
+        onTranscribed: jest.fn(),
+        onError: jest.fn(),
+        transcribe: jest.fn(async () => "done"),
+        onPartialTranscript: jest.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    expect(startMobileVoiceStream).toHaveBeenCalledWith(
+      "test-token",
+      expect.any(Object),
+      { language: "fil" },
+    );
+  });
+
+  it("forwards language to transcribeVoice in useAssistantRecorder", async () => {
+    useVoiceLanguageStore.setState({ language: "en" });
+
+    const { result } = await renderHook(() =>
+      useAssistantRecorder({
+        getAccessToken: async () => "test-token",
+        onTranscribed: jest.fn(),
+        onError: jest.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    await act(async () => {
+      await result.current.stopAndTranscribe();
+    });
+
+    expect(transcribeVoice).toHaveBeenCalledWith(
+      { accessToken: "test-token" },
+      expect.objectContaining({ uri: "file://test.m4a", mimeType: "audio/mp4" }),
+      { language: "en" },
+    );
+  });
+});
+

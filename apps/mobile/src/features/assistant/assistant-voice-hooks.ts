@@ -8,7 +8,7 @@ import {
   useAudioRecorder,
 } from "expo-audio";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AssistantVoiceTranscription } from "@zoption/shared";
+import type { AssistantVoiceTranscription, VoiceLanguage } from "@zoption/shared";
 
 import {
   ApiTransportError,
@@ -22,6 +22,7 @@ import {
   type MobileVoiceStreamSession,
 } from "@/api/voice-stream";
 import { discardTemporarySourceFile } from "@/files/temporary-source-file";
+import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 
 import {
   MAX_RECORDING_SECONDS,
@@ -73,6 +74,7 @@ export function useVoiceRecorder<Result>({
   transcribe,
   onPartialTranscript,
   liveTranscribeResult,
+  language,
 }: {
   getAccessToken: (refresh: boolean) => Promise<string>;
   onTranscribed: (result: Result) => void;
@@ -83,7 +85,13 @@ export function useVoiceRecorder<Result>({
     transcript: string,
     elapsedSeconds: number,
   ) => Promise<Result | null> | Result | null;
+  language?: VoiceLanguage;
 }) {
+  const storeLanguage = useVoiceLanguageStore((state) => state.language);
+  const effectiveLanguage = language ?? storeLanguage;
+  const languageRef = useRef(effectiveLanguage);
+  languageRef.current = effectiveLanguage;
+
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [phase, setPhase] = useState<RecordingPhase>("idle");
   const [liveStatus, setLiveStatus] = useState<LiveStatus>("idle");
@@ -337,7 +345,7 @@ export function useVoiceRecorder<Result>({
             onError: (err) => {
               console.warn("[voice] live voice stream onError", err);
             },
-          })
+          }, { language: languageRef.current })
             .then((session) => {
               console.warn("[voice] live session started, live=", session.live);
               if (phaseRef.current !== "recording") {
@@ -422,20 +430,32 @@ export function useAssistantRecorder({
   onTranscribed,
   onError,
   onPartialTranscript,
+  language,
 }: {
   getAccessToken: (refresh: boolean) => Promise<string>;
   onTranscribed: (text: string) => void;
   onError: (error: ApiTransportError) => void;
   onPartialTranscript?: (text: string) => void;
+  language?: VoiceLanguage;
 }) {
+  const storeLanguage = useVoiceLanguageStore((state) => state.language);
+  const effectiveLanguage = language ?? storeLanguage;
+  const languageRef = useRef(effectiveLanguage);
+  languageRef.current = effectiveLanguage;
+
   return useVoiceRecorder<AssistantVoiceTranscription>({
     getAccessToken,
     onTranscribed: (result) => onTranscribed(result.text),
     onError,
     onPartialTranscript,
+    language: effectiveLanguage,
     liveTranscribeResult: (text, elapsed) => ({ text, durationSeconds: elapsed }),
     transcribe: (accessToken, recording) =>
-      transcribeVoice({ accessToken }, { ...recording, mimeType: "audio/mp4" }),
+      transcribeVoice(
+        { accessToken },
+        { ...recording, mimeType: "audio/mp4" },
+        { language: languageRef.current },
+      ),
   });
 }
 

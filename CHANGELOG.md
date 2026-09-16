@@ -6,11 +6,15 @@ All notable product changes are documented here.
 
 ### Added
 
-- Added Tagalog (Filipino) voice input and AI Assistant language support on web with bilingual Auto detection as the default mode, while keeping quick language toggles accessible across text chat voice control, hands-free voice conversation, and transaction voice entry.
-- Added a Voice Language setting in Account Settings to configure the preferred voice language between Auto (bilingual), English, and Tagalog.
+- Added Tagalog (Filipino) voice input and AI Assistant language support on web and Android mobile Beta with bilingual Auto detection as the default mode, while keeping quick language toggles accessible across text chat voice control, hands-free voice conversation, and transaction voice entry.
+- Added a Voice Language setting in Account Settings (web and mobile) and More tab (mobile) to configure the preferred voice language between Auto (bilingual), English, and Tagalog.
 - Added two Philippine peso budgeting guides, "How to Budget a Monthly Salary in the Philippines" and "The 50/30/20 Rule in Pesos", and linked the 50/30/20 calculator to the guide.
 - Added public explainer pages for receipt scanning and voice expense entry, linked from the landing page.
 - Added anonymous, cookieless conversion measurement for the signup path (signup page view, signup outcome, first app load, first import into an empty workspace, assistant consent, and first assistant question). The steps carry no financial detail, no identifiers, and no page addresses or query parameters, and the Cookie Policy and Privacy Policy describe them in plain words.
+
+### Changed
+
+- Prepared Android Beta 0.2.30 (versionCode 20330) mobile release.
 
 ## 2.33.1 — 2026-09-16
 
