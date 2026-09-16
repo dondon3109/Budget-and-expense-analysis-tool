@@ -13,7 +13,7 @@ import {
   updateAssistantMemory,
   updateAssistantMemoryPreferences,
 } from "../../lib/api";
-import type { AssistantMemoryPreferences } from "@zoption/shared";
+import { assistantPayoffPreferenceKeys, type AssistantMemoryPreferences } from "@zoption/shared";
 
 import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
@@ -37,12 +37,6 @@ const MEMORY_KEY_LABELS: Record<string, string> = {
   spending_rule: "Spending rule",
   coaching_preference: "Coaching preference",
 };
-
-// Rows stored before the debt_strategy/debt_rule key split can still carry these alias
-// keys, because the API canonicalizes keys on write only. They all mean the payoff
-// preference, which the strategy control above owns. The debt_rule aliases
-// (pay_smallest_first, smallest_debt_first) are absent on purpose: those are real rules.
-const PAYOFF_PREFERENCE_KEYS = new Set(["debt_strategy", "avalanche_method", "snowball_method"]);
 
 /** Stored keys are snake_case; users see a readable label instead. */
 function memoryLabel(key: string): string {
@@ -172,7 +166,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
   const currentStrategy = preferences.data?.debtStrategy ?? null;
   // Only facts are editable here; payoff preference rows belong to the control above.
   const facts = (memories.data ?? []).filter(
-    (memory) => memory.kind === "fact" && !PAYOFF_PREFERENCE_KEYS.has(memory.key),
+    (memory) => memory.kind === "fact" && !assistantPayoffPreferenceKeys.has(memory.key),
   );
 
   return createPortal(

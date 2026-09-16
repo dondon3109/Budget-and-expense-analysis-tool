@@ -2,7 +2,11 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { AssistantMemory, AssistantThreadKind } from "@zoption/shared";
+import {
+  assistantPayoffPreferenceKeys,
+  type AssistantMemory,
+  type AssistantThreadKind,
+} from "@zoption/shared";
 import {
   assistantSpeechVoiceOptions,
   type AssistantSpeechVoice,
@@ -514,12 +518,6 @@ export function VoiceModelField({
   );
 }
 
-// Rows stored before the debt_strategy/debt_rule key split can still carry these alias
-// keys, because the API canonicalizes keys on write only. They all mean the payoff
-// preference, which the control above owns. The debt_rule aliases (pay_smallest_first,
-// smallest_debt_first) are absent on purpose: those are real rules.
-const PAYOFF_PREFERENCE_KEYS = new Set(["debt_strategy", "avalanche_method", "snowball_method"]);
-
 export function MemoryPreferencesBlock({
   memory,
   debtStrategy,
@@ -546,7 +544,7 @@ export function MemoryPreferencesBlock({
   const [draft, setDraft] = useState("");
   // Only facts are editable here; payoff preference rows belong to the control above.
   const facts = memory.filter(
-    (item) => item.kind === "fact" && !PAYOFF_PREFERENCE_KEYS.has(item.key),
+    (item) => item.kind === "fact" && !assistantPayoffPreferenceKeys.has(item.key),
   );
   const debtOptions: SelectionOption[] = [
     { id: "avalanche", label: "Avalanche", detail: "Highest interest first" },
