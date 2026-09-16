@@ -13,9 +13,13 @@ const authState = vi.hoisted(() => ({
   signInWithSocial: vi.fn(),
 }));
 
+const funnel = vi.hoisted(() => ({ captureFunnelEvent: vi.fn() }));
+
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => authState,
 }));
+
+vi.mock("../src/analytics/funnel", () => funnel);
 
 vi.mock("../src/components/auth/AuthLayout", () => ({
   AuthLayout: ({
@@ -70,6 +74,7 @@ describe("SignupPage", () => {
     authState.configured = true;
     authState.signUp.mockReset().mockResolvedValue({ confirmationRequired: false });
     authState.signInWithSocial.mockReset().mockResolvedValue(undefined);
+    funnel.captureFunnelEvent.mockReset();
   });
 
   it("offers provider signup through the same deduplicating social sign-in flow", async () => {
@@ -130,6 +135,10 @@ describe("SignupPage", () => {
     expect(authState.signUp).not.toHaveBeenCalled();
     expect(screen.getByText("Use a password that meets every requirement.")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toHaveAttribute("aria-invalid", "true");
+    expect(funnel.captureFunnelEvent).not.toHaveBeenCalledWith(
+      "signup_submitted",
+      expect.anything(),
+    );
   });
 
   it("blocks a confirmation mismatch before calling Supabase", () => {
@@ -177,6 +186,42 @@ describe("SignupPage", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("current-path")).toHaveTextContent("/app?proCheckout=open"),
+    );
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
+      outcome: "signed_in",
+    });
+  });
+
+  it("records the signup page view without identity detail", () => {
+    renderSignup();
+
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_viewed", {});
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("records a confirmation outcome without identity detail", async () => {
+    authState.signUp.mockResolvedValueOnce({ confirmationRequired: true });
+    renderSignup();
+    fillValidCredentials();
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    await waitFor(() =>
+      expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
+        outcome: "confirmation_required",
+      }),
+    );
+  });
+
+  it("records a failed outcome when the signup call rejects", async () => {
+    authState.signUp.mockRejectedValueOnce(new Error("offline"));
+    renderSignup();
+    fillValidCredentials();
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    await waitFor(() =>
+      expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
+        outcome: "failed",
+      }),
     );
   });
 

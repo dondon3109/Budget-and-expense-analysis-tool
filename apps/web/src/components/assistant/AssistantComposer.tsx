@@ -1,6 +1,8 @@
 import { Bot, Send, ShieldCheck } from "lucide-react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
+
 interface AssistantComposerProps {
   value: string;
   busy: boolean;
@@ -18,15 +20,21 @@ export function AssistantComposer({
   onSend,
   voiceControl,
 }: AssistantComposerProps) {
+  // This composer is the chat surface, so a send here is always the chat question.
+  function send() {
+    captureFunnelEvent("assistant_first_question", { surface: "chat" });
+    onSend();
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (value.trim() && !busy) onSend();
+    if (value.trim() && !busy) send();
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (value.trim() && !busy) onSend();
+      if (value.trim() && !busy) send();
     }
   }
 

@@ -24,6 +24,8 @@ import {
 import { useId, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
+import { useWorkspaceTransactionTotal } from "../../analytics/useWorkspaceTransactionTotal";
 import { useAuth } from "../../auth/AuthProvider";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
@@ -283,6 +285,9 @@ function SpreadsheetMigrationDialog({
     }
   }
 
+  // Read while the preview is reviewed so a commit knows whether the workspace was empty.
+  const workspaceTransactionTotal = useWorkspaceTransactionTotal(workspace, Boolean(preview));
+
   // Commit mutation
   const commitMutation = useMutation({
     mutationFn: async () => {
@@ -297,6 +302,8 @@ function SpreadsheetMigrationDialog({
       return commitImport(workspace, commitRequest);
     },
     onSuccess: async () => {
+      // Unknown or non-empty totals never fire; the module keeps it to one per page load.
+      if (workspaceTransactionTotal === 0) captureFunnelEvent("first_import_committed", {});
       if (workspace) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),

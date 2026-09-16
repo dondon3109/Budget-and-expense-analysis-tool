@@ -7,7 +7,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, assistant, consent, and operational information."
-      lastUpdated="August 12, 2026"
+      lastUpdated="September 16, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -81,8 +81,13 @@ export function PrivacyPolicyPage() {
           <li>
             <strong>Optional analytics:</strong> limited aggregate page-use and Core Web Vitals
             performance information sent to PostHog on public web pages in cookieless, memory-only
-            mode. Zoption does not send financial workspace data, account credentials, or assistant
-            conversations to the analytics platform.
+            mode, plus six anonymous conversion steps that cover the signup and app surfaces: a
+            signup page view, the outcome of a signup attempt, a first app load, a first import into
+            an empty workspace, assistant consent, and a first assistant question. Those steps are
+            cookieless, carry no financial detail, and write nothing to your device: they never
+            include an email, name, amount, category, account, or tenant identifier, free text, or a
+            persistent identifier. Zoption does not send financial workspace data, account
+            credentials, or assistant conversations to the analytics platform.
           </li>
         </ul>
         <div className="legal-callout">

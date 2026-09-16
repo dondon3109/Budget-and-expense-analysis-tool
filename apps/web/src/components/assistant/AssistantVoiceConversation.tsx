@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import {
   createAssistantThread,
   getAssistantVoiceSpeech,
@@ -357,6 +358,7 @@ export function AssistantVoiceConversation({
   async function handleFinalTranscript(text: string) {
     const finalText = text.trim();
     if (!finalText || statusRef.current === "thinking" || statusRef.current === "speaking") return;
+    captureFunnelEvent("assistant_first_question", { surface: "voice" });
     setLivePartial("");
     setNotice(undefined);
     setAudioError(undefined);

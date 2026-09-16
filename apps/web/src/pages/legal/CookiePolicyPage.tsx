@@ -10,7 +10,7 @@ export function CookiePolicyPage() {
     <LegalPageLayout
       title="Cookie Policy"
       summary="This policy explains the cookies and similar browser storage Zoption uses, what is necessary, and how optional categories remain blocked until you choose them."
-      lastUpdated="August 24, 2026"
+      lastUpdated="September 16, 2026"
     >
       <section>
         <h2>1. Cookies and similar technologies</h2>
@@ -38,6 +38,14 @@ export function CookiePolicyPage() {
           cookieless, memory-only mode without setting analytics cookies, storing persistent device
           identifiers, or creating person profiles. Zoption does not send your financial workspace
           data, account credentials, or assistant conversations to the analytics platform.
+        </p>
+        <p>
+          Zoption also records six anonymous conversion steps so the path from a first public page
+          visit to a first import can be read: a signup page view, the outcome of a signup attempt,
+          a first app load, a first import into an empty workspace, assistant consent, and a first
+          assistant question. These steps are cookieless, carry no financial detail, and write
+          nothing to your device: they never include an email, name, amount, category, account, or
+          tenant identifier, free text, or a persistent identifier.
         </p>
         <h3>Marketing — off by default</h3>
         <p>

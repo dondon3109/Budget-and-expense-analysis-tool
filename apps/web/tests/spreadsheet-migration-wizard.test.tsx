@@ -4,12 +4,22 @@ import "@testing-library/jest-dom/vitest";
 
 import type { ImportPreview } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { commitImport, createAccount, getAccounts, previewImport } from "../src/lib/api";
+import {
+  commitImport,
+  createAccount,
+  getAccounts,
+  getTransactions,
+  previewImport,
+} from "../src/lib/api";
 import { SpreadsheetMigrationWizard } from "../src/components/onboarding/SpreadsheetMigrationWizard";
+
+const funnel = vi.hoisted(() => ({ captureFunnelEvent: vi.fn() }));
+
+vi.mock("../src/analytics/funnel", () => funnel);
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({
@@ -21,6 +31,7 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
   ...(await importOriginal()),
   getAccounts: vi.fn(),
   createAccount: vi.fn(),
+  getTransactions: vi.fn(),
   previewImport: vi.fn(),
   commitImport: vi.fn(),
 }));
@@ -91,10 +102,12 @@ describe("SpreadsheetMigrationWizard", () => {
     createAccount: vi.mocked(createAccount),
     previewImport: vi.mocked(previewImport),
     commitImport: vi.mocked(commitImport),
+    getTransactions: vi.mocked(getTransactions),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    funnel.captureFunnelEvent.mockReset();
     apiMocks.getAccounts.mockResolvedValue([
       {
         id: "account-1",
@@ -107,6 +120,13 @@ describe("SpreadsheetMigrationWizard", () => {
       },
     ]);
     apiMocks.previewImport.mockResolvedValue(mockPreview);
+    apiMocks.getTransactions.mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 1,
+      total: 4,
+      totalPages: 4,
+    });
     apiMocks.commitImport.mockResolvedValue({
       importedCount: 1,
       rejectedCount: 0,
@@ -174,6 +194,14 @@ describe("SpreadsheetMigrationWizard", () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();
     const onClose = vi.fn();
+    // An empty workspace makes this commit the workspace's first import.
+    apiMocks.getTransactions.mockResolvedValueOnce({
+      items: [],
+      page: 1,
+      pageSize: 1,
+      total: 0,
+      totalPages: 1,
+    });
     renderWizard({ onComplete, onClose });
 
     const csvContent = [
@@ -219,6 +247,8 @@ describe("SpreadsheetMigrationWizard", () => {
     });
 
     // Commit import
+    await waitFor(() => expect(apiMocks.getTransactions).toHaveBeenCalledOnce());
+    await act(async () => Promise.resolve());
     const commitBtn = screen.getByRole("button", { name: /import 1 transactions/i });
     await user.click(commitBtn);
 
@@ -226,6 +256,7 @@ describe("SpreadsheetMigrationWizard", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Migration Complete!" })).toBeInTheDocument();
     });
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("first_import_committed", {});
 
     const finishBtn = screen.getByRole("button", { name: /view my populated dashboard/i });
     await user.click(finishBtn);

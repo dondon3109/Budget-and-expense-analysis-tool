@@ -15,6 +15,7 @@ import {
   commitImport,
   getBillingSummary,
   getCategories,
+  getTransactions,
   previewImport,
 } from "../src/lib/api";
 import type { WorkbookConversion } from "../src/lib/workbookParser";
@@ -26,6 +27,10 @@ const workbook = vi.hoisted(() => ({
   convert: vi.fn<(worksheetName: string) => Promise<WorkbookConversion>>(),
   dispose: vi.fn<() => void>(),
 }));
+
+const funnel = vi.hoisted(() => ({ captureFunnelEvent: vi.fn() }));
+
+vi.mock("../src/analytics/funnel", () => funnel);
 
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({
@@ -39,6 +44,7 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
   commitImport: vi.fn(),
   getBillingSummary: vi.fn(),
   getCategories: vi.fn(),
+  getTransactions: vi.fn(),
   previewImport: vi.fn(),
 }));
 
@@ -210,6 +216,13 @@ describe("ImportPage", () => {
       importId: "import-1",
       importedCount: 1,
       rejectedCount: 0,
+    });
+    vi.mocked(getTransactions).mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 1,
+      total: 4,
+      totalPages: 4,
     });
   });
 
@@ -794,5 +807,42 @@ describe("ImportPage", () => {
       categoryOverrides: [{ rowNumber: 2, categoryId: "food" }],
       kindOverrides: [{ rowNumber: 2, kind: "expense" }],
     });
+  });
+
+  it("records a first import when the workspace held no transactions before the commit", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getTransactions).mockResolvedValueOnce({
+      items: [],
+      page: 1,
+      pageSize: 1,
+      total: 0,
+      totalPages: 1,
+    });
+    const { container } = renderPage();
+    const csv = "Date,Description,Amount,Category\n2026-07-20,Market,-50.00,Food & dining";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+    await waitFor(() => expect(getTransactions).toHaveBeenCalledOnce());
+    await act(async () => Promise.resolve());
+    await user.click(await screen.findByRole("button", { name: "Import 1 ready rows" }));
+
+    await screen.findByText("Import complete");
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("first_import_committed", {});
+  });
+
+  it("records no first import when the workspace already held transactions", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    const csv = "Date,Description,Amount,Category\n2026-07-20,Market,-50.00,Food & dining";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+    await waitFor(() => expect(getTransactions).toHaveBeenCalledOnce());
+    await act(async () => Promise.resolve());
+    await user.click(await screen.findByRole("button", { name: "Import 1 ready rows" }));
+
+    await screen.findByText("Import complete");
+    expect(funnel.captureFunnelEvent).not.toHaveBeenCalled();
   });
 });

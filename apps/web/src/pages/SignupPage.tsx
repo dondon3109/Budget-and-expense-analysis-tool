@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { captureFunnelEvent } from "../analytics/funnel";
 import { AuthOperationError } from "../auth/authErrors";
 import { evaluatePassword } from "../auth/passwordPolicy";
 import { useAuth } from "../auth/AuthProvider";
@@ -27,6 +28,10 @@ export function SignupPage() {
   const [emailError, setEmailError] = useState<string>();
   const [error, setError] = useState<AuthOperationError>();
   const authenticationBusy = busy || busyProvider !== null;
+
+  useEffect(() => {
+    captureFunnelEvent("signup_viewed", {});
+  }, []);
 
   const passwordEvaluation = evaluatePassword(password);
   const showPasswordError = (submitted || passwordTouched) && !passwordEvaluation.isValid;
@@ -60,9 +65,15 @@ export function SignupPage() {
     setBusy(true);
     try {
       const result = await signUp(normalizedEmail, password);
-      if (result.confirmationRequired) setConfirmationSent(true);
-      else void navigate("/app?proCheckout=open", { replace: true });
+      if (result.confirmationRequired) {
+        setConfirmationSent(true);
+        captureFunnelEvent("signup_submitted", { outcome: "confirmation_required" });
+      } else {
+        captureFunnelEvent("signup_submitted", { outcome: "signed_in" });
+        void navigate("/app?proCheckout=open", { replace: true });
+      }
     } catch (submitError) {
+      captureFunnelEvent("signup_submitted", { outcome: "failed" });
       setError(
         submitError instanceof AuthOperationError
           ? submitError

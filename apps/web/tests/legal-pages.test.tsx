@@ -52,7 +52,7 @@ describe("legal pages", () => {
     renderPage(<PrivacyPolicyPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: August 12, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: September 16, 2026")).toBeInTheDocument();
     expect(screen.getByText(/Zoption does not sell user financial data/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);
@@ -72,6 +72,10 @@ describe("legal pages", () => {
     expect(screen.getByText(/current 12-month event-retention plan/i)).toBeInTheDocument();
     expect(screen.getByText(/not a complete account-data archive/i)).toBeInTheDocument();
     expect(screen.getByText(/includes an in-app account-deletion control/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/six anonymous conversion steps that cover the signup and app surfaces/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/cookieless, carry no financial detail/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "support@zoption.site" })).toHaveLength(5);
   });
 
@@ -82,6 +86,10 @@ describe("legal pages", () => {
     expect(
       screen.getByText(/PostHog for privacy-preserving, cookieless aggregate usage/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/six anonymous conversion steps so the path from a first public page/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/write nothing to your device/i)).toBeInTheDocument();
     expect(screen.getByText(/No marketing provider is currently enabled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open Cookie Settings" })).toBeInTheDocument();
     expect(

@@ -17,6 +17,7 @@ import {
   getBillingSummary,
   getCategories,
   getSubscriptions,
+  getTransactions,
   previewImport,
 } from "../src/lib/api";
 import { ImportPage } from "../src/pages/ImportPage";
@@ -36,6 +37,7 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
   getBillingSummary: vi.fn(),
   getCategories: vi.fn(),
   getSubscriptions: vi.fn(),
+  getTransactions: vi.fn(),
   previewImport: vi.fn(),
   commitImport: vi.fn().mockResolvedValue({ importId: "import-1", importedCount: 1, rejectedCount: 0 }),
 }));
@@ -171,6 +173,13 @@ describe("Import auto-detection of recurring charges", () => {
       currency: "PHP",
       totalMonthlyCostMinor: 0,
       items: [],
+    });
+    vi.mocked(getTransactions).mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 1,
+      total: 4,
+      totalPages: 4,
     });
     vi.mocked(createSubscription).mockResolvedValue({
       id: "sub-1",

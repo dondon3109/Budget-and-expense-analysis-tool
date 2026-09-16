@@ -12,9 +12,13 @@ const authState = vi.hoisted<{ loading: boolean; user: { id: string } | null }>(
   user: { id: "user-1" },
 }));
 
+const funnel = vi.hoisted(() => ({ captureFunnelEvent: vi.fn() }));
+
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => authState,
 }));
+
+vi.mock("../src/analytics/funnel", () => funnel);
 
 vi.mock("../src/components/layout/FullPageLoadingStatus", () => ({
   FullPageLoadingStatus: ({ title, onComplete }: { title: string; onComplete?: () => void }) => (
@@ -79,6 +83,7 @@ describe("PrivateAppStartupGate", () => {
   beforeEach(() => {
     authState.loading = false;
     authState.user = { id: "user-1" };
+    funnel.captureFunnelEvent.mockReset();
   });
 
   afterEach(cleanup);
@@ -105,6 +110,22 @@ describe("PrivateAppStartupGate", () => {
     fireEvent.click(screen.getByRole("link", { name: "Settings" }));
     expect(await screen.findByText("Settings content")).toBeInTheDocument();
     expect(screen.queryByText("Restoring your workspace")).not.toBeInTheDocument();
+  });
+
+  it("records the first authenticated app bootstrap without identity detail", async () => {
+    renderPrivateRoutes();
+
+    await waitFor(() =>
+      expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("app_session_started", {}),
+    );
+  });
+
+  it("records no activation for a signed out visitor", () => {
+    authState.user = null;
+    renderPrivateRoutes();
+
+    expect(screen.getByText("Login page")).toBeInTheDocument();
+    expect(funnel.captureFunnelEvent).not.toHaveBeenCalled();
   });
 
   it("does not release or replace the loader while a private lazy route is suspended", async () => {

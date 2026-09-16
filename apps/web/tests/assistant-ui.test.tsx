@@ -21,6 +21,10 @@ const apiMocks = vi.hoisted(() => ({
   updateAssistantIdentity: vi.fn(),
 }));
 
+const funnel = vi.hoisted(() => ({ captureFunnelEvent: vi.fn() }));
+
+vi.mock("../src/analytics/funnel", () => funnel);
+
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { id: "user-1", email: "user@example.com" } }),
 }));
@@ -166,6 +170,7 @@ describe("assistant UI", () => {
       recentAverageFeeChargedTransfersPerWeek: 2,
     });
     apiMocks.sendAssistantMessage.mockReset();
+    funnel.captureFunnelEvent.mockReset();
   });
 
   it("requires an explicit consent action", () => {
@@ -178,6 +183,7 @@ describe("assistant UI", () => {
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
     expect(accept).toHaveBeenCalledOnce();
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("assistant_consent_granted", {});
   });
 
   it("requires renewed consent when the stored disclosure version is stale", async () => {
@@ -459,6 +465,25 @@ describe("assistant UI", () => {
     fireEvent.click(screen.getByText("Data used"));
     expect(screen.getByText("Data quality: limited")).toBeInTheDocument();
     expect(screen.getByText("Some transactions are uncategorized.")).toBeInTheDocument();
+  });
+
+  it("records a sent question as the chat surface without free text", () => {
+    const send = vi.fn();
+    render(
+      <AssistantComposer
+        value="How much did I spend?"
+        busy={false}
+        onChange={() => undefined}
+        onSend={send}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(send).toHaveBeenCalledOnce();
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("assistant_first_question", {
+      surface: "chat",
+    });
   });
 
   it("uses Enter to send and Shift+Enter for a new line", () => {

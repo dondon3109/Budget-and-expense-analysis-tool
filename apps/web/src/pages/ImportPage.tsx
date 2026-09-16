@@ -29,6 +29,8 @@ import {
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import { captureFunnelEvent } from "../analytics/funnel";
+import { useWorkspaceTransactionTotal } from "../analytics/useWorkspaceTransactionTotal";
 import { useAuth } from "../auth/AuthProvider";
 import { ReceiptEntry, type ReceiptEntryDraft } from "../components/receipts/ReceiptEntry";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
@@ -242,6 +244,8 @@ export function ImportPage() {
       ),
     enabled: Boolean(preview),
   });
+  // Read while the preview is reviewed so a commit knows whether the workspace was empty.
+  const workspaceTransactionTotal = useWorkspaceTransactionTotal(workspace, Boolean(preview));
 
   const previewMutation = useMutation({
     mutationFn: ({ input }: { input: Parameters<typeof previewImport>[1]; generation: number }) =>
@@ -272,6 +276,8 @@ export function ImportPage() {
       workbookClientRef.current?.dispose();
       workbookClientRef.current = undefined;
       setResult(data);
+      // Unknown or non-empty totals never fire; the module keeps it to one per page load.
+      if (workspaceTransactionTotal === 0) captureFunnelEvent("first_import_committed", {});
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),

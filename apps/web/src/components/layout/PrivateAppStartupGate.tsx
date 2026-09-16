@@ -9,6 +9,7 @@ import {
 } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import { useAuth } from "../../auth/AuthProvider";
 import { useBodyScrollLock } from "../../hooks/useRootLock";
 import { useInitialDashboardExperience } from "../dashboard/InitialDashboardExperienceProvider";
@@ -68,6 +69,13 @@ export function PrivateAppStartupGate() {
   const reportDashboardSettled = useCallback((settled: boolean) => {
     setDashboardSettled(settled);
   }, []);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    // The client cannot tell a new account from a returning one, so this step
+    // only marks that an app session started; activation is the first import.
+    captureFunnelEvent("app_session_started", {});
+  }, [loading, user]);
 
   useEffect(() => {
     if (!startupActive || !user || !minimumDurationElapsed || !routeReady) return;

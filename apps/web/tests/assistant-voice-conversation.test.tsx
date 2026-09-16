@@ -19,6 +19,10 @@ const apiMocks = vi.hoisted(() => ({
   transcribeAssistantVoice: vi.fn(),
 }));
 
+const funnel = vi.hoisted(() => ({ captureFunnelEvent: vi.fn() }));
+
+vi.mock("../src/analytics/funnel", () => funnel);
+
 vi.mock("../src/lib/api", () => apiMocks);
 
 const voiceStreamMocks = vi.hoisted(() => {
@@ -227,6 +231,7 @@ beforeEach(() => {
   apiMocks.createAssistantThread.mockResolvedValue(turnResult());
   apiMocks.sendAssistantMessage.mockResolvedValue(turnResult());
   apiMocks.getAssistantVoiceSpeech.mockResolvedValue(new Blob(["spoken"], { type: "audio/mpeg" }));
+  funnel.captureFunnelEvent.mockReset();
 });
 
 afterEach(() => {
@@ -547,6 +552,9 @@ describe("AssistantVoiceConversation", () => {
     });
 
     await waitFor(() => expect(apiMocks.createAssistantThread).toHaveBeenCalled());
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("assistant_first_question", {
+      surface: "voice",
+    });
   });
 
   it("allows user to interrupt speaking by clicking the orb", async () => {

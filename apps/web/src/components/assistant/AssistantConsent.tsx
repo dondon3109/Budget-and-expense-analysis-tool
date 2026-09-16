@@ -1,5 +1,7 @@
 import { Activity, Brain, FileClock, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
+
 interface AssistantConsentProps {
   accepting: boolean;
   error?: string;
@@ -80,7 +82,15 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
         Educational budgeting information only. Zoption does not provide personalized financial,
         investment, tax, legal, or insurance advice.
       </p>
-      <button className="button primary" type="button" onClick={onAccept} disabled={accepting}>
+      <button
+        className="button primary"
+        type="button"
+        onClick={() => {
+          captureFunnelEvent("assistant_consent_granted", {});
+          onAccept();
+        }}
+        disabled={accepting}
+      >
         {accepting ? "Enabling assistant…" : "Accept and continue"}
       </button>
       {error && <small role="alert">{error}</small>}
