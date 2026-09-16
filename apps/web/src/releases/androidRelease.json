@@ -1,21 +1,22 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.28-beta",
-  "versionCode": 20328,
-  "filename": "zoption-beta-0.2.28.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.28.apk",
-  "sha256": "0d6a5f893978d66f679e408b9c4dd60318abf6617370306181d32acc287d74a4",
-  "sizeBytes": 139306126,
-  "sizeLabel": "139,306,126 bytes (132.85 MiB)",
-  "releaseDate": "2026-09-15",
-  "releaseDateLabel": "September 15, 2026",
+  "versionName": "0.2.29-beta",
+  "versionCode": 20329,
+  "filename": "zoption-beta-0.2.29.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.29.apk",
+  "sha256": "a0ef1bcbc0d150f584deb70445c1aaf216a26e7c564d41cd94d05cd1b0afc2ea",
+  "sizeBytes": 139345498,
+  "sizeLabel": "139,345,498 bytes (132.89 MiB)",
+  "releaseDate": "2026-09-16",
+  "releaseDateLabel": "September 16, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Quick start guide now disappears completely when dismissed",
-    "Renewals button no longer overflows the mobile Safe-to-Spend card on narrow screens",
-    "Includes Android Beta 0.2.27: spreadsheet migration, JSON account backup, same-day transaction ordering"
+    "Edit and delete individual assistant memories from the Memory panel",
+    "Mobile navigation, layout, and UI ergonomics improvements",
+    "Renamed mobile monthly summary to Net with explanation",
+    "Fixed mobile cookie consent banner styling on iOS Safari"
   ]
 }

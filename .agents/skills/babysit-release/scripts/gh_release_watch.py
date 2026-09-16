@@ -731,6 +731,7 @@ def collect_snapshot(args):
             raw_latest is not None
             and track == "android"
             and str(raw_latest.get("head_sha") or "") != sha
+            and str(raw_latest.get("status") or "").lower() not in PENDING_RUN_STATUSES
         ):
             raw_latest = None
         latest = summarize_run(raw_latest) if raw_latest is not None else None
