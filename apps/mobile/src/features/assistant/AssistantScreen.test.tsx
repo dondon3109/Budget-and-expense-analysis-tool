@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { router } from "expo-router";
 
 import { AssistantScreen } from "./AssistantScreen";
 
@@ -227,7 +228,6 @@ describe("assistant screen multi-select", () => {
   });
 
   it("navigates back when back button is pressed on threads view", async () => {
-    const { router } = require("expo-router");
     api.listAssistantThreads.mockResolvedValue({ items: threads, nextCursor: null });
 
     await render(<AssistantScreen />);

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
-import { FormField } from "./FormField";
+import { FormField, formatDateInput } from "./FormField";
 
 describe("FormField", () => {
   it("renders label, placeholder, and handles focus/blur", async () => {
@@ -80,23 +80,19 @@ describe("FormField", () => {
 
   describe("formatDateInput", () => {
     it("auto-hyphenates 8-digit strings into YYYY-MM-DD", () => {
-      const { formatDateInput } = require("./FormField");
       expect(formatDateInput("20260916")).toBe("2026-09-16");
       expect(formatDateInput("20261231")).toBe("2026-12-31");
     });
 
     it("converts slash format YYYY/MM/DD into YYYY-MM-DD", () => {
-      const { formatDateInput } = require("./FormField");
       expect(formatDateInput("2026/09/16")).toBe("2026-09-16");
     });
 
     it("converts dot format YYYY.MM.DD into YYYY-MM-DD", () => {
-      const { formatDateInput } = require("./FormField");
       expect(formatDateInput("2026.09.16")).toBe("2026-09-16");
     });
 
     it("leaves already formatted dates and partial inputs intact", () => {
-      const { formatDateInput } = require("./FormField");
       expect(formatDateInput("2026-09-16")).toBe("2026-09-16");
       expect(formatDateInput("2026-09")).toBe("2026-09");
       expect(formatDateInput("2026")).toBe("2026");

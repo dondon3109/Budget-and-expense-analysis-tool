@@ -24,7 +24,6 @@ import {
   type ReceiptReviewItem,
 } from "@/features/receipts/receipt-review";
 import {
-  formatMinorForInput,
   localCalendarDate,
   parseTransactionForm,
 } from "@/features/transactions/transaction-form";
