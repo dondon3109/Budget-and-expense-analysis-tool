@@ -668,4 +668,70 @@ describe("AssistantVoiceControl", () => {
     });
     expect(toggleBtn).toHaveTextContent("AUTO");
   });
+
+  it("syncs voice language when storage event fires from another tab", async () => {
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "gemini-3.5-transcribe-live",
+      ttsModel: "s2.1-pro-free",
+    });
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+    await act(async () => Promise.resolve());
+
+    const toggleBtn = screen.getByRole("button", { name: /Switch voice language/i });
+    expect(toggleBtn).toHaveTextContent("AUTO");
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "zoption_voice_language",
+          newValue: "fil",
+        }),
+      );
+    });
+    expect(toggleBtn).toHaveTextContent("TL");
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "zoption_voice_language",
+          newValue: "en",
+        }),
+      );
+    });
+    expect(toggleBtn).toHaveTextContent("EN");
+  });
+
+  it("disables voice language badge when control is disabled", async () => {
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "gemini-3.5-transcribe-live",
+      ttsModel: "s2.1-pro-free",
+    });
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={true}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+    await act(async () => Promise.resolve());
+
+    const toggleBtn = screen.getByRole("button", { name: /Switch voice language/i });
+    expect(toggleBtn).toBeDisabled();
+  });
 });

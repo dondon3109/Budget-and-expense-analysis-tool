@@ -621,6 +621,7 @@ export function TransactionVoiceEntry({
           <button
             type="button"
             className={`transaction-voice-lang-btn ${voiceLanguage === "auto" ? "active" : ""}`}
+            disabled={disabled || checking}
             onClick={() => handleLanguageChange("auto")}
             aria-pressed={voiceLanguage === "auto"}
             title="Auto (English & Tagalog)"
@@ -630,6 +631,7 @@ export function TransactionVoiceEntry({
           <button
             type="button"
             className={`transaction-voice-lang-btn ${voiceLanguage === "en" ? "active" : ""}`}
+            disabled={disabled || checking}
             onClick={() => handleLanguageChange("en")}
             aria-pressed={voiceLanguage === "en"}
             title="English"
@@ -639,6 +641,7 @@ export function TransactionVoiceEntry({
           <button
             type="button"
             className={`transaction-voice-lang-btn ${voiceLanguage === "fil" ? "active" : ""}`}
+            disabled={disabled || checking}
             onClick={() => handleLanguageChange("fil")}
             aria-pressed={voiceLanguage === "fil"}
             title="Tagalog / Filipino"

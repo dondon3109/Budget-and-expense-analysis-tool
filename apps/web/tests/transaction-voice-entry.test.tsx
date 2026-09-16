@@ -342,4 +342,45 @@ describe("TransactionVoiceEntry", () => {
       expect(englishBtn).not.toHaveClass("active");
     });
   });
+
+  it("syncs voice language on storage event from another tab in transaction entry", async () => {
+    renderEntry();
+    const autoBtn = await screen.findByRole("button", { name: "Auto" });
+    const tagalogBtn = await screen.findByRole("button", { name: "Tagalog" });
+    const englishBtn = await screen.findByRole("button", { name: "English" });
+    expect(autoBtn).toHaveClass("active");
+
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "zoption_voice_language",
+        newValue: "fil",
+      }),
+    );
+    await waitFor(() => {
+      expect(tagalogBtn).toHaveClass("active");
+      expect(autoBtn).not.toHaveClass("active");
+    });
+
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "zoption_voice_language",
+        newValue: "en",
+      }),
+    );
+    await waitFor(() => {
+      expect(englishBtn).toHaveClass("active");
+      expect(tagalogBtn).not.toHaveClass("active");
+    });
+  });
+
+  it("disables language buttons when transaction voice entry is disabled", async () => {
+    renderEntry({ disabled: true });
+    const autoBtn = await screen.findByRole("button", { name: "Auto" });
+    const tagalogBtn = await screen.findByRole("button", { name: "Tagalog" });
+    const englishBtn = await screen.findByRole("button", { name: "English" });
+
+    expect(autoBtn).toBeDisabled();
+    expect(tagalogBtn).toBeDisabled();
+    expect(englishBtn).toBeDisabled();
+  });
 });

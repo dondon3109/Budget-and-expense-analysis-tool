@@ -735,6 +735,7 @@ export function AssistantVoiceControl({
       <button
         type="button"
         className="assistant-voice-lang-badge"
+        disabled={disabled || enabling}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

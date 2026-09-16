@@ -550,4 +550,83 @@ describe("SettingsPage", () => {
       expect(tagalogRadio).toHaveAttribute("aria-checked", "false");
     });
   });
+
+  it("supports keyboard arrow navigation and roving tabindex in Voice Language radiogroup", () => {
+    renderSettings();
+
+    const autoRadio = screen.getByRole("radio", { name: /^Auto/i });
+    const englishRadio = screen.getByRole("radio", { name: /^English/i });
+    const tagalogRadio = screen.getByRole("radio", { name: /^Tagalog/i });
+
+    // Initial state: Auto is selected (tabIndex=0), others are tabIndex=-1
+    expect(autoRadio).toHaveAttribute("tabindex", "0");
+    expect(englishRadio).toHaveAttribute("tabindex", "-1");
+    expect(tagalogRadio).toHaveAttribute("tabindex", "-1");
+
+    // ArrowRight moves to English
+    fireEvent.keyDown(autoRadio, { key: "ArrowRight" });
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
+    expect(englishRadio).toHaveAttribute("aria-checked", "true");
+    expect(englishRadio).toHaveAttribute("tabindex", "0");
+    expect(autoRadio).toHaveAttribute("tabindex", "-1");
+
+    // ArrowDown moves to Tagalog
+    fireEvent.keyDown(englishRadio, { key: "ArrowDown" });
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
+    expect(tagalogRadio).toHaveAttribute("aria-checked", "true");
+    expect(tagalogRadio).toHaveAttribute("tabindex", "0");
+
+    // ArrowLeft moves back to English
+    fireEvent.keyDown(tagalogRadio, { key: "ArrowLeft" });
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
+    expect(englishRadio).toHaveAttribute("aria-checked", "true");
+
+    // Home moves to Auto (first option)
+    fireEvent.keyDown(englishRadio, { key: "Home" });
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("auto");
+    expect(autoRadio).toHaveAttribute("aria-checked", "true");
+
+    // End moves to Tagalog (last option)
+    fireEvent.keyDown(autoRadio, { key: "End" });
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
+    expect(tagalogRadio).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("syncs Voice Language setting when storage event fires from another tab", async () => {
+    renderSettings();
+
+    const autoRadio = screen.getByRole("radio", { name: /^Auto/i });
+    const englishRadio = screen.getByRole("radio", { name: /^English/i });
+    const tagalogRadio = screen.getByRole("radio", { name: /^Tagalog/i });
+
+    expect(autoRadio).toHaveAttribute("aria-checked", "true");
+
+    // Simulate cross-tab storage change to Tagalog
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "zoption_voice_language",
+        newValue: "fil",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(tagalogRadio).toHaveAttribute("aria-checked", "true");
+      expect(tagalogRadio).toHaveClass("selected");
+      expect(autoRadio).toHaveAttribute("aria-checked", "false");
+    });
+
+    // Simulate cross-tab storage change to English
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "zoption_voice_language",
+        newValue: "en",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(englishRadio).toHaveAttribute("aria-checked", "true");
+      expect(englishRadio).toHaveClass("selected");
+      expect(tagalogRadio).toHaveAttribute("aria-checked", "false");
+    });
+  });
 });

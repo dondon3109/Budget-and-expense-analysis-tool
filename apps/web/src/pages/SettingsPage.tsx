@@ -109,6 +109,7 @@ export function SettingsPage() {
   const [exportBusy, setExportBusy] = useState(false);
   const [exportFeedback, setExportFeedback] = useState<Feedback>({});
   const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>(() => getStoredVoiceLanguage());
+  const voiceRadioRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     const onLangChange = (event: Event) => {
@@ -124,6 +125,28 @@ export function SettingsPage() {
   function handleVoiceLanguageChange(lang: VoiceLanguage) {
     setVoiceLanguage(lang);
     setStoredVoiceLanguage(lang);
+  }
+
+  function handleVoiceLanguageKeyDown(
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) {
+    let nextIndex: number | undefined;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % VOICE_LANGUAGES.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = (currentIndex - 1 + VOICE_LANGUAGES.length) % VOICE_LANGUAGES.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = VOICE_LANGUAGES.length - 1;
+    }
+    if (nextIndex === undefined) return;
+    event.preventDefault();
+    const nextOption = VOICE_LANGUAGES[nextIndex];
+    if (!nextOption) return;
+    handleVoiceLanguageChange(nextOption.code);
+    voiceRadioRefs.current[nextIndex]?.focus();
   }
 
   async function handleDownloadArchive() {
@@ -772,16 +795,21 @@ export function SettingsPage() {
               role="radiogroup"
               aria-labelledby="voice-language-title"
             >
-              {VOICE_LANGUAGES.map((option) => {
+              {VOICE_LANGUAGES.map((option, index) => {
                 const isSelected = voiceLanguage === option.code;
                 return (
                   <button
                     key={option.code}
+                    ref={(el) => {
+                      voiceRadioRefs.current[index] = el;
+                    }}
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
+                    tabIndex={isSelected ? 0 : -1}
                     className={`settings-voice-lang-card ${isSelected ? "selected" : ""}`}
                     onClick={() => handleVoiceLanguageChange(option.code)}
+                    onKeyDown={(event) => handleVoiceLanguageKeyDown(event, index)}
                   >
                     <div className="settings-voice-lang-header">
                       <div className="settings-voice-lang-title-group">

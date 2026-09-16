@@ -697,6 +697,39 @@ describe("AssistantVoiceConversation", () => {
     });
   });
 
+  it("syncs voice language on storage event from another tab in conversation", async () => {
+    installRecordingMocks();
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+
+    const autoBtn = screen.getByRole("button", { name: "Auto" });
+    const tagalogBtn = screen.getByRole("button", { name: "Tagalog" });
+    const englishBtn = screen.getByRole("button", { name: "English" });
+    expect(autoBtn).toHaveClass("active");
+
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "zoption_voice_language",
+        newValue: "fil",
+      }),
+    );
+    await waitFor(() => {
+      expect(tagalogBtn).toHaveClass("active");
+      expect(autoBtn).not.toHaveClass("active");
+    });
+
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "zoption_voice_language",
+        newValue: "en",
+      }),
+    );
+    await waitFor(() => {
+      expect(englishBtn).toHaveClass("active");
+      expect(tagalogBtn).not.toHaveClass("active");
+    });
+  });
+
   it("passes voice language when falling back to batch transcription", async () => {
     installRecordingMocks();
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
