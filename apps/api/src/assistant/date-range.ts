@@ -18,32 +18,47 @@ export interface PeriodResolution {
 const MONTHS: Record<string, number> = {
   jan: 1,
   january: 1,
+  enero: 1,
   feb: 2,
   february: 2,
+  pebrero: 2,
   mar: 3,
   march: 3,
+  marso: 3,
   apr: 4,
   april: 4,
+  abril: 4,
   may: 5,
+  mayo: 5,
   jun: 6,
   june: 6,
+  hunyo: 6,
   jul: 7,
   july: 7,
+  hulyo: 7,
   aug: 8,
+  agosto: 8,
   august: 8,
   sep: 9,
   sept: 9,
   september: 9,
+  setyembre: 9,
+  setiembre: 9,
   oct: 10,
   october: 10,
+  oktubre: 10,
   nov: 11,
   november: 11,
+  nobyembre: 11,
+  nobiembre: 11,
   dec: 12,
   december: 12,
+  disyembre: 12,
+  disiembre: 12,
 };
 
 const MONTH_NAME =
-  "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
+  "jan(?:uary)?|enero|feb(?:ruary)?|pebrero|mar(?:ch)?|marso|apr(?:il)?|abril|mayo?|jun(?:e)?|hunyo|jul(?:y)?|hulyo|aug(?:ust)?|agosto|sep(?:t(?:ember)?)?|set(?:y|i)embre|oct(?:ober)?|oktubre|nov(?:ember)?|nob(?:y|i)embre|dec(?:ember)?|dis(?:y|i)embre";
 const DEFAULT_CLARIFICATION =
   "Which month or date range should I use? For example, August 2026 or July 1 to August 2, 2026.";
 
@@ -104,7 +119,7 @@ function explicitIsoRange(message: string): AssistantDateRange | undefined {
 
 function namedDayRange(message: string): AssistantDateRange | undefined {
   const pattern = new RegExp(
-    `(?:from\\s+)?(${MONTH_NAME})\\s+(\\d{1,2})(?:,?\\s+((?:19|20)\\d{2}))?\\s+(?:to|through|-)\\s+(${MONTH_NAME})\\s+(\\d{1,2}),?\\s+((?:19|20)\\d{2})`,
+    `(?:(?:from|mula)\\s+)?(${MONTH_NAME})\\s+(\\d{1,2})(?:,?\\s+((?:19|20)\\d{2}))?\\s+(?:to|through|hanggang|-)\\s+(${MONTH_NAME})\\s+(\\d{1,2}),?\\s+((?:19|20)\\d{2})`,
     "i",
   );
   const match = pattern.exec(message);
@@ -120,7 +135,7 @@ function namedDayRange(message: string): AssistantDateRange | undefined {
 
 function namedMonthRange(message: string): PeriodResolution | undefined {
   const pattern = new RegExp(
-    `(?:from\\s+)?(${MONTH_NAME})(?:\\s+((?:19|20)\\d{2}))?\\s*(?:to|through|-)\\s*(${MONTH_NAME})(?:\\s+((?:19|20)\\d{2}))?\\b`,
+    `(?:(?:from|mula)\\s+)?(${MONTH_NAME})(?:\\s+((?:19|20)\\d{2}))?\\s*(?:to|through|hanggang|-)\\s*(${MONTH_NAME})(?:\\s+((?:19|20)\\d{2}))?\\b`,
     "i",
   );
   const match = pattern.exec(message);
@@ -177,17 +192,21 @@ function relativePeriod(
 ): PeriodResolution | undefined {
   const year = Number(currentDate.slice(0, 4));
   const month = Number(currentDate.slice(5, 7));
-  if (/\btoday\b/i.test(message)) {
+  if (/\b(?:today|ngayon|ngayong araw)\b/i.test(message)) {
     return { period: { from: currentDate, to: currentDate, label: "today" } };
   }
-  if (/\byesterday\b/i.test(message)) {
+  if (/\b(?:yesterday|kahapon)\b/i.test(message)) {
     const day = shiftDays(currentDate, -1);
     return { period: { from: day, to: day, label: "yesterday" } };
   }
-  if (/\b(?:this month|current month|month[ -]to[ -]date|mtd)\b/i.test(message)) {
+  if (
+    /\b(?:this month|current month|month[ -]to[ -]date|mtd|ngayong buwan|kasalukuyang buwan)\b/i.test(
+      message,
+    )
+  ) {
     return { period: { from: monthStart(year, month), to: currentDate, label: "this month" } };
   }
-  if (/\b(?:last|previous) month\b/i.test(message)) {
+  if (/\b(?:(?:last|previous) month|(?:nakaraang|noong nakaraang|huling) buwan)\b/i.test(message)) {
     const from = shiftMonthStart(currentDate, -1);
     return {
       period: {
@@ -197,15 +216,19 @@ function relativePeriod(
       },
     };
   }
-  if (/\b(?:this year|current year|year[ -]to[ -]date|ytd)\b/i.test(message)) {
+  if (
+    /\b(?:this year|current year|year[ -]to[ -]date|ytd|ngayong taon|kasalukuyang taon)\b/i.test(
+      message,
+    )
+  ) {
     return { period: { from: `${year}-01-01`, to: currentDate, label: "this year" } };
   }
-  if (/\b(?:last|previous) year\b/i.test(message)) {
+  if (/\b(?:(?:last|previous) year|(?:nakaraang|noong nakaraang|huling) taon)\b/i.test(message)) {
     return {
       period: { from: `${year - 1}-01-01`, to: `${year - 1}-12-31`, label: "last year" },
     };
   }
-  if (/\bthis quarter\b/i.test(message)) {
+  if (/\b(?:this quarter|ngayong sangkapat)\b/i.test(message)) {
     const quarterStartMonth = Math.floor((month - 1) / 3) * 3 + 1;
     return {
       period: {
@@ -215,7 +238,7 @@ function relativePeriod(
       },
     };
   }
-  if (/\b(?:last|previous) quarter\b/i.test(message)) {
+  if (/\b(?:(?:last|previous) quarter|(?:nakaraang|noong nakaraang) sangkapat)\b/i.test(message)) {
     const currentQuarterStart = monthStart(year, Math.floor((month - 1) / 3) * 3 + 1);
     const from = shiftMonthStart(currentQuarterStart, -3);
     const endStart = shiftMonthStart(currentQuarterStart, -1);
@@ -228,7 +251,9 @@ function relativePeriod(
     };
   }
 
-  const days = /\b(?:past|last)\s+(\d{1,3})\s+days?\b/i.exec(message);
+  const days =
+    /\b(?:past|last)\s+(\d{1,3})\s+days?\b/i.exec(message) ??
+    /\b(?:nakalipas|nakaraang|huling)(?:\s+na)?\s+(\d{1,3})\s+araw\b/i.exec(message);
   if (days) {
     const count = Number(days[1]);
     if (count < 1 || count > 730) {
@@ -243,7 +268,9 @@ function relativePeriod(
     };
   }
 
-  const months = /\b(?:past|last)\s+(\d{1,2})\s+months?\b/i.exec(message);
+  const months =
+    /\b(?:past|last)\s+(\d{1,2})\s+months?\b/i.exec(message) ??
+    /\b(?:nakalipas|nakaraang|huling)(?:\s+na)?\s+(\d{1,2})\s+buwan\b/i.exec(message);
   if (months) {
     const count = Number(months[1]);
     if (count < 1 || count > 24) {
@@ -258,7 +285,11 @@ function relativePeriod(
     };
   }
 
-  if (/\b(?:all[ -]time|all\s+(?:recorded\s+)?history|since\s+(?:i\s+)?started)\b/i.test(message)) {
+  if (
+    /\b(?:all[ -]time|all\s+(?:recorded\s+)?history|since\s+(?:i\s+)?started|lahat ng transaksyon|simula nang magsimula|buong kasaysayan)\b/i.test(
+      message,
+    )
+  ) {
     if (!bounds || bounds.transactionCount === 0) {
       return { deterministicResponse: "I don't have any recorded transactions to analyze yet." };
     }

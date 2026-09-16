@@ -804,7 +804,9 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-memory-trigger:hover {
   border-color: var(--action);
-  box-shadow: 0 0 0 1px var(--action), 0 2px 8px -2px var(--brand-glow);
+  box-shadow:
+    0 0 0 1px var(--action),
+    0 2px 8px -2px var(--brand-glow);
   transform: translateY(-1px);
 }
 
@@ -1393,7 +1395,8 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 @keyframes assistant-wave-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scaleY(0.4);
     opacity: 0.45;
   }
@@ -1410,7 +1413,8 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 @keyframes assistant-thinking-text-breathe {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.72;
   }
   50% {
@@ -1419,7 +1423,8 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 @keyframes assistant-checking-bubble-pulse {
-  0%, 100% {
+  0%,
+  100% {
     border-color: color-mix(in srgb, var(--action) 25%, var(--line));
     box-shadow: 0 0 0 0 transparent;
   }
@@ -1430,7 +1435,8 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 @keyframes assistant-checking-avatar-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 0.85;
   }
@@ -1576,7 +1582,33 @@ main:has(.assistant-page) > .legal-footer,
   bottom: 34px;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
+}
+
+.assistant-voice-lang-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    background 150ms ease;
+}
+
+.assistant-voice-lang-badge:hover {
+  color: var(--ink);
+  border-color: var(--action);
+  background: color-mix(in srgb, var(--action) 6%, var(--surface));
 }
 
 .assistant-voice-button {
@@ -2028,7 +2060,9 @@ main:has(.assistant-page) > .legal-footer,
   border-radius: 12px;
   background: var(--surface);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .strategy-card:hover:not(:disabled) {

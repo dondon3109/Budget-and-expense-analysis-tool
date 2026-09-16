@@ -23,6 +23,51 @@ const VOICE_SAMPLE_INTERVAL_MS = 100;
 const SPEECH_RMS_THRESHOLD = 0.025;
 const MIME_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"];
 
+import {
+  type VoiceLanguage,
+  getStoredVoiceLanguage,
+  setStoredVoiceLanguage,
+  speechRecognitionLang,
+} from "../../lib/voiceLanguage";
+
+interface SpeechRecognitionResultItem {
+  readonly transcript: string;
+}
+
+interface SpeechRecognitionResult {
+  [index: number]: SpeechRecognitionResultItem | undefined;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  [index: number]: SpeechRecognitionResult | undefined;
+}
+
+interface SpeechRecognitionResultEvent extends Event {
+  readonly results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  onspeechend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionInstance;
+}
+
+interface WindowWithSpeechRecognition {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
 export type AssistantVoiceSubmissionMode = "review";
 export type AssistantVoiceReplyMode = "spoken" | "text";
 
@@ -85,11 +130,13 @@ export function AssistantVoiceControl({
   const mountedRef = useRef(true);
   const chunksRef = useRef<Blob[]>([]);
   const microphoneButtonRef = useRef<HTMLButtonElement | null>(null);
+  const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const pointerDownTimeRef = useRef<number>(0);
   const isPointerRecordingRef = useRef<boolean>(false);
   const noticeRef = useRef<HTMLDivElement | null>(null);
   const [preferences, setPreferences] = useState<AssistantVoicePreferences>();
   const [enabling, setEnabling] = useState(false);
+  const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>(() => getStoredVoiceLanguage());
   const [showNotice, setShowNotice] = useState(false);
   const [status, setStatus] = useState<"idle" | "recording" | "transcribing">("idle");
   const [liveTranscript, setLiveTranscript] = useState<string>("");
@@ -97,6 +144,14 @@ export function AssistantVoiceControl({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   function clearTimersAndAudioContext() {
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.abort();
+      } catch {
+        // Ignore SpeechRecognition abort failure
+      }
+      speechRecognitionRef.current = null;
+    }
     window.clearTimeout(stopTimerRef.current);
     window.clearInterval(activityTimerRef.current);
     activityTimerRef.current = undefined;
@@ -109,6 +164,14 @@ export function AssistantVoiceControl({
   }
 
   function clearRecordingResources() {
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.abort();
+      } catch {
+        // Ignore SpeechRecognition abort failure
+      }
+      speechRecognitionRef.current = null;
+    }
     window.clearTimeout(stopTimerRef.current);
     window.clearInterval(activityTimerRef.current);
     activityTimerRef.current = undefined;
@@ -370,44 +433,92 @@ export function AssistantVoiceControl({
       setLiveTranscript("");
       liveShouldStopRef.current = false;
 
+      // Live browser speech recognition if supported
+      const SpeechRecognitionClass =
+        typeof window !== "undefined"
+          ? (window as unknown as WindowWithSpeechRecognition).SpeechRecognition ||
+            (window as unknown as WindowWithSpeechRecognition).webkitSpeechRecognition
+          : undefined;
+
+      if (SpeechRecognitionClass) {
+        try {
+          const recognition = new SpeechRecognitionClass();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = speechRecognitionLang(voiceLanguage);
+          speechRecognitionRef.current = recognition;
+
+          recognition.onresult = (event: SpeechRecognitionResultEvent) => {
+            if (!mountedRef.current) return;
+            let full = "";
+            for (let i = 0; i < event.results.length; ++i) {
+              const item = event.results[i];
+              if (item && item[0]) full += item[0].transcript;
+            }
+            const trimmed = full.trim();
+            if (trimmed) {
+              liveTranscriptRef.current = trimmed;
+              setLiveTranscript(trimmed);
+              onPartialTranscript?.(trimmed);
+            }
+          };
+
+          recognition.onspeechend = () => {
+            if (recorderRef.current?.state === "recording") {
+              stopRecording("silence");
+            }
+          };
+
+          recognition.onerror = () => {};
+          recognition.start();
+        } catch {
+          // Ignore SpeechRecognition start failure
+        }
+      }
+
       // Attempt live streaming session concurrently (Option A: Gemini Live API)
       // If live fails, the batch MediaRecorder still captures audio for POST /transcriptions fallback.
-      const livePromise = startLiveTranscriptionSession(workspace, activeStream, {
-        onPartial: (partial) => {
-          if (!mountedRef.current) return;
-          liveTranscriptRef.current = partial;
-          setLiveTranscript(partial);
-          onPartialTranscript?.(partial);
+      const livePromise = startLiveTranscriptionSession(
+        workspace,
+        activeStream,
+        {
+          onPartial: (partial) => {
+            if (!mountedRef.current) return;
+            liveTranscriptRef.current = partial;
+            setLiveTranscript(partial);
+            onPartialTranscript?.(partial);
+          },
+          onFinal: (final) => {
+            if (!mountedRef.current) return;
+            liveTranscriptRef.current = final;
+            setLiveTranscript(final);
+            onPartialTranscript?.(final);
+          },
+          onLatency: (metrics) => {
+            // Latency instrumentation for Phase 2 — forwarded from worker (t_worker_first_partial)
+            // Keep in console for now; could be sent to PostHog later
+            if (typeof console !== "undefined" && console.debug) {
+              console.debug("[voice] live latency", metrics);
+            }
+          },
+          onError: (error) => {
+            liveErrorRef.current = error.message;
+            // Surface live error but keep batch fallback — don't hide failures silently
+            // 429/503 are surfaced with actionable messages from voiceStream
+            if (mountedRef.current) {
+              if (!liveTranscriptRef.current) setMessage(error.message);
+            }
+            if (typeof console !== "undefined" && console.warn) {
+              console.warn(
+                "[voice] live error",
+                error.message,
+                (error as unknown as Record<string, unknown>).code,
+              );
+            }
+          },
         },
-        onFinal: (final) => {
-          if (!mountedRef.current) return;
-          liveTranscriptRef.current = final;
-          setLiveTranscript(final);
-          onPartialTranscript?.(final);
-        },
-        onLatency: (metrics) => {
-          // Latency instrumentation for Phase 2 — forwarded from worker (t_worker_first_partial)
-          // Keep in console for now; could be sent to PostHog later
-          if (typeof console !== "undefined" && console.debug) {
-            console.debug("[voice] live latency", metrics);
-          }
-        },
-        onError: (error) => {
-          liveErrorRef.current = error.message;
-          // Surface live error but keep batch fallback — don't hide failures silently
-          // 429/503 are surfaced with actionable messages from voiceStream
-          if (mountedRef.current) {
-            if (!liveTranscriptRef.current) setMessage(error.message);
-          }
-          if (typeof console !== "undefined" && console.warn) {
-            console.warn(
-              "[voice] live error",
-              error.message,
-              (error as unknown as Record<string, unknown>).code,
-            );
-          }
-        },
-      });
+        voiceLanguage,
+      );
       liveSessionPromiseRef.current = livePromise;
       void livePromise
         .then((session) => {
@@ -459,6 +570,13 @@ export function AssistantVoiceControl({
     // Keep live session open for finalization grace period — recorder stop handler will await it.
     // Only clear the max-duration timer here; other resources are cleaned after finalization.
     window.clearTimeout(stopTimerRef.current);
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch {
+        // Ignore SpeechRecognition stop failure
+      }
+    }
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
   }
 
@@ -584,6 +702,24 @@ export function AssistantVoiceControl({
         ) : (
           <Mic size={18} aria-hidden="true" />
         )}
+      </button>
+      <button
+        type="button"
+        className="assistant-voice-lang-badge"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const next = voiceLanguage === "fil" ? "en" : "fil";
+          setVoiceLanguage(next);
+          setStoredVoiceLanguage(next);
+          if (speechRecognitionRef.current) {
+            speechRecognitionRef.current.lang = speechRecognitionLang(next);
+          }
+        }}
+        title={`Voice language: ${voiceLanguage === "fil" ? "Tagalog (click to switch to English)" : "English (click to switch to Tagalog)"}`}
+        aria-label={`Switch voice language from ${voiceLanguage === "fil" ? "Tagalog" : "English"}`}
+      >
+        {voiceLanguage === "fil" ? "TL" : "EN"}
       </button>
       {showNotice && (
         <div

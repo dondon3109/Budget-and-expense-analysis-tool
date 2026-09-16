@@ -31,9 +31,50 @@
   background: var(--danger-soft);
 }
 
-.transaction-voice-intro > div {
+.transaction-voice-intro > div,
+.transaction-voice-intro-copy {
   display: grid;
   gap: 2px;
+  flex: 1;
+}
+
+.transaction-voice-lang-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  margin-left: auto;
+  align-self: center;
+}
+
+.transaction-voice-lang-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--subtle);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.transaction-voice-lang-btn:hover {
+  color: var(--ink);
+}
+
+.transaction-voice-lang-btn.active {
+  background: var(--paper);
+  color: var(--brand);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .transaction-voice-intro strong {

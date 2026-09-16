@@ -1,3 +1,4 @@
+import type { VoiceLanguage } from "@zoption/shared";
 import type { AuthenticatedWorkspace } from "./workspace";
 import { describeVoiceStreamFailure, openVoiceStreamWebSocket } from "./api";
 
@@ -5,7 +6,10 @@ export interface LiveTranscriptionCallbacks {
   onPartial: (transcript: string) => void;
   onFinal: (transcript: string) => void;
   onError?: (error: Error) => void;
-  onLatency?: (metrics: { t_worker_first_partial: number; latency_worker_to_first_partial: number }) => void;
+  onLatency?: (metrics: {
+    t_worker_first_partial: number;
+    latency_worker_to_first_partial: number;
+  }) => void;
 }
 
 export const LIVE_FINALIZATION_TIMEOUT_MS = 3000;
@@ -28,8 +32,11 @@ export async function startLiveTranscriptionSession(
   workspace: AuthenticatedWorkspace,
   mediaStream: MediaStream,
   callbacks: LiveTranscriptionCallbacks,
+  language?: VoiceLanguage,
 ): Promise<LiveTranscriptionSession> {
-  const ws = await openVoiceStreamWebSocket(workspace);
+  const ws = language
+    ? await openVoiceStreamWebSocket(workspace, language)
+    : await openVoiceStreamWebSocket(workspace);
 
   const AudioContextClass =
     window.AudioContext ||
@@ -175,8 +182,10 @@ export async function startLiveTranscriptionSession(
           typeof (msg as Record<string, unknown>).latency_worker_to_first_partial === "number"
         ) {
           callbacks.onLatency?.({
-            t_worker_first_partial: (msg as Record<string, unknown>).t_worker_first_partial as number,
-            latency_worker_to_first_partial: (msg as Record<string, unknown>).latency_worker_to_first_partial as number,
+            t_worker_first_partial: (msg as Record<string, unknown>)
+              .t_worker_first_partial as number,
+            latency_worker_to_first_partial: (msg as Record<string, unknown>)
+              .latency_worker_to_first_partial as number,
           });
         }
       } else if (msg.type === "final" && typeof msg.transcript === "string") {
@@ -187,21 +196,23 @@ export async function startLiveTranscriptionSession(
           typeof (msg as Record<string, unknown>).latency_worker_to_first_partial === "number"
         ) {
           callbacks.onLatency?.({
-            t_worker_first_partial: (msg as Record<string, unknown>).t_worker_first_partial as number,
-            latency_worker_to_first_partial: (msg as Record<string, unknown>).latency_worker_to_first_partial as number,
+            t_worker_first_partial: (msg as Record<string, unknown>)
+              .t_worker_first_partial as number,
+            latency_worker_to_first_partial: (msg as Record<string, unknown>)
+              .latency_worker_to_first_partial as number,
           });
         }
         if (isStopping) triggerFinalization();
       } else if (msg.type === "error") {
         const code = (msg as Record<string, unknown>).code as string | undefined;
-        const message =
-          (msg as Record<string, unknown>).message as string | undefined;
+        const message = (msg as Record<string, unknown>).message as string | undefined;
         // Surface 429/503 with actionable text
         const errorMessage =
           code === "rate_limit" || code === "429"
             ? "Voice mode is busy. Try again shortly."
             : code === "bridge_not_configured" || code === "gemini_missing_key"
-              ? message || "Live transcription not configured. Activate gemini-3.5-transcribe-live with an API key."
+              ? message ||
+                "Live transcription not configured. Activate gemini-3.5-transcribe-live with an API key."
               : message || "Live transcription error.";
         const err = new Error(errorMessage);
         (err as unknown as Record<string, unknown>).code = code;

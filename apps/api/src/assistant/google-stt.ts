@@ -37,23 +37,23 @@ export function parseGoogleSecret(secret: string): {
     if (obj && typeof obj === "object") {
       const projectId =
         typeof obj["projectId"] === "string"
-          ? (obj["projectId"])
+          ? obj["projectId"]
           : typeof obj["project_id"] === "string"
-            ? (obj["project_id"])
+            ? obj["project_id"]
             : null;
       const token =
         typeof obj["apiKey"] === "string"
-          ? (obj["apiKey"])
+          ? obj["apiKey"]
           : typeof obj["api_key"] === "string"
-            ? (obj["api_key"])
+            ? obj["api_key"]
             : typeof obj["key"] === "string"
-              ? (obj["key"])
+              ? obj["key"]
               : typeof obj["accessToken"] === "string"
-                ? (obj["accessToken"])
+                ? obj["accessToken"]
                 : typeof obj["token"] === "string"
-                  ? (obj["token"])
+                  ? obj["token"]
                   : trimmed;
-      const location = typeof obj["location"] === "string" ? (obj["location"]) : DEFAULT_LOCATION;
+      const location = typeof obj["location"] === "string" ? obj["location"] : DEFAULT_LOCATION;
       return { projectId, location, token };
     }
   } catch {
@@ -128,7 +128,7 @@ export function createGoogleSttProvider(
                 {
                   parts: [
                     {
-                      text: "Transcribe this audio verbatim. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
+                      text: "Transcribe this audio verbatim. The audio may be in Tagalog, Filipino, English, or Taglish. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
                     },
                     { inlineData: { mimeType: audioMime, data: b64 } },
                   ],
@@ -165,8 +165,7 @@ export function createGoogleSttProvider(
             candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
           } | null;
           const transcript = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-          if (!transcript)
-            throw new AssistantVoiceProviderError("google", "invalid_response");
+          if (!transcript) throw new AssistantVoiceProviderError("google", "invalid_response");
           return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
         }
 
@@ -197,7 +196,7 @@ export function createGoogleSttProvider(
             body: JSON.stringify({
               config: {
                 autoDecodingConfig: {},
-                languageCodes: ["en-US"],
+                languageCodes: ["fil-PH", "en-US"],
                 model: effectiveModel,
               },
               content: b64,
@@ -218,9 +217,8 @@ export function createGoogleSttProvider(
             results?: Array<{ alternatives?: Array<{ transcript?: string }> }>;
           } | null;
           const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
-          if (!transcript)
-            throw new AssistantVoiceProviderError("google", "invalid_response");
-          return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
+          if (!transcript) throw new AssistantVoiceProviderError("google", "invalid_response");
+          return { text: transcript, durationSeconds: 0, languageCode: "fil-PH" };
         }
 
         // Fallback for raw API key without projectId using Speech V1
@@ -231,7 +229,8 @@ export function createGoogleSttProvider(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               config: {
-                languageCode: "en-US",
+                languageCode: "fil-PH",
+                alternativeLanguageCodes: ["en-US", "en-PH"],
                 model: "latest_long",
               },
               audio: { content: b64 },
@@ -252,8 +251,7 @@ export function createGoogleSttProvider(
             results?: Array<{ alternatives?: Array<{ transcript?: string }> }>;
           } | null;
           const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
-          if (!transcript)
-            throw new AssistantVoiceProviderError("google", "invalid_response");
+          if (!transcript) throw new AssistantVoiceProviderError("google", "invalid_response");
           return { text: transcript, durationSeconds: 0, languageCode: "en-US" };
         }
 
@@ -261,8 +259,7 @@ export function createGoogleSttProvider(
         throw new AssistantVoiceProviderError("google", "configuration");
       } catch (e) {
         if (e instanceof AssistantVoiceProviderError) throw e;
-        if (controller.signal.aborted)
-          throw new AssistantVoiceProviderError("google", "timeout");
+        if (controller.signal.aborted) throw new AssistantVoiceProviderError("google", "timeout");
         throw new AssistantVoiceProviderError("google", "unavailable");
       } finally {
         clearTimeout(timer);

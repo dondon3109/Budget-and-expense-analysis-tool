@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  hasExplicitPeriod,
-  needsPeriodClarification,
-} from "../src/assistant/period-policy";
+import { hasExplicitPeriod, needsPeriodClarification } from "../src/assistant/period-policy";
 import type { AssistantHistoryMessage } from "../src/db/assistant";
 
 const explicitPeriods = [
@@ -13,6 +10,8 @@ const explicitPeriods = [
   "Give me my year-to-date savings",
   "Show my income for the past 90 days",
   "What are my all-time expenses?",
+  "Magkano ang nagastos ko noong nakaraang buwan?",
+  "Ipakita ang kita ko para sa Agosto 2026",
 ];
 
 describe("assistant period policy", () => {
@@ -27,6 +26,8 @@ describe("assistant period policy", () => {
     "Show my average spending",
     "What's left after expenses?",
     "What about my income?",
+    "Magkano ang kabuuang gastos ko?",
+    "Ano ang kabuuang kinita ko?",
   ])("requires clarification for an aggregate without a period: %s", (message) => {
     expect(needsPeriodClarification([], message)).toBe(true);
   });
@@ -35,6 +36,8 @@ describe("assistant period policy", () => {
     "What is my Bank balance?",
     "How do income categories work?",
     "List my recent transactions",
+    "Magkano ang pera ko sa bangko?",
+    "Ipakita ang aking mga kategorya",
   ])("does not intercept a non-period aggregate request: %s", (message) => {
     expect(needsPeriodClarification([], message)).toBe(false);
   });

@@ -31,6 +31,12 @@ import {
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { prepareAssistantTurn } from "./prepareAssistantTurn";
 import { renderVoiceCaptionContent } from "./renderVoiceCaption";
+import {
+  type VoiceLanguage,
+  getStoredVoiceLanguage,
+  setStoredVoiceLanguage,
+  speechRecognitionLang,
+} from "../../lib/voiceLanguage";
 import "./AssistantVoiceConversation.css";
 
 /**
@@ -120,6 +126,15 @@ export const VOICE_SUGGESTED_PROMPTS = [
   "Which debt should I pay first?",
 ] as const;
 
+export const VOICE_SUGGESTED_PROMPTS_TAGALOG = [
+  "Magkano ang nagastos ko ngayong buwan?",
+  "Ano ang pinakamalaking kategorya ng gastos ko?",
+  "Kumusta ang mga budget ko?",
+  "Aling utang ang dapat kong unahing bayaran?",
+] as const;
+
+export const VOICE_SUGGESTED_PROMPTS_ENGLISH = VOICE_SUGGESTED_PROMPTS;
+
 const STATUS_LABEL: Record<VoiceStatus, string> = {
   idle: "Tap to speak",
   listening: "Listening…",
@@ -159,6 +174,7 @@ export function AssistantVoiceConversation({
   const [preferences, setPreferences] = useState<AssistantVoicePreferences>();
   const [prefsError, setPrefsError] = useState<string>();
   const [enabling, setEnabling] = useState(false);
+  const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>(() => getStoredVoiceLanguage());
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [livePartial, setLivePartial] = useState("");
   const [captions, setCaptions] = useState<Caption[]>([]);
@@ -169,6 +185,14 @@ export function AssistantVoiceConversation({
   const [speakingId, setSpeakingId] = useState<string>();
   const [typedCount, setTypedCount] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
+
+  function handleLanguageChange(lang: VoiceLanguage) {
+    setVoiceLanguage(lang);
+    setStoredVoiceLanguage(lang);
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.lang = speechRecognitionLang(lang);
+    }
+  }
 
   function setVoiceStatus(next: VoiceStatus) {
     statusRef.current = next;
@@ -591,8 +615,7 @@ export function AssistantVoiceConversation({
 
           // The batch endpoint rejects the live model; surface the live
           // failure (for example stt_not_streaming) instead of hanging.
-          const isLiveModel =
-            preferences?.transcriptionModel === "gemini-3.5-transcribe-live";
+          const isLiveModel = preferences?.transcriptionModel === "gemini-3.5-transcribe-live";
           if (isLiveModel) {
             setVoiceStatus("idle");
             const liveErr = liveErrorRef.current;
@@ -639,8 +662,7 @@ export function AssistantVoiceConversation({
           const recognition = new SpeechRecognitionClass();
           recognition.continuous = true;
           recognition.interimResults = true;
-          recognition.lang =
-            typeof navigator !== "undefined" && navigator.language ? navigator.language : "en-US";
+          recognition.lang = speechRecognitionLang(voiceLanguage);
           speechRecognitionRef.current = recognition;
 
           recognition.onresult = (event: SpeechRecognitionResultEvent) => {
@@ -687,31 +709,35 @@ export function AssistantVoiceConversation({
       }
 
       // Dual capture: live stream plus MediaRecorder batch fallback.
-      const isLiveModel =
-        preferences?.transcriptionModel === "gemini-3.5-transcribe-live";
+      const isLiveModel = preferences?.transcriptionModel === "gemini-3.5-transcribe-live";
       if (isLiveModel) {
-        const livePromise = startLiveTranscriptionSession(workspace, activeStream, {
-          onPartial: (partial) => {
-            if (!mountedRef.current) return;
-            liveTranscriptRef.current = partial;
-            setLivePartial(partial);
-            heardSpeechRef.current = true;
-            lastSpeechAtRef.current = Date.now();
+        const livePromise = startLiveTranscriptionSession(
+          workspace,
+          activeStream,
+          {
+            onPartial: (partial) => {
+              if (!mountedRef.current) return;
+              liveTranscriptRef.current = partial;
+              setLivePartial(partial);
+              heardSpeechRef.current = true;
+              lastSpeechAtRef.current = Date.now();
+            },
+            onFinal: (final) => {
+              if (!mountedRef.current) return;
+              liveTranscriptRef.current = final;
+              setLivePartial(final);
+              heardSpeechRef.current = true;
+              lastSpeechAtRef.current = Date.now();
+            },
+            onError: (error) => {
+              liveErrorRef.current = error.message;
+              if (mountedRef.current && !liveTranscriptRef.current) {
+                setNotice(error.message);
+              }
+            },
           },
-          onFinal: (final) => {
-            if (!mountedRef.current) return;
-            liveTranscriptRef.current = final;
-            setLivePartial(final);
-            heardSpeechRef.current = true;
-            lastSpeechAtRef.current = Date.now();
-          },
-          onError: (error) => {
-            liveErrorRef.current = error.message;
-            if (mountedRef.current && !liveTranscriptRef.current) {
-              setNotice(error.message);
-            }
-          },
-        });
+          voiceLanguage,
+        );
         liveSessionPromiseRef.current = livePromise;
         void livePromise
           .then((session) => {
@@ -797,6 +823,26 @@ export function AssistantVoiceConversation({
           <small>Hands-free conversation with {assistantName}</small>
         </div>
         <div className="assistant-voice-topbar-actions">
+          <div className="assistant-voice-lang-picker" role="group" aria-label="Voice language">
+            <button
+              type="button"
+              className={`assistant-voice-lang-btn ${voiceLanguage === "fil" ? "active" : ""}`}
+              onClick={() => handleLanguageChange("fil")}
+              aria-pressed={voiceLanguage === "fil"}
+              title="Tagalog / Filipino"
+            >
+              Tagalog
+            </button>
+            <button
+              type="button"
+              className={`assistant-voice-lang-btn ${voiceLanguage === "en" ? "active" : ""}`}
+              onClick={() => handleLanguageChange("en")}
+              aria-pressed={voiceLanguage === "en"}
+              title="English"
+            >
+              English
+            </button>
+          </div>
           {captions.length > 0 && (
             <button
               type="button"
@@ -902,7 +948,10 @@ export function AssistantVoiceConversation({
                   role="group"
                   aria-label="Suggested questions"
                 >
-                  {VOICE_SUGGESTED_PROMPTS.map((prompt) => (
+                  {(voiceLanguage === "fil"
+                    ? [...VOICE_SUGGESTED_PROMPTS_TAGALOG, ...VOICE_SUGGESTED_PROMPTS]
+                    : VOICE_SUGGESTED_PROMPTS
+                  ).map((prompt) => (
                     <button
                       key={prompt}
                       type="button"
@@ -1072,7 +1121,10 @@ export function AssistantVoiceConversation({
                 {STATUS_LABEL[status]}
               </p>
               <p className="assistant-voice-conversation-substatus">
-                {status === "idle" && "Tap to speak with your assistant"}
+                {status === "idle" &&
+                  (voiceLanguage === "fil"
+                    ? "Tap to speak in Tagalog or English"
+                    : "Tap to speak with your assistant")}
                 {status === "listening" && "Tap to finish speaking"}
                 {status === "thinking" && "Looking up financial records…"}
                 {status === "speaking" && "Tap orb to interrupt playback"}

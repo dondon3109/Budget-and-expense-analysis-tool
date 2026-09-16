@@ -268,4 +268,30 @@ describe("TransactionVoiceEntry", () => {
     expect(onDraft).not.toHaveBeenCalled();
     expect(await screen.findByRole("button", { name: "Speak a transaction" })).toBeEnabled();
   });
+
+  it("supports switching language between Tagalog and English for voice transaction entry", async () => {
+    const user = userEvent.setup();
+    renderEntry();
+
+    const tagalogBtn = await screen.findByRole("button", { name: "Tagalog" });
+    const englishBtn = await screen.findByRole("button", { name: "English" });
+    expect(tagalogBtn).toBeInTheDocument();
+    expect(englishBtn).toBeInTheDocument();
+
+    await user.click(englishBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
+    expect(englishBtn).toHaveClass("active");
+
+    await user.click(tagalogBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
+    expect(tagalogBtn).toHaveClass("active");
+
+    await user.click(screen.getByRole("button", { name: "Speak a transaction" }));
+    expect(voiceStreamMocks.startLiveTranscriptionSession).toHaveBeenCalledWith(
+      workspace,
+      expect.anything(),
+      expect.anything(),
+      "fil",
+    );
+  });
 });

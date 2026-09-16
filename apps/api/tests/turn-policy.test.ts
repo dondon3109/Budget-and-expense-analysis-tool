@@ -51,6 +51,12 @@ describe("assistant date resolution", () => {
     ["July to August 2026", { from: "2026-07-01", to: "2026-08-31" }],
     ["November to February 2026", { from: "2025-11-01", to: "2026-02-28" }],
     ["November 2026 through February", { from: "2026-11-01", to: "2027-02-28" }],
+    ["ngayong buwan", { from: "2026-08-01", to: "2026-08-02" }],
+    ["nakaraang buwan", { from: "2026-07-01", to: "2026-07-31" }],
+    ["Pebrero 2024", { from: "2024-02-01", to: "2024-02-29" }],
+    ["Hulyo 1 hanggang Agosto 2, 2026", { from: "2026-07-01", to: "2026-08-02" }],
+    ["Hulyo hanggang Agosto 2026", { from: "2026-07-01", to: "2026-08-31" }],
+    ["nakalipas na 90 araw", { from: "2026-05-05", to: "2026-08-02" }],
   ] as const)("resolves %s deterministically", (phrase, period) => {
     const result = resolveAssistantPeriod(
       [],
@@ -142,6 +148,9 @@ describe("assistant turn policy", () => {
     "how much did I spend this year?",
     "What did I spend last month?",
     "How much did I earn this month?",
+    "Magkano ang nagastos ko ngayong buwan?",
+    "Magkano ang kinita ko ngayong taon?",
+    "Ano ang nagastos ko noong nakaraang buwan?",
   ])("requires a grounded period summary for %s", (message) => {
     const policy = createAssistantTurnPolicy({
       history: [],
@@ -153,6 +162,55 @@ describe("assistant turn policy", () => {
     expect(policy.deterministicResponse).toBeUndefined();
     expect(policy.requiredToolGroups).toContain("period_summary");
     expect(policy.resolvedPeriod).toBeTruthy();
+  });
+
+  it("requires grounded budget, category, and anomaly tools for Tagalog overspending analysis", () => {
+    const policy = createAssistantTurnPolicy({
+      history: [],
+      message: "Bakit ako sumobra sa budget noong nakaraang buwan?",
+      currentDate: "2026-08-02",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+    expect(policy.resolvedPeriod).toMatchObject({ from: "2026-07-01", to: "2026-07-31" });
+    expect(policy.requiredToolGroups).toEqual(
+      expect.arrayContaining(["budget_comparison", "category_spending", "anomaly"]),
+    );
+  });
+
+  it("handles Tagalog educational questions without requiring financial tools", () => {
+    const policy = createAssistantTurnPolicy({
+      history: [],
+      message: "Ano ang emergency fund?",
+      currentDate: "2026-08-02",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+    expect(policy.requiredToolGroups).toEqual([]);
+    expect(policy.compliance.posture).toBe("restricted_topic_education");
+  });
+
+  it("identifies account balance request in Tagalog", () => {
+    const policy = createAssistantTurnPolicy({
+      history: [],
+      message: "Magkano ang pera ko sa bangko?",
+      currentDate: "2026-08-02",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+    expect(policy.requiredToolGroups).toContain("account_balance");
+  });
+
+  it("identifies transaction details request in Tagalog", () => {
+    const policy = createAssistantTurnPolicy({
+      history: [],
+      message: "Ipakita ang mga transaksyon ko kahapon",
+      currentDate: "2026-08-02",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+    expect(policy.requiredToolGroups).toContain("transaction_detail");
+    expect(policy.resolvedPeriod).toMatchObject({ from: "2026-08-01", to: "2026-08-01" });
   });
 
   it("returns compliance redirects without required tools", () => {
@@ -193,10 +251,7 @@ describe("assistant turn policy", () => {
   });
 
   it("leaves answer-this alone without a usable previous question", () => {
-    for (const history of [
-      [],
-      [{ role: "user", content: "answer this question" }],
-    ] as const) {
+    for (const history of [[], [{ role: "user", content: "answer this question" }]] as const) {
       const policy = createAssistantTurnPolicy({
         history: [...history],
         message: "answer this question",

@@ -265,6 +265,71 @@ describe("GET /api/app/assistant/voice/stream", () => {
     }
   });
 
+  it("configures Tagalog/Filipino language codes for Gemini Live when ?lang=fil is requested", async () => {
+    const sttCfg = {
+      id: "cfg-live-fil",
+      service: "stt",
+      provider: "google",
+      model: "gemini-3.5-transcribe-live",
+      displayName: "Gemini Live Tagalog",
+      credentialId: "cred-google-key",
+      enabled: true,
+      isActive: true,
+    };
+    const app = makeApp(sttCfg, "");
+    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
+      secret: "AIzaSyFakeGoogleApiKey1234567890",
+      last4: "7890",
+      source: "db",
+    });
+
+    const mockWs = {
+      send: vi.fn(),
+      close: vi.fn(),
+      addEventListener: vi.fn(),
+      accept: vi.fn(),
+      binaryType: "blob",
+      readyState: 1,
+    };
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async () => ({
+      webSocket: mockWs,
+      status: 101,
+      headers: new Headers(),
+    })) as typeof fetch;
+
+    (globalThis as any).WebSocketPair = class {
+      0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
+      1 = {
+        binaryType: "blob",
+        accept: vi.fn(),
+        addEventListener: vi.fn(),
+        close: vi.fn(),
+        send: vi.fn(),
+        readyState: 1,
+      };
+    };
+
+    try {
+      const res = await app.request("/stream?lang=fil", {
+        method: "GET",
+        headers: { Upgrade: "websocket", Connection: "Upgrade" },
+      });
+      expect(res.status).toBe(101);
+      await vi.waitFor(() => expect(mockWs.send).toHaveBeenCalled());
+      expect(JSON.parse(mockWs.send.mock.calls[0][0])).toEqual({
+        setup: {
+          model: "models/gemini-3.5-transcribe-live",
+          generationConfig: { responseModalities: ["TEXT"] },
+          inputAudioTranscription: { languageCodes: ["fil-PH", "en-US"] },
+        },
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete (globalThis as any).WebSocketPair;
+    }
+  });
+
   it("rejects REST model gemini-3.5-transcribe on streaming endpoint (use POST)", async () => {
     const sttCfg = {
       id: "cfg-rest",
@@ -451,9 +516,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(res.status).toBe(101);
       await Promise.resolve();
       await Promise.resolve();
-      expect(serverWs.send).toHaveBeenCalledWith(
-        expect.stringContaining("gemini_connect_failed"),
-      );
+      expect(serverWs.send).toHaveBeenCalledWith(expect.stringContaining("gemini_connect_failed"));
       // Closing before the 101 is returned aborts the browser handshake.
       expect(serverWs.close).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(0);

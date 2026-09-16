@@ -125,7 +125,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const parsed = cred.secret ? parseGoogleSecret(cred.secret) : null;
     const token = parsed?.token || "";
     const isGeminiLiveModel = sttCfg.model === "gemini-3.5-transcribe-live";
-    const isGeminiLive = Boolean(token && isGoogleGenerativeLanguageApiKey(token) && isGeminiLiveModel);
+    const isGeminiLive = Boolean(
+      token && isGoogleGenerativeLanguageApiKey(token) && isGeminiLiveModel,
+    );
 
     // Live model selected but no usable AI Studio / Gemini API key
     if (sttCfg.model === "gemini-3.5-transcribe-live" && !isGoogleGenerativeLanguageApiKey(token)) {
@@ -186,7 +188,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const trySend = (ws: WebSocket, data: string | ArrayBuffer) => {
       try {
         if ((ws as unknown as { readyState: number }).readyState === 1) ws.send(data);
-      } catch (_e) { void _e; }
+      } catch (_e) {
+        void _e;
+      }
     };
 
     const micStart = context.req.header("x-t-mic-start") || String(tWorkerOpen);
@@ -206,6 +210,13 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       const modelName = sttCfg.model.includes("/") ? sttCfg.model : `models/${sttCfg.model}`;
 
       const isTranscribeLive = sttCfg.model === "gemini-3.5-transcribe-live";
+      const requestedLang = context.req.query("lang");
+      const languageCodes =
+        requestedLang === "fil"
+          ? ["fil-PH", "en-US"]
+          : requestedLang === "en"
+            ? ["en-US", "fil-PH"]
+            : [];
       const setupPayload = isTranscribeLive
         ? {
             setup: {
@@ -215,7 +226,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               },
               // This enables the input transcript events returned by the dedicated STT model.
               inputAudioTranscription: {
-                languageCodes: [],
+                languageCodes,
               },
             },
           }
@@ -228,7 +239,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               systemInstruction: {
                 parts: [
                   {
-                    text: "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech.",
+                    text: "You are a real-time speech-to-text transcriber for a budget and finance app. Transcribe the user's spoken words verbatim into text in real time. The user may speak in Tagalog, Filipino, English, or Taglish. Do not reply to questions, do not add commentary, and do not wrap in markdown or quotes. Return only the transcribed speech.",
                   },
                 ],
               },
@@ -273,8 +284,8 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
             }
             const finalInputText =
               msg.serverContent?.inputTranscription?.text ||
-              (msg as Record<string, unknown>)["inputTranscription"] as string | undefined ||
-              (msg as Record<string, unknown>)["input_transcription"] as string | undefined ||
+              ((msg as Record<string, unknown>)["inputTranscription"] as string | undefined) ||
+              ((msg as Record<string, unknown>)["input_transcription"] as string | undefined) ||
               "";
             const interimInputText =
               msg.serverContent?.interimInputTranscription?.text ||
@@ -286,9 +297,15 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
             const finalText = finalInputText || modelText;
             if (finalText || interimInputText) {
               if (finalText) {
-                finalizedTranscript = [finalizedTranscript, finalText].filter(Boolean).join(" ").trim();
+                finalizedTranscript = [finalizedTranscript, finalText]
+                  .filter(Boolean)
+                  .join(" ")
+                  .trim();
               }
-              const transcript = [finalizedTranscript, interimInputText].filter(Boolean).join(" ").trim();
+              const transcript = [finalizedTranscript, interimInputText]
+                .filter(Boolean)
+                .join(" ")
+                .trim();
               const isFinal = Boolean(finalText || msg.serverContent?.turnComplete);
               if (tFirstPartial === null) {
                 tFirstPartial = Date.now();
@@ -321,14 +338,18 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               );
               finalizedTranscript = "";
             }
-          } catch (_e) { void _e; }
+          } catch (_e) {
+            void _e;
+          }
         });
       };
 
       const geminiOnClose = () => {
         try {
           server.close(1000);
-        } catch (_e) { void _e; }
+        } catch (_e) {
+          void _e;
+        }
       };
       const geminiOnError = () => {
         trySend(
@@ -341,7 +362,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         );
         try {
           server.close(1011);
-        } catch (_e) { void _e; }
+        } catch (_e) {
+          void _e;
+        }
       };
 
       const sendPcm = (bytes: Uint8Array) => {
@@ -396,7 +419,10 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         try {
           const geminiResp = (await fetch(geminiUrl, {
             headers: { Upgrade: "websocket" },
-          } as unknown as RequestInit)) as unknown as { status: number; webSocket: WebSocket | null };
+          } as unknown as RequestInit)) as unknown as {
+            status: number;
+            webSocket: WebSocket | null;
+          };
 
           if (geminiResp.status !== 101 || !geminiResp.webSocket) {
             console.error(
@@ -428,7 +454,12 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
 
       const geminiPromise = connectGemini();
       try {
-        context.executionCtx.waitUntil(geminiPromise.then(() => undefined, () => undefined));
+        context.executionCtx.waitUntil(
+          geminiPromise.then(
+            () => undefined,
+            () => undefined,
+          ),
+        );
       } catch {
         // Unit tests and environments without ExecutionContext still keep the accepted socket.
       }
@@ -448,7 +479,8 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         } else if (data.startsWith("{")) {
           try {
             const parsed = JSON.parse(data) as Record<string, unknown>;
-            const pcmData = (parsed["data"] as string | undefined) || (parsed["pcm"] as string | undefined);
+            const pcmData =
+              (parsed["data"] as string | undefined) || (parsed["pcm"] as string | undefined);
             if ((parsed["type"] as string) === "audio" && pcmData) {
               sendGeminiJson(
                 JSON.stringify({
@@ -466,7 +498,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
                 }),
               );
             }
-          } catch (_e) { void _e; }
+          } catch (_e) {
+            void _e;
+          }
         }
       });
 
@@ -474,7 +508,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
         if (geminiWs) {
           try {
             geminiWs.close(1000);
-          } catch (_e) { void _e; }
+          } catch (_e) {
+            void _e;
+          }
         }
       });
 
@@ -526,13 +562,14 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           const msg = JSON.parse(raw) as Record<string, unknown>;
           if (msg.type === "partial" && tFirstPartial === null) {
             tFirstPartial = Date.now();
-            (msg).t_worker_first_partial = tFirstPartial;
-            (msg).latency_worker_to_first_partial =
-              tFirstPartial - tWorkerOpen;
+            msg.t_worker_first_partial = tFirstPartial;
+            msg.latency_worker_to_first_partial = tFirstPartial - tWorkerOpen;
           }
           trySend(server, JSON.stringify(msg));
           return;
-        } catch (_e) { void _e; }
+        } catch (_e) {
+          void _e;
+        }
       }
       if (typeof raw === "string") trySend(server, raw);
       else trySend(server, raw);
@@ -540,13 +577,17 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     const bridgeOnClose = () => {
       try {
         server.close(1000);
-      } catch (_e) { void _e; }
+      } catch (_e) {
+        void _e;
+      }
     };
     const bridgeOnError = () => {
       trySend(server, JSON.stringify({ type: "error", code: "bridge_error" }));
       try {
         server.close(1011);
-      } catch (_e) { void _e; }
+      } catch (_e) {
+        void _e;
+      }
     };
 
     if (bridgeWs) {
@@ -561,14 +602,18 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       if (bridgeWs && (bridgeWs as unknown as { readyState: number }).readyState === 1) {
         try {
           bridgeWs.send(data as unknown as string);
-        } catch (_e) { void _e; }
+        } catch (_e) {
+          void _e;
+        }
       }
     });
     server.addEventListener("close", () => {
       if (bridgeWs) {
         try {
           bridgeWs.close();
-        } catch (_e) { void _e; }
+        } catch (_e) {
+          void _e;
+        }
       }
     });
 

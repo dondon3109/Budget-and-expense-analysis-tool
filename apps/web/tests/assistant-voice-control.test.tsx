@@ -587,4 +587,36 @@ describe("AssistantVoiceControl", () => {
     });
     expect(screen.getByRole("button", { name: "Start voice recording" })).toBeInTheDocument();
   });
+
+  it("toggles voice language between TL and EN via the badge", async () => {
+    apiMocks.getAssistantVoicePreferences.mockResolvedValue({
+      enabled: true,
+      consentedAt: "2026-08-12T10:00:00.000Z",
+      consentVersion: 3,
+      transcriptionModel: "gemini-3.5-transcribe-live",
+      ttsModel: "s2.1-pro-free",
+    });
+
+    render(
+      <AssistantVoiceControl
+        workspace={workspace}
+        disabled={false}
+        reviewRequired={false}
+        onTranscript={vi.fn()}
+      />,
+    );
+    await act(async () => Promise.resolve());
+
+    const toggleBtn = screen.getByRole("button", { name: /Switch voice language/i });
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveTextContent("TL");
+
+    fireEvent.click(toggleBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
+    expect(toggleBtn).toHaveTextContent("EN");
+
+    fireEvent.click(toggleBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
+    expect(toggleBtn).toHaveTextContent("TL");
+  });
 });

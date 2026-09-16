@@ -20,6 +20,50 @@ const SPEECH_RMS_THRESHOLD = 0.015;
 const ENDING_SILENCE_MS = 1400;
 const NO_SPEECH_TIMEOUT_MS = 8000;
 const VOICE_SAMPLE_INTERVAL_MS = 100;
+import {
+  type VoiceLanguage,
+  getStoredVoiceLanguage,
+  setStoredVoiceLanguage,
+  speechRecognitionLang,
+} from "../../lib/voiceLanguage";
+
+interface SpeechRecognitionResultItem {
+  readonly transcript: string;
+}
+
+interface SpeechRecognitionResult {
+  [index: number]: SpeechRecognitionResultItem | undefined;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  [index: number]: SpeechRecognitionResult | undefined;
+}
+
+interface SpeechRecognitionResultEvent extends Event {
+  readonly results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  onspeechend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionInstance;
+}
+
+interface WindowWithSpeechRecognition {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
 
 export interface TransactionVoiceEntryProps {
   workspace: AuthenticatedWorkspace;
@@ -110,12 +154,22 @@ export function TransactionVoiceEntry({
   const stopReasonRef = useRef<"user" | "silence" | "no-speech" | "cancelled">("user");
   const liveTranscriptRef = useRef<string>("");
   const mountedRef = useRef(true);
+  const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>(() => getStoredVoiceLanguage());
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [liveTranscript, setLiveTranscript] = useState<string>("");
   const [message, setMessage] = useState<string>();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [showConsent, setShowConsent] = useState(false);
   const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
+
+  function handleLanguageChange(lang: VoiceLanguage) {
+    setVoiceLanguage(lang);
+    setStoredVoiceLanguage(lang);
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.lang = speechRecognitionLang(lang);
+    }
+  }
 
   const preferencesQuery = useQuery({
     queryKey: queryKeys.receiptPreferences(workspace),
@@ -130,6 +184,14 @@ export function TransactionVoiceEntry({
   });
 
   function clearRecordingResources() {
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.abort();
+      } catch {
+        // Ignore SpeechRecognition abort failure
+      }
+      speechRecognitionRef.current = null;
+    }
     window.clearTimeout(stopTimerRef.current);
     window.clearInterval(activityTimerRef.current);
     activityTimerRef.current = undefined;
@@ -332,19 +394,66 @@ export function TransactionVoiceEntry({
 
       monitorAudioActivity(activeStream);
 
-      void startLiveTranscriptionSession(workspace, activeStream, {
-        onPartial: (partial) => {
-          if (!mountedRef.current) return;
-          liveTranscriptRef.current = partial;
-          setLiveTranscript(partial);
+      // Live browser speech recognition if supported
+      const SpeechRecognitionClass =
+        typeof window !== "undefined"
+          ? (window as unknown as WindowWithSpeechRecognition).SpeechRecognition ||
+            (window as unknown as WindowWithSpeechRecognition).webkitSpeechRecognition
+          : undefined;
+
+      if (SpeechRecognitionClass) {
+        try {
+          const recognition = new SpeechRecognitionClass();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = speechRecognitionLang(voiceLanguage);
+          speechRecognitionRef.current = recognition;
+
+          recognition.onresult = (event: SpeechRecognitionResultEvent) => {
+            if (!mountedRef.current) return;
+            let full = "";
+            for (let i = 0; i < event.results.length; ++i) {
+              const item = event.results[i];
+              if (item && item[0]) full += item[0].transcript;
+            }
+            const trimmed = full.trim();
+            if (trimmed) {
+              liveTranscriptRef.current = trimmed;
+              setLiveTranscript(trimmed);
+            }
+          };
+
+          recognition.onspeechend = () => {
+            if (recorderRef.current?.state === "recording") {
+              stopRecording("silence");
+            }
+          };
+
+          recognition.onerror = () => {};
+          recognition.start();
+        } catch {
+          // Ignore SpeechRecognition start failure
+        }
+      }
+
+      void startLiveTranscriptionSession(
+        workspace,
+        activeStream,
+        {
+          onPartial: (partial) => {
+            if (!mountedRef.current) return;
+            liveTranscriptRef.current = partial;
+            setLiveTranscript(partial);
+          },
+          onFinal: (final) => {
+            if (!mountedRef.current) return;
+            liveTranscriptRef.current = final;
+            setLiveTranscript(final);
+          },
+          onError: () => {},
         },
-        onFinal: (final) => {
-          if (!mountedRef.current) return;
-          liveTranscriptRef.current = final;
-          setLiveTranscript(final);
-        },
-        onError: () => {},
-      })
+        voiceLanguage,
+      )
         .then((session) => {
           liveSessionRef.current = session;
         })
@@ -368,6 +477,13 @@ export function TransactionVoiceEntry({
 
   function stopRecording(reason: "user" | "silence" | "no-speech" = "user") {
     stopReasonRef.current = reason;
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch {
+        // Ignore SpeechRecognition stop failure
+      }
+    }
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
   }
 
@@ -454,11 +570,37 @@ export function TransactionVoiceEntry({
             <Mic size={20} />
           )}
         </span>
-        <div>
+        <div className="transaction-voice-intro-copy">
           <strong id="transaction-voice-title">Say it, then inspect it</strong>
           <small>
-            Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form.
+            {voiceLanguage === "fil"
+              ? "Subukan: “Gumastos ng 250 pesos sa tanghalian kanina.” Nothing saves until you review this form."
+              : "Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form."}
           </small>
+        </div>
+        <div
+          className="transaction-voice-lang-switch"
+          role="group"
+          aria-label="Voice input language"
+        >
+          <button
+            type="button"
+            className={`transaction-voice-lang-btn ${voiceLanguage === "fil" ? "active" : ""}`}
+            onClick={() => handleLanguageChange("fil")}
+            aria-pressed={voiceLanguage === "fil"}
+            title="Tagalog / Filipino"
+          >
+            Tagalog
+          </button>
+          <button
+            type="button"
+            className={`transaction-voice-lang-btn ${voiceLanguage === "en" ? "active" : ""}`}
+            onClick={() => handleLanguageChange("en")}
+            aria-pressed={voiceLanguage === "en"}
+            title="English"
+          >
+            English
+          </button>
         </div>
       </div>
       {recording && (

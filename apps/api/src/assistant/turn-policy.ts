@@ -39,54 +39,80 @@ export interface AssistantTurnPolicy {
 }
 
 const PERSONAL_DATA_PATTERN =
-  /\b(?:my|mine|i\s+(?:spent|earned|saved|paid|received|overspent)|show me|tell me my|how much did i|what did i|do i have)\b/i;
-const EDUCATION_PATTERN = /\b(?:what is|what are|explain|how does|how do|define|meaning of)\b/i;
+  /\b(?:my|mine|i\s+(?:spent|earned|saved|paid|received|overspent)|show me|tell me my|how much did i|what did i|do i have|ko|kong|akin|aking|sa akin|nagastos(?: ko)?|nagasta(?: ko)?|gumastos(?: ako)?|nagbayad(?: ako)?|binayad(?: ko)?|kinita(?: ko)?|naipon(?: ko)?|ipon(?: ko)?|sinahod(?: ko)?|natanggap(?: ko)?|sumobra(?: ang)? gastos(?: ko)?|lagpas sa budget|ipakita(?: mo)?(?: sa akin)?|pakita(?: mo)?|sabihin mo sa akin|magkano(?: ang)?(?: nagastos| nagasta| kinita| naipon| natitira)|meron ba akong?|may(?:roon)? ba akong?|may pera ba ako)\b/i;
+const EDUCATION_PATTERN =
+  /\b(?:what is|what are|explain|how does|how do|define|meaning of|ano ang ibig sabihin|ano ang|ano ba ang|ipaliwanag|kahulugan ng|paano gumagana)\b/i;
 
 function requiredGroups(message: string): RequiredToolGroup[] {
   const groups = new Set<RequiredToolGroup>();
   const personalized = PERSONAL_DATA_PATTERN.test(message);
 
   if (
-    /\b(?:account|wallet|cash|bank|credit)\b.*\bbalances?\b|\bcurrent balances?\b/i.test(message)
+    /\b(?:account|wallet|cash|bank|credit|bangko|pera|kuwenta)\b.*\b(?:balances?|balanse)\b|\b(?:current balances?|balanse ng account|balanse ko|pera ko)\b/i.test(
+      message,
+    )
   ) {
     groups.add("account_balance");
   }
   if (
-    /\b(?:debt|loan|credit card)\b/i.test(message) &&
-    /\b(?:payoff|pay off|avalanche|snowball|which.*first|how long|interest)\b/i.test(message)
+    /\b(?:debt|loan|credit card|utang|pagkakautang)\b/i.test(message) &&
+    /\b(?:payoff|pay off|avalanche|snowball|which.*first|how long|interest|bayaran|mabayaran|unahin|alin ang uunahin|interes|gaano katagal)\b/i.test(
+      message,
+    )
   ) {
     groups.add("debt_projection");
   }
   if (
-    /\b(?:savings? goal|target|emergency fund|sinking fund)\b/i.test(message) &&
-    /\b(?:monthly|per month|contribut|save|reach|by)\b/i.test(message)
+    /\b(?:savings? goal|target|emergency fund|sinking fund|layunin(?:\s+sa\s+ipon)?|ipon goal)\b/i.test(
+      message,
+    ) &&
+    /\b(?:monthly|per month|contribut|save|reach|by|bawat buwan|kada buwan|buwan-buwan|mag-ipon|maabot|hulog)\b/i.test(
+      message,
+    )
   ) {
     groups.add("savings_projection");
   }
-  if (/\b(?:recurring|repeat(?:ing)?|subscription|regular charge)\b/i.test(message)) {
+  if (
+    /\b(?:recurring|repeat(?:ing)?|subscription|regular charge|paulit-ulit|subskripsyon|buwanang bayarin|regular na bayarin)\b/i.test(
+      message,
+    )
+  ) {
     groups.add("recurring");
   }
-  if (/\b(?:anomal|unusual|outlier|spike|why.*overspend|why.*higher)\b/i.test(message)) {
+  if (
+    /\b(?:anomal|unusual|outlier|spike|why.*overspend|why.*higher|kakaiba|hindi karaniwan|hindi pangkaraniwan|bakit.*tumaas|bakit.*lumaki|bakit.*sumobra)\b/i.test(
+      message,
+    )
+  ) {
     groups.add("anomaly");
   }
-  if (/\b(?:budget|over budget|overspend)\b/i.test(message) && personalized) {
+  if (
+    /\b(?:budget|badyet|over budget|overspend|sobra sa budget|lagpas sa budget|lumagpas sa budget)\b/i.test(
+      message,
+    ) &&
+    personalized
+  ) {
     groups.add("budget_comparison");
   }
   if (
-    /\b(?:transactions?|purchases?|charges?)\b/i.test(message) &&
-    /\b(?:list|show|recent|latest|find|which)\b/i.test(message)
+    /\b(?:transactions?|purchases?|charges?|transaksyon|binili|pinamili|gastusin)\b/i.test(
+      message,
+    ) &&
+    /\b(?:list|show|recent|latest|find|which|ipakita|pakita|ilista|lista|pinakabago|huli|kamakailan|hanapin|alin)\b/i.test(
+      message,
+    )
   ) {
     groups.add("transaction_detail");
   }
   if (
-    /\b(?:categories|category list)\b/i.test(message) &&
-    /\b(?:list|show|available|have)\b/i.test(message)
+    /\b(?:categories|category list|kategorya|mga kategorya)\b/i.test(message) &&
+    /\b(?:list|show|available|have|ipakita|pakita|ilista|mayroon|meron)\b/i.test(message)
   ) {
     groups.add("category_list");
   }
   if (
     personalized &&
-    /\b(?:by category|category breakdown|which category|dining|grocer(?:y|ies)|transport|rent)\b/i.test(
+    /\b(?:by category|category breakdown|which category|dining|grocer(?:y|ies)|transport|rent|bawat kategorya|kada kategorya|aling kategorya|pagkain|pamamalengke|groseri|transportasyon|upa)\b/i.test(
       message,
     )
   ) {
@@ -94,13 +120,16 @@ function requiredGroups(message: string): RequiredToolGroup[] {
   }
   if (
     personalized &&
-    /\b(?:income|earn(?:ed|ing|s)?|expenses?|spend(?:ing|t)?|net|sav(?:e|ed|ings?)(?: rate)?|pay(?:ments?)?|paid|receive(?:d)?|cash flow|remaining|left|average)\b/i.test(
+    /\b(?:income|earn(?:ed|ing|s)?|expenses?|spend(?:ing|t)?|net|sav(?:e|ed|ings?)(?: rate)?|pay(?:ments?)?|paid|receive(?:d)?|cash flow|remaining|left|average|kita|kinita|sweldo|sahod|gastos|nagastos|nagasta|ipon|naipon|bayad|nagbayad|binayad|natira|natitira|kabuuan)\b/i.test(
       message,
     )
   ) {
     groups.add("period_summary");
   }
-  if (groups.has("anomaly") && /\b(?:overspend|over budget|budget)\b/i.test(message)) {
+  if (
+    groups.has("anomaly") &&
+    /\b(?:overspend|over budget|budget|sumobra|lumagpas|badyet)\b/i.test(message)
+  ) {
     groups.add("budget_comparison");
     groups.add("category_spending");
   }
@@ -116,11 +145,9 @@ function groupsRequirePeriod(groups: readonly RequiredToolGroup[]): boolean {
 }
 
 const RETRY_FOLLOWUP_PATTERN =
-  /^(please\s+)?(answer|retry|run)\s+(this|that|it)(\s+question)?(\s+again)?[?.!]*$|^(try\s+again|same\s+question)[?.!]*$/i;
+  /^(please\s+)?(answer|retry|run)\s+(this|that|it)(\s+question)?(\s+again)?[?.!]*$|^(try\s+again|same\s+question|sagutin mo ito|subukan muli|ulit)[?.!]*$/i;
 
-function lastUserMessage(
-  history: readonly AssistantHistoryMessage[],
-): string | null {
+function lastUserMessage(history: readonly AssistantHistoryMessage[]): string | null {
   for (let index = history.length - 1; index >= 0; index -= 1) {
     const item = history[index];
     if (item?.role === "user") return item.content;
@@ -135,10 +162,7 @@ function lastUserMessage(
  * with its own requirements, or with no usable previous question, passes
  * through unchanged.
  */
-function retryTargetMessage(
-  history: readonly AssistantHistoryMessage[],
-  message: string,
-): string {
+function retryTargetMessage(history: readonly AssistantHistoryMessage[], message: string): string {
   if (requiredGroups(message).length > 0 || !RETRY_FOLLOWUP_PATTERN.test(message.trim())) {
     return message;
   }

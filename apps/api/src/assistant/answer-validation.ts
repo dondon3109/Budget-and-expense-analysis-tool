@@ -8,7 +8,7 @@ const BARE_MONEY_PATTERN = /(?<![A-Z\d])(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}(?!\d|%
 const PERCENT_PATTERN = /-?\d+(?:\.\d+)?%/g;
 const ISO_DATE_PATTERN = /\b\d{4}-\d{2}-\d{2}\b/g;
 const COUNT_OR_DURATION_PATTERN =
-  /\b\d+(?:\.\d+)?\s+(?:transactions?|records?|categories|debts?|goals?|charges?|days?|months?|years?|payments?)\b/gi;
+  /\b\d+(?:\.\d+)?(?:\s+na)?\s+(?:transactions?|records?|categories|debts?|goals?|charges?|days?|months?|years?|payments?|transaksyon|kategorya|utang|layunin|bayarin|araw|buwan|taon|bayad)\b/gi;
 const SHAMING_PATTERN =
   /\b(?:irresponsible|a failure|bad with money|reckless spender|financially careless)\b/i;
 const INTERNAL_TOOL_PATTERN =
@@ -207,7 +207,9 @@ export function validateAssistantAnswer(
   );
   if (
     filterMiss &&
-    !/\b(?:not found|no matching|could not find|wasn't found|was not found)\b/i.test(content)
+    !/\b(?:not found|no matching|could not find|wasn't found|was not found|hindi nahanap|walang nahanap|walang tugma)\b/i.test(
+      content,
+    )
   ) {
     reasons.push("filter_miss_substitution");
   }
@@ -341,7 +343,9 @@ export function deterministicPeriodSummaryAnswer(
   const qualifier =
     typeof accountName === "string" && accountName.trim() ? ` for ${accountName.trim()}` : "";
   const content = `From ${policy.resolvedPeriod.from} to ${policy.resolvedPeriod.to}, your recorded expenses${qualifier} were ${expenses}.`;
-  return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid ? content : null;
+  return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid
+    ? content
+    : null;
 }
 
 export function safeFallback(policy: AssistantTurnPolicy): string {

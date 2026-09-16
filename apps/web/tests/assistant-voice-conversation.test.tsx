@@ -617,7 +617,36 @@ describe("AssistantVoiceConversation", () => {
     await act(async () => Promise.resolve());
 
     expect(screen.getByText("Ready to talk")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Start new conversation" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start new conversation" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("supports switching voice language between Tagalog and English", async () => {
+    installRecordingMocks();
+    renderConversation();
+    await waitFor(() => expect(apiMocks.getAssistantVoicePreferences).toHaveBeenCalled());
+
+    const tagalogBtn = screen.getByRole("button", { name: "Tagalog" });
+    const englishBtn = screen.getByRole("button", { name: "English" });
+    expect(tagalogBtn).toBeInTheDocument();
+    expect(englishBtn).toBeInTheDocument();
+
+    fireEvent.click(englishBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
+    expect(englishBtn).toHaveClass("active");
+
+    fireEvent.click(tagalogBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
+    expect(tagalogBtn).toHaveClass("active");
+
+    await startListening();
+    expect(voiceStreamMocks.startLiveTranscriptionSession).toHaveBeenCalledWith(
+      workspace,
+      expect.anything(),
+      expect.anything(),
+      "fil",
+    );
+    await stopListening();
   });
 });
-

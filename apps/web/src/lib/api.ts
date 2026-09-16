@@ -16,6 +16,7 @@ import type {
   AssistantSpeechVoice,
   AssistantVoicePreferences,
   AssistantVoiceTranscription,
+  VoiceLanguage,
   ReceiptDraft,
   ReceiptPreferences,
   BillingCapability,
@@ -1134,12 +1135,14 @@ export async function transcribeAssistantVoice(
 
 export async function openVoiceStreamWebSocket(
   workspace: AuthenticatedWorkspace,
+  language?: VoiceLanguage,
 ): Promise<WebSocket> {
   const token = await accessToken(workspace, false);
   const base = apiUrl
     ? apiUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:")
     : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
-  const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(token)}`;
+  const langParam = language ? `&lang=${encodeURIComponent(language)}` : "";
+  const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(token)}${langParam}`;
   return new WebSocket(wsUrl);
 }
 

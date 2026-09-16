@@ -4,13 +4,13 @@ export const PERIOD_CLARIFICATION_RESPONSE =
   "Which month or date range should I use? For example, August 2026 or July 1 to August 2, 2026.";
 
 const AGGREGATE_TERM_PATTERN =
-  /\b(?:income|earnings?|expenses?|spending|spent|spend|net|savings?|cash\s*flow|remaining|left|trends?|averages?)\b/i;
+  /\b(?:income|earnings?|expenses?|spending|spent|spend|net|savings?|cash\s*flow|remaining|left|trends?|averages?|kita|kinita|sweldo|sahod|gastos|nagastos|nagasta|ipon|naipon|bayad|nagbayad|binayad|natira|natitira|kabuuan)\b/i;
 const AGGREGATE_REQUEST_PATTERN =
-  /\b(?:how much|how about|what(?:'s| is| was| were| are| about)|total|sum|average|show|give|tell|compare|trend|breakdown)\b/i;
+  /\b(?:how much|how about|what(?:'s| is| was| were| are| about)|total|sum|average|show|give|tell|compare|trend|breakdown|magkano|ano|kabuuan|ipakita|pakita|sabihin|ihambing)\b/i;
 const MONTH_PATTERN =
-  /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i;
+  /\b(?:jan(?:uary)?|enero|feb(?:ruary)?|pebrero|mar(?:ch)?|marso|apr(?:il)?|abril|mayo?|jun(?:e)?|hunyo|jul(?:y)?|hulyo|aug(?:ust)?|agosto|sep(?:t(?:ember)?)?|set(?:y|i)embre|oct(?:ober)?|oktubre|nov(?:ember)?|nob(?:y|i)embre|dec(?:ember)?|dis(?:y|i)embre)\b/i;
 const RELATIVE_PERIOD_PATTERN =
-  /\b(?:(?:this|last|previous|current|next)\s+(?:day|week|month|quarter|year)|today|yesterday|month[ -]to[ -]date|year[ -]to[ -]date|mtd|ytd|all[ -]time|all\s+(?:recorded\s+)?history|since\s+(?:i\s+)?started|past\s+\d+\s+(?:days?|weeks?|months?|years?))\b/i;
+  /\b(?:(?:this|last|previous|current|next)\s+(?:day|week|month|quarter|year)|today|yesterday|month[ -]to[ -]date|year[ -]to[ -]date|mtd|ytd|all[ -]time|all\s+(?:recorded\s+)?history|since\s+(?:i\s+)?started|past\s+\d+\s+(?:days?|weeks?|months?|years?)|ngayon|ngayong araw|kahapon|ngayong buwan|nakaraang buwan|noong nakaraang buwan|ngayong taon|nakaraang taon|(?:nakalipas|nakaraang|huling)(?:\s+na)?\s+\d+\s+(?:araw|buwan|taon)|lahat ng transaksyon)\b/i;
 const ISO_DATE_PATTERN = /\b(?:19|20)\d{2}-\d{2}-\d{2}\b/;
 const NUMERIC_DATE_PATTERN = /\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/;
 const YEAR_PATTERN = /\b(?:19|20)\d{2}\b/;
