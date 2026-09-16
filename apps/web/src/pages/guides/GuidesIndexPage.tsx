@@ -26,7 +26,7 @@ export function GuidesIndexPage() {
     <LegalPageLayout
       title="Personal Finance & Budgeting Guides"
       summary="In-depth tutorials and actionable strategies for private budgeting, e-wallet tracking, subscription management, and digital banking in the Philippines."
-      lastUpdated="August 30, 2026"
+      lastUpdated="September 16, 2026"
     >
       <div className="guides-index-page">
         <nav className="guides-category-nav" aria-label="Filter guides by category">

@@ -14,10 +14,10 @@ describe("finance guides content and helper functions", () => {
     expect(SharedIndex.FINANCE_GUIDES).toBeDefined();
   });
 
-  it("contains exactly 4 core comprehensive Philippine personal finance guides", () => {
+  it("contains the six core Philippine personal finance guides", () => {
     const guides = getAllFinanceGuides();
-    expect(guides).toHaveLength(4);
-    expect(FINANCE_GUIDES).toHaveLength(4);
+    expect(guides).toHaveLength(6);
+    expect(FINANCE_GUIDES).toHaveLength(6);
 
     const slugs = guides.map((g) => g.slug);
     expect(slugs).toEqual([
@@ -25,6 +25,8 @@ describe("finance guides content and helper functions", () => {
       "cancel-subscriptions-auto-debits-philippines",
       "high-yield-digital-banking-cashflow-guide",
       "replace-excel-spreadsheets-budget-tracker",
+      "budget-monthly-salary-philippines",
+      "50-30-20-rule-pesos",
     ]);
   });
 
@@ -65,6 +67,11 @@ describe("finance guides content and helper functions", () => {
         expect(faq.answer.length).toBeGreaterThan(0);
       }
     }
+  });
+
+  it("points the 50/30/20 guide at the peso calculator", () => {
+    const guide = getFinanceGuideBySlug("50-30-20-rule-pesos");
+    expect(guide?.relatedLinks?.map((link) => link.to)).toContain("/tools/50-30-20-calculator");
   });
 
   it("finds guides by slug accurately and handles casing / whitespace", () => {

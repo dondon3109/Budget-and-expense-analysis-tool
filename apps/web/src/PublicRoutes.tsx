@@ -4,6 +4,7 @@ import { FINANCE_GUIDES } from "@zoption/shared";
 
 import { CookiePolicyPage } from "./pages/legal/CookiePolicyPage";
 import { FaqPage } from "./pages/faq/FaqPage";
+import { FeaturePage } from "./pages/features/FeaturePage";
 import { PrivacyPolicyPage } from "./pages/legal/PrivacyPolicyPage";
 import { TermsOfServicePage } from "./pages/legal/TermsOfServicePage";
 import { LandingPage } from "./pages/LandingPage";
@@ -36,6 +37,8 @@ const PUBLIC_ROUTE_ELEMENTS: Record<PublicRoutePath, ReactElement> = {
       <GuideDetailPage slug={guide.slug} key={guide.slug} />,
     ]),
   ),
+  "/features/receipt-scanning": <FeaturePage path="/features/receipt-scanning" />,
+  "/features/voice-expense-entry": <FeaturePage path="/features/voice-expense-entry" />,
   "/tutorials": <TutorialsPage />,
   "/import": <ImportHubPage />,
   "/import/bdo-statement": <ImportGuidePage />,

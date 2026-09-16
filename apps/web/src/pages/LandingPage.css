@@ -3101,3 +3101,20 @@
     }
   }
 }
+/* Internal links from the spotlight panels to the feature explainer pages. */
+.spotlight-copy .spotlight-learn-more {
+  margin-bottom: 18px;
+}
+
+.spotlight-learn-more a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--lp-accent-strong);
+  text-decoration: none;
+}
+
+.spotlight-learn-more a:hover {
+  text-decoration: underline;
+}

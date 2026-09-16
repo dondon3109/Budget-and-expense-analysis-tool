@@ -1,3 +1,9 @@
+import {
+  FEATURE_PAGES,
+  FEATURE_PAGES_LAST_MODIFIED,
+  findFeaturePage,
+  type FeaturePagePath,
+} from "../pages/features/featurePages";
 import { findImportGuide } from "../pages/import/importGuides";
 import { ANDROID_RELEASE } from "../releases/androidRelease";
 import { FINANCE_GUIDES, getFinanceGuideBySlug, type FinanceGuide } from "@zoption/shared";
@@ -33,7 +39,8 @@ export type PublicRoutePath =
   | "/import/maribank-statement"
   | "/import/bank-of-america-statement"
   | "/import/jpmorgan-statement"
-  | "/tools/50-30-20-calculator";
+  | "/tools/50-30-20-calculator"
+  | FeaturePagePath;
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/",
@@ -54,6 +61,7 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/import/bank-of-america-statement",
   "/import/jpmorgan-statement",
   "/tools/50-30-20-calculator",
+  ...FEATURE_PAGES.map((page) => page.path),
 ];
 
 type StructuredDataNode = Record<string, unknown>;
@@ -288,9 +296,9 @@ function installPageStructuredData(): StructuredDataGraph {
 // <lastmod> and WebPage dateModified, so a stale value misrepresents freshness to
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
-const LANDING_LAST_MODIFIED = "2026-08-30";
-const PRICING_LAST_MODIFIED = "2026-08-30";
-const GUIDES_LAST_MODIFIED = "2026-08-30";
+const LANDING_LAST_MODIFIED = "2026-09-16";
+const PRICING_LAST_MODIFIED = "2026-09-13";
+const GUIDES_LAST_MODIFIED = "2026-09-16";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/guides`;
@@ -321,14 +329,14 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
     isPartOf: { "@id": WEBSITE_ID },
   });
 }
-const FAQ_LAST_MODIFIED = "2026-08-30";
-const CHANGELOG_LAST_MODIFIED = "2026-08-26";
+const FAQ_LAST_MODIFIED = "2026-09-13";
+const CHANGELOG_LAST_MODIFIED = "2026-09-16";
 const TERMS_LAST_MODIFIED = "2026-08-12";
-const PRIVACY_LAST_MODIFIED = "2026-08-28";
-const COOKIE_POLICY_LAST_MODIFIED = "2026-08-24";
-const IMPORT_LAST_MODIFIED = "2026-08-30";
-const TOOLS_LAST_MODIFIED = "2026-08-31";
-const TUTORIALS_LAST_MODIFIED = "2026-09-08";
+const PRIVACY_LAST_MODIFIED = "2026-09-16";
+const COOKIE_POLICY_LAST_MODIFIED = "2026-09-16";
+const IMPORT_LAST_MODIFIED = "2026-08-31";
+const TOOLS_LAST_MODIFIED = "2026-09-16";
+const TUTORIALS_LAST_MODIFIED = "2026-09-13";
 
 function pricingPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/pricing`;
@@ -407,6 +415,35 @@ function importHubMetadata(): PublicRouteMetadata {
       lastModified: IMPORT_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.8,
+    },
+  };
+}
+
+/**
+ * Feature explainers are keyed by their own path, and their titles, descriptions, and
+ * dates come from the page data rather than being restated here, so the page and its
+ * metadata cannot drift apart.
+ */
+function featurePageMetadata(path: FeaturePagePath): PublicRouteMetadata {
+  const page = findFeaturePage(path);
+  if (!page) throw new Error(`No feature page registered for ${path}`);
+
+  const url = `${SITE_ORIGIN}${path}`;
+  return {
+    title: page.title,
+    description: page.description,
+    canonical: url,
+    robots: "index,follow",
+    structuredData: contentPageStructuredData(
+      page.heading,
+      page.description,
+      url,
+      FEATURE_PAGES_LAST_MODIFIED,
+    ),
+    sitemap: {
+      lastModified: FEATURE_PAGES_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.7,
     },
   };
 }
@@ -499,12 +536,12 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/cookie-policy": {
     title: "Cookie Policy — Zoption",
     description:
-      "Learn about the necessary browser storage Zoption uses and how PostHog provides cookieless web analytics on public pages.",
+      "Learn about the browser storage Zoption uses and how PostHog measures cookieless pageviews and anonymous conversion steps without cookies or financial detail.",
     canonical: `${SITE_ORIGIN}/cookie-policy`,
     robots: "index,follow",
     structuredData: contentPageStructuredData(
       "Cookie Policy — Zoption",
-      "The necessary browser storage Zoption uses and how PostHog provides cookieless web analytics on public pages.",
+      "The browser storage Zoption uses and how PostHog measures cookieless pageviews and anonymous conversion steps without cookies or financial detail.",
       `${SITE_ORIGIN}/cookie-policy`,
       COOKIE_POLICY_LAST_MODIFIED,
     ),
@@ -590,6 +627,8 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/import/bank-of-america-statement": importGuideMetadata("/import/bank-of-america-statement"),
   "/import/jpmorgan-statement": importGuideMetadata("/import/jpmorgan-statement"),
   "/tools/50-30-20-calculator": budgetCalculatorMetadata(),
+  "/features/receipt-scanning": featurePageMetadata("/features/receipt-scanning"),
+  "/features/voice-expense-entry": featurePageMetadata("/features/voice-expense-entry"),
   "/tutorials": {
     title: "User Guides & Step-by-Step Tutorials — Zoption",
     description:

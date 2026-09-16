@@ -141,6 +141,23 @@ export function GuideDetailPage({ slug: propSlug }: GuideDetailPageProps = {}) {
               </section>
             )}
 
+            {guide.relatedLinks && guide.relatedLinks.length > 0 && (
+              <section className="guide-related-section" aria-label="Related tools">
+                <h2 className="guide-related-heading">Put the numbers to work</h2>
+                <div className="guide-related-grid">
+                  {guide.relatedLinks.map((link) => (
+                    <Link key={link.to} to={link.to} className="guide-related-card">
+                      <h3>{link.label}</h3>
+                      <p>{link.description}</p>
+                      <span className="guide-read-more">
+                        Open <ArrowRight size={14} aria-hidden="true" />
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {relatedGuides.length > 0 && (
               <section className="guide-related-section" aria-label="Related guides">
                 <h2 className="guide-related-heading">More financial guides</h2>

@@ -469,6 +469,12 @@ export function LandingPage() {
                       touches your ledger.
                     </li>
                   </ul>
+                  <p className="spotlight-learn-more">
+                    <Link to="/features/voice-expense-entry">
+                      See how voice expense entry works
+                      <ArrowRight size={14} aria-hidden="true" />
+                    </Link>
+                  </p>
                   <div className="sample-selector-label">Try interactive voice examples:</div>
                   <div className="sample-chips">
                     {voiceSamples.map((sample, index) => (
@@ -599,6 +605,12 @@ export function LandingPage() {
                       Available directly on the native Android Beta app.
                     </li>
                   </ul>
+                  <p className="spotlight-learn-more">
+                    <Link to="/features/receipt-scanning">
+                      See how receipt scanning works
+                      <ArrowRight size={14} aria-hidden="true" />
+                    </Link>
+                  </p>
                   <div className="sample-selector-label">Choose sample receipt:</div>
                   <div className="sample-chips">
                     {receiptSamples.map((sample, index) => (

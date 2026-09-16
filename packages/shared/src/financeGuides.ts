@@ -10,6 +10,13 @@ export interface FinanceGuideFaq {
   answer: string;
 }
 
+/** A related tool or page a guide sends the reader to, rendered as a card. */
+export interface FinanceGuideRelatedLink {
+  to: string;
+  label: string;
+  description: string;
+}
+
 export interface FinanceGuide {
   slug: string;
   title: string;
@@ -23,6 +30,7 @@ export interface FinanceGuide {
   keywords: string[];
   sections: FinanceGuideSection[];
   faqs: FinanceGuideFaq[];
+  relatedLinks?: FinanceGuideRelatedLink[];
 }
 
 export const FINANCE_GUIDES: FinanceGuide[] = [
@@ -357,6 +365,204 @@ export const FINANCE_GUIDES: FinanceGuide[] = [
         question: "Why is a local-first budget tracker better than cloud-only budgeting apps?",
         answer:
           "Local-first trackers store your sensitive financial records directly on your local device or encrypted storage, ensuring complete privacy, zero downtime, fast performance without internet dependency, and total protection against third-party server breaches.",
+      },
+    ],
+  },
+  {
+    slug: "budget-monthly-salary-philippines",
+    title: "How to Budget a Monthly Salary in the Philippines",
+    seoTitle: "How to Budget a Monthly Salary in the Philippines (Peso Plan)",
+    description:
+      "A step by step way to plan a Philippine salary in pesos: start from take home pay, list fixed bills first, move savings on payday, and review the month against real spending.",
+    category: "budgeting",
+    readTimeMinutes: 8,
+    publishedDate: "2026-09-16",
+    updatedDate: "2026-09-16",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "how to budget salary philippines",
+      "monthly budget philippines pesos",
+      "take home pay budget",
+      "payday budget plan",
+      "budgeting on a 30000 salary",
+      "philippine household budget example",
+    ],
+    sections: [
+      {
+        id: "budget-from-take-home-pay",
+        title: "Start From the Money That Actually Lands",
+        content:
+          "Build the plan on take home pay, the amount that reaches your account after SSS, PhilHealth, Pag-IBIG, and withholding tax. Contribution rates and tax brackets change, so read the figures on your latest payslip instead of a rate table you found online: the payslip is the only version that matches your salary. Zoption stores amounts in pesos and centavos, so the number you plan with is the number that lands, with no rounding drift by the end of the month.",
+        keyTakeaways: [
+          "Budget from take home pay, not gross salary.",
+          "Take statutory contributions from your payslip, because rates change.",
+          "Amounts are kept in whole centavos, so totals stay exact.",
+        ],
+      },
+      {
+        id: "list-fixed-bills-first",
+        title: "List Fixed Bills Before Anything Else",
+        content:
+          "Fixed bills arrive whether or not you think about them: rent or amortization, electricity, water, internet, phone load, transport to work, loan payments, and the subscriptions you still use. Add them up first. Whatever is left is the money you actually get to decide on. Zoption gives each bill its own category with a monthly limit, so the fixed side of the month is visible before payday arrives.",
+        keyTakeaways: [
+          "Add every recurring bill before you plan any spending.",
+          "What remains after fixed bills is the real flexible amount.",
+        ],
+      },
+      {
+        id: "worked-example-thirty-thousand",
+        title: "A Worked Example on ₱30,000 Take Home",
+        content:
+          "Say ₱30,000 lands each month. Fixed bills come to ₱13,000: ₱8,000 rent, ₱2,500 electricity and water, ₱1,500 internet and load, and ₱1,000 transport to work. Savings takes ₱6,000, which is 20 percent. That leaves ₱11,000 for groceries, dining, and everything else, and it is the number to watch through the month. When an emergency lands in the flexible part, move money between categories on purpose instead of quietly spending the savings.",
+        keyTakeaways: [
+          "Fixed ₱13,000, savings ₱6,000, flexible ₱11,000 on a ₱30,000 take home.",
+          "Move money between categories deliberately rather than borrowing from savings.",
+        ],
+      },
+      {
+        id: "move-savings-on-payday",
+        title: "Move Savings Out on Payday",
+        content:
+          "Treat savings like a bill with a due date. On payday, move the savings amount to a separate account or into a goal, then spend what remains. A goal in Zoption holds a target amount and a target date, and the dashboard reports a savings rate for the month, so you can see whether the plan survived contact with real life. If a full month of expenses feels too far away, start with one month of fixed bills as the emergency fund.",
+        keyTakeaways: [
+          "Move savings on payday, before flexible spending starts.",
+          "A goal with a target amount and date keeps the number concrete.",
+        ],
+      },
+      {
+        id: "irregular-income-and-extra-pay",
+        title: "Handle Irregular Pay, Bonuses, and the 13th Month",
+        content:
+          "If your income changes month to month, budget from your lowest recent month and treat anything above it as savings rather than as a permanent raise in your baseline. The 13th month pay, bonuses, and refunds should not quietly raise your monthly spending: record them as income in the month they arrive, then move them to a goal or a debt. Zoption reports income and expenses separately, so a one off deposit does not make a hard month look healthy.",
+        keyTakeaways: [
+          "Plan the baseline on your lowest recent month.",
+          "Send bonuses and the 13th month to a goal or a debt, not to the baseline.",
+        ],
+      },
+      {
+        id: "review-the-month",
+        title: "Review the Month in Ten Minutes",
+        content:
+          "At the end of the month, compare the plan with what happened: spending per category against each budget, the six month trend, and the recurring expenses the app has spotted. If you track a bank account or a wallet like GCash or Maya, download the CSV the app lets you export and import it instead of typing rows. On the web app a file can be CSV, XLSX, or XLS, and the Android app also reads PDF statements. The preview shows every row before anything is saved, and duplicate entries are blocked.",
+        keyTakeaways: [
+          "Compare planned against actual per category, then look at the six month trend.",
+          "Import a CSV export instead of typing rows, and check the preview before saving.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "Should I budget from my gross salary or my take home pay?",
+        answer:
+          "Use take home pay. Gross salary is what you earn before SSS, PhilHealth, Pag-IBIG, and withholding tax, and none of that money reaches your account. Your payslip carries the exact figures for your salary, which is more reliable than any rate table, because contribution schedules and tax brackets change.",
+      },
+      {
+        question: "How much of my salary should go to savings?",
+        answer:
+          "There is no single number that fits every household. Twenty percent of take home pay is a common starting point, and it is the savings share in the 50/30/20 rule. A month with a large rent or family support can start lower. Pick an amount you can hold for three months, then raise it once the habit is steady.",
+      },
+      {
+        question: "What if I get paid twice a month?",
+        answer:
+          "Plan the whole month as one budget and split it by payday. Put the bills that fall before the 15th against the first pay, and the rest against the second, then divide the flexible money between the two. Zoption budgets by month rather than by payday, so the plan stays in one place.",
+      },
+    ],
+  },
+  {
+    slug: "50-30-20-rule-pesos",
+    title: "The 50/30/20 Rule in Pesos",
+    seoTitle: "The 50/30/20 Rule in Pesos: Philippine Budget Examples",
+    description:
+      "What the 50/30/20 rule means for a Philippine salary, which expenses count as needs, three worked examples in pesos, and what to change when rent or debt breaks the split.",
+    category: "budgeting",
+    readTimeMinutes: 6,
+    publishedDate: "2026-09-16",
+    updatedDate: "2026-09-16",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "50 30 20 rule philippines",
+      "50 30 20 budget pesos",
+      "needs wants savings philippines",
+      "budget percentages salary",
+      "philippine budget example 30000",
+      "how to split salary philippines",
+    ],
+    sections: [
+      {
+        id: "what-the-rule-splits",
+        title: "What the 50/30/20 Rule Splits",
+        content:
+          "The rule divides take home pay into three buckets: 50 percent for needs, 30 percent for wants, and 20 percent for savings and extra debt payments. Needs keep the month running: rent or amortization, electricity, water, groceries, transport to work, medicine, and minimum debt payments. Wants are the parts you choose, such as dining out, streaming, travel, and upgrades. Savings covers the emergency fund, investments, and any amount you pay above a minimum on a debt.",
+        keyTakeaways: [
+          "Half to needs, a third to wants, a fifth to savings.",
+          "The split is based on take home pay, not gross salary.",
+        ],
+      },
+      {
+        id: "what-counts-in-the-philippines",
+        title: "What Counts in a Philippine Budget",
+        content:
+          "Some lines are easy to place and some are not. SSS, PhilHealth, and Pag-IBIG are usually already deducted from take home pay, so they do not appear again; if you pay them yourself, they belong in needs. Supporting family is a need when it is a standing commitment. A loan payment is a need up to the minimum, and anything above the minimum counts as savings. A subscription you forgot about is still a want, which is why the renewal calendar on the subscriptions page is worth a look once a month.",
+        keyTakeaways: [
+          "Standing family support and minimum loan payments sit in needs.",
+          "Paying above a minimum turns the extra into savings.",
+        ],
+      },
+      {
+        id: "worked-examples-in-pesos",
+        title: "Worked Examples in Pesos",
+        content:
+          "The split is simple arithmetic. On ₱18,000 take home: ₱9,000 needs, ₱5,400 wants, ₱3,600 savings. On ₱30,000: ₱15,000, ₱9,000, and ₱6,000. On ₱60,000: ₱30,000, ₱18,000, and ₱12,000. The 50/30/20 calculator on this site does the same split in exact centavos using the largest remainder method, so the three buckets always add up to the income you entered, with no lost centavo.",
+        keyTakeaways: [
+          "₱18,000 splits into ₱9,000, ₱5,400, and ₱3,600.",
+          "₱30,000 splits into ₱15,000, ₱9,000, and ₱6,000.",
+          "The calculator keeps the three buckets equal to the income, to the centavo.",
+        ],
+      },
+      {
+        id: "when-the-rule-does-not-fit",
+        title: "When 50/30/20 Does Not Fit",
+        content:
+          "The rule is a starting point, not a law. Rent in Metro Manila can push needs past 50 percent, and a month with a hospital bill can push savings below 20. When that happens, change the percentages on purpose: 60/20/20 keeps savings in the plan while needs take the larger share, and 50/20/30 pays down debt faster. What matters is that the three numbers still add up and that the savings share is not the one that quietly disappears.",
+        keyTakeaways: [
+          "Adjust the percentages to fit real rent, debt, or family support.",
+          "Keep the savings share visible instead of letting it absorb every surprise.",
+        ],
+      },
+      {
+        id: "turn-the-split-into-a-budget",
+        title: "Turn the Split Into a Real Budget",
+        content:
+          "A percentage only becomes a budget once the money has categories. Create a category for each fixed bill and each regular spend, set a monthly limit so the buckets add up, then check the difference between the limit and what you really spent. Zoption shows budget progress per category, a six month trend, and a savings rate for the month, and it never asks for a bank login, so the plan stays yours.",
+        keyTakeaways: [
+          "Give every bucket real categories with monthly limits.",
+          "Review the difference between the limit and actual spending each month.",
+        ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/tools/50-30-20-calculator",
+        label: "50/30/20 Calculator for Philippine Pesos",
+        description:
+          "Split a take home amount into needs, wants, and savings in exact centavos, with the percentages adjustable and no sign up.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Is the 50/30/20 rule based on gross or take home pay?",
+        answer:
+          "Take home pay. The rule describes where your spendable income goes, and gross salary includes contributions and tax that never reach your account. Use the amount that lands in your bank or wallet, then split that.",
+      },
+      {
+        question: "Can I follow 50/30/20 while paying off debt?",
+        answer:
+          "Yes. Minimum payments belong in needs, and anything you pay above the minimum counts as savings, because it improves your net position. If the debt is high interest, many people move the savings share to extra payments first and rebuild the emergency fund after.",
+      },
+      {
+        question: "Does the calculator store the numbers I type?",
+        answer:
+          "No. The 50/30/20 calculator runs entirely in your browser with no account and no network call, and nothing you enter is sent anywhere.",
       },
     ],
   },

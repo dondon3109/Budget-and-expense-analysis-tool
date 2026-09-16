@@ -221,8 +221,9 @@ export function BudgetCalculatorPage() {
         A plan only survives contact with real spending. Import your BDO, BPI, or MariBank
         statement and Zoption will categorize it against the budget you just set, so you
         can see which bucket actually grew last month. See{" "}
-        <Link to="/import">what you can import</Link> or read the{" "}
-        <Link to="/import/bdo-statement">BDO statement guide</Link>.
+        <Link to="/import">what you can import</Link>, read the{" "}
+        <Link to="/import/bdo-statement">BDO statement guide</Link>, or work through the{" "}
+        <Link to="/guides/50-30-20-rule-pesos">50/30/20 rule in pesos</Link>.
       </p>
 
       <p className="calc-cta">
