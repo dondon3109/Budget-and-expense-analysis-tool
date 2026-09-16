@@ -96,6 +96,7 @@ function renderEntry(props: Partial<TransactionVoiceEntryProps> = {}) {
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
   apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
   apiMocks.grantReceiptConsent.mockResolvedValue(consentedPreferences);
   vi.stubGlobal("MediaRecorder", FakeMediaRecorder);
@@ -107,6 +108,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
@@ -225,7 +227,7 @@ describe("TransactionVoiceEntry", () => {
         workspace,
         { transcript: "Spent 250 pesos on lunch today" },
         undefined,
-        "fil",
+        "en",
       ),
     );
     expect(onDraft).toHaveBeenCalledWith(draft);
@@ -252,7 +254,7 @@ describe("TransactionVoiceEntry", () => {
         workspace,
         { transcript: "Spent 250 pesos on lunch today" },
         testCats,
-        "fil",
+        "en",
       ),
     );
     expect(onDraft).toHaveBeenCalledWith(draft);
@@ -273,7 +275,7 @@ describe("TransactionVoiceEntry", () => {
     expect(await screen.findByRole("button", { name: "Speak a transaction" })).toBeEnabled();
   });
 
-  it("supports switching language between Tagalog and English for voice transaction entry", async () => {
+  it("supports switching language between English and Tagalog for voice transaction entry", async () => {
     const user = userEvent.setup();
     renderEntry();
 
@@ -281,14 +283,21 @@ describe("TransactionVoiceEntry", () => {
     const englishBtn = await screen.findByRole("button", { name: "English" });
     expect(tagalogBtn).toBeInTheDocument();
     expect(englishBtn).toBeInTheDocument();
-
-    await user.click(englishBtn);
-    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
     expect(englishBtn).toHaveClass("active");
+    expect(tagalogBtn).not.toHaveClass("active");
 
     await user.click(tagalogBtn);
     expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
     expect(tagalogBtn).toHaveClass("active");
+    expect(englishBtn).not.toHaveClass("active");
+
+    await user.click(englishBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
+    expect(englishBtn).toHaveClass("active");
+    expect(tagalogBtn).not.toHaveClass("active");
+
+    await user.click(tagalogBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
 
     await user.click(screen.getByRole("button", { name: "Speak a transaction" }));
     expect(voiceStreamMocks.startLiveTranscriptionSession).toHaveBeenCalledWith(
@@ -303,12 +312,13 @@ describe("TransactionVoiceEntry", () => {
     renderEntry();
     const tagalogBtn = await screen.findByRole("button", { name: "Tagalog" });
     const englishBtn = await screen.findByRole("button", { name: "English" });
-    expect(tagalogBtn).toHaveClass("active");
+    expect(englishBtn).toHaveClass("active");
+    expect(tagalogBtn).not.toHaveClass("active");
 
-    window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "en" }));
+    window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "fil" }));
     await waitFor(() => {
-      expect(englishBtn).toHaveClass("active");
-      expect(tagalogBtn).not.toHaveClass("active");
+      expect(tagalogBtn).toHaveClass("active");
+      expect(englishBtn).not.toHaveClass("active");
     });
   });
 });

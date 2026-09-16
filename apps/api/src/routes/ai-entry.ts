@@ -75,7 +75,7 @@ export function createAiEntryRoutes(service: AiEntryService) {
 
     const form = await context.req.formData();
     const categories = parseCategoryList(form.get("categories"));
-    const lang = (form.get("lang") as string | null) || context.req.query("lang") || "fil";
+    const lang = (form.get("lang") as string | null) || context.req.query("lang") || "en";
     const transcriptField = form.get("transcript");
     if (typeof transcriptField === "string" && transcriptField.trim().length > 0) {
       return context.json(

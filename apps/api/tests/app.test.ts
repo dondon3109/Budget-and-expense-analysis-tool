@@ -679,6 +679,17 @@ describe("API foundation", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ text: "Review this transcript" });
+    expect(transcribe).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File), "en");
+
+    const tagalogForm = new FormData();
+    tagalogForm.set("audio", new File([new Uint8Array([1, 2, 3])], "voice.webm", { type: "audio/webm" }));
+    tagalogForm.set("lang", "fil");
+    const tagalogResponse = await app.request("/api/app/assistant/voice/transcriptions", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: tagalogForm,
+    });
+    expect(tagalogResponse.status).toBe(200);
     expect(transcribe).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File), "fil");
   });
 
@@ -889,6 +900,26 @@ describe("API foundation", () => {
       description: "Lunch",
       amountMinor: 25_000,
     });
+    expect(extractVoice).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      expect.any(File),
+      undefined,
+      "en",
+    );
+
+    const tagalogAudioForm = new FormData();
+    tagalogAudioForm.set(
+      "audio",
+      new File([new Uint8Array([1, 2, 3])], "audio.webm", { type: "audio/webm" }),
+    );
+    tagalogAudioForm.set("lang", "fil");
+    const tagalogAudioResponse = await app.request("/api/app/entry/voice", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: tagalogAudioForm,
+    });
+    expect(tagalogAudioResponse.status).toBe(200);
     expect(extractVoice).toHaveBeenCalledWith(
       undefined,
       TENANT_ID,

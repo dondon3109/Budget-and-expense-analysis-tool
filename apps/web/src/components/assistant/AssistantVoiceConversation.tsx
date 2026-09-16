@@ -841,21 +841,21 @@ export function AssistantVoiceConversation({
           <div className="assistant-voice-lang-picker" role="group" aria-label="Voice language">
             <button
               type="button"
-              className={`assistant-voice-lang-btn ${voiceLanguage === "fil" ? "active" : ""}`}
-              onClick={() => handleLanguageChange("fil")}
-              aria-pressed={voiceLanguage === "fil"}
-              title="Tagalog / Filipino"
-            >
-              Tagalog
-            </button>
-            <button
-              type="button"
               className={`assistant-voice-lang-btn ${voiceLanguage === "en" ? "active" : ""}`}
               onClick={() => handleLanguageChange("en")}
               aria-pressed={voiceLanguage === "en"}
               title="English"
             >
               English
+            </button>
+            <button
+              type="button"
+              className={`assistant-voice-lang-btn ${voiceLanguage === "fil" ? "active" : ""}`}
+              onClick={() => handleLanguageChange("fil")}
+              aria-pressed={voiceLanguage === "fil"}
+              title="Tagalog / Filipino"
+            >
+              Tagalog
             </button>
           </div>
           {captions.length > 0 && (

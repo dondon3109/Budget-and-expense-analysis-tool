@@ -38,13 +38,41 @@ describe("Cloudflare Whisper provider", () => {
       vad_filter: true,
       condition_on_previous_text: false,
       initial_prompt:
-        "Transkripsyon sa Tagalog, Filipino, at Taglish: gastos, bayad, bili, sweldo, pera, ipon, utang, kahapon, kanina, Php, pesos.",
+        "English financial transcription: budget, expenses, payments, income, groceries, salary, pesos, PHP.",
     });
     expect(call[2].signal).toBeInstanceOf(AbortSignal);
     expect(result).toEqual({
       text: "Review my budget first.",
       durationSeconds: 2.5,
       languageCode: "en",
+    });
+  });
+
+  it("uses Tagalog financial prompt when language is fil", async () => {
+    const run = vi.fn(async () => ({
+      text: "Nagastos sa pagkain kahapon.",
+      transcription_info: { language: "tl", duration: 1.8 },
+    }));
+
+    const result = await cloudflareWhisperProvider.transcribe(
+      environment(run),
+      new File([new Uint8Array([4, 5, 6])], "voice.webm", { type: "audio/webm" }),
+      { language: "fil" },
+    );
+
+    const call = run.mock.calls[0] as unknown as [
+      string,
+      Record<string, unknown>,
+      { signal: unknown },
+    ];
+    expect(call[1]).toMatchObject({
+      initial_prompt:
+        "Transkripsyon sa Tagalog, Filipino, at Taglish: gastos, bayad, bili, sweldo, pera, ipon, utang, kahapon, kanina, Php, pesos.",
+    });
+    expect(result).toEqual({
+      text: "Nagastos sa pagkain kahapon.",
+      durationSeconds: 1.8,
+      languageCode: "tl",
     });
   });
 

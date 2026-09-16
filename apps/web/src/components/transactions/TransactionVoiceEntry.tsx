@@ -618,21 +618,21 @@ export function TransactionVoiceEntry({
         >
           <button
             type="button"
-            className={`transaction-voice-lang-btn ${voiceLanguage === "fil" ? "active" : ""}`}
-            onClick={() => handleLanguageChange("fil")}
-            aria-pressed={voiceLanguage === "fil"}
-            title="Tagalog / Filipino"
-          >
-            Tagalog
-          </button>
-          <button
-            type="button"
             className={`transaction-voice-lang-btn ${voiceLanguage === "en" ? "active" : ""}`}
             onClick={() => handleLanguageChange("en")}
             aria-pressed={voiceLanguage === "en"}
             title="English"
           >
             English
+          </button>
+          <button
+            type="button"
+            className={`transaction-voice-lang-btn ${voiceLanguage === "fil" ? "active" : ""}`}
+            onClick={() => handleLanguageChange("fil")}
+            aria-pressed={voiceLanguage === "fil"}
+            title="Tagalog / Filipino"
+          >
+            Tagalog
           </button>
         </div>
       </div>

@@ -212,9 +212,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
 
       const isTranscribeLive = sttCfg.model === "gemini-3.5-transcribe-live";
       const languageCodes =
-        requestedLang === "en"
-          ? ["en-US", "fil-PH"]
-          : ["fil-PH", "en-US"];
+        requestedLang === "fil"
+          ? ["fil-PH", "en-US"]
+          : ["en-US", "fil-PH"];
       const setupPayload = isTranscribeLive
         ? {
             setup: {
@@ -526,7 +526,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           "x-t-mic-start": micStart,
           "x-zoption-tenant": tenant?.tenantId ? String(tenant.tenantId).slice(0, 8) : "anon",
           "x-zoption-user": authUser?.id ? String(authUser.id).slice(0, 8) : "anon",
-          "x-language": requestedLang || "fil",
+          "x-language": requestedLang || "en",
         },
       } as unknown as RequestInit)) as unknown as {
         status: number;

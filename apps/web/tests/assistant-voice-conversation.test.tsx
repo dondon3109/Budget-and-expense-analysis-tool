@@ -220,6 +220,7 @@ async function stopListening() {
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
   audioInstances.length = 0;
   voiceStreamMocks.reset();
   apiMocks.getAssistantVoicePreferences.mockResolvedValue(consentedPreferences());
@@ -230,6 +231,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
@@ -631,14 +633,21 @@ describe("AssistantVoiceConversation", () => {
     const englishBtn = screen.getByRole("button", { name: "English" });
     expect(tagalogBtn).toBeInTheDocument();
     expect(englishBtn).toBeInTheDocument();
-
-    fireEvent.click(englishBtn);
-    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
     expect(englishBtn).toHaveClass("active");
+    expect(tagalogBtn).not.toHaveClass("active");
 
     fireEvent.click(tagalogBtn);
     expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
     expect(tagalogBtn).toHaveClass("active");
+    expect(englishBtn).not.toHaveClass("active");
+
+    fireEvent.click(englishBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("en");
+    expect(englishBtn).toHaveClass("active");
+    expect(tagalogBtn).not.toHaveClass("active");
+
+    fireEvent.click(tagalogBtn);
+    expect(window.localStorage.getItem("zoption_voice_language")).toBe("fil");
 
     await startListening();
     expect(voiceStreamMocks.startLiveTranscriptionSession).toHaveBeenCalledWith(
@@ -657,12 +666,13 @@ describe("AssistantVoiceConversation", () => {
 
     const tagalogBtn = screen.getByRole("button", { name: "Tagalog" });
     const englishBtn = screen.getByRole("button", { name: "English" });
-    expect(tagalogBtn).toHaveClass("active");
+    expect(englishBtn).toHaveClass("active");
+    expect(tagalogBtn).not.toHaveClass("active");
 
-    window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "en" }));
+    window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: "fil" }));
     await waitFor(() => {
-      expect(englishBtn).toHaveClass("active");
-      expect(tagalogBtn).not.toHaveClass("active");
+      expect(tagalogBtn).toHaveClass("active");
+      expect(englishBtn).not.toHaveClass("active");
     });
   });
 
@@ -677,12 +687,12 @@ describe("AssistantVoiceConversation", () => {
       ttsModel: "s2.1-pro-free",
     });
     apiMocks.transcribeAssistantVoice.mockResolvedValue({
-      text: "Magkano ang nagastos ko ngayong buwan?",
+      text: "How much did I spend this month?",
       durationSeconds: 2,
     });
     apiMocks.createAssistantThread.mockResolvedValue({
       thread: { id: "thread-1" },
-      assistantMessage: { id: "msg-1", content: "Nagastos mo ay PHP 1,000." },
+      assistantMessage: { id: "msg-1", content: "You spent PHP 1,000.00." },
     });
     apiMocks.getAssistantVoiceSpeech.mockResolvedValue(new Blob(["audio"]));
 
@@ -696,7 +706,7 @@ describe("AssistantVoiceConversation", () => {
       expect(apiMocks.transcribeAssistantVoice).toHaveBeenCalledWith(
         workspace,
         expect.any(Blob),
-        "fil",
+        "en",
       ),
     );
   });

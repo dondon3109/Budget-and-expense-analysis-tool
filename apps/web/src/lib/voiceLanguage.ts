@@ -12,28 +12,28 @@ export interface VoiceLanguageOption {
 
 export const VOICE_LANGUAGES: readonly VoiceLanguageOption[] = [
   {
-    code: "fil",
-    label: "Tagalog",
-    nativeLabel: "Tagalog",
-    speechRecognitionLang: "fil-PH",
-  },
-  {
     code: "en",
     label: "English",
     nativeLabel: "English",
     speechRecognitionLang: "en-US",
   },
+  {
+    code: "fil",
+    label: "Tagalog",
+    nativeLabel: "Tagalog",
+    speechRecognitionLang: "fil-PH",
+  },
 ] as const;
 
 /**
  * Retrieves the user's preferred voice input language from localStorage.
- * Defaults to "fil" (Tagalog) since Zoption is tailored for the Philippines.
+ * Defaults to "en" (English) and Tagalog is an option.
  */
 export function getStoredVoiceLanguage(): VoiceLanguage {
-  if (typeof window === "undefined" || !window.localStorage) return "fil";
+  if (typeof window === "undefined" || !window.localStorage) return "en";
   const stored = window.localStorage.getItem(VOICE_LANGUAGE_STORAGE_KEY);
   if (stored === "en" || stored === "fil") return stored;
-  return "fil";
+  return "en";
 }
 
 /**

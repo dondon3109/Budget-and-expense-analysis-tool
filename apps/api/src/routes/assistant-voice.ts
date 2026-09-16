@@ -44,7 +44,7 @@ export function createAssistantVoiceRoutes(service: AssistantVoiceService) {
     if (!mediaType || !ACCEPTED_AUDIO_TYPES.has(mediaType)) {
       throw new HttpError(415, "unsupported_voice_audio", "Use a supported browser audio format.");
     }
-    const lang = (form.get("lang") as string | null) || context.req.query("lang") || "fil";
+    const lang = (form.get("lang") as string | null) || context.req.query("lang") || "en";
     return context.json(
       await service.transcribe(context.env, context.get("tenant").tenantId, audio, lang),
     );
