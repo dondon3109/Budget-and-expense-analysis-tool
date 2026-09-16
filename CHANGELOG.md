@@ -15,6 +15,15 @@ All notable product changes are documented here.
 - When the assistant's AI provider account runs out of credit, the assistant now says so instead of reporting an invalid response and suggesting a retry that cannot help.
 - The Memory panel on web and mobile no longer offers leftover duplicate payoff rows from an earlier release as editable facts, and the web inline editor moves focus into the field and back to the row it belongs to.
 - Renamed the mobile Transactions month figure from Balance to Net, with a question-mark explanation of how it is calculated, because it is the month's income minus expenses and not the account balance.
+- Fixed mobile navigation traps: registered the missing `budget-conflict` route with modal presentation and safe-area insets, and added back navigation to the AI Assistant across loading, error, consent, and threads states.
+- Restored conflict resolution navigation links in mobile debt, subscription, and goal editors when records are locked due to synchronization state conflicts.
+- Fixed bug report review form in mobile Help & Support to scroll properly with the keyboard active instead of pushing submission controls off-screen.
+- Constrained the bank statement import preview list so the import confirmation button remains visible on long statements.
+- Replaced nested modal presentation with inline accordions when selection pickers are used inside bottom sheets to eliminate iOS modal stacking conflicts.
+- Removed duplicate safe-area top padding and double headers across pushed screens with active native navigation headers.
+- Corrected screen reader accessibility labels in debts, budgets, and subscriptions to announce formatted currency rather than raw minor unit integers.
+- Styled net-neutral account transfers with neutral color tones instead of expense or income colors on the mobile dashboard and calendar.
+- Auto-normalized date inputs across entity editors and aligned Android multiline text inputs to the top.
 
 ## 2.32.5 — 2026-09-15
 
