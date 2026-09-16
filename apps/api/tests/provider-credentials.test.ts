@@ -1,5 +1,8 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from "vitest";
+vi.mock("../src/assistant/model-catalog", () => ({ listAssistantModels: vi.fn() }));
+import { listAssistantModels } from "../src/assistant/model-catalog";
+import { AssistantProviderError } from "../src/assistant/provider-error";
 import { createProviderCredentialRoutes } from "../src/routes/provider-credentials";
 import { createAdminProviderConfigRoutes } from "../src/routes/admin-provider-configs";
 import { Hono } from "hono";
@@ -16,6 +19,47 @@ function makeEnv(master = TEST_MASTER_KEY) {
 function authEnv() {
   return { DB: {} as D1Database };
 }
+
+describe("provider_credentials — model preview", () => {
+  it("reports an unfunded provider account with its own code, not an invalid credential", async () => {
+    vi.mocked(listAssistantModels).mockRejectedValueOnce(
+      new AssistantProviderError(
+        "configuration",
+        "insufficient_credits",
+        "The assistant provider account has no remaining credit.",
+        "gemini",
+        402,
+      ),
+    );
+    const routes = createProviderCredentialRoutes(
+      { requireAdmin: vi.fn(async () => undefined) } as any,
+      {} as any,
+      { invalidate: vi.fn() } as any,
+    );
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      (c as any).set("authUser", { id: "admin" });
+      (c as any).env = makeEnv();
+      await next();
+    });
+    app.route("/", routes);
+    app.onError((err, c) => {
+      if (err instanceof HttpError)
+        return c.json({ error: err.code, message: err.message }, err.status);
+      return c.json({ error: "internal" }, 500);
+    });
+
+    const res = await app.request("/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "gemini", secret: "long-enough-secret" }),
+    });
+
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("provider_unfunded");
+  });
+});
 
 describe("provider_credentials — encrypted reusable credentials", () => {
   it("encrypts and decrypts round-trip, never returns plaintext or ciphertext", async () => {

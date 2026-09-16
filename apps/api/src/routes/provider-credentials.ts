@@ -120,6 +120,12 @@ export function createProviderCredentialRoutes(
   function mapModelsError(error: unknown): never {
     if (error instanceof HttpError) throw error;
     if (error instanceof AssistantProviderError) {
+      // An unfunded account is an account-state problem, not a bad key: it shares the
+      // configuration kind with rejected credentials, so check the reason first or it
+      // would be reported as an invalid credential.
+      if (error.reason === "insufficient_credits") {
+        throw new HttpError(503, "provider_unfunded", error.message);
+      }
       if (error.kind === "configuration") {
         throw new HttpError(400, "credential_invalid", error.message);
       }
