@@ -30,7 +30,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent 
 import { Link, useSearchParams } from "react-router-dom";
 
 import { captureFunnelEvent } from "../analytics/funnel";
-import { useWorkspaceTransactionTotal } from "../analytics/useWorkspaceTransactionTotal";
+import { readWorkspaceTransactionTotal } from "../analytics/workspaceTransactionTotal";
 import { useAuth } from "../auth/AuthProvider";
 import { ReceiptEntry, type ReceiptEntryDraft } from "../components/receipts/ReceiptEntry";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
@@ -244,8 +244,6 @@ export function ImportPage() {
       ),
     enabled: Boolean(preview),
   });
-  // Read while the preview is reviewed so a commit knows whether the workspace was empty.
-  const workspaceTransactionTotal = useWorkspaceTransactionTotal(workspace, Boolean(preview));
 
   const previewMutation = useMutation({
     mutationFn: ({ input }: { input: Parameters<typeof previewImport>[1]; generation: number }) =>
@@ -276,8 +274,13 @@ export function ImportPage() {
       workbookClientRef.current?.dispose();
       workbookClientRef.current = undefined;
       setResult(data);
-      // Unknown or non-empty totals never fire; the module keeps it to one per page load.
-      if (workspaceTransactionTotal === 0) captureFunnelEvent("first_import_committed", {});
+      // The rows this commit inserted, read back against the workspace total, tell whether
+      // the workspace was empty before it. A failed or unknown read never fires, and the
+      // module keeps the event to one per page load.
+      const transactionTotal = await readWorkspaceTransactionTotal(queryClient, workspace);
+      if (transactionTotal !== undefined && transactionTotal === data.importedCount) {
+        captureFunnelEvent("first_import_committed", {});
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),

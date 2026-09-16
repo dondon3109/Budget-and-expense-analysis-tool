@@ -79,15 +79,18 @@ export function PrivacyPolicyPage() {
             and security diagnostics, rate-limit data, errors, and service-health information.
           </li>
           <li>
-            <strong>Optional analytics:</strong> limited aggregate page-use and Core Web Vitals
-            performance information sent to PostHog on public web pages in cookieless, memory-only
-            mode, plus six anonymous conversion steps that cover the signup and app surfaces: a
-            signup page view, the outcome of a signup attempt, a first app load, a first import into
-            an empty workspace, assistant consent, and a first assistant question. Those steps are
-            cookieless, carry no financial detail, and write nothing to your device: they never
-            include an email, name, amount, category, account, or tenant identifier, free text, or a
-            persistent identifier. Zoption does not send financial workspace data, account
-            credentials, or assistant conversations to the analytics platform.
+            <strong>Measurement and optional analytics:</strong> limited aggregate page-use and
+            Core Web Vitals performance information sent to PostHog on public web pages in
+            cookieless, memory-only mode, plus six anonymous conversion steps that cover the signup
+            and app surfaces: a signup page view, the outcome of a signup attempt, a first app load,
+            a first import into an empty workspace, assistant consent, and a first assistant
+            question. Those steps are cookieless, carry no financial detail, and write nothing to
+            your device: they never include an email, name, amount, category, account, or tenant
+            identifier, free text, page address with parameters, or a persistent identifier. This
+            measurement runs without an Analytics choice because nothing is stored on your device
+            and nothing identifies you; the optional Analytics and Marketing categories stay off and
+            gate any provider connected in the future. Zoption does not send financial workspace
+            data, account credentials, or assistant conversations to the analytics platform.
           </li>
         </ul>
         <div className="legal-callout">

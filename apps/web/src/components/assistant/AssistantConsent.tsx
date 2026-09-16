@@ -5,10 +5,21 @@ import { captureFunnelEvent } from "../../analytics/funnel";
 interface AssistantConsentProps {
   accepting: boolean;
   error?: string;
-  onAccept: () => void;
+  onAccept: () => void | Promise<unknown>;
 }
 
 export function AssistantConsent({ accepting, error, onAccept }: AssistantConsentProps) {
+  // The consent step is recorded only once the grant resolves, so a failed grant
+  // shows the page error without counting as consent.
+  async function accept() {
+    try {
+      await onAccept();
+    } catch {
+      return;
+    }
+    captureFunnelEvent("assistant_consent_granted", {});
+  }
+
   return (
     <section className="assistant-consent" aria-labelledby="assistant-consent-title">
       <span className="assistant-consent-mark" aria-hidden="true">
@@ -85,10 +96,7 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
       <button
         className="button primary"
         type="button"
-        onClick={() => {
-          captureFunnelEvent("assistant_consent_granted", {});
-          onAccept();
-        }}
+        onClick={() => void accept()}
         disabled={accepting}
       >
         {accepting ? "Enabling assistant…" : "Accept and continue"}

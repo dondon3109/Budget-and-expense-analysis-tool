@@ -124,6 +124,33 @@ describe("PostHog Web Analytics", () => {
     });
   });
 
+  it("reduces the URL and referrer posthog attaches to origin and path", async () => {
+    render(<AnalyticsApp initialEntry="/" />);
+    await waitFor(() => expect(mockedPostHog.init).toHaveBeenCalledTimes(1));
+
+    const options = mockedPostHog.__getInitOptions();
+    const sanitize = options?.sanitize_properties as (
+      properties: Record<string, unknown>,
+    ) => Record<string, unknown>;
+    expect(typeof sanitize).toBe("function");
+
+    // A private route can carry a bookmarked search filter or an identifier in its query
+    // string, so neither URL may reach the analytics platform intact.
+    expect(
+      sanitize({
+        $current_url: "https://app.zoption.site/app/transactions?search=rent%20gcash#txn-42",
+        $referrer: "https://app.zoption.site/app?account=acct-1#top",
+        distinct_id: "anonymous",
+      }),
+    ).toEqual({
+      $current_url: "https://app.zoption.site/app/transactions",
+      $referrer: "https://app.zoption.site/app",
+      distinct_id: "anonymous",
+    });
+
+    expect(sanitize({ $referrer: "/app/import?search=rent" })).toEqual({ $referrer: "/app/import" });
+  });
+
   it("does not initialize or capture when VITE_POSTHOG_KEY is not configured", async () => {
     vi.stubEnv("VITE_POSTHOG_KEY", "");
     render(<AnalyticsApp initialEntry="/" />);
@@ -132,14 +159,14 @@ describe("PostHog Web Analytics", () => {
     expect(mockedPostHog.__getCapturedEvents()).toHaveLength(0);
   });
 
-  it("does not initialize or track when landing directly on private/authenticated routes", async () => {
+  it("does not record pageviews when landing directly on private/authenticated routes", async () => {
     render(<AnalyticsApp initialEntry="/app" />);
 
     expect(mockedPostHog.init).not.toHaveBeenCalled();
     expect(mockedPostHog.__getCapturedEvents()).toHaveLength(0);
   });
 
-  it("does not initialize or track when landing on authenticated subroutes or login", async () => {
+  it("does not record pageviews when landing on authenticated subroutes or login", async () => {
     render(<AnalyticsApp initialEntry="/app/transactions" />);
     expect(mockedPostHog.init).not.toHaveBeenCalled();
     expect(mockedPostHog.__getCapturedEvents()).toHaveLength(0);
@@ -150,7 +177,7 @@ describe("PostHog Web Analytics", () => {
     expect(mockedPostHog.__getCapturedEvents()).toHaveLength(0);
   });
 
-  it("stops tracking when navigating from a public route to private financial routes", async () => {
+  it("stops pageview tracking when navigating from a public route to private financial routes", async () => {
     const user = userEvent.setup();
     render(<AnalyticsApp initialEntry="/" />);
 

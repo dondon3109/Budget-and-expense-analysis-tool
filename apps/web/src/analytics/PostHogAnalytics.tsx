@@ -14,6 +14,37 @@ function getPostHogHost(): string {
 
 let isInitialized = false;
 
+/**
+ * posthog-js attaches $current_url and $referrer from the browser, and a private route
+ * can carry a search filter or an identifier in its query string on purpose (a bookmarked
+ * transaction view, for example). Reduce both to the origin and path, the same shape the
+ * manual pageview below sends, so no event can carry page parameters.
+ */
+export function sanitizeAnalyticsUrl(value: string): string {
+  const withoutFragment = value.split("#")[0] ?? value;
+  const withoutQuery = withoutFragment.split("?")[0] ?? withoutFragment;
+
+  try {
+    const url = new URL(withoutQuery);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return withoutQuery;
+  }
+}
+
+export function sanitizeAnalyticsProperties(
+  properties: Record<string, unknown>,
+): Record<string, unknown> {
+  const sanitized = { ...properties };
+
+  for (const key of ["$current_url", "$referrer"]) {
+    const value = sanitized[key];
+    if (typeof value === "string" && value.length > 0) sanitized[key] = sanitizeAnalyticsUrl(value);
+  }
+
+  return sanitized;
+}
+
 export function ensurePostHogInitialized(): boolean {
   const posthogKey = getPostHogKey();
   if (!posthogKey) return false;
@@ -31,6 +62,7 @@ export function ensurePostHogInitialized(): boolean {
     disable_surveys: true,
     disable_external_dependency_loading: true,
     advanced_disable_flags: true,
+    sanitize_properties: sanitizeAnalyticsProperties,
     capture_performance: {
       web_vitals: true,
       web_vitals_allowed_metrics: ["LCP", "CLS", "INP"],

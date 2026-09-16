@@ -809,13 +809,15 @@ describe("ImportPage", () => {
     });
   });
 
-  it("records a first import when the workspace held no transactions before the commit", async () => {
+  it("records a first import when the committed rows account for the whole workspace total", async () => {
     const user = userEvent.setup();
+    // The default commit mock inserts one row, so a total of one after the commit means
+    // the workspace held no transactions before it.
     vi.mocked(getTransactions).mockResolvedValueOnce({
       items: [],
       page: 1,
       pageSize: 1,
-      total: 0,
+      total: 1,
       totalPages: 1,
     });
     const { container } = renderPage();
@@ -823,26 +825,25 @@ describe("ImportPage", () => {
 
     await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
-    await waitFor(() => expect(getTransactions).toHaveBeenCalledOnce());
-    await act(async () => Promise.resolve());
     await user.click(await screen.findByRole("button", { name: "Import 1 ready rows" }));
 
     await screen.findByText("Import complete");
-    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("first_import_committed", {});
+    await waitFor(() =>
+      expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("first_import_committed", {}),
+    );
   });
 
-  it("records no first import when the workspace already held transactions", async () => {
+  it("records no first import when the workspace total holds more than this commit inserted", async () => {
     const user = userEvent.setup();
     const { container } = renderPage();
     const csv = "Date,Description,Amount,Category\n2026-07-20,Market,-50.00,Food & dining";
 
     await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
-    await waitFor(() => expect(getTransactions).toHaveBeenCalledOnce());
-    await act(async () => Promise.resolve());
     await user.click(await screen.findByRole("button", { name: "Import 1 ready rows" }));
 
     await screen.findByText("Import complete");
-    expect(funnel.captureFunnelEvent).not.toHaveBeenCalled();
+    await waitFor(() => expect(getTransactions).toHaveBeenCalled());
+    expect(funnel.captureFunnelEvent).not.toHaveBeenCalledWith("first_import_committed", {});
   });
 });

@@ -347,7 +347,7 @@ export function AssistantPage() {
           <AssistantConsent
             accepting={consentMutation.isPending}
             error={consentMutation.error?.message}
-            onAccept={() => consentMutation.mutate()}
+            onAccept={() => consentMutation.mutateAsync()}
           />
         </div>
       </AppShell>

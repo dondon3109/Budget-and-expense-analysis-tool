@@ -194,12 +194,13 @@ describe("SpreadsheetMigrationWizard", () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();
     const onClose = vi.fn();
-    // An empty workspace makes this commit the workspace's first import.
+    // The commit mock inserts one row, so a total of one after the commit means the
+    // workspace was empty and this was its first import.
     apiMocks.getTransactions.mockResolvedValueOnce({
       items: [],
       page: 1,
       pageSize: 1,
-      total: 0,
+      total: 1,
       totalPages: 1,
     });
     renderWizard({ onComplete, onClose });
@@ -247,8 +248,6 @@ describe("SpreadsheetMigrationWizard", () => {
     });
 
     // Commit import
-    await waitFor(() => expect(apiMocks.getTransactions).toHaveBeenCalledOnce());
-    await act(async () => Promise.resolve());
     const commitBtn = screen.getByRole("button", { name: /import 1 transactions/i });
     await user.click(commitBtn);
 
@@ -256,7 +255,9 @@ describe("SpreadsheetMigrationWizard", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Migration Complete!" })).toBeInTheDocument();
     });
-    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("first_import_committed", {});
+    await waitFor(() =>
+      expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("first_import_committed", {}),
+    );
 
     const finishBtn = screen.getByRole("button", { name: /view my populated dashboard/i });
     await user.click(finishBtn);

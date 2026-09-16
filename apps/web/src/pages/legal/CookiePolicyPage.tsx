@@ -37,7 +37,10 @@ export function CookiePolicyPage() {
           Vitals (LCP, CLS, INP) performance measurement on public pages. PostHog operates in
           cookieless, memory-only mode without setting analytics cookies, storing persistent device
           identifiers, or creating person profiles. Zoption does not send your financial workspace
-          data, account credentials, or assistant conversations to the analytics platform.
+          data, account credentials, or assistant conversations to the analytics platform. Because
+          nothing is stored on your device and nothing identifies you, this measurement runs
+          without an Analytics choice, and the Analytics and Marketing categories stay off and gate
+          any provider connected in the future.
         </p>
         <p>
           Zoption also records six anonymous conversion steps so the path from a first public page
@@ -45,7 +48,7 @@ export function CookiePolicyPage() {
           a first app load, a first import into an empty workspace, assistant consent, and a first
           assistant question. These steps are cookieless, carry no financial detail, and write
           nothing to your device: they never include an email, name, amount, category, account, or
-          tenant identifier, free text, or a persistent identifier.
+          tenant identifier, free text, page address with parameters, or a persistent identifier.
         </p>
         <h3>Marketing — off by default</h3>
         <p>
@@ -92,10 +95,11 @@ export function CookiePolicyPage() {
       <section>
         <h2>5. Providers and future changes</h2>
         <p>
-          PostHog is Zoption&apos;s public web analytics and performance measurement provider.
-          It receives aggregate page-use and Core Web Vitals measurements in cookieless,
-          memory-only mode without setting analytics cookies or tracking authenticated financial
-          application activity. Before enabling any additional Analytics or Marketing provider,
+          PostHog is Zoption&apos;s web measurement provider. It receives cookieless, memory-only
+          page-use and Core Web Vitals measurements on public pages and the six anonymous
+          conversion steps described in section 2. It never receives what you enter: no amounts,
+          categories, accounts, search text, page addresses with parameters, or free text, and no
+          person profile is built. Before enabling any additional Analytics or Marketing provider,
           Zoption must connect it to the consent gate, update this policy and its vendor inventory,
           disclose purposes and retention, and make any minimal Content Security Policy changes
           deliberately. Optional technology must not load before the corresponding consent.

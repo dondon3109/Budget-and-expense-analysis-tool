@@ -173,7 +173,7 @@ describe("assistant UI", () => {
     funnel.captureFunnelEvent.mockReset();
   });
 
-  it("requires an explicit consent action", () => {
+  it("requires an explicit consent action and records it only after the grant resolves", async () => {
     const accept = vi.fn();
     render(<AssistantConsent accepting={false} onAccept={accept} />);
     expect(screen.getByText(/only the financial data needed/i)).toBeInTheDocument();
@@ -183,7 +183,19 @@ describe("assistant UI", () => {
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
     expect(accept).toHaveBeenCalledOnce();
-    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("assistant_consent_granted", {});
+    await waitFor(() =>
+      expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("assistant_consent_granted", {}),
+    );
+  });
+
+  it("does not record consent when the grant fails", async () => {
+    const accept = vi.fn().mockRejectedValue(new Error("The assistant could not be enabled."));
+    render(<AssistantConsent accepting={false} onAccept={accept} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
+
+    await waitFor(() => expect(accept).toHaveBeenCalledOnce());
+    expect(funnel.captureFunnelEvent).not.toHaveBeenCalledWith("assistant_consent_granted", {});
   });
 
   it("requires renewed consent when the stored disclosure version is stale", async () => {
