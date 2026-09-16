@@ -203,10 +203,12 @@ Your-Money-or-Your-Life and hold to a higher accuracy bar.
 
 **Content dates.** Each route has a `*_LAST_MODIFIED` constant feeding both
 `<lastmod>` and `WebPage.dateModified`. Update it whenever the page's copy changes;
-the two must stay equal and neither may be dated in the future. A drift check is
-worth automating — compare each constant against
-`git log -1 --format=%ad --date=short -- <page sources>` in CI. Not implemented yet;
-it needs a route-to-source map maintained alongside the constants.
+the two must stay equal and neither may be dated in the future. The drift check is
+implemented: `apps/web/tests/content-freshness.test.ts` compares every declared date
+against the last commit that touched the page's sources, using the route-to-source map
+in `apps/web/src/seo/contentSources.ts`. Add a map entry in the same change that
+publishes a route, and bump that page's date; CI checks out full history for this
+(`fetch-depth: 0`).
 
 **Structured data.** One `WebSite` node per graph, `@id`-linked. Home uses
 `WebApplication`; other public pages use `WebPage`; `/install` adds
@@ -242,7 +244,7 @@ This document ranks opportunities qualitatively. To prioritize on evidence:
 - [ ] Decide on Cluster B Philippine budgeting guides
 - [ ] Decide on Cluster D feature explainers
 - [ ] Connect GSC and Ahrefs to replace qualitative ranking with real data
-- [ ] Automate the content-date drift check
+- [x] Automate the content-date drift check (`apps/web/tests/content-freshness.test.ts`)
 
 ## Build pipeline
 
