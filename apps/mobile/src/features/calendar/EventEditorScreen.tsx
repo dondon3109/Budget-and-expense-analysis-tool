@@ -32,7 +32,8 @@ export function EventEditorScreen() {
   const initialized = useRef(false);
 
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(() => single(params.date) ?? todayIso());
+  const dateParam = single(params.date);
+  const [date, setDate] = useState(() => (dateParam && dateParam.trim().length > 0 ? dateParam.trim() : todayIso()));
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");

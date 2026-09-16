@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { monthlySubscriptionCost, resolveCategoryEmoji } from "@zoption/shared";
+import { monthlySubscriptionCost, resolveCategoryEmoji, type Currency } from "@zoption/shared";
 
 import {
   useDashboardData,
@@ -21,6 +21,7 @@ import {
   EmptyState,
   ErrorState,
   MoneyValue,
+  moneyAccessibilityLabel,
   Skeleton,
 } from "@/ui/components";
 import { Screen } from "@/ui/screen";
@@ -367,11 +368,12 @@ function SubscriptionRow({
   const isCanceled = subscription.status === "canceled";
   const isYearly = subscription.billingCycle === "yearly";
   const monthlyEquivalent = isYearly ? Math.round(subscription.amountMinor / 12) : null;
+  const currency = (account?.currency as Currency) ?? "PHP";
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${subscription.name}, ${subscription.amountMinor} minor, ${subscription.status}`}
+      accessibilityLabel={`${subscription.name}, ${moneyAccessibilityLabel(subscription.amountMinor, currency)}, ${subscription.status}`}
       android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
       onPress={onPress}
     >

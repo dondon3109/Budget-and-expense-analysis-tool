@@ -497,7 +497,7 @@ export default function ReceiptScanScreen() {
   );
 
   return (
-    <Screen title="Scan receipt" showHeading={false}>
+    <Screen hasHeader title="Scan receipt">
       {phase === "loading" ? (
         <View className="w-full items-center py-10">
           <ActivityIndicator color={theme.colors.brand} />

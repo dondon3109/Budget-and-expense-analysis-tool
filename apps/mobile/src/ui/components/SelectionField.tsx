@@ -107,7 +107,7 @@ export function SelectionField({
         accessibilityHint={error ?? hint ?? `Opens ${sheetTitle.toLowerCase()}`}
         accessibilityState={{ disabled: Boolean(disabled), expanded: open }}
         disabled={disabled}
-        onPress={() => setOpen(true)}
+        onPress={() => setOpen((current) => !current)}
         style={[
           styles.field,
           {

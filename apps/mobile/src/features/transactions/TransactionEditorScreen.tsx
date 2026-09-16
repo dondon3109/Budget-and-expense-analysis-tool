@@ -27,6 +27,7 @@ import {
   ConfirmationDialog,
   ErrorState,
   FormField,
+  formatDateInput,
   SelectionField,
   Skeleton,
   SyncStatus,
@@ -756,7 +757,7 @@ export function TransactionEditorScreen() {
             keyboardType="numbers-and-punctuation"
             label="Date"
             maxLength={10}
-            onChangeText={(value) => updateValue("date", value)}
+            onChangeText={(value) => updateValue("date", formatDateInput(value))}
             placeholder="YYYY-MM-DD"
             value={values.date}
           />

@@ -101,4 +101,18 @@ describe("Screen", () => {
 
     expect(screen.getByTestId("pinned-fab")).toBeTruthy();
   });
+
+  it("renders leadingAction on the leading side of the heading", async () => {
+    await render(
+      <Screen
+        leadingAction={<Text testID="back-btn">Back</Text>}
+        title="Screen with Back"
+      >
+        <Text>Content</Text>
+      </Screen>,
+    );
+
+    expect(screen.getByTestId("back-btn")).toBeTruthy();
+    expect(screen.getByRole("header", { name: "Screen with Back" })).toBeTruthy();
+  });
 });

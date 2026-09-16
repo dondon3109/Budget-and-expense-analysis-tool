@@ -15,6 +15,7 @@ export interface ScreenProps extends PropsWithChildren {
   title: string;
   description?: string;
   action?: ReactNode;
+  leadingAction?: ReactNode;
   scroll?: boolean;
   showHeading?: boolean;
   refreshing?: boolean;
@@ -29,6 +30,7 @@ export function Screen({
   title,
   description,
   action,
+  leadingAction,
   scroll = true,
   showHeading = true,
   refreshing,
@@ -45,7 +47,8 @@ export function Screen({
   const resolvedEdges =
     edges ?? (hasHeader ? (["bottom", "left", "right"] as const) : (["top", "left", "right"] as const));
 
-  const shouldRenderHeading = showHeading && (!hasHeader || Boolean(description || action));
+  const shouldRenderHeading =
+    showHeading && (!hasHeader || Boolean(description || action || leadingAction));
 
   const handleRefresh = useCallback(async () => {
     if (!onRefresh) return;
@@ -84,6 +87,7 @@ export function Screen({
             description ? styles.headingRowWithDescription : styles.headingRowCentered,
           ]}
         >
+          {leadingAction ? <View style={styles.leadingBlock}>{leadingAction}</View> : null}
           {!hasHeader || description ? (
             <View className="gap-1" style={styles.titleBlock}>
               {!hasHeader ? (
@@ -152,6 +156,7 @@ const styles = StyleSheet.create({
   },
   // The title and description adapt to available width while preserving space
   // for the action controls on the right.
+  leadingBlock: { flexShrink: 0 },
   titleBlock: { flex: 1, minWidth: 0 },
   actionBlock: { flexShrink: 0 },
 });

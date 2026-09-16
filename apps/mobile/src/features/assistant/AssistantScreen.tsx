@@ -805,7 +805,7 @@ export function AssistantScreen() {
 
   if (phase === "loading") {
     return (
-      <Screen title="AI Assistant" action={backAction}>
+      <Screen title="AI Assistant" leadingAction={backAction}>
         <SkeletonLines lines={5} />
       </Screen>
     );
@@ -813,7 +813,7 @@ export function AssistantScreen() {
 
   if (phase === "error" || isOffline) {
     return (
-      <Screen title="AI Assistant" action={backAction}>
+      <Screen title="AI Assistant" leadingAction={backAction}>
         <AssistantUnavailableView
           errorMessage={fatalError}
           isOffline={isOffline}
@@ -827,7 +827,7 @@ export function AssistantScreen() {
 
   if (showConsent || showIdentity) {
     return (
-      <Screen title="AI Assistant" scroll action={backAction}>
+      <Screen title="AI Assistant" scroll leadingAction={backAction}>
         {showConsent ? (
           <AssistantConsentCard
             retentionDays={preferences?.retentionDays ?? 90}

@@ -160,7 +160,7 @@ describe("SubscriptionsScreen", () => {
     expect(router.push).toHaveBeenCalledWith("/(app)/subscription");
 
     // Pressing a row opens the subscription for editing
-    const netflixRow = screen.getByLabelText("Netflix, 54900 minor, active");
+    const netflixRow = screen.getByLabelText("Netflix, 549.00 Philippine pesos, active");
     await fireEvent.press(netflixRow);
     expect(router.push).toHaveBeenCalledWith({
       pathname: "/(app)/subscription",
@@ -188,6 +188,6 @@ describe("SubscriptionsScreen", () => {
     const canceledChip = screen.getByRole("tab", { name: /Canceled/ });
     await fireEvent.press(canceledChip);
     expect(screen.getByText("Gym Membership")).toBeTruthy();
-    expect(screen.queryByLabelText("Netflix, 54900 minor, active")).toBeNull();
+    expect(screen.queryByLabelText("Netflix, 549.00 Philippine pesos, active")).toBeNull();
   });
 });

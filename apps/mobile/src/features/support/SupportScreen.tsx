@@ -9,6 +9,7 @@ import {
   type ListRenderItemInfo,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -463,7 +464,7 @@ function BugReportReview({
   const patch = (update: Partial<BugReportDraft>): void => onChange({ ...draft, ...update });
   const valid = useMemo(() => validateBugDraft(draft) === null, [draft]);
   return (
-    <Card>
+    <Card style={styles.reviewCard}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator
@@ -614,6 +615,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     maxHeight: "75%",
   },
+  reviewCard: { maxHeight: "100%", flexShrink: 1 },
   reviewScroll: { maxHeight: "100%" },
   reviewScrollContent: { flexGrow: 1, paddingBottom: spacing.xs },
   notice: {

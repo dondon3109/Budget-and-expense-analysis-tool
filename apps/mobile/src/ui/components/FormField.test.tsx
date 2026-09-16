@@ -90,6 +90,11 @@ describe("FormField", () => {
       expect(formatDateInput("2026/09/16")).toBe("2026-09-16");
     });
 
+    it("converts dot format YYYY.MM.DD into YYYY-MM-DD", () => {
+      const { formatDateInput } = require("./FormField");
+      expect(formatDateInput("2026.09.16")).toBe("2026-09-16");
+    });
+
     it("leaves already formatted dates and partial inputs intact", () => {
       const { formatDateInput } = require("./FormField");
       expect(formatDateInput("2026-09-16")).toBe("2026-09-16");

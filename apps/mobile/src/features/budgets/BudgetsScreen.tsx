@@ -15,7 +15,7 @@ import {
   ErrorState,
   FormField,
   MoneyValue,
-  formatMoneyMinor,
+  moneyAccessibilityLabel,
   SelectionField,
   Skeleton,
 } from "@/ui/components";
@@ -727,7 +727,7 @@ function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => v
           ? "Review this budget conflict"
           : `Edit ${row.categoryName} budget`
       }
-      accessibilityLabel={`${row.categoryName} budget: spent ${formatMoneyMinor(row.spentMinor, "PHP")} of ${formatMoneyMinor(row.limitMinor, "PHP")}, ${row.remainingMinor >= 0 ? `${formatMoneyMinor(row.remainingMinor, "PHP")} remaining` : `${formatMoneyMinor(Math.abs(row.remainingMinor), "PHP")} over budget`}`}
+      accessibilityLabel={`${row.categoryName} budget: spent ${moneyAccessibilityLabel(row.spentMinor, "PHP")} of ${moneyAccessibilityLabel(row.limitMinor, "PHP")}, ${row.remainingMinor >= 0 ? `${moneyAccessibilityLabel(row.remainingMinor, "PHP")} remaining` : `${moneyAccessibilityLabel(Math.abs(row.remainingMinor), "PHP")} over budget`}`}
       accessible
       style={[
         styles.budgetCard,

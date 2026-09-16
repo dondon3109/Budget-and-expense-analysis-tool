@@ -9,8 +9,8 @@ export function formatDateInput(val: string): string {
   if (/^\d{8}$/.test(trimmed)) {
     return `${trimmed.slice(0, 4)}-${trimmed.slice(4, 6)}-${trimmed.slice(6, 8)}`;
   }
-  if (/^\d{4}\/\d{2}\/\d{2}$/.test(trimmed)) {
-    return trimmed.replace(/\//g, "-");
+  if (/^\d{4}[./]\d{2}[./]\d{2}$/.test(trimmed)) {
+    return trimmed.replace(/[./]/g, "-");
   }
   return val;
 }

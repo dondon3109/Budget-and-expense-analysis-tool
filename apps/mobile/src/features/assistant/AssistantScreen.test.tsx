@@ -6,7 +6,7 @@ import { AssistantScreen } from "./AssistantScreen";
 // into checkboxes and delete only the conversations the user picked.
 
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() },
+  router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn().mockReturnValue(true) },
 }));
 
 jest.mock("@react-native-community/netinfo", () => ({
@@ -224,5 +224,18 @@ describe("assistant screen multi-select", () => {
       ),
     );
     await waitFor(() => expect(screen.queryByText("Monthly budget PHP 30,000")).toBeNull());
+  });
+
+  it("navigates back when back button is pressed on threads view", async () => {
+    const { router } = require("expo-router");
+    api.listAssistantThreads.mockResolvedValue({ items: threads, nextCursor: null });
+
+    await render(<AssistantScreen />);
+    await screen.findByText("Budget review");
+
+    const backButton = screen.getByRole("button", { name: "Back" });
+    await fireEvent.press(backButton);
+
+    expect(router.back).toHaveBeenCalledTimes(1);
   });
 });

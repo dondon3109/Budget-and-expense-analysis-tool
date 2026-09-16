@@ -30,7 +30,8 @@ describe("SelectionField", () => {
     await fireEvent.press(screen.getByRole("button", { name: /Test Field/ }));
 
     // A Modal should be present
-    const modals = screen.root?.queryAll((node) => node.type === Modal || node.type === "Modal") ?? [];
+    const modals =
+      screen.root?.queryAll((node) => node.type === "Modal" || (node.type as unknown) === Modal) ?? [];
     expect(modals.length).toBe(1);
     expect(screen.getByText("Option 1")).toBeTruthy();
 
@@ -56,13 +57,15 @@ describe("SelectionField", () => {
       </View>,
     );
 
-    const modalsBefore = screen.root?.queryAll((node) => node.type === Modal || node.type === "Modal") ?? [];
+    const modalsBefore =
+      screen.root?.queryAll((node) => node.type === "Modal" || (node.type as unknown) === Modal) ?? [];
     expect(modalsBefore.length).toBe(1);
 
     // Open nested selection field
     await fireEvent.press(screen.getByRole("button", { name: /Nested Field/ }));
 
-    const modalsAfter = screen.root?.queryAll((node) => node.type === Modal || node.type === "Modal") ?? [];
+    const modalsAfter =
+      screen.root?.queryAll((node) => node.type === "Modal" || (node.type as unknown) === Modal) ?? [];
     expect(modalsAfter.length).toBe(1);
 
     // Options are rendered inline
@@ -72,5 +75,32 @@ describe("SelectionField", () => {
     // Select option 2
     await fireEvent.press(screen.getByLabelText("Option 2"));
     expect(handleSelect).toHaveBeenCalledWith("opt-2");
+  });
+
+  it("collapses inline options when the field is pressed again while open", async () => {
+    await render(
+      <View>
+        <BottomSheet visible title="Parent Sheet" onDismiss={jest.fn()}>
+          <SelectionField
+            label="Toggle Field"
+            value=""
+            options={OPTIONS}
+            placeholder="Select option"
+            sheetTitle="Toggle Sheet"
+            onSelect={jest.fn()}
+          />
+        </BottomSheet>
+      </View>,
+    );
+
+    const button = screen.getByRole("button", { name: /Toggle Field/ });
+
+    // Open
+    await fireEvent.press(button);
+    expect(screen.getByText("Option 1")).toBeTruthy();
+
+    // Close
+    await fireEvent.press(button);
+    expect(screen.queryByText("Option 1")).toBeNull();
   });
 });
