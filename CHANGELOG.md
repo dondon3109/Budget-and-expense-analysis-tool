@@ -2,6 +2,12 @@
 
 All notable product changes are documented here.
 
+## Unreleased
+
+### Fixed
+
+- Quick Paste from SMS / Alert now reads alerts that write the peso as a single letter P, such as "You have paid P64.33 GCash to PAYPAL \*GIT", and it reads timestamps in the 07-17-26 12:26:58 AM form. The amount, merchant, date, and reference number fill in on web and mobile instead of leaving the extracted details blank.
+
 ## 2.34.1 — 2026-09-17
 
 ### Changed

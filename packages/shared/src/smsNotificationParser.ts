@@ -104,6 +104,20 @@ function resolveYear(yearStr: string | undefined, refYear: number): number {
   return num;
 }
 
+/**
+ * Resolves the order of a numeric date. A component above 12 can only be a day, otherwise the
+ * locale flag decides, defaulting to month first for US style bank messages.
+ */
+function resolveNumericMonthDay(
+  first: number,
+  second: number,
+  preferDayFirst: boolean,
+): { month: number; day: number } {
+  if (first > 12) return { month: second, day: first };
+  if (second > 12) return { month: first, day: second };
+  return preferDayFirst ? { month: second, day: first } : { month: first, day: second };
+}
+
 function parseDateTimeFromText(
   text: string,
   referenceDate?: string,
@@ -190,35 +204,40 @@ function parseDateTimeFromText(
     const precededByDateWord = /(?:on|dated|at)[ \t]+\d{1,2}\/\d{1,2}/i.test(text);
 
     if (hasExplicitYear || hasTime || isPadded || precededByDateWord) {
-      const first = Number(slashMatch[1]);
-      const second = Number(slashMatch[2]);
       const y = resolveYear(slashMatch[3], refYear);
       const time = slashMatch[4]
         ? normalizeTime(slashMatch[4], slashMatch[5], slashMatch[6], slashMatch[7])
         : undefined;
-
-      let m: number;
-      let d: number;
-      if (first > 12) {
-        // Must be DD/MM
-        d = first;
-        m = second;
-      } else if (second > 12) {
-        // Must be MM/DD
-        m = first;
-        d = second;
-      } else if (preferDayFirst) {
-        d = first;
-        m = second;
-      } else {
-        // Default to MM/DD
-        m = first;
-        d = second;
-      }
+      const { month: m, day: d } = resolveNumericMonthDay(
+        Number(slashMatch[1]),
+        Number(slashMatch[2]),
+        preferDayFirst,
+      );
 
       if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
         return { date: formatIsoDate(y, m, d), time };
       }
+    }
+  }
+
+  // Pattern 5: MM-DD-YY or DD-MM-YY (e.g. 07-17-26 12:26:58 AM). Both separators are required and
+  // the year must end the token, so phone numbers like 0917-123-4567 are not read as dates.
+  const dashedPattern =
+    /\b(\d{1,2})-(\d{1,2})-(\d{2,4})(?![-\d])(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?[ \t]*(AM|PM)?)?/i;
+  const dashedMatch = dashedPattern.exec(text);
+  if (dashedMatch) {
+    const y = resolveYear(dashedMatch[3], refYear);
+    const time = dashedMatch[4]
+      ? normalizeTime(dashedMatch[4], dashedMatch[5], dashedMatch[6], dashedMatch[7])
+      : undefined;
+    const { month: m, day: d } = resolveNumericMonthDay(
+      Number(dashedMatch[1]),
+      Number(dashedMatch[2]),
+      preferDayFirst,
+    );
+
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return { date: formatIsoDate(y, m, d), time };
     }
   }
 
@@ -303,7 +322,12 @@ function cleanPayee(payee?: string): string {
 
 // --- Linear payee extraction helpers (avoid ReDoS: no nested overlapping quantifiers, no (.+?) with optional trailing groups) ---
 
-/** Bounded amount capture: up to 15 chars of digits/commas with optional .x or .xx */
+/**
+ * Bounded amount capture: up to 15 chars of digits/commas with optional .x or .xx. Amount
+ * prefixes are written as `(?:PHP|P|\\u20B1|\\$|USD)?`; the bare `P` is how GCash and several
+ * banks write the peso ("You have paid P64.33"), and it stays after `PHP` so the longer marker
+ * wins the alternation.
+ */
 const BOUNDED_AMOUNT = "[\\d,]{1,15}(?:\\.\\d{1,2})?";
 
 function extractAmountAfterPrefix(
@@ -581,7 +605,7 @@ export function parseSmsNotification(
     if (/You have paid/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You have paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(`You have paid[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], gcashTerminators);
@@ -613,7 +637,7 @@ export function parseSmsNotification(
     if (/You have sent/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You have sent[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(`You have sent[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], gcashTerminators);
@@ -645,7 +669,7 @@ export function parseSmsNotification(
     if (/You have received/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You have received[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(`You have received[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["from"]], gcashTerminators);
@@ -678,7 +702,7 @@ export function parseSmsNotification(
   if (/Payment of/i.test(rawText) && /was successful/i.test(rawText)) {
     const amt = extractAmountAfterPrefix(
       rawText,
-      new RegExp(`Payment of[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      new RegExp(`Payment of[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
     );
     if (amt) {
       const payeeRaw = extractPayeeBetween(
@@ -720,7 +744,7 @@ export function parseSmsNotification(
     if (/You paid/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(`You paid[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], mayaTerminators);
@@ -751,7 +775,7 @@ export function parseSmsNotification(
     if (/You sent/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You sent[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(`You sent[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], mayaTerminators);
@@ -782,7 +806,7 @@ export function parseSmsNotification(
     if (/You received/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You received[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(`You received[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["from"]], mayaTerminators);
@@ -818,7 +842,7 @@ export function parseSmsNotification(
       const amt = extractAmountAfterPrefix(
         rawText,
         new RegExp(
-          `BPI(?:[ \\t]+Online)?[ \\t]+transfer[ \\t]+of[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`,
+          `BPI(?:[ \\t]+Online)?[ \\t]+transfer[ \\t]+of[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`,
           "i",
         ),
       );
@@ -856,7 +880,7 @@ export function parseSmsNotification(
     if (/You paid/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(`You paid[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(
@@ -899,7 +923,7 @@ export function parseSmsNotification(
     if (/You purchased/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You purchased[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(`You purchased[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(
@@ -941,7 +965,7 @@ export function parseSmsNotification(
   if (/unionbank/i.test(rawText)) {
     const amt = extractAmountAfterPrefix(
       rawText,
-      new RegExp(`(?:PHP|\\u20B1)[ \\t]*(${BOUNDED_AMOUNT})[ \\t]+debited[ \\t]+from`, "i"),
+      new RegExp(`(?:PHP|P|\\u20B1)[ \\t]*(${BOUNDED_AMOUNT})[ \\t]+debited[ \\t]+from`, "i"),
     );
     if (amt) {
       const payeeRaw = extractPayeeBetween(
@@ -981,7 +1005,7 @@ export function parseSmsNotification(
   if (/shopeepay/i.test(rawText)) {
     const amt = extractAmountAfterPrefix(
       rawText,
-      new RegExp(`Paid[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      new RegExp(`Paid[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
     );
     if (amt) {
       const payeeRaw = extractPayeeBetween(
@@ -1018,7 +1042,7 @@ export function parseSmsNotification(
   if (/grabpay/i.test(rawText)) {
     const amt = extractAmountAfterPrefix(
       rawText,
-      new RegExp(`Payment of[ \\t]+(?:PHP|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+      new RegExp(`Payment of[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
     );
     if (amt && /completed/i.test(rawText)) {
       const payeeRaw = extractPayeeBetween(
@@ -1068,7 +1092,7 @@ export function parseSmsNotification(
     const amt = extractAmountAfterPrefix(
       rawText,
       new RegExp(
-        `(?:charged|was charged|spent|debited|purchase of)[ \\t]+(?:PHP|\\u20B1|\\$|USD)?[ \\t]*(${BOUNDED_AMOUNT})`,
+        `(?:charged|was charged|spent|debited|purchase of)[ \\t]+(?:PHP|P|\\u20B1|\\$|USD)?[ \\t]*(${BOUNDED_AMOUNT})`,
         "i",
       ),
     );
@@ -1109,7 +1133,7 @@ export function parseSmsNotification(
     const amt = extractAmountAfterPrefix(
       rawText,
       new RegExp(
-        `(?:Paid|Payment of)[ \\t]+(?:PHP|\\u20B1|\\$|USD)?[ \\t]*(${BOUNDED_AMOUNT})`,
+        `(?:Paid|Payment of)[ \\t]+(?:PHP|P|\\u20B1|\\$|USD)?[ \\t]*(${BOUNDED_AMOUNT})`,
         "i",
       ),
     );
@@ -1150,7 +1174,7 @@ export function parseSmsNotification(
     const amt = extractAmountAfterPrefix(
       rawText,
       new RegExp(
-        `(?:Transferred|Sent|Transfer of)[ \\t]+(?:PHP|\\u20B1|\\$|USD)?[ \\t]*(${BOUNDED_AMOUNT})`,
+        `(?:Transferred|Sent|Transfer of)[ \\t]+(?:PHP|P|\\u20B1|\\$|USD)?[ \\t]*(${BOUNDED_AMOUNT})`,
         "i",
       ),
     );
@@ -1201,7 +1225,7 @@ export function parseSmsNotification(
     const amt = extractAmountAfterPrefix(
       rawText,
       new RegExp(
-        `(?:Received|credited with|credited)[ \\t]+(?:PHP|\\u20B1|\\$|USD)?[ \\t]*(${BOUNDED_AMOUNT})`,
+        `(?:Received|credited with|credited)[ \\t]+(?:PHP|P|\\u20B1|\\$|USD)?[ \\t]*(${BOUNDED_AMOUNT})`,
         "i",
       ),
     );
@@ -1248,7 +1272,7 @@ export function parseSmsNotification(
 
   // Fallback broad amount extractor - bounded linear
   {
-    const broadMatch = new RegExp(`(?:PHP|\\u20B1|\\$|USD)[ \\t]*(${BOUNDED_AMOUNT})`, "i").exec(
+    const broadMatch = new RegExp(`(?:PHP|P|\\u20B1|\\$|USD)[ \\t]*(${BOUNDED_AMOUNT})`, "i").exec(
       rawText,
     );
     if (broadMatch?.[1]) {

@@ -410,6 +410,40 @@ describe("smsNotificationParser", () => {
     });
   });
 
+  describe("Bare peso amounts and dashed dates", () => {
+    it("parses a real GCash alert with a P amount and MM-DD-YY timestamp", () => {
+      const text =
+        "You have paid P64.33 GCash to PAYPAL *GIT on 07-17-26 12:26:58 AM. Your new balance is P17.78. Ref. No. 5000056111527";
+      const result = parseSmsNotification(text);
+
+      expect(result).not.toBeNull();
+      expect(result).toEqual({
+        channel: "gcash",
+        type: "expense",
+        amountMinor: 6433,
+        currency: "PHP",
+        date: "2026-07-17",
+        time: "00:26:58",
+        payeeOrMerchant: "PAYPAL *GIT",
+        referenceNumber: "5000056111527",
+        rawText: text,
+        suggestedCategory: "Transfers / Cash In",
+        confidence: "high",
+      });
+    });
+
+    it("does not read a dashed mobile number as a date", () => {
+      const text = "You sent P500.00 to 0917-123-4567 via Maya. Ref No: 1122334455";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).not.toBeNull();
+      expect(result?.date).toBe("2026-08-25");
+      expect(result?.time).toBeUndefined();
+      expect(result?.amountMinor).toBe(50000);
+      expect(result?.payeeOrMerchant).toBe("0917-123-4567");
+    });
+  });
+
   describe("Edge cases", () => {
     it("returns null on empty or non-string input", () => {
       expect(parseSmsNotification("")).toBeNull();
