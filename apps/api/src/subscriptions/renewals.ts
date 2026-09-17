@@ -4,6 +4,7 @@ import {
   subscriptionRepository,
   type DueSubscriptionRenewal,
   type SubscriptionRenewalNotification,
+  type SubscriptionRenewalReason,
   type SubscriptionRepository,
 } from "../db/subscriptions";
 import { enqueueJob } from "../jobs";
@@ -27,6 +28,7 @@ export interface SubscriptionRenewalSweepResult {
   charged: number;
   rolled: number;
   uncovered: number;
+  archived: number;
   notified: number;
   failed: number;
 }
@@ -133,7 +135,17 @@ function notificationMessage(
   const account = notification.accountName ?? "the linked account";
   const dueDate = formatDate(notification.dueDate);
   const link = subscriptionsUrl(env);
-  const subject = `Your ${name} subscription could not be renewed`;
+  const archived = notification.reason === "account_archived";
+  const subject = archived
+    ? `Your ${name} subscription needs a different account`
+    : `Your ${name} subscription could not be renewed`;
+  const why = archived
+    ? `${account} was removed from your accounts, so no expense was recorded and your balance is unchanged. Choose the account this subscription should be paid from, or restore ${account}, and the charge is recorded on the next attempt.`
+    : `${account} does not have enough balance to cover this charge, so no expense was recorded and your balance is unchanged. Zoption will try again every day and record the charge as soon as the account can cover it.`;
+  const action = archived
+    ? "Choose a payment account"
+    : "Top up the account or change the subscription";
+  const heading = archived ? `${name} needs a different account` : `${name} could not be renewed`;
   const text = [
     `Zoption could not renew your ${name} subscription.`,
     "",
@@ -141,17 +153,17 @@ function notificationMessage(
     `Account: ${account}`,
     `Due date: ${dueDate}`,
     "",
-    `${account} does not have enough balance to cover this charge, so no expense was recorded and your balance is unchanged. Zoption will try again every day and record the charge as soon as the account can cover it.`,
+    why,
     "",
-    ...(link ? [`Top up the account or change the subscription: ${link}`, ""] : []),
+    ...(link ? [`${action}: ${link}`, ""] : []),
     "This is the only reminder for this missed renewal.",
   ].join("\n");
-  const html = `<h1>${escapeHtml(name)} could not be renewed</h1>
+  const html = `<h1>${escapeHtml(heading)}</h1>
 <p><strong>Amount:</strong> ${escapeHtml(amount)}<br>
 <strong>Account:</strong> ${escapeHtml(account)}<br>
 <strong>Due date:</strong> ${escapeHtml(dueDate)}</p>
-<p>${escapeHtml(account)} does not have enough balance to cover this charge, so no expense was recorded and your balance is unchanged. Zoption will try again every day and record the charge as soon as the account can cover it.</p>
-${link ? `<p><a href="${escapeHtml(link)}">Top up the account or change the subscription</a></p>` : ""}
+<p>${escapeHtml(why)}</p>
+${link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(action)}</a></p>` : ""}
 <p>This is the only reminder for this missed renewal.</p>`;
   return { to: recipient, from: senderAddress(env), subject, text, html };
 }
@@ -162,7 +174,7 @@ function deliveryErrorCode(error: unknown): string {
   return "email_delivery_failed";
 }
 
-type RenewalOutcome = "charged" | "rolled" | "uncovered";
+type RenewalOutcome = "charged" | "rolled" | "uncovered" | "archived";
 
 export function createSubscriptionRenewalService(
   repository: SubscriptionRepository = subscriptionRepository,
@@ -216,13 +228,19 @@ export function createSubscriptionRenewalService(
       const advanced = await repository.advanceRenewalSchedule(env, renewal, nextBillingDate);
       return advanced ? "rolled" : null;
     }
+    // A removed account can never be charged, so this does not wait for a balance to change.
+    if (renewal.accountArchived) return "archived";
     if (renewal.balanceMinor < renewal.amountMinor) return "uncovered";
     const charged = await repository.postRenewalCharge(env, renewal, nextBillingDate);
     return charged ? "charged" : null;
   }
 
   /** Records the one notification for this missed cycle and queues it for delivery. */
-  async function notifyUncovered(env: Bindings, renewal: DueSubscriptionRenewal): Promise<boolean> {
+  async function notifyBlocked(
+    env: Bindings,
+    renewal: DueSubscriptionRenewal,
+    reason: SubscriptionRenewalReason,
+  ): Promise<boolean> {
     const id = crypto.randomUUID();
     const created = await repository.createRenewalNotification(env, {
       id,
@@ -232,6 +250,7 @@ export function createSubscriptionRenewalService(
       subscriptionName: renewal.name,
       amountMinor: renewal.amountMinor,
       accountName: renewal.accountName,
+      reason,
     });
     if (!created) return false;
 
@@ -256,6 +275,7 @@ export function createSubscriptionRenewalService(
         charged: 0,
         rolled: 0,
         uncovered: 0,
+        archived: 0,
         notified: 0,
         failed: 0,
       };
@@ -268,7 +288,10 @@ export function createSubscriptionRenewalService(
           else if (outcome === "rolled") result.rolled += 1;
           else if (outcome === "uncovered") {
             result.uncovered += 1;
-            if (await notifyUncovered(env, renewal)) result.notified += 1;
+            if (await notifyBlocked(env, renewal, "insufficient_balance")) result.notified += 1;
+          } else if (outcome === "archived") {
+            result.archived += 1;
+            if (await notifyBlocked(env, renewal, "account_archived")) result.notified += 1;
           }
         } catch (error) {
           result.failed += 1;

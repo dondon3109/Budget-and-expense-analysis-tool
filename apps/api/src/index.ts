@@ -60,7 +60,7 @@ export default {
         );
       }
       const renewals = await subscriptionRenewalService.runDueRenewals(env, 100);
-      if (renewals.charged > 0 || renewals.uncovered > 0) {
+      if (renewals.charged > 0 || renewals.uncovered > 0 || renewals.archived > 0) {
         console.log(JSON.stringify({ message: "Subscription renewals processed", ...renewals }));
       }
       const renewalNotifications = await subscriptionRenewalService.retryPendingNotifications(

@@ -4,6 +4,12 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- A subscription paid from an account you removed no longer charges that account. Zoption skips the cycle, leaves the billing date due, and tells you once per missed cycle to pick a different account or restore the one you removed.
+
+## 2.35.0 — 2026-09-17
+
 ### Added
 
 - Subscriptions now renew themselves. Every billing date records a charge in the transaction dashboard and rolls the subscription to its next cycle, so a monthly or yearly plan keeps deducting from its account instead of charging only once when you add it.

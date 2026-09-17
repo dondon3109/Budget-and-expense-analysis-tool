@@ -244,9 +244,13 @@ export interface DueSubscriptionRenewal {
   nextBillingDate: string;
   /** The linked account balance, summed the same way the accounts screen sums it. */
   balanceMinor: number;
+  /** True when the paying account was removed, so the cycle cannot be charged at all. */
+  accountArchived: boolean;
   /** True when the due date already has a charge, leaving only the roll forward to do. */
   charged: boolean;
 }
+
+export type SubscriptionRenewalReason = "insufficient_balance" | "account_archived";
 
 export interface SubscriptionRenewalNotification {
   id: string;
@@ -256,6 +260,7 @@ export interface SubscriptionRenewalNotification {
   subscriptionName: string;
   amountMinor: number;
   accountName: string | null;
+  reason: SubscriptionRenewalReason;
 }
 
 const NOTIFICATION_ATTEMPT_LIMIT = 48;
@@ -305,7 +310,7 @@ async function findRenewalNotification(
   return env.DB.prepare(
     `SELECT id, tenant_id AS tenantId, subscription_id AS subscriptionId, due_date AS dueDate,
             subscription_name AS subscriptionName, amount_minor AS amountMinor,
-            account_name AS accountName
+            account_name AS accountName, reason
      FROM subscription_renewal_notifications WHERE id = ?`,
   )
     .bind(id)
@@ -477,6 +482,7 @@ export const subscriptionRepository: SubscriptionRepository = {
       `SELECT s.id, s.tenant_id AS tenantId, s.account_id AS accountId, a.name AS accountName,
               s.category_id AS categoryId, s.name, s.billing_cycle AS billingCycle,
               s.amount_minor AS amountMinor, s.next_billing_date AS nextBillingDate,
+              a.archived AS accountArchived,
               COALESCE((
                 SELECT SUM(t.amount_minor) FROM transactions t
                 WHERE t.tenant_id = s.tenant_id AND t.account_id = s.account_id
@@ -493,8 +499,17 @@ export const subscriptionRepository: SubscriptionRepository = {
        LIMIT ?`,
     )
       .bind(dueDate, Math.max(1, Math.min(200, Math.trunc(limit))))
-      .all<Omit<DueSubscriptionRenewal, "charged"> & { charged: number }>();
-    return rows.results.map((row) => ({ ...row, charged: Boolean(row.charged) }));
+      .all<
+        Omit<DueSubscriptionRenewal, "charged" | "accountArchived"> & {
+          charged: number;
+          accountArchived: number;
+        }
+      >();
+    return rows.results.map((row) => ({
+      ...row,
+      charged: Boolean(row.charged),
+      accountArchived: Boolean(row.accountArchived),
+    }));
   },
 
   async postRenewalCharge(env, renewal, nextBillingDate) {
@@ -527,8 +542,9 @@ export const subscriptionRepository: SubscriptionRepository = {
   async createRenewalNotification(env, notice) {
     const result = await env.DB.prepare(
       `INSERT INTO subscription_renewal_notifications
-         (id, tenant_id, subscription_id, due_date, subscription_name, amount_minor, account_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+         (id, tenant_id, subscription_id, due_date, subscription_name, amount_minor,
+          account_name, reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (subscription_id, due_date) DO NOTHING`,
     )
       .bind(
@@ -539,6 +555,7 @@ export const subscriptionRepository: SubscriptionRepository = {
         notice.subscriptionName,
         notice.amountMinor,
         notice.accountName,
+        notice.reason,
       )
       .run();
     return (result.meta.changes ?? 0) === 1;

@@ -396,6 +396,9 @@ export const subscriptionRenewalNotifications = sqliteTable(
     subscriptionName: text("subscription_name").notNull(),
     amountMinor: integer("amount_minor").notNull(),
     accountName: text("account_name"),
+    reason: text("reason", { enum: ["insufficient_balance", "account_archived"] })
+      .notNull()
+      .default("insufficient_balance"),
     status: text("status", { enum: ["pending", "sent", "failed"] })
       .notNull()
       .default("pending"),

@@ -343,6 +343,41 @@ describe("subscription renewals", () => {
     ).toEqual({ date: "2026-10-25" });
   });
 
+  it("skips the charge and says so when the paying account was removed", async () => {
+    const { env, database } = renewalEnvironment();
+    // The balance comfortably covers the charge, so only the removed account holds it back.
+    dueSubscription(database, 20_000);
+    database.exec("UPDATE accounts SET archived = 1 WHERE id = 'account-1'");
+    const sent: Array<Parameters<EmailSender["send"]>[0]> = [];
+    const service = createSubscriptionRenewalService(subscriptionRepository, {
+      sender: { send: async (message) => void sent.push(message) },
+      fetcher: recipientFetcher(),
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T08:00:00+08:00"));
+
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({
+      archived: 1,
+      uncovered: 0,
+      notified: 1,
+    });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.subject).toBe("Your Rent subscription needs a different account");
+    expect(sent[0]?.text).toContain("was removed from your accounts");
+    expect(database.prepare("SELECT count(*) AS count FROM transactions").get()).toEqual({
+      count: 1,
+    });
+    expect(
+      database.prepare("SELECT status, reason FROM subscription_renewal_notifications").get(),
+    ).toEqual({ status: "sent", reason: "account_archived" });
+    expect(
+      database
+        .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = 'subscription-1'")
+        .get(),
+    ).toEqual({ date: "2026-09-25" });
+  });
+
   it("retries a notification whose delivery failed once its lease expires", async () => {
     const { env, database } = renewalEnvironment();
     dueSubscription(database, 150_000);
