@@ -18,7 +18,7 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    - The redirect allow list carries `https://zoption.site/auth/callback`, `https://www.zoption.site/auth/callback`, the Preview Pages callback, the local callback, and the `zoption://`, `zoption-dev://`, and `zoption-preview://` mobile schemes.
    - `mailer_autoconfirm` is false, so every signup depends on this delivery path working.
    - `rate_limit_email_sent` is 30 per hour. Raise it before a launch that could send more than 30 confirmation or recovery messages in an hour.
-   - Rotating the Resend API key has to update this SMTP password in the same sitting. A stale password fails every confirmation and recovery email silently, because the app surfaces no error for a message Supabase never delivered.
+   - The SMTP password is its own Resend key, named `Supabase Auth SMTP`, deliberately separate from the Worker's `Send SMTP` key in step 12 so rotating one cannot break the other. Rotate it in the Resend dashboard, then set it here and verify delivery. A stale password fails every confirmation and recovery email silently, because the app surfaces no error for a message Supabase never delivered.
    - On the free plan a project with no traffic pauses itself after about a week. A paused project serves no Auth at all and rejects configuration changes with `Project is paused`, so restore it first and expect to restore it again after any quiet period.
 
    Read the live values back instead of trusting this list:
@@ -132,7 +132,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
     pnpm --filter @zoption/api exec wrangler secret put RESEND_API_KEY --config wrangler.deploy.jsonc --env production
     ```
 
-    The Worker is one of two consumers of this key. Supabase Auth uses the same Resend key as its SMTP password described in step 3, so rotating it means updating both, and the two consumers can be split onto separate Resend keys if you want to rotate them independently.
+    This key belongs to the Worker alone. Supabase Auth holds its own Resend key as the SMTP password in step 3, so the two rotate independently and a rotation on one side never breaks the other.
 
 13. Configure PayPal subscriptions before enabling paid checkout:
     - Choose the PayPal namespace independently for each non-production environment: `sandbox` or `production`. Preview currently intentionally uses PayPal Live, so its `PAYPAL_ENVIRONMENT` is `production`; do not change it to Sandbox merely because the Worker environment is named Preview. Production must always use `production`.
