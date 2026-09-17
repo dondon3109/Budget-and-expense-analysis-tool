@@ -10,7 +10,7 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    - Production: set the site URL to `https://zoption.site` and allow only `https://zoption.site/auth/callback` plus `https://www.zoption.site/auth/callback` while the alias is served.
 3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users. The Site URL is only a fallback; password recovery should return through `/auth/callback?next=%2Fupdate-password`. In the recovery email template, link the reset action to `{{ .ConfirmationURL }}` so Supabase preserves the `redirectTo` supplied by the app. Do not link recovery mail directly to `{{ .SiteURL }}`. Compare the reset request's actual `redirectTo` with the dashboard allow-list and add the query-bearing production callback explicitly if Supabase does not accept the base callback entry. New Free-plan projects using Supabase's default SMTP cannot customize Auth templates, so configure custom SMTP when template editing or delivery to non-team addresses is required.
 
-   Production runs custom SMTP through Resend. These are the live values, read back from the project rather than assumed:
+   Both hosted projects run custom SMTP through Resend, configured identically. These are the live values, read back from the project rather than assumed:
 
    - Host `smtp.resend.com`, port `465`, user `resend`, password set to a Resend API key that has sending access for `zoption.site`.
    - Sender address `auth@zoption.site` with sender name `Zoption`.
@@ -19,6 +19,7 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    - `mailer_autoconfirm` is false, so every signup depends on this delivery path working.
    - `rate_limit_email_sent` is 30 per hour. Raise it before a launch that could send more than 30 confirmation or recovery messages in an hour.
    - Rotating the Resend API key has to update this SMTP password in the same sitting. A stale password fails every confirmation and recovery email silently, because the app surfaces no error for a message Supabase never delivered.
+   - On the free plan a project with no traffic pauses itself after about a week. A paused project serves no Auth at all and rejects configuration changes with `Project is paused`, so restore it first and expect to restore it again after any quiet period.
 
    Read the live values back instead of trusting this list:
 
