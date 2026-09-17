@@ -1,7 +1,7 @@
 # 0002. Measure the signup funnel from a first page visit to a first import
 
 **Date**: 2026-09-17
-**Status**: Proposed
+**Status**: Accepted
 
 ## Summary
 

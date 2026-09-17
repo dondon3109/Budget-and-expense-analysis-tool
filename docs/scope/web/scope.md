@@ -9,27 +9,27 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                  | Phase   | Status      |
-| --- | ---------------------------------------- | ------- | ----------- |
-| A   | Public marketing site                    | Built   | existing    |
-| B   | Search content library and page pipeline | Built   | existing    |
-| C   | Signup, sign in, and recovery            | Built   | existing    |
-| D   | App shell, themes, and first run         | Built   | existing    |
-| E   | Dashboard and money overview             | Built   | existing    |
-| F   | Transactions and categories              | Built   | existing    |
-| G   | Budgets and share links                  | Built   | existing    |
-| H   | Calendar and subscriptions               | Built   | existing    |
-| I   | Financial plan                           | Built   | existing    |
-| J   | Statement import                         | Built   | existing    |
-| K   | Receipt photo entry                      | Built   | existing    |
-| L   | AI assistant and voice                   | Built   | existing    |
-| M   | Pro billing and sponsored seats          | Built   | existing    |
-| N   | Settings, account safety, and support    | Built   | existing    |
-| O   | Platform admin                           | Built   | existing    |
-| P   | Consent, analytics, and install          | Built   | existing    |
-| 1   | Search demand pages                      | Slice 1 | in-progress |
-| 2   | Signup funnel measurement                | Slice 1 | in-progress |
-| 3   | Content freshness guard                  | Slice 2 | in-progress |
+| #   | Feature                                  | Phase   | Status   |
+| --- | ---------------------------------------- | ------- | -------- |
+| A   | Public marketing site                    | Built   | existing |
+| B   | Search content library and page pipeline | Built   | existing |
+| C   | Signup, sign in, and recovery            | Built   | existing |
+| D   | App shell, themes, and first run         | Built   | existing |
+| E   | Dashboard and money overview             | Built   | existing |
+| F   | Transactions and categories              | Built   | existing |
+| G   | Budgets and share links                  | Built   | existing |
+| H   | Calendar and subscriptions               | Built   | existing |
+| I   | Financial plan                           | Built   | existing |
+| J   | Statement import                         | Built   | existing |
+| K   | Receipt photo entry                      | Built   | existing |
+| L   | AI assistant and voice                   | Built   | existing |
+| M   | Pro billing and sponsored seats          | Built   | existing |
+| N   | Settings, account safety, and support    | Built   | existing |
+| O   | Platform admin                           | Built   | existing |
+| P   | Consent, analytics, and install          | Built   | existing |
+| 1   | Search demand pages                      | Slice 1 | done     |
+| 2   | Signup funnel measurement                | Slice 1 | done     |
+| 3   | Content freshness guard                  | Slice 2 | done     |
 
 ## Built before this scope
 
@@ -115,7 +115,7 @@ Code in `apps/web/src/components/consent/`, `apps/web/src/analytics/PostHogAnaly
 
 ## Slice 1: Search to signup thread
 
-### 1. Search demand pages · in-progress · Beta
+### 1. Search demand pages · done · Beta
 
 New public pages that answer demand `docs/seo.md` named and never built: the Philippine budgeting guides and the feature explainers. Each page has to point at a strength the product really has, such as centavo accuracy, statement import, GCash and Maya tracking, or no bank connection.
 **Done when:** the first page is live and crawlable through the whole pipeline (metadata manifest, prerender, sitemap, internal links), the rest of the chosen set follows the same path, and no page claims something the web app cannot do.
@@ -131,7 +131,7 @@ New public pages that answer demand `docs/seo.md` named and never built: the Phi
 
 Spec [0001](../specs/web/0001-search-demand-pages.md) · code in `apps/web/src/pages/features/`, `packages/shared/src/financeGuides.ts`, `apps/web/src/seo/siteMetadata.ts`
 
-### 2. Signup funnel measurement · in-progress
+### 2. Signup funnel measurement · done
 
 Make the path from a new page visit to a first import readable. Today the public site records pageviews and nothing else, so the metric that matters, signup to first import, cannot be read at all.
 **Done when:** a visit, a signup start, a first app load, a first import, assistant consent, and a first assistant question each show up as one step of a single funnel, no event carries financial or identity detail, and the policies name the events.
@@ -151,7 +151,7 @@ Spec [0002](../specs/web/0002-signup-funnel-measurement.md) · code in `apps/web
 
 ## Slice 2: Content upkeep
 
-### 3. Content freshness guard · in-progress · Beta
+### 3. Content freshness guard · done · Beta
 
 Every public page declares a last modified date, `docs/seo.md` requires that date to stay honest, and nothing enforces it yet. Search engines hold a finance site to a strict accuracy bar, so a stale or future dated page is a real risk.
 **Done when:** CI fails when a page's declared date no longer matches the last commit that touched its sources, and a new public route with no source mapping fails loudly instead of passing silently.
