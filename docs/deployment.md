@@ -9,6 +9,24 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    - Preview: set the site URL to `https://PREVIEW_WEB_HOST` and allow only `http://localhost:5173/auth/callback` (when this project is used locally) plus `https://PREVIEW_WEB_HOST/auth/callback`.
    - Production: set the site URL to `https://zoption.site` and allow only `https://zoption.site/auth/callback` plus `https://www.zoption.site/auth/callback` while the alias is served.
 3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users. The Site URL is only a fallback; password recovery should return through `/auth/callback?next=%2Fupdate-password`. In the recovery email template, link the reset action to `{{ .ConfirmationURL }}` so Supabase preserves the `redirectTo` supplied by the app. Do not link recovery mail directly to `{{ .SiteURL }}`. Compare the reset request's actual `redirectTo` with the dashboard allow-list and add the query-bearing production callback explicitly if Supabase does not accept the base callback entry. New Free-plan projects using Supabase's default SMTP cannot customize Auth templates, so configure custom SMTP when template editing or delivery to non-team addresses is required.
+
+   Production runs custom SMTP through Resend. These are the live values, read back from the project rather than assumed:
+
+   - Host `smtp.resend.com`, port `465`, user `resend`, password set to a Resend API key that has sending access for `zoption.site`.
+   - Sender address `auth@zoption.site` with sender name `Zoption`.
+   - Recovery, confirmation, email change, invite, and magic link templates link to `{{ .ConfirmationURL }}`. Reauthentication uses the raw `{{ .Token }}`, which is correct for a code rather than a link.
+   - The redirect allow list carries `https://zoption.site/auth/callback`, `https://www.zoption.site/auth/callback`, the Preview Pages callback, the local callback, and the `zoption://`, `zoption-dev://`, and `zoption-preview://` mobile schemes.
+   - `mailer_autoconfirm` is false, so every signup depends on this delivery path working.
+   - `rate_limit_email_sent` is 30 per hour. Raise it before a launch that could send more than 30 confirmation or recovery messages in an hour.
+   - Rotating the Resend API key has to update this SMTP password in the same sitting. A stale password fails every confirmation and recovery email silently, because the app surfaces no error for a message Supabase never delivered.
+
+   Read the live values back instead of trusting this list:
+
+   ```bash
+   curl -s -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+     https://api.supabase.com/v1/projects/PROJECT_REF/config/auth
+   ```
+
 4. In **Authentication > Password security**, set the minimum password length to 12, require lowercase, uppercase, number, and symbol coverage, enable leaked-password protection when available, and require a recent session or reauthentication for password changes. The tracked local Supabase configuration mirrors this policy; the hosted project must enforce it because browser validation can be bypassed by direct Auth API clients. Use an HTTPS project URL in preview and production; the Worker permits cleartext Supabase URLs only for explicit loopback development hosts.
 5. Require email confirmation before first sign-in. Keep signup responses neutral for both new and existing addresses so the public form does not disclose whether an account exists.
 6. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
@@ -60,6 +78,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
    ```
 
    Durable Object rate-limit storage is created by the Worker migration on deploy; do not create it by hand.
+
 4. Copy `apps/api/wrangler.deploy.example.jsonc` to ignored `apps/api/wrangler.deploy.jsonc`.
 5. Replace each environment's D1 ID, allowed origins, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise. The publishable key is public configuration, but secret and service-role key types remain forbidden in Wrangler `vars`.
 6. Validate the real config before any migration or deploy. The validator reports only environment and binding names; it never prints configured values:

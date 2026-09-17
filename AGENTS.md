@@ -23,6 +23,13 @@ Check for stale patch list notes on production when releasing. Make sure to upda
 
 When releasing new changes however small it may be, always treat it as a new version both in web and mobile. Hence, always bump the version on mobile releases.
 
+## Documentation
+
+- Keep a document current in the same change that makes it stale. A change that moves a command, a configuration value, an environment binding, or an external service setting is not finished until the document that owns that fact matches it.
+- Record external state, not only code. What is configured in the Supabase, Cloudflare, PayPal, and Resend dashboards is invisible in the repository, so `docs/deployment.md` states what is actually configured and how to read it back.
+- Do not leave a setting as tribal knowledge. If a future session would need a dashboard login to learn a value this project depends on, write it down.
+- A line that only narrates what a commit did is churn. Record facts that stay true.
+
 ## Working style
 
 - Do not spawn subagents for work a single agent can complete in one pass.
