@@ -2,7 +2,13 @@
 
 All notable product changes are documented here.
 
-## Unreleased
+## 2.34.1 — 2026-09-17
+
+### Changed
+
+- Refreshed web install page metadata and direct APK links to Android Beta 0.2.30 (versionCode 20330).
+
+## 2.34.0 — 2026-09-17
 
 ### Added
 
@@ -24,7 +30,7 @@ All notable product changes are documented here.
 - Auto stays Auto everywhere: the Cloud Run bridge receives `auto` instead of being told English, and the browser's English-only speech recognizer no longer starts in Auto mode or pre-empts the server transcription that handles Tagalog. A server transcript now outranks a browser one on every voice surface.
 - A voice language read at the API boundary (`auto`, `en`, `fil`, or the older `tl`) is validated once, and a direct transcript request no longer sends a language nothing reads.
 - A first import is only recorded when the commit inserted at least one row, so an empty commit on an empty workspace no longer counts as the funnel's first import.
-- The private page URL guard now runs in PostHog's `before_send` hook, replacing the deprecated `sanitize_properties`, and the Cookie and Privacy policies keep their wording.
+- The private page URL guard now runs in PostHog's `before_send` hook, replacing the deprecated `sanitize_properties`.
 
 ## 2.33.1 — 2026-09-16
 
