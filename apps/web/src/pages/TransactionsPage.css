@@ -145,10 +145,12 @@
   color: var(--ink);
 }
 
+/* Basis must stay content-sized: the preset buttons never wrap on desktop, so a
+   smaller basis lets the row spill past the filter card instead of wrapping as a unit. */
 .filter-presets {
   min-width: 0;
   display: inline-flex;
-  flex: 1 1 260px;
+  flex: 1 1 auto;
   align-items: center;
   gap: 6px;
   color: var(--subtle);
