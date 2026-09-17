@@ -11,6 +11,7 @@ import type { JobMessage } from "./jobs";
 import { RateLimitDurableObject } from "./rate-limit-do";
 import { deleteExpiredRateLimits } from "./rate-limit";
 import { validateRequiredApiBindings } from "./readiness";
+import { subscriptionRenewalService } from "./subscriptions/renewals";
 import { bugReportService } from "./support/bug-reports";
 import type { Bindings } from "./types";
 
@@ -18,7 +19,7 @@ export { RateLimitDurableObject };
 
 const app = createApp();
 const accountDeletionService = createAccountDeletionService();
-const BILLING_RECONCILIATION_CRON = "*/5 * * * *";
+const FIVE_MINUTE_CRON = "*/5 * * * *";
 const DAILY_MAINTENANCE_CRON = "17 3 * * *";
 const DAILY_INTEREST_CRON = "17 4 * * *";
 
@@ -47,7 +48,7 @@ export default {
   },
   async scheduled(controller, env) {
     validateRequiredApiBindings(env);
-    if (controller.cron === BILLING_RECONCILIATION_CRON) {
+    if (controller.cron === FIVE_MINUTE_CRON) {
       const result = await reconcileDuePayPalCheckouts(billingRepository, env, 25);
       if (result.checked > 0) {
         console.log(JSON.stringify({ message: "Pending PayPal checkouts reconciled", ...result }));
@@ -56,6 +57,22 @@ export default {
       if (notifications.claimed > 0) {
         console.log(
           JSON.stringify({ message: "Bug report notifications retried", ...notifications }),
+        );
+      }
+      const renewals = await subscriptionRenewalService.runDueRenewals(env, 100);
+      if (renewals.charged > 0 || renewals.uncovered > 0) {
+        console.log(JSON.stringify({ message: "Subscription renewals processed", ...renewals }));
+      }
+      const renewalNotifications = await subscriptionRenewalService.retryPendingNotifications(
+        env,
+        25,
+      );
+      if (renewalNotifications.claimed > 0) {
+        console.log(
+          JSON.stringify({
+            message: "Subscription renewal notifications retried",
+            ...renewalNotifications,
+          }),
         );
       }
       const expiredCounters = await deleteExpiredRateLimits(env);

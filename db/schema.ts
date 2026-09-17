@@ -375,6 +375,45 @@ export const subscriptions = sqliteTable(
     index("subscriptions_tenant_account_idx").on(table.tenantId, table.accountId),
     index("subscriptions_tenant_status_idx").on(table.tenantId, table.status),
     index("subscriptions_tenant_category_idx").on(table.tenantId, table.categoryId),
+    index("subscriptions_status_next_billing_idx").on(table.status, table.nextBillingDate),
+  ],
+);
+
+// One row per billing cycle that could not be charged for lack of balance. The unique
+// index on subscription and due date is what keeps the email to the first failed day.
+export const subscriptionRenewalNotifications = sqliteTable(
+  "subscription_renewal_notifications",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    subscriptionId: text("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    dueDate: text("due_date").notNull(),
+    subscriptionName: text("subscription_name").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
+    accountName: text("account_name"),
+    status: text("status", { enum: ["pending", "sent", "failed"] })
+      .notNull()
+      .default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    leaseUntil: text("lease_until"),
+    lastErrorCode: text("last_error_code"),
+    sentAt: text("sent_at"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("subscription_renewal_notifications_cycle_unique").on(
+      table.subscriptionId,
+      table.dueDate,
+    ),
+    index("subscription_renewal_notifications_retry_idx").on(
+      table.status,
+      table.leaseUntil,
+      table.attempts,
+    ),
   ],
 );
 

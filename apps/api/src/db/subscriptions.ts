@@ -2,6 +2,7 @@ import {
   monthlySubscriptionCost,
   normalizeSignedAmount,
   subscriptionBillingDateForMonth,
+  type SubscriptionBillingCycle,
   type SubscriptionInput,
   type SubscriptionMonthSummary,
   type SubscriptionRecord,
@@ -32,6 +33,35 @@ export interface SubscriptionRepository {
     input: SubscriptionStatusUpdate,
   ): Promise<SubscriptionRecord>;
   remove(env: Bindings, tenantId: string, id: string): Promise<void>;
+  listDueRenewals(env: Bindings, dueDate: string, limit: number): Promise<DueSubscriptionRenewal[]>;
+  postRenewalCharge(
+    env: Bindings,
+    renewal: DueSubscriptionRenewal,
+    nextBillingDate: string,
+  ): Promise<boolean>;
+  advanceRenewalSchedule(
+    env: Bindings,
+    renewal: DueSubscriptionRenewal,
+    nextBillingDate: string,
+  ): Promise<boolean>;
+  createRenewalNotification(
+    env: Bindings,
+    notice: SubscriptionRenewalNotification,
+  ): Promise<boolean>;
+  claimRenewalNotification(
+    env: Bindings,
+    id: string,
+  ): Promise<SubscriptionRenewalNotification | null>;
+  claimPendingRenewalNotifications(
+    env: Bindings,
+    limit: number,
+  ): Promise<SubscriptionRenewalNotification[]>;
+  finishRenewalNotification(
+    env: Bindings,
+    id: string,
+    status: "sent" | "failed",
+    errorCode: string | null,
+  ): Promise<void>;
 }
 
 interface LinkedSubscriptionCharge {
@@ -202,6 +232,79 @@ async function findSubscription(
     : null;
 }
 
+export interface DueSubscriptionRenewal {
+  id: string;
+  tenantId: string;
+  accountId: string;
+  accountName: string;
+  categoryId: string;
+  name: string;
+  billingCycle: SubscriptionBillingCycle;
+  amountMinor: number;
+  nextBillingDate: string;
+  /** The linked account balance, summed the same way the accounts screen sums it. */
+  balanceMinor: number;
+  /** True when the due date already has a charge, leaving only the roll forward to do. */
+  charged: boolean;
+}
+
+export interface SubscriptionRenewalNotification {
+  id: string;
+  tenantId: string;
+  subscriptionId: string;
+  dueDate: string;
+  subscriptionName: string;
+  amountMinor: number;
+  accountName: string | null;
+}
+
+const NOTIFICATION_ATTEMPT_LIMIT = 8;
+
+function notificationLease(): string {
+  return new Date(Date.now() + 10 * 60 * 1_000).toISOString();
+}
+
+/**
+ * Moves the schedule forward only while the row still matches the due date the sweep read, so a
+ * concurrent edit in the subscription editor cannot be rolled back by a scheduled charge.
+ */
+function advanceScheduleStatement(
+  env: Bindings,
+  renewal: DueSubscriptionRenewal,
+  nextBillingDate: string,
+) {
+  return env.DB.prepare(
+    `UPDATE subscriptions SET next_billing_date = ?, updated_at = datetime('now')
+     WHERE id = ? AND tenant_id = ? AND status = 'active' AND next_billing_date = ?`,
+  ).bind(nextBillingDate, renewal.id, renewal.tenantId, renewal.nextBillingDate);
+}
+
+/**
+ * Releases charges whose cycle has already been billed. A linked charge only ever means "the
+ * upcoming charge", so later edits keep rewriting the current one instead of past history.
+ */
+function releaseSettledChargesStatement(env: Bindings, renewal: DueSubscriptionRenewal) {
+  return env.DB.prepare(
+    `UPDATE transactions SET subscription_id = NULL, updated_at = datetime('now')
+     WHERE tenant_id = ? AND subscription_id = ?
+       AND date < (SELECT next_billing_date FROM subscriptions WHERE id = ? AND tenant_id = ?)`,
+  ).bind(renewal.tenantId, renewal.id, renewal.id, renewal.tenantId);
+}
+
+async function findRenewalNotification(
+  env: Bindings,
+  id: string,
+): Promise<SubscriptionRenewalNotification | null> {
+  return env.DB.prepare(
+    `SELECT id, tenant_id AS tenantId, subscription_id AS subscriptionId, due_date AS dueDate,
+            subscription_name AS subscriptionName, amount_minor AS amountMinor,
+            account_name AS accountName
+     FROM subscription_renewal_notifications WHERE id = ?`,
+  )
+    .bind(id)
+    .first<SubscriptionRenewalNotification>();
+}
+
 export const subscriptionRepository: SubscriptionRepository = {
   async list(env, tenantId, month) {
     const db = drizzle(env.DB);
@@ -359,5 +462,128 @@ export const subscriptionRepository: SubscriptionRepository = {
       ).bind(tenantId, id),
       env.DB.prepare("DELETE FROM subscriptions WHERE id = ? AND tenant_id = ?").bind(id, tenantId),
     ]);
+  },
+
+  async listDueRenewals(env, dueDate, limit) {
+    const rows = await env.DB.prepare(
+      `SELECT s.id, s.tenant_id AS tenantId, s.account_id AS accountId, a.name AS accountName,
+              s.category_id AS categoryId, s.name, s.billing_cycle AS billingCycle,
+              s.amount_minor AS amountMinor, s.next_billing_date AS nextBillingDate,
+              COALESCE((
+                SELECT SUM(t.amount_minor) FROM transactions t
+                WHERE t.tenant_id = s.tenant_id AND t.account_id = s.account_id
+                  AND t.currency = a.currency
+                  AND (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL)
+              ), 0) AS balanceMinor,
+              EXISTS(
+                SELECT 1 FROM transactions c
+                WHERE c.tenant_id = s.tenant_id AND c.subscription_id = s.id
+                  AND c.date = s.next_billing_date
+              ) AS charged
+       FROM subscriptions s
+       JOIN accounts a ON a.id = s.account_id AND a.tenant_id = s.tenant_id
+       WHERE s.status = 'active' AND s.account_id IS NOT NULL
+         AND date(s.next_billing_date) <= date(?)
+       ORDER BY s.next_billing_date, s.id
+       LIMIT ?`,
+    )
+      .bind(dueDate, Math.max(1, Math.min(200, Math.trunc(limit))))
+      .all<Omit<DueSubscriptionRenewal, "charged"> & { charged: number }>();
+    return rows.results.map((row) => ({ ...row, charged: Boolean(row.charged) }));
+  },
+
+  async postRenewalCharge(env, renewal, nextBillingDate) {
+    const results = await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO transactions (
+           id, tenant_id, account_id, category_id, date, description, amount_minor,
+           currency, kind, source_kind, subscription_id
+         )
+         SELECT ?, s.tenant_id, s.account_id, s.category_id, s.next_billing_date, s.name,
+                -ABS(s.amount_minor), s.currency, 'expense', 'manual', s.id
+         FROM subscriptions s
+         WHERE s.id = ? AND s.tenant_id = ? AND s.status = 'active'
+           AND s.next_billing_date = ?`,
+      ).bind(crypto.randomUUID(), renewal.id, renewal.tenantId, renewal.nextBillingDate),
+      advanceScheduleStatement(env, renewal, nextBillingDate),
+      releaseSettledChargesStatement(env, renewal),
+    ]);
+    return (results[1]?.meta.changes ?? 0) === 1;
+  },
+
+  async advanceRenewalSchedule(env, renewal, nextBillingDate) {
+    const results = await env.DB.batch([
+      advanceScheduleStatement(env, renewal, nextBillingDate),
+      releaseSettledChargesStatement(env, renewal),
+    ]);
+    return (results[0]?.meta.changes ?? 0) === 1;
+  },
+
+  async createRenewalNotification(env, notice) {
+    const result = await env.DB.prepare(
+      `INSERT INTO subscription_renewal_notifications
+         (id, tenant_id, subscription_id, due_date, subscription_name, amount_minor, account_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (subscription_id, due_date) DO NOTHING`,
+    )
+      .bind(
+        notice.id,
+        notice.tenantId,
+        notice.subscriptionId,
+        notice.dueDate,
+        notice.subscriptionName,
+        notice.amountMinor,
+        notice.accountName,
+      )
+      .run();
+    return (result.meta.changes ?? 0) === 1;
+  },
+
+  async claimRenewalNotification(env, id) {
+    const result = await env.DB.prepare(
+      `UPDATE subscription_renewal_notifications
+       SET status = 'pending', attempts = attempts + 1, lease_until = ?,
+           last_error_code = NULL, updated_at = datetime('now')
+       WHERE id = ? AND status != 'sent' AND attempts < ?
+         AND (lease_until IS NULL OR lease_until < ?)`,
+    )
+      .bind(notificationLease(), id, NOTIFICATION_ATTEMPT_LIMIT, new Date().toISOString())
+      .run();
+    if ((result.meta.changes ?? 0) === 0) return null;
+    return findRenewalNotification(env, id);
+  },
+
+  async claimPendingRenewalNotifications(env, limit) {
+    const rows = await env.DB.prepare(
+      `SELECT id FROM subscription_renewal_notifications
+       WHERE status != 'sent' AND attempts < ?
+         AND (lease_until IS NULL OR lease_until < ?)
+       ORDER BY created_at LIMIT ?`,
+    )
+      .bind(
+        NOTIFICATION_ATTEMPT_LIMIT,
+        new Date().toISOString(),
+        Math.max(1, Math.min(100, Math.trunc(limit))),
+      )
+      .all<{ id: string }>();
+
+    const claimed: SubscriptionRenewalNotification[] = [];
+    for (const row of rows.results) {
+      const notice = await this.claimRenewalNotification(env, row.id);
+      if (notice) claimed.push(notice);
+    }
+    return claimed;
+  },
+
+  async finishRenewalNotification(env, id, status, errorCode) {
+    await env.DB.prepare(
+      `UPDATE subscription_renewal_notifications
+       SET status = ?, lease_until = NULL, last_error_code = ?,
+           sent_at = CASE WHEN ? = 'sent' THEN datetime('now') ELSE sent_at END,
+           updated_at = datetime('now')
+       WHERE id = ?`,
+    )
+      .bind(status, errorCode, status, id)
+      .run();
   },
 };

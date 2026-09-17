@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   monthlySubscriptionCost,
+  nextSubscriptionBillingDate,
   subscriptionBillingDateForMonth,
   subscriptionInputSchema,
   subscriptionStatusUpdateSchema,
@@ -21,6 +22,15 @@ describe("subscription calculations", () => {
     expect(subscriptionBillingDateForMonth("2028-01-31", "monthly", "2028-02-01")).toBe(
       "2028-02-29",
     );
+  });
+
+  it("advances the billing date one cycle and clamps it to the final calendar day", () => {
+    expect(nextSubscriptionBillingDate("2026-09-25", "monthly")).toBe("2026-10-25");
+    expect(nextSubscriptionBillingDate("2026-12-15", "monthly")).toBe("2027-01-15");
+    expect(nextSubscriptionBillingDate("2026-01-31", "monthly")).toBe("2026-02-28");
+    expect(nextSubscriptionBillingDate("2028-01-31", "monthly")).toBe("2028-02-29");
+    expect(nextSubscriptionBillingDate("2026-07-12", "yearly")).toBe("2027-07-12");
+    expect(nextSubscriptionBillingDate("2028-02-29", "yearly")).toBe("2029-02-28");
   });
 
   it("only projects yearly billing in the renewal month", () => {

@@ -1,13 +1,15 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { accountRepository } from "../src/db/accounts";
 import { subscriptionRepository } from "../src/db/subscriptions";
-import type { Bindings } from "../src/types";
+import { createSubscriptionRenewalService } from "../src/subscriptions/renewals";
+import type { Bindings, EmailSender } from "../src/types";
 import { createD1TestDatabase } from "./helpers/d1-test-harness";
 
 const databases: Array<{ close(): void }> = [];
 
 afterEach(() => {
+  vi.useRealTimers();
   for (const database of databases.splice(0)) database.close();
 });
 
@@ -150,5 +152,184 @@ describe("subscription schedules", () => {
         )
         .get(),
     ).toEqual({ entityType: "transaction", entityId: "charge-legacy", operation: "delete" });
+  });
+});
+
+function renewalEnvironment(): ReturnType<typeof seededEnvironment> {
+  const seeded = seededEnvironment();
+  return {
+    ...seeded,
+    env: {
+      ...seeded.env,
+      SUPABASE_URL: "https://project.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
+      WEB_APP_URL: "https://app.zoption.site",
+      EMAIL_FROM: "hello@zoption.site",
+    },
+  };
+}
+
+function recipientFetcher(email = "don@example.com") {
+  return vi.fn(
+    async () => new Response(JSON.stringify({ id: "user-1", email }), { status: 200 }),
+  ) as unknown as typeof fetch;
+}
+
+function dueSubscription(
+  database: ReturnType<typeof seededEnvironment>["database"],
+  amountMinor: number,
+) {
+  database.exec(`
+    INSERT INTO user_tenants (user_id, tenant_id) VALUES ('user-1', 'tenant-1');
+    INSERT INTO subscriptions (
+      id, tenant_id, account_id, category_id, name, amount_minor, currency,
+      billing_cycle, next_billing_date, status
+    ) VALUES (
+      'subscription-1', 'tenant-1', 'account-1', 'category-1', 'Rent', ${amountMinor},
+      'PHP', 'monthly', '2026-09-25', 'active'
+    );
+  `);
+}
+
+describe("subscription renewals", () => {
+  it("posts the next cycle charge and rolls the billing date forward on the due date", async () => {
+    const { env, database } = renewalEnvironment();
+    await subscriptionRepository.create(env, "tenant-1", {
+      name: "Music streaming",
+      amountMinor: 19_900,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-09-25",
+      categoryId: "category-1",
+      accountId: "account-1",
+    });
+    const subscriptionId = String(
+      database.prepare("SELECT id FROM subscriptions LIMIT 1").get()?.id,
+    );
+    const service = createSubscriptionRenewalService(subscriptionRepository, {
+      sender: { send: async () => undefined },
+      fetcher: recipientFetcher(),
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T00:30:00+08:00"));
+
+    // Creating the subscription already recorded the September charge, so the due date rolls
+    // forward without a second charge for the same cycle.
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({ checked: 1, rolled: 1 });
+    expect(
+      database
+        .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = ?")
+        .get(subscriptionId),
+    ).toEqual({ date: "2026-10-25" });
+    expect(database.prepare("SELECT count(*) AS count FROM transactions").get()).toEqual({
+      count: 2,
+    });
+
+    // The October due date records its own charge and rolls the schedule on again.
+    vi.setSystemTime(new Date("2026-10-25T07:00:00+08:00"));
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({ checked: 1, charged: 1 });
+    expect(
+      database
+        .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = ?")
+        .get(subscriptionId),
+    ).toEqual({ date: "2026-11-25" });
+    expect(database.prepare("SELECT count(*) AS count FROM transactions").get()).toEqual({
+      count: 3,
+    });
+    // A linked charge only ever means "the upcoming charge", so edits cannot rewrite history.
+    expect(
+      database
+        .prepare("SELECT count(*) AS count FROM transactions WHERE subscription_id IS NOT NULL")
+        .get(),
+    ).toEqual({ count: 0 });
+    await expect(accountRepository.list(env, "tenant-1")).resolves.toMatchObject([
+      { id: "account-1", balanceMinor: 60_200 },
+    ]);
+  });
+
+  it("keeps the due date and emails once when the account cannot cover the charge", async () => {
+    const { env, database } = renewalEnvironment();
+    dueSubscription(database, 150_000);
+    const sent: Array<Parameters<EmailSender["send"]>[0]> = [];
+    const service = createSubscriptionRenewalService(subscriptionRepository, {
+      sender: { send: async (message) => void sent.push(message) },
+      fetcher: recipientFetcher(),
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T08:00:00+08:00"));
+
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({
+      uncovered: 1,
+      notified: 1,
+    });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      to: "don@example.com",
+      from: { email: "hello@zoption.site", name: "Zoption" },
+      subject: "Your Rent subscription could not be renewed",
+    });
+    expect(sent[0]?.text).toContain("PHP 1,500.00");
+
+    // The retry the next run makes stays silent, and the due date is untouched.
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({
+      uncovered: 1,
+      notified: 0,
+    });
+    expect(sent).toHaveLength(1);
+    expect(
+      database
+        .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = 'subscription-1'")
+        .get(),
+    ).toEqual({ date: "2026-09-25" });
+
+    // Once the account can cover it, the charge is recorded and the schedule moves on.
+    database.exec(
+      `INSERT INTO transactions (
+         id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind
+       ) VALUES ('top-up', 'tenant-1', 'account-1', 'category-1', '2026-09-25', 'Top up', 100000, 'PHP', 'income')`,
+    );
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({ charged: 1, uncovered: 0 });
+    expect(
+      database
+        .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = 'subscription-1'")
+        .get(),
+    ).toEqual({ date: "2026-10-25" });
+  });
+
+  it("retries a notification whose delivery failed once its lease expires", async () => {
+    const { env, database } = renewalEnvironment();
+    dueSubscription(database, 150_000);
+    let unavailable = true;
+    const service = createSubscriptionRenewalService(subscriptionRepository, {
+      sender: {
+        send: async () => {
+          if (unavailable) throw new Error("resend unavailable");
+        },
+      },
+      fetcher: recipientFetcher(),
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T08:00:00+08:00"));
+    await service.runDueRenewals(env);
+    expect(
+      database
+        .prepare(
+          "SELECT status, attempts, last_error_code AS errorCode FROM subscription_renewal_notifications",
+        )
+        .get(),
+    ).toEqual({ status: "failed", attempts: 1, errorCode: "email_delivery_failed" });
+
+    // A failed delivery releases the lease, so the next cron pass retries it.
+    unavailable = false;
+    await expect(service.retryPendingNotifications(env, 10)).resolves.toEqual({
+      claimed: 1,
+      sent: 1,
+      failed: 0,
+    });
+    expect(database.prepare("SELECT status FROM subscription_renewal_notifications").get()).toEqual(
+      { status: "sent" },
+    );
   });
 });

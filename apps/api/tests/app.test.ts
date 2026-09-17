@@ -307,6 +307,13 @@ function createSubscriptionStore(): SubscriptionRepository {
     update: vi.fn(async () => subscriptionItem),
     setStatus: vi.fn(async () => ({ ...subscriptionItem, status: "canceled" as const })),
     remove: vi.fn(async () => undefined),
+    listDueRenewals: vi.fn(async () => []),
+    postRenewalCharge: vi.fn(async () => false),
+    advanceRenewalSchedule: vi.fn(async () => false),
+    createRenewalNotification: vi.fn(async () => false),
+    claimRenewalNotification: vi.fn(async () => null),
+    claimPendingRenewalNotifications: vi.fn(async () => []),
+    finishRenewalNotification: vi.fn(async () => undefined),
   };
 }
 

@@ -4,6 +4,11 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Subscriptions now renew themselves. Every billing date records a charge in the transaction dashboard and rolls the subscription to its next cycle, so a monthly or yearly plan keeps deducting from its account instead of charging only once when you add it.
+- When the linked account cannot cover a renewal, Zoption leaves the billing date due, keeps retrying every day, and sends one email on the first failed day so you can top up the account or change the subscription. The reminder names the plan, the amount, the account, and the due date.
+
 ### Fixed
 
 - Quick Paste from SMS / Alert now reads alerts that write the peso as a single letter P, such as "You have paid P64.33 GCash to PAYPAL \*GIT", and it reads timestamps in the 07-17-26 12:26:58 AM form. The amount, merchant, date, and reference number fill in on web and mobile instead of leaving the extracted details blank.

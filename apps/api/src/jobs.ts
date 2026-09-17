@@ -3,6 +3,7 @@ import type { Bindings } from "./types";
 export type JobMessage =
   | { type: "paypal-reconcile"; tenantId: string }
   | { type: "bug-report-notify"; reportId: string }
+  | { type: "subscription-renewal-notify"; notificationId: string }
   | { type: "account-deletion"; userId: string };
 
 export async function enqueueJob(
