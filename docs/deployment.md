@@ -108,7 +108,15 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
     PostHog is server-side and metadata-only. Do not add a browser SDK, `VITE_POSTHOG_*`, PostHog web cookies, identify/group events, or Pages CSP origins. The Worker uses random trace IDs, disables person-profile processing and GeoIP enrichment, replaces the capture source address with the non-routable `0.0.0.0` placeholder, and excludes questions, answers, financial records, tool payloads, credentials, and internal IDs.
 
-12. Before enabling sponsored-seat invitations or bug-report notifications, onboard the sender domain in Resend and store the `RESEND_API_KEY` as a Worker secret (`wrangler secret put RESEND_API_KEY`) in each deployment environment. Set `WEB_APP_URL` to the exact HTTPS Pages origin, `EMAIL_FROM` to the verified sender address, and `BUG_REPORT_TO` to the private support inbox; none belongs in browser `VITE_*` configuration. This works on the Cloudflare Free plan because delivery goes through the Resend REST API (no `send_email` binding). Send a controlled invitation and bug report to addresses you manage before enabling production use.
+12. Before enabling sponsored-seat invitations or bug-report notifications, onboard the sender domain in Resend and store the `RESEND_API_KEY` as a Worker secret in each deployment environment. Set `WEB_APP_URL` to the exact HTTPS Pages origin, `EMAIL_FROM` to the verified sender address, and `BUG_REPORT_TO` to the private support inbox; none belongs in browser `VITE_*` configuration. This works on the Cloudflare Free plan because delivery goes through the Resend REST API (no `send_email` binding). Send a controlled invitation and bug report to addresses you manage before enabling production use.
+
+    ```bash
+    pnpm --filter @zoption/api exec wrangler secret put RESEND_API_KEY --config wrangler.deploy.jsonc --env preview
+    pnpm --filter @zoption/api exec wrangler secret put RESEND_API_KEY --config wrangler.deploy.jsonc --env production
+    ```
+
+    The Worker is one of two consumers of this key. Supabase Auth uses the same Resend key as its SMTP password described in step 3, so rotating it means updating both, and the two consumers can be split onto separate Resend keys if you want to rotate them independently.
+
 13. Configure PayPal subscriptions before enabling paid checkout:
     - Choose the PayPal namespace independently for each non-production environment: `sandbox` or `production`. Preview currently intentionally uses PayPal Live, so its `PAYPAL_ENVIRONMENT` is `production`; do not change it to Sandbox merely because the Worker environment is named Preview. Production must always use `production`.
     - Create a separate PayPal API app and separate product, plans, and webhook for every deployment environment in its selected namespace. Do not share credentials, webhook IDs, products, or plans between Preview and Production, even when both use PayPal Live.
