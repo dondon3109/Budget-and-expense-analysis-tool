@@ -14,6 +14,12 @@ import {
   startLiveTranscriptionSession,
   type LiveTranscriptionSession,
 } from "../../lib/voiceStream";
+import {
+  type VoiceLanguage,
+  getStoredVoiceLanguage,
+  setStoredVoiceLanguage,
+  speechRecognitionLang,
+} from "../../lib/voiceLanguage";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 
 const MAX_RECORDING_MS = 60_000;
@@ -22,13 +28,6 @@ const ENDING_SILENCE_MS = 1_400;
 const VOICE_SAMPLE_INTERVAL_MS = 100;
 const SPEECH_RMS_THRESHOLD = 0.025;
 const MIME_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"];
-
-import {
-  type VoiceLanguage,
-  getStoredVoiceLanguage,
-  setStoredVoiceLanguage,
-  speechRecognitionLang,
-} from "../../lib/voiceLanguage";
 
 interface SpeechRecognitionResultItem {
   readonly transcript: string;
@@ -124,6 +123,9 @@ export function AssistantVoiceControl({
   const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
   const liveSessionPromiseRef = useRef<Promise<LiveTranscriptionSession> | null>(null);
   const liveTranscriptRef = useRef<string>("");
+  // The browser engine and the server engine both transcribe, so they are kept
+  // apart: a browser hypothesis must never outrank a server transcript.
+  const browserTranscriptRef = useRef<string>("");
   const liveErrorRef = useRef<string | null>(null);
   const liveShouldStopRef = useRef(false);
   const stopReasonRef = useRef<StopReason>("manual");
@@ -393,8 +395,8 @@ export function AssistantVoiceControl({
             return;
           }
 
-          // If live stream produced a transcript (including delayed final during grace), use it directly!
-          const liveText = liveTranscriptRef.current.trim();
+          // If a live stream produced a transcript (including delayed final during grace), use it directly!
+          const liveText = (liveTranscriptRef.current || browserTranscriptRef.current).trim();
           if (liveText) {
             onTranscript(liveText, TEXT_TRANSCRIPT_OPTIONS);
             setMessage("Transcript ready — review or edit it, then press Send.");
@@ -443,6 +445,7 @@ export function AssistantVoiceControl({
       setStatus("recording");
       setElapsedSeconds(0);
       liveTranscriptRef.current = "";
+      browserTranscriptRef.current = "";
       liveErrorRef.current = null;
       setLiveTranscript("");
       liveShouldStopRef.current = false;
@@ -454,7 +457,10 @@ export function AssistantVoiceControl({
             (window as unknown as WindowWithSpeechRecognition).webkitSpeechRecognition
           : undefined;
 
-      if (SpeechRecognitionClass) {
+      // Browser SpeechRecognition has no cross language auto detect, so an Auto
+      // engine is really an English one. Auto therefore stays on the server path,
+      // which does handle both languages.
+      if (SpeechRecognitionClass && voiceLanguage !== "auto") {
         try {
           const recognition = new SpeechRecognitionClass();
           recognition.continuous = true;
@@ -474,7 +480,7 @@ export function AssistantVoiceControl({
             }
             const trimmed = full.trim();
             if (trimmed) {
-              liveTranscriptRef.current = trimmed;
+              browserTranscriptRef.current = trimmed;
               setLiveTranscript(trimmed);
               onPartialTranscript?.(trimmed);
             }
@@ -485,7 +491,7 @@ export function AssistantVoiceControl({
               if (
                 mountedRef.current &&
                 recorderRef.current?.state === "recording" &&
-                liveTranscriptRef.current
+                (liveTranscriptRef.current || browserTranscriptRef.current)
               ) {
                 stopRecording("silence");
               }
@@ -535,7 +541,9 @@ export function AssistantVoiceControl({
             // Surface live error but keep batch fallback — don't hide failures silently
             // 429/503 are surfaced with actionable messages from voiceStream
             if (mountedRef.current) {
-              if (!liveTranscriptRef.current) setMessage(error.message);
+              if (!liveTranscriptRef.current && !browserTranscriptRef.current) {
+                setMessage(error.message);
+              }
             }
             if (typeof console !== "undefined" && console.warn) {
               console.warn(
@@ -567,7 +575,7 @@ export function AssistantVoiceControl({
           liveSessionPromiseRef.current = null;
           if (mountedRef.current && error instanceof Error) {
             liveErrorRef.current = error.message;
-            if (!liveTranscriptRef.current) {
+            if (!liveTranscriptRef.current && !browserTranscriptRef.current) {
               setMessage(error.message);
             }
           }
@@ -740,11 +748,7 @@ export function AssistantVoiceControl({
           e.preventDefault();
           e.stopPropagation();
           const next: VoiceLanguage =
-            voiceLanguage === "auto"
-              ? "en"
-              : voiceLanguage === "en"
-                ? "fil"
-                : "auto";
+            voiceLanguage === "auto" ? "en" : voiceLanguage === "en" ? "fil" : "auto";
           setVoiceLanguage(next);
           setStoredVoiceLanguage(next);
           if (speechRecognitionRef.current) {
@@ -759,11 +763,7 @@ export function AssistantVoiceControl({
               : "Tagalog (click to switch to Auto)"
         }`}
         aria-label={`Switch voice language from ${
-          voiceLanguage === "auto"
-            ? "Auto"
-            : voiceLanguage === "en"
-              ? "English"
-              : "Tagalog"
+          voiceLanguage === "auto" ? "Auto" : voiceLanguage === "en" ? "English" : "Tagalog"
         }`}
       >
         {voiceLanguage === "auto" ? "AUTO" : voiceLanguage === "fil" ? "TL" : "EN"}
@@ -778,9 +778,11 @@ export function AssistantVoiceControl({
         >
           <strong>Enable voice input?</strong>
           <p>
-            Your recording is sent to Cloudflare Workers AI for transcription. You can review the
-            finished transcript before sending. Zoption does not store recordings. Replies in text
-            chat are always text.
+            Your recording is transcribed to text. Your browser&apos;s speech service handles part
+            of that where it offers live recognition (Google on Chrome, Apple on Safari), and
+            Cloudflare Workers AI transcribes the recording as well. You can review the finished
+            transcript before sending. Zoption does not store recordings. Replies in text chat are
+            always text.
           </p>
           <div>
             <button

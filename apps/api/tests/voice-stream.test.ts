@@ -528,7 +528,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
     }
   });
 
-  it("routes to Cloud Run bridge with default 'x-language': 'en' when no lang query is provided", async () => {
+  it("routes to Cloud Run bridge with 'x-language': 'auto' unless a known language is asked for", async () => {
     const sttCfg = {
       id: "cfg-bridge",
       service: "stt",
@@ -580,14 +580,22 @@ describe("GET /api/app/assistant/voice/stream", () => {
     };
 
     try {
-      const res = await app.request("/stream", {
-        method: "GET",
-        headers: { Upgrade: "websocket", Connection: "Upgrade" },
-      });
-      expect(res.status).toBe(101);
+      // Auto is the default choice for every client, so it must reach the bridge
+      // as auto rather than being collapsed into English.
+      for (const [query, expected] of [
+        ["", "auto"],
+        ["?lang=auto", "auto"],
+        ["?lang=es", "auto"],
+      ] as const) {
+        const res = await app.request(`/stream${query}`, {
+          method: "GET",
+          headers: { Upgrade: "websocket", Connection: "Upgrade" },
+        });
+        expect(res.status).toBe(101);
+        expect(interceptedHeaders?.get("x-language")).toBe(expected);
+      }
       expect(interceptedUrl).toBe("https://bridge.example.com/stream");
       expect(interceptedHeaders?.get("Upgrade")).toBe("websocket");
-      expect(interceptedHeaders?.get("x-language")).toBe("en");
       expect(mockBridgeWs.accept).toHaveBeenCalled();
     } finally {
       globalThis.fetch = originalFetch;

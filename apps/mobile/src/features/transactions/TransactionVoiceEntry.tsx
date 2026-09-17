@@ -87,7 +87,7 @@ export function TransactionVoiceEntry({
       extractVoiceTransaction(token, recording, undefined, { categories, language: voiceLanguage }),
     liveTranscribeResult: async (transcript) => {
       const token = await session.getAccessToken(false);
-      return extractVoiceTransactionFromTranscript(token, transcript, undefined, categories, voiceLanguage);
+      return extractVoiceTransactionFromTranscript(token, transcript, undefined, categories);
     },
     onPartialTranscript: (partial) => {
       setMessage(`Listening: “${partial}”`);

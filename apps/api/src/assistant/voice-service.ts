@@ -4,6 +4,7 @@ import {
   type AssistantSpeechVoice,
   type AssistantVoicePreferences,
   type AssistantVoiceTranscription,
+  type VoiceLanguage,
 } from "@zoption/shared";
 
 import type { AssistantRepository, AssistantVoiceRepository } from "../db/assistant";
@@ -29,7 +30,7 @@ export interface AssistantVoiceService {
     env: Bindings,
     tenantId: string,
     audio: File,
-    language?: string,
+    language?: VoiceLanguage,
   ): Promise<AssistantVoiceTranscription>;
   synthesize(
     env: Bindings,

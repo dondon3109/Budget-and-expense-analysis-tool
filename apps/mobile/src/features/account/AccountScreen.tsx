@@ -159,7 +159,8 @@ export function AccountScreen() {
           <Text style={[typography.headline, { color: theme.colors.text }]}>Voice language</Text>
           <Text style={[typography.body, { color: theme.colors.textMuted }]}>
             Choose your default voice language for AI assistant voice chats and transaction voice
-            entry. Auto mode automatically detects English and Tagalog.
+            entry. Auto mode automatically detects English and Tagalog. This device remembers the
+            choice; other devices keep their own.
           </Text>
           <VoiceLanguagePicker />
         </View>

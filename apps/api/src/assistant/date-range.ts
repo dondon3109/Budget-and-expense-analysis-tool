@@ -1,6 +1,7 @@
 import type { AssistantDateRange } from "@zoption/shared";
 
 import type { AssistantHistoryMessage } from "../db/assistant";
+import { tagalogWordPattern } from "./language";
 import { isPeriodBoundAggregateRequest } from "./period-policy";
 
 export interface TransactionDateBounds {
@@ -64,10 +65,10 @@ const DEFAULT_CLARIFICATION =
 const DEFAULT_CLARIFICATION_TAGALOG =
   "Aling buwan o petsa ang nais mong gamitin? Halimbawa, Agosto 2026 o Hulyo 1 hanggang Agosto 2, 2026.";
 
+const TAGALOG_MESSAGE_PATTERN = tagalogWordPattern();
+
 export function isTagalogMessage(message: string): boolean {
-  return /\b(?:mga|ang|ng|sa|ko|akin|aking|ako|mo|inyo|kanila|ano|magkano|alin|saan|bakit|paano|kumusta|gastos|nagastos|nagasta|kinita|kita|sweldo|sahod|pera|bangko|utang|badyet|buwan|taon|araw|kahapon|ngayon|kanina|subukan|ipakita|pakita|hanapin|meron|mayroon|walang|kabuuan)\b/i.test(
-    message,
-  );
+  return TAGALOG_MESSAGE_PATTERN.test(message);
 }
 
 function dateFromIso(value: string): Date {

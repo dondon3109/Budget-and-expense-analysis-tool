@@ -103,7 +103,8 @@ export function openMobileVoiceStreamWebSocket(
 ): WebSocket {
   const base = publicConfig.apiUrl.replace(/^http/, "ws");
   const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(accessToken)}&lang=${encodeURIComponent(lang)}`;
-  console.warn("[voice] connecting ws to", wsUrl);
+  // The URL carries the access token, so log the endpoint and language only.
+  console.warn("[voice] connecting ws to /api/app/assistant/voice/stream", { lang });
   return new WebSocket(wsUrl);
 }
 

@@ -47,7 +47,9 @@ function providerStatus(error: unknown): number | undefined {
   return undefined;
 }
 
-function createWhisperProvider(model: string = CLOUDFLARE_WHISPER_MODEL): AssistantVoiceTranscriptionProvider {
+function createWhisperProvider(
+  model: string = CLOUDFLARE_WHISPER_MODEL,
+): AssistantVoiceTranscriptionProvider {
   return {
     async transcribe(env, audio, options) {
       if (!env.AI) {
@@ -77,38 +79,40 @@ function createWhisperProvider(model: string = CLOUDFLARE_WHISPER_MODEL): Assist
           { signal: controller.signal },
         );
         const parsed = transcriptionSchema.safeParse(result);
-      if (!parsed.success) {
-        throw new AssistantVoiceProviderError("cloudflare_workers_ai", "invalid_response");
+        if (!parsed.success) {
+          throw new AssistantVoiceProviderError("cloudflare_workers_ai", "invalid_response");
+        }
+        const text = parsed.data.text.replace(/\s+/g, " ").trim();
+        if (!text) {
+          throw new AssistantVoiceProviderError("cloudflare_workers_ai", "invalid_response");
+        }
+        const info = parsed.data.transcription_info;
+        return {
+          text,
+          durationSeconds: info?.duration ?? info?.duration_after_vad ?? 0,
+          ...(info?.language ? { languageCode: info.language } : {}),
+        };
+      } catch (error) {
+        if (error instanceof AssistantVoiceProviderError) throw error;
+        const status = providerStatus(error);
+        if (controller.signal.aborted) {
+          throw new AssistantVoiceProviderError("cloudflare_workers_ai", "timeout");
+        }
+        if (status === 429) {
+          throw new AssistantVoiceProviderError("cloudflare_workers_ai", "rate_limit", status);
+        }
+        throw new AssistantVoiceProviderError("cloudflare_workers_ai", "unavailable", status);
+      } finally {
+        clearTimeout(timer);
       }
-      const text = parsed.data.text.replace(/\s+/g, " ").trim();
-      if (!text) {
-        throw new AssistantVoiceProviderError("cloudflare_workers_ai", "invalid_response");
-      }
-      const info = parsed.data.transcription_info;
-      return {
-        text,
-        durationSeconds: info?.duration ?? info?.duration_after_vad ?? 0,
-        ...(info?.language ? { languageCode: info.language } : {}),
-      };
-    } catch (error) {
-      if (error instanceof AssistantVoiceProviderError) throw error;
-      const status = providerStatus(error);
-      if (controller.signal.aborted) {
-        throw new AssistantVoiceProviderError("cloudflare_workers_ai", "timeout");
-      }
-      if (status === 429) {
-        throw new AssistantVoiceProviderError("cloudflare_workers_ai", "rate_limit", status);
-      }
-      throw new AssistantVoiceProviderError("cloudflare_workers_ai", "unavailable", status);
-    } finally {
-      clearTimeout(timer);
-    }
     },
   };
 }
 
 export const cloudflareWhisperProvider = createWhisperProvider();
 
-export function createCloudflareWhisperProvider(model?: string): AssistantVoiceTranscriptionProvider {
+export function createCloudflareWhisperProvider(
+  model?: string,
+): AssistantVoiceTranscriptionProvider {
   return createWhisperProvider(model ?? CLOUDFLARE_WHISPER_MODEL);
 }

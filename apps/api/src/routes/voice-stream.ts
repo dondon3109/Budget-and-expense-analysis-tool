@@ -1,3 +1,4 @@
+import { parseVoiceLanguage } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { AppEnvironment, Bindings } from "../types";
@@ -194,9 +195,12 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     };
 
     const micStart = context.req.header("x-t-mic-start") || String(tWorkerOpen);
-    const requestedLang = context.req.query("lang");
-    const isTagalog = requestedLang === "fil" || requestedLang === "tl";
-    const isEnglishOnly = requestedLang === "en";
+    const requestedLanguage = parseVoiceLanguage(context.req.query("lang"));
+    const isTagalog = requestedLanguage === "fil";
+    const isEnglishOnly = requestedLanguage === "en";
+    // Auto stays Auto on the way out: collapsing it into "en" would make the bridge
+    // path English only for everyone who never opened the setting.
+    const bridgeLanguage = requestedLanguage;
 
     // ==========================================
     // OPTION A: Google Gemini Multimodal Live API
@@ -533,7 +537,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
           "x-t-mic-start": micStart,
           "x-zoption-tenant": tenant?.tenantId ? String(tenant.tenantId).slice(0, 8) : "anon",
           "x-zoption-user": authUser?.id ? String(authUser.id).slice(0, 8) : "anon",
-          "x-language": isTagalog ? "fil" : "en",
+          "x-language": bridgeLanguage,
         },
       } as unknown as RequestInit)) as unknown as {
         status: number;

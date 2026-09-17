@@ -189,12 +189,14 @@ export function PrivacyPolicyPage() {
             identities, financial records, prompts, or conversation contents are ever sent.
           </li>
           <li>
-            <strong>Cloudflare Workers AI and Fish Audio</strong> for the separately enabled voice
-            feature. After voice consent, Cloudflare Workers AI receives a user-initiated recording
-            to produce a transcript. Transcripts are reviewed before sending. Fish
-            Audio may receive the completed assistant reply text when you choose spoken replies.
-            Zoption does not send workspace records directly to either voice provider or store
-            recordings or generated audio in D1.
+            <strong>Cloudflare Workers AI, your browser&apos;s speech service, and Fish Audio</strong>{" "}
+            for the separately enabled voice feature. After voice consent, your browser&apos;s own
+            speech service (Google on Chrome, Apple on Safari) may process a user-initiated
+            recording where it offers live recognition, and Cloudflare Workers AI also receives the
+            recording to produce a transcript. Transcripts are reviewed before sending. Fish Audio
+            may receive the completed assistant reply text when you choose spoken replies. Zoption
+            does not send workspace records directly to any voice provider or store recordings or
+            generated audio in D1.
           </li>
           <li>
             <strong>PayPal</strong> only if you start checkout for or subscribe to Zoption Pro.
@@ -301,7 +303,9 @@ export function PrivacyPolicyPage() {
           Voice mode is a separately consented feature. When you press the microphone control, your
           browser asks for microphone permission and sends the recording through Zoption&apos;s
           authenticated server to Cloudflare Workers AI&apos;s Whisper Large v3 Turbo model for
-          transcription. Transcripts are reviewed before sending. For a
+          transcription. Where your browser offers its own speech recognition and you have picked
+          English or Tagalog, that service also processes the audio: Google on Chrome and Apple on
+          Safari. Transcripts are reviewed before sending. For a
           voice-originated question, Zoption may send the completed assistant reply text to Fish
           Audio when you choose spoken replies. Zoption keeps the recording and generated audio in
           transient processing and browser memory only; it does not save either in D1. Each
@@ -351,8 +355,8 @@ export function PrivacyPolicyPage() {
           information sent to the configured AI provider is governed by that provider&apos;s
           practices as described
           above. Voice recordings and generated audio are not stored in Zoption&apos;s D1;
-          information processed by Cloudflare Workers AI and Fish Audio remains subject to their
-          provider practices. Metadata-only PostHog AI observability events are subject to the
+          information processed by Cloudflare Workers AI, your browser&apos;s speech service, and
+          Fish Audio remains subject to their provider practices. Metadata-only PostHog AI observability events are subject to the
           project&apos;s current 12-month event-retention plan. PostHog controls provider-side
           retention enforcement and deletion timing, so these events do not disappear when the
           related Zoption chat is deleted and may remain through that provider retention period.
@@ -410,9 +414,9 @@ export function PrivacyPolicyPage() {
           message, the relevant request context described above may be transferred to and processed
           by the configured AI provider in locations where it or its subprocessors operate. If
           you enable voice, the
-          recording described above may be processed by Cloudflare Workers AI and the
-          generated-reply text may be processed by Fish Audio in locations where they or their
-          subprocessors operate. Metadata-only AI observability events are sent to PostHog&apos;s US
+          recording described above may be processed by Cloudflare Workers AI or your browser&apos;s
+          speech service and the generated-reply text may be processed by Fish Audio in locations
+          where they or their subprocessors operate. Metadata-only AI observability events are sent to PostHog&apos;s US
           Cloud region. Privacy laws in those locations may differ from those in your country.
           Zoption remains responsible for personal data under its control and restricts transfers to
           information reasonably necessary for the relevant service. We use applicable provider

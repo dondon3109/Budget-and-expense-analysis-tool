@@ -115,12 +115,11 @@ describe("mobile AI-entry voice transport", () => {
     });
     expect(JSON.parse(init.body as string)).toEqual({
       transcript: "Spent 250 pesos on lunch today",
-      lang: "auto",
     });
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
-  it("submits categories and language in json body when provided", async () => {
+  it("submits categories in the json body when provided", async () => {
     const fetchMock = jest.fn(async () =>
       jsonResponse({
         transcript: "Spent 250 pesos on lunch today",
@@ -137,13 +136,12 @@ describe("mobile AI-entry voice transport", () => {
       "Spent 250 pesos on lunch today",
       fetchMock,
       ["Food & dining", "Transport"],
-      "fil",
     );
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    // A direct transcript is not transcribed again, so it carries no language.
     expect(JSON.parse(init.body as string)).toEqual({
       transcript: "Spent 250 pesos on lunch today",
       categories: ["Food & dining", "Transport"],
-      lang: "fil",
     });
   });
 });

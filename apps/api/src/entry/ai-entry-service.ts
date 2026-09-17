@@ -9,6 +9,7 @@ import {
   type ImportPreviewRequest,
   type TransactionKind,
   type TransactionVoiceDraft,
+  type VoiceLanguage,
 } from "@zoption/shared";
 import { z } from "zod";
 
@@ -115,7 +116,7 @@ export interface AiEntryService {
     tenantId: string,
     audio: File,
     categories?: string[],
-    language?: string,
+    language?: VoiceLanguage,
   ): Promise<TransactionVoiceDraft>;
   extractVoiceTranscript(
     env: Bindings,

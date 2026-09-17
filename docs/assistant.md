@@ -58,6 +58,30 @@ explained as unavailable.
 
 TTS is pinned to Fish Audio's free `s2.1-pro-free` model. The Worker rejects any other configured TTS model. Transcription starts within Cloudflare Workers AI's daily free allocation and should be monitored before enabling paid Workers AI usage.
 
+## Language
+
+The assistant answers in the language the user writes in. `prompt.ts` tells the model to reply
+naturally in Filipino or Taglish when the user writes in either, while keeping exact currency
+codes (`PHP 1,234.56`) and tool-grounded facts unchanged. Two deterministic paths answer without
+a provider call and follow the same rule: a regulated-topic redirect and its disclaimer are
+served in Tagalog when the message reads as Tagalog (`compliance-policy.ts`), and an ambiguous
+date is clarified in Tagalog too (`date-range.ts`). The date parser checks Tagalog relative
+periods before English month names, so "ngayong buwan" means this month and not May.
+
+Voice input carries the same choice. `parseVoiceLanguage` in `packages/shared` folds whatever a
+client sends (`auto`, `en`, `fil`, or the older `tl`) into those three values, and the chosen
+language reaches the transcription provider: Whisper gets a language-appropriate
+`initial_prompt`, Google STT gets explicit `fil-PH` and `en-US` codes per API shape, and Gemini
+Live gets `languageCodes` plus a bilingual system instruction. `auto` asks the provider to detect
+the spoken language instead of defaulting to English, including on the Cloud Run bridge, which
+receives the value in the `x-language` header.
+
+On web, Auto leaves transcription to the server. The browser's own `SpeechRecognition` engine has
+no cross-language detection, so it only starts when the user has explicitly picked English or
+Tagalog, and a server transcript always outranks a browser one. Browser recognition shares the
+microphone audio with the browser vendor, which the voice consent copy and the privacy policy name
+next to Cloudflare Workers AI.
+
 ## Allowed tools
 
 - `get_account_balances` — balances calculated from recorded transaction ledger entries, optionally filtered to a tenant-owned account.

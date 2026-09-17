@@ -69,6 +69,23 @@ describe("finance guides content and helper functions", () => {
     }
   });
 
+  it("keeps the two new budgeting guides to claims the product can keep", () => {
+    // These two pages describe what the app does, so they must not promise the iOS app,
+    // the app stores, or a rating. A PDF mention is allowed only in a sentence that also
+    // names Android, the platform whose receipt scanner reads PDF statements.
+    for (const slug of ["budget-monthly-salary-philippines", "50-30-20-rule-pesos"]) {
+      const guide = getFinanceGuideBySlug(slug);
+      expect(guide).not.toBeNull();
+      const copy = JSON.stringify(guide);
+      for (const banned of ["iOS", "App Store", "Play Store", "aggregateRating"]) {
+        expect(copy).not.toContain(banned);
+      }
+      for (const sentence of copy.split(/(?<=[.!?])\s+/)) {
+        if (sentence.includes("PDF")) expect(sentence).toContain("Android");
+      }
+    }
+  });
+
   it("points the 50/30/20 guide at the peso calculator", () => {
     const guide = getFinanceGuideBySlug("50-30-20-rule-pesos");
     expect(guide?.relatedLinks?.map((link) => link.to)).toContain("/tools/50-30-20-calculator");

@@ -1472,7 +1472,6 @@ export async function extractVoiceTransaction(
         body: JSON.stringify({
           transcript: audioOrTranscript.transcript,
           ...(categories && categories.length > 0 ? { categories } : {}),
-          lang: language || "auto",
         }),
       }
     : (() => {

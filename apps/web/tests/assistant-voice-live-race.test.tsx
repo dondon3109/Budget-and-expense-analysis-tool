@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 
+import { CURRENT_ASSISTANT_VOICE_CONSENT_VERSION } from "@zoption/shared";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -21,15 +22,19 @@ const voiceStreamMocks = vi.hoisted(() => {
   let capturedCallbacks: any = null;
   let stopImplementation: (() => Promise<void>) | null = null;
 
-  const startLiveTranscriptionSession = vi.fn(async (_workspace: any, _stream: any, callbacks: any) => {
-    capturedCallbacks = callbacks;
-    if (stopImplementation) {
-      return { stop: vi.fn(stopImplementation) };
-    }
-    return {
-      stop: vi.fn(() => new Promise<void>((resolve) => setTimeout(resolve, LIVE_FINALIZATION_TIMEOUT_MS))),
-    };
-  });
+  const startLiveTranscriptionSession = vi.fn(
+    async (_workspace: any, _stream: any, callbacks: any) => {
+      capturedCallbacks = callbacks;
+      if (stopImplementation) {
+        return { stop: vi.fn(stopImplementation) };
+      }
+      return {
+        stop: vi.fn(
+          () => new Promise<void>((resolve) => setTimeout(resolve, LIVE_FINALIZATION_TIMEOUT_MS)),
+        ),
+      };
+    },
+  );
 
   return {
     startLiveTranscriptionSession,
@@ -143,11 +148,13 @@ beforeEach(() => {
     speechAvailable: true,
     reviewRequired: true,
     consentedAt: "2026-08-12T10:00:00.000Z",
-    consentVersion: 3,
+    consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
     transcriptionModel: "gemini-3.5-transcribe-live",
     ttsModel: "s2.1-pro-free",
   } as any);
-  apiMocks.getAssistantVoicePreview.mockResolvedValue(new Blob(["preview"], { type: "audio/mpeg" }));
+  apiMocks.getAssistantVoicePreview.mockResolvedValue(
+    new Blob(["preview"], { type: "audio/mpeg" }),
+  );
   apiMocks.transcribeAssistantVoice.mockReset();
   vi.useRealTimers();
 });
@@ -166,24 +173,28 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
 
     let finalDelivered = false;
 
-    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(async (_w: any, _s: any, callbacks: any) => {
-      return {
-        stop: vi.fn(() => {
-          return new Promise<void>((resolve) => {
-            setTimeout(() => {
-              if (!finalDelivered) {
-                finalDelivered = true;
-                callbacks.onFinal("Spent 20 pesos on coffee");
-              }
-              resolve();
-            }, 400);
-          });
-        }),
-      };
-    });
+    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(
+      async (_w: any, _s: any, callbacks: any) => {
+        return {
+          stop: vi.fn(() => {
+            return new Promise<void>((resolve) => {
+              setTimeout(() => {
+                if (!finalDelivered) {
+                  finalDelivered = true;
+                  callbacks.onFinal("Spent 20 pesos on coffee");
+                }
+                resolve();
+              }, 400);
+            });
+          }),
+        };
+      },
+    );
 
     const onTranscript = vi.fn();
-    render(<AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />);
+    render(
+      <AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />,
+    );
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -201,25 +212,38 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("button", { name: "Transcribing your voice recording" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Transcribing your voice recording" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Transcribing");
     expect(onTranscript).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Live transcription did not capture any speech/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Live transcription didn't return any speech/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Live transcription did not capture any speech/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Live transcription didn't return any speech/i),
+    ).not.toBeInTheDocument();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300);
     });
     expect(onTranscript).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Transcribing your voice recording" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Transcribing your voice recording" }),
+    ).toBeInTheDocument();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(200);
       await Promise.resolve();
     });
 
-    expect(onTranscript).toHaveBeenCalledWith("Spent 20 pesos on coffee", expect.objectContaining({ submissionMode: "review" }));
-    expect(screen.getByText("Transcript ready — review or edit it, then press Send.")).toBeInTheDocument();
+    expect(onTranscript).toHaveBeenCalledWith(
+      "Spent 20 pesos on coffee",
+      expect.objectContaining({ submissionMode: "review" }),
+    );
+    expect(
+      screen.getByText("Transcript ready — review or edit it, then press Send."),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start voice recording" })).toBeInTheDocument();
     expect(apiMocks.transcribeAssistantVoice).not.toHaveBeenCalled();
   });
@@ -230,12 +254,16 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
 
     voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(async () => {
       return {
-        stop: vi.fn(() => new Promise<void>((resolve) => setTimeout(resolve, LIVE_FINALIZATION_TIMEOUT_MS))),
+        stop: vi.fn(
+          () => new Promise<void>((resolve) => setTimeout(resolve, LIVE_FINALIZATION_TIMEOUT_MS)),
+        ),
       };
     });
 
     const onTranscript = vi.fn();
-    render(<AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />);
+    render(
+      <AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />,
+    );
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -252,14 +280,18 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("button", { name: "Transcribing your voice recording" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Transcribing your voice recording" }),
+    ).toBeInTheDocument();
     expect(onTranscript).not.toHaveBeenCalled();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(LIVE_FINALIZATION_TIMEOUT_MS - 100);
       await Promise.resolve();
     });
-    expect(screen.getByRole("button", { name: "Transcribing your voice recording" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Transcribing your voice recording" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Live transcription did not capture/i)).not.toBeInTheDocument();
     expect(onTranscript).not.toHaveBeenCalled();
 
@@ -267,7 +299,11 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
       await vi.advanceTimersByTimeAsync(150);
       await Promise.resolve();
     });
-    expect(screen.getByText(/Live transcription did not capture any speech|Live transcription didn't return any speech/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Live transcription did not capture any speech|Live transcription didn't return any speech/i,
+      ),
+    ).toBeInTheDocument();
     expect(onTranscript).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Start voice recording" })).toBeInTheDocument();
     expect(apiMocks.transcribeAssistantVoice).not.toHaveBeenCalled();
@@ -278,15 +314,21 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
     installRecordingMocks();
 
     let capturedCallbacks: any = null;
-    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(async (_w: any, _s: any, callbacks: any) => {
-      capturedCallbacks = callbacks;
-      return {
-        stop: vi.fn(() => new Promise<void>((resolve) => setTimeout(resolve, LIVE_FINALIZATION_TIMEOUT_MS))),
-      };
-    });
+    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(
+      async (_w: any, _s: any, callbacks: any) => {
+        capturedCallbacks = callbacks;
+        return {
+          stop: vi.fn(
+            () => new Promise<void>((resolve) => setTimeout(resolve, LIVE_FINALIZATION_TIMEOUT_MS)),
+          ),
+        };
+      },
+    );
 
     const onTranscript = vi.fn();
-    render(<AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />);
+    render(
+      <AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />,
+    );
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -308,7 +350,9 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("button", { name: "Transcribing your voice recording" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Transcribing your voice recording" }),
+    ).toBeInTheDocument();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(LIVE_FINALIZATION_TIMEOUT_MS);
@@ -327,26 +371,30 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
     let capturedCallbacks: any = null;
     let wsOpenResolve: ((v: any) => void) | null = null;
 
-    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation((_w: any, _s: any, callbacks: any) => {
-      capturedCallbacks = callbacks;
-      const wsPromise: Promise<any> = new Promise<any>((resolve) => {
-        wsOpenResolve = resolve;
-      });
-      return wsPromise.then(() => ({
-        stop: vi.fn(
-          () =>
-            new Promise<void>((resolve) => {
-              setTimeout(() => {
-                callbacks.onFinal("Early stop transcript");
-                resolve();
-              }, 200);
-            }),
-        ),
-      }));
-    });
+    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(
+      (_w: any, _s: any, callbacks: any) => {
+        capturedCallbacks = callbacks;
+        const wsPromise: Promise<any> = new Promise<any>((resolve) => {
+          wsOpenResolve = resolve;
+        });
+        return wsPromise.then(() => ({
+          stop: vi.fn(
+            () =>
+              new Promise<void>((resolve) => {
+                setTimeout(() => {
+                  callbacks.onFinal("Early stop transcript");
+                  resolve();
+                }, 200);
+              }),
+          ),
+        }));
+      },
+    );
 
     const onTranscript = vi.fn();
-    render(<AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />);
+    render(
+      <AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />,
+    );
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -367,7 +415,9 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("button", { name: "Transcribing your voice recording" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Transcribing your voice recording" }),
+    ).toBeInTheDocument();
     expect(onTranscript).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -392,7 +442,9 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
     });
 
     expect(onTranscript).toHaveBeenCalledWith("Early stop transcript", expect.any(Object));
-    expect(screen.getByText("Transcript ready — review or edit it, then press Send.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Transcript ready — review or edit it, then press Send."),
+    ).toBeInTheDocument();
     expect(apiMocks.transcribeAssistantVoice).not.toHaveBeenCalled();
   });
 
@@ -400,22 +452,26 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
     vi.useFakeTimers();
     installRecordingMocks();
 
-    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(async (_w: any, _s: any, callbacks: any) => {
-      return {
-        stop: vi.fn(
-          () =>
-            new Promise<void>((resolve) => {
-              setTimeout(() => {
-                callbacks.onFinal("Short hello");
-                resolve();
-              }, 500);
-            }),
-        ),
-      };
-    });
+    voiceStreamMocks.startLiveTranscriptionSession.mockImplementation(
+      async (_w: any, _s: any, callbacks: any) => {
+        return {
+          stop: vi.fn(
+            () =>
+              new Promise<void>((resolve) => {
+                setTimeout(() => {
+                  callbacks.onFinal("Short hello");
+                  resolve();
+                }, 500);
+              }),
+          ),
+        };
+      },
+    );
 
     const onTranscript = vi.fn();
-    render(<AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />);
+    render(
+      <AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />,
+    );
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -433,7 +489,9 @@ describe("AssistantVoiceControl — Gemini Live finalization race", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("button", { name: "Transcribing your voice recording" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Transcribing your voice recording" }),
+    ).toBeInTheDocument();
     expect(onTranscript).not.toHaveBeenCalled();
 
     await act(async () => {

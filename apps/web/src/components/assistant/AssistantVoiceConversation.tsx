@@ -134,8 +134,6 @@ export const VOICE_SUGGESTED_PROMPTS_TAGALOG = [
   "Aling utang ang dapat kong unahing bayaran?",
 ] as const;
 
-export const VOICE_SUGGESTED_PROMPTS_ENGLISH = VOICE_SUGGESTED_PROMPTS;
-
 const STATUS_LABEL: Record<VoiceStatus, string> = {
   idle: "Tap to speak",
   listening: "Listening…",
@@ -161,6 +159,9 @@ export function AssistantVoiceConversation({
   const heardSpeechRef = useRef(false);
   const lastSpeechAtRef = useRef(0);
   const liveTranscriptRef = useRef<string>("");
+  // The browser engine and the server engine both transcribe, so they are kept
+  // apart: a browser hypothesis must never outrank a server transcript.
+  const browserTranscriptRef = useRef<string>("");
   const liveErrorRef = useRef<string | null>(null);
   const liveShouldStopRef = useRef(false);
   const stopReasonRef = useRef<StopReason>("manual");
@@ -620,7 +621,7 @@ export function AssistantVoiceConversation({
             return;
           }
 
-          const liveText = liveTranscriptRef.current.trim();
+          const liveText = (liveTranscriptRef.current || browserTranscriptRef.current).trim();
           if (liveText) {
             setLivePartial("");
             liveShouldStopRef.current = false;
@@ -662,6 +663,7 @@ export function AssistantVoiceConversation({
       recorder.start(250);
       setVoiceStatus("listening");
       liveTranscriptRef.current = "";
+      browserTranscriptRef.current = "";
       liveErrorRef.current = null;
       setLivePartial("");
       liveShouldStopRef.current = false;
@@ -693,7 +695,7 @@ export function AssistantVoiceConversation({
             }
             const trimmed = full.trim();
             if (trimmed) {
-              liveTranscriptRef.current = trimmed;
+              browserTranscriptRef.current = trimmed;
               setLivePartial(trimmed);
               heardSpeechRef.current = true;
               lastSpeechAtRef.current = Date.now();
@@ -748,7 +750,11 @@ export function AssistantVoiceConversation({
             },
             onError: (error) => {
               liveErrorRef.current = error.message;
-              if (mountedRef.current && !liveTranscriptRef.current) {
+              if (
+                mountedRef.current &&
+                !liveTranscriptRef.current &&
+                !browserTranscriptRef.current
+              ) {
                 setNotice(error.message);
               }
             },
@@ -773,7 +779,9 @@ export function AssistantVoiceConversation({
             liveSessionPromiseRef.current = null;
             if (mountedRef.current && error instanceof Error) {
               liveErrorRef.current = error.message;
-              if (!liveTranscriptRef.current) setNotice(error.message);
+              if (!liveTranscriptRef.current && !browserTranscriptRef.current) {
+                setNotice(error.message);
+              }
             }
           });
       }
@@ -920,9 +928,11 @@ export function AssistantVoiceConversation({
           </div>
           <strong>Talk to {assistantName}?</strong>
           <p className="assistant-voice-consent-desc">
-            Your recording is sent to Cloudflare Workers AI for transcription. After you finish
-            speaking, the completed reply text is sent to Fish Audio for speech. Zoption does not
-            store recordings or generated audio.
+            Your recording is transcribed to text. Your browser&apos;s speech service handles part
+            of that where it offers live recognition (Google on Chrome, Apple on Safari), and
+            Cloudflare Workers AI transcribes the recording as well. After you finish speaking, the
+            completed reply text is sent to Fish Audio for speech. Zoption does not store recordings
+            or generated audio.
           </p>
           <div className="assistant-voice-consent-features">
             <div className="assistant-voice-consent-feature">

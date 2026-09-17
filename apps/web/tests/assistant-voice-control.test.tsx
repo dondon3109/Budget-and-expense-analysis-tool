@@ -2,6 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
+import { CURRENT_ASSISTANT_VOICE_CONSENT_VERSION } from "@zoption/shared";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -153,7 +154,7 @@ describe("AssistantVoiceControl", () => {
 
     const notice = screen.getByRole("dialog", { name: "Voice notice" });
     expect(notice).toHaveFocus();
-    expect(notice).toHaveTextContent("recording is sent to Cloudflare Workers AI");
+    expect(notice).toHaveTextContent("Cloudflare Workers AI transcribes the recording");
     expect(notice).toHaveTextContent("review the finished transcript before sending");
     expect(notice).toHaveTextContent("Replies in text chat are always text.");
     expect(getUserMedia).not.toHaveBeenCalled();
@@ -193,7 +194,7 @@ describe("AssistantVoiceControl", () => {
         speechAvailable: true,
         reviewRequired: true,
         consentedAt: "2026-08-12T10:00:00.000Z",
-        consentVersion: 3,
+        consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
         transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
         ttsModel: "s2.1-pro-free",
       });
@@ -257,7 +258,7 @@ describe("AssistantVoiceControl", () => {
       speechAvailable: true,
       reviewRequired: true,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
@@ -286,7 +287,7 @@ describe("AssistantVoiceControl", () => {
       speechAvailable: true,
       reviewRequired: false,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
@@ -331,7 +332,7 @@ describe("AssistantVoiceControl", () => {
       speechAvailable: true,
       reviewRequired: false,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
@@ -376,7 +377,7 @@ describe("AssistantVoiceControl", () => {
       speechAvailable: true,
       reviewRequired: false,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
@@ -434,7 +435,7 @@ describe("AssistantVoiceControl", () => {
       speechAvailable: true,
       reviewRequired: true,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
@@ -486,7 +487,7 @@ describe("AssistantVoiceControl", () => {
       speechAvailable: true,
       reviewRequired: false,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
@@ -517,7 +518,7 @@ describe("AssistantVoiceControl", () => {
       speechAvailable: true,
       reviewRequired: false,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
@@ -550,7 +551,7 @@ describe("AssistantVoiceControl", () => {
       speechAvailable: true,
       reviewRequired: false,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });
@@ -599,7 +600,7 @@ describe("AssistantVoiceControl", () => {
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
       enabled: true,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "gemini-3.5-transcribe-live",
       ttsModel: "s2.1-pro-free",
     });
@@ -635,7 +636,7 @@ describe("AssistantVoiceControl", () => {
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
       enabled: true,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "gemini-3.5-transcribe-live",
       ttsModel: "s2.1-pro-free",
     });
@@ -673,7 +674,7 @@ describe("AssistantVoiceControl", () => {
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
       enabled: true,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "gemini-3.5-transcribe-live",
       ttsModel: "s2.1-pro-free",
     });
@@ -716,7 +717,7 @@ describe("AssistantVoiceControl", () => {
     apiMocks.getAssistantVoicePreferences.mockResolvedValue({
       enabled: true,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "gemini-3.5-transcribe-live",
       ttsModel: "s2.1-pro-free",
     });

@@ -7,7 +7,6 @@ export interface VoiceLanguageOption {
   code: VoiceLanguage;
   label: string;
   nativeLabel: string;
-  speechRecognitionLang: string;
   description: string;
 }
 
@@ -16,21 +15,18 @@ export const VOICE_LANGUAGES: readonly VoiceLanguageOption[] = [
     code: "auto",
     label: "Auto",
     nativeLabel: "Auto (EN / TL)",
-    speechRecognitionLang: "en-US",
     description: "Automatically detects whether you are speaking English or Tagalog/Filipino.",
   },
   {
     code: "en",
     label: "English",
     nativeLabel: "English",
-    speechRecognitionLang: "en-US",
     description: "Optimized for English voice input and financial terminology.",
   },
   {
     code: "fil",
     label: "Tagalog",
     nativeLabel: "Tagalog",
-    speechRecognitionLang: "fil-PH",
     description: "Optimized for Tagalog, Filipino, and Taglish expressions.",
   },
 ] as const;
@@ -80,8 +76,7 @@ if (typeof window !== "undefined" && typeof window.addEventListener === "functio
   window.addEventListener("storage", (event: StorageEvent) => {
     if (event.key === VOICE_LANGUAGE_STORAGE_KEY) {
       const val = event.newValue;
-      const lang: VoiceLanguage =
-        val === "en" || val === "fil" || val === "auto" ? val : "auto";
+      const lang: VoiceLanguage = val === "en" || val === "fil" || val === "auto" ? val : "auto";
       window.dispatchEvent(new CustomEvent("zoption-voice-lang-change", { detail: lang }));
     }
   });

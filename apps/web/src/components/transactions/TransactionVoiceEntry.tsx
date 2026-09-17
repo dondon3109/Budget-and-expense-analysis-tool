@@ -12,6 +12,12 @@ import {
   startLiveTranscriptionSession,
   type LiveTranscriptionSession,
 } from "../../lib/voiceStream";
+import {
+  type VoiceLanguage,
+  getStoredVoiceLanguage,
+  setStoredVoiceLanguage,
+  speechRecognitionLang,
+} from "../../lib/voiceLanguage";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 
 const MAX_RECORDING_MS = 60_000;
@@ -20,12 +26,6 @@ const SPEECH_RMS_THRESHOLD = 0.015;
 const ENDING_SILENCE_MS = 1400;
 const NO_SPEECH_TIMEOUT_MS = 8000;
 const VOICE_SAMPLE_INTERVAL_MS = 100;
-import {
-  type VoiceLanguage,
-  getStoredVoiceLanguage,
-  setStoredVoiceLanguage,
-  speechRecognitionLang,
-} from "../../lib/voiceLanguage";
 
 interface SpeechRecognitionResultItem {
   readonly transcript: string;
@@ -153,6 +153,9 @@ export function TransactionVoiceEntry({
   const audioContextRef = useRef<AudioContext | undefined>(undefined);
   const stopReasonRef = useRef<"user" | "silence" | "no-speech" | "cancelled">("user");
   const liveTranscriptRef = useRef<string>("");
+  // The browser engine and the server engine both transcribe, so they are kept
+  // apart: a browser hypothesis must never outrank a server transcript.
+  const browserTranscriptRef = useRef<string>("");
   const mountedRef = useRef(true);
   const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>(() => getStoredVoiceLanguage());
@@ -364,6 +367,7 @@ export function TransactionVoiceEntry({
             setStatus("idle");
             setLiveTranscript("");
             liveTranscriptRef.current = "";
+            browserTranscriptRef.current = "";
             return;
           }
           if (stopReasonRef.current === "no-speech") {
@@ -371,10 +375,11 @@ export function TransactionVoiceEntry({
             setMessage("I didn’t hear anything. Speak a transaction and try again.");
             setLiveTranscript("");
             liveTranscriptRef.current = "";
+            browserTranscriptRef.current = "";
             return;
           }
 
-          const liveText = liveTranscriptRef.current.trim();
+          const liveText = (liveTranscriptRef.current || browserTranscriptRef.current).trim();
           if (liveText) {
             setStatus("transcribing");
             try {
@@ -415,6 +420,7 @@ export function TransactionVoiceEntry({
       setElapsedSeconds(0);
       setLiveTranscript("");
       liveTranscriptRef.current = "";
+      browserTranscriptRef.current = "";
 
       monitorAudioActivity(activeStream);
 
@@ -425,7 +431,10 @@ export function TransactionVoiceEntry({
             (window as unknown as WindowWithSpeechRecognition).webkitSpeechRecognition
           : undefined;
 
-      if (SpeechRecognitionClass) {
+      // Browser SpeechRecognition has no cross language auto detect, so an Auto
+      // engine is really an English one. Auto therefore stays on the server path,
+      // which does handle both languages.
+      if (SpeechRecognitionClass && voiceLanguage !== "auto") {
         try {
           const recognition = new SpeechRecognitionClass();
           recognition.continuous = true;
@@ -445,7 +454,7 @@ export function TransactionVoiceEntry({
             }
             const trimmed = full.trim();
             if (trimmed) {
-              liveTranscriptRef.current = trimmed;
+              browserTranscriptRef.current = trimmed;
               setLiveTranscript(trimmed);
             }
           };
@@ -455,7 +464,7 @@ export function TransactionVoiceEntry({
               if (
                 mountedRef.current &&
                 recorderRef.current?.state === "recording" &&
-                liveTranscriptRef.current
+                (liveTranscriptRef.current || browserTranscriptRef.current)
               ) {
                 stopRecording("silence");
               }
@@ -528,6 +537,7 @@ export function TransactionVoiceEntry({
     setMessage(undefined);
     setLiveTranscript("");
     liveTranscriptRef.current = "";
+    browserTranscriptRef.current = "";
   }
 
   async function acceptConsent() {

@@ -15,6 +15,16 @@ All notable product changes are documented here.
 ### Changed
 
 - Prepared Android Beta 0.2.30 (versionCode 20330) mobile release.
+- In-app patch notes now describe the 0.2.30 release: Tagalog voice input and the Auto bilingual default, the two new peso guides and explainer pages, and the anonymous signup funnel measurement.
+- The voice consent notice, the AI entry opt-in, and the Privacy Policy now name the browser's own speech service (Google on Chrome, Apple on Safari) beside Cloudflare Workers AI, and the assistant voice consent version moves to 4 so voice input asks again.
+
+### Fixed
+
+- The mobile voice language setting is read back from the device on launch instead of resetting to Auto, and the same read now happens for the assistant voice options and the microphone capture consent.
+- Auto stays Auto everywhere: the Cloud Run bridge receives `auto` instead of being told English, and the browser's English-only speech recognizer no longer starts in Auto mode or pre-empts the server transcription that handles Tagalog. A server transcript now outranks a browser one on every voice surface.
+- A voice language read at the API boundary (`auto`, `en`, `fil`, or the older `tl`) is validated once, and a direct transcript request no longer sends a language nothing reads.
+- A first import is only recorded when the commit inserted at least one row, so an empty commit on an empty workspace no longer counts as the funnel's first import.
+- The private page URL guard now runs in PostHog's `before_send` hook, replacing the deprecated `sanitize_properties`, and the Cookie and Privacy policies keep their wording.
 
 ## 2.33.1 — 2026-09-16
 

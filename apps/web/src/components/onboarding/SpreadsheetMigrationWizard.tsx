@@ -300,10 +300,14 @@ function SpreadsheetMigrationDialog({
     },
     onSuccess: async (data) => {
       // The rows this commit inserted, read back against the workspace total, tell whether
-      // the workspace was empty before it. A failed or unknown read never fires, and the
-      // module keeps the event to one per page load.
+      // the workspace was empty before it. A failed or unknown read never fires, a commit
+      // that inserted nothing never fires, and the module keeps the event to one per page load.
       const transactionTotal = await readWorkspaceTransactionTotal(queryClient, workspace);
-      if (transactionTotal !== undefined && transactionTotal === data.importedCount) {
+      if (
+        transactionTotal !== undefined &&
+        data.importedCount > 0 &&
+        transactionTotal === data.importedCount
+      ) {
         captureFunnelEvent("first_import_committed", {});
       }
       if (workspace) {

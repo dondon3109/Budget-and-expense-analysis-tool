@@ -60,11 +60,15 @@ test.describe("published public content routes", () => {
   test("the published sitemap lists every new route", async ({ request }) => {
     const sitemap = await publishedSitemap(request);
     if (sitemap === null) {
-      // The Vite dev server this suite normally runs against serves only public/, and the CI e2e
-      // job currently runs before the web build, so there may be nothing to read. Skipping names
-      // the gap instead of failing an environment that never had a sitemap, or passing on one
-      // nobody published.
-      test.skip(true, "No sitemap is served at /sitemap.xml and no production build output exists.");
+      // The suite runs against the Vite dev server, which serves public/ and no sitemap; in CI
+      // both web builds run first, so the production build output this reads is the one the
+      // workflow just wrote. A fresh checkout with no build has nothing to read, and skipping
+      // names that gap instead of failing an environment that never had a sitemap, or passing on
+      // one nobody published.
+      test.skip(
+        true,
+        "No sitemap is served at /sitemap.xml and no production build output exists.",
+      );
       return;
     }
 

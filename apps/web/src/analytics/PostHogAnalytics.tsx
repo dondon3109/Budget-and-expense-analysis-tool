@@ -1,4 +1,4 @@
-import posthog from "posthog-js";
+import posthog, { type BeforeSendFn } from "posthog-js";
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 
@@ -19,7 +19,20 @@ let isInitialized = false;
  * can carry a search filter or an identifier in its query string on purpose (a bookmarked
  * transaction view, for example). Reduce both to the origin and path, the same shape the
  * manual pageview below sends, so no event can carry page parameters.
+ *
+ * before_send runs on the outbound payload after the SDK has finished building properties,
+ * which is what sanitize_properties used to do; the SDK now marks that hook deprecated.
+ * Returning null drops an event, so this hook can never make a payload less safe.
  */
+export const sanitizeAnalyticsEvent: BeforeSendFn = (captureResult) => {
+  if (!captureResult) return null;
+  // The sanitizer only ever rewrites a string property into another string, so the SDK's
+  // property type survives the round trip.
+  const properties = sanitizeAnalyticsProperties(
+    captureResult.properties,
+  ) as typeof captureResult.properties;
+  return { ...captureResult, properties };
+};
 export function sanitizeAnalyticsUrl(value: string): string {
   const withoutFragment = value.split("#")[0] ?? value;
   const withoutQuery = withoutFragment.split("?")[0] ?? withoutFragment;
@@ -62,7 +75,7 @@ export function ensurePostHogInitialized(): boolean {
     disable_surveys: true,
     disable_external_dependency_loading: true,
     advanced_disable_flags: true,
-    sanitize_properties: sanitizeAnalyticsProperties,
+    before_send: sanitizeAnalyticsEvent,
     capture_performance: {
       web_vitals: true,
       web_vitals_allowed_metrics: ["LCP", "CLS", "INP"],

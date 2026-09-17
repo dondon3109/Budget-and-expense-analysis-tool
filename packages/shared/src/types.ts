@@ -537,7 +537,7 @@ export interface AssistantResponseMetadata {
 }
 
 export const CURRENT_ASSISTANT_CONSENT_VERSION = 5;
-export const CURRENT_ASSISTANT_VOICE_CONSENT_VERSION = 3;
+export const CURRENT_ASSISTANT_VOICE_CONSENT_VERSION = 4;
 
 export const assistantSpeechVoices = ["default", "bright", "energetic"] as const;
 export type AssistantSpeechVoice = (typeof assistantSpeechVoices)[number];
@@ -604,6 +604,17 @@ export interface AssistantPreferences {
 }
 
 export type VoiceLanguage = "auto" | "en" | "fil";
+
+/**
+ * Folds a value read at a boundary into the voice language the product supports.
+ * "tl" is accepted as the older Tagalog alias, and anything unrecognised means Auto,
+ * which lets the transcription provider detect the spoken language itself.
+ */
+export function parseVoiceLanguage(value: unknown): VoiceLanguage {
+  if (value === "en" || value === "fil") return value;
+  if (value === "tl") return "fil";
+  return "auto";
+}
 
 export interface AssistantVoicePreferences {
   enabled: boolean;

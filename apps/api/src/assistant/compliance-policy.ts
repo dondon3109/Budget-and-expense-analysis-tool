@@ -1,5 +1,7 @@
 import type { AssistantCompliancePosture, AssistantComplianceTopic } from "@zoption/shared";
 
+import { tagalogWordPattern } from "./language";
+
 export interface ComplianceDecision {
   posture: AssistantCompliancePosture;
   topics: AssistantComplianceTopic[];
@@ -7,10 +9,21 @@ export interface ComplianceDecision {
   disclaimer?: string;
 }
 
+// The shared Tagalog words plus the words that only matter to a regulated topic.
+const TAGALOG_COMPLIANCE_PATTERN = tagalogWordPattern(
+  "dapat",
+  "mamuhunan",
+  "pamumuhunan",
+  "buwis",
+  "pagbubuwis",
+  "seguro",
+  "pensyon",
+  "pagreretiro",
+  "abogado",
+);
+
 export function isTagalogComplianceMessage(message: string): boolean {
-  return /\b(?:mga|ang|ng|sa|ko|akin|aking|ako|mo|inyo|kanila|ano|magkano|alin|saan|bakit|paano|kumusta|gastos|nagastos|nagasta|kinita|kita|sweldo|sahod|pera|bangko|utang|badyet|buwan|taon|araw|kahapon|ngayon|kanina|subukan|ipakita|pakita|hanapin|meron|mayroon|walang|kabuuan|dapat|mamuhunan|pamumuhunan|buwis|pagbubuwis|seguro|pensyon|pagreretiro|abogado)\b/i.test(
-    message,
-  );
+  return TAGALOG_COMPLIANCE_PATTERN.test(message);
 }
 
 const TOPIC_PATTERNS: Array<[AssistantComplianceTopic, RegExp]> = [

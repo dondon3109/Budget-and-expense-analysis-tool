@@ -1,3 +1,4 @@
+import { parseVoiceLanguage } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { AiEntryService } from "../entry/ai-entry-service";
@@ -75,7 +76,7 @@ export function createAiEntryRoutes(service: AiEntryService) {
 
     const form = await context.req.formData();
     const categories = parseCategoryList(form.get("categories"));
-    const lang = (form.get("lang") as string | null) || context.req.query("lang") || "auto";
+    const lang = parseVoiceLanguage(form.get("lang") ?? context.req.query("lang"));
     const transcriptField = form.get("transcript");
     if (typeof transcriptField === "string" && transcriptField.trim().length > 0) {
       return context.json(

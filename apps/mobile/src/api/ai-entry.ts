@@ -41,10 +41,9 @@ export async function extractVoiceTransaction(
   optionsOrCategories?: ExtractVoiceTransactionOptions | string[],
   legacyOptions?: ExtractVoiceTransactionOptions,
 ): Promise<TransactionVoiceDraft> {
-  const options: ExtractVoiceTransactionOptions =
-    Array.isArray(optionsOrCategories)
-      ? { categories: optionsOrCategories, ...(legacyOptions ?? {}) }
-      : (optionsOrCategories ?? {});
+  const options: ExtractVoiceTransactionOptions = Array.isArray(optionsOrCategories)
+    ? { categories: optionsOrCategories, ...(legacyOptions ?? {}) }
+    : (optionsOrCategories ?? {});
   const categories = options.categories;
   if (isDummyAssistantToken(accessToken)) {
     discardTemporarySourceFile(recording.uri);
@@ -100,7 +99,6 @@ export async function extractVoiceTransactionFromTranscript(
   transcript: string,
   fetchImpl: typeof fetch = fetch,
   categories?: string[],
-  language?: VoiceLanguage,
 ): Promise<TransactionVoiceDraft> {
   if (isDummyAssistantToken(accessToken)) {
     return extractDummyVoiceTransaction();
@@ -120,7 +118,6 @@ export async function extractVoiceTransactionFromTranscript(
         body: JSON.stringify({
           transcript,
           ...(categories && categories.length > 0 ? { categories } : {}),
-          lang: language ?? "auto",
         }),
         signal: controller.signal,
       });
@@ -143,4 +140,3 @@ export async function extractVoiceTransactionFromTranscript(
   }
   return transactionVoiceDraftSchema.parse(await response.json());
 }
-

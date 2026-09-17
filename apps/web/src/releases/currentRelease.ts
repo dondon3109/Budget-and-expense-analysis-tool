@@ -11,32 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 16, 2026",
+  releasedOn: "September 17, 2026",
   changes: [
     {
-      title: "Cross-chat assistant memory and editor",
+      title: "Tagalog voice input and assistant language",
       description:
-        "The financial assistant now remembers key budget caps, payday schedules, checking buffers, and recurring bills across chats, ranks saved facts by relevance to your questions, and lets you view, edit, or delete individual remembered facts in the Memory panel on web and mobile.",
+        "Speak to the assistant or log a transaction in English or Tagalog, with Auto as the default mode that detects either language. A language toggle sits in the assistant voice control, hands-free conversation, and transaction voice entry, and a Voice Language setting in Account Settings and the mobile More tab pins English or Tagalog when you want it.",
     },
     {
-      title: "Mobile navigation and UI ergonomics",
+      title: "Peso budgeting guides and explainer pages",
       description:
-        "Pushed screens now feature modal conflict navigation, responsive review forms, inline bottom-sheet pickers, screen reader currency announcements, and eliminated double-header insets.",
+        "Two new guides show how to budget a monthly salary in the Philippines and how the 50/30/20 rule works in pesos, with a link straight to the calculator, alongside public pages explaining receipt scanning and voice expense entry.",
     },
     {
-      title: "Monthly transaction Net totals",
+      title: "Anonymous signup funnel measurement",
       description:
-        "Renamed the mobile Transactions month summary to Net with a clear explanation of how income minus expenses differs from your account balance.",
+        "Zoption now measures the path from a first visit to a first import in six cookieless steps. No step carries financial detail, identifiers, page addresses, or query parameters, and the Cookie Policy and Privacy Policy describe each one.",
     },
     {
-      title: "Mobile cookie consent banner fix",
+      title: "Android Beta 0.2.30",
       description:
-        "Cookie consent action buttons on iOS Safari now render at the intended size with visible text labels and easy access to preference controls.",
-    },
-    {
-      title: "Android Beta 0.2.29",
-      description:
-        "The official Android Beta includes cross-chat assistant memory management, mobile navigation and layout ergonomics, monthly Net explanations, and mobile cookie consent fixes.",
+        "The official Android Beta adds Tagalog voice input, the Auto bilingual default, quick language toggles, and the Voice Language setting in Account Settings and the More tab.",
     },
   ],
 };
@@ -48,6 +43,37 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.33.0",
+    releasedOn: "September 16, 2026",
+    changes: [
+      {
+        title: "Cross-chat assistant memory and editor",
+        description:
+          "The financial assistant now remembers key budget caps, payday schedules, checking buffers, and recurring bills across chats, ranks saved facts by relevance to your questions, and lets you view, edit, or delete individual remembered facts in the Memory panel on web and mobile.",
+      },
+      {
+        title: "Mobile navigation and UI ergonomics",
+        description:
+          "Pushed screens now feature modal conflict navigation, responsive review forms, inline bottom-sheet pickers, screen reader currency announcements, and eliminated double-header insets.",
+      },
+      {
+        title: "Monthly transaction Net totals",
+        description:
+          "Renamed the mobile Transactions month summary to Net with a clear explanation of how income minus expenses differs from your account balance.",
+      },
+      {
+        title: "Mobile cookie consent banner fix",
+        description:
+          "Cookie consent action buttons on iOS Safari now render at the intended size with visible text labels and easy access to preference controls.",
+      },
+      {
+        title: "Android Beta 0.2.29",
+        description:
+          "The official Android Beta includes cross-chat assistant memory management, mobile navigation and layout ergonomics, monthly Net explanations, and mobile cookie consent fixes.",
+      },
+    ],
+  },
   {
     version: "2.32.0",
     releasedOn: "September 13, 2026",

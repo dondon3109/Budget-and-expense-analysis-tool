@@ -86,6 +86,6 @@ Every recording also captures `MediaRecorder` (web) or `AudioRecorder` file (mob
 ## 9. Security
 
 - Supabase JWT in `?token=` is validated by `createAuthMiddleware` (`auth.ts:128`) before `providerRegistry` lookup. Google API key never touches browser.
-- `STT_BRIDGE_URL` forwarding adds only `x-zoption-tenant` hash (8 chars) and `x-t-mic-start` — no PII, no transcript content to PostHog.
+- `STT_BRIDGE_URL` forwarding adds only `x-zoption-tenant` hash (8 chars), `x-zoption-user` hash (8 chars), `x-t-mic-start`, and `x-language` (`auto` | `en` | `fil`) — no PII, no transcript content to PostHog.
 
 See also: `docs/realtime-stt-bridge.md` (chirp_3 bridge), `docs/assistant.md` (assistant consent), `apps/api/src/assistant/google-stt.ts` (REST path).

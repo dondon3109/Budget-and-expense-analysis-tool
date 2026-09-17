@@ -2,6 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
+import { CURRENT_ASSISTANT_VOICE_CONSENT_VERSION } from "@zoption/shared";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -192,7 +193,7 @@ function consentedPreferences(overrides: Record<string, unknown> = {}) {
     speechAvailable: true,
     reviewRequired: false,
     consentedAt: "2026-08-12T10:00:00.000Z",
-    consentVersion: 3,
+    consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
     transcriptionModel: "gemini-3.5-transcribe-live",
     ttsModel: "s2.1-pro-free",
     ...overrides,
@@ -744,7 +745,7 @@ describe("AssistantVoiceConversation", () => {
       enabled: true,
       speechAvailable: true,
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 3,
+      consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
       transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
       ttsModel: "s2.1-pro-free",
     });

@@ -833,6 +833,22 @@ describe("ImportPage", () => {
     );
   });
 
+  it("records no first import when the workspace total cannot be read", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getTransactions).mockRejectedValue(new Error("total unavailable"));
+    const { container } = renderPage();
+    const csv = "Date,Description,Amount,Category\n2026-07-20,Market,-50.00,Food & dining";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+    await user.click(await screen.findByRole("button", { name: "Import 1 ready rows" }));
+
+    await screen.findByText("Import complete");
+    await waitFor(() => expect(getTransactions).toHaveBeenCalled());
+    // A failed read leaves the total unknown, so the event must not fire on a guess.
+    expect(funnel.captureFunnelEvent).not.toHaveBeenCalledWith("first_import_committed", {});
+  });
+
   it("records no first import when the workspace total holds more than this commit inserted", async () => {
     const user = userEvent.setup();
     const { container } = renderPage();

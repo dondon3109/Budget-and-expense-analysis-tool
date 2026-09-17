@@ -129,26 +129,40 @@ describe("PostHog Web Analytics", () => {
     await waitFor(() => expect(mockedPostHog.init).toHaveBeenCalledTimes(1));
 
     const options = mockedPostHog.__getInitOptions();
-    const sanitize = options?.sanitize_properties as (
-      properties: Record<string, unknown>,
-    ) => Record<string, unknown>;
-    expect(typeof sanitize).toBe("function");
+    const beforeSend = options?.before_send as (
+      captureResult: {
+        uuid: string;
+        event: string;
+        properties: Record<string, unknown>;
+      } | null,
+    ) => { properties: Record<string, unknown> } | null;
+    expect(typeof beforeSend).toBe("function");
 
     // A private route can carry a bookmarked search filter or an identifier in its query
     // string, so neither URL may reach the analytics platform intact.
     expect(
-      sanitize({
-        $current_url: "https://app.zoption.site/app/transactions?search=rent%20gcash#txn-42",
-        $referrer: "https://app.zoption.site/app?account=acct-1#top",
-        distinct_id: "anonymous",
-      }),
+      beforeSend({
+        uuid: "uuid-1",
+        event: "$pageview",
+        properties: {
+          $current_url: "https://app.zoption.site/app/transactions?search=rent%20gcash#txn-42",
+          $referrer: "https://app.zoption.site/app?account=acct-1#top",
+          distinct_id: "anonymous",
+        },
+      })?.properties,
     ).toEqual({
       $current_url: "https://app.zoption.site/app/transactions",
       $referrer: "https://app.zoption.site/app",
       distinct_id: "anonymous",
     });
 
-    expect(sanitize({ $referrer: "/app/import?search=rent" })).toEqual({ $referrer: "/app/import" });
+    expect(
+      beforeSend({
+        uuid: "uuid-2",
+        event: "$pageview",
+        properties: { $referrer: "/app/import?search=rent" },
+      })?.properties,
+    ).toEqual({ $referrer: "/app/import" });
   });
 
   it("does not initialize or capture when VITE_POSTHOG_KEY is not configured", async () => {
