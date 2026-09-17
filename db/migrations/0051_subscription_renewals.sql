@@ -1,3 +1,15 @@
+-- The last cycle already billed. The renewal sweep reads it to decide whether a due date
+-- still owes a charge, so releasing the settled transaction below cannot reopen a billed
+-- cycle when an editor writes a stale billing date back.
+ALTER TABLE `subscriptions` ADD COLUMN `last_charged_date` text;
+--> statement-breakpoint
+UPDATE `subscriptions` SET `last_charged_date` = `next_billing_date`
+WHERE EXISTS (
+	SELECT 1 FROM `transactions`
+	WHERE `transactions`.`subscription_id` = `subscriptions`.`id`
+		AND `transactions`.`date` = `subscriptions`.`next_billing_date`
+);
+--> statement-breakpoint
 -- Recurring subscriptions post one charge per billing cycle. This table records the
 -- single email sent the first time a cycle cannot be charged because its linked
 -- account cannot cover it, so the daily retries that follow stay silent.

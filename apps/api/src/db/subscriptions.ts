@@ -258,7 +258,7 @@ export interface SubscriptionRenewalNotification {
   accountName: string | null;
 }
 
-const NOTIFICATION_ATTEMPT_LIMIT = 8;
+const NOTIFICATION_ATTEMPT_LIMIT = 48;
 
 function notificationLease(): string {
   return new Date(Date.now() + 10 * 60 * 1_000).toISOString();
@@ -274,9 +274,16 @@ function advanceScheduleStatement(
   nextBillingDate: string,
 ) {
   return env.DB.prepare(
-    `UPDATE subscriptions SET next_billing_date = ?, updated_at = datetime('now')
+    `UPDATE subscriptions
+     SET next_billing_date = ?, last_charged_date = ?, updated_at = datetime('now')
      WHERE id = ? AND tenant_id = ? AND status = 'active' AND next_billing_date = ?`,
-  ).bind(nextBillingDate, renewal.id, renewal.tenantId, renewal.nextBillingDate);
+  ).bind(
+    nextBillingDate,
+    renewal.nextBillingDate,
+    renewal.id,
+    renewal.tenantId,
+    renewal.nextBillingDate,
+  );
 }
 
 /**
@@ -371,7 +378,7 @@ export const subscriptionRepository: SubscriptionRepository = {
     const id = crypto.randomUUID();
     await env.DB.batch([
       env.DB.prepare(
-        `INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, currency, billing_cycle, next_billing_date, status) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, 'active')`,
+        `INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, currency, billing_cycle, next_billing_date, last_charged_date, status) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, ?, 'active')`,
       ).bind(
         id,
         tenantId,
@@ -380,6 +387,7 @@ export const subscriptionRepository: SubscriptionRepository = {
         input.name,
         input.amountMinor,
         input.billingCycle,
+        input.nextBillingDate,
         input.nextBillingDate,
       ),
       insertLinkedChargeStatement(
@@ -475,11 +483,8 @@ export const subscriptionRepository: SubscriptionRepository = {
                   AND t.currency = a.currency
                   AND (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL)
               ), 0) AS balanceMinor,
-              EXISTS(
-                SELECT 1 FROM transactions c
-                WHERE c.tenant_id = s.tenant_id AND c.subscription_id = s.id
-                  AND c.date = s.next_billing_date
-              ) AS charged
+              (s.last_charged_date IS NOT NULL
+                AND s.last_charged_date >= s.next_billing_date) AS charged
        FROM subscriptions s
        JOIN accounts a ON a.id = s.account_id AND a.tenant_id = s.tenant_id
        WHERE s.status = 'active' AND s.account_id IS NOT NULL

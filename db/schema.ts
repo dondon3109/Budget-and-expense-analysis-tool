@@ -365,6 +365,7 @@ export const subscriptions = sqliteTable(
     currency: text("currency").notNull().default("PHP"),
     billingCycle: text("billing_cycle", { enum: ["monthly", "yearly"] }).notNull(),
     nextBillingDate: text("next_billing_date").notNull(),
+    lastChargedDate: text("last_charged_date"),
     status: text("status", { enum: ["active", "canceled"] })
       .notNull()
       .default("active"),

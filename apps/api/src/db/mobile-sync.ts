@@ -1971,8 +1971,8 @@ export function createMobileSyncRepository(
             mutation = env.DB.prepare(
               `INSERT INTO subscriptions (
                  id, tenant_id, account_id, category_id, name, amount_minor, currency,
-                 billing_cycle, next_billing_date, status, revision, updated_at
-               ) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, 'active', 1, ?)`,
+                 billing_cycle, next_billing_date, last_charged_date, status, revision, updated_at
+               ) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, ?, 'active', 1, ?)`,
             ).bind(
               operation.entityId,
               tenantId,
@@ -1981,6 +1981,7 @@ export function createMobileSyncRepository(
               payload.name,
               payload.amountMinor,
               payload.billingCycle,
+              payload.nextBillingDate,
               payload.nextBillingDate,
               timestamp,
             );

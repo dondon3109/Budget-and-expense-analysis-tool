@@ -247,6 +247,52 @@ describe("subscription renewals", () => {
     ]);
   });
 
+  it("does not charge a cycle twice when a stale edit restores an already billed date", async () => {
+    const { env, database } = renewalEnvironment();
+    await subscriptionRepository.create(env, "tenant-1", {
+      name: "Music streaming",
+      amountMinor: 19_900,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-09-25",
+      categoryId: "category-1",
+      accountId: "account-1",
+    });
+    const subscriptionId = String(
+      database.prepare("SELECT id FROM subscriptions LIMIT 1").get()?.id,
+    );
+    const service = createSubscriptionRenewalService(subscriptionRepository, {
+      sender: { send: async () => undefined },
+      fetcher: recipientFetcher(),
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T09:00:00+08:00"));
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({ rolled: 1 });
+
+    // An editor opened before the roll resubmits the billing date it loaded, which the sweep
+    // has already billed and released.
+    await subscriptionRepository.update(env, "tenant-1", subscriptionId, {
+      name: "Music streaming",
+      amountMinor: 19_900,
+      billingCycle: "monthly",
+      nextBillingDate: "2026-09-25",
+      categoryId: "category-1",
+      accountId: "account-1",
+    });
+
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({ charged: 0, rolled: 1 });
+    expect(database.prepare("SELECT count(*) AS count FROM transactions").get()).toEqual({
+      count: 2,
+    });
+
+    // The schedule still advances and bills its next cycle normally.
+    vi.setSystemTime(new Date("2026-10-25T09:00:00+08:00"));
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({ charged: 1 });
+    expect(database.prepare("SELECT count(*) AS count FROM transactions").get()).toEqual({
+      count: 3,
+    });
+  });
+
   it("keeps the due date and emails once when the account cannot cover the charge", async () => {
     const { env, database } = renewalEnvironment();
     dueSubscription(database, 150_000);
