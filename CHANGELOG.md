@@ -4,6 +4,14 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.36.0 — 2026-09-17
+
+### Added
+
+- Removing an account now names the active subscriptions paid from it, on web and mobile, so you can move a plan before its account leaves your list.
+
+## 2.35.1 — 2026-09-17
+
 ### Changed
 
 - A subscription paid from an account you removed no longer charges that account. Zoption skips the cycle, leaves the billing date due, and tells you once per missed cycle to pick a different account or restore the one you removed.
