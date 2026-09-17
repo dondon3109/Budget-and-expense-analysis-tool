@@ -26,6 +26,10 @@ import {
   transcribeAssistantVoice,
 } from "../../lib/api";
 import {
+  startBrowserSpeechRecognition,
+  type SpeechRecognitionInstance,
+} from "../../lib/browserSpeech";
+import {
   startLiveTranscriptionSession,
   type LiveTranscriptionSession,
 } from "../../lib/voiceStream";
@@ -61,47 +65,6 @@ interface Caption {
   id: string;
   role: "user" | "assistant";
   text: string;
-}
-
-// Minimal structural types for the Web Speech API, which has no built-in
-// TypeScript declarations. Only the surface used for live captions is modeled.
-interface SpeechRecognitionResultItem {
-  readonly transcript: string;
-}
-
-interface SpeechRecognitionResult {
-  readonly length: number;
-  [index: number]: SpeechRecognitionResultItem | undefined;
-}
-
-interface SpeechRecognitionResultList {
-  readonly length: number;
-  [index: number]: SpeechRecognitionResult | undefined;
-}
-
-interface SpeechRecognitionResultEvent extends Event {
-  readonly results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionInstance {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
-  onspeechend: (() => void) | null;
-  onerror: (() => void) | null;
-  start(): void;
-  stop(): void;
-  abort(): void;
-}
-
-interface SpeechRecognitionConstructor {
-  new (): SpeechRecognitionInstance;
-}
-
-interface WindowWithSpeechRecognition {
-  SpeechRecognition?: SpeechRecognitionConstructor;
-  webkitSpeechRecognition?: SpeechRecognitionConstructor;
 }
 
 interface AssistantVoiceConversationProps {
@@ -668,64 +631,32 @@ export function AssistantVoiceConversation({
       setLivePartial("");
       liveShouldStopRef.current = false;
 
-      // Live browser speech recognition if supported
-      const SpeechRecognitionClass =
-        typeof window !== "undefined"
-          ? (window as unknown as WindowWithSpeechRecognition).SpeechRecognition ||
-            (window as unknown as WindowWithSpeechRecognition).webkitSpeechRecognition
-          : undefined;
-
-      if (SpeechRecognitionClass) {
-        try {
-          const recognition = new SpeechRecognitionClass();
-          recognition.continuous = true;
-          recognition.interimResults = true;
-          recognition.lang = speechRecognitionLang(voiceLanguage);
-          speechRecognitionRef.current = recognition;
-
-          recognition.onresult = (event: SpeechRecognitionResultEvent) => {
-            if (!mountedRef.current) return;
-            let full = "";
-            for (let i = 0; i < event.results.length; ++i) {
-              const item = event.results[i];
-              if (item && item[0]) {
-                const chunk = item[0].transcript.trim();
-                if (chunk) full = full ? `${full} ${chunk}` : chunk;
-              }
+      // Live browser captions, Auto included: without the live model the browser
+      // engine is the only partial transcript source on this surface.
+      startBrowserSpeechRecognition(speechRecognitionRef, {
+        language: voiceLanguage,
+        startForAuto: true,
+        onTranscript: (trimmed) => {
+          if (!mountedRef.current) return;
+          browserTranscriptRef.current = trimmed;
+          setLivePartial(trimmed);
+          heardSpeechRef.current = true;
+          lastSpeechAtRef.current = Date.now();
+        },
+        onSpeechEnd: () => {
+          if (!heardSpeechRef.current) return;
+          window.setTimeout(() => {
+            if (
+              mountedRef.current &&
+              recorderRef.current?.state === "recording" &&
+              heardSpeechRef.current &&
+              Date.now() - lastSpeechAtRef.current >= 800
+            ) {
+              stopRecording("silence");
             }
-            const trimmed = full.trim();
-            if (trimmed) {
-              browserTranscriptRef.current = trimmed;
-              setLivePartial(trimmed);
-              heardSpeechRef.current = true;
-              lastSpeechAtRef.current = Date.now();
-            }
-          };
-
-          recognition.onspeechend = () => {
-            if (heardSpeechRef.current) {
-              window.setTimeout(() => {
-                if (
-                  mountedRef.current &&
-                  recorderRef.current?.state === "recording" &&
-                  heardSpeechRef.current &&
-                  Date.now() - lastSpeechAtRef.current >= 800
-                ) {
-                  stopRecording("silence");
-                }
-              }, 800);
-            }
-          };
-
-          recognition.onerror = () => {
-            // Non-fatal: batch MediaRecorder continues capturing
-          };
-
-          recognition.start();
-        } catch {
-          // Ignore SpeechRecognition start failure
-        }
-      }
+          }, 800);
+        },
+      });
 
       // Dual capture: live stream plus MediaRecorder batch fallback.
       const isLiveModel = preferences?.transcriptionModel === "gemini-3.5-transcribe-live";

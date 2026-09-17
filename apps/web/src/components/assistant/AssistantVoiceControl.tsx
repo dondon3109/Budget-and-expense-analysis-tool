@@ -11,6 +11,10 @@ import {
   transcribeAssistantVoice,
 } from "../../lib/api";
 import {
+  startBrowserSpeechRecognition,
+  type SpeechRecognitionInstance,
+} from "../../lib/browserSpeech";
+import {
   startLiveTranscriptionSession,
   type LiveTranscriptionSession,
 } from "../../lib/voiceStream";
@@ -28,44 +32,6 @@ const ENDING_SILENCE_MS = 1_400;
 const VOICE_SAMPLE_INTERVAL_MS = 100;
 const SPEECH_RMS_THRESHOLD = 0.025;
 const MIME_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"];
-
-interface SpeechRecognitionResultItem {
-  readonly transcript: string;
-}
-
-interface SpeechRecognitionResult {
-  [index: number]: SpeechRecognitionResultItem | undefined;
-}
-
-interface SpeechRecognitionResultList {
-  readonly length: number;
-  [index: number]: SpeechRecognitionResult | undefined;
-}
-
-interface SpeechRecognitionResultEvent extends Event {
-  readonly results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionInstance {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
-  onspeechend: (() => void) | null;
-  onerror: (() => void) | null;
-  start(): void;
-  stop(): void;
-  abort(): void;
-}
-
-interface SpeechRecognitionConstructor {
-  new (): SpeechRecognitionInstance;
-}
-
-interface WindowWithSpeechRecognition {
-  SpeechRecognition?: SpeechRecognitionConstructor;
-  webkitSpeechRecognition?: SpeechRecognitionConstructor;
-}
 
 export type AssistantVoiceSubmissionMode = "review";
 export type AssistantVoiceReplyMode = "spoken" | "text";
@@ -450,60 +416,27 @@ export function AssistantVoiceControl({
       setLiveTranscript("");
       liveShouldStopRef.current = false;
 
-      // Live browser speech recognition if supported
-      const SpeechRecognitionClass =
-        typeof window !== "undefined"
-          ? (window as unknown as WindowWithSpeechRecognition).SpeechRecognition ||
-            (window as unknown as WindowWithSpeechRecognition).webkitSpeechRecognition
-          : undefined;
-
-      // Browser SpeechRecognition has no cross language auto detect, so an Auto
-      // engine is really an English one. Auto therefore stays on the server path,
-      // which does handle both languages.
-      if (SpeechRecognitionClass && voiceLanguage !== "auto") {
-        try {
-          const recognition = new SpeechRecognitionClass();
-          recognition.continuous = true;
-          recognition.interimResults = true;
-          recognition.lang = speechRecognitionLang(voiceLanguage);
-          speechRecognitionRef.current = recognition;
-
-          recognition.onresult = (event: SpeechRecognitionResultEvent) => {
-            if (!mountedRef.current) return;
-            let full = "";
-            for (let i = 0; i < event.results.length; ++i) {
-              const item = event.results[i];
-              if (item && item[0]) {
-                const chunk = item[0].transcript.trim();
-                if (chunk) full = full ? `${full} ${chunk}` : chunk;
-              }
+      // Live browser captions for explicit languages; Auto stays on the server path.
+      startBrowserSpeechRecognition(speechRecognitionRef, {
+        language: voiceLanguage,
+        onTranscript: (trimmed) => {
+          if (!mountedRef.current) return;
+          browserTranscriptRef.current = trimmed;
+          setLiveTranscript(trimmed);
+          onPartialTranscript?.(trimmed);
+        },
+        onSpeechEnd: () => {
+          window.setTimeout(() => {
+            if (
+              mountedRef.current &&
+              recorderRef.current?.state === "recording" &&
+              (liveTranscriptRef.current || browserTranscriptRef.current)
+            ) {
+              stopRecording("silence");
             }
-            const trimmed = full.trim();
-            if (trimmed) {
-              browserTranscriptRef.current = trimmed;
-              setLiveTranscript(trimmed);
-              onPartialTranscript?.(trimmed);
-            }
-          };
-
-          recognition.onspeechend = () => {
-            window.setTimeout(() => {
-              if (
-                mountedRef.current &&
-                recorderRef.current?.state === "recording" &&
-                (liveTranscriptRef.current || browserTranscriptRef.current)
-              ) {
-                stopRecording("silence");
-              }
-            }, 1000);
-          };
-
-          recognition.onerror = () => {};
-          recognition.start();
-        } catch {
-          // Ignore SpeechRecognition start failure
-        }
-      }
+          }, 1000);
+        },
+      });
 
       // Attempt live streaming session concurrently (Option A: Gemini Live API)
       // If live fails, the batch MediaRecorder still captures audio for POST /transcriptions fallback.
