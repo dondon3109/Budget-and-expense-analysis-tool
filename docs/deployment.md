@@ -27,6 +27,22 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
      https://api.supabase.com/v1/projects/PROJECT_REF/config/auth
    ```
 
+   The API reports `smtp_pass` as an opaque 64 character value, so the stored password can never be verified by reading it, only by sending through it. To write the config back, send `smtp_port` as a string; a number is rejected with HTTP 400.
+
+   Verify delivery after any credential change instead of assuming it worked. Request a recovery message for an address you control, then read the auth log for that request:
+
+   ```bash
+   curl -s -X POST "https://PROJECT_REF.supabase.co/auth/v1/recover" \
+     -H "apikey: $SUPABASE_PUBLISHABLE_KEY" -H "Content-Type: application/json" \
+     -d '{"email":"an-address-you-control"}'
+
+   curl -s -G "https://api.supabase.com/v1/projects/PROJECT_REF/analytics/endpoints/logs.all" \
+     --data-urlencode "sql=select timestamp, event_message from auth_logs order by timestamp desc limit 5" \
+     -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"
+   ```
+
+   A password Resend will not accept fails the request with HTTP 500 and `"error_code":"unexpected_failure"`, and the log line carries the reason, for example `535 "Authentication credentials invalid"`. The same SMTP host, port, and user with a valid key succeed, so that error always means the stored password is stale or mistyped rather than the endpoint being wrong.
+
 4. In **Authentication > Password security**, set the minimum password length to 12, require lowercase, uppercase, number, and symbol coverage, enable leaked-password protection when available, and require a recent session or reauthentication for password changes. The tracked local Supabase configuration mirrors this policy; the hosted project must enforce it because browser validation can be bypassed by direct Auth API clients. Use an HTTPS project URL in preview and production; the Worker permits cleartext Supabase URLs only for explicit loopback development hosts.
 5. Require email confirmation before first sign-in. Keep signup responses neutral for both new and existing addresses so the public form does not disclose whether an account exists.
 6. Confirm the project uses an asymmetric JWT signing key exposed through the project JWKS endpoint.
