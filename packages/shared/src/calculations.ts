@@ -75,6 +75,7 @@ export function summarizeAccountBalances(
       archived: account.archived,
       system: Boolean(account.system),
       interest: account.interest,
+      activeSubscriptions: account.activeSubscriptions,
     };
   });
 

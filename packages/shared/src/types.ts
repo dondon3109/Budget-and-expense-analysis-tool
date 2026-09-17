@@ -91,6 +91,8 @@ export interface AccountRecord {
   archived: boolean;
   system?: boolean;
   interest?: InterestSettings;
+  /** Names of active subscriptions paid from this account, so removing it can warn first. */
+  activeSubscriptions?: string[];
 }
 
 export interface AccountBalanceSummaryItem {
@@ -103,6 +105,8 @@ export interface AccountBalanceSummaryItem {
   archived: boolean;
   system: boolean;
   interest?: InterestSettings;
+  /** Names of active subscriptions paid from this account, so removing it can warn first. */
+  activeSubscriptions?: string[];
 }
 
 export interface AccountBalanceSummary {

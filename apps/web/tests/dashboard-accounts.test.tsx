@@ -106,6 +106,7 @@ const dashboard: DashboardSummary = {
         balancesByCurrency: { PHP: 5_000, USD: 0 },
         archived: false,
         system: false,
+        activeSubscriptions: ["Spotify", "Netflix"],
       },
       {
         id: "removed",
@@ -652,6 +653,9 @@ describe("Profile dashboard account management", () => {
     expect(dialog).toHaveTextContent("₱400");
     expect(dialog).toHaveTextContent(/does not change/);
     expect(dialog).toHaveTextContent(/read-only records/);
+    // Plans paid from this account stop being charged, so the dialog names them first.
+    expect(dialog).toHaveTextContent(/Spotify, Netflix/);
+    expect(dialog).toHaveTextContent(/stop being charged/);
     expect(apiMocks.deleteAccount).not.toHaveBeenCalled();
 
     fireEvent.click(confirm);

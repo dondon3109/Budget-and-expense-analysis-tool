@@ -59,7 +59,25 @@ const accountSelection = {
     THEN ${transactions.amountMinor}
     ELSE 0
   END), 0)`,
+  activeSubscriptions: sql<string>`json_group_array(
+    (SELECT s.name FROM subscriptions s
+     WHERE s.tenant_id = ${accounts.tenantId} AND s.account_id = ${accounts.id}
+       AND s.status = 'active')
+  )`,
 };
+
+/** json_group_array yields a JSON array, and a malformed value must not break the account list. */
+function subscriptionNames(value: unknown): string[] {
+  if (typeof value !== "string") return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((name): name is string => typeof name === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 function normalize(
   row: typeof accountSelection extends never ? never : Record<string, unknown>,
@@ -88,6 +106,7 @@ function normalize(
           payDay: (row.interestPayDay as number | null) ?? null,
         }
       : { enabled: false, annualRateBasisPoints: null, frequency: null, payDay: null },
+    activeSubscriptions: subscriptionNames(row.activeSubscriptions),
   };
 }
 

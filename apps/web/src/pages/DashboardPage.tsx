@@ -599,6 +599,14 @@ export function DashboardPage() {
   const accountActionError = updateAccountMutation.error ?? removeAccountMutation.error;
   const overallBalanceMinor = accountBalances?.balancesByCurrency.PHP ?? 0;
   const removalBalanceMinor = removingAccount?.balancesByCurrency.PHP ?? 0;
+  // A removed account stops being charged, so say which plans that affects before it happens.
+  const linkedSubscriptions = removingAccount?.activeSubscriptions ?? [];
+  const linkedSubscriptionWarning =
+    linkedSubscriptions.length === 1
+      ? `The active subscription ${linkedSubscriptions[0]} is paid from this account. It stops being charged once the account is removed, and Zoption emails you until you choose another account for it.`
+      : linkedSubscriptions.length > 1
+        ? `The active subscriptions ${linkedSubscriptions.join(", ")} are paid from this account. They stop being charged once the account is removed, and Zoption emails you until you choose another account for each.`
+        : null;
   const transferFeeInsight = transferFeeInsightQuery.data;
   const transferNoun =
     transferFeeInsight?.totalFeeChargedTransfers === 1 ? "transfer" : "transfers";
@@ -1152,6 +1160,7 @@ export function DashboardPage() {
                 balance is calculated from recorded transactions, the{" "}
                 {formatMoney(overallBalanceMinor, "PHP")} total does not change. This cannot be
                 undone.
+                {linkedSubscriptionWarning ? <> {linkedSubscriptionWarning}</> : null}
               </>
             }
             confirmLabel="Remove account"

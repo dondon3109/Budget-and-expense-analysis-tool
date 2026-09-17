@@ -30,6 +30,7 @@ import {
   useAccountModeling,
   useLocalReferenceData,
   useLocalWorkspace,
+  useSubscriptions,
 } from "@/db/local-workspace-state";
 import { BalanceAdjustCard } from "@/features/account/BalanceAdjustCard";
 import { useSyncState } from "@/sync/sync-state";
@@ -152,6 +153,7 @@ export function ReferenceEditorScreen() {
   const local = useLocalWorkspace();
   const references = useLocalReferenceData();
   const modelingState = useAccountModeling(entityType === "account" && editing ? id : undefined);
+  const subscriptionState = useSubscriptions();
   const sync = useSyncState();
   const theme = useZoptionTheme();
   const initialized = useRef(false);
@@ -225,6 +227,20 @@ export function ReferenceEditorScreen() {
     category?.syncState === "conflicted";
   const permanent = Boolean(account?.system || category?.system);
   const retryableInterestFailure = entityType === "account" && account?.syncState === "failed";
+
+  // Archiving a paying account leaves its due subscription charges unpaid, so name them before the user confirms.
+  const payingSubscriptions =
+    entityType === "account" && id
+      ? subscriptionState.subscriptions.filter(
+          (item) => item.accountId === id && item.status === "active",
+        )
+      : [];
+  const payingNames = payingSubscriptions.map((item) => item.name).join(", ");
+  const archiveWarning =
+    payingSubscriptions.length === 0
+      ? ""
+      : ` ${payingSubscriptions.length} active ${payingSubscriptions.length === 1 ? "subscription is" : "subscriptions are"} paid from this account: ${payingNames}. Zoption skips due subscription charges while this account stays archived and emails you once per cycle.`;
+  const archiveMessage = `It will stop appearing in new transaction choices. Existing records keep their ${entityType} reference.${archiveWarning}`;
 
   const save = async (): Promise<void> => {
     if (!local.workspace || saving || blocked || unavailable) return;
@@ -760,7 +776,7 @@ export function ReferenceEditorScreen() {
           <ConfirmationDialog
             visible={confirmArchive}
             title={`Archive this ${entityType}?`}
-            message={`It will stop appearing in new transaction choices. Existing records keep their ${entityType} reference.`}
+            message={archiveMessage}
             confirmLabel="Archive"
             destructive
             onCancel={() => setConfirmArchive(false)}

@@ -192,6 +192,24 @@ function dueSubscription(
 }
 
 describe("subscription renewals", () => {
+  it("names the active subscriptions paid from an account so removing it can warn", async () => {
+    const { env, database } = renewalEnvironment();
+    dueSubscription(database, 20_000);
+    database.exec(`
+      INSERT INTO subscriptions (
+        id, tenant_id, account_id, category_id, name, amount_minor, currency,
+        billing_cycle, next_billing_date, status
+      ) VALUES (
+        'subscription-2', 'tenant-1', 'account-1', 'category-1', 'Old plan', 5000,
+        'PHP', 'monthly', '2026-09-25', 'canceled'
+      );
+    `);
+
+    const accounts = await accountRepository.list(env, "tenant-1");
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]?.activeSubscriptions).toEqual(["Rent"]);
+  });
+
   it("posts the next cycle charge and rolls the billing date forward on the due date", async () => {
     const { env, database } = renewalEnvironment();
     await subscriptionRepository.create(env, "tenant-1", {
