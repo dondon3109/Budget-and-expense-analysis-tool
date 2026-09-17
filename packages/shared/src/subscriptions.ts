@@ -27,7 +27,13 @@ export function subscriptionBillingDateForMonth(
 /**
  * The billing date one cycle after `nextBillingDate`. The renewals sweep uses it to roll a
  * subscription forward after each charge, and like the month projection it clamps the day to
- * the final calendar day so a subscription billed on the 31st lands on the 28th in February.
+ * the final calendar day.
+ *
+ * The clamp is permanent by design. A plan billed on the 31st rolls to the 28th in February
+ * and stays on the 28th afterwards, because the sweep persists this date and the next step
+ * reads it back. Do not turn this into a jump forward to the 31st: a shorter month removing
+ * the day is expected, and reclaiming it later would move a billing date a subscriber already
+ * saw, for no gain.
  */
 export function nextSubscriptionBillingDate(
   nextBillingDate: string,

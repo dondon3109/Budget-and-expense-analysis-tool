@@ -33,6 +33,15 @@ describe("subscription calculations", () => {
     expect(nextSubscriptionBillingDate("2028-02-29", "yearly")).toBe("2029-02-28");
   });
 
+  it("keeps a month end plan on the clamped day afterwards, which is intended", () => {
+    // February has no 31st, so the plan moves to the 28th and stays there. This is deliberate,
+    // not a defect. The renewals sweep persists whatever this returns, so the next step reads
+    // the clamped day back. Do not "fix" it into jumping back to the 31st.
+    expect(nextSubscriptionBillingDate("2026-01-31", "monthly")).toBe("2026-02-28");
+    expect(nextSubscriptionBillingDate("2026-02-28", "monthly")).toBe("2026-03-28");
+    expect(nextSubscriptionBillingDate("2026-03-28", "monthly")).toBe("2026-04-28");
+  });
+
   it("only projects yearly billing in the renewal month", () => {
     expect(subscriptionBillingDateForMonth("2026-07-12", "yearly", "2027-07-01")).toBe(
       "2027-07-12",
