@@ -673,6 +673,8 @@ describe("ImportPage", () => {
     expect(screen.queryByRole("button", { name: "Import 1 ready rows" })).not.toBeInTheDocument();
   });
 
+  // The heaviest interaction in this file: 101 rows over two preview pages. Under concurrent
+  // worker load it inflates about fivefold and would outrun the 5s default, so it carries its own.
   it("selects Uncategorized rows across preview pages and commits category overrides", async () => {
     const user = userEvent.setup();
     const rows = Array.from({ length: 101 }, (_, index) => ({
@@ -713,7 +715,7 @@ describe("ImportPage", () => {
     expect(request?.categoryOverrides).toHaveLength(101);
     expect(request?.categoryOverrides[0]).toEqual({ rowNumber: 2, categoryId: "food" });
     expect(request?.kindOverrides).toEqual([]);
-  });
+  }, 15_000);
 
   it("keeps the preview and overrides when the monthly import limit is reached", async () => {
     const user = userEvent.setup();
