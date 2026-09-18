@@ -1009,6 +1009,50 @@ describe("API foundation", () => {
     );
   });
 
+  it("rejects an over-long voice transcript before the provider request", async () => {
+    const extractVoiceTranscript = vi.fn();
+    const aiEntryService = {
+      previewPdf: vi.fn(),
+      extractVoice: vi.fn(),
+      extractVoiceTranscript,
+    } as unknown as AiEntryService;
+    const app = createTestApp({ aiEntryService });
+
+    const response = await app.request("/api/app/entry/voice", {
+      method: "POST",
+      headers: { ...AUTHORIZATION, "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript: "a".repeat(2_001) }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: "invalid_request" });
+    expect(extractVoiceTranscript).not.toHaveBeenCalled();
+  });
+
+  it("rejects an over-long multipart voice transcript before the provider request", async () => {
+    const extractVoice = vi.fn();
+    const extractVoiceTranscript = vi.fn();
+    const aiEntryService = {
+      previewPdf: vi.fn(),
+      extractVoice,
+      extractVoiceTranscript,
+    } as unknown as AiEntryService;
+    const app = createTestApp({ aiEntryService });
+    const form = new FormData();
+    form.set("transcript", "a".repeat(2_001));
+
+    const response = await app.request("/api/app/entry/voice", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: form,
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: "invalid_request" });
+    expect(extractVoiceTranscript).not.toHaveBeenCalled();
+    expect(extractVoice).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["new thread", "/api/app/assistant/threads", 201],
     [

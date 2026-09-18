@@ -28,11 +28,11 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
     nonTerminalSubscriptionCount: 1,
     usages: [
       {
-        feature: "assistant_question",
+        feature: "ai_usage",
         used: 12,
-        limit: 100,
-        periodKind: "anchored_14_day",
-        periodStartedAt: "2026-05-18T00:00:00.000Z",
+        limit: 500,
+        periodKind: "calendar_month",
+        periodStartedAt: "2026-05-01T00:00:00.000Z",
         resetsAt: "2026-06-01T00:00:00.000Z",
       },
       {
@@ -64,13 +64,13 @@ describe("billing copy helpers", () => {
     expect(periodEndsCopy(summary({ plan: "free" }))).toBe(null);
   });
 
-  it("titles usages per feature and period", () => {
+  it("titles usages per feature", () => {
     const usages = summary().usages;
-    const questions = usages[0]!;
+    const aiUsage = usages[0]!;
     const imports = usages[1]!;
-    expect(usageTitle(questions)).toBe("AI questions this 14-day cycle");
+    expect(usageTitle(aiUsage)).toBe("AI actions this month");
     expect(usageTitle(imports)).toBe("Committed imports this month");
-    expect(usageResetsCopy(questions)).toMatch(/^Resets /);
+    expect(usageResetsCopy(aiUsage)).toMatch(/^Resets /);
   });
 
   it("describes custom category allowances", () => {

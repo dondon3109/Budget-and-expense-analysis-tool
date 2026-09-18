@@ -34,7 +34,13 @@ import type { AssistantModelMemoryUsageRepository } from "../src/db/assistant-mo
 import type { HttpError } from "../src/errors";
 import type { Bindings } from "../src/types";
 
-const env = { DB: {} as D1Database } satisfies Bindings;
+// The shared AI pool consumer writes through env.DB before the provider call; this suite
+// stubs that write so it can focus on the turn itself.
+const env = {
+  DB: {
+    prepare: () => ({ bind: () => ({ run: async () => ({ success: true }) }) }),
+  } as unknown as D1Database,
+} satisfies Bindings;
 const tenantId = "tenant-sensitive-id";
 const threadId = "thread-sensitive-id";
 const input: AssistantMessageInput = {

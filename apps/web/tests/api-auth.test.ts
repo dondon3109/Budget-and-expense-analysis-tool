@@ -96,14 +96,14 @@ describe("authenticated API requests", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          error: "assistant_cycle_limit_reached",
-          message: "You have reached your AI question limit for this 14-day period.",
+          error: "monthly_limit_reached",
+          message: "You have reached your AI usage limit for this month.",
           details: {
-            feature: "assistant_question",
-            used: 10,
-            limit: 10,
-            periodKind: "anchored_14_day",
-            periodStartedAt: "2026-07-18T00:00:00.000Z",
+            feature: "ai_usage",
+            used: 500,
+            limit: 500,
+            periodKind: "calendar_month",
+            periodStartedAt: "2026-07-01T00:00:00.000Z",
             resetsAt: "2026-08-01T00:00:00.000Z",
           },
         }),
@@ -115,13 +115,13 @@ describe("authenticated API requests", () => {
       getDashboard(userWorkspace, { from: "2026-07-01", to: "2026-07-31" }),
     ).rejects.toMatchObject({
       status: 409,
-      code: "assistant_cycle_limit_reached",
+      code: "monthly_limit_reached",
       details: {
-        feature: "assistant_question",
-        used: 10,
-        limit: 10,
-        periodKind: "anchored_14_day",
-        periodStartedAt: "2026-07-18T00:00:00.000Z",
+        feature: "ai_usage",
+        used: 500,
+        limit: 500,
+        periodKind: "calendar_month",
+        periodStartedAt: "2026-07-01T00:00:00.000Z",
         resetsAt: "2026-08-01T00:00:00.000Z",
       },
     });

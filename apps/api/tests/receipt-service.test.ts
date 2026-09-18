@@ -1,5 +1,5 @@
 import { CURRENT_RECEIPT_CONSENT_VERSION } from "@zoption/shared";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { createReceiptService } from "../src/receipts/service";
 import {
@@ -8,20 +8,40 @@ import {
 } from "../src/receipts/vision-provider";
 import type { ReceiptRepository } from "../src/db/receipts";
 import type { Bindings } from "../src/types";
+import { createD1TestDatabase } from "./helpers/d1-test-harness";
 
-/** The entitlement lookup reads one row; a source row means the tenant has Pro. */
-function proDb(hasPro: boolean): D1Database {
-  return {
-    prepare: () => ({
-      bind: () => ({ first: async () => (hasPro ? { source: "paypal" } : null) }),
-    }),
-  } as unknown as D1Database;
-}
+const TENANT_ID = "tenant-id";
+
+const { binding, database } = createD1TestDatabase();
+database.prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', 'One')").run(TENANT_ID);
+afterAll(() => database.close());
 
 const env = {
-  DB: proDb(true),
+  DB: binding,
   RECEIPT_ENTRY_ENABLED: "true",
 } satisfies Bindings;
+
+function poolRow() {
+  return database
+    .prepare(
+      "SELECT count, allowance FROM billing_monthly_usage WHERE tenant_id = ? AND feature = 'ai_usage'",
+    )
+    .get(TENANT_ID) as { count: number; allowance: number };
+}
+
+/** A tenant whose shared pool is already at `used` units. */
+function cappedEnvironment(used: number): Bindings {
+  const capped = createD1TestDatabase();
+  capped.database
+    .prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', 'One')")
+    .run(TENANT_ID);
+  capped.database
+    .prepare(
+      "INSERT INTO billing_monthly_usage (tenant_id, month, feature, count, allowance) VALUES (?, date('now','+8 hours','start of month'), 'ai_usage', ?, 500)",
+    )
+    .run(TENANT_ID, used);
+  return { DB: capped.binding, RECEIPT_ENTRY_ENABLED: "true" } satisfies Bindings;
+}
 
 const receiptImage = () =>
   new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" });
@@ -59,7 +79,7 @@ function provider(): ReceiptVisionProvider {
 describe("receipt service", () => {
   it("advertises the configured vision model and consent state", async () => {
     const service = createReceiptService(repository(), provider());
-    await expect(service.getPreferences(env, "tenant-id")).resolves.toMatchObject({
+    await expect(service.getPreferences(env, TENANT_ID)).resolves.toMatchObject({
       enabled: true,
       consentedAt: "2026-08-12T00:00:00.000Z",
       consentVersion: CURRENT_RECEIPT_CONSENT_VERSION,
@@ -70,23 +90,40 @@ describe("receipt service", () => {
   it("requires receipt consent before a photo leaves Zoption", async () => {
     const vision = provider();
     const service = createReceiptService(repository(false), vision);
-    const request = service.extract(env, "tenant-id", receiptImage());
+    const request = service.extract(env, TENANT_ID, receiptImage());
     await expect(request).rejects.toMatchObject({ status: 409, code: "receipt_consent_required" });
     expect(vision.extract).not.toHaveBeenCalled();
   });
 
-  it("refuses receipt vision for a tenant without Pro before the photo leaves Zoption", async () => {
+  it("draws one unit from the shared pool before the photo leaves Zoption", async () => {
     const vision = provider();
     const service = createReceiptService(repository(), vision);
+    const before = poolRow()?.count ?? 0;
+
+    await service.extract(env, TENANT_ID, receiptImage());
+
+    expect(poolRow().count).toBe(before + 1);
+    expect(vision.extract).toHaveBeenCalledOnce();
+  });
+
+  it("refuses at the pool cap before the photo leaves Zoption", async () => {
+    const vision = provider();
+    const service = createReceiptService(repository(), vision);
+
     await expect(
-      service.extract({ ...env, DB: proDb(false) }, "tenant-id", receiptImage()),
-    ).rejects.toMatchObject({ status: 403, code: "upgrade_required" });
+      service.extract(cappedEnvironment(500), TENANT_ID, receiptImage()),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "monthly_limit_reached",
+      message: "You have reached your AI usage limit for this month.",
+      details: { feature: "ai_usage", used: 500, limit: 500 },
+    });
     expect(vision.extract).not.toHaveBeenCalled();
   });
 
   it("normalizes provider output into a PHP draft", async () => {
     const service = createReceiptService(repository(), provider());
-    await expect(service.extract(env, "tenant-id", receiptImage())).resolves.toEqual({
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toEqual({
       merchant: "Jollibee",
       date: "2026-08-13",
       amountMinor: -28500,
@@ -108,7 +145,7 @@ describe("receipt service", () => {
       amountMinor: 1200,
     });
     const service = createReceiptService(repository(), vision);
-    const draft = await service.extract(env, "tenant-id", receiptImage());
+    const draft = await service.extract(env, TENANT_ID, receiptImage());
     expect(draft.merchant).toBe("Market");
     expect(draft.kind).toBe("income");
     expect(draft.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -130,7 +167,7 @@ describe("receipt service", () => {
     });
     const service = createReceiptService(repository(), vision);
 
-    await expect(service.extract(env, "tenant-id", receiptImage())).resolves.toMatchObject({
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
       items: [
         { description: "Vegetables", amountMinor: 12000, categoryName: "Groceries" },
         { description: "Fish", amountMinor: 12500 },
@@ -151,7 +188,7 @@ describe("receipt service", () => {
     });
     const service = createReceiptService(repository(), vision);
 
-    await expect(service.extract(env, "tenant-id", receiptImage())).resolves.toMatchObject({
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
       amountMinor: 24_500,
       items: [],
     });
@@ -165,13 +202,13 @@ describe("receipt service", () => {
       merchant: "   ",
       amountMinor: 28500,
     });
-    await expect(service.extract(env, "tenant-id", receiptImage())).rejects.toMatchObject({
+    await expect(service.extract(env, TENANT_ID, receiptImage())).rejects.toMatchObject({
       status: 422,
       code: "receipt_merchant_unreadable",
     });
 
     (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({ merchant: "Jollibee" });
-    await expect(service.extract(env, "tenant-id", receiptImage())).rejects.toMatchObject({
+    await expect(service.extract(env, TENANT_ID, receiptImage())).rejects.toMatchObject({
       status: 422,
       code: "receipt_amount_unreadable",
     });
@@ -188,7 +225,7 @@ describe("receipt service", () => {
       new ReceiptVisionProviderError("cloudflare_workers_ai", kind),
     );
     const service = createReceiptService(repository(), vision);
-    await expect(service.extract(env, "tenant-id", receiptImage())).rejects.toMatchObject({
+    await expect(service.extract(env, TENANT_ID, receiptImage())).rejects.toMatchObject({
       status,
       code,
     });

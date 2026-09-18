@@ -47,10 +47,8 @@ export function periodEndsCopy(summary: BillingSummary): string | null {
 
 export function usageTitle(usage: BillingUsage): string {
   switch (usage.feature) {
-    case "assistant_question":
-      return usage.periodKind === "anchored_14_day"
-        ? "AI questions this 14-day cycle"
-        : "AI questions this month";
+    case "ai_usage":
+      return "AI actions this month";
     case "file_import":
       return "Committed imports this month";
     default:

@@ -408,14 +408,8 @@ export const billingSubscriptionStatuses = [
 export type BillingSubscriptionStatus = (typeof billingSubscriptionStatuses)[number];
 
 export type BillingPlan = "free" | "zoption_pro";
-export const billingFeatures = [
-  "assistant_question",
-  "file_import",
-  "vision",
-  "stt",
-  "tts",
-  "pdf",
-] as const;
+/** Metered monthly allowances. `ai_usage` is the single pool every billable AI request draws on. */
+export const billingFeatures = ["ai_usage", "file_import"] as const;
 export type BillingFeature = (typeof billingFeatures)[number];
 export type BillingResource = "custom_category";
 export type BillingCapability =
@@ -425,7 +419,8 @@ export type BillingCapability =
   | "cashflow_analytics"
   | "transaction_export";
 
-export type BillingUsagePeriodKind = "calendar_month" | "anchored_14_day";
+export const billingUsagePeriodKinds = ["calendar_month"] as const;
+export type BillingUsagePeriodKind = (typeof billingUsagePeriodKinds)[number];
 
 export interface BillingUsage {
   feature: BillingFeature;

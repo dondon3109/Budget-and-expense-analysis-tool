@@ -160,15 +160,15 @@ describe("assistant api transport", () => {
     expect(url).toContain("limit=10");
   });
 
-  it("maps a 14-day cycle limit rejection to plan_limit", async () => {
+  it("maps a monthly pool limit rejection to plan_limit", async () => {
     const fetchMock = jest.fn(async () =>
       jsonResponse(
         {
-          error: "assistant_cycle_limit_reached",
-          message: "No AI questions remaining this cycle.",
-          details: { feature: "assistant_question", used: 10, limit: 10 },
+          error: "monthly_limit_reached",
+          message: "You have reached your AI usage limit for this month.",
+          details: { feature: "ai_usage", used: 500, limit: 500 },
         },
-        402,
+        409,
       ),
     );
     await expect(

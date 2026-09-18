@@ -31,8 +31,7 @@ function BillingLimitDialogContent({
   const titleId = `billing-limit-${details.feature}-title`;
   const descriptionId = `billing-limit-${details.feature}-description`;
   const reset = details.resetsAt ? formatManilaDate(details.resetsAt, true) : undefined;
-  const periodLabel =
-    details.periodKind === "anchored_14_day" ? "this 14-day period" : "this month";
+  const periodLabel = "this month";
 
   useRootLock(true);
 

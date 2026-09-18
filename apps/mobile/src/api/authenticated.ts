@@ -71,12 +71,7 @@ export function mapApiError(
       code,
     );
   }
-  if (
-    status === 402 ||
-    code === "monthly_limit_reached" ||
-    code === "assistant_cycle_limit_reached" ||
-    code === "billing_required"
-  ) {
+  if (status === 402 || code === "monthly_limit_reached" || code === "billing_required") {
     return new ApiTransportError(
       errorMessage(body, "This needs a Zoption Pro plan."),
       "plan_limit",

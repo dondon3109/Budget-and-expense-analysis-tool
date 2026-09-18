@@ -7,14 +7,18 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../src/app";
+import type { AssistantService } from "../src/assistant/service";
+import type { AssistantVoiceService } from "../src/assistant/voice-service";
 import type { AuthVerifier } from "../src/auth";
 import type { AccountRepository } from "../src/db/accounts";
 import type { BillingRepository } from "../src/db/billing";
 import type { CategoryRepository } from "../src/db/categories";
 import type { TenantResolver } from "../src/db/tenants";
 import type { TransactionRepository } from "../src/db/transactions";
+import type { AiEntryService } from "../src/entry/ai-entry-service";
 import { HttpError } from "../src/errors";
 import type { RateLimiter } from "../src/rate-limit";
+import type { ReceiptService } from "../src/receipts/service";
 
 const AUTHORIZATION = { Authorization: "Bearer valid-token" };
 const JSON_HEADERS = { ...AUTHORIZATION, "Content-Type": "application/json" };
@@ -135,6 +139,108 @@ function testApp(options: Parameters<typeof createApp>[0]) {
     ...options,
   });
 }
+
+function fileRequest(field: string, file: File) {
+  const form = new FormData();
+  form.set(field, file);
+  return { method: "POST", headers: AUTHORIZATION, body: form };
+}
+
+const jsonRequest = (body: unknown) => ({
+  method: "POST",
+  headers: JSON_HEADERS,
+  body: JSON.stringify(body),
+});
+
+/**
+ * The six pooled AI paths. Each one consumes the shared monthly pool inside its service, so
+ * these fakes only prove the route itself returns a result for a Free tenant with no Pro gate.
+ */
+const POOLED_AI_ROUTES = [
+  {
+    name: "assistant thread generation",
+    path: "/api/app/assistant/threads",
+    init: () =>
+      jsonRequest({
+        message: "How much did I spend?",
+        clientRequestId: "69a6ec67-85bd-4ccb-9354-1410d6dc5fb4",
+      }),
+    status: 201,
+  },
+  {
+    name: "assistant message generation",
+    path: "/api/app/assistant/threads/00000000-0000-4000-8000-000000000001/messages",
+    init: () =>
+      jsonRequest({
+        message: "How much did I spend?",
+        clientRequestId: "69a6ec67-85bd-4ccb-9354-1410d6dc5fb4",
+      }),
+    status: 200,
+  },
+  {
+    name: "assistant voice transcription",
+    path: "/api/app/assistant/voice/transcriptions",
+    init: () =>
+      fileRequest("audio", new File([new Uint8Array([1])], "voice.webm", { type: "audio/webm" })),
+    status: 200,
+  },
+  {
+    name: "assistant speech synthesis",
+    path: "/api/app/assistant/voice/speech",
+    init: () => jsonRequest({ messageId: "00000000-0000-4000-8000-000000000002", voice: "bright" }),
+    status: 200,
+  },
+  {
+    name: "assistant speech preview",
+    path: "/api/app/assistant/voice/preview",
+    init: () => jsonRequest({ voice: "energetic" }),
+    status: 200,
+  },
+  {
+    name: "receipt extraction",
+    path: "/api/app/receipts/extract",
+    init: () =>
+      fileRequest("image", new File([new Uint8Array([1])], "receipt.jpg", { type: "image/jpeg" })),
+    status: 200,
+  },
+  {
+    name: "PDF statement entry",
+    path: "/api/app/entry/pdf-preview",
+    init: () =>
+      fileRequest(
+        "pdf",
+        new File([new Uint8Array([1])], "statement.pdf", { type: "application/pdf" }),
+      ),
+    status: 200,
+  },
+  {
+    name: "voice transaction entry",
+    path: "/api/app/entry/voice",
+    init: () =>
+      fileRequest("audio", new File([new Uint8Array([1])], "voice.m4a", { type: "audio/mp4" })),
+    status: 200,
+  },
+] as const;
+
+const POOLED_SERVICES = {
+  assistantService: {
+    createThreadTurn: vi.fn(async () => ({ ok: true })),
+    sendTurn: vi.fn(async () => ({ ok: true })),
+  } as unknown as AssistantService,
+  assistantVoiceService: {
+    transcribe: vi.fn(async () => ({ text: "Check my budget", durationSeconds: 2 })),
+    synthesize: vi.fn(async () => new Response(new Uint8Array([1]))),
+    preview: vi.fn(async () => new Response(new Uint8Array([1]))),
+  } as unknown as AssistantVoiceService,
+  receiptService: {
+    extract: vi.fn(async () => ({ merchant: "Jollibee", amountMinor: -28_500 })),
+  } as unknown as ReceiptService,
+  aiEntryService: {
+    previewPdf: vi.fn(async () => ({ token: "preview", rows: [] })),
+    extractVoice: vi.fn(async () => ({ description: "Lunch" })),
+    extractVoiceTranscript: vi.fn(async () => ({ description: "Lunch" })),
+  } as unknown as AiEntryService,
+};
 
 describe("Pro route enforcement", () => {
   it.each([
@@ -351,4 +457,47 @@ describe("Pro route enforcement", () => {
     expect(categoryStore.list).toHaveBeenCalledWith(undefined, TENANT_ID, false);
     expect(requirePro).not.toHaveBeenCalled();
   });
+});
+
+describe("pooled AI route access", () => {
+  it.each(POOLED_AI_ROUTES)(
+    "serves $name to a Free tenant without a Pro gate",
+    async ({ path, init, status }) => {
+      const requirePro = vi.fn(async () => {
+        throw new HttpError(403, "upgrade_required", "This feature requires Zoption Pro.");
+      });
+      const app = testApp({ billing: billing(requirePro), ...POOLED_SERVICES });
+
+      const response = await app.request(path, init(), { ASSISTANT_ENABLED: "true" });
+
+      expect(response.status).toBe(status);
+      expect(requirePro).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(POOLED_AI_ROUTES)(
+    "caps $name by the minute instead of a per-day ceiling",
+    async ({ path, init }) => {
+      const consume = vi.fn(
+        async (_env: unknown, _identity: string, _policy: { windowSeconds: number }) => ({
+          allowed: true,
+          limit: 60,
+          remaining: 59,
+          retryAfterSeconds: 60,
+        }),
+      );
+      const app = testApp({
+        billing: billing(vi.fn(async () => undefined)),
+        rateLimiter: { consume },
+        ...POOLED_SERVICES,
+      });
+
+      const response = await app.request(path, init(), { ASSISTANT_ENABLED: "true" });
+
+      expect(response.status).not.toBe(429);
+      const policies = consume.mock.calls.map((call) => call[2]);
+      expect(policies.length).toBeGreaterThan(0);
+      expect(policies.every((policy) => policy.windowSeconds === 60)).toBe(true);
+    },
+  );
 });

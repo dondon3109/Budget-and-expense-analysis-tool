@@ -22,17 +22,30 @@ export function UpgradePrompt({ error }: { error: unknown }) {
   const resourceLimit = isResourceLimitReachedError(error) ? error.details : undefined;
   const upgradeRequired = isUpgradeRequiredError(error) ? error.details : undefined;
   const resetLabel = usageLimit?.resetsAt ? formatManilaDate(usageLimit.resetsAt, true) : undefined;
-  const isAssistantCycle = usageLimit?.periodKind === "anchored_14_day";
+  // A downgrade can leave usage above the new limit; "all 500" reads better than "600 of 500".
+  let usageProgress = "";
+  if (usageLimit) {
+    usageProgress =
+      usageLimit.used > usageLimit.limit
+        ? `all ${usageLimit.limit}`
+        : `${usageLimit.used} of ${usageLimit.limit}`;
+  }
 
   const title = usageLimit
-    ? isAssistantCycle
-      ? "14-day assistant limit reached"
-      : "Monthly plan limit reached"
+    ? "Monthly plan limit reached"
     : resourceLimit
       ? "Custom category limit reached"
       : "Zoption Pro is required";
+  // The shared pool error carries no plan, so only the smaller pool advertises the Pro size.
+  const aiUsageDescription =
+    usageLimit?.feature === "ai_usage"
+      ? `You’ve used ${usageProgress} AI actions this month.${
+          usageLimit.limit < 2_000 ? " Pro includes 2,000 AI actions a month." : ""
+        }`
+      : undefined;
   const description = usageLimit
-    ? `You’ve used ${usageLimit.used} of ${usageLimit.limit} ${featureLabels[usageLimit.feature]} ${isAssistantCycle ? "in this 14-day period" : "this month"}.`
+    ? (aiUsageDescription ??
+      `You’ve used ${usageProgress} ${featureLabels[usageLimit.feature]} this month.`)
     : resourceLimit
       ? `You’re using ${resourceLimit.used} of ${resourceLimit.limit} active ${resourceLabels[resourceLimit.resource]}. Archive one to free the slot, or upgrade for unlimited categories.`
       : upgradeRequired

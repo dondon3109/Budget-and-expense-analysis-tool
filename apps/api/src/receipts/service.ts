@@ -5,7 +5,7 @@ import {
   type ReceiptPreferences,
 } from "@zoption/shared";
 
-import { billingRepository } from "../db/billing";
+import { consumeAiUsage } from "../db/billing";
 import type { ReceiptRepository } from "../db/receipts";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
@@ -205,8 +205,8 @@ export function createReceiptService(
     },
     async extract(env, tenantId, image) {
       await requireConsent(env, tenantId);
-      // Receipt vision spends a billable provider call, so it is Pro-only.
-      await billingRepository.requirePro(env, tenantId, "vision");
+      // Receipt vision spends one billable provider call, drawn from the shared monthly pool.
+      await consumeAiUsage(env, tenantId);
       try {
         const candidate = await provider.extract(env, image);
         return normalizeDraft(env, candidate);

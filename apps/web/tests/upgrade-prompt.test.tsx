@@ -20,26 +20,43 @@ function renderPrompt(error: unknown) {
 }
 
 describe("UpgradePrompt", () => {
-  it("shows a validated assistant-cycle limit and Manila reset time", () => {
+  it("shows the exhausted shared AI pool, the Pro size, and the Manila reset time", () => {
     renderPrompt(
-      new ApiRequestError("Limit reached", 409, "assistant_cycle_limit_reached", {
-        feature: "assistant_question",
-        used: 12,
-        limit: 12,
-        periodKind: "anchored_14_day",
-        periodStartedAt: "2026-07-18T00:00:00.000Z",
+      new ApiRequestError("Limit reached", 409, "monthly_limit_reached", {
+        feature: "ai_usage",
+        used: 500,
+        limit: 500,
+        periodKind: "calendar_month",
+        periodStartedAt: "2026-07-01T00:00:00.000Z",
         resetsAt: "2026-08-01T00:00:00.000Z",
       }),
     );
 
-    expect(screen.getByRole("alert", { name: "14-day assistant limit reached" })).toHaveTextContent(
-      "12 of 12 AI questions",
-    );
-    expect(screen.getByRole("alert")).toHaveTextContent("Asia/Manila");
+    const alert = screen.getByRole("alert", { name: "Monthly plan limit reached" });
+    expect(alert).toHaveTextContent("500 of 500 AI actions this month");
+    expect(alert).toHaveTextContent("Pro includes 2,000 AI actions a month");
+    expect(alert).toHaveTextContent("Asia/Manila");
     expect(screen.getByRole("link", { name: /Plan and billing/ })).toHaveAttribute(
       "href",
       "/app/settings#plan-and-billing",
     );
+  });
+
+  it("does not pitch the Pro pool to a tenant already on it", () => {
+    renderPrompt(
+      new ApiRequestError("Limit reached", 409, "monthly_limit_reached", {
+        feature: "ai_usage",
+        used: 2000,
+        limit: 2000,
+        periodKind: "calendar_month",
+        periodStartedAt: "2026-07-01T00:00:00.000Z",
+        resetsAt: "2026-08-01T00:00:00.000Z",
+      }),
+    );
+
+    const alert = screen.getByRole("alert", { name: "Monthly plan limit reached" });
+    expect(alert).toHaveTextContent("2000 of 2000 AI actions this month");
+    expect(alert).not.toHaveTextContent("Pro includes");
   });
 
   it("explains the persistent custom category allowance", () => {

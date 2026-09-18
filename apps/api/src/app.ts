@@ -43,8 +43,11 @@ import {
   assistantModelMemoryUsageRepository,
   type AssistantModelMemoryUsageRepository,
 } from "./db/assistant-model-memory-usage";
-import { assistantUsageRepository, type AssistantUsageRepository } from "./db/assistant-usage";
-import { billingRepository, type BillingRepository } from "./db/billing";
+import {
+  billingRepository,
+  consumeAiUsage as defaultConsumeAiUsage,
+  type BillingRepository,
+} from "./db/billing";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { customerReviewRepository, type CustomerReviewRepository } from "./db/customer-reviews";
@@ -169,7 +172,7 @@ export interface AppOptions {
   tenantResolver?: TenantResolver;
   assistantRepository?: AssistantRepository;
   assistantVoiceRepository?: AssistantVoiceRepository;
-  assistantUsage?: AssistantUsageRepository;
+  consumeAiUsage?: (env: Bindings, tenantId: string) => Promise<void>;
   assistantModelMemoryUsage?: AssistantModelMemoryUsageRepository;
   assistantProvider?: AssistantProvider;
   supportProvider?: AssistantProvider;
@@ -241,7 +244,7 @@ export function createApp(options: AppOptions = {}) {
   const authVerifier = options.authVerifier ?? supabaseAuthVerifier;
   const resolveTenant = options.tenantResolver ?? tenantResolver;
   const assistantStore = options.assistantRepository ?? assistantRepository;
-  const assistantUsage = options.assistantUsage ?? assistantUsageRepository;
+  const consumeAiUsage = options.consumeAiUsage ?? defaultConsumeAiUsage;
   const assistantModelMemoryUsage =
     options.assistantModelMemoryUsage ?? assistantModelMemoryUsageRepository;
   // Dynamic provider that resolves the active DB config on every request (with 30s cache).
@@ -273,7 +276,7 @@ export function createApp(options: AppOptions = {}) {
         }),
       ),
       undefined,
-      assistantUsage,
+      consumeAiUsage,
       assistantProvider,
       assistantModelMemoryUsage,
       options.assistantTelemetryFactory,
@@ -553,67 +556,44 @@ export function createApp(options: AppOptions = {}) {
       context.req.method === "GET" && context.req.path.startsWith("/api/app/exports");
     const isAssistantHistoryRead =
       context.req.method === "GET" && context.req.path.startsWith("/api/app/assistant/threads");
+    // Every pooled AI path keeps only its per-minute burst cap: a per-day cap would sit below
+    // the monthly pool and reject a Pro tenant that has units left. The monthly pool is the cap.
     const policies = isVoiceTranscription
-      ? [
-          { scope: "tenant-assistant-voice-transcription-minute", limit: 6, windowSeconds: 60 },
-          { scope: "tenant-assistant-voice-transcription-day", limit: 30, windowSeconds: 86_400 },
-        ]
+      ? [{ scope: "tenant-assistant-voice-transcription-minute", limit: 6, windowSeconds: 60 }]
       : isVoiceSpeech
-        ? [
-            { scope: "tenant-assistant-voice-speech-minute", limit: 12, windowSeconds: 60 },
-            { scope: "tenant-assistant-voice-speech-day", limit: 60, windowSeconds: 86_400 },
-          ]
+        ? [{ scope: "tenant-assistant-voice-speech-minute", limit: 12, windowSeconds: 60 }]
         : isReceiptExtraction
-          ? [
-              { scope: "tenant-receipt-extraction-minute", limit: 6, windowSeconds: 60 },
-              { scope: "tenant-receipt-extraction-day", limit: 60, windowSeconds: 86_400 },
-            ]
+          ? [{ scope: "tenant-receipt-extraction-minute", limit: 6, windowSeconds: 60 }]
           : isAiEntryVoice
-            ? [
-                { scope: "tenant-entry-voice-minute", limit: 6, windowSeconds: 60 },
-                { scope: "tenant-entry-voice-day", limit: 30, windowSeconds: 86_400 },
-              ]
+            ? [{ scope: "tenant-entry-voice-minute", limit: 6, windowSeconds: 60 }]
             : isAiEntryPdf
-              ? [
-                  { scope: "tenant-entry-pdf-minute", limit: 3, windowSeconds: 60 },
-                  { scope: "tenant-entry-pdf-day", limit: 20, windowSeconds: 86_400 },
-                ]
+              ? [{ scope: "tenant-entry-pdf-minute", limit: 3, windowSeconds: 60 }]
               : isAccountDeletion
                 ? [{ scope: "user-account-deletion", limit: 5, windowSeconds: 15 * 60 }]
                 : isPlatformAdminRoute && WRITE_METHODS.has(context.req.method)
                   ? [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: 15 * 60 }]
                   : isPlatformAdminRoute
                     ? [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: 60 }]
-                    : isAssistantGeneration || isSupportGeneration
+                    : isSupportGeneration
                       ? [
-                          {
-                            scope: isSupportGeneration
-                              ? "tenant-support-minute"
-                              : "tenant-assistant-minute",
-                            limit: 10,
-                            windowSeconds: 60,
-                          },
-                          {
-                            scope: isSupportGeneration
-                              ? "tenant-support-day"
-                              : "tenant-assistant-day",
-                            limit: 100,
-                            windowSeconds: 24 * 60 * 60,
-                          },
+                          { scope: "tenant-support-minute", limit: 10, windowSeconds: 60 },
+                          { scope: "tenant-support-day", limit: 100, windowSeconds: 24 * 60 * 60 },
                         ]
-                      : isExportRead
-                        ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
-                        : isAssistantHistoryRead
-                          ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
-                          : WRITE_METHODS.has(context.req.method)
-                            ? [
-                                context.req.path.startsWith("/api/app/imports")
-                                  ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
-                                  : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
-                              ]
-                            : context.req.method === "GET"
-                              ? [{ scope: "tenant-read", limit: 120, windowSeconds: 60 }]
-                              : [];
+                      : isAssistantGeneration
+                        ? [{ scope: "tenant-assistant-minute", limit: 10, windowSeconds: 60 }]
+                        : isExportRead
+                          ? [{ scope: "tenant-export-read", limit: 20, windowSeconds: 60 }]
+                          : isAssistantHistoryRead
+                            ? [{ scope: "tenant-assistant-read", limit: 60, windowSeconds: 60 }]
+                            : WRITE_METHODS.has(context.req.method)
+                              ? [
+                                  context.req.path.startsWith("/api/app/imports")
+                                    ? { scope: "tenant-import", limit: 20, windowSeconds: 15 * 60 }
+                                    : { scope: "tenant-write", limit: 60, windowSeconds: 60 },
+                                ]
+                              : context.req.method === "GET"
+                                ? [{ scope: "tenant-read", limit: 120, windowSeconds: 60 }]
+                                : [];
 
     if (policies.length === 0) {
       await next();

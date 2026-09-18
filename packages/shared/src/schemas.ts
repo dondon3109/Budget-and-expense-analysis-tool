@@ -11,6 +11,7 @@ import {
   bugReportPageContexts,
   bugReportStatuses,
   billingFeatures,
+  billingUsagePeriodKinds,
   customerReviewModerationStatuses,
   financialGoalStatuses,
   interestFrequencies,
@@ -332,6 +333,12 @@ export const receiptDraftSchema = z
       });
     }
   });
+
+/**
+ * Client-supplied transcript for transaction voice entry. One pooled AI unit buys one bounded
+ * provider request, so the text that reaches the model is capped at the request boundary.
+ */
+export const entryVoiceTranscriptSchema = z.string().trim().min(1).max(2_000);
 
 export const transactionVoiceDraftSchema = z
   .object({
@@ -1146,7 +1153,7 @@ export const billingUsageSchema = z
     feature: z.enum(billingFeatures),
     used: z.number().int().min(0),
     limit: z.number().int().min(0),
-    periodKind: z.enum(["calendar_month", "anchored_14_day"]),
+    periodKind: z.enum(billingUsagePeriodKinds),
     periodStartedAt: z.iso.datetime().nullable(),
     resetsAt: z.iso.datetime().nullable(),
   })

@@ -98,9 +98,6 @@ export const accountDeletionRepository: AccountDeletionRepository = {
         tenantId,
       ),
       env.DB.prepare("DELETE FROM receipt_preferences WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM billing_assistant_cycle_usage WHERE tenant_id = ?").bind(
-        tenantId,
-      ),
       env.DB.prepare("DELETE FROM billing_monthly_usage WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM billing_checkout_references WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM billing_subscriptions WHERE tenant_id = ?").bind(tenantId),

@@ -143,7 +143,7 @@ export interface UsageLimitReachedDetails {
   feature: BillingFeature;
   used: number;
   limit: number;
-  periodKind?: "calendar_month" | "anchored_14_day";
+  periodKind?: "calendar_month";
   periodStartedAt?: string | null;
   resetsAt: string | null;
   billingPath?: string;
@@ -160,22 +160,11 @@ export interface UpgradeRequiredDetails {
   capability: BillingCapability;
 }
 
-const billingFeatures = new Set<BillingFeature>([
-  "assistant_question",
-  "file_import",
-  "vision",
-  "stt",
-  "tts",
-  "pdf",
-]);
+const billingFeatures = new Set<BillingFeature>(["ai_usage", "file_import"]);
 const billingResources = new Set<BillingResource>(["custom_category"]);
 const billingCapabilities = new Set<BillingCapability>([
-  "assistant_question",
+  "ai_usage",
   "file_import",
-  "vision",
-  "stt",
-  "tts",
-  "pdf",
   "category_management",
   "account_management",
   "cashflow_analytics",
@@ -206,10 +195,7 @@ export function isApiRequestError(error: unknown): error is ApiRequestError {
 export function isUsageLimitReachedError(
   error: unknown,
 ): error is ApiRequestError & { details: UsageLimitReachedDetails } {
-  if (
-    !isApiRequestError(error) ||
-    (error.code !== "monthly_limit_reached" && error.code !== "assistant_cycle_limit_reached")
-  ) {
+  if (!isApiRequestError(error) || error.code !== "monthly_limit_reached") {
     return false;
   }
   if (!isRecord(error.details)) return false;
@@ -225,9 +211,7 @@ export function isUsageLimitReachedError(
     typeof error.details.limit === "number" &&
     Number.isFinite(error.details.limit) &&
     error.details.limit >= 0 &&
-    (periodKind === undefined ||
-      periodKind === "calendar_month" ||
-      periodKind === "anchored_14_day") &&
+    (periodKind === undefined || periodKind === "calendar_month") &&
     (periodStartedAt === undefined ||
       periodStartedAt === null ||
       typeof periodStartedAt === "string") &&
@@ -273,7 +257,6 @@ export function isBillingEnforcementError(error: unknown): error is ApiRequestEr
   return (
     isApiRequestError(error) &&
     (error.code === "monthly_limit_reached" ||
-      error.code === "assistant_cycle_limit_reached" ||
       error.code === "resource_limit_reached" ||
       error.code === "upgrade_required")
   );

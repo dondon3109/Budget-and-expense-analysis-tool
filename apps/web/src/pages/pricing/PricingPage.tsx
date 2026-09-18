@@ -24,10 +24,23 @@ const COMPARISON_ROWS = [
   {
     category: "Transactions & Fast Entry",
     features: [
-      { name: "Speech-to-transaction voice entry", free: "Unlimited", pro: "Unlimited" },
-      { name: "Camera receipt photo scanning", free: "Unlimited", pro: "Unlimited" },
       {
-        name: "Bank statement imports (PDF, CSV, XLS, XLSX)",
+        name: "Speech-to-transaction voice entry",
+        free: "Included (shared AI pool)",
+        pro: "Included (shared AI pool)",
+      },
+      {
+        name: "Camera receipt photo scanning",
+        free: "Included (shared AI pool)",
+        pro: "Included (shared AI pool)",
+      },
+      {
+        name: "PDF bank statement AI entry",
+        free: "Included (shared AI pool)",
+        pro: "Included (shared AI pool)",
+      },
+      {
+        name: "Bank statement imports (CSV, XLS, XLSX)",
         free: "1 committed / month",
         pro: "10 committed / month",
       },
@@ -61,9 +74,14 @@ const COMPARISON_ROWS = [
     category: "AI Financial Assistant",
     features: [
       {
-        name: "Natural language workspace query assistant",
-        free: "10 queries / 14 days",
-        pro: "100 queries / 14 days",
+        name: "Shared AI usage pool (chat, voice chat, receipt scanning, PDF entry, transaction voice)",
+        free: "500 AI actions / month",
+        pro: "2,000 AI actions / month",
+      },
+      {
+        name: "Live streaming voice chat",
+        free: "Not included",
+        pro: "Included",
       },
       {
         name: "Assistant permissions model",
@@ -91,7 +109,7 @@ const PRICING_FAQS = [
   {
     question: "Can I use Zoption for free permanently?",
     answer:
-      "Yes. The Free plan has no trial expiration and does not ask for credit card information. You can use core tracking, voice logging, receipt scanning, and budget features for as long as you want.",
+      "Yes. The Free plan has no trial expiration and does not ask for credit card information. Core tracking, budgeting, and 500 shared AI actions per month—chat, voice chat, receipt scanning, PDF statement entry, and transaction voice entry—are yours for as long as you want.",
   },
   {
     question: "Why does Zoption avoid direct bank credential connections?",
@@ -178,8 +196,8 @@ export function PricingPage() {
             <div className="pricing-card-header">
               <h2>Free Plan</h2>
               <p className="pricing-card-description">
-                Everything you need to track money privately with voice entry, receipt scanning, and
-                statement imports.
+                Everything you need to track money privately, including 500 shared AI actions a
+                month and statement imports.
               </p>
               <div className="pricing-card-price">
                 <strong>₱0</strong>
@@ -197,19 +215,19 @@ export function PricingPage() {
             <ul className="pricing-card-features" aria-label="Free plan inclusions">
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Unlimited manual, voice, and receipt scan entries</span>
+                <span>
+                  500 AI actions a month, shared by chat, voice, receipt scanning and PDF entry
+                </span>
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Universal bank statement importer (1 import/mo)</span>
+                <span>
+                  Unlimited manual entries and universal bank statement importer (1 import/mo)
+                </span>
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
                 <span>Budget envelopes &amp; spending breakdown</span>
-              </li>
-              <li className="pricing-card-feature-item">
-                <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>10 AI Assistant queries per 14-day cycle</span>
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
@@ -228,8 +246,8 @@ export function PricingPage() {
             <div className="pricing-card-header">
               <h2>Zoption Pro</h2>
               <p className="pricing-card-description">
-                For users who want multi-account automation, automatic interest compounding, and
-                higher import limits.
+                For users who want multi-account automation, automatic interest compounding, 2,000
+                AI actions a month, and higher import limits.
               </p>
               <div className="pricing-card-price">
                 <strong>{interval === "month" ? "₱149" : "₱1,299"}</strong>
@@ -261,7 +279,9 @@ export function PricingPage() {
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>100 AI Assistant questions per 14-day cycle</span>
+                <span>
+                  2,000 AI actions a month in the same shared pool, plus live streaming voice chat
+                </span>
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />

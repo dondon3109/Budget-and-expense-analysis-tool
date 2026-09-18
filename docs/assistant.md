@@ -7,7 +7,7 @@ Zoption's AI Financial Assistant is a read-only budgeting and financial-wellness
 1. The browser sends one user message and an idempotency UUID to `/api/app/assistant/*` with the normal Supabase bearer token.
 2. Existing Worker middleware verifies the JWT and resolves the user's D1 tenant.
 3. The Worker loads bounded tenant-owned chat history and creates a trusted turn policy. The policy classifies regulated topics, resolves dates in `Asia/Manila`, and identifies required tool groups.
-4. Ambiguous dates and personalized regulated-topic recommendation requests receive deterministic server responses without a provider call or AI-question charge.
+4. Ambiguous dates and personalized regulated-topic recommendation requests receive deterministic server responses without a provider call or AI-usage charge.
 5. Provider-backed turns call the active assistant configuration (DeepSeek `deepseek-v4-flash` by default) with the trusted policy, bounded history, approved tool definitions, and no tenant or user identifier.
 6. While required tool groups remain unsatisfied, the Worker requires tool use. It validates every argument against strict schemas and the server-resolved date range before running tenant-scoped reads or calculations.
 7. The Worker validates the final answer against successful tool output. Unsupported money, percentages, dates, counts, internal identifiers, unsafe formats, named-filter substitutions, and disallowed regulated recommendations are rejected. One corrective retry is allowed; otherwise Zoption returns a deterministic safe fallback.
@@ -20,7 +20,7 @@ The browser cannot submit a tenant ID, model, system prompt, tool definition, as
 ## Voice mode
 
 The assistant offers two conversation types and nothing in between: text chat and voice
-conversation. Both share the same Worker assistant turn (same tools, consent, usage cycle, and
+conversation. Both share the same Worker assistant turn (same tools, consent, AI usage pool, and
 validation) and the same versioned voice consent, which the user accepts before the browser ever
 requests microphone access.
 
@@ -152,11 +152,13 @@ Payoff wording is stored under two keys: `debt_strategy` is the preference the M
 
 Memories live in `assistant_memories` (kind `preference`, `fact`, or `summary`), are stored as sanitized untrusted text with the same 90-day lifecycle as chats, and record the thread they came from. Storage is capped at 50 facts per tenant with oldest-first compaction; preferences set in the Memory panel are never evicted. Memories are cleared when the user clears memory or deletes all chats, and individual facts can be edited or deleted from the Memory panel, which labels each fact and names its source thread. In the model prompt, memory is marked as data, never instructions: it may personalize context and tone but never satisfies a required tool group and never replaces a tool lookup (saved goals and debts are always read fresh through the approved tools).
 
-## Assistant usage cycles
+## AI usage pool
 
-Free tenants receive 10 provider-backed assistant questions per 14-day cycle, and Pro tenants receive 100. A tenant's first provider-backed question establishes an immutable cycle anchor. Each later period is an exact 14×24-hour interval from that anchor; inactivity can skip elapsed periods but never shifts or restarts the cadence.
+Free tenants receive 500 billable AI actions per Manila calendar month, and Pro tenants receive 2,000. One action is one AI operation the tenant asked for, with no weighting between features: assistant chat generation, voice transcription, spoken replies, receipt scanning, PDF statement entry, and transaction voice entry all draw on the same pool and the same `ai_usage` row in `billing_monthly_usage`. An operation that fans out to several provider calls still costs one action, and an assistant turn can make up to four, so the pool bounds operations rather than provider spend. Each consume is a single UPSERT whose BEFORE INSERT/UPDATE trigger raises `billing_monthly_limit_reached` at the cap, so the allowance is enforced atomically and a request that exceeds it never reaches a provider.
 
-Deterministic clarifications, date-resolution prompts, and compliance redirects do not consume assistant usage. Provider-backed usage is consumed immediately before the provider call, so an upstream timeout or provider failure still counts. File imports remain on their separate Manila calendar-month allowance.
+Deterministic clarifications, date-resolution prompts, and compliance redirects make no provider call and consume nothing. Every other path consumes immediately before its provider call, so an upstream timeout or provider failure still counts. The pool resets at the Manila month boundary; file imports keep their separate 1 Free / 10 Pro allowance, and the live transcription WebSocket stays Pro-only because a live platform-funded socket has no per-request boundary to meter.
+
+The legacy 14-day assistant cycle (`billing_assistant_cycle_usage`) is retired: migration `0059` carries the current month's assistant question count into `ai_usage`, deletes the old per-feature rows, and drops the cycle table.
 
 Local development and CI can set `ASSISTANT_PROVIDER=stub` to route provider-backed turns to a deterministic offline stub that still runs the real tool loop and answer validation, with no key and no network access. The flag is ignored when `POSTHOG_AI_ENVIRONMENT=production`, so the stub is never selectable in production.
 
@@ -166,7 +168,7 @@ Local development and CI can set `ASSISTANT_PROVIDER=stub` to route provider-bac
 - `DEEPSEEK_API_KEY` and `POSTHOG_PROJECT_TOKEN` are Worker secrets and never appear in browser configuration, D1, tool payloads, or logs.
 - PostHog uses random telemetry-only IDs as `distinct_id`, sets `$process_person_profile` to `false`, disables GeoIP enrichment, replaces the capture source address with the non-routable `0.0.0.0` placeholder, sends no identify/group events, and has no stable user, tenant, thread, message, request, or D1 run identifier.
 - PostHog capture is one bounded batch scheduled with Cloudflare `waitUntil()`, uses a short timeout, and is best-effort; capture failure cannot change an assistant result, error mapping, D1 cleanup, or readiness.
-- Assistant-cycle usage is consumed only immediately before a provider-backed turn; deterministic clarifications and compliance redirects do not consume an AI-question allowance.
+- AI usage is consumed only immediately before a provider-backed turn; deterministic clarifications and compliance redirects do not consume an AI action.
 - One short lease prevents concurrent sends in the same thread.
 - Client request UUIDs make completed turns idempotent.
 - Tool names, JSON arguments, result size, history size, date ranges, page sizes, provider calls, and total tool calls are bounded.

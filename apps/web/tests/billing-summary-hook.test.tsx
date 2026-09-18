@@ -34,11 +34,11 @@ function summary(used: number, resetsAt: string | null) {
     nonTerminalSubscriptionCount: 0,
     usages: [
       {
-        feature: "assistant_question" as const,
+        feature: "ai_usage" as const,
         used,
-        limit: 4,
-        periodKind: "anchored_14_day" as const,
-        periodStartedAt: resetsAt ? "2025-12-18T00:00:10.000Z" : null,
+        limit: 500,
+        periodKind: "calendar_month" as const,
+        periodStartedAt: resetsAt ? "2025-12-01T00:00:00.000Z" : null,
         resetsAt,
       },
     ],

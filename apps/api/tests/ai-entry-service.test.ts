@@ -1,10 +1,24 @@
 import { CURRENT_RECEIPT_CONSENT_VERSION, type ImportPreview } from "@zoption/shared";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { createAiEntryService } from "../src/entry/ai-entry-service";
 import type { ImportRepository } from "../src/db/imports";
 import type { ReceiptRepository } from "../src/db/receipts";
 import type { Bindings } from "../src/types";
+import { createD1TestDatabase } from "./helpers/d1-test-harness";
+
+const TENANT_ID = "tenant-id";
+
+const { binding, database } = createD1TestDatabase();
+database.prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', 'One')").run(TENANT_ID);
+afterAll(() => database.close());
+
+function poolCount(): number {
+  const row = database
+    .prepare("SELECT count FROM billing_monthly_usage WHERE tenant_id = ? AND feature = 'ai_usage'")
+    .get(TENANT_ID) as { count: number } | undefined;
+  return Number(row?.count ?? 0);
+}
 
 const preview: ImportPreview = {
   token: "c5ef5a13-3d62-4a41-8bb7-c30d6bd839b0",
@@ -31,23 +45,31 @@ function imports(): ImportRepository {
   return { preview: vi.fn(async () => preview), commit: vi.fn() };
 }
 
-/** The entitlement lookup reads one row; a source row means the tenant has Pro. */
-function proDb(hasPro: boolean): D1Database {
-  return {
-    prepare: () => ({
-      bind: () => ({ first: async () => (hasPro ? { source: "paypal" } : null) }),
-    }),
-  } as unknown as D1Database;
-}
-
-function env(
-  run: ReturnType<typeof vi.fn>,
-  toMarkdown: ReturnType<typeof vi.fn>,
-  hasPro = true,
-): Bindings {
+function env(run: ReturnType<typeof vi.fn>, toMarkdown: ReturnType<typeof vi.fn>): Bindings {
   const bindings = {} as Bindings;
   Object.assign(bindings, {
-    DB: proDb(hasPro),
+    DB: binding,
+    RECEIPT_ENTRY_ENABLED: "true",
+    ASSISTANT_TIME_ZONE: "Asia/Manila",
+    AI: { run, toMarkdown },
+  });
+  return bindings;
+}
+
+/** A tenant whose shared pool is already at 500 units. */
+function cappedEnv(run: ReturnType<typeof vi.fn>, toMarkdown: ReturnType<typeof vi.fn>): Bindings {
+  const capped = createD1TestDatabase();
+  capped.database
+    .prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', 'One')")
+    .run(TENANT_ID);
+  capped.database
+    .prepare(
+      "INSERT INTO billing_monthly_usage (tenant_id, month, feature, count, allowance) VALUES (?, date('now','+8 hours','start of month'), 'ai_usage', 500, 500)",
+    )
+    .run(TENANT_ID);
+  const bindings = {} as Bindings;
+  Object.assign(bindings, {
+    DB: capped.binding,
     RECEIPT_ENTRY_ENABLED: "true",
     ASSISTANT_TIME_ZONE: "Asia/Manila",
     AI: { run, toMarkdown },
@@ -56,23 +78,52 @@ function env(
 }
 
 describe("AI entry service", () => {
-  it("refuses media AI entry for a tenant without Pro before any provider call", async () => {
+  it("refuses pooled AI entry at the cap before any provider call", async () => {
     const run = vi.fn();
     const toMarkdown = vi.fn();
     const service = createAiEntryService(repository(), imports());
 
     await expect(
-      service.extractVoiceTranscript(env(run, toMarkdown, false), "tenant-id", "Spent 250 pesos"),
-    ).rejects.toMatchObject({ status: 403, code: "upgrade_required" });
+      service.extractVoiceTranscript(cappedEnv(run, toMarkdown), TENANT_ID, "Spent 250 pesos"),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "monthly_limit_reached",
+      message: "You have reached your AI usage limit for this month.",
+      details: { feature: "ai_usage", used: 500, limit: 500 },
+    });
     await expect(
       service.previewPdf(
-        env(run, toMarkdown, false),
-        "tenant-id",
+        cappedEnv(run, toMarkdown),
+        TENANT_ID,
         new File([new Uint8Array([1, 2, 3])], "statement.pdf", { type: "application/pdf" }),
       ),
-    ).rejects.toMatchObject({ status: 403, code: "upgrade_required" });
+    ).rejects.toMatchObject({ status: 409, code: "monthly_limit_reached" });
     expect(run).not.toHaveBeenCalled();
     expect(toMarkdown).not.toHaveBeenCalled();
+  });
+
+  it("draws one unit for the transcript mode and one for the audio mode", async () => {
+    const run = vi.fn(async (model: string) => {
+      if (model === "@cf/openai/whisper-large-v3-turbo") {
+        return { text: "Spent 250 pesos on lunch today" };
+      }
+      return {
+        response: {
+          draft: { description: "Lunch", amountPhp: "250.00", kind: "expense" },
+        },
+      };
+    });
+    const service = createAiEntryService(repository(), imports());
+    const before = poolCount();
+
+    await service.extractVoiceTranscript(env(run, vi.fn()), TENANT_ID, "Spent 250 pesos on lunch");
+    await service.extractVoice(
+      env(run, vi.fn()),
+      TENANT_ID,
+      new File([new Uint8Array([1, 2, 3])], "voice.m4a", { type: "audio/mp4" }),
+    );
+
+    expect(poolCount()).toBe(before + 2);
   });
 
   it("converts a PDF in-flight then delegates its rows to the existing import preview", async () => {
@@ -103,7 +154,7 @@ describe("AI entry service", () => {
     await expect(
       service.previewPdf(
         env(run, toMarkdown),
-        "tenant-id",
+        TENANT_ID,
         new File([new Uint8Array([1, 2, 3])], "statement.pdf", { type: "application/pdf" }),
       ),
     ).resolves.toEqual(preview);
@@ -136,7 +187,7 @@ describe("AI entry service", () => {
     await expect(
       service.extractVoice(
         env(run, vi.fn()),
-        "tenant-id",
+        TENANT_ID,
         new File([new Uint8Array([1, 2, 3])], "voice.m4a", { type: "audio/mp4" }),
       ),
     ).resolves.toMatchObject({
@@ -167,7 +218,7 @@ describe("AI entry service", () => {
     await expect(
       service.extractVoice(
         env(run, vi.fn()),
-        "tenant-id",
+        TENANT_ID,
         new File([new Uint8Array([1, 2, 3])], "voice.m4a", { type: "audio/mp4" }),
       ),
     ).resolves.toMatchObject({ amountMinor: 100_000, description: "Snacks" });
@@ -189,7 +240,7 @@ describe("AI entry service", () => {
     await expect(
       service.extractVoice(
         env(run, vi.fn()),
-        "tenant-id",
+        TENANT_ID,
         new File([new Uint8Array([1, 2, 3])], "voice.m4a", { type: "audio/mp4" }),
       ),
     ).rejects.toMatchObject({ status: 422, code: "voice_transaction_amount_mismatch" });
@@ -209,7 +260,7 @@ describe("AI entry service", () => {
     const service = createAiEntryService(repository(), imports());
 
     await expect(
-      service.extractVoiceTranscript(env(run, vi.fn()), "tenant-id", "Spent 2k on shoes today"),
+      service.extractVoiceTranscript(env(run, vi.fn()), TENANT_ID, "Spent 2k on shoes today"),
     ).resolves.toMatchObject({
       transcript: "Spent 2k on shoes today",
       description: "Shoes",
@@ -236,7 +287,7 @@ describe("AI entry service", () => {
 
     const result = await service.extractVoiceTranscript(
       env(run, vi.fn()),
-      "tenant-id",
+      TENANT_ID,
       "Spent 1500 on groceries today",
       ["Food & dining", "Transport", "Utilities"],
     );
@@ -265,7 +316,7 @@ describe("AI entry service", () => {
     await expect(
       service.previewPdf(
         env(run, toMarkdown),
-        "tenant-id",
+        TENANT_ID,
         new File([new Uint8Array([1, 2, 3])], "statement.pdf", { type: "application/pdf" }),
       ),
     ).rejects.toMatchObject({ status: 409, code: "entry_consent_required" });
@@ -295,7 +346,7 @@ describe("AI entry service", () => {
 
     const result = await service.extractVoice(
       env(run, vi.fn()),
-      "tenant-id",
+      TENANT_ID,
       new File([new Uint8Array([1, 2, 3])], "voice.m4a", { type: "audio/mp4" }),
       ["Transfer", "Food & dining"],
       "fil",

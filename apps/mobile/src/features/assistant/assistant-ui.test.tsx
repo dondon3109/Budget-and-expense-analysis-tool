@@ -210,7 +210,7 @@ describe("assistant accessibility-critical interactions", () => {
     const onDismiss = jest.fn();
     await render(
       <AssistantUpgradeBanner
-        message="No AI questions remaining this cycle."
+        message="You have reached your AI usage limit for this month."
         onReviewPlan={onReviewPlan}
         onDismiss={onDismiss}
       />,

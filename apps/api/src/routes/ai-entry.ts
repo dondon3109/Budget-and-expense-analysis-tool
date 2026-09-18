@@ -1,4 +1,4 @@
-import { parseVoiceLanguage } from "@zoption/shared";
+import { entryVoiceTranscriptSchema, parseVoiceLanguage } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { AiEntryService } from "../entry/ai-entry-service";
@@ -16,6 +16,23 @@ const ACCEPTED_AUDIO_TYPES = new Set([
   "audio/webm",
   "video/mp4",
 ]);
+
+/**
+ * Bound the caller-supplied transcript before it reaches the model. One pooled unit buys one
+ * provider request, so an unbounded transcript would let one unit buy an arbitrarily large one.
+ */
+function parseTranscript(value: unknown): string {
+  const parsed = entryVoiceTranscriptSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new HttpError(
+      400,
+      "invalid_request",
+      "Provide a transcript of 2,000 characters or fewer.",
+      parsed.error.flatten(),
+    );
+  }
+  return parsed.data;
+}
 
 function parseCategoryList(value: unknown): string[] | undefined {
   if (Array.isArray(value)) {
@@ -52,10 +69,10 @@ export function createAiEntryRoutes(service: AiEntryService) {
       const body = await readJson(context);
       const record =
         typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
-      const transcript = typeof record.transcript === "string" ? record.transcript.trim() : "";
-      if (!transcript) {
+      if (typeof record.transcript !== "string" || record.transcript.trim().length === 0) {
         throw new HttpError(400, "invalid_entry_transcript", "Provide a transcript to extract.");
       }
+      const transcript = parseTranscript(record.transcript);
       const categories = parseCategoryList(record.categories);
       return context.json(
         categories !== undefined
@@ -78,18 +95,19 @@ export function createAiEntryRoutes(service: AiEntryService) {
     const lang = parseVoiceLanguage(form.get("lang") ?? context.req.query("lang"));
     const transcriptField = form.get("transcript");
     if (typeof transcriptField === "string" && transcriptField.trim().length > 0) {
+      const transcript = parseTranscript(transcriptField);
       return context.json(
         categories !== undefined
           ? await service.extractVoiceTranscript(
               context.env,
               context.get("tenant").tenantId,
-              transcriptField.trim(),
+              transcript,
               categories,
             )
           : await service.extractVoiceTranscript(
               context.env,
               context.get("tenant").tenantId,
-              transcriptField.trim(),
+              transcript,
             ),
       );
     }

@@ -18,7 +18,7 @@ import {
   AssistantVoiceProviderError,
   type AssistantVoiceTranscriptionProvider,
 } from "../assistant/voice-provider";
-import { billingRepository } from "../db/billing";
+import { consumeAiUsage } from "../db/billing";
 import type { ImportRepository } from "../db/imports";
 import type { ReceiptRepository } from "../db/receipts";
 import { HttpError } from "../errors";
@@ -377,11 +377,11 @@ export function createAiEntryService(
   return {
     async previewPdf(env, tenantId, pdf) {
       await requireAiEntryConsent(receiptRepository, env, tenantId);
-      // Statement conversion and extraction spend billable provider calls, so they are Pro-only.
-      await billingRepository.requirePro(env, tenantId, "pdf");
       if (!env.AI) {
         throw new HttpError(503, "entry_pdf_unavailable", "AI entry is temporarily unavailable.");
       }
+      // Statement conversion and extraction spend billable provider calls from the shared pool.
+      await consumeAiUsage(env, tenantId);
       let markdown: string;
       try {
         const result = await env.AI.toMarkdown(
@@ -454,8 +454,6 @@ export function createAiEntryService(
 
     async extractVoiceTranscript(env, tenantId, transcript, categories) {
       await requireAiEntryConsent(receiptRepository, env, tenantId);
-      // The spoken transcript still costs one model extraction; the audio path below adds STT.
-      await billingRepository.requirePro(env, tenantId, "stt");
       const cleanTranscript = transcript.trim();
       if (!cleanTranscript) {
         throw new HttpError(
@@ -464,12 +462,15 @@ export function createAiEntryService(
           "Zoption could not identify one transaction in that recording. Try saying the amount and what it was for.",
         );
       }
+      // The transcript still costs one model extraction, drawn from the shared monthly pool.
+      await consumeAiUsage(env, tenantId);
       return extractDraftFromTranscript(env, cleanTranscript, categories);
     },
 
     async extractVoice(env, tenantId, audio, categories, language) {
       await requireAiEntryConsent(receiptRepository, env, tenantId);
-      await billingRepository.requirePro(env, tenantId, "stt");
+      // One request covers transcription plus extraction, so it draws a single unit.
+      await consumeAiUsage(env, tenantId);
       let transcript: string;
       try {
         transcript = (

@@ -692,7 +692,12 @@ describe("assistant service maps new-provider failures like DeepSeek", () => {
         throw failing;
       }),
     };
-    const service = createAssistantService(repository as never, orchestrator as never, reporter);
+    const service = createAssistantService(
+      repository as never,
+      orchestrator as never,
+      reporter,
+      async () => undefined,
+    );
     await expect(
       service.sendTurn({ DB: {} as D1Database } as Bindings, "tenant-1", "thread-1", {
         message: "hi",

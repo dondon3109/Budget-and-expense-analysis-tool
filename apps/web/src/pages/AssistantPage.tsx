@@ -105,9 +105,7 @@ export function AssistantPage() {
       preferences.data.userPreferredName,
     ),
   });
-  const assistantUsage = billingQuery.data?.usages.find(
-    (usage) => usage.feature === "assistant_question",
-  );
+  const aiUsage = billingQuery.data?.usages.find((usage) => usage.feature === "ai_usage");
   const isFreePlan = billingQuery.data?.plan === "free";
 
   useEffect(() => {
@@ -130,23 +128,20 @@ export function AssistantPage() {
   }, [historyOpen]);
 
   useEffect(() => {
-    if (
-      !isUsageLimitReachedError(sendError) ||
-      sendError.details.feature !== "assistant_question"
-    ) {
+    if (!isUsageLimitReachedError(sendError) || sendError.details.feature !== "ai_usage") {
       return;
     }
     const resetsAt = sendError.details.resetsAt;
     if (
-      assistantUsage &&
-      assistantUsage.used < assistantUsage.limit &&
+      aiUsage &&
+      aiUsage.used < aiUsage.limit &&
       resetsAt &&
       Date.now() >= new Date(resetsAt).getTime()
     ) {
       setSendError(undefined);
       setLimitDialogOpen(false);
     }
-  }, [assistantUsage, sendError]);
+  }, [aiUsage, sendError]);
 
   const consentMutation = useMutation({
     mutationFn: () => grantAssistantConsent(workspace),
@@ -447,13 +442,13 @@ export function AssistantPage() {
                   </p>
                 </div>
               </div>
-              {assistantUsage && (
+              {aiUsage && (
                 <div className="assistant-chat-usage">
                   <PlanUsageIndicator
                     meter
-                    label="Plan usage"
-                    used={assistantUsage.used}
-                    limit={assistantUsage.limit}
+                    label="AI actions"
+                    used={aiUsage.used}
+                    limit={aiUsage.limit}
                     showUpgrade={isFreePlan}
                   />
                 </div>

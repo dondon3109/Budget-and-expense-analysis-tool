@@ -141,11 +141,11 @@ describe("assistant UI", () => {
       nonTerminalSubscriptionCount: 0,
       usages: [
         {
-          feature: "assistant_question",
+          feature: "ai_usage",
           used: 1,
-          limit: 4,
-          periodKind: "anchored_14_day",
-          periodStartedAt: "2026-07-18T00:00:00.000Z",
+          limit: 500,
+          periodKind: "calendar_month",
+          periodStartedAt: "2026-07-01T00:00:00.000Z",
           resetsAt: "2026-08-01T00:00:00.000Z",
         },
         {
@@ -536,10 +536,10 @@ describe("assistant UI", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     const usage = await screen.findByRole("progressbar", {
-      name: "Plan usage",
+      name: "AI actions",
     });
     expect(usage).toHaveAttribute("aria-valuenow", "1");
-    expect(usage).toHaveAttribute("aria-valuemax", "4");
+    expect(usage).toHaveAttribute("aria-valuemax", "500");
 
     const topline = usage.closest(".assistant-chat-topline");
     expect(topline).not.toBeNull();
@@ -562,7 +562,7 @@ describe("assistant UI", () => {
     ).toBeInTheDocument();
   });
 
-  it("explains when an unused assistant cycle will begin", async () => {
+  it("shows the remaining shared AI actions for an unused pool", async () => {
     apiMocks.getBillingSummary.mockResolvedValueOnce({
       plan: "free",
       status: null,
@@ -574,11 +574,11 @@ describe("assistant UI", () => {
       nonTerminalSubscriptionCount: 0,
       usages: [
         {
-          feature: "assistant_question",
+          feature: "ai_usage",
           used: 0,
-          limit: 4,
-          periodKind: "anchored_14_day",
-          periodStartedAt: null,
+          limit: 500,
+          periodKind: "calendar_month",
+          periodStartedAt: "2026-07-01T00:00:00.000Z",
           resetsAt: null,
         },
       ],
@@ -587,12 +587,12 @@ describe("assistant UI", () => {
     renderPage();
 
     const usage = await screen.findByRole("progressbar", {
-      name: "Plan usage",
+      name: "AI actions",
     });
-    expect(usage).toHaveTextContent("4 remaining");
+    expect(usage).toHaveTextContent("500 remaining");
   });
 
-  it("keeps the exhausted assistant allowance clear and actionable", async () => {
+  it("keeps the exhausted shared pool clear and actionable", async () => {
     apiMocks.getBillingSummary.mockResolvedValueOnce({
       plan: "free",
       status: null,
@@ -604,11 +604,11 @@ describe("assistant UI", () => {
       nonTerminalSubscriptionCount: 0,
       usages: [
         {
-          feature: "assistant_question",
-          used: 4,
-          limit: 4,
-          periodKind: "anchored_14_day",
-          periodStartedAt: "2026-07-18T00:00:00.000Z",
+          feature: "ai_usage",
+          used: 500,
+          limit: 500,
+          periodKind: "calendar_month",
+          periodStartedAt: "2026-07-01T00:00:00.000Z",
           resetsAt: "2026-08-01T00:00:00.000Z",
         },
       ],
@@ -617,10 +617,10 @@ describe("assistant UI", () => {
     renderPage();
 
     const usage = await screen.findByRole("progressbar", {
-      name: "Plan usage",
+      name: "AI actions",
     });
     expect(usage).toHaveAttribute("data-state", "exhausted");
-    expect(usage).toHaveAttribute("aria-valuenow", "4");
+    expect(usage).toHaveAttribute("aria-valuenow", "500");
     expect(usage).toHaveTextContent("Limit reached");
     expect(screen.getByRole("link", { name: "View Pro limits" })).toHaveAttribute(
       "href",
@@ -628,18 +628,18 @@ describe("assistant UI", () => {
     );
   });
 
-  it("keeps the draft and shows the 14-day reset when the assistant limit is reached", async () => {
+  it("keeps the draft and shows the monthly reset when the shared pool is exhausted", async () => {
     apiMocks.createAssistantThread.mockRejectedValueOnce(
       new ApiRequestError(
-        "You have reached your AI question limit for this 14-day period.",
+        "You have reached your AI usage limit for this month.",
         409,
-        "assistant_cycle_limit_reached",
+        "monthly_limit_reached",
         {
-          feature: "assistant_question",
-          used: 4,
-          limit: 4,
-          periodKind: "anchored_14_day",
-          periodStartedAt: "2099-07-18T00:00:00.000Z",
+          feature: "ai_usage",
+          used: 500,
+          limit: 500,
+          periodKind: "calendar_month",
+          periodStartedAt: "2099-07-01T00:00:00.000Z",
           resetsAt: "2099-08-01T00:00:00.000Z",
         },
       ),
@@ -651,11 +651,11 @@ describe("assistant UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(
-      await screen.findByRole("dialog", { name: "No AI questions remaining this 14-day period" }),
-    ).toHaveTextContent("4 of 4 AI questions");
+      await screen.findByRole("dialog", { name: "No AI actions remaining this month" }),
+    ).toHaveTextContent("500 of 500 AI actions");
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("alert", { name: "14-day assistant limit reached" })).toHaveTextContent(
-      "4 of 4 AI questions",
+    expect(screen.getByRole("alert", { name: "Monthly plan limit reached" })).toHaveTextContent(
+      "500 of 500 AI actions",
     );
     expect(composer).toHaveValue("Where did my money go?");
   });

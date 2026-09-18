@@ -9,7 +9,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AssistantOrchestrator } from "../src/assistant/orchestrator";
 import { createAssistantService } from "../src/assistant/service";
-import type { AssistantUsageRepository } from "../src/db/assistant-usage";
 import type {
   AssistantCompletedTurn,
   AssistantRepository,
@@ -156,8 +155,8 @@ function orchestrator(): AssistantOrchestrator {
   };
 }
 
-function usage(consumeUsage: AssistantUsageRepository["consumeUsage"]) {
-  return { consumeUsage } satisfies Pick<AssistantUsageRepository, "consumeUsage">;
+function consumer(consumeAiUsage: (env: Bindings, tenantId: string) => Promise<void>) {
+  return consumeAiUsage;
 }
 
 describe("assistant billing quota enforcement", () => {
@@ -166,7 +165,7 @@ describe("assistant billing quota enforcement", () => {
     const store = repository(vi.fn(async () => duplicateStart));
     const assistant = orchestrator();
     const consumeUsage = vi.fn(async () => undefined);
-    const service = createAssistantService(store, assistant, undefined, usage(consumeUsage));
+    const service = createAssistantService(store, assistant, undefined, consumer(consumeUsage));
 
     await expect(service.sendTurn(ENV, TENANT_ID, THREAD_ID, INPUT)).resolves.toEqual(COMPLETED);
 
@@ -185,7 +184,7 @@ describe("assistant billing quota enforcement", () => {
       deterministicResponse: "Please choose a specific date range.",
     });
     const consumeUsage = vi.fn(async () => undefined);
-    const service = createAssistantService(store, assistant, undefined, usage(consumeUsage));
+    const service = createAssistantService(store, assistant, undefined, consumer(consumeUsage));
 
     await expect(service.sendTurn(ENV, TENANT_ID, THREAD_ID, INPUT)).resolves.toEqual(COMPLETED);
 
@@ -198,7 +197,7 @@ describe("assistant billing quota enforcement", () => {
     const store = repository();
     const assistant = orchestrator();
     const consumeUsage = vi.fn(async () => undefined);
-    const service = createAssistantService(store, assistant, undefined, usage(consumeUsage));
+    const service = createAssistantService(store, assistant, undefined, consumer(consumeUsage));
 
     await expect(service.sendTurn(ENV, TENANT_ID, THREAD_ID, INPUT)).resolves.toEqual(COMPLETED);
 
@@ -219,11 +218,11 @@ describe("assistant billing quota enforcement", () => {
     const denial = new HttpError(
       409,
       "monthly_limit_reached",
-      "You have reached this month’s plan limit.",
+      "You have reached your AI usage limit for this month.",
       {
-        feature: "assistant_question",
-        used: 4,
-        limit: 4,
+        feature: "ai_usage",
+        used: 500,
+        limit: 500,
         resetsAt: "2026-07-31T16:00:00.000Z",
         billingPath: "/app/settings",
       },
@@ -231,7 +230,7 @@ describe("assistant billing quota enforcement", () => {
     const consumeUsage = vi.fn(async () => {
       throw denial;
     });
-    const service = createAssistantService(store, assistant, undefined, usage(consumeUsage));
+    const service = createAssistantService(store, assistant, undefined, consumer(consumeUsage));
 
     await expect(service.sendTurn(ENV, TENANT_ID, THREAD_ID, INPUT)).rejects.toBe(denial);
 

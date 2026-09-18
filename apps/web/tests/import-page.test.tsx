@@ -169,11 +169,11 @@ describe("ImportPage", () => {
       nonTerminalSubscriptionCount: 0,
       usages: [
         {
-          feature: "assistant_question",
+          feature: "ai_usage",
           used: 0,
-          limit: 4,
-          periodKind: "anchored_14_day",
-          periodStartedAt: "2026-07-18T00:00:00.000Z",
+          limit: 500,
+          periodKind: "calendar_month",
+          periodStartedAt: "2026-07-01T00:00:00.000Z",
           resetsAt: "2026-08-01T00:00:00.000Z",
         },
         {

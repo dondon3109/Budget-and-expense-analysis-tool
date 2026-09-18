@@ -4,11 +4,17 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- AI features now draw on one shared monthly pool instead of separate per-feature allowances. Free
+  includes 500 AI actions per Manila calendar month and Pro 2,000, counted as one action per AI
+  operation however many provider calls it makes. Receipt scanning, voice transcription, spoken replies, PDF statement entry and
+  transaction voice entry were Pro-only; they are now available to Free tenants through the same pool,
+  and the 14-day assistant question cycle is gone. Live streaming voice stays Pro: a live
+  platform-funded socket has no per-request boundary to meter.
+
 ### Security
 
-- Receipt scanning, voice transcription, spoken replies and PDF entry now require Pro. These call a
-  billable provider on every request and previously had no entitlement check at all, only a daily rate
-  limit. The free plan allowance is zero; Pro keeps the existing daily allowances.
 - A refund, chargeback or dispute now ends Pro for the period it reverses. Previously only a
   cancellation did, so a reversed payment left the subscription active.
 - Signing out on Android now revokes the session on the server, not just on the device. It falls back

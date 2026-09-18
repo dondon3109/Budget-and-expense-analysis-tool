@@ -75,11 +75,11 @@ function summary(
     nonTerminalSubscriptionCount: status && status !== "canceled" ? 1 : 0,
     usages: [
       {
-        feature: "assistant_question",
+        feature: "ai_usage",
         used: 2,
-        limit: paid ? 100 : 10,
-        periodKind: "anchored_14_day",
-        periodStartedAt: "2026-07-18T00:00:00.000Z",
+        limit: paid ? 2_000 : 500,
+        periodKind: "calendar_month",
+        periodStartedAt: "2026-07-01T00:00:00.000Z",
         resetsAt: "2026-08-01T00:00:00.000Z",
       },
       {
@@ -517,7 +517,11 @@ describe("BillingSettings", () => {
     renderSettings(summary(null));
 
     expect(await screen.findByText("Free and Pro, side by side")).toBeInTheDocument();
-    expect(screen.getByText("10 questions per 14-day cycle")).toBeInTheDocument();
+    expect(screen.getByText("500 per month, shared across every AI feature")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "AI actions this month" })).toHaveAttribute(
+      "aria-valuenow",
+      "2",
+    );
     expect(screen.getByText("10 committed imports per month")).toBeInTheDocument();
     expect(
       screen.getByText("4 active custom categories, plus included starters"),

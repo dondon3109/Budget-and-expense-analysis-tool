@@ -195,8 +195,8 @@ export function BillingScreen() {
           ) : null}
           {summary.plan === "free" ? (
             <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-              The free plan includes a small monthly allowance of AI questions and imports. Upgrade
-              for more.
+              The free plan includes 500 AI actions a month, shared across every AI feature, plus
+              one committed import. Upgrade for more.
             </Text>
           ) : null}
           {periodEndsCopy(summary) ? (
@@ -265,8 +265,8 @@ export function BillingScreen() {
           <View className="gap-3">
             <Text style={[typography.headline, { color: theme.colors.text }]}>Upgrade to Pro</Text>
             <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-              100 AI questions per 14-day cycle, 10 imports per month and unlimited custom
-              categories.
+              2,000 AI actions a month in the same shared pool, 10 imports per month and unlimited
+              custom categories.
             </Text>
             <SelectionField
               label="Billing interval"

@@ -11,12 +11,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BillingLimitDialog } from "../src/components/billing/BillingLimitDialog";
 import { ApiRequestError } from "../src/lib/api";
 
-const error = new ApiRequestError("Limit reached", 409, "assistant_cycle_limit_reached", {
-  feature: "assistant_question",
-  used: 4,
-  limit: 4,
-  periodKind: "anchored_14_day",
-  periodStartedAt: "2026-07-18T00:00:00.000Z",
+const error = new ApiRequestError("Limit reached", 409, "monthly_limit_reached", {
+  feature: "ai_usage",
+  used: 500,
+  limit: 500,
+  periodKind: "calendar_month",
+  periodStartedAt: "2026-07-01T00:00:00.000Z",
   resetsAt: "2026-08-01T00:00:00.000Z",
 });
 
@@ -63,7 +63,7 @@ describe("BillingLimitDialog", () => {
     await user.click(trigger);
 
     expect(
-      screen.getByRole("dialog", { name: "No AI questions remaining this 14-day period" }),
+      screen.getByRole("dialog", { name: "No AI actions remaining this month" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Review Plan and billing" })).toHaveFocus();
     expect(screen.getByRole("dialog")).toHaveTextContent("Aug 1, 2026");
@@ -89,7 +89,7 @@ describe("BillingLimitDialog", () => {
     await user.click(screen.getByRole("button", { name: "Open limit" }));
 
     const dialog = screen.getByRole("dialog", {
-      name: "No AI questions remaining this 14-day period",
+      name: "No AI actions remaining this month",
     });
     const close = screen.getByRole("button", { name: "Close" });
     const review = screen.getByRole("link", { name: "Review Plan and billing" });

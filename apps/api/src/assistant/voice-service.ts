@@ -8,7 +8,7 @@ import {
 } from "@zoption/shared";
 
 import type { AssistantRepository, AssistantVoiceRepository } from "../db/assistant";
-import { billingRepository } from "../db/billing";
+import { consumeAiUsage } from "../db/billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { CLOUDFLARE_WHISPER_MODEL } from "./cloudflare-whisper";
@@ -255,8 +255,8 @@ export function createAssistantVoiceService(
     },
     async transcribe(env, tenantId, audio, language) {
       await requireConsent(env, tenantId);
-      // Live and batch transcription spend a billable STT provider call per recording.
-      await billingRepository.requirePro(env, tenantId, "stt");
+      // Batch transcription spends one billable STT provider call per recording.
+      await consumeAiUsage(env, tenantId);
       try {
         return await providers.transcription.transcribe(
           env,
@@ -269,8 +269,6 @@ export function createAssistantVoiceService(
     },
     async synthesize(env, tenantId, messageId, voice) {
       await requireConsent(env, tenantId);
-      // Speech synthesis spends a billable TTS provider call per reply.
-      await billingRepository.requirePro(env, tenantId, "tts");
       const message = await repository.getCompletedAssistantMessage(env, tenantId, messageId);
       if (!message) {
         throw new HttpError(
@@ -282,6 +280,8 @@ export function createAssistantVoiceService(
       const text = assistantSpeechText(message.content);
       if (!text)
         throw new HttpError(422, "assistant_voice_empty_reply", "That reply cannot be read aloud.");
+      // Speech synthesis spends one billable TTS provider call per reply.
+      await consumeAiUsage(env, tenantId);
       try {
         return await providers.speech.synthesize(env, text, voice);
       } catch (error) {
@@ -290,7 +290,8 @@ export function createAssistantVoiceService(
     },
     async preview(env, tenantId, voice) {
       requireEnabled(env);
-      await billingRepository.requirePro(env, tenantId, "tts");
+      // A preview is a real synthesis call, so it draws from the same pool.
+      await consumeAiUsage(env, tenantId);
       try {
         return await providers.speech.synthesize(env, VOICE_PREVIEW_TEXT, voice);
       } catch (error) {

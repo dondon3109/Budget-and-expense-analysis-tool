@@ -311,6 +311,8 @@ describe("prompt memory block", () => {
         },
       ]),
       orchestratorCapturing(captured),
+      undefined,
+      async () => undefined,
     );
 
     await service.sendTurn(env, tenantId, threadId, {

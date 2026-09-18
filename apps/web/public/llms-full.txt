@@ -27,14 +27,14 @@
 
 ## Pricing Plans (Philippine Pesos - PHP)
 - **Free Plan (₱0 / forever)**:
-  - Unlimited manual, voice, and receipt scanning entries.
+  - Unlimited manual entries, plus one shared AI usage pool.
+  - 500 AI actions per Manila calendar month, shared across assistant chat, voice chat, receipt scanning, PDF statement entry, and transaction voice entry.
   - Universal bank statement importer (1 committed import per month).
   - Starter accounts (Cash, GCash, Maya, Bank) and 4 custom budget categories.
-  - 10 AI Assistant queries per 14-day cycle.
   - Offline PWA and native Android Beta APK access.
 - **Pro Plan (₱149 / month or ₱1,299 / year — save 27%)**:
   - 10 committed statement imports per month.
-  - 100 AI Assistant queries per 14-day cycle.
+  - 2,000 AI actions per month in the same shared pool, plus live streaming voice chat (Pro-only: a live platform-funded socket has no per-request boundary to meter).
   - Unlimited custom categories and custom accounts.
   - Automatic high-yield savings interest compounding calculation (daily, monthly, yearly).
   - Visual Renewal Calendar for subscription tracking and cash-flow impact.

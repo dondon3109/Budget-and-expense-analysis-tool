@@ -15,7 +15,7 @@ import type {
 
 import type { AssistantRepository } from "../db/assistant";
 import type { AssistantModelMemoryUsageRepository } from "../db/assistant-model-memory-usage";
-import type { AssistantUsageRepository } from "../db/assistant-usage";
+import { consumeAiUsage as defaultConsumeAiUsage } from "../db/billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import {
@@ -170,7 +170,7 @@ export function createAssistantService(
   repository: AssistantRepository,
   orchestrator: AssistantOrchestrator,
   reporter: AssistantDiagnosticReporter = defaultDiagnosticReporter,
-  assistantUsage?: Pick<AssistantUsageRepository, "consumeUsage">,
+  consumeAiUsage: (env: Bindings, tenantId: string) => Promise<void> = defaultConsumeAiUsage,
   provider?: AssistantProvider,
   modelMemoryUsage?: Pick<AssistantModelMemoryUsageRepository, "tryConsumePass">,
   telemetryFactory: AssistantAiTelemetryFactory = createPostHogAiTelemetry,
@@ -393,7 +393,10 @@ export function createAssistantService(
         });
       }
 
-      await assistantUsage?.consumeUsage(env, tenantId);
+      // One unit per billable provider-backed turn; deterministic policy replies return above.
+      // Fail closed: a database error other than the limit abort reaches the catch below and
+      // must stop the turn before the provider is called.
+      await consumeAiUsage(env, tenantId);
       try {
         telemetry = telemetryFactory(env);
       } catch {

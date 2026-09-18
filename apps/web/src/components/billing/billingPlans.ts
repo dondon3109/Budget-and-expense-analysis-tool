@@ -2,9 +2,9 @@ import type { BillingInterval } from "@zoption/shared";
 
 export const planFeatures = [
   {
-    feature: "AI Assistant",
-    free: "10 questions per 14-day cycle",
-    pro: "100 questions per 14-day cycle",
+    feature: "AI actions",
+    free: "500 per month, shared across every AI feature",
+    pro: "2,000 per month, same shared pool",
   },
   {
     feature: "File imports",

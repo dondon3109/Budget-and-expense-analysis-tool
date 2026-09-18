@@ -1,5 +1,6 @@
 import type {
   BillingCapability,
+  BillingFeature,
   BillingInterval,
   BillingProvider,
   BillingResourceAllowance,
@@ -17,7 +18,6 @@ import {
 } from "../billing/usage-limits";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import { assistantUsageRepository } from "./assistant-usage";
 
 export { EFFECTIVE_PRO_ENTITLEMENT_CONDITION } from "../billing/usage-limits";
 
@@ -361,20 +361,21 @@ async function pendingCheckoutReference(
   return checkout ?? null;
 }
 
-async function monthlyImportUsage(
+async function monthlyFeatureUsage(
   env: Bindings,
   tenantId: string,
+  feature: BillingFeature,
   limit: number,
   now = new Date(),
 ): Promise<BillingUsage> {
   const month = manilaMonth(now);
   const row = await env.DB.prepare(
-    "SELECT count FROM billing_monthly_usage WHERE tenant_id = ? AND month = ? AND feature = 'file_import'",
+    "SELECT count FROM billing_monthly_usage WHERE tenant_id = ? AND month = ? AND feature = ?",
   )
-    .bind(tenantId, month)
+    .bind(tenantId, month, feature)
     .first<{ count: number }>();
   return {
-    feature: "file_import",
+    feature,
     used: Number(row?.count ?? 0),
     limit,
     periodKind: "calendar_month",
@@ -421,31 +422,35 @@ export async function customCategoryLimitError(
   );
 }
 
-async function monthlyImportLimitError(env: Bindings, tenantId: string): Promise<HttpError> {
+async function monthlyLimitError(
+  env: Bindings,
+  tenantId: string,
+  feature: BillingFeature,
+  message: string,
+): Promise<HttpError> {
   const isPro = await hasProEntitlement(env, tenantId);
-  const limit = (isPro ? PRO_LIMITS : FREE_LIMITS).file_import;
-  const item = await monthlyImportUsage(env, tenantId, limit);
-  return new HttpError(
-    409,
-    "monthly_limit_reached",
-    "You have reached this month’s import limit.",
-    {
-      feature: item.feature,
-      used: item.used,
-      limit,
-      periodKind: item.periodKind,
-      periodStartedAt: item.periodStartedAt,
-      resetsAt: item.resetsAt,
-      billingPath: "/app/settings#plan-and-billing",
-    },
-  );
+  const limit = (isPro ? PRO_LIMITS : FREE_LIMITS)[feature];
+  const item = await monthlyFeatureUsage(env, tenantId, feature, limit);
+  return new HttpError(409, "monthly_limit_reached", message, {
+    feature: item.feature,
+    used: item.used,
+    limit,
+    periodKind: item.periodKind,
+    periodStartedAt: item.periodStartedAt,
+    resetsAt: item.resetsAt,
+    billingPath: "/app/settings#plan-and-billing",
+  });
 }
 
-function buildMonthlyImportUsageStatement(env: Bindings, tenantId: string): D1PreparedStatement {
+function buildMonthlyUsageStatement(
+  env: Bindings,
+  tenantId: string,
+  feature: BillingFeature,
+): D1PreparedStatement {
   return env.DB.prepare(
     `INSERT INTO billing_monthly_usage (tenant_id, month, feature, count, allowance)
      VALUES (
-       ?, ?, 'file_import', 1,
+       ?, ?, ?, 1,
        CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN ? ELSE ? END
      )
      ON CONFLICT(tenant_id, month, feature) DO UPDATE SET
@@ -455,13 +460,37 @@ function buildMonthlyImportUsageStatement(env: Bindings, tenantId: string): D1Pr
   ).bind(
     tenantId,
     manilaMonth(),
+    feature,
     tenantId,
-    PRO_LIMITS.file_import,
-    FREE_LIMITS.file_import,
+    PRO_LIMITS[feature],
+    FREE_LIMITS[feature],
     tenantId,
-    PRO_LIMITS.file_import,
-    FREE_LIMITS.file_import,
+    PRO_LIMITS[feature],
+    FREE_LIMITS[feature],
   );
+}
+
+/**
+ * Draw one unit from the shared monthly AI pool. Every billable provider-backed AI request
+ * (assistant generation, transcription, speech, receipt vision, PDF entry, voice entry) calls
+ * this before its provider call, so a provider failure still consumes the unit. The BEFORE
+ * INSERT/UPDATE triggers on billing_monthly_usage are the atomic cap; any other database error
+ * propagates so the provider is never reached.
+ */
+export async function consumeAiUsage(env: Bindings, tenantId: string): Promise<void> {
+  try {
+    await buildMonthlyUsageStatement(env, tenantId, "ai_usage").run();
+  } catch (error) {
+    if (isMonthlyLimitDatabaseError(error)) {
+      throw await monthlyLimitError(
+        env,
+        tenantId,
+        "ai_usage",
+        "You have reached your AI usage limit for this month.",
+      );
+    }
+    throw error;
+  }
 }
 
 async function applySubscriptionUpdate(
@@ -704,8 +733,8 @@ export const billingRepository: BillingRepository = {
       canManageSponsoredSeats: adminSeatManagement,
       nonTerminalSubscriptionCount: nonTerminalCount,
       usages: await Promise.all([
-        assistantUsageRepository.getUsage(env, tenantId, limits.assistant_question),
-        monthlyImportUsage(env, tenantId, limits.file_import),
+        monthlyFeatureUsage(env, tenantId, "ai_usage", limits.ai_usage),
+        monthlyFeatureUsage(env, tenantId, "file_import", limits.file_import),
       ]),
       allowances: [await getCustomCategoryAllowance(env, tenantId, isPro)],
     };
@@ -828,12 +857,17 @@ export const billingRepository: BillingRepository = {
   },
 
   createMonthlyImportUsageStatement(env, tenantId) {
-    return buildMonthlyImportUsageStatement(env, tenantId);
+    return buildMonthlyUsageStatement(env, tenantId, "file_import");
   },
 
   async rethrowMonthlyImportUsageError(env, tenantId, error) {
     if (isMonthlyLimitDatabaseError(error)) {
-      throw await monthlyImportLimitError(env, tenantId);
+      throw await monthlyLimitError(
+        env,
+        tenantId,
+        "file_import",
+        "You have reached this month’s import limit.",
+      );
     }
     throw error;
   },
