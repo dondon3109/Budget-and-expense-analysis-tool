@@ -37,6 +37,25 @@ export default tseslint.config(
     },
   },
   {
+    // drizzle-kit loads this file from the repo root (drizzle.config.ts), where the root
+    // package.json resolves no workspace packages. Keep it self-contained: drizzle-orm only.
+    files: ["db/schema.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@zoption/*"],
+              message:
+                "db/schema.ts must stay self-contained: drizzle-kit reads it from the repo root, where @zoption/* does not resolve. Inline the value here instead of importing from a workspace package.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     ...tseslint.configs.disableTypeChecked,
     files: [
       "**/scripts/**/*.mjs",

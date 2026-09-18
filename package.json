@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "pnpm --parallel --filter './apps/*' dev",
     "build": "pnpm -r build",
+    "verify": "node scripts/verify-workspace-links.mjs && pnpm typecheck && NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm test --maxWorkers=4",
     "lint": "eslint apps packages db e2e scripts playwright.config.ts release.config.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

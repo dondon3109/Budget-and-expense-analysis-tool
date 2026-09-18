@@ -34,6 +34,7 @@ When releasing new changes however small it may be, always treat it as a new ver
 
 - Do not spawn subagents for work a single agent can complete in one pass.
 - If parallel agents are justified, assign non-overlapping file ownership first.
+- A green scoped run is not evidence the tree is green. With several agents in one working tree, a passing package typecheck or test file says nothing about a root file importing `@zoption/*` or a `node_modules` that lost its workspace links. Run `pnpm verify` before reporting done, and report its result.
 - Prefer focused tests over broad, repetitive regression suites.
 - If a request is phrased as a question, answer it without editing files and offer implementation separately.
 
@@ -68,6 +69,7 @@ Tracer Bullet: each feature runs end to end through every layer and works, then 
 
 ```bash
 pnpm install
+pnpm verify             # workspace links, full typecheck, lint, and full tests; run before reporting done
 pnpm dev                # api, web, and mobile together
 pnpm build              # pnpm -r build; skips mobile and ads
 pnpm test               # vitest run across the repo
