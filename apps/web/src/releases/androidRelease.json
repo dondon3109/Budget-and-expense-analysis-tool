@@ -1,22 +1,23 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.30-beta",
-  "versionCode": 20330,
-  "filename": "zoption-beta-0.2.30.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.30.apk",
-  "sha256": "35f761fef90f94f2ea9bd43503122cebb62432c14d0865bb4c154c59c7668aea",
-  "sizeBytes": 139370046,
-  "sizeLabel": "139,370,046 bytes (132.91 MiB)",
-  "releaseDate": "2026-09-17",
-  "releaseDateLabel": "September 17, 2026",
+  "versionName": "0.2.31-beta",
+  "versionCode": 20331,
+  "filename": "zoption-beta-0.2.31.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.31.apk",
+  "sha256": "25e059784de36af2db06093814d73af9d16ed0bb54f3bca7bcb444e60d4f5eb1",
+  "sizeBytes": 139373074,
+  "sizeLabel": "139,373,074 bytes (132.92 MiB)",
+  "releaseDate": "2026-09-18",
+  "releaseDateLabel": "September 18, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Speak to the AI assistant or log a transaction in English or Tagalog, with Auto detecting either language as the default.",
-    "A quick language toggle now sits in the assistant voice control, hands free voice chat, and transaction voice entry.",
-    "Added a Voice Language setting in Account Settings and the More tab to pin English or Tagalog.",
-    "Voice input asks for consent again because the notice now names your browser's speech service."
+    "Shared monthly AI allowance: 500 actions on Free, 2,000 on Pro",
+    "Receipt scanning, voice entry and PDF statement entry now included on Free",
+    "Signing out now ends your session on the server",
+    "Refunds, chargebacks and disputes now end Pro access",
+    "Steadier assistant amounts, savings interest and profile photos"
   ]
 }
