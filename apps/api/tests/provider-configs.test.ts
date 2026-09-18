@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 
 import { createAdminProviderConfigRoutes } from "../src/routes/admin-provider-configs";
@@ -6,6 +5,7 @@ import { createApp } from "../src/app";
 import type { ProviderConfig } from "@zoption/shared";
 import { providerConfigRepository } from "../src/db/provider-configs";
 import { providerRegistry } from "../src/provider-registry";
+import { createTestApp } from "./helpers/test-app";
 
 function authHeaders(userId = "admin-id"): Record<string, string> {
   return { Authorization: "Bearer mocked-token" };
@@ -40,6 +40,8 @@ const mockConfig: ProviderConfig = {
   service: "assistant",
   provider: "deepseek",
   model: "deepseek-v4-flash",
+  displayName: "DeepSeek V4 Flash",
+  credentialId: null,
   enabled: true,
   priority: 1,
   isActive: true,
@@ -161,14 +163,12 @@ describe("admin provider-configs authorization", () => {
 
     // Use the main app but override the provider-configs route by testing via createApp with mocked platform admin
     // Instead, test the integrated app's ability to list when repository is mocked globally? For simplicity, test via direct routes
-    const testApp = new (await import("hono")).Hono();
-    testApp.use("/api/app/admin/provider-configs/*", async (c: any, next: any) => {
-      (c as any).set("authUser", { id: "08060c19-8a55-4046-a2e7-7384808dd81c" });
-      (c as any).env = { DB: {} as D1Database };
-      await next();
+    const testApp = createTestApp({
+      user: { id: "08060c19-8a55-4046-a2e7-7384808dd81c" },
+      env: { DB: {} as D1Database },
     });
     // Just verify that admin check passes and repo list is callable
-    expect(await repo.list({} as any)).toEqual([mockConfig]);
+    expect(await repo.list()).toEqual([mockConfig]);
   });
 
   it("rejects invalid provider/model", async () => {
@@ -216,23 +216,17 @@ describe("admin provider-configs authorization", () => {
       platformAdminService: platformAdminService as any,
     });
     // Directly test route validation via createAdminProviderConfigRoutes
-    const { Hono } = await import("hono");
     const { HttpError: TestHttpError } = await import("../src/errors");
     const routes = createAdminProviderConfigRoutes(
       platformAdminService as any,
       repo as any,
       registry as any,
     );
-    const testApp = new Hono();
+    const testApp = createTestApp({ env: { DB: {} as D1Database } });
     testApp.onError((err, c) => {
       if (err instanceof TestHttpError)
         return c.json({ error: err.code, message: err.message }, err.status);
       return c.json({ error: "internal" }, 500);
-    });
-    testApp.use("*", async (c: any, next: any) => {
-      (c as any).set("authUser", { id: "admin-id" });
-      (c as any).env = { DB: {} as D1Database };
-      await next();
     });
     testApp.route("/", routes);
     const res = await testApp.request("/", {
@@ -245,7 +239,7 @@ describe("admin provider-configs authorization", () => {
       }),
     });
     expect(res.status).toBe(400);
-    const body = (await res.json()) as any;
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("invalid_provider_model");
   });
 
@@ -301,7 +295,7 @@ describe("admin provider-configs authorization", () => {
         ttsConfig: null,
       })),
       invalidate: vi.fn(),
-      validateAllowlist: vi.fn(() => true),
+      validateAllowlist: vi.fn((_service: string, _provider: string, _model: string) => true),
     };
     expect(registry.validateAllowlist("assistant", "deepseek", "deepseek-v4-flash")).toBe(true);
     const { provider } = await registry.getAssistantProvider({} as any);
@@ -391,12 +385,7 @@ describe("admin provider-configs authorization", () => {
       providerRegistry as any,
       credRepo as any,
     );
-    const app = new (await import("hono")).Hono();
-    app.use("*", async (c: any, next: any) => {
-      c.set("authUser", { id: "admin-1" });
-      c.env = { DB: {} as any };
-      await next();
-    });
+    const app = createTestApp({ user: { id: "admin-1" }, env: { DB: {} as D1Database } });
     app.route("/configs", routes);
 
     const res = await app.request("/configs", {
@@ -412,7 +401,7 @@ describe("admin provider-configs authorization", () => {
     });
 
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = (await res.json()) as { provider: string; model: string; credentialId: string };
     expect(body.provider).toBe("google");
     expect(body.model).toBe("gemini-3.5-transcribe");
     expect(body.credentialId).toBe(credId);
@@ -454,12 +443,7 @@ describe("admin provider-configs authorization", () => {
       configRepo as any,
       registry as any,
     );
-    const { Hono } = await import("hono");
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      c.set("authUser", { id: "admin-1" });
-      await next();
-    });
+    const app = createTestApp({ user: { id: "admin-1" } });
     app.route("/configs", routes);
 
     const res = await app.request("/configs/cfg-to-delete", {
@@ -467,7 +451,7 @@ describe("admin provider-configs authorization", () => {
     });
 
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as { id: string };
     expect(body.id).toBe("cfg-to-delete");
     expect(configRepo.delete).toHaveBeenCalledWith(undefined, "cfg-to-delete", "admin-1");
     expect(registry.invalidate).toHaveBeenCalledWith("stt");
@@ -494,12 +478,7 @@ describe("admin provider-configs authorization", () => {
       configRepo as any,
       registry as any,
     );
-    const { Hono } = await import("hono");
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      c.set("authUser", { id: "admin-1" });
-      await next();
-    });
+    const app = createTestApp({ user: { id: "admin-1" } });
     app.onError((err, c) => {
       if (err instanceof HttpError)
         return c.json({ error: err.code, message: err.message }, err.status);
@@ -512,7 +491,7 @@ describe("admin provider-configs authorization", () => {
     });
 
     expect(res.status).toBe(409);
-    const body = await res.json();
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("cannot_delete_active_config");
   });
 });

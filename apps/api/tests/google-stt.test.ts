@@ -1,10 +1,10 @@
-// @ts-nocheck
 import { describe, it, expect, vi } from "vitest";
 import {
   createGoogleSttProvider,
   isGoogleGenerativeLanguageApiKey,
 } from "../src/assistant/google-stt";
 import { AssistantVoiceProviderError } from "../src/assistant/voice-provider";
+import type { Bindings } from "../src/types";
 
 describe("isGoogleGenerativeLanguageApiKey", () => {
   it("accepts standard AIza keys and AI Studio Auth keys", () => {
@@ -27,12 +27,12 @@ describe("createGoogleSttProvider", () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";
     let interceptedBody: any = null;
-    let interceptedHeaders: any = null;
+    let interceptedHeaders: Record<string, string> | null = null;
 
-    globalThis.fetch = vi.fn(async (url: string, init: any) => {
+    globalThis.fetch = vi.fn<typeof fetch>(async (url, init) => {
       interceptedUrl = String(url);
-      interceptedBody = JSON.parse(init.body);
-      interceptedHeaders = init.headers;
+      interceptedBody = JSON.parse(init?.body as string);
+      interceptedHeaders = init?.headers as Record<string, string>;
       return new Response(
         JSON.stringify({
           candidates: [
@@ -45,17 +45,17 @@ describe("createGoogleSttProvider", () => {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    }) as any;
+    });
 
     try {
       const provider = createGoogleSttProvider("gemini-3.5-transcribe", "AIzaSySecretVoiceKey9999");
       const audioBlob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "audio/webm" });
-      const res = await provider.transcribe({} as any, audioBlob as any);
+      const res = await provider.transcribe({} as Bindings, audioBlob as unknown as File);
 
       expect(interceptedUrl).toContain("generativelanguage.googleapis.com");
       expect(interceptedUrl).toContain("gemini-3.5-transcribe:generateContent");
       expect(interceptedUrl).not.toContain("key=");
-      expect(interceptedHeaders["x-goog-api-key"]).toBe("AIzaSySecretVoiceKey9999");
+      expect(interceptedHeaders?.["x-goog-api-key"]).toBe("AIzaSySecretVoiceKey9999");
       expect(interceptedBody.contents[0].parts[1].inlineData.mimeType).toBe("audio/webm");
       expect(interceptedBody.contents[0].parts[0].text).toContain("in English");
       expect(res.text).toBe("Spent fifty pesos at Jollibee");
@@ -69,8 +69,8 @@ describe("createGoogleSttProvider", () => {
     const originalFetch = globalThis.fetch;
     let interceptedBody: any = null;
 
-    globalThis.fetch = vi.fn(async (_url: string, init: any) => {
-      interceptedBody = JSON.parse(init.body);
+    globalThis.fetch = vi.fn<typeof fetch>(async (_url, init) => {
+      interceptedBody = JSON.parse(init?.body as string);
       return new Response(
         JSON.stringify({
           candidates: [
@@ -83,12 +83,14 @@ describe("createGoogleSttProvider", () => {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    }) as any;
+    });
 
     try {
       const provider = createGoogleSttProvider("gemini-3.5-transcribe", "AIzaSySecretVoiceKey9999");
       const audioBlob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "audio/webm" });
-      const res = await provider.transcribe({} as any, audioBlob as any, { language: "fil" });
+      const res = await provider.transcribe({} as Bindings, audioBlob as unknown as File, {
+        language: "fil",
+      });
 
       expect(interceptedBody.contents[0].parts[0].text).toContain("Tagalog, Filipino");
       expect(res.text).toBe("Nagbayad ng limampung piso");
@@ -101,11 +103,11 @@ describe("createGoogleSttProvider", () => {
   it("maps gemini-3.5-transcribe-live to gemini-2.0-flash on REST batch endpoint", async () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";
-    let interceptedHeaders: any = null;
+    let interceptedHeaders: Record<string, string> | null = null;
 
-    globalThis.fetch = vi.fn(async (url: string, init: any) => {
+    globalThis.fetch = vi.fn<typeof fetch>(async (url, init) => {
       interceptedUrl = String(url);
-      interceptedHeaders = init.headers;
+      interceptedHeaders = init?.headers as Record<string, string>;
       return new Response(
         JSON.stringify({
           candidates: [
@@ -118,7 +120,7 @@ describe("createGoogleSttProvider", () => {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    }) as any;
+    });
 
     try {
       const provider = createGoogleSttProvider(
@@ -126,12 +128,12 @@ describe("createGoogleSttProvider", () => {
         "AIzaSySecretVoiceKey9999",
       );
       const audioBlob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "audio/webm" });
-      const res = await provider.transcribe({} as any, audioBlob as any);
+      const res = await provider.transcribe({} as Bindings, audioBlob as unknown as File);
 
       expect(interceptedUrl).toContain("generativelanguage.googleapis.com");
       expect(interceptedUrl).toContain("gemini-2.0-flash:generateContent");
       expect(interceptedUrl).not.toContain("key=");
-      expect(interceptedHeaders["x-goog-api-key"]).toBe("AIzaSySecretVoiceKey9999");
+      expect(interceptedHeaders?.["x-goog-api-key"]).toBe("AIzaSySecretVoiceKey9999");
       expect(res.text).toBe("Fallback transcribed speech");
     } finally {
       globalThis.fetch = originalFetch;
@@ -141,11 +143,11 @@ describe("createGoogleSttProvider", () => {
   it("supports JSON secret with apiKey and projectId for Speech V2", async () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";
-    let interceptedHeaders: any = null;
+    let interceptedHeaders: Record<string, string> | null = null;
 
-    globalThis.fetch = vi.fn(async (url: string, init: any) => {
+    globalThis.fetch = vi.fn<typeof fetch>(async (url, init) => {
       interceptedUrl = String(url);
-      interceptedHeaders = init.headers;
+      interceptedHeaders = init?.headers as Record<string, string>;
       return new Response(
         JSON.stringify({
           results: [
@@ -156,7 +158,7 @@ describe("createGoogleSttProvider", () => {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    }) as any;
+    });
 
     try {
       const jsonSecret = JSON.stringify({
@@ -166,13 +168,13 @@ describe("createGoogleSttProvider", () => {
       });
       const provider = createGoogleSttProvider("chirp_3", jsonSecret);
       const audioBlob = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" });
-      const res = await provider.transcribe({} as any, audioBlob as any);
+      const res = await provider.transcribe({} as Bindings, audioBlob as unknown as File);
 
       expect(interceptedUrl).toContain(
         "speech.googleapis.com/v2/projects/test-gcp-project/locations/us/recognizers/_:recognize",
       );
       expect(interceptedUrl).not.toContain("key=");
-      expect(interceptedHeaders["x-goog-api-key"]).toBe("AIzaSyKey1234");
+      expect(interceptedHeaders?.["x-goog-api-key"]).toBe("AIzaSyKey1234");
       expect(res.text).toBe("Speech V2 transcribed text");
     } finally {
       globalThis.fetch = originalFetch;
@@ -182,11 +184,11 @@ describe("createGoogleSttProvider", () => {
   it("routes AI Studio Auth keys via the x-goog-api-key header on Speech V2", async () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";
-    let interceptedHeaders: any = null;
+    let interceptedHeaders: Record<string, string> | null = null;
 
-    globalThis.fetch = vi.fn(async (url: string, init: any) => {
+    globalThis.fetch = vi.fn<typeof fetch>(async (url, init) => {
       interceptedUrl = String(url);
-      interceptedHeaders = init.headers;
+      interceptedHeaders = init?.headers as Record<string, string>;
       return new Response(
         JSON.stringify({
           results: [
@@ -197,7 +199,7 @@ describe("createGoogleSttProvider", () => {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    }) as any;
+    });
 
     try {
       const jsonSecret = JSON.stringify({
@@ -207,16 +209,16 @@ describe("createGoogleSttProvider", () => {
       });
       const provider = createGoogleSttProvider("chirp_3", jsonSecret);
       const audioBlob = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" });
-      const res = await provider.transcribe({} as any, audioBlob as any);
+      const res = await provider.transcribe({} as Bindings, audioBlob as unknown as File);
 
       expect(interceptedUrl).toContain(
         "speech.googleapis.com/v2/projects/test-gcp-project/locations/us/recognizers/_:recognize",
       );
       expect(interceptedUrl).not.toContain("key=");
-      expect(interceptedHeaders["x-goog-api-key"]).toBe(
+      expect(interceptedHeaders?.["x-goog-api-key"]).toBe(
         "AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ",
       );
-      expect(interceptedHeaders["Authorization"]).toBeUndefined();
+      expect(interceptedHeaders?.["Authorization"]).toBeUndefined();
       expect(res.text).toBe("V2 AQ transcribed text");
     } finally {
       globalThis.fetch = originalFetch;
@@ -226,11 +228,11 @@ describe("createGoogleSttProvider", () => {
   it("routes raw AI Studio Auth keys via the x-goog-api-key header on Speech V1 fallback", async () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";
-    let interceptedHeaders: any = null;
+    let interceptedHeaders: Record<string, string> | null = null;
 
-    globalThis.fetch = vi.fn(async (url: string, init: any) => {
+    globalThis.fetch = vi.fn<typeof fetch>(async (url, init) => {
       interceptedUrl = String(url);
-      interceptedHeaders = init.headers;
+      interceptedHeaders = init?.headers as Record<string, string>;
       return new Response(
         JSON.stringify({
           results: [
@@ -241,7 +243,7 @@ describe("createGoogleSttProvider", () => {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    }) as any;
+    });
 
     try {
       const provider = createGoogleSttProvider(
@@ -249,11 +251,11 @@ describe("createGoogleSttProvider", () => {
         "AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ",
       );
       const audioBlob = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" });
-      const res = await provider.transcribe({} as any, audioBlob as any);
+      const res = await provider.transcribe({} as Bindings, audioBlob as unknown as File);
 
       expect(interceptedUrl).toContain("speech.googleapis.com/v1/speech:recognize");
       expect(interceptedUrl).not.toContain("key=");
-      expect(interceptedHeaders["x-goog-api-key"]).toBe(
+      expect(interceptedHeaders?.["x-goog-api-key"]).toBe(
         "AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ",
       );
       expect(res.text).toBe("V1 AQ transcribed text");
@@ -267,8 +269,8 @@ describe("createGoogleSttProvider", () => {
     const originalFetch = globalThis.fetch;
     let interceptedBody: any = null;
 
-    globalThis.fetch = vi.fn(async (_url: string, init: any) => {
-      interceptedBody = JSON.parse(init.body);
+    globalThis.fetch = vi.fn<typeof fetch>(async (_url, init) => {
+      interceptedBody = JSON.parse(init?.body as string);
       return new Response(
         JSON.stringify({
           results: [
@@ -279,7 +281,7 @@ describe("createGoogleSttProvider", () => {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    }) as any;
+    });
 
     try {
       const jsonSecret = JSON.stringify({
@@ -289,7 +291,9 @@ describe("createGoogleSttProvider", () => {
       });
       const provider = createGoogleSttProvider("chirp_3", jsonSecret);
       const audioBlob = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" });
-      const res = await provider.transcribe({} as any, audioBlob as any, { language: "fil" });
+      const res = await provider.transcribe({} as Bindings, audioBlob as unknown as File, {
+        language: "fil",
+      });
 
       expect(interceptedBody.config.languageCodes).toEqual(["fil-PH", "en-US"]);
       expect(res.text).toBe("Speech V2 Tagalog text");
@@ -303,8 +307,8 @@ describe("createGoogleSttProvider", () => {
     const originalFetch = globalThis.fetch;
     let interceptedBody: any = null;
 
-    globalThis.fetch = vi.fn(async (_url: string, init: any) => {
-      interceptedBody = JSON.parse(init.body);
+    globalThis.fetch = vi.fn<typeof fetch>(async (_url, init) => {
+      interceptedBody = JSON.parse(init?.body as string);
       return new Response(
         JSON.stringify({
           results: [
@@ -315,7 +319,7 @@ describe("createGoogleSttProvider", () => {
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    }) as any;
+    });
 
     try {
       const provider = createGoogleSttProvider(
@@ -323,7 +327,9 @@ describe("createGoogleSttProvider", () => {
         "AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ",
       );
       const audioBlob = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" });
-      const res = await provider.transcribe({} as any, audioBlob as any, { language: "fil" });
+      const res = await provider.transcribe({} as Bindings, audioBlob as unknown as File, {
+        language: "fil",
+      });
 
       expect(interceptedBody.config.languageCode).toBe("fil-PH");
       expect(interceptedBody.config.alternativeLanguageCodes).toEqual(["en-US", "en-PH"]);
@@ -337,7 +343,7 @@ describe("createGoogleSttProvider", () => {
   it("throws configuration error when no secret provided", async () => {
     const provider = createGoogleSttProvider("gemini-3.5-transcribe", "");
     const audioBlob = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" });
-    await expect(provider.transcribe({} as any, audioBlob as any)).rejects.toThrow(
+    await expect(provider.transcribe({} as Bindings, audioBlob as unknown as File)).rejects.toThrow(
       AssistantVoiceProviderError,
     );
   });

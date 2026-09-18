@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from "vitest";
 import { tryImportGrpc, tryFetchGrpc } from "../src/spike/google-stt-grpc-spike";
 
@@ -12,7 +11,7 @@ describe("spike: Google STT StreamingRecognize gRPC in Worker runtime", () => {
 
     // 2. fetch with application/grpc is possible but Google's StreamingRecognize is gRPC-only
     // REST call to ListLocations should work via fetch (HTTP/1.1 JSON) — but streaming endpoint is gRPC-only per docs
-    const res = await tryFetchGrpc({});
+    const res = (await tryFetchGrpc({}))!;
     expect(typeof res.status).toBe("number");
 
     // Spike conclusion: Workers cannot speak gRPC bidi directly.

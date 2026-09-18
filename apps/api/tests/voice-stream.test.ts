@@ -1,31 +1,35 @@
-// @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createVoiceStreamRoutes, websocketUpgradeUrl } from "../src/routes/voice-stream";
-import { Hono } from "hono";
 import { HttpError } from "../src/errors";
 import { providerRegistry } from "../src/provider-registry";
+import type { ProviderConfig } from "@zoption/shared";
+import type { Bindings } from "../src/types";
+import { createTestApp } from "./helpers/test-app";
 
 beforeEach(() => vi.restoreAllMocks());
 
-function makeApp(sttCfg, bridgeUrl = "wss://bridge.example.com/stream", envOverrides = {}) {
+function makeApp(
+  sttCfg: ProviderConfig,
+  bridgeUrl = "wss://bridge.example.com/stream",
+  envOverrides: Partial<Bindings> = {},
+) {
   // These tests exercise the transport, so the consent gate the route runs before the upgrade is
   // stubbed as satisfied and the env answers the Pro entitlement query. Both gates and the
   // free-tenant refusal are covered in voice-ticket.test.ts.
   const routes = createVoiceStreamRoutes({
     requireConsent: vi.fn(async () => undefined),
   } as any);
-  const app = new Hono();
-  app.use("*", async (c, next) => {
-    (c as any).set("authUser", { id: "user-1" });
-    (c as any).set("tenant", { tenantId: "tenant-1" });
-    (c as any).env = {
+  const app = createTestApp({
+    user: { id: "user-1" },
+    tenant: { tenantId: "tenant-1", defaultAccountId: "acc-1" },
+    env: {
       // The Pro gate reads one entitlement row; the transport tests below are about the socket.
-      DB: { prepare: () => ({ bind: () => ({ first: async () => ({ source: "paypal" }) }) }) },
+      DB: {
+        prepare: () => ({ bind: () => ({ first: async () => ({ source: "paypal" }) }) }),
+      } as unknown as D1Database,
       STT_BRIDGE_URL: bridgeUrl,
-      _mockSttCfg: sttCfg,
       ...envOverrides,
-    };
-    await next();
+    },
   });
   vi.spyOn(providerRegistry, "getActive").mockImplementation(async (env, service) => {
     if (service === "stt") return sttCfg;
@@ -59,7 +63,7 @@ describe("websocketUpgradeUrl", () => {
 
 describe("GET /api/app/assistant/voice/stream", () => {
   it("requires websocket upgrade", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-1",
       service: "stt",
       provider: "google",
@@ -68,16 +72,20 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: null,
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg);
     const res = await app.request("/stream", { method: "GET" });
     expect(res.status).toBe(426);
-    const body = await res.json();
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("upgrade_required");
   });
 
   it("rejects when active STT is not google (fallback to POST)", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-2",
       service: "stt",
       provider: "cloudflare_workers_ai",
@@ -86,6 +94,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: null,
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg);
     const res = await app.request("/stream", {
@@ -96,13 +108,13 @@ describe("GET /api/app/assistant/voice/stream", () => {
     // In test env, WebSocketPair not fully mocked, but route checks provider first before bridgeUrl, so 400
     expect([400, 426, 101].includes(res.status)).toBe(true);
     if (res.status === 400) {
-      const body = await res.json();
+      const body = (await res.json()) as { error: string };
       expect(body.error).toBe("stt_not_streaming");
     }
   });
 
   it("returns bridge_not_configured when STT_BRIDGE_URL missing for google", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-3",
       service: "stt",
       provider: "google",
@@ -111,6 +123,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: null,
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "");
     const res = await app.request("/stream", {
@@ -120,7 +136,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
     // Should be 503 bridge_not_configured before attempting WS upgrade
     expect([503, 426].includes(res.status)).toBe(true);
     if (res.status === 503) {
-      const body = await res.json();
+      const body = (await res.json()) as { error: string };
       expect(body.error).toBe("bridge_not_configured");
     }
   });
@@ -140,7 +156,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("routes to Gemini Live WebSocket when Google API key is configured (no bridge required)", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-gemini-live",
       service: "stt",
       provider: "google",
@@ -149,6 +165,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: "cred-google-key",
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, ""); // Empty bridgeUrl!
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -170,13 +190,13 @@ describe("GET /api/app/assistant/voice/stream", () => {
       close: vi.fn(),
       accept: vi.fn(),
     };
-    globalThis.fetch = vi.fn(async (url: string, init: any) => {
+    globalThis.fetch = vi.fn<typeof fetch>(async (url, init) => {
       interceptedWsUrl = String(url);
       interceptedGeminiKey = new Headers(init?.headers).get("x-goog-api-key");
       return {
         status: 101,
         webSocket: mockWs,
-      } as any;
+      } as unknown as Response;
     });
 
     // Mock globalThis.WebSocketPair
@@ -222,7 +242,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(mockWs.send).toHaveBeenCalledWith(
         expect.stringContaining("models/gemini-3.5-transcribe-live"),
       );
-      expect(JSON.parse(mockWs.send.mock.calls[0][0])).toEqual({
+      expect(JSON.parse(mockWs.send.mock.calls[0]![0])).toEqual({
         setup: {
           model: "models/gemini-3.5-transcribe-live",
           generationConfig: { responseModalities: ["TEXT"] },
@@ -231,7 +251,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       });
 
       serverHandlers.get("message")({ data: new Uint8Array([1, 2, 3]).buffer });
-      expect(JSON.parse(mockWs.send.mock.calls.at(-1)[0])).toEqual({
+      expect(JSON.parse(mockWs.send.mock.calls.at(-1)![0])).toEqual({
         realtimeInput: {
           mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: "AQID" }],
         },
@@ -240,14 +260,14 @@ describe("GET /api/app/assistant/voice/stream", () => {
       // A Blob frame must still yield real bytes, never an empty payload.
       serverHandlers.get("message")({ data: new Blob([new Uint8Array([4, 5, 6])]) });
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(JSON.parse(mockWs.send.mock.calls.at(-1)[0])).toEqual({
+      expect(JSON.parse(mockWs.send.mock.calls.at(-1)![0])).toEqual({
         realtimeInput: {
           mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: "BAUG" }],
         },
       });
 
       serverHandlers.get("message")({ data: JSON.stringify({ type: "stop" }) });
-      expect(JSON.parse(mockWs.send.mock.calls.at(-1)[0])).toEqual({
+      expect(JSON.parse(mockWs.send.mock.calls.at(-1)![0])).toEqual({
         realtimeInput: { audioStreamEnd: true },
       });
 
@@ -283,7 +303,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("closes the session at the maximum duration instead of leaving it open", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-max-duration",
       service: "stt",
       provider: "google",
@@ -292,6 +312,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: "cred-google-key",
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "", { ASSISTANT_VOICE_STREAM_TIMEOUT_MS: "500" });
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -309,7 +333,9 @@ describe("GET /api/app/assistant/voice/stream", () => {
       accept: vi.fn(),
     };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({ status: 101, webSocket: upstreamWs })) as any;
+    globalThis.fetch = vi.fn<typeof fetch>(
+      async () => ({ status: 101, webSocket: upstreamWs }) as unknown as Response,
+    );
 
     const serverWs: any = {
       binaryType: "blob",
@@ -343,7 +369,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("configures Tagalog/Filipino language codes for Gemini Live when ?lang=fil is requested", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-live-fil",
       service: "stt",
       provider: "google",
@@ -352,6 +378,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: "cred-google-key",
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -369,11 +399,14 @@ describe("GET /api/app/assistant/voice/stream", () => {
       readyState: 1,
     };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      webSocket: mockWs,
-      status: 101,
-      headers: new Headers(),
-    })) as typeof fetch;
+    globalThis.fetch = vi.fn<typeof fetch>(
+      async () =>
+        ({
+          webSocket: mockWs,
+          status: 101,
+          headers: new Headers(),
+        }) as unknown as Response,
+    );
 
     (globalThis as any).WebSocketPair = class {
       0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
@@ -394,7 +427,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       });
       expect(res.status).toBe(101);
       await vi.waitFor(() => expect(mockWs.send).toHaveBeenCalled());
-      expect(JSON.parse(mockWs.send.mock.calls[0][0])).toEqual({
+      expect(JSON.parse(mockWs.send.mock.calls[0]![0])).toEqual({
         setup: {
           model: "models/gemini-3.5-transcribe-live",
           generationConfig: { responseModalities: ["TEXT"] },
@@ -408,7 +441,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("rejects REST model gemini-3.5-transcribe on streaming endpoint (use POST)", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-rest",
       service: "stt",
       provider: "google",
@@ -417,6 +450,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: "cred-google-key",
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -429,12 +466,12 @@ describe("GET /api/app/assistant/voice/stream", () => {
       headers: { Upgrade: "websocket", Connection: "Upgrade" },
     });
     expect(res.status).toBe(400);
-    const body = await res.json();
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("stt_not_streaming");
   });
 
   it("returns gemini_missing_key when live model has no API key", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-live-no-key",
       service: "stt",
       provider: "google",
@@ -443,6 +480,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: null,
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -455,12 +496,12 @@ describe("GET /api/app/assistant/voice/stream", () => {
       headers: { Upgrade: "websocket", Connection: "Upgrade" },
     });
     expect(res.status).toBe(503);
-    const body = await res.json();
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("gemini_missing_key");
   });
 
   it("accepts Google AI Studio Auth keys (AQ.) for Gemini Live", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-live-auth-key",
       service: "stt",
       provider: "google",
@@ -469,6 +510,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: "cred-google-auth",
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -502,7 +547,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("returns 101 without waiting for Gemini so a slow upstream cannot stall the browser handshake", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-gemini-live",
       service: "stt",
       provider: "google",
@@ -511,6 +556,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: "cred-google-key",
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -549,7 +598,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
 
   it("still returns 101 when Gemini fetch throws so the browser handshake can complete", async () => {
     vi.useFakeTimers();
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-gemini-live",
       service: "stt",
       provider: "google",
@@ -558,6 +607,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: "cred-google-key",
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -606,7 +659,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("routes to Cloud Run bridge with 'x-language': 'auto' unless a known language is asked for", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-bridge",
       service: "stt",
       provider: "google",
@@ -615,6 +668,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: null,
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -634,14 +691,14 @@ describe("GET /api/app/assistant/voice/stream", () => {
       accept: vi.fn(),
     };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async (url: string, init: any) => {
+    globalThis.fetch = vi.fn<typeof fetch>(async (url, init) => {
       interceptedUrl = String(url);
       interceptedHeaders = new Headers(init?.headers);
       return {
         status: 101,
         webSocket: mockBridgeWs,
         headers: new Headers(),
-      } as any;
+      } as unknown as Response;
     });
 
     (globalThis as any).WebSocketPair = class {
@@ -681,7 +738,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("passes 'x-language': 'fil' to Cloud Run bridge when ?lang=fil is requested", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-bridge-fil",
       service: "stt",
       provider: "google",
@@ -690,6 +747,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: null,
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -708,13 +769,13 @@ describe("GET /api/app/assistant/voice/stream", () => {
       accept: vi.fn(),
     };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async (_url: string, init: any) => {
+    globalThis.fetch = vi.fn<typeof fetch>(async (_url, init) => {
       interceptedHeaders = new Headers(init?.headers);
       return {
         status: 101,
         webSocket: mockBridgeWs,
         headers: new Headers(),
-      } as any;
+      } as unknown as Response;
     });
 
     (globalThis as any).WebSocketPair = class {
@@ -743,7 +804,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("passes 'x-language': 'fil' to Cloud Run bridge when ?lang=tl is requested", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-bridge-tl",
       service: "stt",
       provider: "google",
@@ -752,6 +813,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: null,
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -770,13 +835,13 @@ describe("GET /api/app/assistant/voice/stream", () => {
       accept: vi.fn(),
     };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async (_url: string, init: any) => {
+    globalThis.fetch = vi.fn<typeof fetch>(async (_url, init) => {
       interceptedHeaders = new Headers(init?.headers);
       return {
         status: 101,
         webSocket: mockBridgeWs,
         headers: new Headers(),
-      } as any;
+      } as unknown as Response;
     });
 
     (globalThis as any).WebSocketPair = class {
@@ -805,7 +870,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("proxies messages between client and Cloud Run bridge", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-bridge-proxy",
       service: "stt",
       provider: "google",
@@ -814,6 +879,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: null,
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -833,11 +902,14 @@ describe("GET /api/app/assistant/voice/stream", () => {
       accept: vi.fn(),
     };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      status: 101,
-      webSocket: mockBridgeWs,
-      headers: new Headers(),
-    })) as any;
+    globalThis.fetch = vi.fn<typeof fetch>(
+      async () =>
+        ({
+          status: 101,
+          webSocket: mockBridgeWs,
+          headers: new Headers(),
+        }) as unknown as Response,
+    );
 
     const serverWs: any = {
       binaryType: "blob",
@@ -884,7 +956,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
   });
 
   it("handles Cloud Run bridge connection failure gracefully", async () => {
-    const sttCfg = {
+    const sttCfg: ProviderConfig = {
       id: "cfg-bridge-fail",
       service: "stt",
       provider: "google",
@@ -893,6 +965,10 @@ describe("GET /api/app/assistant/voice/stream", () => {
       credentialId: null,
       enabled: true,
       isActive: true,
+      priority: 1,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      updatedBy: null,
     };
     const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
@@ -902,11 +978,14 @@ describe("GET /api/app/assistant/voice/stream", () => {
     });
 
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      status: 502,
-      webSocket: null,
-      headers: new Headers(),
-    })) as any;
+    globalThis.fetch = vi.fn<typeof fetch>(
+      async () =>
+        ({
+          status: 502,
+          webSocket: null,
+          headers: new Headers(),
+        }) as unknown as Response,
+    );
 
     const serverWs: any = {
       binaryType: "blob",

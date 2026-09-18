@@ -1,6 +1,4 @@
-// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
-import { Hono } from "hono";
 
 import { listAssistantModels } from "../src/assistant/model-catalog";
 import { AssistantProviderError } from "../src/assistant/provider-error";
@@ -10,6 +8,7 @@ import { providerRegistry } from "../src/provider-registry";
 import { HttpError } from "../src/errors";
 import { encryptSecret } from "../src/provider-credentials/crypto";
 import type { Bindings } from "../src/types";
+import { createTestApp } from "./helpers/test-app";
 
 const TEST_MASTER_KEY = btoa("\x01".repeat(32));
 
@@ -31,23 +30,23 @@ describe("listAssistantModels", () => {
       .mockResolvedValue(openAiListResponse(["gpt-4o", "gpt-4o-mini"]));
     const models = await listAssistantModels(undefined, "openai", "sk-test", fetcher);
     expect(models).toEqual(["gpt-4o", "gpt-4o-mini"]);
-    const [url, init] = fetcher.mock.calls[0];
+    const [url, init] = fetcher.mock.calls[0]!;
     expect(String(url).split("?")[0]).toBe("https://api.openai.com/v1/models");
     expect(String(url)).toContain("limit=100");
-    expect(init.headers).toMatchObject({ Authorization: "Bearer sk-test" });
+    expect(init?.headers).toMatchObject({ Authorization: "Bearer sk-test" });
   });
 
   it("derives the DeepSeek models URL from its chat endpoint", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(openAiListResponse(["deepseek-chat"]));
     await listAssistantModels(undefined, "deepseek", "sk-test", fetcher);
-    expect(String(fetcher.mock.calls[0][0]).split("?")[0]).toBe("https://api.deepseek.com/models");
+    expect(String(fetcher.mock.calls[0]![0]).split("?")[0]).toBe("https://api.deepseek.com/models");
   });
 
   it("lists Muse Spark models from Meta's Model API, not the Llama API", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(openAiListResponse(["muse-spark-1.1"]));
     const models = await listAssistantModels(undefined, "muse_spark", "meta-key", fetcher);
     expect(models).toEqual(["muse-spark-1.1"]);
-    expect(String(fetcher.mock.calls[0][0]).split("?")[0]).toBe("https://api.meta.ai/v1/models");
+    expect(String(fetcher.mock.calls[0]![0]).split("?")[0]).toBe("https://api.meta.ai/v1/models");
   });
 
   it("lists Anthropic models with its native auth headers", async () => {
@@ -56,9 +55,9 @@ describe("listAssistantModels", () => {
       .mockResolvedValue(openAiListResponse(["claude-3-5-haiku-latest"]));
     const models = await listAssistantModels(undefined, "anthropic", "sk-ant-test", fetcher);
     expect(models).toEqual(["claude-3-5-haiku-latest"]);
-    const [url, init] = fetcher.mock.calls[0];
+    const [url, init] = fetcher.mock.calls[0]!;
     expect(String(url).split("?")[0]).toBe("https://api.anthropic.com/v1/models");
-    expect(init.headers).toMatchObject({
+    expect(init?.headers).toMatchObject({
       "x-api-key": "sk-ant-test",
       "anthropic-version": "2023-06-01",
     });
@@ -78,11 +77,11 @@ describe("listAssistantModels", () => {
     );
     const models = await listAssistantModels(undefined, "gemini", "AIza-test", fetcher);
     expect(models).toEqual(["gemini-2.0-flash"]);
-    const [url, init] = fetcher.mock.calls[0];
+    const [url, init] = fetcher.mock.calls[0]!;
     expect(String(url).split("?")[0]).toBe(
       "https://generativelanguage.googleapis.com/v1beta/models",
     );
-    expect(init.headers).toMatchObject({ "x-goog-api-key": "AIza-test" });
+    expect(init?.headers).toMatchObject({ "x-goog-api-key": "AIza-test" });
   });
 
   it("follows has_more across pages until a short final page", async () => {
@@ -95,7 +94,7 @@ describe("listAssistantModels", () => {
     const models = await listAssistantModels(undefined, "openai", "sk-test", fetcher);
     expect(models).toEqual(["a-model", "b-model"]);
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(String(fetcher.mock.calls[1][0])).toContain("after=b-model");
+    expect(String(fetcher.mock.calls[1]![0])).toContain("after=b-model");
   });
 
   it("paginates Anthropic with after_id", async () => {
@@ -105,7 +104,7 @@ describe("listAssistantModels", () => {
       .mockResolvedValueOnce(jsonResponse({ data: [{ id: "m2" }], has_more: false }));
     const models = await listAssistantModels(undefined, "anthropic", "sk-ant", fetcher);
     expect(models).toEqual(["m1", "m2"]);
-    expect(String(fetcher.mock.calls[1][0])).toContain("after_id=m1");
+    expect(String(fetcher.mock.calls[1]![0])).toContain("after_id=m1");
   });
 
   it("follows Gemini page tokens", async () => {
@@ -124,7 +123,7 @@ describe("listAssistantModels", () => {
       );
     const models = await listAssistantModels(undefined, "gemini", "AIza-test", fetcher);
     expect(models).toEqual(["gemini-a", "gemini-b"]);
-    expect(String(fetcher.mock.calls[1][0])).toContain("pageToken=tok-1");
+    expect(String(fetcher.mock.calls[1]![0])).toContain("pageToken=tok-1");
   });
 
   it("dedupes, sorts, and caps the returned ids", async () => {
@@ -211,11 +210,8 @@ function modelsApp(credentialRepo: any) {
   const routes = createProviderCredentialRoutes(platformAdmins as any, credentialRepo, {
     invalidate: vi.fn(),
   } as any);
-  const app = new Hono();
-  app.use("*", async (c: any, next: any) => {
-    c.set("authUser", { id: "admin" });
-    c.env = { PROVIDER_CREDENTIAL_ENCRYPTION_KEY: TEST_MASTER_KEY, DB: {} as any };
-    await next();
+  const app = createTestApp({
+    env: { PROVIDER_CREDENTIAL_ENCRYPTION_KEY: TEST_MASTER_KEY, DB: {} as D1Database },
   });
   app.route("/", routes);
   app.onError((err, c) => {
@@ -254,7 +250,7 @@ describe("provider-credential model routes", () => {
       body: JSON.stringify({ provider: "fish_audio", secret: "long-enough-secret" }),
     });
     expect(res.status).toBe(400);
-    expect(((await res.json()) as any).error).toBe("unknown_provider");
+    expect(((await res.json()) as { error: string }).error).toBe("unknown_provider");
   });
 
   it("maps a rejected key to credential_invalid", async () => {
@@ -268,7 +264,7 @@ describe("provider-credential model routes", () => {
         body: JSON.stringify({ provider: "openai", secret: "sk-bad-key-1234" }),
       });
       expect(res.status).toBe(400);
-      const body = (await res.json()) as any;
+      const body = (await res.json()) as { error: string };
       expect(body.error).toBe("credential_invalid");
       expect(JSON.stringify(body)).not.toContain("sk-bad-key-1234");
     } finally {
@@ -314,7 +310,7 @@ describe("assistant configs accept live-fetched models", () => {
     const platformAdmins = { requireAdmin: vi.fn(async () => undefined) };
     const credId = "66666666-6666-4666-8666-666666666666";
     const credRepo = {
-      getById: vi.fn(async (_env: any, id: string) =>
+      getById: vi.fn(async (_env: Bindings, id: string) =>
         id === credId
           ? { id: credId, provider: "openai", name: "OpenAI Test", apiKeyLast4: "1234" }
           : null,
@@ -345,12 +341,7 @@ describe("assistant configs accept live-fetched models", () => {
       providerRegistry as any,
       credRepo as any,
     );
-    const app = new Hono();
-    app.use("*", async (c: any, next: any) => {
-      c.set("authUser", { id: "admin-1" });
-      c.env = { DB: {} as any };
-      await next();
-    });
+    const app = createTestApp({ user: { id: "admin-1" }, env: { DB: {} as D1Database } });
     app.onError((err, c) => {
       if (err instanceof HttpError) return c.json({ error: err.code }, err.status);
       return c.json({ error: "internal" }, 500);
@@ -373,7 +364,7 @@ describe("assistant configs accept live-fetched models", () => {
       }),
     });
     expect(res.status).toBe(201);
-    expect(((await res.json()) as any).model).toBe("gpt-4o-next-unlisted");
+    expect(((await res.json()) as { model: string }).model).toBe("gpt-4o-next-unlisted");
   });
 
   it("still rejects unknown assistant providers", async () => {
@@ -384,7 +375,7 @@ describe("assistant configs accept live-fetched models", () => {
       body: JSON.stringify({ service: "assistant", provider: "unknown_vendor", model: "x" }),
     });
     expect(res.status).toBe(400);
-    expect(((await res.json()) as any).error).toBe("invalid_provider_model");
+    expect(((await res.json()) as { error: string }).error).toBe("invalid_provider_model");
   });
 
   it("keeps strict model validation for voice services", async () => {
@@ -400,6 +391,6 @@ describe("assistant configs accept live-fetched models", () => {
       }),
     });
     expect(res.status).toBe(400);
-    expect(((await res.json()) as any).error).toBe("invalid_provider_model");
+    expect(((await res.json()) as { error: string }).error).toBe("invalid_provider_model");
   });
 });

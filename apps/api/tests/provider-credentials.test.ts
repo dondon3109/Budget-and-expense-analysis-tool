@@ -1,22 +1,22 @@
-// @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../src/assistant/model-catalog", () => ({ listAssistantModels: vi.fn() }));
 import { listAssistantModels } from "../src/assistant/model-catalog";
 import { AssistantProviderError } from "../src/assistant/provider-error";
 import { createProviderCredentialRoutes } from "../src/routes/provider-credentials";
 import { createAdminProviderConfigRoutes } from "../src/routes/admin-provider-configs";
-import { Hono } from "hono";
 import { HttpError } from "../src/errors";
 import { decryptSecret, encryptSecret, getLast4 } from "../src/provider-credentials/crypto";
+import type { Bindings } from "../src/types";
+import { createTestApp } from "./helpers/test-app";
 
 // Generate a deterministic 32-byte master key (base64)
 const TEST_MASTER_KEY = btoa("\x01".repeat(32));
 
-function makeEnv(master = TEST_MASTER_KEY) {
-  return { PROVIDER_CREDENTIAL_ENCRYPTION_KEY: master, DB: {} as any };
+function makeEnv(master = TEST_MASTER_KEY): Bindings {
+  return { PROVIDER_CREDENTIAL_ENCRYPTION_KEY: master, DB: {} as D1Database };
 }
 
-function authEnv() {
+function authEnv(): Bindings {
   return { DB: {} as D1Database };
 }
 
@@ -53,12 +53,7 @@ describe("provider_credentials — model preview", () => {
       {} as any,
       { invalidate: vi.fn() } as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/", routes);
     app.onError((err, c) => {
       if (err instanceof HttpError)
@@ -160,12 +155,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       repo as any,
       { invalidate: vi.fn() } as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/", routes);
     app.onError((err, c) => {
       if (err instanceof HttpError)
@@ -182,7 +172,11 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       }),
     });
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = (await res.json()) as {
+      name: string;
+      apiKeyLast4: string;
+      encrypted_secret?: unknown;
+    };
     expect(body.name).toBe("Google STT Production");
     expect(body.apiKeyLast4).toBe("21A9");
     const payload = JSON.stringify(body);
@@ -190,7 +184,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
     expect(payload).not.toContain("encrypted_secret");
     expect(body.encrypted_secret).toBeUndefined();
     // The stored ciphertext is bound to the row id the route generated before encrypting.
-    const createdId = repo.create.mock.calls[0][1].id;
+    const createdId = repo.create.mock.calls[0]![1].id;
     const stored = store.get(createdId);
     expect(stored.enc.startsWith("v1.")).toBe(true);
     await expect(decryptSecret(stored.enc, TEST_MASTER_KEY, createdId)).resolves.toBe(
@@ -207,12 +201,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       repo as any,
       { invalidate: vi.fn() } as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/", routes);
     app.onError((err, c) => {
       if (err instanceof HttpError)
@@ -348,12 +337,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       credRepo as any,
       registry as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/creds", credRoutes);
     app.onError((err, c) => {
       if (err instanceof HttpError)
@@ -363,8 +347,10 @@ describe("provider_credentials — encrypted reusable credentials", () => {
     // list shows usedBy with two configs
     const listRes = await app.request("/creds", { method: "GET" });
     expect(listRes.status).toBe(200);
-    const listBody = await listRes.json();
-    expect(listBody.credentials[0].usedBy.length).toBe(2);
+    const listBody = (await listRes.json()) as {
+      credentials: Array<{ usedBy: unknown[] }>;
+    };
+    expect(listBody.credentials[0]!.usedBy.length).toBe(2);
 
     // delete blocked
     const delRoutes = createProviderCredentialRoutes(
@@ -372,12 +358,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       credRepo as any,
       registry as any,
     );
-    const delApp = new Hono();
-    delApp.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const delApp = createTestApp({ env: makeEnv() });
     delApp.route("/", delRoutes);
     delApp.onError((err, c) => {
       if (err instanceof HttpError)
@@ -386,7 +367,10 @@ describe("provider_credentials — encrypted reusable credentials", () => {
     });
     const delRes = await delApp.request(`/${credId}`, { method: "DELETE" });
     expect(delRes.status).toBe(409);
-    const delBody = await delRes.json();
+    const delBody = (await delRes.json()) as {
+      error: string;
+      details: { usedBy: unknown[] };
+    };
     expect(delBody.error).toBe("credential_in_use");
     expect(delBody.details.usedBy.length).toBe(2);
     // never leaks secret
@@ -437,12 +421,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       registry as any,
       credRepo as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/", routes);
     app.onError((err, c) => {
       if (err instanceof HttpError)
@@ -455,7 +434,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       body: JSON.stringify({ credentialId: credId }),
     });
     expect(res.status).toBe(400);
-    const body = await res.json();
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("credential_provider_mismatch");
   });
 
@@ -504,12 +483,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       repo as any,
       { invalidate } as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/", routes);
     app.onError((err, c) => {
       if (err instanceof HttpError)
@@ -522,7 +496,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       body: JSON.stringify({ secret: "new-secret-9999" }),
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as { apiKeyLast4: string };
     expect(body.apiKeyLast4).toBe("9999");
     expect(JSON.stringify(body)).not.toContain("new-secret");
     expect(invalidate).toHaveBeenCalled();
@@ -550,12 +524,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       repo as any,
       { invalidate: vi.fn() } as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/", routes);
     app.onError((err, c) => {
       if (err instanceof HttpError) return c.json({ error: err.code }, err.status);
@@ -567,7 +536,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       body: JSON.stringify({}),
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as { ok: boolean; last4: string };
     expect(body.ok).toBe(true);
     expect(body.last4).toBe("ABCD");
     expect(JSON.stringify(body)).not.toContain(secret);
@@ -590,12 +559,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       repo as any,
       { invalidate: vi.fn() } as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/", routes);
     app.onError((err, c) => {
       if (err instanceof HttpError) return c.json({ error: err.code }, err.status);
@@ -655,12 +619,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       { validateAllowlist: vi.fn(() => true), invalidate } as any,
       { getById: vi.fn(async () => ({ provider: "google" })) } as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/", routes);
     app.onError((err, c) => {
       if (err instanceof HttpError) return c.json({ error: err.code }, err.status);
@@ -694,12 +653,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       repo as any,
       { invalidate: vi.fn() } as any,
     );
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      (c as any).set("authUser", { id: "admin" });
-      (c as any).env = makeEnv();
-      await next();
-    });
+    const app = createTestApp({ env: makeEnv() });
     app.route("/", routes);
     const res = await app.request("/", { method: "GET" });
     const body = await res.json();
@@ -762,7 +716,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       countUsages: vi.fn(async () => 1),
     };
     const registry = createProviderRegistry(configRepo as any, credRepo as any);
-    const health = await registry.getHealth(makeEnv() as any);
+    const health = await registry.getHealth(makeEnv());
     const sttHealth = health.find((h) => h.service === "stt");
     expect(sttHealth).toBeDefined();
     expect(sttHealth?.hasCredential).toBe(true);

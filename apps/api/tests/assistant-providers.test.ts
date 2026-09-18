@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 
 import { providerAllowlist } from "@zoption/shared";
@@ -285,7 +284,7 @@ describe("ChatCompletionsProvider (openai/gemini/meta/muse_spark/deepseek)", () 
       ...request,
       toolChoice: "required",
     });
-    const [, init] = fetcher.mock.calls[0];
+    const [, init] = fetcher.mock.calls[0]!;
     expect(JSON.parse(init?.body as string)).not.toHaveProperty("tool_choice");
   });
 
@@ -306,7 +305,7 @@ describe("ChatCompletionsProvider (openai/gemini/meta/muse_spark/deepseek)", () 
       ...request,
       toolChoice: "required",
     });
-    expect(JSON.parse(fetcher.mock.calls[0][1]?.body as string)).toMatchObject({
+    expect(JSON.parse(fetcher.mock.calls[0]![1]?.body as string)).toMatchObject({
       tool_choice: "required",
     });
   });
@@ -562,7 +561,7 @@ describe("admin provider-config routes accept new assistant providers", () => {
     const { createAdminProviderConfigRoutes } =
       await import("../src/routes/admin-provider-configs");
     const { providerRegistry } = await import("../src/provider-registry");
-    const { Hono } = await import("hono");
+    const { createTestApp } = await import("./helpers/test-app");
     const { HttpError } = await import("../src/errors");
 
     const credId = "55555555-5555-4555-8555-555555555555";
@@ -603,12 +602,7 @@ describe("admin provider-config routes accept new assistant providers", () => {
       providerRegistry as never,
       credRepo as never,
     );
-    const app = new Hono();
-    app.use("*", async (c: any, next: any) => {
-      c.set("authUser", { id: "admin-1" });
-      c.env = { DB: {} as D1Database };
-      await next();
-    });
+    const app = createTestApp({ user: { id: "admin-1" }, env: { DB: {} as D1Database } });
     app.onError((err, c) => {
       if (err instanceof HttpError) return c.json({ error: err.code }, err.status);
       return c.json({ error: "internal" }, 500);
