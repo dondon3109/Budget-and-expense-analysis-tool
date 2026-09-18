@@ -124,7 +124,10 @@ afterEach(() => {
 
 describe("PayPal revocation webhooks", () => {
   it("revokes Pro locally when a subscription payment is refunded", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(verifiedResponse());
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(verifiedResponse());
     vi.stubGlobal("fetch", fetchMock);
     const { env, subscription } = environment();
 
@@ -149,7 +152,10 @@ describe("PayPal revocation webhooks", () => {
   });
 
   it("resolves a reversed capture through the checkout reference it echoes", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(verifiedResponse());
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(verifiedResponse());
     vi.stubGlobal("fetch", fetchMock);
     const { env, subscription } = environment();
 
@@ -167,7 +173,10 @@ describe("PayPal revocation webhooks", () => {
   });
 
   it("acknowledges a dispute that names no subscription without revoking anything", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(verifiedResponse());
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(verifiedResponse());
     vi.stubGlobal("fetch", fetchMock);
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { env, subscription } = environment();
@@ -191,17 +200,24 @@ describe("PayPal revocation webhooks", () => {
   });
 
   it("records the revocation through the billing repository", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(verifiedResponse());
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(verifiedResponse());
     vi.stubGlobal("fetch", fetchMock);
     const { env } = environment();
     const billing = repository("unmatched");
 
-    const response = await post(env, {
-      id: "WH-refund-2",
-      event_type: "PAYMENT.SALE.REFUNDED",
-      create_time: "2026-08-02T00:00:00.000Z",
-      resource: { id: "refund-2", billing_agreement_id: SUBSCRIPTION_ID },
-    }, billing);
+    const response = await post(
+      env,
+      {
+        id: "WH-refund-2",
+        event_type: "PAYMENT.SALE.REFUNDED",
+        create_time: "2026-08-02T00:00:00.000Z",
+        resource: { id: "refund-2", billing_agreement_id: SUBSCRIPTION_ID },
+      },
+      billing,
+    );
 
     expect(response.status).toBe(200);
     expect(vi.mocked(billing.applySubscriptionEvent)).toHaveBeenCalledWith(

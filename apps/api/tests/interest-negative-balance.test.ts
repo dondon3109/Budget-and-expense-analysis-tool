@@ -47,7 +47,9 @@ function savingsEnvironment(balanceMinor: number): { env: Bindings; database: Da
 
 function creditedInterestCount(database: DatabaseSync): number {
   const row = database
-    .prepare("SELECT COUNT(*) AS count FROM transactions WHERE tenant_id = ? AND description = 'Interest'")
+    .prepare(
+      "SELECT COUNT(*) AS count FROM transactions WHERE tenant_id = ? AND description = 'Interest'",
+    )
     .get(TENANT_ID) as { count: number } | undefined;
   return Number(row?.count ?? 0);
 }

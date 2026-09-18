@@ -3,30 +3,21 @@
   "name": "budget-expense-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
-  "migrations": [
-    { "tag": "v1-rate-limit", "new_sqlite_classes": ["RateLimitDurableObject"] }
-  ],
+  "migrations": [{ "tag": "v1-rate-limit", "new_sqlite_classes": ["RateLimitDurableObject"] }],
   "triggers": {
-    "crons": [
-      "*/5 * * * *",
-      "17 3 * * *",
-      "17 4 * * *"
-    ]
+    "crons": ["*/5 * * * *", "17 3 * * *", "17 4 * * *"],
   },
   "env": {
     "preview": {
       "name": "budget-expense-api-preview",
       "ai": {
-        "binding": "AI"
+        "binding": "AI",
       },
       "triggers": {
-        "crons": [
-          "*/5 * * * *",
-          "17 3 * * *"
-        ]
+        "crons": ["*/5 * * * *", "17 3 * * *"],
       },
       "durable_objects": {
-        "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }]
+        "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }],
       },
       "r2_buckets": [{ "binding": "AVATARS", "bucket_name": "zoption-avatars-preview" }],
       "queues": {
@@ -36,17 +27,17 @@
             "queue": "budget-expense-jobs-preview",
             "max_batch_size": 10,
             "max_batch_timeout": 5,
-            "max_retries": 5
-          }
-        ]
+            "max_retries": 5,
+          },
+        ],
       },
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "budget-expense-preview",
           "database_id": "edff68e8-49a2-4c35-a976-e6779592546e",
-          "migrations_dir": "../../db/migrations"
-        }
+          "migrations_dir": "../../db/migrations",
+        },
       ],
       "vars": {
         "ALLOWED_ORIGINS": "https://clarity-budget-preview.pages.dev,https://codex-webapp.clarity-budget-preview.pages.dev",
@@ -73,22 +64,22 @@
         "BUG_REPORT_TO": "support@zoption.site",
         "PAYPAL_ENVIRONMENT": "production",
         "PAYPAL_PRO_MONTHLY_PLAN_ID": "P-4G649363YX2188455NJX75XQ",
-        "PAYPAL_PRO_ANNUAL_PLAN_ID": "P-0F968078YM1473345NJX75XY"
-      }
+        "PAYPAL_PRO_ANNUAL_PLAN_ID": "P-0F968078YM1473345NJX75XY",
+      },
     },
     "production": {
       "name": "budget-expense-api-production",
       "ai": {
-        "binding": "AI"
+        "binding": "AI",
       },
       "routes": [
         {
           "pattern": "api.zoption.site",
-          "custom_domain": true
-        }
+          "custom_domain": true,
+        },
       ],
       "durable_objects": {
-        "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }]
+        "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }],
       },
       "r2_buckets": [{ "binding": "AVATARS", "bucket_name": "zoption-avatars-production" }],
       "queues": {
@@ -98,17 +89,17 @@
             "queue": "budget-expense-jobs-production",
             "max_batch_size": 10,
             "max_batch_timeout": 5,
-            "max_retries": 5
-          }
-        ]
+            "max_retries": 5,
+          },
+        ],
       },
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "budget-expense-production",
           "database_id": "87ecafae-d103-44a6-a236-ef6e39b55ad0",
-          "migrations_dir": "../../db/migrations"
-        }
+          "migrations_dir": "../../db/migrations",
+        },
       ],
       "vars": {
         "ALLOWED_ORIGINS": "https://zoption.site,https://www.zoption.site",
@@ -135,8 +126,8 @@
         "POSTHOG_AI_ENVIRONMENT": "production",
         "PAYPAL_ENVIRONMENT": "production",
         "PAYPAL_PRO_MONTHLY_PLAN_ID": "P-4G649363YX2188455NJX75XQ",
-        "PAYPAL_PRO_ANNUAL_PLAN_ID": "P-0F968078YM1473345NJX75XY"
-      }
-    }
-  }
+        "PAYPAL_PRO_ANNUAL_PLAN_ID": "P-0F968078YM1473345NJX75XY",
+      },
+    },
+  },
 }

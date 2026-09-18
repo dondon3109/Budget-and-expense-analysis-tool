@@ -234,11 +234,10 @@ describe("PayPal subscription gateway", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      verifyPayPalWebhook(
-        bindings(),
-        JSON.stringify({ id: "event" }),
-        { ...validWebhookHeaders(), ...override },
-      ),
+      verifyPayPalWebhook(bindings(), JSON.stringify({ id: "event" }), {
+        ...validWebhookHeaders(),
+        ...override,
+      }),
     ).resolves.toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -253,14 +252,10 @@ describe("PayPal subscription gateway", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      verifyPayPalWebhook(
-        bindings(),
-        JSON.stringify({ id: "event" }),
-        {
-          ...validWebhookHeaders(),
-          transmissionTime: "2026-07-31T23:00:00.000Z",
-        },
-      ),
+      verifyPayPalWebhook(bindings(), JSON.stringify({ id: "event" }), {
+        ...validWebhookHeaders(),
+        transmissionTime: "2026-07-31T23:00:00.000Z",
+      }),
     ).resolves.toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

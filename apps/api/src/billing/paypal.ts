@@ -491,7 +491,8 @@ export async function verifyPayPalWebhook(
   } catch {
     return false;
   }
-  if (typeof event !== "object" || event === null || JSON.stringify(event) !== rawBody) return false;
+  if (typeof event !== "object" || event === null || JSON.stringify(event) !== rawBody)
+    return false;
 
   const response = await authenticatedProviderFetch(
     env,

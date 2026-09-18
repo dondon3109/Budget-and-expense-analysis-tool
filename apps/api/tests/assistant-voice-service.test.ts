@@ -16,7 +16,9 @@ import type { Bindings } from "../src/types";
 /** The entitlement lookup reads one row; a source row means the tenant has Pro. */
 function proDb(hasPro: boolean): D1Database {
   return {
-    prepare: () => ({ bind: () => ({ first: async () => (hasPro ? { source: "paypal" } : null) }) }),
+    prepare: () => ({
+      bind: () => ({ first: async () => (hasPro ? { source: "paypal" } : null) }),
+    }),
   } as unknown as D1Database;
 }
 
