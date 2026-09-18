@@ -11,27 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 17, 2026",
+  releasedOn: "September 18, 2026",
   changes: [
     {
-      title: "Tagalog voice input and assistant language",
+      title: "One shared AI allowance for every AI feature",
       description:
-        "Speak to the assistant or log a transaction in English or Tagalog, with Auto as the default mode that detects either language. A language toggle sits in the assistant voice control, hands-free conversation, and transaction voice entry, and a Voice Language setting in Account Settings and the mobile More tab pins English or Tagalog when you want it.",
+        "AI usage now comes from a single monthly pool: 500 actions on Free and 2,000 on Pro, shared by the financial assistant, voice chat, receipt scanning, PDF statement entry, and voice transaction entry. Receipt scanning, voice entry, and PDF entry are included on Free, and live streaming voice chat stays a Pro feature.",
     },
     {
-      title: "Peso budgeting guides and explainer pages",
+      title: "Reversed payments now end Pro",
       description:
-        "Two new guides show how to budget a monthly salary in the Philippines and how the 50/30/20 rule works in pesos, with a link straight to the calculator, alongside public pages explaining receipt scanning and voice expense entry.",
+        "A refund, chargeback, or dispute ends Pro access for the period it reverses, instead of leaving the subscription active.",
     },
     {
-      title: "Anonymous signup funnel measurement",
+      title: "Signing out on Android ends the session on the server",
       description:
-        "Zoption now measures the path from a first visit to a first import in six cookieless steps. No step carries financial detail, identifiers, page addresses, or query parameters, and the Cookie Policy and Privacy Policy describe each one.",
+        "Signing out now revokes the session on the server instead of only clearing the device, and falls back to clearing the device when the phone is offline.",
     },
     {
-      title: "Android Beta 0.2.30",
+      title: "Steadier assistant amounts, savings interest, and profile photos",
       description:
-        "The official Android Beta adds Tagalog voice input, the Auto bilingual default, quick language toggles, and the Voice Language setting in Account Settings and the More tab.",
+        "Assistant answers can no longer state a peso amount that cannot be traced to your own records, an overdrawn savings account no longer earns interest, and profile photo changes appear within a minute instead of staying cached.",
+    },
+    {
+      title: "Android Beta 0.2.31",
+      description:
+        "The official Android Beta adds the shared monthly AI allowance, server-side sign-out, and the assistant, savings interest, and profile photo fixes.",
     },
   ],
 };

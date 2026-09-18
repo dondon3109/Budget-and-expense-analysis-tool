@@ -3,21 +3,23 @@ import { describe, expect, it } from "vitest";
 import { currentRelease, releaseHistory } from "../src/releases/currentRelease";
 
 describe("current release notes", () => {
-  it("highlights Tagalog voice language, the peso guides, signup funnel measurement, and Android Beta 0.2.30", () => {
+  it("highlights the shared AI allowance, reversed payments, Android sign-out, and Android Beta 0.2.31", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "Tagalog voice input and assistant language",
-      "Peso budgeting guides and explainer pages",
-      "Anonymous signup funnel measurement",
-      "Android Beta 0.2.30",
+      "One shared AI allowance for every AI feature",
+      "Reversed payments now end Pro",
+      "Signing out on Android ends the session on the server",
+      "Steadier assistant amounts, savings interest, and profile photos",
+      "Android Beta 0.2.31",
     ]);
 
     const notes = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(notes).toMatch(/Tagalog/i);
-    expect(notes).toMatch(/peso/i);
-    expect(notes).toMatch(/first import/i);
-    expect(notes).toMatch(/Android Beta 0.2.30/);
+    expect(notes).toMatch(/500 actions on Free/i);
+    expect(notes).toMatch(/2,000 on Pro/i);
+    expect(notes).toMatch(/chargeback/i);
+    expect(notes).toMatch(/revokes the session/i);
+    expect(notes).toMatch(/Android Beta 0\.2\.31/);
   });
 
   it("keeps cross-chat assistant memory, mobile navigation ergonomics, monthly Net totals, and Android Beta 0.2.29 as 2.33.0 release history", () => {
