@@ -3,8 +3,8 @@
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import shippedReleaseJson from "./androidRelease.json";
-import { useAndroidRelease } from "./useAndroidRelease";
+import shippedReleaseJson from "../src/releases/androidRelease.json";
+import { useAndroidRelease } from "../src/releases/useAndroidRelease";
 
 const VALID_METADATA = {
   version: "0.2.4-beta",

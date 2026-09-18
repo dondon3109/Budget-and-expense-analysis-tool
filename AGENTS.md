@@ -69,10 +69,11 @@ Tracer Bullet: each feature runs end to end through every layer and works, then 
 
 ```bash
 pnpm install
-pnpm verify             # workspace links, full typecheck, lint, and full tests; run before reporting done
+pnpm verify             # workspace links, full typecheck, lint, format check, and the Vitest plus mobile Jest suites; run before reporting done
 pnpm dev                # api, web, and mobile together
 pnpm build              # pnpm -r build; skips mobile and ads
 pnpm test               # vitest run across the repo
+pnpm test:mobile        # jest --runInBand for the colocated apps/mobile suites
 pnpm typecheck          # pnpm -r typecheck, then the e2e tsconfig
 pnpm lint
 pnpm test:e2e           # playwright; applies local D1 migrations first

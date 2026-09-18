@@ -49,7 +49,7 @@ pnpm test:e2e                      # Playwright, from the repo root
 
 ## Gotchas
 
-- `apps/web/tests/` is the only collected test directory. Vitest includes `apps/**/tests/**`, so a test beside its source such as `src/releases/use-android-release.test.ts` never runs.
+- `apps/web/tests/` is the only collected test directory. Vitest includes `apps/**/tests/**`, so a test placed beside its source never runs.
 - Build order is load bearing: typecheck, client build, SSR build, then prerender. The prerender step deletes `dist-ssr` and reads `.zoption-build/deployment.json` written by the client build.
 - The build fails closed. `ZOPTION_DEPLOY_ENV` is required when `CF_PAGES=1`, a non production build must pass explicit `VITE_*` values, and production must point at `https://api.zoption.site`.
 - Any new external origin needs an entry in `deployment-config.ts`; the CSP check fails the build on an unapproved wildcard.

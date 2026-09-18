@@ -33,10 +33,13 @@ jobs:
       # audit alone does not cover the tools that run with the Cloudflare token.
       - run: pnpm audit --prod --audit-level high
       - run: pnpm audit --dev --audit-level high
-      - run: pnpm lint
+      # Lint needs more than the default heap: the type-aware config exceeds it, so the
+      # setting lives in the command here exactly as it does in the root verify script.
+      - run: NODE_OPTIONS=--max-old-space-size=8192 pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm test:mobile
       # The builds run before the end to end suite so the published sitemap exists
       # for e2e/public-content-routes.spec.ts, which otherwise skips in CI.
       - name: Build shared package and API

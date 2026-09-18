@@ -19,7 +19,8 @@ Zoption tests financial and identity boundaries at the lowest practical layer, t
   production migration chain. Tests must seed writable source tables rather than inserting into
   production views such as `effective_pro_entitlements`.
 - Mobile persistence tests apply the real encrypted-workspace schema migrations and execute local
-  row plus outbox mutations inside SQLite transactions.
+  row plus outbox mutations inside SQLite transactions. The colocated Jest suites are part of the
+  gate through `pnpm test:mobile`, which `pnpm verify` and CI both run.
 - The focused convergence suite models two installations against one tenant-scoped server database.
   It proves idempotent retry, stale-revision conflict, subsequent pull convergence, deletion
   tombstones, and tenant-isolated bootstrap.
@@ -41,6 +42,7 @@ pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:mobile
 pnpm test:e2e
 pnpm build
 pnpm lighthouse
