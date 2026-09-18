@@ -4,39 +4,8 @@ import { createJSONStorage, persist, type StateStorage } from "zustand/middlewar
 import { z } from "zod";
 import type { VoiceLanguage } from "@zoption/shared";
 
-export type { VoiceLanguage };
-
-export interface VoiceLanguageOption {
-  code: VoiceLanguage;
-  label: string;
-  nativeLabel: string;
-  shortLabel: string;
-  description: string;
-}
-
-export const VOICE_LANGUAGES: readonly VoiceLanguageOption[] = [
-  {
-    code: "auto",
-    label: "Auto",
-    nativeLabel: "Auto (EN / TL)",
-    shortLabel: "AUTO",
-    description: "Automatically detects whether you are speaking English or Tagalog/Filipino.",
-  },
-  {
-    code: "en",
-    label: "English",
-    nativeLabel: "English",
-    shortLabel: "EN",
-    description: "Optimized for English voice input and financial terminology.",
-  },
-  {
-    code: "fil",
-    label: "Tagalog",
-    nativeLabel: "Tagalog",
-    shortLabel: "TL",
-    description: "Optimized for Tagalog, Filipino, and Taglish expressions.",
-  },
-] as const;
+export type { VoiceLanguage, VoiceLanguageOption } from "@zoption/shared";
+export { VOICE_LANGUAGES } from "@zoption/shared";
 
 const voiceLanguageSchema = z.enum(["auto", "en", "fil"]);
 

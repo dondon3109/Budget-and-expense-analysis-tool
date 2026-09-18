@@ -13,16 +13,18 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 
 ## Key files
 
-| File                  | Owns                                                           |
-| --------------------- | -------------------------------------------------------------- |
-| `src/index.ts`        | The barrel; every public module except `workbook`              |
-| `src/schemas.ts`      | Request, response, and snapshot schemas for the API and sync   |
-| `src/types.ts`        | `as const` enums that the schemas consume                      |
-| `src/money.ts`        | Amount parsing and the only sanctioned sign flip               |
-| `src/sync.ts`         | Mobile sync protocol constants, cursors, and payload contracts |
-| `src/calculations.ts` | Shared aggregate math for the dashboard                        |
-| `src/sharedBudget.ts` | Unsigned share token encoding and masking                      |
-| `src/workbook.ts`     | XLS/XLSX conversion, deliberately outside the barrel           |
+| File                    | Owns                                                           |
+| ----------------------- | -------------------------------------------------------------- |
+| `src/index.ts`          | The barrel; every public module except `workbook`              |
+| `src/schemas.ts`        | Request, response, and snapshot schemas for the API and sync   |
+| `src/types.ts`          | `as const` enums that the schemas consume                      |
+| `src/money.ts`          | Amount parsing and the only sanctioned sign flip               |
+| `src/sync.ts`           | Mobile sync protocol constants, cursors, and payload contracts |
+| `src/calculations.ts`   | Shared aggregate math for the dashboard                        |
+| `src/sharedBudget.ts`   | Unsigned share token encoding and masking                      |
+| `src/voiceLanguages.ts` | The single voice language catalog both clients render          |
+| `src/voiceCaption.ts`   | Caption tokenizer shared by the web and native renderers       |
+| `src/workbook.ts`       | XLS/XLSX conversion, deliberately outside the barrel           |
 
 ## Commands
 

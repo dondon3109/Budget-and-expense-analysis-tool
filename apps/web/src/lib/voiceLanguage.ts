@@ -1,35 +1,9 @@
 import type { VoiceLanguage } from "@zoption/shared";
-export type { VoiceLanguage };
+
+export type { VoiceLanguage, VoiceLanguageOption } from "@zoption/shared";
+export { VOICE_LANGUAGES } from "@zoption/shared";
 
 export const VOICE_LANGUAGE_STORAGE_KEY = "zoption_voice_language";
-
-export interface VoiceLanguageOption {
-  code: VoiceLanguage;
-  label: string;
-  nativeLabel: string;
-  description: string;
-}
-
-export const VOICE_LANGUAGES: readonly VoiceLanguageOption[] = [
-  {
-    code: "auto",
-    label: "Auto",
-    nativeLabel: "Auto (EN / TL)",
-    description: "Automatically detects whether you are speaking English or Tagalog/Filipino.",
-  },
-  {
-    code: "en",
-    label: "English",
-    nativeLabel: "English",
-    description: "Optimized for English voice input and financial terminology.",
-  },
-  {
-    code: "fil",
-    label: "Tagalog",
-    nativeLabel: "Tagalog",
-    description: "Optimized for Tagalog, Filipino, and Taglish expressions.",
-  },
-] as const;
 
 /**
  * Retrieves the user's preferred voice input language from localStorage.
