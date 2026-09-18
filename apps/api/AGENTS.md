@@ -8,7 +8,7 @@ The Cloudflare Worker that owns authentication enforcement, tenant data, and fin
 
 - **Language / Runtime**: TypeScript on Cloudflare Workers
 - **Framework**: Hono
-- **Data**: Cloudflare D1 (SQLite) through hand written `env.DB.prepare` and `env.DB.batch`; the Drizzle file `db/schema.ts` describes the tables but runs no queries
+- **Data**: Cloudflare D1 (SQLite) through hand written `env.DB.prepare` and `env.DB.batch`; the repo root Drizzle file `../../db/schema.ts` describes the tables but runs no queries
 - **Key dependencies**: `@zoption/shared` for zod schemas, Wrangler for dev and deploy
 - **Tests**: Vitest, run from the repo root through the root `vitest.config.ts`
 
@@ -23,7 +23,7 @@ The Cloudflare Worker that owns authentication enforcement, tenant data, and fin
 | `src/db/`               | One repository object per entity, every method scoped by `tenantId`            |
 | `src/db/mobile-sync.ts` | Route facing sync facade; protocol, read, and compaction sit beside it         |
 | `src/routes/`           | Hono route modules, one per surface, mounted in `src/app.ts`                   |
-| `db/migrations/`        | Forward only SQL migrations that Wrangler applies in file name order           |
+| `../../db/migrations/`  | Forward only SQL migrations that Wrangler applies in file name order           |
 
 ## Commands
 
@@ -47,7 +47,7 @@ pnpm db:migrate:local                 # apply db/migrations to the local D1 data
 ## Gotchas
 
 - Migrations run in file name order, so two files sharing a prefix sort by the rest of the name (`0034_mobile_sync_foundation.sql` before `0034_receipt_consent.sql`). Renaming a migration silently changes the order.
-- Drizzle metadata is stale on purpose: `db/migrations/meta/` stops at `0015`, so `pnpm db:generate` would emit one migration covering everything since then. Write new migrations by hand.
+- Drizzle metadata is stale on purpose: `../../db/migrations/meta/` stops at `0015`, so `pnpm db:generate` would emit one migration covering everything since then. Write new migrations by hand.
 - Never insert into a view in tests. `effective_pro_entitlements` is dropped and recreated by migrations; seed the base tables instead.
 - Do not add fields to a mobile sync payload without an agreed client capability. Installed apps validate the whole pull response strictly and reject an unknown key. A data backfill migration must bump `revision`.
 - Money is integer centavos end to end (`amount_minor`). Expenses are negative, transfers count once, and assistant output must never show centavos or a peso symbol.

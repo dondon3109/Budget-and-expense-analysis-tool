@@ -58,7 +58,7 @@ pnpm mobile:android                     # adb reverse, then expo run:android
 - Never add SMS or notification read permissions. SMS entry is clipboard paste parsed by the shared `parseSmsNotification`.
 - `SYSTEM_ALERT_WINDOW` must not ship and predictive back stays disabled; both are enforced in `app.config.ts`.
 - `package.json` version is the only version name, and `android.versionCode` in `app.config.ts` is the one hand picked number.
-- CI runs neither mobile tests nor mobile typecheck. Run both locally before a native change, and note that `pnpm -r build` skips this workspace.
+- CI runs no mobile tests, because the root `pnpm test` is Vitest and collects only `apps/**/tests/**`, `packages/**/tests/**`, and `scripts/**`. Run the Jest suites locally before a native change. CI does typecheck this workspace through the root `pnpm typecheck`, but `pnpm -r build` skips it because there is no build script.
 
 ## Related specs
 

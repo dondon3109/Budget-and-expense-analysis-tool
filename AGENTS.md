@@ -64,6 +64,18 @@ When releasing new changes however small it may be, always treat it as a new ver
 
 Tracer Bullet: each feature runs end to end through every layer and works, then widens. Recorded in `docs/scope/web/scope.md`.
 
+## Commands
+
+```bash
+pnpm install
+pnpm dev                # api, web, and mobile together
+pnpm build              # pnpm -r build; skips mobile and ads
+pnpm test               # vitest run across the repo
+pnpm typecheck          # pnpm -r typecheck, then the e2e tsconfig
+pnpm lint
+pnpm test:e2e           # playwright; applies local D1 migrations first
+```
+
 ## Context files
 
 - [apps/api/AGENTS.md](apps/api/AGENTS.md): Worker API, D1, tenancy, and the sync protocol
