@@ -4,8 +4,8 @@
  * Why this exists: the authenticated half of the app could not be audited because reaching it
  * needs a session, and a real session needs `supabase start`, which needs a container runtime.
  * This serves just enough of the GoTrue surface for the web client to sign in and for the API to
- * verify the resulting token, so the authenticated surfaces can be scanned and reviewed today —
- * and in CI, where Docker is not available either.
+ * verify the resulting token, so the authenticated surfaces can be scanned and reviewed on a
+ * machine with no container runtime. It is a local tool: no workflow runs it.
  *
  * It is a test double, not a replacement. Anything about real session behaviour — token lifetimes,
  * refresh races, provider metadata — still belongs to the local-Supabase run documented in
