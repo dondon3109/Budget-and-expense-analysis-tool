@@ -52,3 +52,22 @@ When releasing new changes however small it may be, always treat it as a new ver
 ## Design Preferences
 
 - Prefer not to use gradient coloring on card, floating card and backgrounds
+
+## Stack
+
+- **Language / Runtime**: TypeScript on Node 22+, Cloudflare Workers, and Expo (React Native)
+- **Framework**: React 19 + Vite (web), Hono (Worker API), expo-router (mobile)
+- **Key dependencies**: `@zoption/shared` (zod schemas and domain rules), TanStack Query, Drizzle schema over Cloudflare D1, Supabase Auth, Wrangler
+- **Package manager**: pnpm 11 workspaces (`apps/*`, `packages/*`; `apps/stt-bridge` excluded)
+
+## Build approach
+
+Tracer Bullet: each feature runs end to end through every layer and works, then widens. Recorded in `docs/scope/web/scope.md`.
+
+## Context files
+
+- [apps/api/AGENTS.md](apps/api/AGENTS.md): Worker API, D1, tenancy, and the sync protocol
+- [apps/web/AGENTS.md](apps/web/AGENTS.md): browser app, public routes, prerender, and CSP
+- [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md): Expo client, local workspace, outbox, and Android releases
+- [packages/shared/AGENTS.md](packages/shared/AGENTS.md): shared schemas, money rules, and sync contracts
+- [apps/ads/AGENTS.md](apps/ads/AGENTS.md): Remotion ad renderer (frozen)
