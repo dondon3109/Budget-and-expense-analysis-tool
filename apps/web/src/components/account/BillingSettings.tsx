@@ -213,11 +213,14 @@ export function BillingSettings({ user }: { user: User }) {
   const [cancellationConfirmationDelayed, setCancellationConfirmationDelayed] = useState(false);
   const [checkoutCancelledNotice, setCheckoutCancelledNotice] = useState(false);
 
+  // Derived at render so the polling effect depends on a value instead of the summary object.
+  const paymentConfirmed = isConfirmedPayPalSummary(summary);
+
   useEffect(() => {
     const pendingCheckoutKey = summary?.pendingCheckout?.createdAt;
     if (checkoutCancelled) return;
     if (!checkoutCompleted && !pendingCheckoutKey) return;
-    if (isConfirmedPayPalSummary(summary)) {
+    if (paymentConfirmed) {
       const nextSearch = new URLSearchParams(location.search);
       nextSearch.delete("checkout");
       void navigate(
@@ -366,6 +369,7 @@ export function BillingSettings({ user }: { user: User }) {
     location.pathname,
     location.search,
     navigate,
+    paymentConfirmed,
     queryClient,
     refetchBilling,
     summary?.pendingCheckout?.createdAt,
@@ -635,7 +639,7 @@ export function BillingSettings({ user }: { user: User }) {
     } finally {
       setPaymentRefreshBusy(false);
     }
-  }, [reconcileBillingCheckout, refetchBilling, workspace]);
+  }, [refetchBilling, workspace]);
 
   const paymentPending = Boolean(
     checkoutCompleted ||

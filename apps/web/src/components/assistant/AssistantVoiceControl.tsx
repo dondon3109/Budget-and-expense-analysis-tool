@@ -177,7 +177,7 @@ export function AssistantVoiceControl({
       if (recorderRef.current?.state === "recording") recorderRef.current.stop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
-  }, [workspace.key]);
+  }, [workspace]);
 
   useEffect(() => {
     if (!showNotice) return;

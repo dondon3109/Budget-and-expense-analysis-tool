@@ -108,7 +108,7 @@ export function AdminCustomerReviewsPage() {
   });
 
   const dashboard = reviews.data;
-  const filteredReviews = dashboard?.items ?? [];
+  const filteredReviews = useMemo(() => dashboard?.items ?? [], [dashboard?.items]);
 
   useEffect(() => {
     setPage(1);

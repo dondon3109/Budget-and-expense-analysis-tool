@@ -389,7 +389,7 @@ export function AssistantScreen() {
         if (mounted.current) setSending(false);
       }
     },
-    [activeThreadId, draft, sending, withToken],
+    [activeThreadId, draft, loadThreads, sending, withToken],
   );
 
   const recorder = useAssistantRecorder({
@@ -468,7 +468,7 @@ export function AssistantScreen() {
         if (mounted.current) setBusyAction(null);
       }
     },
-    [withToken],
+    [preferences?.coachingStyle, preferences?.responseDetail, withToken],
   );
 
   const loadMemory = useCallback(async () => {

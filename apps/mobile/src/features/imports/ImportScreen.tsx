@@ -409,11 +409,14 @@ export function ImportScreen() {
     [],
   );
 
-  const rowStatusColor = (row: ImportPreviewRow): ColorValue => {
-    if (row.status === "ready") return theme.colors.income;
-    if (row.status === "duplicate") return theme.colors.warning;
-    return theme.colors.danger;
-  };
+  const rowStatusColor = useCallback(
+    (row: ImportPreviewRow): ColorValue => {
+      if (row.status === "ready") return theme.colors.income;
+      if (row.status === "duplicate") return theme.colors.warning;
+      return theme.colors.danger;
+    },
+    [theme],
+  );
 
   const editRowOverride = (patch: Partial<Overrides>): void => {
     if (!editingRow) return;
@@ -502,7 +505,7 @@ export function ImportScreen() {
         </Pressable>
       );
     },
-    [overrides, theme],
+    [overrides, rowStatusColor, theme],
   );
 
   return (

@@ -423,7 +423,7 @@ export default function TransactionsScreen() {
     />
   );
 
-  const items = local.items ?? [];
+  const items = useMemo(() => local.items ?? [], [local.items]);
   const totals = useMemo(() => summarizeTransactions(items), [items]);
   const dateGroups = useMemo(() => groupTransactionsByDate(items), [items]);
   const summaryItems = useMemo(() => categorySummary(items), [items]);

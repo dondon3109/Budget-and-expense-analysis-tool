@@ -84,24 +84,6 @@ export function BillingScreen() {
     void load();
   }, [load]);
 
-  const runCheckout = useCallback(async () => {
-    setBusy("checkout");
-    setMessage(null);
-    try {
-      const { approvalUrl } = await withToken((token) =>
-        startBillingCheckout({ accessToken: token }, interval),
-      );
-      await WebBrowser.openBrowserAsync(approvalUrl, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      });
-      await reconcileLoop();
-    } catch (error) {
-      setMessage(error instanceof ApiTransportError ? error.message : "Checkout could not start.");
-    } finally {
-      setBusy(null);
-    }
-  }, [interval, withToken]);
-
   const reconcileLoop = useCallback(async (): Promise<void> => {
     for (let attempt = 0; attempt < RECONCILE_ATTEMPTS; attempt += 1) {
       try {
@@ -129,6 +111,24 @@ export function BillingScreen() {
     }
     setMessage("Payment confirmation is still in progress. Check back shortly.");
   }, [withToken]);
+
+  const runCheckout = useCallback(async () => {
+    setBusy("checkout");
+    setMessage(null);
+    try {
+      const { approvalUrl } = await withToken((token) =>
+        startBillingCheckout({ accessToken: token }, interval),
+      );
+      await WebBrowser.openBrowserAsync(approvalUrl, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      });
+      await reconcileLoop();
+    } catch (error) {
+      setMessage(error instanceof ApiTransportError ? error.message : "Checkout could not start.");
+    } finally {
+      setBusy(null);
+    }
+  }, [interval, reconcileLoop, withToken]);
 
   const runCancel = useCallback(async () => {
     setConfirmingCancel(false);

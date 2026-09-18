@@ -41,7 +41,7 @@ export function useBillingSummary(workspace: AuthenticatedWorkspace) {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [nextResetAt, queryClient, workspace.key, workspace.userId]);
+  }, [nextResetAt, queryClient, workspace]);
 
   return query;
 }

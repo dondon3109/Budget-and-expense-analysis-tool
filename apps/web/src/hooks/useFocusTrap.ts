@@ -58,8 +58,8 @@ export function useFocusTrap<T extends HTMLElement>(
       if (opener?.isConnected) opener.focus();
     };
     // Mount-only on purpose: re-running would steal focus back on every render.
-    // options are read through a ref so this effect never needs to re-run.
-  }, []);
+    // options are read through a ref, and the container ref is stable, so this never re-runs.
+  }, [containerRef]);
 
   return useCallback(
     (event: KeyboardEvent<HTMLElement>) => {

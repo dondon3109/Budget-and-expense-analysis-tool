@@ -124,7 +124,7 @@ function SpreadsheetMigrationDialog({
     queryFn: () => (workspace ? getAccounts(workspace) : Promise.resolve([])),
     enabled: Boolean(workspace),
   });
-  const accounts = accountsQuery.data ?? [];
+  const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
   const activeAccounts = useMemo(() => accounts.filter((acc) => !acc.archived), [accounts]);
 
   // Set default account if none selected

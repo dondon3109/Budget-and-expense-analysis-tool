@@ -255,7 +255,7 @@ export function AssistantVoiceConversation({
       streamRef.current?.getTracks().forEach((track) => track.stop());
       stopPlayback();
     };
-  }, [workspace.key]);
+  }, [workspace]);
 
   useEffect(() => {
     captionsEndRef.current?.scrollIntoView?.({ block: "nearest" });

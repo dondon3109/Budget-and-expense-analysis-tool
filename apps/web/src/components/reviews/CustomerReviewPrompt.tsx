@@ -98,8 +98,7 @@ export function CustomerReviewPrompt({
     return () => {
       active = false;
     };
-    // The key is stable for the authenticated account; AppShell recreates the workspace object.
-  }, [workspace.key]);
+  }, [workspace]);
 
   function dismissPrompt() {
     window.localStorage.setItem(storageKey, String(Date.now() + REMIND_LATER_MS));

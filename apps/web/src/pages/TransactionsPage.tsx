@@ -321,10 +321,7 @@ export function TransactionsPage() {
     );
   }, [searchParams, setSearchParams]);
 
-  const filters = useMemo(
-    () => filterStateOf(query),
-    [query.search, query.kind, query.accountId, query.categoryId, query.from, query.to],
-  );
+  const filters = useMemo(() => filterStateOf(query), [query]);
   const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
   const activeView = views.find((view) => view.id === activeViewId);
 
@@ -528,7 +525,7 @@ export function TransactionsPage() {
     },
   });
 
-  const categories = categoriesQuery.data ?? [];
+  const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
   const accounts = accountsQuery.data ?? [];
   const page = transactionsQuery.data;
   const hasFilters = Boolean(
