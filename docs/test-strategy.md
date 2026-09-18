@@ -37,6 +37,7 @@ Public structured data has three complementary gates:
 ## Repeatable commands
 
 ```bash
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
