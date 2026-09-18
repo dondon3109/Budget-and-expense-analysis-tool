@@ -9,6 +9,8 @@ import {
   AssistantVoiceConversation,
   mapAssistantMessagesToVoiceCaptions,
 } from "./AssistantVoiceConversation";
+import { CURRENT_ASSISTANT_VOICE_CONSENT_VERSION } from "@zoption/shared";
+
 import { ApiTransportError } from "@/api/authenticated";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 
@@ -71,7 +73,8 @@ function consentedPreferences(overrides: Record<string, unknown> = {}) {
     speechAvailable: true,
     reviewRequired: false,
     consentedAt: "2026-08-12T10:00:00.000Z",
-    consentVersion: 3,
+    // A fully consented user: the fixture tracks the shipped consent version.
+    consentVersion: CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
     transcriptionModel: "@cf/openai/whisper-large-v3-turbo",
     ttsModel: "s2.1-pro-free",
     ...overrides,
