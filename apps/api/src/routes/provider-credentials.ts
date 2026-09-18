@@ -69,11 +69,15 @@ export function createProviderCredentialRoutes(
         "Credential encryption is not configured. Set PROVIDER_CREDENTIAL_ENCRYPTION_KEY.",
       );
     }
-    const encrypted = await encryptSecret(body.data.secret, master);
+    // The row id is the additional data that binds the ciphertext to this row, so it exists
+    // before encryption.
+    const id = crypto.randomUUID();
+    const encrypted = await encryptSecret(body.data.secret, master, id);
     const last4 = getLast4(body.data.secret);
     const created = await repository.create(
       context.env,
       {
+        id,
         provider: body.data.provider,
         name: body.data.name,
         encryptedSecret: encrypted,
@@ -112,7 +116,7 @@ export function createProviderCredentialRoutes(
           "Credential encryption is not configured.",
         );
       }
-      patch.encryptedSecret = await encryptSecret(body.data.secret, master);
+      patch.encryptedSecret = await encryptSecret(body.data.secret, master, id);
       patch.apiKeyLast4 = getLast4(body.data.secret);
     }
     const updated = await repository.update(context.env, id, patch, context.get("authUser").id);
@@ -192,7 +196,7 @@ export function createProviderCredentialRoutes(
     let plain: string;
     try {
       const { decryptSecret } = await import("../provider-credentials/crypto");
-      plain = await decryptSecret(row.encrypted_secret, master);
+      plain = await decryptSecret(row.encrypted_secret, master, row.id);
     } catch {
       throw new HttpError(500, "credential_decrypt_failed", "Could not decrypt credential.");
     }
@@ -222,7 +226,7 @@ export function createProviderCredentialRoutes(
     let plain: string;
     try {
       const { decryptSecret } = await import("../provider-credentials/crypto");
-      plain = await decryptSecret(row.encrypted_secret, master);
+      plain = await decryptSecret(row.encrypted_secret, master, row.id);
     } catch {
       throw new HttpError(
         500,

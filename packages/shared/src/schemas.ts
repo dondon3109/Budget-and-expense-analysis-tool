@@ -10,6 +10,7 @@ import {
   bugReportFrequencies,
   bugReportPageContexts,
   bugReportStatuses,
+  billingFeatures,
   customerReviewModerationStatuses,
   financialGoalStatuses,
   interestFrequencies,
@@ -1142,7 +1143,7 @@ export const assistantVoiceTranscriptionResponseSchema = z
 
 export const billingUsageSchema = z
   .object({
-    feature: z.enum(["assistant_question", "file_import"]),
+    feature: z.enum(billingFeatures),
     used: z.number().int().min(0),
     limit: z.number().int().min(0),
     periodKind: z.enum(["calendar_month", "anchored_14_day"]),

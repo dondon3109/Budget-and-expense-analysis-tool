@@ -76,10 +76,14 @@ function addMicWidgetToManifest(manifest) {
     (entry) => entry.$ && entry.$["android:name"] === ACTIVITY_NAME,
   );
   if (!hasActivity) {
+    // Not exported: nothing outside this app may launch the capture activity.
+    // The widget's own PendingIntent.getActivity still works because a
+    // PendingIntent is dispatched with its creator's identity, and the
+    // activity lives in this same UID.
     application.activity.push({
       $: {
         "android:name": ACTIVITY_NAME,
-        "android:exported": "true",
+        "android:exported": "false",
         "android:excludeFromRecents": "true",
         "android:launchMode": "singleTop",
         // Deliberately no android:noHistory: the platform finishes no-history

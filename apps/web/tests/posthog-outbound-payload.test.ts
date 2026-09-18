@@ -6,6 +6,7 @@ import type { PostHog } from "posthog-js";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as PostHogAnalyticsModule from "../src/analytics/PostHogAnalytics";
+import { CONSENT_STORAGE_KEY, createConsentRecord } from "../src/consent/consent";
 
 const POSTHOG_KEY = "phc_test_public_key_123";
 const POSTHOG_HOST = "https://us.i.posthog.com";
@@ -38,6 +39,12 @@ let posthog: PostHog;
 
 beforeEach(async () => {
   outboundRequests.length = 0;
+  // Every outbound event is gated on the stored analytics decision, so these cases run as a
+  // visitor who granted it; without the record the SDK would hand nothing to its transport.
+  localStorage.setItem(
+    CONSENT_STORAGE_KEY,
+    JSON.stringify(createConsentRecord({ analytics: true, marketing: false }, "custom")),
+  );
   vi.stubEnv("VITE_POSTHOG_KEY", POSTHOG_KEY);
   vi.stubEnv("VITE_POSTHOG_HOST", POSTHOG_HOST);
   window.history.replaceState({}, "", PRIVATE_ROUTE);
@@ -51,6 +58,7 @@ afterEach(() => {
   posthog.reset();
   analytics.resetPostHogForTests();
   vi.unstubAllEnvs();
+  localStorage.clear();
   Reflect.deleteProperty(document, "referrer");
   window.history.replaceState({}, "", "/");
 });

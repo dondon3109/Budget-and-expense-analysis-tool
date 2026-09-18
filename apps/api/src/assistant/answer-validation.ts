@@ -3,12 +3,17 @@ import type { AssistantSourceMetadata, AssistantToolResultEnvelope } from "@zopt
 import type { AssistantToolExecution } from "./tools";
 import type { AssistantTurnPolicy, RequiredToolGroup } from "./turn-policy";
 
-const MONEY_PATTERN = /PHP -?\d{1,3}(?:,\d{3})*\.\d{2}/g;
-const BARE_MONEY_PATTERN = /(?<![A-Z\d])(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}(?!\d|%)/g;
+// Every numeric token in a final answer, whatever its decoration: an optional sign
+// (a minus glued to a preceding digit is a range separator, not a sign), grouped
+// thousands, and any number of decimal places.
+const NUMERIC_TOKEN_PATTERN = /(?<![\d,])-?\d[\d,]*(?:\.\d+)?/g;
 const PERCENT_PATTERN = /-?\d+(?:\.\d+)?%/g;
+// Integer slash sequences such as the 50/30/20 budgeting rule are a ratio, not an
+// amount: a decimal part anywhere in the sequence disqualifies it.
+const RATIO_PATTERN = /(?<![\d.,])\d[\d,]*(?:\/\d[\d,]*)+(?![\d.,])/g;
 const ISO_DATE_PATTERN = /\b\d{4}-\d{2}-\d{2}\b/g;
 const COUNT_OR_DURATION_PATTERN =
-  /\b\d+(?:\.\d+)?(?:\s+na)?\s+(?:transactions?|records?|categories|debts?|goals?|charges?|days?|months?|years?|payments?|transaksyon|kategorya|utang|layunin|bayarin|araw|buwan|taon|bayad)\b/gi;
+  /\b\d[\d,]*(?:\.\d+)?(?:\s+na)?\s+(?:transactions?|records?|categories|debts?|goals?|charges?|days?|months?|years?|payments?|transaksyon|kategorya|utang|layunin|bayarin|araw|buwan|taon|bayad)\b/gi;
 const SHAMING_PATTERN =
   /\b(?:irresponsible|a failure|bad with money|reckless spender|financially careless|iresponsable|bobo sa pera|aksaya sa pera|pabaya sa pera)\b/i;
 const INTERNAL_TOOL_PATTERN =
@@ -28,6 +33,14 @@ const TOOL_GROUPS: Record<string, RequiredToolGroup | undefined> = {
   calculate_debt_payoff: "debt_projection",
   calculate_savings_goal: "savings_projection",
 };
+
+const PERIOD_TOOL_NAMES = new Set([
+  "get_period_summary",
+  "get_spending_by_category",
+  "get_budget_vs_actual",
+  "detect_spending_anomalies",
+  "list_transactions",
+]);
 
 const SOURCE_LABELS: Record<string, string> = {
   get_account_balances: "Account balances",
@@ -59,11 +72,37 @@ const PESO_SIGN_PATTERN = /₱\s*/g;
  * Repairs the most common model formatting slip without weakening grounding:
  * ₱ unambiguously denotes Philippine pesos, so rewrite it to the canonical
  * "PHP " prefix before validation. Amount grounding is still enforced by
- * validateAssistantAnswer — a rewritten amount must match backend data
- * exactly — and $, €, £, ¥ stay rejected.
+ * validateAssistantAnswer — a rewritten amount must still trace to a tool
+ * result — and $, €, £, ¥ stay rejected.
  */
 export function canonicalizePesoAmounts(content: string): string {
   return content.replace(PESO_SIGN_PATTERN, "PHP ");
+}
+
+/**
+ * The value a numeric token denotes, independent of formatting: "12,345.60",
+ * "12345.6" and "012345.600" all normalize to "12345.6".
+ */
+function normalizedNumber(token: string): string {
+  const [whole = "0", fraction = ""] = token.replace(/,/g, "").split(".");
+  const sign = whole.startsWith("-") ? "-" : "";
+  const digits = (sign ? whole.slice(1) : whole).replace(/^0+(?=\d)/, "");
+  const decimals = fraction.replace(/0+$/, "");
+  return `${sign}${digits}${decimals ? `.${decimals}` : ""}`;
+}
+
+// A money-shaped numeral carries a decimal part or sits next to a currency or
+// centavo word. Plain integers in ordinary prose ("3 buckets", the 50/30/20 rule)
+// are counts or ratios, and treating them as amounts would refuse general
+// education prose the tools never produced a figure for.
+const CURRENCY_BEFORE = /(?:\bPHP|\bpesos?|\bcentavos?|₱)\s*-?\s*$/i;
+const CURRENCY_AFTER = /^\s*-?\s*(?:\bPHP|\bpesos?|\bcentavos?|₱)/i;
+
+function isMoneyToken(content: string, token: string, index: number): boolean {
+  if (token.includes(".")) return true;
+  const before = content.slice(Math.max(0, index - 16), index);
+  const after = content.slice(index + token.length, index + token.length + 16);
+  return CURRENCY_BEFORE.test(before) || CURRENCY_AFTER.test(after);
 }
 
 export function toolGroupForName(name: string): RequiredToolGroup | undefined {
@@ -77,20 +116,13 @@ export function validateToolArguments(
 ): string | null {
   if (!args || typeof args !== "object" || Array.isArray(args)) return "invalid_arguments";
   const values = args as Record<string, unknown>;
-  const periodTools = new Set([
-    "get_period_summary",
-    "get_spending_by_category",
-    "get_budget_vs_actual",
-    "detect_spending_anomalies",
-  ]);
 
-  if (periodTools.has(name) && policy.resolvedPeriod) {
-    if (values.from !== policy.resolvedPeriod.from || values.to !== policy.resolvedPeriod.to) {
-      return "untrusted_period";
-    }
-  }
-  if (name === "list_transactions" && policy.resolvedPeriod) {
-    if (values.from !== policy.resolvedPeriod.from || values.to !== policy.resolvedPeriod.to) {
+  if (PERIOD_TOOL_NAMES.has(name)) {
+    // Fail closed when no period resolved: without a trusted range the model would
+    // be choosing its own disclosure window, which is exactly what the trusted
+    // policy exists to prevent.
+    const period = policy.resolvedPeriod;
+    if (!period || values.from !== period.from || values.to !== period.to) {
       return "untrusted_period";
     }
   }
@@ -128,11 +160,13 @@ export function sourceFromExecution(
 function collectScalars(value: unknown, strings: Set<string>, numbers: Set<string>): void {
   if (typeof value === "string") {
     strings.add(value);
-    for (const match of value.matchAll(/-?\d+(?:\.\d+)?/g)) numbers.add(match[0]);
+    for (const token of value.match(NUMERIC_TOKEN_PATTERN) ?? []) {
+      numbers.add(normalizedNumber(token));
+    }
     return;
   }
   if (typeof value === "number" && Number.isFinite(value)) {
-    numbers.add(String(value));
+    numbers.add(normalizedNumber(String(value)));
     return;
   }
   if (Array.isArray(value)) {
@@ -144,10 +178,6 @@ function collectScalars(value: unknown, strings: Set<string>, numbers: Set<strin
       collectScalars(item, strings, numbers);
     }
   }
-}
-
-function normalizedPercent(value: string): string {
-  return value.replace(/%$/, "").replace(/\.0+$/, "");
 }
 
 export function validateAssistantAnswer(
@@ -185,21 +215,31 @@ export function validateAssistantAnswer(
   if (policy.resolvedPeriod) collectScalars(policy.resolvedPeriod, allowedStrings, allowedNumbers);
   collectScalars({ currentDate: policy.currentDate }, allowedStrings, allowedNumbers);
 
-  for (const amount of content.match(MONEY_PATTERN) ?? []) {
-    if (!allowedStrings.has(amount)) reasons.push("unsupported_money");
+  // Amount grounding is structural: a money-shaped numeral must trace to a tool
+  // result, the trusted period, or the current date, whatever its currency
+  // decoration or decimal count. Percentages, integer ratios, counts, and dates
+  // carry their own rules, so education prose such as the 50/30/20 rule is not
+  // read as a peso figure.
+  const amountScan = content.replace(PERCENT_PATTERN, "").replace(RATIO_PATTERN, "");
+  for (const match of amountScan.matchAll(NUMERIC_TOKEN_PATTERN)) {
+    const token = match[0];
+    if (!isMoneyToken(amountScan, token, match.index ?? 0)) continue;
+    if (!allowedNumbers.has(normalizedNumber(token))) reasons.push("unsupported_money");
   }
-  const contentWithoutMoney = content.replace(MONEY_PATTERN, "");
-  if (BARE_MONEY_PATTERN.test(contentWithoutMoney)) reasons.push("bare_money");
 
   for (const percent of content.match(PERCENT_PATTERN) ?? []) {
-    if (!allowedNumbers.has(normalizedPercent(percent))) reasons.push("unsupported_percentage");
+    if (!allowedNumbers.has(normalizedNumber(percent.replace(/%$/, "")))) {
+      reasons.push("unsupported_percentage");
+    }
   }
   for (const date of content.match(ISO_DATE_PATTERN) ?? []) {
     if (!allowedStrings.has(date)) reasons.push("unsupported_date");
   }
   for (const claim of content.match(COUNT_OR_DURATION_PATTERN) ?? []) {
-    const numeric = claim.match(/-?\d+(?:\.\d+)?/)?.[0];
-    if (numeric && !allowedNumbers.has(numeric)) reasons.push("unsupported_numeric_claim");
+    const numeric = claim.match(/\d[\d,]*(?:\.\d+)?/)?.[0];
+    if (numeric && !allowedNumbers.has(normalizedNumber(numeric))) {
+      reasons.push("unsupported_numeric_claim");
+    }
   }
 
   const filterMiss = executions.some((execution) =>
@@ -254,8 +294,8 @@ export function sanitizedAuditJson(value: unknown): string {
 
 const REPAIR_GUIDANCE: ReadonlyArray<readonly [string[], string]> = [
   [
-    ["unsupported_currency_format", "bare_money", "unsupported_money"],
-    "Write every peso amount exactly as shown, e.g. PHP 1,234.56 — never ₱, $, or bare numbers.",
+    ["unsupported_currency_format", "unsupported_money"],
+    "Copy money amounts exactly as shown, e.g. PHP 1,234.56 — never ₱, $, or a number that is not in the tool results.",
   ],
   [
     ["unsupported_percentage", "unsupported_numeric_claim", "unsupported_date"],

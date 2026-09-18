@@ -14,10 +14,12 @@ treating an authenticated audit run as a pass.
 
 ## Why not the dummy dev token?
 
-`apps/api/src/auth.ts` accepts the literal token `dummy-dev-access-token` when the
-environment is not production and the origin is localhost. It is live and
-deliberately scoped to the mobile Dev build (`apps/mobile/src/auth/session-state.tsx`),
-not dead code.
+`apps/api/src/auth.ts` accepts the literal token `dummy-dev-access-token` only when
+`DEV_ACCESS_TOKEN_ENABLED=true`, `POSTHOG_AI_ENVIRONMENT` is not `production`, and the
+request arrives on an exact loopback origin (`http://localhost`, `http://127.0.0.1` or
+`http://[::1]`). Nothing in a deployed environment sets that binding, so the shortcut is
+off unless a developer opts in. It is live and deliberately scoped to the mobile Dev
+build (`apps/mobile/src/auth/session-state.tsx`), not dead code.
 
 It is still the wrong tool for reviewing web screens: it maps every request to one
 hard-coded `DEV_USER_ID`, so it creates no real session and proves nothing about
@@ -112,7 +114,15 @@ Removing the `credsStore` key fixes it. The original file is backed up at
    `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` for the API, plus
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for the web app.
 
-   Two caveats:
+   Three caveats:
+
+   - `enable` refuses to run while `apps/api/.dev.vars` still defines a live
+     non-Supabase credential — `DEEPSEEK_API_KEY`, `FISH_AUDIO_API_KEY`,
+     `RESEND_API_KEY`, `PAYPAL_CLIENT_SECRET` and the other provider keys. It
+     replaces only the Supabase pair, so the dev Worker would keep spending those real
+     accounts. The error names every key it found; comment out the ones local work does
+     not need, or pass `--allow-live-keys` to accept the risk. `status` prints the
+     same list as a warning.
 
    - `enable` refuses to run while a backup exists, and that is deliberate: run
      `disable` first. Do **not** use `--force` — it overwrites the cloud backup with

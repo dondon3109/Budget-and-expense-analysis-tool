@@ -73,7 +73,7 @@ Requirements: Node.js 24+ and pnpm 11.
    pnpm dlx supabase db push --linked
    ```
 
-   This creates the public `avatars` bucket. Avatar files can be read by anyone with their URL, while Storage policies restrict uploads and deletes to each authenticated user's own folder.
+   This creates the private `avatars` bucket. Avatar files are served by the Worker's public `/api/public/avatars/*` route, or read by their owner through the authenticated Storage API, while Storage policies restrict uploads and deletes to each authenticated user's own folder.
 
 3. Create `apps/web/.env.local` with the browser values from `.env.example`.
 4. Set the matching `SUPABASE_URL` in `apps/api/wrangler.jsonc` or an ignored local Wrangler configuration, and set the same project's browser-safe `SUPABASE_PUBLISHABLE_KEY` in ignored `apps/api/.dev.vars`. `/health` validates both before reporting ready.

@@ -22,6 +22,7 @@ export interface Bindings {
   RESEND_API_KEY?: string;
   WEB_APP_URL?: string;
   DEV_USER_ID?: string;
+  DEV_ACCESS_TOKEN_ENABLED?: string;
   EMAIL_FROM?: string;
   BUG_REPORT_TO?: string;
   DEEPSEEK_API_KEY?: string;
@@ -47,6 +48,7 @@ export interface Bindings {
   ASSISTANT_VOICE_ENABLED?: string;
   ASSISTANT_VOICE_REVIEW_REQUIRED?: string;
   ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS?: string;
+  ASSISTANT_VOICE_STREAM_TIMEOUT_MS?: string;
   RECEIPT_ENTRY_ENABLED?: string;
   RECEIPT_VISION_MODEL?: string;
   RECEIPT_VISION_PROVIDER_TIMEOUT_MS?: string;

@@ -14,6 +14,14 @@ export const FALLBACK_USD_TO_PHP = 59;
 
 const FETCH_TIMEOUT_MS = 5000;
 
+/**
+ * Plausible PHP-per-USD band for the stored rate. The provider is third-party input:
+ * a rate outside this band is a provider fault (or a hostile response) and must never
+ * become the conversion basis every USD balance is read through.
+ */
+const MIN_USD_TO_PHP = 20;
+const MAX_USD_TO_PHP = 200;
+
 export interface FxRateResult {
   date: string;
   usdToPhp: number;
@@ -34,6 +42,9 @@ export async function fetchUsdToPhp(now = new Date()): Promise<FxRateResult> {
       throw new Error("FX provider returned an unexpected payload");
     }
     const usdToPhp = payload.rates.PHP;
+    if (!Number.isFinite(usdToPhp) || usdToPhp < MIN_USD_TO_PHP || usdToPhp > MAX_USD_TO_PHP) {
+      throw new Error("FX provider returned an implausible USD/PHP rate");
+    }
     const date = now.toISOString().slice(0, 10);
     return { date, usdToPhp, source: FX_RATE_SOURCE, fetchedAt: now.toISOString() };
   } finally {

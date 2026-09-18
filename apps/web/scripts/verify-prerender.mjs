@@ -3,12 +3,12 @@ import { resolve } from "node:path";
 
 import release from "../src/releases/androidRelease.json" with { type: "json" };
 
-// Keep this narrow list aligned with PAYPAL_CSP_SOURCES in deployment-config.ts.
-const APPROVED_CSP_WILDCARD_SOURCES = new Set([
-  "https://*.paypal.com",
-  "https://*.paypalobjects.com",
-  "https://*.venmo.com",
-]);
+// No CSP wildcard source is approved, so the verifier below fails on any "*" the build
+// emits. Exact hosts only: this origin keeps the Supabase refresh token in localStorage, so
+// a compromised PayPal subdomain would be a full account takeover. deployment-config.ts
+// applies the same rule while it builds the policy, and this second, independent check stays
+// empty on purpose — a shared approval list is how a wildcard re-widens unnoticed.
+const APPROVED_CSP_WILDCARD_SOURCES = new Set();
 
 function assert(condition, message) {
   if (!condition) throw new Error(`Prerender verification failed: ${message}`);

@@ -13,6 +13,27 @@ import {
   startMobileVoiceStream,
 } from "./voice-stream";
 
+/** Ticket mint response shape; only `ticket` is consumed by the client. */
+function ticketResponse(ticket: string) {
+  return {
+    ok: true,
+    status: 200,
+    text: () => Promise.resolve(JSON.stringify({ ticket, expiresAt: "2026-09-18T00:00:00.000Z" })),
+  } as unknown as Response;
+}
+
+const originalFetch = global.fetch;
+let fetchMock: jest.Mock;
+
+beforeEach(() => {
+  fetchMock = jest.fn(async () => ticketResponse("ticket-1"));
+  (global as unknown as { fetch: unknown }).fetch = fetchMock;
+});
+
+afterEach(() => {
+  (global as unknown as { fetch: unknown }).fetch = originalFetch;
+});
+
 describe("mobile voice-stream", () => {
   describe("arrayBufferToBase64", () => {
     it("converts empty ArrayBuffer to empty string", () => {
@@ -38,7 +59,7 @@ describe("mobile voice-stream", () => {
   });
 
   describe("openMobileVoiceStreamWebSocket", () => {
-    it("constructs ws url from publicConfig.apiUrl and appends token and default lang=auto", () => {
+    it("constructs ws url from publicConfig.apiUrl and appends the ticket and lang", () => {
       class MockWebSocket {
         url: string;
         constructor(url: string) {
@@ -49,28 +70,26 @@ describe("mobile voice-stream", () => {
       (global as any).WebSocket = MockWebSocket;
 
       try {
-        const ws = openMobileVoiceStreamWebSocket(
-          "test-mobile-token-xyz",
-        ) as unknown as MockWebSocket;
+        const ws = openMobileVoiceStreamWebSocket("test-ticket-xyz") as unknown as MockWebSocket;
         expect(ws.url).toContain(
-          "/api/app/assistant/voice/stream?token=test-mobile-token-xyz&lang=auto",
+          "/api/app/assistant/voice/stream?ticket=test-ticket-xyz&lang=auto",
         );
         expect(ws.url.startsWith("ws:") || ws.url.startsWith("wss:")).toBe(true);
 
         const wsFil = openMobileVoiceStreamWebSocket(
-          "test-mobile-token-xyz",
+          "test-ticket-xyz",
           "fil",
         ) as unknown as MockWebSocket;
         expect(wsFil.url).toContain(
-          "/api/app/assistant/voice/stream?token=test-mobile-token-xyz&lang=fil",
+          "/api/app/assistant/voice/stream?ticket=test-ticket-xyz&lang=fil",
         );
 
         const wsEn = openMobileVoiceStreamWebSocket(
-          "test-mobile-token-xyz",
+          "test-ticket-xyz",
           "en",
         ) as unknown as MockWebSocket;
         expect(wsEn.url).toContain(
-          "/api/app/assistant/voice/stream?token=test-mobile-token-xyz&lang=en",
+          "/api/app/assistant/voice/stream?ticket=test-ticket-xyz&lang=en",
         );
       } finally {
         global.WebSocket = originalWs;
@@ -163,6 +182,37 @@ describe("mobile voice-stream", () => {
       expect(finalTranscript).toBe("lunch 15 dollars");
     });
 
+    it("mints a fresh ticket for every connect and keeps the access token out of the URL", async () => {
+      let minted = 0;
+      fetchMock.mockImplementation(async () => ticketResponse(`ticket-${(minted += 1)}`));
+
+      const first = await startMobileVoiceStream("auth-token-123", {
+        onPartial: jest.fn(),
+        onFinal: jest.fn(),
+      });
+      const second = await startMobileVoiceStream("auth-token-123", {
+        onPartial: jest.fn(),
+        onFinal: jest.fn(),
+      });
+
+      // One mint per connect: a ticket is single use and expires in 60s.
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const firstCall = fetchMock.mock.calls[0] ?? [];
+      expect(String(firstCall[0])).toMatch(/\/api\/app\/assistant\/voice\/ticket$/);
+      expect((firstCall[1] as RequestInit).method).toBe("POST");
+      expect(((firstCall[1] as RequestInit).headers as Record<string, string>).Authorization).toBe(
+        "Bearer auth-token-123",
+      );
+
+      expect(FakeWebSocket.instances[0]!.url).toContain("?ticket=ticket-1&lang=auto");
+      expect(FakeWebSocket.instances[1]!.url).toContain("?ticket=ticket-2&lang=auto");
+      for (const socket of FakeWebSocket.instances) {
+        expect(socket.url).not.toContain("auth-token-123");
+      }
+      first.cancel();
+      second.cancel();
+    });
+
     it("buffers audio frames while websocket is connecting and flushes on open", async () => {
       const audioModule = jest.requireMock("expo-audio") as {
         AudioModule: { AudioStream?: unknown };
@@ -192,8 +242,8 @@ describe("mobile voice-stream", () => {
         onFinal: jest.fn(),
       });
 
-      // Let stream.start() resolve and WebSocket instantiate
-      await Promise.resolve();
+      // Let stream.start() resolve, the ticket mint settle, and the socket open
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // AudioStream starts capturing and buffering before WebSocket opens
       expect(bufferCallback).not.toBeNull();

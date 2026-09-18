@@ -29,6 +29,11 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_sha }}
+          # This job holds contents: write and runs install scripts, so it must not leave a
+          # push-capable credential in .git/config. Publishing goes through the GitHub API with
+          # GITHUB_TOKEN, and the anonymous "git ls-remote" in Verify release source works
+          # because this repository is public.
+          persist-credentials: false
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: 11.9.0
@@ -78,6 +83,22 @@ jobs:
           node scripts/export-production-deployment-env.mjs
           apps/api/node_modules/.bin/wrangler deploy --dry-run --outdir /tmp/zoption-worker-dist \
             --config apps/api/wrangler.deploy.jsonc --env production
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Verify the credential master key is a production Worker secret
+        if: steps.next_release.outputs.release_needed == 'true'
+        working-directory: apps/api
+        run: |
+          if ! secrets="$(./node_modules/.bin/wrangler secret list --config wrangler.deploy.jsonc --env production 2>&1)"; then
+            echo "::error::Could not list production Worker secrets: $secrets"
+            exit 1
+          fi
+          if ! grep -qE '"name"[[:space:]]*:[[:space:]]*"PROVIDER_CREDENTIAL_ENCRYPTION_KEY"' <<<"$secrets"; then
+            echo "::error::PROVIDER_CREDENTIAL_ENCRYPTION_KEY is not set as a production Worker secret, so no provider credential can be saved or read. Store it with: openssl rand -base64 32 | pnpm --filter @zoption/api exec wrangler secret put PROVIDER_CREDENTIAL_ENCRYPTION_KEY --config wrangler.deploy.jsonc --env production"
+            exit 1
+          fi
+          echo "PROVIDER_CREDENTIAL_ENCRYPTION_KEY is present on the production Worker."
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

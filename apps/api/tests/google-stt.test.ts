@@ -54,7 +54,8 @@ describe("createGoogleSttProvider", () => {
 
       expect(interceptedUrl).toContain("generativelanguage.googleapis.com");
       expect(interceptedUrl).toContain("gemini-3.5-transcribe:generateContent");
-      expect(interceptedUrl).toContain("key=AIzaSySecretVoiceKey9999");
+      expect(interceptedUrl).not.toContain("key=");
+      expect(interceptedHeaders["x-goog-api-key"]).toBe("AIzaSySecretVoiceKey9999");
       expect(interceptedBody.contents[0].parts[1].inlineData.mimeType).toBe("audio/webm");
       expect(interceptedBody.contents[0].parts[0].text).toContain("in English");
       expect(res.text).toBe("Spent fifty pesos at Jollibee");
@@ -100,9 +101,11 @@ describe("createGoogleSttProvider", () => {
   it("maps gemini-3.5-transcribe-live to gemini-2.0-flash on REST batch endpoint", async () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";
+    let interceptedHeaders: any = null;
 
-    globalThis.fetch = vi.fn(async (url: string) => {
+    globalThis.fetch = vi.fn(async (url: string, init: any) => {
       interceptedUrl = String(url);
+      interceptedHeaders = init.headers;
       return new Response(
         JSON.stringify({
           candidates: [
@@ -127,7 +130,8 @@ describe("createGoogleSttProvider", () => {
 
       expect(interceptedUrl).toContain("generativelanguage.googleapis.com");
       expect(interceptedUrl).toContain("gemini-2.0-flash:generateContent");
-      expect(interceptedUrl).toContain("key=AIzaSySecretVoiceKey9999");
+      expect(interceptedUrl).not.toContain("key=");
+      expect(interceptedHeaders["x-goog-api-key"]).toBe("AIzaSySecretVoiceKey9999");
       expect(res.text).toBe("Fallback transcribed speech");
     } finally {
       globalThis.fetch = originalFetch;
@@ -137,9 +141,11 @@ describe("createGoogleSttProvider", () => {
   it("supports JSON secret with apiKey and projectId for Speech V2", async () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";
+    let interceptedHeaders: any = null;
 
-    globalThis.fetch = vi.fn(async (url: string) => {
+    globalThis.fetch = vi.fn(async (url: string, init: any) => {
       interceptedUrl = String(url);
+      interceptedHeaders = init.headers;
       return new Response(
         JSON.stringify({
           results: [
@@ -165,14 +171,15 @@ describe("createGoogleSttProvider", () => {
       expect(interceptedUrl).toContain(
         "speech.googleapis.com/v2/projects/test-gcp-project/locations/us/recognizers/_:recognize",
       );
-      expect(interceptedUrl).toContain("key=AIzaSyKey1234");
+      expect(interceptedUrl).not.toContain("key=");
+      expect(interceptedHeaders["x-goog-api-key"]).toBe("AIzaSyKey1234");
       expect(res.text).toBe("Speech V2 transcribed text");
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
 
-  it("routes AI Studio Auth keys via ?key= on Speech V2", async () => {
+  it("routes AI Studio Auth keys via the x-goog-api-key header on Speech V2", async () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";
     let interceptedHeaders: any = null;
@@ -205,7 +212,10 @@ describe("createGoogleSttProvider", () => {
       expect(interceptedUrl).toContain(
         "speech.googleapis.com/v2/projects/test-gcp-project/locations/us/recognizers/_:recognize",
       );
-      expect(interceptedUrl).toContain("key=AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ");
+      expect(interceptedUrl).not.toContain("key=");
+      expect(interceptedHeaders["x-goog-api-key"]).toBe(
+        "AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ",
+      );
       expect(interceptedHeaders["Authorization"]).toBeUndefined();
       expect(res.text).toBe("V2 AQ transcribed text");
     } finally {
@@ -213,12 +223,14 @@ describe("createGoogleSttProvider", () => {
     }
   });
 
-  it("routes raw AI Studio Auth keys via ?key= on Speech V1 fallback", async () => {
+  it("routes raw AI Studio Auth keys via the x-goog-api-key header on Speech V1 fallback", async () => {
     const originalFetch = globalThis.fetch;
     let interceptedUrl = "";
+    let interceptedHeaders: any = null;
 
-    globalThis.fetch = vi.fn(async (url: string) => {
+    globalThis.fetch = vi.fn(async (url: string, init: any) => {
       interceptedUrl = String(url);
+      interceptedHeaders = init.headers;
       return new Response(
         JSON.stringify({
           results: [
@@ -240,7 +252,10 @@ describe("createGoogleSttProvider", () => {
       const res = await provider.transcribe({} as any, audioBlob as any);
 
       expect(interceptedUrl).toContain("speech.googleapis.com/v1/speech:recognize");
-      expect(interceptedUrl).toContain("key=AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ");
+      expect(interceptedUrl).not.toContain("key=");
+      expect(interceptedHeaders["x-goog-api-key"]).toBe(
+        "AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ",
+      );
       expect(res.text).toBe("V1 AQ transcribed text");
       expect(res.languageCode).toBe("en-US");
     } finally {

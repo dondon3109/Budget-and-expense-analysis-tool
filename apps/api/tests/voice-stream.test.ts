@@ -7,13 +7,24 @@ import { providerRegistry } from "../src/provider-registry";
 
 beforeEach(() => vi.restoreAllMocks());
 
-function makeApp(sttCfg, bridgeUrl = "wss://bridge.example.com/stream") {
-  const routes = createVoiceStreamRoutes();
+function makeApp(sttCfg, bridgeUrl = "wss://bridge.example.com/stream", envOverrides = {}) {
+  // These tests exercise the transport, so the consent gate the route runs before the upgrade is
+  // stubbed as satisfied and the env answers the Pro entitlement query. Both gates and the
+  // free-tenant refusal are covered in voice-ticket.test.ts.
+  const routes = createVoiceStreamRoutes({
+    requireConsent: vi.fn(async () => undefined),
+  } as any);
   const app = new Hono();
   app.use("*", async (c, next) => {
     (c as any).set("authUser", { id: "user-1" });
     (c as any).set("tenant", { tenantId: "tenant-1" });
-    (c as any).env = { DB: {}, STT_BRIDGE_URL: bridgeUrl, _mockSttCfg: sttCfg };
+    (c as any).env = {
+      // The Pro gate reads one entitlement row; the transport tests below are about the socket.
+      DB: { prepare: () => ({ bind: () => ({ first: async () => ({ source: "paypal" }) }) }) },
+      STT_BRIDGE_URL: bridgeUrl,
+      _mockSttCfg: sttCfg,
+      ...envOverrides,
+    };
     await next();
   });
   vi.spyOn(providerRegistry, "getActive").mockImplementation(async (env, service) => {
@@ -30,12 +41,14 @@ function makeApp(sttCfg, bridgeUrl = "wss://bridge.example.com/stream") {
 
 describe("websocketUpgradeUrl", () => {
   it("rewrites wss/ws to https/http so Workers fetch() can upgrade", () => {
+    // Query strings survive the rewrite, but the Gemini key is never one of them: it travels in
+    // the outgoing x-goog-api-key header (see the Gemini Live case below).
     expect(
       websocketUpgradeUrl(
-        "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=AIza",
+        "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?alt=json",
       ),
     ).toBe(
-      "https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=AIza",
+      "https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?alt=json",
     );
     expect(websocketUpgradeUrl("ws://bridge.example.com/stream")).toBe(
       "http://bridge.example.com/stream",
@@ -145,6 +158,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
     });
 
     let interceptedWsUrl = "";
+    let interceptedGeminiKey: string | null = null;
     const originalFetch = globalThis.fetch;
     const upstreamHandlers = new Map();
     const serverHandlers = new Map();
@@ -156,8 +170,9 @@ describe("GET /api/app/assistant/voice/stream", () => {
       close: vi.fn(),
       accept: vi.fn(),
     };
-    globalThis.fetch = vi.fn(async (url: string) => {
+    globalThis.fetch = vi.fn(async (url: string, init: any) => {
       interceptedWsUrl = String(url);
+      interceptedGeminiKey = new Headers(init?.headers).get("x-goog-api-key");
       return {
         status: 101,
         webSocket: mockWs,
@@ -201,7 +216,9 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(interceptedWsUrl.startsWith("https://")).toBe(true);
       expect(interceptedWsUrl).not.toMatch(/^wss:/);
       expect(interceptedWsUrl).toContain("generativelanguage.googleapis.com");
-      expect(interceptedWsUrl).toContain("key=AIzaSyFakeGoogleApiKey1234567890");
+      // The key is a header now: a query string reaches edge and Worker logs.
+      expect(interceptedWsUrl).not.toContain("key=");
+      expect(interceptedGeminiKey).toBe("AIzaSyFakeGoogleApiKey1234567890");
       expect(mockWs.send).toHaveBeenCalledWith(
         expect.stringContaining("models/gemini-3.5-transcribe-live"),
       );
@@ -258,6 +275,66 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(JSON.parse(serverWs.send.mock.calls.at(-1)[0])).toMatchObject({
         type: "final",
         transcript: "buy groceries today",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete (globalThis as any).WebSocketPair;
+    }
+  });
+
+  it("closes the session at the maximum duration instead of leaving it open", async () => {
+    const sttCfg = {
+      id: "cfg-max-duration",
+      service: "stt",
+      provider: "google",
+      model: "gemini-3.5-transcribe-live",
+      displayName: "Gemini Live",
+      credentialId: "cred-google-key",
+      enabled: true,
+      isActive: true,
+    };
+    const app = makeApp(sttCfg, "", { ASSISTANT_VOICE_STREAM_TIMEOUT_MS: "500" });
+    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
+      secret: "AIzaSyFakeGoogleApiKey1234567890",
+      last4: "7890",
+      source: "db",
+    });
+
+    const upstreamWs = {
+      readyState: 1,
+      binaryType: "blob",
+      send: vi.fn(),
+      addEventListener: vi.fn(),
+      close: vi.fn(),
+      accept: vi.fn(),
+    };
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async () => ({ status: 101, webSocket: upstreamWs })) as any;
+
+    const serverWs: any = {
+      binaryType: "blob",
+      accept: vi.fn(),
+      addEventListener: vi.fn(),
+      close: vi.fn(),
+      send: vi.fn(),
+      readyState: 1,
+    };
+    (globalThis as any).WebSocketPair = class {
+      0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
+      1 = serverWs;
+    };
+
+    try {
+      const res = await app.request("/stream", {
+        method: "GET",
+        headers: { Upgrade: "websocket", Connection: "Upgrade" },
+      });
+      expect(res.status).toBe(101);
+      expect(serverWs.close).not.toHaveBeenCalled();
+
+      // The ceiling closes with the normal code, so the client reconnects rather than erroring.
+      await vi.waitFor(() => expect(serverWs.close).toHaveBeenCalledWith(1000, "max_duration"), {
+        timeout: 3_000,
       });
     } finally {
       globalThis.fetch = originalFetch;

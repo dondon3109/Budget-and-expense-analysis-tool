@@ -92,11 +92,15 @@ export async function snapshotMobileSync(
         ON groups.tenant_id = changes.tenant_id AND groups.sequence = changes.sequence
       WHERE changes.tenant_id = ? AND changes.sequence <= ?
     ), grouped AS (
-      SELECT ranked.*, (
-        SELECT COUNT(*) FROM ranked partner
-        WHERE partner.atomicGroupId = ranked.atomicGroupId
-          AND partner.entityRank = 1 AND partner.operation = 'upsert'
-      ) AS groupSize
+      -- A window aggregate, not a correlated COUNT, which rescanned every ranked row
+      -- per row. A NULL atomic group counts as zero, matching the correlated form where
+      -- NULL = NULL never matched.
+      SELECT ranked.*,
+        CASE WHEN ranked.atomicGroupId IS NULL THEN 0
+          ELSE SUM(
+            CASE WHEN ranked.entityRank = 1 AND ranked.operation = 'upsert' THEN 1 ELSE 0 END
+          ) OVER (PARTITION BY ranked.atomicGroupId)
+        END AS groupSize
       FROM ranked
     ), ordered AS (
       SELECT sequence, entityType, entityId, rowRevision, operation, payloadJson,

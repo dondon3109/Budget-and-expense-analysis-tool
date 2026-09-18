@@ -3,6 +3,8 @@ import type { MiddlewareHandler } from "hono";
 
 import type { AppEnvironment, AuthUser, Bindings } from "./types";
 import type { TenantResolver } from "./db/tenants";
+import { voiceTicketRepository, type VoiceTicketRepository } from "./db/voice-tickets";
+import { HttpError } from "./errors";
 
 export interface AuthVerifier {
   verify(env: Bindings, token: string): Promise<AuthUser>;
@@ -82,46 +84,99 @@ function unauthorized(context: Parameters<MiddlewareHandler<AppEnvironment>>[0],
   return context.json({ error: code }, 401);
 }
 
+/**
+ * Local-development opt-in. The dummy access token is honoured only when this binding is "true"
+ * and the request arrives on a loopback host, so no deployed origin configuration can arm it.
+ */
+function isLocalDevEnabled(env: Bindings | undefined): boolean {
+  return env?.DEV_ACCESS_TOKEN_ENABLED === "true";
+}
+
+/**
+ * An exact loopback origin, never a hostname that merely starts with one: a
+ * `http://localhost-cdn.example.com` origin must not qualify as local development.
+ */
+export function isLoopbackOrigin(origin: string | undefined): boolean {
+  if (!origin) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    return false;
+  }
+  return (
+    parsed.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname)
+  );
+}
+
 export function createAuthMiddleware(
   verifier: AuthVerifier,
   tenantResolver: TenantResolver,
   skipTenantResolution: (path: string, method: string) => boolean = () => false,
+  voiceTickets: VoiceTicketRepository = voiceTicketRepository,
 ): MiddlewareHandler<AppEnvironment> {
   return async (context, next) => {
     const authorization = context.req.header("Authorization");
-    const match = authorization?.match(/^Bearer\s+(\S+)$/i);
-    let token = match?.[1];
-    if (!token && context.req.header("Upgrade")?.toLowerCase() === "websocket") {
-      token =
-        context.req.query("token") ||
-        context.req.header("Sec-WebSocket-Protocol")?.split(",")[0]?.trim();
-    }
-    if (!token) return unauthorized(context, "authentication_required");
+    const token = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
+    const isWebSocket = context.req.header("Upgrade")?.toLowerCase() === "websocket";
 
-    let user: AuthUser;
-    const isLocalDevToken =
+    // A browser cannot set an Authorization header on a WebSocket handshake, so the stream
+    // redeems a single-use ticket from the query string instead of carrying the access token in
+    // the URL. Only a real upgrade may redeem one, and redemption deletes the row, so a replayed
+    // or expired ticket is rejected here with the same 401 shape as a bad token.
+    let ticketUserId: string | null = null;
+    if (!token && isWebSocket) {
+      const ticket = context.req.query("ticket")?.trim();
+      if (ticket) {
+        ticketUserId = await voiceTickets.consume(context.env, ticket);
+        if (!ticketUserId) return unauthorized(context, "invalid_voice_ticket");
+      }
+    }
+    if (!token && !ticketUserId) return unauthorized(context, "authentication_required");
+
+    let user: AuthUser | null = null;
+    const devToken =
       token === "dummy-dev-access-token" &&
-      context.env.POSTHOG_AI_ENVIRONMENT !== "production" &&
-      Boolean(
-        context.env.WEB_APP_URL?.includes("localhost") ||
-        context.env.ALLOWED_ORIGINS?.includes("localhost"),
-      );
-    if (isLocalDevToken) {
+      isLocalDevEnabled(context.env) &&
+      context.env?.POSTHOG_AI_ENVIRONMENT !== "production" &&
+      isLoopbackOrigin(new URL(context.req.url).origin);
+    if (devToken) {
       user = {
-        id: context.env.DEV_USER_ID?.trim() || "00000000-0000-4000-8000-000000000001",
+        id: context.env?.DEV_USER_ID?.trim() || "00000000-0000-4000-8000-000000000001",
         email: "dummy@zoption.local",
       };
-    } else {
+    } else if (token) {
       try {
         user = await verifier.verify(context.env, token);
       } catch (error) {
         if (error instanceof AuthConfigurationError) throw error;
         return unauthorized(context, "invalid_access_token");
       }
+    } else if (ticketUserId) {
+      user = { id: ticketUserId };
     }
+    if (!user) return unauthorized(context, "authentication_required");
 
     context.set("authUser", user);
-    context.set("accessToken", token);
+    // A ticket authenticates one WebSocket connect, not the whole API surface.
+    if (token) context.set("accessToken", token);
+
+    // A deleted identity keeps its tombstone forever, so every authenticated path has to honour
+    // it. This is the only enforcement point: /api/app/admin/* and DELETE /api/app/account skip
+    // tenant resolution, so a retained token would otherwise be accepted on those paths.
+    // The skip branch below needs no D1 binding at all, which only a test harness has: readiness
+    // requires DB, so a deployment that serves traffic always runs the check.
+    const database = context.env?.DB;
+    if (typeof database?.prepare === "function") {
+      const deleted = await database
+        .prepare("SELECT 1 AS found FROM account_deletions WHERE user_id = ? LIMIT 1")
+        .bind(user.id)
+        .first<{ found: number }>();
+      if (deleted) {
+        throw new HttpError(410, "account_deleted", "This account has been deleted.");
+      }
+    }
+
     if (!skipTenantResolution(context.req.path, context.req.method)) {
       context.set("tenant", await tenantResolver.resolve(context.env, user));
     }

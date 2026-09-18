@@ -52,6 +52,12 @@ export interface SessionContextValue extends SessionSnapshot {
 
 export interface SignOutOptions {
   discardUnsyncedChanges?: boolean;
+  /**
+   * Keep the encrypted workspace on the device. Set only by the forced
+   * sign-out paths where the Worker already rejected the credential (expired
+   * 401, deleted 410, identity mismatch) and the local copy is preserved for
+   * recovery. A user-initiated sign-out never sets it.
+   */
   preserveLocalWorkspace?: boolean;
 }
 
@@ -108,11 +114,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (initializedRef.current && previousSubject !== nextSubject) {
       clearUserScopedRuntimeState();
     }
-    if (nextSubject && previousSubject !== nextSubject) {
-      // Supabase user.id is a stable authenticated primary key. Email remains
-      // a person property and is never attached to crash-event properties.
-      void telemetry.identify(nextSubject, { email: session?.user.email });
-    } else if (!nextSubject && previousSubject) {
+    // Telemetry is never given the Supabase subject or email: identifying a
+    // finance-app user to the vendor is both unnecessary and outside the
+    // threat model. Only sign-out propagates, to drop whatever anonymous id
+    // PostHog minted for this launch.
+    if (!nextSubject && previousSubject) {
       void telemetry.reset();
     }
     subjectRef.current = nextSubject;
@@ -142,7 +148,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
             return;
           }
           if (storedSubject && storedSubject === DUMMY_DEV_SUBJECT) {
-            void telemetry.identify(storedSubject);
             subjectRef.current = storedSubject;
             isDummySessionRef.current = true;
             initializedRef.current = true;
@@ -183,7 +188,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
           return;
         }
         if (stored && stored === DUMMY_DEV_SUBJECT) {
-          void telemetry.identify(stored);
           subjectRef.current = stored;
           isDummySessionRef.current = true;
           initializedRef.current = true;
@@ -225,7 +229,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (initializedRef.current && subjectRef.current !== DUMMY_DEV_SUBJECT) {
       clearUserScopedRuntimeState();
     }
-    void telemetry.identify(DUMMY_DEV_SUBJECT);
     subjectRef.current = DUMMY_DEV_SUBJECT;
     isDummySessionRef.current = true;
     initializedRef.current = true;
@@ -354,8 +357,28 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (isDummySessionRef.current) {
       await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
     } else if (supabase) {
-      const { error } = await getSupabaseClient().auth.signOut({ scope: "local" });
-      if (error) throw error;
+      const client = getSupabaseClient();
+      if (options.preserveLocalWorkspace) {
+        // Forced sign-out: the Worker already rejected the credential, so
+        // there is nothing left to revoke and the encrypted workspace stays
+        // for recovery. This device alone is cleared.
+        const { error } = await client.auth.signOut({ scope: "local" });
+        if (error) throw error;
+      } else {
+        // A user-initiated sign-out revokes the refresh token server-side
+        // (auth-js's default global scope), so a copied refresh token stops
+        // minting access tokens.
+        const { error } = await client.auth.signOut({ scope: "global" });
+        if (error) {
+          // Revocation needs Supabase, and offline is normal on mobile. A user
+          // who asked to sign out must never stay signed in here, so clear
+          // this device as well. Revocation is best-effort in that case, and
+          // the fallback is not surfaced as an error: the user's intent - no
+          // longer being signed in - was carried out.
+          const { error: localError } = await client.auth.signOut({ scope: "local" });
+          if (localError) throw localError;
+        }
+      }
     }
     isDummySessionRef.current = false;
     clearUserScopedRuntimeState();

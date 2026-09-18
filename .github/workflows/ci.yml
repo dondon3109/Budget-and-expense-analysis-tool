@@ -29,7 +29,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # wrangler and the rest of the deploy toolchain are devDependencies, so the production
+      # audit alone does not cover the tools that run with the Cloudflare token.
       - run: pnpm audit --prod --audit-level high
+      - run: pnpm audit --dev --audit-level high
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck

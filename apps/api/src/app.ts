@@ -27,7 +27,12 @@ import { createAdminProviderConfigRoutes } from "./routes/admin-provider-configs
 import { createProviderCredentialRoutes } from "./routes/provider-credentials";
 import { createVoiceStreamRoutes } from "./routes/voice-stream";
 import { createAccountDeletionService, type AccountDeletionService } from "./account-deletion";
-import { createAuthMiddleware, supabaseAuthVerifier, type AuthVerifier } from "./auth";
+import {
+  createAuthMiddleware,
+  isLoopbackOrigin,
+  supabaseAuthVerifier,
+  type AuthVerifier,
+} from "./auth";
 import { accountRepository, type AccountRepository } from "./db/accounts";
 import {
   assistantRepository,
@@ -335,13 +340,11 @@ export function createApp(options: AppOptions = {}) {
     const requestOrigin = context.req.header("Origin");
     const requestUrl = new URL(context.req.url);
     const isSameOrigin = requestOrigin === requestUrl.origin;
+    // Local development may call the API from a loopback origin at any port. The hostname is
+    // compared exactly: prefixes such as http://192.168. or http://10. are registrable hostnames
+    // (192.168.example.com), not IP literals, and must never be trusted.
     const isLocalDev =
-      context.env?.POSTHOG_AI_ENVIRONMENT !== "production" &&
-      requestOrigin !== undefined &&
-      (requestOrigin.startsWith("http://localhost:") ||
-        requestOrigin.startsWith("http://127.0.0.1:") ||
-        requestOrigin.startsWith("http://192.168.") ||
-        requestOrigin.startsWith("http://10."));
+      context.env?.POSTHOG_AI_ENVIRONMENT !== "production" && isLoopbackOrigin(requestOrigin);
 
     if (requestOrigin && !isSameOrigin && !isLocalDev && !allowedOrigins.includes(requestOrigin)) {
       return context.json({ error: "origin_not_allowed" }, 403);
@@ -763,7 +766,7 @@ export function createApp(options: AppOptions = {}) {
     createProviderCredentialRoutes(platformAdminService),
   );
   app.route("/api/app/assistant/voice", createAssistantVoiceRoutes(assistantVoiceService));
-  app.route("/api/app/assistant/voice", createVoiceStreamRoutes());
+  app.route("/api/app/assistant/voice", createVoiceStreamRoutes(assistantVoiceService));
   app.route("/api/app/assistant", createAssistantRoutes(assistantService));
   app.route("/api/app/transactions", createTransactionRoutes(transactionStore));
   app.route("/api/app/reviews", createAuthenticatedCustomerReviewRoutes(customerReviews));

@@ -27,8 +27,9 @@ overrides:
 
 auditConfig:
   ignoreGhsas:
-    - GHSA-w3rx-r6r6-pgpr
-    - GHSA-5p2g-fcmc-qvqq
+    # Paired with patches/decode-uri-component@0.2.2.patch, which backports the 0.5.0 fix
+    # for this DoS. Keep the patch and this ignore together; the ignore without the patch
+    # would hide a real advisory.
     - GHSA-vcc3-ghjq-m6fr
 
 minimumReleaseAgeExclude:

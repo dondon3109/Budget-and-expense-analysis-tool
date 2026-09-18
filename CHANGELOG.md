@@ -4,6 +4,23 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Security
+
+- Receipt scanning, voice transcription, spoken replies and PDF entry now require Pro. These call a
+  billable provider on every request and previously had no entitlement check at all, only a daily rate
+  limit. The free plan allowance is zero; Pro keeps the existing daily allowances.
+- A refund, chargeback or dispute now ends Pro for the period it reverses. Previously only a
+  cancellation did, so a reversed payment left the subscription active.
+- Signing out on Android now revokes the session on the server, not just on the device. It falls back
+  to clearing the device when the phone is offline.
+
+### Fixed
+
+- Assistant answers can no longer state a peso amount that cannot be traced to your own data, in any
+  formatting.
+- An overdrawn savings account no longer earns interest; interest is only credited on a positive balance.
+- Profile photo changes and removals now take effect within a minute instead of staying cached for a year.
+
 ## 2.37.0 — 2026-09-18
 
 ### Added

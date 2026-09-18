@@ -202,6 +202,9 @@ export function createAssistantOrchestrator(
         };
       }
 
+      // Correlates this turn's metadata-only diagnostics. The draft, the question,
+      // and any transcript text stay out of the Worker logs.
+      const correlationId = crypto.randomUUID();
       const messages = providerMessages(history, message, identity, policy, memory);
       // A turn can need all four provider calls (tool round, draft, corrective
       // retry) at up to the per-call provider ceiling each, plus tool time, so
@@ -292,7 +295,13 @@ export function createAssistantOrchestrator(
             }
 
             console.warn(
-              `[assistant-validation] Draft rejected: reasons=[${validation.reasons.join(", ")}] draft=${JSON.stringify(content)}`,
+              JSON.stringify({
+                event: "assistant_draft_rejected",
+                correlationId,
+                reasons: validation.reasons,
+                draftLength: content.length,
+                providerCallCount,
+              }),
             );
 
             if (!answerValidationRetryUsed && invocation + 1 < MAX_PROVIDER_CALLS) {
@@ -309,7 +318,13 @@ export function createAssistantOrchestrator(
             }
 
             console.warn(
-              `[assistant-validation] Fallback to safe response for question: ${JSON.stringify(message)}`,
+              JSON.stringify({
+                event: "assistant_answer_fallback",
+                correlationId,
+                questionLength: message.length,
+                providerCallCount,
+                toolCallCount: auditToolCalls.length,
+              }),
             );
 
             return finishFallback();

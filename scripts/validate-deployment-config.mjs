@@ -26,11 +26,18 @@ const secretVariableNames = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "RESEND_API_KEY",
   "DEEPSEEK_API_KEY",
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "GEMINI_API_KEY",
+  "GOOGLE_AI_STUDIO_API_KEY",
+  "META_API_KEY",
+  "MUSE_SPARK_API_KEY",
   "POSTHOG_PROJECT_TOKEN",
   "PAYPAL_CLIENT_ID",
   "PAYPAL_CLIENT_SECRET",
   "PAYPAL_WEBHOOK_ID",
   "FISH_AUDIO_API_KEY",
+  "PROVIDER_CREDENTIAL_ENCRYPTION_KEY",
 ];
 const productionWebOrigins = ["https://www.zoption.site", "https://zoption.site"];
 

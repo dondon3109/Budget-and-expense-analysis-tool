@@ -147,7 +147,6 @@ describe("createTelemetryService", () => {
     service: ReturnType<typeof createTelemetryService>;
     transports: GateableTransport[];
     captured: SanitizedCrashReport[];
-    identified: Array<{ distinctId: string; personProperties?: { email?: string } }>;
     resetCalls: number;
     flushCalls: number;
   }
@@ -157,7 +156,6 @@ describe("createTelemetryService", () => {
   ): Harness {
     const transports: GateableTransport[] = [];
     const captured: SanitizedCrashReport[] = [];
-    const identified: Array<{ distinctId: string; personProperties?: { email?: string } }> = [];
     let resetCalls = 0;
     let flushCalls = 0;
     const service = createTelemetryService(enabledConfig, async (): Promise<TelemetryTransport> => {
@@ -170,9 +168,6 @@ describe("createTelemetryService", () => {
           : (report) => {
               captured.push(report);
             },
-        identify: (distinctId, personProperties) => {
-          identified.push({ distinctId, personProperties });
-        },
         reset: () => {
           resetCalls += 1;
         },
@@ -198,7 +193,6 @@ describe("createTelemetryService", () => {
       service,
       transports,
       captured,
-      identified,
       get resetCalls() {
         return resetCalls;
       },
@@ -243,13 +237,9 @@ describe("createTelemetryService", () => {
     expect(service.isActive()).toBe(true);
   });
 
-  it("identifies with a stable id and person email, then resets at sign-out", async () => {
+  it("clears the anonymous analytics identity at sign-out", async () => {
     const harness = createHarness();
-    await harness.service.identify("auth-user-123", { email: "person@example.test" });
-    expect(harness.identified).toEqual([
-      { distinctId: "auth-user-123", personProperties: { email: "person@example.test" } },
-    ]);
-
+    await harness.service.init();
     await harness.service.reset();
     expect(harness.resetCalls).toBe(1);
   });

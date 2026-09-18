@@ -4,6 +4,7 @@ import {
   AVATAR_MAX_BYTES,
   createAvatarPath,
   deleteAvatarObject,
+  hasAvatarImageSignature,
   isAllowedAvatarType,
   isOwnedAvatarPath,
   parseAvatarPath,
@@ -38,8 +39,13 @@ export function createAvatarRoutes() {
       throw new HttpError(400, "invalid_request", "Choose a JPEG, PNG, or WebP image.");
     }
 
+    const bytes = await file.arrayBuffer();
+    if (!hasAvatarImageSignature(file.type, new Uint8Array(bytes))) {
+      throw new HttpError(400, "invalid_request", "Choose a JPEG, PNG, or WebP image.");
+    }
+
     const path = createAvatarPath(context.get("authUser").id, file.type);
-    await putAvatarObject(bucket, path, await file.arrayBuffer(), file.type);
+    await putAvatarObject(bucket, path, bytes, file.type);
     return context.json({ path }, 201);
   });
 

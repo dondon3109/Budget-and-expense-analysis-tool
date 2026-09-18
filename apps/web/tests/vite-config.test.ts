@@ -161,9 +161,13 @@ describe("environment-derived CSP", () => {
     );
     expect(policy).toContain("connect-src");
     expect(policy).toContain("https://downloads.zoption.site");
-    expect(policy).toContain(
-      "script-src 'self' https://www.paypal.com https://www.sandbox.paypal.com https://*.paypal.com https://www.paypalobjects.com https://*.paypalobjects.com https://*.venmo.com",
-    );
+    // Only the exact host @paypal/paypal-js loads /web-sdk/v6/core from, and only the live
+    // one in a production build. The negative assertion matters as much as the positive one:
+    // the guard that used to approve PayPal wildcards was built from the list it validated, so
+    // nothing else here would stop https://*.paypal.com from coming back.
+    const scriptSources = policy.split("; ").find((part) => part.startsWith("script-src "));
+    expect(scriptSources).toBe("script-src 'self' https://www.paypal.com");
+    expect(scriptSources).not.toContain("*");
     expect(policy).toContain("frame-src https://www.paypal.com https://www.sandbox.paypal.com");
     expect(policy).toContain("style-src 'self' 'unsafe-inline' https://www.paypal.com");
     expect(policy).toContain("media-src 'self' blob:");

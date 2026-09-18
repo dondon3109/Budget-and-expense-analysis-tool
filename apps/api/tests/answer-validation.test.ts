@@ -98,7 +98,7 @@ describe("assistant answer validation", () => {
 
   it("adds repair guidance to the corrective prompt", () => {
     const prompt = correctivePrompt(
-      { valid: false, reasons: ["unsupported_currency_format", "bare_money"] },
+      { valid: false, reasons: ["unsupported_currency_format", "unsupported_money"] },
       policy,
       [execution],
     );

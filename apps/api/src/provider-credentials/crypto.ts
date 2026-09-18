@@ -1,4 +1,8 @@
 const IV_LEN = 12;
+const TAG_LEN = 16;
+// Ciphertext format version. Rows written before the prefix existed are unprefixed base64 of
+// iv || ciphertext with no additional data; they must keep decrypting forever.
+const VERSION_PREFIX = "v1.";
 
 function b64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
@@ -42,34 +46,66 @@ export function validateMasterKeyFormat(value: string | undefined): boolean {
   }
 }
 
-export async function encryptSecret(plain: string, masterB64: string): Promise<string> {
+/**
+ * Encrypts a credential secret into the `v1.` format. `aad` is the credential row id: it binds
+ * the ciphertext to that row, so a stored value moved to another row cannot be decrypted. The
+ * version prefix records which format and key wrote the row, which is what a later key rotation
+ * needs to keep decrypting existing rows.
+ */
+export async function encryptSecret(
+  plain: string,
+  masterB64: string,
+  aad: string,
+): Promise<string> {
   if (!plain.trim()) throw new Error("Secret must not be empty.");
+  if (!aad.trim()) throw new Error("Credential row id (additional data) must not be empty.");
   if (!validateMasterKeyFormat(masterB64)) {
     throw new Error("Provider credential encryption key is not configured or invalid.");
   }
   const key = await importAesKey(masterB64);
   const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
   const data = new TextEncoder().encode(plain);
-  const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
+  const cipherBuf = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv, additionalData: new TextEncoder().encode(aad) },
+    key,
+    data,
+  );
   const cipherBytes = new Uint8Array(cipherBuf);
   const combined = new Uint8Array(iv.length + cipherBytes.length);
   combined.set(iv, 0);
   combined.set(cipherBytes, iv.length);
-  return bytesToB64(combined);
+  return `${VERSION_PREFIX}${bytesToB64(combined)}`;
 }
 
-export async function decryptSecret(cipherB64: string, masterB64: string): Promise<string> {
+/**
+ * Decrypts both ciphertext formats. A `v1.` row is bound to `aad` and fails when it does not
+ * match, so there is no try-both fallback. An unprefixed row predates that binding and is
+ * decrypted without additional data, which is why the legacy path ignores `aad`.
+ */
+export async function decryptSecret(
+  cipherB64: string,
+  masterB64: string,
+  aad: string,
+): Promise<string> {
   if (!cipherB64.trim()) throw new Error("Ciphertext must not be empty.");
   if (!validateMasterKeyFormat(masterB64)) {
     throw new Error("Provider credential encryption key is not configured or invalid.");
   }
+  const value = cipherB64.trim();
+  const versioned = value.startsWith(VERSION_PREFIX);
+  if (versioned && !aad.trim()) {
+    throw new Error("A v1 ciphertext requires the credential row id as additional data.");
+  }
   const key = await importAesKey(masterB64);
-  const combined = b64ToBytes(cipherB64.trim());
-  if (combined.length <= IV_LEN + 16) {
+  const combined = b64ToBytes(versioned ? value.slice(VERSION_PREFIX.length) : value);
+  if (combined.length <= IV_LEN + TAG_LEN) {
     throw new Error("Ciphertext is too short.");
   }
   const iv = combined.slice(0, IV_LEN);
   const cipherBytes = combined.slice(IV_LEN);
-  const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipherBytes);
+  const algorithm = versioned
+    ? { name: "AES-GCM", iv, additionalData: new TextEncoder().encode(aad) }
+    : { name: "AES-GCM", iv };
+  const plainBuf = await crypto.subtle.decrypt(algorithm, key, cipherBytes);
   return new TextDecoder().decode(plainBuf);
 }

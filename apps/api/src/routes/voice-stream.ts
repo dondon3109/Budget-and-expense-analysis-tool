@@ -3,15 +3,20 @@ import { Hono } from "hono";
 
 import type { AppEnvironment, Bindings } from "../types";
 import { providerRegistry } from "../provider-registry";
-import type { PlatformAdminService } from "../platform-admin";
+import type { AssistantVoiceService } from "../assistant/voice-service";
 import { isGoogleGenerativeLanguageApiKey, parseGoogleSecret } from "../assistant/google-stt";
+import { billingRepository } from "../db/billing";
+import { VOICE_TICKET_TTL_SECONDS, voiceTicketRepository } from "../db/voice-tickets";
 
 /**
  * Realtime STT WebSocket proxy:
  *   Option A (Gemini Live API): Browser --WSS--> Worker (/api/app/assistant/voice/stream) --WSS--> Google Gemini Live API
  *   Option B (Cloud Run bridge): Browser --WSS--> Worker (/api/app/assistant/voice/stream) --WSS--> Cloud Run bridge --gRPC--> Speech V2 chirp_3
  *
- * Auth: Supabase JWT via createAuthMiddleware (Authorization Bearer header, ?token= query, or Sec-WebSocket-Protocol).
+ * Auth: Supabase JWT via createAuthMiddleware (Authorization Bearer header). The browser cannot set
+ * headers on a WebSocket handshake, so it first mints a single-use ticket with
+ * POST /api/app/assistant/voice/ticket and passes that as ?ticket= instead of the access token.
+ * Both routes run the voice consent gate and the Pro entitlement gate before reaching a provider.
  * Active config is global (providerRegistry.getActive('stt')), not per-tenant — affects all users immediately (invalidate).
  * Latency instrumentation: t_mic_start from client header/param, t_stream_open/first_partial/final, forwarded to client.
  */
@@ -31,6 +36,21 @@ function createWebSocketResponse(client: WebSocket): Response {
  * rejected (`Fetch API cannot load wss://...`), which aborted the client
  * handshake before a 101 could be returned.
  */
+const DEFAULT_STREAM_MAX_DURATION_MS = 15 * 60 * 1_000;
+
+function configuredNumber(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/**
+ * Ceiling for one live socket. Bounding a single connection bounds the platform-funded provider
+ * cost without shared per-tenant counters, which would lock a tenant out if one leaked.
+ */
+function streamMaxDurationMs(env: Bindings): number {
+  return configuredNumber(env.ASSISTANT_VOICE_STREAM_TIMEOUT_MS, DEFAULT_STREAM_MAX_DURATION_MS);
+}
+
 export function websocketUpgradeUrl(url: string): string {
   if (url.startsWith("wss://")) return `https://${url.slice("wss://".length)}`;
   if (url.startsWith("ws://")) return `http://${url.slice("ws://".length)}`;
@@ -84,9 +104,22 @@ function closeAfterHandshake(socket: WebSocket, code: number, reason: string): v
   }, 0);
 }
 
-export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) {
-  void _platformAdmins;
+export function createVoiceStreamRoutes(assistantVoiceService: AssistantVoiceService) {
   const routes = new Hono<AppEnvironment>();
+
+  /** Exchange an authenticated session for the single-use ticket the socket URL carries. */
+  routes.post("/ticket", async (context) => {
+    const tenantId = context.get("tenant").tenantId;
+    await assistantVoiceService.requireConsent(context.env, tenantId);
+    // A ticket opens a platform-funded live socket, so the tenant must be entitled first.
+    await billingRepository.requirePro(context.env, tenantId, "stt");
+    const { ticket, expiresAt } = await voiceTicketRepository.mint(
+      context.env,
+      context.get("authUser").id,
+      VOICE_TICKET_TTL_SECONDS,
+    );
+    return context.json({ ticket, expiresAt });
+  });
 
   routes.get("/stream", async (context) => {
     const env = context.env as Bindings & { STT_BRIDGE_URL?: string };
@@ -94,6 +127,11 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       "tenant",
     );
     const authUser = (context as unknown as { get: (k: string) => { id: string } }).get("authUser");
+
+    // The stream reaches the same providers as the POST voice routes, so it runs the same
+    // consent and entitlement gates before any provider lookup or socket upgrade.
+    await assistantVoiceService.requireConsent(env, tenant.tenantId);
+    await billingRepository.requirePro(env, tenant.tenantId, "stt");
 
     // Check active STT config (global)
     const sttCfg = await providerRegistry.getActive(env, "stt");
@@ -182,6 +220,19 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     // Accept client. binaryType and half-open close behavior must be set before accept().
     acceptProxySocket(server);
 
+    // At the ceiling the server closes with the normal code instead of an error frame, so the
+    // session ends cleanly rather than surfacing a failure, and one connection cannot hold a
+    // funded socket indefinitely. Neither client auto-reconnects, and a new session mints a
+    // fresh single-use ticket.
+    const maxDurationTimer = setTimeout(() => {
+      try {
+        server.close(1000, "max_duration");
+      } catch {
+        // Already closed.
+      }
+    }, streamMaxDurationMs(env));
+    server.addEventListener("close", () => clearTimeout(maxDurationTimer));
+
     const tWorkerOpen = Date.now();
     let tFirstPartial: number | null = null;
 
@@ -206,8 +257,9 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
     // OPTION A: Google Gemini Multimodal Live API
     // ==========================================
     if (isGeminiLive) {
+      // The key travels in the x-goog-api-key header, never in the query string, which reaches logs.
       const geminiUrl = websocketUpgradeUrl(
-        `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(token)}`,
+        "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent",
       );
       let geminiWs: WebSocket | null = null;
       const pendingPcm: Uint8Array[] = [];
@@ -319,7 +371,14 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
               if (tFirstPartial === null) {
                 tFirstPartial = Date.now();
               }
-              console.log("[voice-stream] transcript event:", { transcript, isFinal });
+              // Spoken financial detail must not reach the log pipeline: metadata only.
+              console.log(
+                JSON.stringify({
+                  event: "voice_stream_transcript",
+                  transcriptLength: transcript.length,
+                  isFinal,
+                }),
+              );
               trySend(
                 server,
                 JSON.stringify({
@@ -427,7 +486,7 @@ export function createVoiceStreamRoutes(_platformAdmins?: PlatformAdminService) 
       const connectGemini = async () => {
         try {
           const geminiResp = (await fetch(geminiUrl, {
-            headers: { Upgrade: "websocket" },
+            headers: { Upgrade: "websocket", "x-goog-api-key": token },
           } as unknown as RequestInit)) as unknown as {
             status: number;
             webSocket: WebSocket | null;

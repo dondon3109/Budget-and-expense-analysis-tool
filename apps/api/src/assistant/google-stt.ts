@@ -111,12 +111,13 @@ export function createGoogleSttProvider(
           const restModel =
             effectiveModel === "gemini-3.5-transcribe-live" ? "gemini-2.0-flash" : effectiveModel;
           const isApiKey = token.startsWith("AIza") || !token.startsWith("ya29");
-          const endpoint = isApiKey
-            ? `https://generativelanguage.googleapis.com/v1beta/models/${restModel}:generateContent?key=${encodeURIComponent(token)}`
-            : `https://generativelanguage.googleapis.com/v1beta/models/${restModel}:generateContent`;
+          // The key travels in the header, never in the query string, which reaches logs.
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${restModel}:generateContent`;
 
           const headers: Record<string, string> = { "Content-Type": "application/json" };
-          if (!isApiKey) {
+          if (isApiKey) {
+            headers["x-goog-api-key"] = token;
+          } else {
             headers["Authorization"] = `Bearer ${token}`;
           }
 
@@ -188,15 +189,15 @@ export function createGoogleSttProvider(
 
         if (effectiveProjectId) {
           const isApiKey = isGoogleGenerativeLanguageApiKey(token);
-          const endpoint = isApiKey
-            ? `https://speech.googleapis.com/v2/projects/${effectiveProjectId}/locations/${location}/recognizers/_:recognize?key=${encodeURIComponent(token)}`
-            : `https://speech.googleapis.com/v2/projects/${effectiveProjectId}/locations/${location}/recognizers/_:recognize`;
+          const endpoint = `https://speech.googleapis.com/v2/projects/${effectiveProjectId}/locations/${location}/recognizers/_:recognize`;
 
           const headers: Record<string, string> = {
             "Content-Type": "application/json",
             "x-goog-user-project": effectiveProjectId,
           };
-          if (!isApiKey) {
+          if (isApiKey) {
+            headers["x-goog-api-key"] = token;
+          } else {
             headers["Authorization"] = `Bearer ${token}`;
           }
 
@@ -239,10 +240,10 @@ export function createGoogleSttProvider(
         // Fallback for raw API key without projectId using Speech V1
         if (isGoogleGenerativeLanguageApiKey(token)) {
           const isTagalog = options?.language === "fil" || options?.language === "tl";
-          const endpoint = `https://speech.googleapis.com/v1/speech:recognize?key=${encodeURIComponent(token)}`;
+          const endpoint = `https://speech.googleapis.com/v1/speech:recognize`;
           const res = await fetch(endpoint, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "x-goog-api-key": token },
             body: JSON.stringify({
               config: {
                 languageCode: isTagalog ? "fil-PH" : "en-US",

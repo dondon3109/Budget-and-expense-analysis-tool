@@ -57,6 +57,8 @@ jest.mock("@/db/workspace", () => ({
   ),
 }));
 
+import { discardLocalWorkspace } from "@/db/workspace";
+
 import {
   DUMMY_DEV_STORAGE_KEY,
   DUMMY_DEV_SUBJECT,
@@ -103,6 +105,7 @@ describe("SessionProvider and dummy session handling", () => {
     (SecureStore.deleteItemAsync as jest.Mock).mockClear();
     (SecureStore.getItemAsync as jest.Mock).mockClear();
     (SecureStore.setItemAsync as jest.Mock).mockClear();
+    (discardLocalWorkspace as jest.Mock).mockClear();
   });
 
   it("exports the canonical dummy UUID and does not hardcode production user ID", () => {
@@ -240,5 +243,64 @@ describe("SessionProvider and dummy session handling", () => {
     await expect(latestSnapshot!.signInWithDummyAccount()).rejects.toThrow(
       "Dummy account sign-in is available only in Zoption Dev.",
     );
+  });
+
+  async function renderSignedInSession() {
+    mockDevelopmentVariant = false;
+    mockCurrentSession = {
+      access_token: "real-supabase-access-token",
+      refresh_token: "refresh-token",
+      user: { id: "real-user-id", email: "user@example.com" } as any,
+    } as Session;
+
+    const latest: { current: ReturnType<typeof useSessionSnapshot> | null } = { current: null };
+    await act(async () => {
+      render(
+        <SessionProvider>
+          <TestConsumer onSnapshot={(snap) => (latest.current = snap)} />
+        </SessionProvider>,
+      );
+    });
+    await waitFor(() => {
+      expect(latest.current?.status).toBe("signed-in");
+    });
+    return latest;
+  }
+
+  it("revokes the refresh token globally on a user-initiated sign-out", async () => {
+    const latest = await renderSignedInSession();
+
+    await act(async () => {
+      await latest.current!.signOut();
+    });
+
+    expect(mockAuth.signOut).toHaveBeenCalledTimes(1);
+    expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: "global" });
+    expect(discardLocalWorkspace).toHaveBeenCalledWith("real-user-id");
+    expect(latest.current?.status).toBe("signed-out");
+  });
+
+  it("still clears this device when a global sign-out cannot reach Supabase", async () => {
+    const latest = await renderSignedInSession();
+
+    // A failed revoke leaves the stored session in place, exactly like a
+    // network error from auth-js: only the local-scope fallback can clear it.
+    (mockAuth.signOut as jest.Mock)
+      .mockImplementationOnce(() => Promise.resolve({ error: new Error("Network request failed") }))
+      .mockImplementationOnce(() => {
+        mockCurrentSession = null;
+        return Promise.resolve({ error: null });
+      });
+
+    // The fallback is deliberately not surfaced: this resolves, it does not
+    // reject, because the user did get signed out on this device.
+    await act(async () => {
+      await latest.current!.signOut();
+    });
+
+    expect(mockAuth.signOut).toHaveBeenNthCalledWith(1, { scope: "global" });
+    expect(mockAuth.signOut).toHaveBeenNthCalledWith(2, { scope: "local" });
+    expect(discardLocalWorkspace).toHaveBeenCalledWith("real-user-id");
+    expect(latest.current?.status).toBe("signed-out");
   });
 });

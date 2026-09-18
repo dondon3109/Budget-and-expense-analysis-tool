@@ -71,7 +71,11 @@ export function createAssistantVoiceRoutes(service: AssistantVoiceService) {
     const parsed = assistantVoicePreviewInputSchema.safeParse(await readJson(context));
     if (!parsed.success)
       throw new HttpError(400, "invalid_request", "Choose a valid voice preview.");
-    const response = await service.preview(context.env, parsed.data.voice);
+    const response = await service.preview(
+      context.env,
+      context.get("tenant").tenantId,
+      parsed.data.voice,
+    );
     context.header("Content-Type", "audio/mpeg");
     context.header("Cache-Control", "no-store");
     // Hono's DOM stream type and Workers' byte-stream generic differ, but the body stays streamed.

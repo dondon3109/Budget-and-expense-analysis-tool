@@ -8,6 +8,7 @@ import {
   storeFxRate,
 } from "../src/fx/rates";
 import type { Bindings } from "../src/types";
+import { createD1TestDatabase } from "./helpers/d1-test-harness";
 
 interface RateRow {
   date: string;
@@ -127,5 +128,22 @@ describe("fx rates", () => {
     const { DB } = asBindings([]);
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("boom"));
     await expect(refreshDailyFxRate({ DB })).resolves.toBeNull();
+  });
+
+  it("refuses a stored rate outside the PHP-per-USD band at the database", () => {
+    const { database } = createD1TestDatabase();
+    const insert = (usdToPhp: number) =>
+      database
+        .prepare(
+          `INSERT INTO fx_rates (date, usd_to_php, source, fetched_at)
+           VALUES ('2026-08-07', ?, 'open.er-api.com', 'x')`,
+        )
+        .run(usdToPhp);
+
+    expect(() => insert(59.4)).not.toThrow();
+    expect(() => insert(0.5)).toThrow(/fx_rate_out_of_range/);
+    expect(() =>
+      database.prepare("UPDATE fx_rates SET usd_to_php = ? WHERE date = '2026-08-07'").run(1_000),
+    ).toThrow(/fx_rate_out_of_range/);
   });
 });

@@ -10,6 +10,8 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PostHogAnalytics, resetPostHogForTests } from "../src/analytics/PostHogAnalytics";
+import { CONSENT_STORAGE_KEY, createConsentRecord } from "../src/consent/consent";
+import { resetConsentGateForTests, updateConsentGate } from "../src/consent/consentGate";
 
 const POSTHOG_KEY = "phc_test_public_key_123";
 const POSTHOG_HOST = "https://us.i.posthog.com";
@@ -33,6 +35,8 @@ vi.mock("posthog-js", () => {
         initOptions = null;
         initKey = null;
       }),
+      opt_in_capturing: vi.fn(),
+      opt_out_capturing: vi.fn(),
       __getCapturedEvents: () => capturedEvents,
       __getInitOptions: () => initOptions,
       __getInitKey: () => initKey,
@@ -43,6 +47,8 @@ vi.mock("posthog-js", () => {
 interface MockPostHog {
   init: ReturnType<typeof vi.fn>;
   capture: ReturnType<typeof vi.fn>;
+  opt_in_capturing: ReturnType<typeof vi.fn>;
+  opt_out_capturing: ReturnType<typeof vi.fn>;
   reset: () => void;
   __getCapturedEvents: () => Array<{ event: string; properties?: Record<string, unknown> }>;
   __getInitOptions: () => Record<string, unknown> | null;
@@ -50,6 +56,19 @@ interface MockPostHog {
 }
 
 const mockedPostHog = posthog as unknown as MockPostHog;
+
+function pageviews() {
+  return mockedPostHog.__getCapturedEvents().filter((event) => event.event === "$pageview");
+}
+
+/** Mirrors the provider: the decision is persisted first, then pushed into the gate. */
+function storeAnalyticsConsent(analytics: boolean) {
+  localStorage.setItem(
+    CONSENT_STORAGE_KEY,
+    JSON.stringify(createConsentRecord({ analytics, marketing: false }, "custom")),
+  );
+  updateConsentGate({ analytics, marketing: false });
+}
 
 function AnalyticsApp({ initialEntry = "/" }: { initialEntry?: string }) {
   return (
@@ -79,6 +98,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockedPostHog.reset();
   resetPostHogForTests();
+  // Analytics is an optional integration: the component registers with the consent gate and
+  // only starts PostHog once the analytics category is granted.
+  resetConsentGateForTests();
+  storeAnalyticsConsent(true);
   vi.stubEnv("VITE_POSTHOG_KEY", POSTHOG_KEY);
   vi.stubEnv("VITE_POSTHOG_HOST", POSTHOG_HOST);
 });
@@ -88,6 +111,8 @@ afterEach(() => {
   vi.clearAllMocks();
   mockedPostHog.reset();
   resetPostHogForTests();
+  resetConsentGateForTests();
+  localStorage.clear();
   vi.unstubAllEnvs();
 });
 
@@ -176,19 +201,17 @@ describe("PostHog Web Analytics", () => {
   it("does not record pageviews when landing directly on private/authenticated routes", async () => {
     render(<AnalyticsApp initialEntry="/app" />);
 
-    expect(mockedPostHog.init).not.toHaveBeenCalled();
-    expect(mockedPostHog.__getCapturedEvents()).toHaveLength(0);
+    // Consent starts the SDK, but a private route never produces a pageview.
+    expect(pageviews()).toHaveLength(0);
   });
 
   it("does not record pageviews when landing on authenticated subroutes or login", async () => {
     render(<AnalyticsApp initialEntry="/app/transactions" />);
-    expect(mockedPostHog.init).not.toHaveBeenCalled();
-    expect(mockedPostHog.__getCapturedEvents()).toHaveLength(0);
+    expect(pageviews()).toHaveLength(0);
 
     cleanup();
     render(<AnalyticsApp initialEntry="/login" />);
-    expect(mockedPostHog.init).not.toHaveBeenCalled();
-    expect(mockedPostHog.__getCapturedEvents()).toHaveLength(0);
+    expect(pageviews()).toHaveLength(0);
   });
 
   it("stops pageview tracking when navigating from a public route to private financial routes", async () => {
@@ -215,11 +238,61 @@ describe("PostHog Web Analytics", () => {
     });
   });
 
+  it("drops every event in the before_send hook once the consent is revoked", async () => {
+    render(<AnalyticsApp initialEntry="/" />);
+    await waitFor(() => expect(mockedPostHog.init).toHaveBeenCalledTimes(1));
+
+    // The real hook, not a mock: this is the only place that sees the SDK's own events too,
+    // such as the web vitals capture_performance enables.
+    const beforeSend = mockedPostHog.__getInitOptions()?.before_send as (
+      captureResult: {
+        uuid: string;
+        event: string;
+        properties: Record<string, unknown>;
+      } | null,
+    ) => { properties: Record<string, unknown> } | null;
+
+    const event = {
+      uuid: "uuid-1",
+      event: "$web_vitals",
+      properties: { $current_url: "https://app.zoption.site/app/transactions?search=rent" },
+    };
+    expect(beforeSend(event)?.properties).toEqual({
+      $current_url: "https://app.zoption.site/app/transactions",
+    });
+
+    storeAnalyticsConsent(false);
+    expect(beforeSend(event)).toBeNull();
+
+    storeAnalyticsConsent(true);
+    expect(beforeSend(event)).not.toBeNull();
+  });
+
+  it("stops capturing on revocation and starts again when consent returns", async () => {
+    const user = userEvent.setup();
+    render(<AnalyticsApp initialEntry="/" />);
+    await waitFor(() => expect(pageviews()).toHaveLength(1));
+
+    storeAnalyticsConsent(false);
+    await waitFor(() => expect(mockedPostHog.opt_out_capturing).toHaveBeenCalledTimes(1));
+
+    await user.click(screen.getByRole("link", { name: "Public FAQ" }));
+    expect(pageviews()).toHaveLength(1);
+
+    mockedPostHog.opt_in_capturing.mockClear();
+    storeAnalyticsConsent(true);
+    await waitFor(() => expect(mockedPostHog.opt_in_capturing).toHaveBeenCalledTimes(1));
+    // Re-granting consent makes the current page trackable again.
+    await waitFor(() => expect(pageviews()).toHaveLength(2));
+
+    await user.click(screen.getByRole("link", { name: "Public Install" }));
+    await waitFor(() => expect(pageviews()).toHaveLength(3));
+  });
+
   it("excludes public URLs with sensitive query parameters from tracking", async () => {
     render(<AnalyticsApp initialEntry="/?code=secret" />);
 
-    expect(mockedPostHog.init).not.toHaveBeenCalled();
-    expect(mockedPostHog.__getCapturedEvents()).toHaveLength(0);
+    expect(pageviews()).toHaveLength(0);
   });
 
   it("captures public SPA pageview transitions without duplication", async () => {

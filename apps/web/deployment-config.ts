@@ -174,20 +174,41 @@ export function validateDeploymentConfigForBuild(
  * fetches android/latest.json from this origin, so connect-src must include it.
  */
 export const ANDROID_DOWNLOAD_ORIGIN = "https://downloads.zoption.site";
+/**
+ * Exact PayPal origins the SDK may frame, fetch from, or draw assets from.
+ * Braintree and Venmo are deliberately absent: this integration mounts only the
+ * PayPal, guest and card field components, so no Venmo funding source is offered.
+ */
 const PAYPAL_CSP_SOURCES = [
   "https://www.paypal.com",
   "https://www.sandbox.paypal.com",
-  "https://*.paypal.com",
   "https://www.paypalobjects.com",
-  "https://*.paypalobjects.com",
-  "https://*.venmo.com",
 ] as const;
-const APPROVED_CSP_WILDCARD_SOURCES = new Set<string>(
-  PAYPAL_CSP_SOURCES.filter((source) => source.includes("*")),
-);
+/**
+ * The only hosts that serve PayPal script. @paypal/paypal-js's loadCoreSdkScript
+ * fetches /web-sdk/v6/core from the environment's own host and nothing else
+ * serves this integration script, so paypalobjects is not a script source
+ * either. No wildcard is allowed here: this origin keeps the Supabase refresh
+ * token in localStorage, so a single compromised PayPal subdomain would be a
+ * full account takeover. Production loads only the live host; the sandbox host
+ * belongs to preview, staging and local builds.
+ */
+const PAYPAL_LIVE_SCRIPT_SOURCE = "https://www.paypal.com";
+const PAYPAL_SANDBOX_SCRIPT_SOURCE = "https://www.sandbox.paypal.com";
+/**
+ * Wildcard sources the generated policy may contain. Deliberately a literal,
+ * independent of the source lists above: while it was derived from the same list
+ * it validated, adding a wildcard there approved itself, so the build check
+ * could never fire. No wildcard source is approved today.
+ */
+const APPROVED_CSP_WILDCARD_SOURCES: ReadonlySet<string> = new Set<string>();
 
 export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): string {
-  const scriptSources = ["'self'", ...PAYPAL_CSP_SOURCES];
+  const scriptSources = [
+    "'self'",
+    PAYPAL_LIVE_SCRIPT_SOURCE,
+    ...(config.deployEnvironment === "production" ? [] : [PAYPAL_SANDBOX_SCRIPT_SOURCE]),
+  ];
   const imageSources = [
     "'self'",
     "data:",

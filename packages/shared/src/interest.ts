@@ -36,15 +36,17 @@ export function isInterestCreditDay(
  * Simple-interest credit in minor units, floored toward zero.
  * `annualRateBasisPoints` is an annual percentage scaled by 100 (500 = 5.00%),
  * divided by the number of payout periods in a year (365 daily, 12 monthly, 1 yearly).
+ * A balance at or below zero earns nothing: interest is never credited on debt.
  */
 export function interestAmountMinor(
   balanceMinor: number,
   annualRateBasisPoints: number,
   frequency: InterestFrequency,
 ): number {
+  if (balanceMinor <= 0) return 0;
   const rate = annualRateBasisPoints / 10_000;
   const divisor = frequency === "daily" ? 365 : frequency === "monthly" ? 12 : 1;
-  return Math.floor((Math.abs(balanceMinor) * rate) / divisor);
+  return Math.floor((balanceMinor * rate) / divisor);
 }
 
 function addUtcDays(isoDate: string, days: number): string {

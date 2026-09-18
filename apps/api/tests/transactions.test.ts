@@ -423,7 +423,7 @@ describe("transactionRepository unpaged reads", () => {
     toAccountName: null,
   };
 
-  it("keeps export unpaged and enforces its 5,000-row guard", async () => {
+  it("caps the export in SQL and refuses an over-limit result", async () => {
     const statements: CapturedStatement[] = [];
     const env: Bindings = {
       DB: createCapturingDatabase(statements, {
@@ -438,7 +438,10 @@ describe("transactionRepository unpaged reads", () => {
       }),
     ).rejects.toMatchObject({ status: 413, code: "export_too_large" });
     expect(statements).toHaveLength(1);
-    expect(statements[0]?.query).not.toContain("LIMIT");
+    // One row past the cap: the database refuses the over-limit export before it
+    // materialises the tenant's history.
+    expect(statements[0]?.query).toContain("LIMIT ?");
+    expect(statements[0]?.bindings.at(-1)).toBe(5001);
     expect(statements[0]?.query).not.toContain("OFFSET");
   });
 

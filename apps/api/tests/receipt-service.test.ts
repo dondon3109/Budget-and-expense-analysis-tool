@@ -9,8 +9,15 @@ import {
 import type { ReceiptRepository } from "../src/db/receipts";
 import type { Bindings } from "../src/types";
 
+/** The entitlement lookup reads one row; a source row means the tenant has Pro. */
+function proDb(hasPro: boolean): D1Database {
+  return {
+    prepare: () => ({ bind: () => ({ first: async () => (hasPro ? { source: "paypal" } : null) }) }),
+  } as unknown as D1Database;
+}
+
 const env = {
-  DB: {} as D1Database,
+  DB: proDb(true),
   RECEIPT_ENTRY_ENABLED: "true",
 } satisfies Bindings;
 
@@ -63,6 +70,15 @@ describe("receipt service", () => {
     const service = createReceiptService(repository(false), vision);
     const request = service.extract(env, "tenant-id", receiptImage());
     await expect(request).rejects.toMatchObject({ status: 409, code: "receipt_consent_required" });
+    expect(vision.extract).not.toHaveBeenCalled();
+  });
+
+  it("refuses receipt vision for a tenant without Pro before the photo leaves Zoption", async () => {
+    const vision = provider();
+    const service = createReceiptService(repository(), vision);
+    await expect(
+      service.extract({ ...env, DB: proDb(false) }, "tenant-id", receiptImage()),
+    ).rejects.toMatchObject({ status: 403, code: "upgrade_required" });
     expect(vision.extract).not.toHaveBeenCalled();
   });
 

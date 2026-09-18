@@ -8,7 +8,40 @@ const avatarExtensions = {
 } as const;
 
 export function isAllowedAvatarType(value: string): value is keyof typeof avatarExtensions {
-  return value in avatarExtensions;
+  return Object.hasOwn(avatarExtensions, value);
+}
+
+// The declared content type is client supplied, so a caller can label any bytes as an
+// image. Check the file signature before storing an upload under an image extension.
+export function hasAvatarImageSignature(mimeType: string, bytes: Uint8Array): boolean {
+  if (mimeType === "image/jpeg") {
+    return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }
+  if (mimeType === "image/png") {
+    return (
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47 &&
+      bytes[4] === 0x0d &&
+      bytes[5] === 0x0a &&
+      bytes[6] === 0x1a &&
+      bytes[7] === 0x0a
+    );
+  }
+  if (mimeType === "image/webp") {
+    return (
+      bytes[0] === 0x52 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 &&
+      bytes[3] === 0x46 &&
+      bytes[8] === 0x57 &&
+      bytes[9] === 0x45 &&
+      bytes[10] === 0x42 &&
+      bytes[11] === 0x50
+    );
+  }
+  return false;
 }
 
 export function parseAvatarPath(path: string | undefined): string | undefined {
@@ -67,27 +100,34 @@ export async function purgeUserAvatars(bucket: R2Bucket, userId: string): Promis
   }
 }
 
+// Pictures are deleted without a versioned URL, so caches must not hold them for a
+// year: serve them briefly and revalidate instead of marking them immutable.
+function avatarResponse(body: ReadableStream | null, contentType: string | null): Response {
+  const headers = new Headers();
+  headers.set("Cache-Control", "public, max-age=60, must-revalidate");
+  headers.set("Content-Type", contentType || "application/octet-stream");
+  return new Response(body, { headers });
+}
+
 export async function servePublicAvatar(
-  env: { AVATARS?: R2Bucket; SUPABASE_URL?: string },
+  env: { AVATARS?: R2Bucket; SUPABASE_URL?: string; SUPABASE_SERVICE_ROLE_KEY?: string },
   path: string,
 ): Promise<Response> {
   const parsed = parseAvatarPath(path);
   if (!parsed) return new Response("Not found", { status: 404 });
 
   const object = env.AVATARS ? await getAvatarObject(env.AVATARS, parsed) : null;
-  if (object) {
-    const headers = new Headers();
-    headers.set("Cache-Control", "public, max-age=31536000, immutable");
-    headers.set("Content-Type", object.httpMetadata?.contentType || "application/octet-stream");
-    return new Response(object.body, { headers });
-  }
+  if (object) return avatarResponse(object.body, object.httpMetadata?.contentType ?? null);
 
   const supabaseOrigin = env.SUPABASE_URL?.trim().replace(/\/$/, "");
-  if (!supabaseOrigin) return new Response("Not found", { status: 404 });
-  const fallback = await fetch(`${supabaseOrigin}/storage/v1/object/public/avatars/${parsed}`);
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!supabaseOrigin || !serviceRoleKey) return new Response("Not found", { status: 404 });
+  // The bucket is private, so pictures that predate the R2 cutover are read with the
+  // service role instead of the world-readable object URL.
+  const fallback = await fetch(
+    `${supabaseOrigin}/storage/v1/object/authenticated/avatars/${parsed}`,
+    { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` } },
+  );
   if (!fallback.ok) return new Response("Not found", { status: 404 });
-  const headers = new Headers();
-  headers.set("Cache-Control", "public, max-age=31536000, immutable");
-  headers.set("Content-Type", fallback.headers.get("Content-Type") || "application/octet-stream");
-  return new Response(fallback.body, { headers });
+  return avatarResponse(fallback.body, fallback.headers.get("Content-Type"));
 }

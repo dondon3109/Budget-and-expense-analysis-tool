@@ -126,7 +126,7 @@ export function createProviderRegistry(
             return { secret: null, last4: row.api_key_last4 ?? null, source: "none" };
           }
           try {
-            const plain = await decryptSecret(row.encrypted_secret, master);
+            const plain = await decryptSecret(row.encrypted_secret, master, row.id);
             return { secret: plain, last4: row.api_key_last4, source: "db" };
           } catch {
             return { secret: null, last4: row.api_key_last4, source: "none" };

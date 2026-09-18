@@ -188,14 +188,16 @@ function logicalRowsSqlParts(
 function logicalRowsSql(
   query: TransactionExportQuery,
   tenantId: string,
+  limit: number,
 ): { sql: string; bindings: unknown[] } {
   const parts = logicalRowsSqlParts(query, tenantId);
   return {
     sql: `${LOGICAL_ROWS_SELECT}
       ${LOGICAL_ROWS_FROM}
       WHERE ${parts.where}
-      ORDER BY ${parts.orderBy}`,
-    bindings: parts.bindings,
+      ORDER BY ${parts.orderBy}
+      LIMIT ?`,
+    bindings: [...parts.bindings, limit],
   };
 }
 
@@ -203,8 +205,9 @@ async function readLogicalRows(
   env: Bindings,
   tenantId: string,
   query: TransactionExportQuery,
+  limit: number,
 ): Promise<TransactionListItem[]> {
-  const statement = logicalRowsSql(query, tenantId);
+  const statement = logicalRowsSql(query, tenantId, limit);
   const result = await env.DB.prepare(statement.sql)
     .bind(...statement.bindings)
     .all<TransactionRow>();
@@ -315,6 +318,8 @@ function insertStatement(
     values.transferFeeMinor ?? null,
   );
 }
+
+const EXPORT_ROW_LIMIT = 5000;
 
 export const transactionRepository: TransactionRepository = {
   async list(env, tenantId, query) {
@@ -582,8 +587,10 @@ export const transactionRepository: TransactionRepository = {
   },
 
   async export(env, tenantId, query) {
-    const rows = await readLogicalRows(env, tenantId, query);
-    if (rows.length > 5000) {
+    // One row past the cap: an over-limit export is refused without materialising
+    // the tenant's whole transaction history first.
+    const rows = await readLogicalRows(env, tenantId, query, EXPORT_ROW_LIMIT + 1);
+    if (rows.length > EXPORT_ROW_LIMIT) {
       throw new HttpError(
         413,
         "export_too_large",

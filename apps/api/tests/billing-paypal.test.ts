@@ -213,7 +213,9 @@ describe("PayPal subscription gateway", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(verifyPayPalWebhook(bindings(), { id: "event" }, {})).resolves.toBe(false);
+    await expect(
+      verifyPayPalWebhook(bindings(), JSON.stringify({ id: "event" }), {}),
+    ).resolves.toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -232,12 +234,16 @@ describe("PayPal subscription gateway", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      verifyPayPalWebhook(bindings(), { id: "event" }, { ...validWebhookHeaders(), ...override }),
+      verifyPayPalWebhook(
+        bindings(),
+        JSON.stringify({ id: "event" }),
+        { ...validWebhookHeaders(), ...override },
+      ),
     ).resolves.toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("allows an old but well-formed transmission time for provider verification", async () => {
+  it("allows an old but well-formed transmission time inside the retry window", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(tokenResponse())
@@ -249,7 +255,7 @@ describe("PayPal subscription gateway", () => {
     await expect(
       verifyPayPalWebhook(
         bindings(),
-        { id: "event" },
+        JSON.stringify({ id: "event" }),
         {
           ...validWebhookHeaders(),
           transmissionTime: "2026-07-31T23:00:00.000Z",
@@ -257,6 +263,37 @@ describe("PayPal subscription gateway", () => {
       ),
     ).resolves.toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a transmission time outside the retry window before provider verification", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const body = JSON.stringify({ id: "event" });
+
+    // Older than PayPal's three-day retry window, and stamped in the future.
+    await expect(
+      verifyPayPalWebhook(bindings(), body, {
+        ...validWebhookHeaders(),
+        transmissionTime: "2026-07-20T00:00:00.000Z",
+      }),
+    ).resolves.toBe(false);
+    await expect(
+      verifyPayPalWebhook(bindings(), body, {
+        ...validWebhookHeaders(),
+        transmissionTime: "2026-08-01T01:00:00.000Z",
+      }),
+    ).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a body that does not re-serialize to the signed bytes", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      verifyPayPalWebhook(bindings(), '{ "id": "event" }', validWebhookHeaders()),
+    ).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("reuses a valid isolate-local OAuth token", async () => {

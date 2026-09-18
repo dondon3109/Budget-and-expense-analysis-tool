@@ -5,8 +5,15 @@
 SUPABASE_PUBLISHABLE_KEY=
 # Optional local development user UUID for dummy token bypass. Defaults to 00000000-0000-4000-8000-000000000001.
 DEV_USER_ID=
+# Local-only authentication shortcut, default off. Set to "true" only to let a loopback client
+# authenticate with the dummy-dev-access-token bearer as DEV_USER_ID. Never set it in a deployed
+# environment: it would arm an authentication bypass for anyone who can reach that host.
+DEV_ACCESS_TOKEN_ENABLED=
 # Optional provider timeout override in milliseconds (default 12000; recommended 30000 in dev).
 ASSISTANT_PROVIDER_TIMEOUT_MS=30000
+# Ceiling for one live voice socket in milliseconds (default 900000). The server closes the
+# socket cleanly at the ceiling so a single connection cannot run up unbounded provider cost.
+ASSISTANT_VOICE_STREAM_TIMEOUT_MS=
 
 # Optional local/CI offline assistant. Set to `stub` to route every assistant turn through a
 # deterministic in-process provider (tool loop included) with no provider key and no network

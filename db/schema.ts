@@ -886,7 +886,10 @@ export const billingMonthlyUsage = sqliteTable(
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
     month: text("month").notNull(),
-    feature: text("feature", { enum: ["assistant_question", "file_import"] }).notNull(),
+    // Keep in step with billingFeatures in packages/shared/src/types.ts.
+    feature: text("feature", {
+      enum: ["assistant_question", "file_import", "vision", "stt", "tts", "pdf"],
+    }).notNull(),
     count: integer("count").notNull().default(0),
     allowance: integer("allowance").notNull().default(0),
     updatedAt: text("updated_at")

@@ -2,6 +2,8 @@ import { AudioModule } from "expo-audio";
 import type { VoiceLanguage } from "@zoption/shared";
 import { publicConfig } from "@/config/public-config";
 
+import { ApiTransportError, apiRequest } from "./authenticated";
+
 export interface MobileVoiceStreamCallbacks {
   onPartial: (transcript: string) => void;
   onFinal: (transcript: string) => void;
@@ -97,13 +99,41 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return output;
 }
 
+/**
+ * Mints a single-use voice ticket over the authenticated API. The WebSocket URL
+ * must never carry the Supabase access token: query strings are captured by
+ * edge, intermediary, and `wrangler tail` logging. The ticket lives 60 seconds
+ * and is good for exactly one connect, so it is minted immediately before each
+ * handshake. The server also returns `expiresAt`; the client never stores or
+ * reuses a ticket, so it does not need it.
+ */
+async function mintVoiceTicket(accessToken: string): Promise<string> {
+  return await apiRequest({
+    accessToken,
+    path: "/api/app/assistant/voice/ticket",
+    method: "POST",
+    fallback: "Voice mode could not be reached. Try again shortly.",
+    decode: (value) => {
+      const ticket = (value as { ticket?: unknown } | null)?.ticket;
+      if (typeof ticket !== "string" || ticket.length === 0) {
+        throw new ApiTransportError(
+          "Zoption returned an unrecognized response.",
+          "invalid_response",
+          200,
+        );
+      }
+      return ticket;
+    },
+  });
+}
+
 export function openMobileVoiceStreamWebSocket(
-  accessToken: string,
+  ticket: string,
   lang: VoiceLanguage = "auto",
 ): WebSocket {
   const base = publicConfig.apiUrl.replace(/^http/, "ws");
-  const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(accessToken)}&lang=${encodeURIComponent(lang)}`;
-  // The URL carries the access token, so log the endpoint and language only.
+  const wsUrl = `${base}/api/app/assistant/voice/stream?ticket=${encodeURIComponent(ticket)}&lang=${encodeURIComponent(lang)}`;
+  // The URL carries a single-use ticket, so log the endpoint and language only.
   console.warn("[voice] connecting ws to /api/app/assistant/voice/stream", { lang });
   return new WebSocket(wsUrl);
 }
@@ -114,9 +144,14 @@ export function openMobileVoiceStreamWebSocket(
  * over a WebSocket connection to /api/app/assistant/voice/stream.
  *
  * Dummy dev sessions stream too: the local dev Worker accepts
- * `dummy-dev-access-token`, so the Dev build gets real partials against the
- * active STT model. (Production rejects dummy tokens at the handshake, which
- * falls through to the no-op batch fallback below.)
+ * `dummy-dev-access-token` at the ticket endpoint, so the Dev build gets real
+ * partials against the active STT model. (Production rejects dummy tokens when
+ * the ticket is minted, which falls through to the no-op batch fallback below.)
+ *
+ * Authentication: the access token is spent on minting a single-use ticket
+ * (see mintVoiceTicket). A ticket is valid for one connect within 60 seconds,
+ * so every attempt mints a fresh one immediately before opening the socket --
+ * a retried or reconnected stream must never replay a consumed ticket.
  *
  * If native AudioStream is not available (old Expo Go, web), returns a
  * no-op session so the caller can fall back to batch file upload without
@@ -325,7 +360,10 @@ export async function startMobileVoiceStream(
       streamStartMs = Date.now();
     }
 
-    ws = openMobileVoiceStreamWebSocket(accessToken, options.language ?? "auto");
+    ws = openMobileVoiceStreamWebSocket(
+      await mintVoiceTicket(accessToken),
+      options.language ?? "auto",
+    );
 
     // Listen for incoming transcripts (with latency instrumentation from worker)
     const handleMessage = (event: { data: unknown }) => {
@@ -418,7 +456,9 @@ export async function startMobileVoiceStream(
       };
       const onError = () => {
         removeListeners();
-        const targetUrl = ws?.url ?? "";
+        // Drop the query string: it carries the single-use ticket, and dev logs
+        // are still logs.
+        const targetUrl = (ws?.url ?? "").split("?")[0] ?? "";
         const isLocalHost = targetUrl.includes("127.0.0.1") || targetUrl.includes("localhost");
         if (typeof __DEV__ !== "undefined" && __DEV__ && isLocalHost) {
           console.warn(

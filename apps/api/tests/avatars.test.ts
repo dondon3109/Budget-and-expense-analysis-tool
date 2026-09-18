@@ -93,7 +93,7 @@ describe("R2 avatar storage", () => {
     const served = await servePublicAvatar({ AVATARS: bucket }, path);
     expect(served.status).toBe(200);
     expect(served.headers.get("Content-Type")).toBe("image/png");
-    expect(served.headers.get("Cache-Control")).toContain("immutable");
+    expect(served.headers.get("Cache-Control")).toBe("public, max-age=60, must-revalidate");
 
     await purgeUserAvatars(bucket, "user-1");
     expect(objects.size).toBe(0);
@@ -101,18 +101,22 @@ describe("R2 avatar storage", () => {
     expect(missing.status).toBe(404);
   });
 
-  it("falls back to the Supabase public object when R2 has no copy", async () => {
+  it("falls back to the private Supabase bucket when R2 has no copy", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response("legacy", { headers: { "Content-Type": "image/jpeg" } }));
     const served = await servePublicAvatar(
-      { SUPABASE_URL: "https://example.supabase.co" },
+      {
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
+      },
       "user-1/11111111-1111-4111-8111-111111111111.jpg",
     );
     expect(served.status).toBe(200);
     expect(await served.text()).toBe("legacy");
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://example.supabase.co/storage/v1/object/public/avatars/user-1/11111111-1111-4111-8111-111111111111.jpg",
+      "https://example.supabase.co/storage/v1/object/authenticated/avatars/user-1/11111111-1111-4111-8111-111111111111.jpg",
+      { headers: { apikey: "service-role-key", Authorization: "Bearer service-role-key" } },
     );
     fetchMock.mockRestore();
   });
@@ -123,7 +127,8 @@ describe("authenticated avatar routes", () => {
     const { objects, bucket } = createMemoryR2();
     const app = createAppWithAuth();
     const env = { AVATARS: bucket } as Bindings;
-    const file = new File(["png-bytes"], "avatar.png", { type: "image/png" });
+    const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const file = new File([pngBytes], "avatar.png", { type: "image/png" });
     const form = new FormData();
     form.set("file", file);
 

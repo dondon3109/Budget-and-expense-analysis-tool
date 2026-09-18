@@ -20,11 +20,20 @@ function requiredText(
   return value;
 }
 
+/** A name that resolves to the local machine, not a host that merely starts with "localhost". */
 function isLoopbackHost(hostname: string): boolean {
-  return ["localhost", "127.0.0.1", "[::1]"].includes(hostname);
+  const host = hostname.toLowerCase();
+  return (
+    host === "localhost" || host.endsWith(".localhost") || host === "127.0.0.1" || host === "[::1]"
+  );
 }
 
-function validateOrigin(value: string, name: string, allowLoopbackHttp: boolean): URL {
+function validateOrigin(
+  value: string,
+  name: string,
+  allowLoopbackHttp: boolean,
+  production: boolean,
+): URL {
   let url: URL;
   try {
     url = new URL(value);
@@ -32,11 +41,12 @@ function validateOrigin(value: string, name: string, allowLoopbackHttp: boolean)
     return fail(`invalid_${name.toLowerCase()}`);
   }
 
+  const loopbackHost = isLoopbackHost(url.hostname);
   const validProtocol =
-    url.protocol === "https:" ||
-    (allowLoopbackHttp && url.protocol === "http:" && isLoopbackHost(url.hostname));
+    url.protocol === "https:" || (allowLoopbackHttp && url.protocol === "http:" && loopbackHost);
   if (
     !validProtocol ||
+    (production && loopbackHost) ||
     url.username ||
     url.password ||
     url.pathname !== "/" ||
@@ -73,14 +83,22 @@ function validatePublishableKey(value: string): void {
 export function validateRequiredApiBindings(env: Bindings): void {
   if (!env.DB || typeof env.DB.prepare !== "function") fail("missing_db_binding");
 
+  // Outside local development a loopback hostname in any configured URL is a mistake: it is how
+  // the same binding that arms a localhost-only shortcut reaches a deployed environment.
+  const production = env.POSTHOG_AI_ENVIRONMENT === "production";
+
   const allowedOrigins = requiredText(env, "ALLOWED_ORIGINS")
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
   if (allowedOrigins.length === 0) fail("invalid_allowed_origins");
-  for (const origin of allowedOrigins) validateOrigin(origin, "allowed_origins", true);
+  for (const origin of allowedOrigins) validateOrigin(origin, "allowed_origins", true, production);
 
-  validateOrigin(requiredText(env, "SUPABASE_URL"), "supabase_url", true);
+  validateOrigin(requiredText(env, "SUPABASE_URL"), "supabase_url", true, production);
+
+  const webAppUrl = env.WEB_APP_URL?.trim();
+  if (webAppUrl) validateOrigin(webAppUrl, "web_app_url", true, production);
+
   validatePublishableKey(requiredText(env, "SUPABASE_PUBLISHABLE_KEY"));
 }
 

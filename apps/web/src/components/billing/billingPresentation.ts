@@ -3,6 +3,10 @@ import type { BillingCapability, BillingFeature, BillingResource } from "@zoptio
 export const capabilityLabels: Record<BillingCapability, string> = {
   assistant_question: "AI assistant questions",
   file_import: "file imports",
+  vision: "receipt scanning",
+  stt: "voice transcription",
+  tts: "spoken replies",
+  pdf: "PDF entry",
   category_management: "custom category management",
   account_management: "custom account management",
   cashflow_analytics: "cashflow analytics",
@@ -12,6 +16,10 @@ export const capabilityLabels: Record<BillingCapability, string> = {
 export const featureLabels: Record<BillingFeature, string> = {
   assistant_question: "AI questions",
   file_import: "file imports",
+  vision: "receipt scans",
+  stt: "voice transcriptions",
+  tts: "spoken replies",
+  pdf: "PDF entries",
 };
 
 export const resourceLabels: Record<BillingResource, string> = {

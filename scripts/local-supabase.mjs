@@ -6,10 +6,15 @@
  *   node scripts/local-supabase.mjs status    # what is configured right now (default)
  *   node scripts/local-supabase.mjs enable    # point both apps at http://127.0.0.1:54321
  *   node scripts/local-supabase.mjs disable   # restore the cloud values
+ *   node scripts/local-supabase.mjs enable --allow-live-keys   # accept live provider keys
  *
  * enable() backs up the current values first and refuses to run twice, so the
  * cloud configuration can always be restored with disable(). Both target files are
  * gitignored (.dev.vars and .env.*), and the backups written here are ignored too.
+ *
+ * enable() also refuses while apps/api/.dev.vars still holds a live non-Supabase
+ * credential. It rewrites only the Supabase pair, so every other value stays live and
+ * the dev Worker keeps calling paid providers and mail with the developer's accounts.
  *
  * Why local Supabase rather than the API's dummy dev token: the token path maps
  * every request to a single hard-coded DEV_USER_ID with no real session, so it
@@ -38,6 +43,22 @@ const TARGETS = [
   },
 ];
 
+// Live cloud credentials that local mode does not replace. Names are listed, never values.
+const LIVE_SECRET_NAMES = [
+  "DEEPSEEK_API_KEY",
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "GEMINI_API_KEY",
+  "GOOGLE_AI_STUDIO_API_KEY",
+  "META_API_KEY",
+  "MUSE_SPARK_API_KEY",
+  "FISH_AUDIO_API_KEY",
+  "RESEND_API_KEY",
+  "POSTHOG_PROJECT_TOKEN",
+  "PAYPAL_CLIENT_SECRET",
+  "CLOUDFLARE_API_TOKEN",
+];
+
 function readEnv(file) {
   if (!existsSync(file)) return null;
   return readFileSync(file, "utf8");
@@ -54,6 +75,14 @@ function upsertEnv(content, key, value) {
 function currentValue(content, key) {
   const match = content?.match(new RegExp(`^\\s*${key}\\s*=(.*)$`, "m"));
   return match ? match[1].trim() : undefined;
+}
+
+/** Non-empty live credentials left in a target file, by name only. */
+function liveSecretNames(content) {
+  return LIVE_SECRET_NAMES.filter((name) => {
+    const value = currentValue(content, name);
+    return value !== undefined && value !== "";
+  });
 }
 
 function mask(value) {
@@ -121,6 +150,14 @@ function status() {
       `       backup: ${existsSync(target.backup) ? "present (local mode is active)" : "none"}`,
     );
   }
+  const workerTarget = TARGETS.find((target) => target.label === "api");
+  const liveSecrets = workerTarget ? liveSecretNames(readEnv(workerTarget.file) ?? "") : [];
+  if (liveSecrets.length > 0) {
+    console.log(
+      `\n  WARNING: apps/api/.dev.vars still holds live credentials: ${liveSecrets.join(", ")}`,
+    );
+    console.log("           Local mode does not replace them, so the dev Worker can spend them.");
+  }
   console.log(`\n  supabase CLI: ${runtime.supabase ? "available" : "NOT AVAILABLE"}`);
   console.log(`  docker:       ${runtime.docker ? "running" : "NOT RUNNING"}`);
   if (!runtime.docker) {
@@ -130,7 +167,7 @@ function status() {
   }
 }
 
-function enable(force) {
+function enable(force, allowLiveKeys) {
   const alreadyBackedUp = TARGETS.filter((target) => existsSync(target.backup));
   if (alreadyBackedUp.length > 0 && !force) {
     console.error(
@@ -140,6 +177,22 @@ function enable(force) {
       "Run 'disable' first to restore the cloud values, or pass --force to overwrite the backup.",
     );
     process.exit(1);
+  }
+
+  const workerTarget = TARGETS.find((target) => target.label === "api");
+  const liveSecrets = workerTarget ? liveSecretNames(readEnv(workerTarget.file) ?? "") : [];
+  if (liveSecrets.length > 0 && !allowLiveKeys) {
+    console.error(
+      "Refusing to start local mode: apps/api/.dev.vars still holds live cloud credentials.",
+    );
+    for (const name of liveSecrets) console.error(`  ${name}`);
+    console.error("Only SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are rewritten, so the dev");
+    console.error("Worker would keep calling the live providers with the values above. Comment");
+    console.error("out the ones local work does not need, or pass --allow-live-keys to accept it.");
+    process.exit(1);
+  }
+  if (liveSecrets.length > 0) {
+    console.warn(`  continuing with live cloud credentials: ${liveSecrets.join(", ")}`);
   }
 
   const stack = readLocalStack();
@@ -196,7 +249,7 @@ function disable() {
 
 const [command = "status", ...rest] = process.argv.slice(2);
 if (command === "status") status();
-else if (command === "enable") enable(rest.includes("--force"));
+else if (command === "enable") enable(rest.includes("--force"), rest.includes("--allow-live-keys"));
 else if (command === "disable") disable();
 else {
   console.error(`Unknown command "${command}". Use status, enable or disable.`);

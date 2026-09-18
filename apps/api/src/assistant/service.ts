@@ -28,6 +28,7 @@ import {
   canonicalizeMemoryKey,
   containsPromptInjection,
   deterministicExtract,
+  isCanonicalMemoryKey,
   isSensitiveMemory,
   MAX_MEMORY_FACTS_STORED,
   runModelMemoryPass,
@@ -212,7 +213,12 @@ export function createAssistantService(
       repository.getMemory(env, tenantId, "summary", `thread:${threadId}`),
     ]);
     const facts = memories.filter(
-      (memory) => memory.kind === "fact" || memory.kind === "preference",
+      (memory) =>
+        (memory.kind === "fact" || memory.kind === "preference") &&
+        // A stored key outside the canonical allowlist is a legacy model-invented
+        // channel, so it stops reaching the prompt immediately and the row expires
+        // on its own retention instead of needing a data migration.
+        isCanonicalMemoryKey(memory.key),
     );
     const threadSummary = threadSummaryMemory?.value ?? null;
     const debtMemory = memories.find(
@@ -238,7 +244,7 @@ export function createAssistantService(
     tenantId: string,
     message: string,
     telemetry?: AssistantAiTelemetry,
-    context?: { threadId: string; assistantContent?: string },
+    context?: { threadId: string },
   ) {
     const extraction = deterministicExtract(message);
     if (extraction.forgetAll) {
@@ -295,7 +301,6 @@ export function createAssistantService(
         // Facts and preferences both, so the model can reuse or supersede either key.
         const existing = await repository.listMemories(env, tenantId);
         const extracted = await runModelMemoryPass(env, provider, message, telemetry, {
-          ...(context?.assistantContent ? { assistantContent: context.assistantContent } : {}),
           existingKeys: existing.map((item) => item.key),
         });
         for (const memory of extracted) {
@@ -421,7 +426,6 @@ export function createAssistantService(
       try {
         await persistExtractedMemories(env, tenantId, input.message, telemetry, {
           threadId: start.thread.id,
-          assistantContent: answer.content,
         });
         await updateThreadSummary(env, tenantId, start.thread.id, input.message, answer.content);
       } catch {

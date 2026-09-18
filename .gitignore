@@ -9,7 +9,6 @@ coverage/
 # Cloud-config backups written by scripts/local-supabase.mjs. Keep the example tracked.
 .dev.vars.*
 !.dev.vars.example
-apps/api/wrangler.deploy.jsonc
 .env
 .env.*
 !.env.example

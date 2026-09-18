@@ -18,6 +18,7 @@ import {
   AssistantVoiceProviderError,
   type AssistantVoiceTranscriptionProvider,
 } from "../assistant/voice-provider";
+import { billingRepository } from "../db/billing";
 import type { ImportRepository } from "../db/imports";
 import type { ReceiptRepository } from "../db/receipts";
 import { HttpError } from "../errors";
@@ -376,6 +377,8 @@ export function createAiEntryService(
   return {
     async previewPdf(env, tenantId, pdf) {
       await requireAiEntryConsent(receiptRepository, env, tenantId);
+      // Statement conversion and extraction spend billable provider calls, so they are Pro-only.
+      await billingRepository.requirePro(env, tenantId, "pdf");
       if (!env.AI) {
         throw new HttpError(503, "entry_pdf_unavailable", "AI entry is temporarily unavailable.");
       }
@@ -451,6 +454,8 @@ export function createAiEntryService(
 
     async extractVoiceTranscript(env, tenantId, transcript, categories) {
       await requireAiEntryConsent(receiptRepository, env, tenantId);
+      // The spoken transcript still costs one model extraction; the audio path below adds STT.
+      await billingRepository.requirePro(env, tenantId, "stt");
       const cleanTranscript = transcript.trim();
       if (!cleanTranscript) {
         throw new HttpError(
@@ -464,6 +469,7 @@ export function createAiEntryService(
 
     async extractVoice(env, tenantId, audio, categories, language) {
       await requireAiEntryConsent(receiptRepository, env, tenantId);
+      await billingRepository.requirePro(env, tenantId, "stt");
       let transcript: string;
       try {
         transcript = (

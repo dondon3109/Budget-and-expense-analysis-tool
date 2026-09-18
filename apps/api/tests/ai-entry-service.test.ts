@@ -31,10 +31,21 @@ function imports(): ImportRepository {
   return { preview: vi.fn(async () => preview), commit: vi.fn() };
 }
 
-function env(run: ReturnType<typeof vi.fn>, toMarkdown: ReturnType<typeof vi.fn>): Bindings {
+/** The entitlement lookup reads one row; a source row means the tenant has Pro. */
+function proDb(hasPro: boolean): D1Database {
+  return {
+    prepare: () => ({ bind: () => ({ first: async () => (hasPro ? { source: "paypal" } : null) }) }),
+  } as unknown as D1Database;
+}
+
+function env(
+  run: ReturnType<typeof vi.fn>,
+  toMarkdown: ReturnType<typeof vi.fn>,
+  hasPro = true,
+): Bindings {
   const bindings = {} as Bindings;
   Object.assign(bindings, {
-    DB: {} as D1Database,
+    DB: proDb(hasPro),
     RECEIPT_ENTRY_ENABLED: "true",
     ASSISTANT_TIME_ZONE: "Asia/Manila",
     AI: { run, toMarkdown },
@@ -43,6 +54,25 @@ function env(run: ReturnType<typeof vi.fn>, toMarkdown: ReturnType<typeof vi.fn>
 }
 
 describe("AI entry service", () => {
+  it("refuses media AI entry for a tenant without Pro before any provider call", async () => {
+    const run = vi.fn();
+    const toMarkdown = vi.fn();
+    const service = createAiEntryService(repository(), imports());
+
+    await expect(
+      service.extractVoiceTranscript(env(run, toMarkdown, false), "tenant-id", "Spent 250 pesos"),
+    ).rejects.toMatchObject({ status: 403, code: "upgrade_required" });
+    await expect(
+      service.previewPdf(
+        env(run, toMarkdown, false),
+        "tenant-id",
+        new File([new Uint8Array([1, 2, 3])], "statement.pdf", { type: "application/pdf" }),
+      ),
+    ).rejects.toMatchObject({ status: 403, code: "upgrade_required" });
+    expect(run).not.toHaveBeenCalled();
+    expect(toMarkdown).not.toHaveBeenCalled();
+  });
+
   it("converts a PDF in-flight then delegates its rows to the existing import preview", async () => {
     const run = vi.fn(async () => ({
       response: {

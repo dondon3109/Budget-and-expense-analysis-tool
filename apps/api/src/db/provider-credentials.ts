@@ -37,7 +37,13 @@ export interface ProviderCredentialRepository {
   getEncryptedById(env: Bindings, id: string): Promise<ProviderCredentialRow | null>;
   create(
     env: Bindings,
-    input: { provider: string; name: string; encryptedSecret: string; apiKeyLast4: string },
+    input: {
+      id: string;
+      provider: string;
+      name: string;
+      encryptedSecret: string;
+      apiKeyLast4: string;
+    },
     actorId: string,
   ): Promise<ProviderCredential>;
   update(
@@ -94,7 +100,9 @@ export const providerCredentialRepository: ProviderCredentialRepository = {
   },
 
   async create(env, input, actorId) {
-    const id = crypto.randomUUID();
+    // The caller generates the id before encrypting: it is the additional data that binds the
+    // ciphertext to this row, so it cannot be created after the secret is encrypted.
+    const id = input.id;
     try {
       await env.DB.prepare(
         `INSERT INTO provider_credentials (id, provider, name, encrypted_secret, api_key_last4, created_at, updated_at, updated_by)

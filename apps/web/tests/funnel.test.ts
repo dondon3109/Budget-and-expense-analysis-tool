@@ -27,6 +27,7 @@ import {
   type FunnelEventProperties,
 } from "../src/analytics/funnel";
 import { resetPostHogForTests } from "../src/analytics/PostHogAnalytics";
+import { CONSENT_STORAGE_KEY, createConsentRecord } from "../src/consent/consent";
 
 const POSTHOG_KEY = "phc_test_public_key_123";
 
@@ -51,17 +52,27 @@ const EVENT_ENTRIES = Object.entries(EVENT_PROPERTIES) as Array<
   [FunnelEventName, FunnelEventProperties[FunnelEventName]]
 >;
 
+/** The funnel is gated on the stored analytics preference, so every case starts from a decision. */
+function storeAnalyticsConsent(analytics: boolean) {
+  localStorage.setItem(
+    CONSENT_STORAGE_KEY,
+    JSON.stringify(createConsentRecord({ analytics, marketing: false }, "custom")),
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   resetPostHogForTests();
   resetFunnelForTests();
   vi.stubEnv("VITE_POSTHOG_KEY", POSTHOG_KEY);
+  storeAnalyticsConsent(true);
 });
 
 afterEach(() => {
   resetPostHogForTests();
   resetFunnelForTests();
   vi.unstubAllEnvs();
+  localStorage.clear();
 });
 
 describe("funnel events", () => {
@@ -105,6 +116,17 @@ describe("funnel events", () => {
       { event: "signup_viewed", properties: {} },
       { event: "signup_viewed", properties: {} },
     ]);
+  });
+
+  it("captures nothing while the stored analytics preference is denied", () => {
+    storeAnalyticsConsent(false);
+
+    for (const [name, properties] of EVENT_ENTRIES) captureFunnelEvent(name, properties);
+
+    // Not merely "no event reached PostHog": the SDK is never even initialized, so revoking
+    // consent also stops the transport the events would have used.
+    expect(mockedPostHog.__getCapturedEvents()).toEqual([]);
+    expect(mockedPostHog.init).not.toHaveBeenCalled();
   });
 
   it("stays silent when no key is configured or when capture fails", () => {

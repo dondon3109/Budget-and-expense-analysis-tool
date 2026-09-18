@@ -5,5 +5,10 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["deployment-config.ts", "vite.config.ts", "tests/vite-config.test.ts"]
+  "include": [
+    "deployment-config.ts",
+    "vite.config.ts",
+    "tests/vite-config.test.ts",
+    "tests/deployment-config-csp.test.ts"
+  ]
 }

@@ -408,7 +408,15 @@ export const billingSubscriptionStatuses = [
 export type BillingSubscriptionStatus = (typeof billingSubscriptionStatuses)[number];
 
 export type BillingPlan = "free" | "zoption_pro";
-export type BillingFeature = "assistant_question" | "file_import";
+export const billingFeatures = [
+  "assistant_question",
+  "file_import",
+  "vision",
+  "stt",
+  "tts",
+  "pdf",
+] as const;
+export type BillingFeature = (typeof billingFeatures)[number];
 export type BillingResource = "custom_category";
 export type BillingCapability =
   | BillingFeature

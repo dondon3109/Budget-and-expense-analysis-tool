@@ -13,8 +13,15 @@ import {
 import type { AssistantRepository, AssistantVoiceRepository } from "../src/db/assistant";
 import type { Bindings } from "../src/types";
 
+/** The entitlement lookup reads one row; a source row means the tenant has Pro. */
+function proDb(hasPro: boolean): D1Database {
+  return {
+    prepare: () => ({ bind: () => ({ first: async () => (hasPro ? { source: "paypal" } : null) }) }),
+  } as unknown as D1Database;
+}
+
 const env = {
-  DB: {} as D1Database,
+  DB: proDb(true),
   ASSISTANT_VOICE_ENABLED: "true",
   ASSISTANT_VOICE_REVIEW_REQUIRED: "true",
   FISH_AUDIO_API_KEY: "fish-test-credential",
@@ -101,6 +108,29 @@ describe("assistant voice service", () => {
     expect(voiceProviders.transcription.transcribe).not.toHaveBeenCalled();
   });
 
+  it("refuses voice transcription and speech for a tenant without Pro before any provider call", async () => {
+    const voiceProviders = providers();
+    const service = createAssistantVoiceService(repository(), voiceProviders);
+    const freeEnv = { ...env, DB: proDb(false) };
+
+    await expect(
+      service.transcribe(
+        freeEnv,
+        "tenant-id",
+        new File([new Uint8Array([1])], "voice.webm", { type: "audio/webm" }),
+      ),
+    ).rejects.toMatchObject({ status: 403, code: "upgrade_required" });
+    await expect(
+      service.synthesize(freeEnv, "tenant-id", completedMessage.id, "bright"),
+    ).rejects.toMatchObject({ status: 403, code: "upgrade_required" });
+    await expect(service.preview(freeEnv, "tenant-id", "energetic")).rejects.toMatchObject({
+      status: 403,
+      code: "upgrade_required",
+    });
+    expect(voiceProviders.transcription.transcribe).not.toHaveBeenCalled();
+    expect(voiceProviders.speech.synthesize).not.toHaveBeenCalled();
+  });
+
   it("speaks only a completed owned message and removes markdown from provider text", async () => {
     const voiceProviders = providers();
     const service = createAssistantVoiceService(repository(), voiceProviders);
@@ -134,7 +164,7 @@ describe("assistant voice service", () => {
     const voiceProviders = providers();
     const service = createAssistantVoiceService(repository(false), voiceProviders);
 
-    await service.preview(env, "energetic");
+    await service.preview(env, "tenant-id", "energetic");
 
     expect(voiceProviders.speech.synthesize).toHaveBeenCalledWith(
       env,

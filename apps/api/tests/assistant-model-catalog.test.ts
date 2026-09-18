@@ -278,7 +278,7 @@ describe("provider-credential model routes", () => {
 
   it("lists models for a saved credential after decrypting it", async () => {
     const secret = "sk-saved-ABCD";
-    const enc = await encryptSecret(secret, TEST_MASTER_KEY);
+    const enc = await encryptSecret(secret, TEST_MASTER_KEY, "cred-1");
     const repo = {
       getEncryptedById: vi.fn(async () => ({
         id: "cred-1",

@@ -1,6 +1,6 @@
 import posthog from "posthog-js";
 
-import { ensurePostHogInitialized } from "./PostHogAnalytics";
+import { ensurePostHogInitialized, isAnalyticsConsented } from "./PostHogAnalytics";
 
 /**
  * The closed set of signup funnel events and the only properties each one may
@@ -53,14 +53,18 @@ function allowedProperties<Name extends FunnelEventName>(
 
 /**
  * Captures one funnel event from a wired surface. Analytics never blocks or
- * changes a user flow: with no PostHog key configured, or when capture fails,
- * this is a silent no-op.
+ * changes a user flow: without a stored analytics consent, with no PostHog key
+ * configured, or when capture fails, this is a silent no-op.
+ *
+ * This path can fire before the consent provider mounts, so it checks the stored
+ * decision itself instead of trusting the gate's in-memory state.
  */
 export function captureFunnelEvent<Name extends FunnelEventName>(
   name: Name,
   properties: FunnelEventProperties[Name],
 ): void {
   try {
+    if (!isAnalyticsConsented()) return;
     if (!ensurePostHogInitialized()) return;
     if (ONCE_PER_PAGE_LOAD_EVENTS.has(name)) {
       if (capturedThisSession.has(name)) return;

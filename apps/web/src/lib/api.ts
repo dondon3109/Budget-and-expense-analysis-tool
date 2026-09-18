@@ -160,11 +160,22 @@ export interface UpgradeRequiredDetails {
   capability: BillingCapability;
 }
 
-const billingFeatures = new Set<BillingFeature>(["assistant_question", "file_import"]);
+const billingFeatures = new Set<BillingFeature>([
+  "assistant_question",
+  "file_import",
+  "vision",
+  "stt",
+  "tts",
+  "pdf",
+]);
 const billingResources = new Set<BillingResource>(["custom_category"]);
 const billingCapabilities = new Set<BillingCapability>([
   "assistant_question",
   "file_import",
+  "vision",
+  "stt",
+  "tts",
+  "pdf",
   "category_management",
   "account_management",
   "cashflow_analytics",
@@ -1135,16 +1146,35 @@ export async function transcribeAssistantVoice(
   return (await response.json()) as AssistantVoiceTranscription;
 }
 
+/**
+ * Mints a single-use voice stream ticket and opens the live transcription socket with it.
+ *
+ * The ticket replaces the Supabase access token, which must never travel in a URL, and it is
+ * single use with a 60 second TTL — so it is minted here, immediately before the handshake.
+ * Every connect, including a fresh attempt after a dropped socket, calls this function again;
+ * reusing a ticket or a socket is rejected by the server with invalid_voice_ticket.
+ */
 export async function openVoiceStreamWebSocket(
   workspace: AuthenticatedWorkspace,
   language?: VoiceLanguage,
 ): Promise<WebSocket> {
-  const token = await accessToken(workspace, false);
+  const payload = await requestJson<unknown>(workspace, "/api/app/assistant/voice/ticket", {
+    method: "POST",
+  });
+  const ticket = isRecord(payload) ? payload.ticket : undefined;
+  if (typeof ticket !== "string" || !ticket) {
+    throw new ApiRequestError(
+      "Live transcription authentication could not be prepared.",
+      502,
+      "invalid_voice_ticket_response",
+    );
+  }
+
   const base = apiUrl
     ? apiUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:")
     : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
   const langParam = language ? `&lang=${encodeURIComponent(language)}` : "&lang=auto";
-  const wsUrl = `${base}/api/app/assistant/voice/stream?token=${encodeURIComponent(token)}${langParam}`;
+  const wsUrl = `${base}/api/app/assistant/voice/stream?ticket=${encodeURIComponent(ticket)}${langParam}`;
   return new WebSocket(wsUrl);
 }
 

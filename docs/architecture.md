@@ -8,7 +8,7 @@ The public landing page contains a static dashboard illustration only. It does n
 
 ## Authentication and tenancy
 
-1. **Supabase manages identity, D1 manages financial data.** Passwords, Google identities, confirmation, password recovery, sessions, and token refresh stay in Supabase. The application does not store passwords, provider credentials, or access tokens in D1.
+1. **Supabase manages identity, D1 manages financial data.** Passwords, Google identities, confirmation, password recovery, sessions, and token refresh stay in Supabase. The application does not store passwords or Supabase access tokens in D1. The AI and voice provider credentials a platform admin saves at `/app/admin/provider-configs` are stored in D1 only as AES-256-GCM ciphertext, keyed by the `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` Worker secret; the master key itself is never written to D1 or the repository.
 2. **Financial APIs fail closed.** `/api/app/*` requires a valid bearer token. Missing or invalid authentication returns `401` and never resolves a tenant.
 3. **Identity maps to an application tenant.** `user_tenants` maps the immutable Supabase user subject to one D1 tenant.
 4. **First access bootstraps structure, not financial history.** The first authenticated request creates the personal tenant, mapping, Everyday account, and starter categories. It creates no transactions or budgets.

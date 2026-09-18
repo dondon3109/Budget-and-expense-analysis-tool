@@ -7,7 +7,7 @@ import { createProviderCredentialRoutes } from "../src/routes/provider-credentia
 import { createAdminProviderConfigRoutes } from "../src/routes/admin-provider-configs";
 import { Hono } from "hono";
 import { HttpError } from "../src/errors";
-import { encryptSecret, getLast4 } from "../src/provider-credentials/crypto";
+import { decryptSecret, encryptSecret, getLast4 } from "../src/provider-credentials/crypto";
 
 // Generate a deterministic 32-byte master key (base64)
 const TEST_MASTER_KEY = btoa("\x01".repeat(32));
@@ -18,6 +18,23 @@ function makeEnv(master = TEST_MASTER_KEY) {
 
 function authEnv() {
   return { DB: {} as D1Database };
+}
+
+// Writes ciphertext in the pre-v1 format — base64(iv || AES-GCM ciphertext) with no additional
+// data — so the legacy read path stays covered through the route stack.
+async function encryptLegacySecret(plain: string): Promise<string> {
+  const keyBytes = Uint8Array.from(atob(TEST_MASTER_KEY), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, [
+    "encrypt",
+  ]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cipher = new Uint8Array(
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain)),
+  );
+  const combined = new Uint8Array(iv.length + cipher.length);
+  combined.set(iv, 0);
+  combined.set(cipher, iv.length);
+  return btoa(String.fromCharCode(...combined));
 }
 
 describe("provider_credentials — model preview", () => {
@@ -64,20 +81,19 @@ describe("provider_credentials — model preview", () => {
 describe("provider_credentials — encrypted reusable credentials", () => {
   it("encrypts and decrypts round-trip, never returns plaintext or ciphertext", async () => {
     const secret = "sk-test-1234-ABCD-5678-21A9";
-    const enc = await encryptSecret(secret, TEST_MASTER_KEY);
+    const enc = await encryptSecret(secret, TEST_MASTER_KEY, "cred-1");
+    expect(enc.startsWith("v1.")).toBe(true);
     expect(enc).not.toContain(secret);
     expect(enc).not.toContain("21A9");
-    // decrypt
-    const { decryptSecret } = await import("../src/provider-credentials/crypto");
-    const dec = await decryptSecret(enc, TEST_MASTER_KEY);
+    const dec = await decryptSecret(enc, TEST_MASTER_KEY, "cred-1");
     expect(dec).toBe(secret);
     expect(getLast4(secret)).toBe("21A9");
   });
 
   it("IV is random per encryption (same plaintext → different ciphertext)", async () => {
     const secret = "same-secret-21A9";
-    const a = await encryptSecret(secret, TEST_MASTER_KEY);
-    const b = await encryptSecret(secret, TEST_MASTER_KEY);
+    const a = await encryptSecret(secret, TEST_MASTER_KEY, "cred-1");
+    const b = await encryptSecret(secret, TEST_MASTER_KEY, "cred-1");
     expect(a).not.toBe(b);
   });
 
@@ -116,7 +132,8 @@ describe("provider_credentials — encrypted reusable credentials", () => {
           : null,
       ),
       create: vi.fn(async (env, input, actor) => {
-        const id = "cred-1";
+        // The route generates the id before encrypting, so the fake stores under that id.
+        const id = input.id;
         store.set(id, {
           name: input.name,
           enc: input.encryptedSecret,
@@ -172,6 +189,14 @@ describe("provider_credentials — encrypted reusable credentials", () => {
     expect(payload).not.toContain("super-secret");
     expect(payload).not.toContain("encrypted_secret");
     expect(body.encrypted_secret).toBeUndefined();
+    // The stored ciphertext is bound to the row id the route generated before encrypting.
+    const createdId = repo.create.mock.calls[0][1].id;
+    const stored = store.get(createdId);
+    expect(stored.enc.startsWith("v1.")).toBe(true);
+    await expect(decryptSecret(stored.enc, TEST_MASTER_KEY, createdId)).resolves.toBe(
+      "super-secret-21A9",
+    );
+    await expect(decryptSecret(stored.enc, TEST_MASTER_KEY, "other-row")).rejects.toThrow();
   });
 
   it("rejects an unknown provider with a readable error before touching storage", async () => {
@@ -501,11 +526,16 @@ describe("provider_credentials — encrypted reusable credentials", () => {
     expect(body.apiKeyLast4).toBe("9999");
     expect(JSON.stringify(body)).not.toContain("new-secret");
     expect(invalidate).toHaveBeenCalled();
+    // The rotated ciphertext is bound to the credential row id, not just the master key.
+    expect(store.enc.startsWith("v1.")).toBe(true);
+    await expect(decryptSecret(store.enc, TEST_MASTER_KEY, "cred-1")).resolves.toBe(
+      "new-secret-9999",
+    );
   });
 
   it("test credential decrypts and returns ok without leaking secret", async () => {
     const secret = "test-secret-ABCD";
-    const enc = await encryptSecret(secret, TEST_MASTER_KEY);
+    const enc = await encryptSecret(secret, TEST_MASTER_KEY, "cred-1");
     const platformAdmins = { requireAdmin: vi.fn(async () => undefined) };
     const repo = {
       getEncryptedById: vi.fn(async () => ({
@@ -542,6 +572,42 @@ describe("provider_credentials — encrypted reusable credentials", () => {
     expect(body.last4).toBe("ABCD");
     expect(JSON.stringify(body)).not.toContain(secret);
     expect(JSON.stringify(body)).not.toContain(enc);
+  });
+
+  it("reads a legacy unprefixed row through the route with the row id supplied", async () => {
+    const legacy = await encryptLegacySecret("legacy-secret-ABCD");
+    const platformAdmins = { requireAdmin: vi.fn(async () => undefined) };
+    const repo = {
+      getEncryptedById: vi.fn(async () => ({
+        id: "cred-1",
+        provider: "deepseek",
+        encrypted_secret: legacy,
+        api_key_last4: "ABCD",
+      })),
+    };
+    const routes = createProviderCredentialRoutes(
+      platformAdmins as any,
+      repo as any,
+      { invalidate: vi.fn() } as any,
+    );
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      (c as any).set("authUser", { id: "admin" });
+      (c as any).env = makeEnv();
+      await next();
+    });
+    app.route("/", routes);
+    app.onError((err, c) => {
+      if (err instanceof HttpError) return c.json({ error: err.code }, err.status);
+      return c.json({ error: "internal" }, 500);
+    });
+    const res = await app.request("/cred-1/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { ok: boolean }).ok).toBe(true);
   });
 
   it("activation invalidates cache immediately (not waiting for TTL)", async () => {
@@ -669,7 +735,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
       reorder: vi.fn(),
       listAudits: vi.fn(async () => []),
     };
-    const encSecret = await encryptSecret("AIzaSyTestSecret1234", TEST_MASTER_KEY);
+    const encSecret = await encryptSecret("AIzaSyTestSecret1234", TEST_MASTER_KEY, credId);
     const credRepo = {
       getById: vi.fn(async (_env, id) =>
         id === credId

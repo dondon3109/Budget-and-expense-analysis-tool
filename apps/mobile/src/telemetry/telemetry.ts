@@ -20,9 +20,10 @@
  * can embed transaction text, identifiers, or server responses. Custom crash
  * fields carry only a coarse exception type, a deterministic grouping token
  * derived from message-free stack frames, and the reporting source label.
- * PostHog uses the authenticated Supabase subject as its stable distinct id.
- * The session boundary supplies the optional email only as a person property;
- * raw errors, messages, and stacks are never sent. See
+ * No Zoption or Supabase identity is supplied: the transport has no identity
+ * call at all, so the authenticated subject and the account email never reach
+ * the vendor, and the only identifier it sees is PostHog's memory-scoped
+ * device id. Raw errors, messages, and stacks are never sent either. See
  * docs/mobile/security-and-privacy.md.
  */
 
@@ -54,8 +55,6 @@ export interface TelemetryTransport {
   /** Captures a product event after a completed user action. */
   capture?(event: string, properties?: Record<string, string | number | boolean>): void;
   /** Optional so existing minimal transports remain valid in tests. */
-  identify?(distinctId: string, personProperties?: { email?: string }): void;
-  /** Optional so existing minimal transports remain valid in tests. */
   reset?(): void;
   flush(): Promise<void>;
   /** Registers the remote kill-switch listener when the backend supports flags. */
@@ -68,9 +67,7 @@ export interface TelemetryService {
   /** Resolves even when initialization fails; telemetry can never block startup. */
   init(): Promise<void>;
   isActive(): boolean;
-  /** Identifies the authenticated user once at the session boundary. */
-  identify(distinctId: string, personProperties?: { email?: string }): Promise<void>;
-  /** Clears analytics identity when the authenticated session ends. */
+  /** Clears the anonymous analytics identity when the authenticated session ends. */
   reset(): Promise<void>;
   /** Best-effort product event for a completed user action; never blocks callers. */
   capture(event: string, properties?: Record<string, string | number | boolean>): Promise<void>;
@@ -206,13 +203,7 @@ export function createTelemetryService(
   let gateOpen = false;
   let initializationFailed = false;
   let initialization: Promise<void> | null = null;
-  let identifiedUser: { distinctId: string; personProperties?: { email?: string } } | null = null;
   const pending: SanitizedCrashReport[] = [];
-
-  const applyIdentity = (): void => {
-    if (!transport || !identifiedUser) return;
-    transport.identify?.(identifiedUser.distinctId, identifiedUser.personProperties);
-  };
 
   const deliver = (report: SanitizedCrashReport): void => {
     if (!transport) return;
@@ -243,7 +234,6 @@ export function createTelemetryService(
         try {
           const created = await createTransport(config);
           transport = created;
-          applyIdentity();
           if (typeof created.onRemoteGateChange === "function") {
             created.onRemoteGateChange((allowed) => {
               gateResolved = true;
@@ -266,21 +256,7 @@ export function createTelemetryService(
       return initialization;
     },
     isActive: () => transport !== null,
-    async identify(distinctId, personProperties) {
-      if (!config.enabled || !distinctId) return;
-      const alreadyInitialized = transport !== null;
-      identifiedUser = { distinctId, personProperties };
-      await this.init();
-      if (alreadyInitialized) {
-        try {
-          applyIdentity();
-        } catch {
-          // Identification must never interfere with a completed authentication flow.
-        }
-      }
-    },
     reset() {
-      identifiedUser = null;
       try {
         transport?.reset?.();
       } catch {
@@ -398,9 +374,6 @@ async function createPostHogTransport(config: TelemetryConfig): Promise<Telemetr
     capture: (event, properties) => {
       client.capture(event, properties);
     },
-    identify: (distinctId, personProperties) => {
-      client.identify(distinctId, personProperties);
-    },
     reset: () => {
       client.reset();
     },
@@ -419,8 +392,8 @@ export function createPostHogOptions(host: string) {
   return {
     host,
     // Do not persist a device identity or queued events across app restarts.
-    // An authenticated subject is deliberately identified at the session
-    // boundary, including for sanitized crash attribution.
+    // No person is ever identified, so the vendor only ever holds PostHog's
+    // ephemeral device id for the duration of a launch.
     persistence: "memory" as const,
     personProfiles: "identified_only" as const,
     setDefaultPersonProperties: false,

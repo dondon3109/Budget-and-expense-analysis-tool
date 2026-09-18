@@ -28,7 +28,8 @@ The Cloudflare Worker that owns authentication enforcement, tenant data, and fin
 ## Commands
 
 ```bash
-pnpm --filter @zoption/api dev        # wrangler dev on port 8787
+pnpm --filter @zoption/api dev        # wrangler dev on 127.0.0.1:8787
+pnpm --filter @zoption/api dev:lan    # wrangler dev on 0.0.0.0:8787, for device testing over Wi-Fi
 pnpm --filter @zoption/api build      # wrangler deploy --dry-run
 pnpm --filter @zoption/api typecheck
 pnpm test                             # from the repo root; there is no api level vitest config
@@ -52,8 +53,9 @@ pnpm db:migrate:local                 # apply db/migrations to the local D1 data
 - Do not add fields to a mobile sync payload without an agreed client capability. Installed apps validate the whole pull response strictly and reject an unknown key. A data backfill migration must bump `revision`.
 - Money is integer centavos end to end (`amount_minor`). Expenses are negative, transfers count once, and assistant output must never show centavos or a peso symbol.
 - Tenant resolution is skipped for `DELETE /api/app/account` and `/api/app/admin/*`; `context.get("tenant")` is unset on those paths.
-- A deleted subject has a tombstone that is checked before tenant bootstrap, so a retained token gets `410 account_deleted` instead of a new workspace.
-- The `dummy-dev-access-token` shortcut works only when `POSTHOG_AI_ENVIRONMENT` is not `production` and the allowed origins include localhost.
+- A deleted subject has a tombstone checked in the auth middleware on every authenticated path, so a retained token gets `410 account_deleted` instead of a new workspace, including on the routes where tenant resolution is skipped. The resolver keeps its own check; it is the redundant one.
+- The `dummy-dev-access-token` shortcut needs `DEV_ACCESS_TOKEN_ENABLED=true` **and** `POSTHOG_AI_ENVIRONMENT` other than `production` **and** a loopback request origin. It is never enabled in a deployed environment, and enabling it is an explicit opt-in rather than a side effect of adding a localhost origin.
+- The voice WebSocket authenticates with a single-use 60-second ticket from `POST /api/app/assistant/voice/ticket`, not a JWT. A JWT is accepted only from the `Authorization` header, so nothing puts a bearer token in a URL.
 
 ## Related specs
 

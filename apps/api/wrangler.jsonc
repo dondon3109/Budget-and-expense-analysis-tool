@@ -35,6 +35,10 @@
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_local-test-key",
     "SUPABASE_JWT_AUDIENCE": "authenticated",
     "WEB_APP_URL": "http://localhost:5173",
+    // DEV_ACCESS_TOKEN_ENABLED is deliberately absent: the dummy-dev-access-token shortcut
+    // defaults off. Set it to "true" in apps/api/.dev.vars (never in a deployed environment)
+    // to accept that bearer from a loopback host during local development.
+
     "EMAIL_FROM": "hello@zoption.site",
     "BUG_REPORT_TO": "support@zoption.site",
     "ASSISTANT_ENABLED": "true",

@@ -776,7 +776,7 @@ describe("API foundation", () => {
     expect(response.headers.get("Content-Type")).toBe("audio/mpeg");
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([4, 5, 6]));
-    expect(preview).toHaveBeenCalledWith(undefined, "energetic");
+    expect(preview).toHaveBeenCalledWith(undefined, TENANT_ID, "energetic");
   });
 
   it("returns authenticated receipt preferences", async () => {

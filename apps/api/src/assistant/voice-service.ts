@@ -8,6 +8,7 @@ import {
 } from "@zoption/shared";
 
 import type { AssistantRepository, AssistantVoiceRepository } from "../db/assistant";
+import { billingRepository } from "../db/billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { CLOUDFLARE_WHISPER_MODEL } from "./cloudflare-whisper";
@@ -24,6 +25,13 @@ const PHILIPPINE_PESO_AMOUNT =
   /(-)?(?:\bPHP|₱)\s*(-)?((?:\d{1,3}(?:,\d{3})+|\d+))(?:\.(\d{1,2}))?(?!\d|\.\d)/gi;
 
 export interface AssistantVoiceService {
+  /**
+   * The shared consent gate for every voice surface: the voice feature flag plus
+   * both recorded consents must be present before any provider is reached. It is
+   * exported so the streaming route, which Hono mounts separately from the POST
+   * voice routes, gates the upgrade with the exact same check.
+   */
+  requireConsent(env: Bindings, tenantId: string): Promise<void>;
   getPreferences(env: Bindings, tenantId: string): Promise<AssistantVoicePreferences>;
   grantConsent(env: Bindings, tenantId: string): Promise<AssistantVoicePreferences>;
   transcribe(
@@ -38,7 +46,7 @@ export interface AssistantVoiceService {
     messageId: string,
     voice: AssistantSpeechVoice,
   ): Promise<Response>;
-  preview(env: Bindings, voice: AssistantSpeechVoice): Promise<Response>;
+  preview(env: Bindings, tenantId: string, voice: AssistantSpeechVoice): Promise<Response>;
 }
 
 export interface AssistantVoiceProviderFailureEvent {
@@ -238,6 +246,7 @@ export function createAssistantVoiceService(
   }
 
   return {
+    requireConsent,
     getPreferences: preferences,
     async grantConsent(env, tenantId) {
       requireEnabled(env);
@@ -246,6 +255,8 @@ export function createAssistantVoiceService(
     },
     async transcribe(env, tenantId, audio, language) {
       await requireConsent(env, tenantId);
+      // Live and batch transcription spend a billable STT provider call per recording.
+      await billingRepository.requirePro(env, tenantId, "stt");
       try {
         return await providers.transcription.transcribe(
           env,
@@ -258,6 +269,8 @@ export function createAssistantVoiceService(
     },
     async synthesize(env, tenantId, messageId, voice) {
       await requireConsent(env, tenantId);
+      // Speech synthesis spends a billable TTS provider call per reply.
+      await billingRepository.requirePro(env, tenantId, "tts");
       const message = await repository.getCompletedAssistantMessage(env, tenantId, messageId);
       if (!message) {
         throw new HttpError(
@@ -275,8 +288,9 @@ export function createAssistantVoiceService(
         return mapProviderError(error, reporter);
       }
     },
-    async preview(env, voice) {
+    async preview(env, tenantId, voice) {
       requireEnabled(env);
+      await billingRepository.requirePro(env, tenantId, "tts");
       try {
         return await providers.speech.synthesize(env, VOICE_PREVIEW_TEXT, voice);
       } catch (error) {

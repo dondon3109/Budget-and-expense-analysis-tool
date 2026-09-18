@@ -23,7 +23,8 @@
 | Cross-user data after account switch             | Subject-scoped database/key names, close-before-open transition, clear observers/caches; Worker identity assertion gates sync, not local reads                                                                                                |
 | Plaintext local finance                          | SQLCipher enabled in both native targets; set key before schema access; verification test reads file bytes/native SQLite without key                                                                                                          |
 | Database key in backups                          | SecureStore configuration plus platform backup exclusions; database files excluded from unsafe cloud/device transfer paths                                                                                                                    |
-| Token leakage                                    | SecureStore-backed session persistence, no logs/breadcrumbs/screenshots, redacted network diagnostics                                                                                                                                         |
+| Token leakage                                    | SecureStore-backed session persistence, no logs/breadcrumbs/screenshots, redacted network diagnostics; the live voice socket opens with a single-use 60-second ticket, never an access token in the URL                                       |
+| External app drives the mic widget               | `MicWidgetVoiceActivity` is not exported, so only this app's own widget PendingIntent (same UID) can launch it; the activity holds no permission and writes nothing itself                                                                    |
 | Client-supplied tenant or entitlement            | Strict request schemas reject tenant IDs; Worker derives both tenant and effective plan                                                                                                                                                       |
 | Replay/duplicate mutation                        | Tenant-scoped idempotency record and canonical request hash                                                                                                                                                                                   |
 | Device-clock overwrite                           | Server monotonic cursor, server timestamps, row revisions; no last-device-time-wins logic                                                                                                                                                     |
@@ -54,6 +55,7 @@ opens. It exposes no caller-selected path; failure prevents workspace access.
 ## Sign-out and deletion
 
 - With no pending/conflicted work, sign-out closes the workspace and removes user-scoped local material after Supabase sign-out succeeds or a documented local-sign-out state is entered.
+- A user-initiated sign-out asks Supabase to revoke the refresh token with the default `global` scope, so a copied token cannot mint further access tokens. If that request cannot reach Supabase (offline is normal on mobile), the app still clears this device with a local-scope sign-out instead of leaving the user signed in; revocation is then best-effort, and the failure is not surfaced because the user is signed out as asked. Forced paths where the Worker already rejected the credential (expired `401`, deleted `410`, identity mismatch) clear this device alone, because there is nothing left to revoke.
 - With unsynchronized work, the user must choose to remain signed in and sync, or deliberately discard local work after a clear irreversible-warning flow. There is no silent discard.
 - Account deletion is online and high friction. Local clearing follows server `deleted` confirmation or a documented `cleanup_pending` recovery flow; a stale token cannot recreate a tenant.
 
@@ -87,10 +89,13 @@ disables the pipeline. Properties:
   contents, notes, account identifiers, and credentials are never attached.
   PostHog still adds the minimal event envelope required by its protocol,
   including ephemeral pseudonymous distinct/session identifiers and SDK
-  metadata. Persistence is memory-only, person profiles and default person
-  properties are disabled, and no Zoption/Supabase identity is supplied. App
-  lifecycle events, surveys, session replay, console capture, and the native
-  crash plugin are all disabled.
+  metadata. Persistence is memory-only, person profiles are restricted to
+  identified users (there are none), default person properties are disabled,
+  and no Zoption/Supabase identity is supplied: the client exposes no
+  `identify()` at all, so the Supabase subject and the account email are never
+  sent, and the only identifier the vendor sees is PostHog's memory-scoped
+  device id for the current launch. App lifecycle events, surveys, session
+  replay, console capture, and the native crash plugin are all disabled.
 - **Two kill switches.** Remote: disabling the PostHog feature flag
   `crash-telemetry-enabled` stops reporting after the next SDK flag refresh or
   app restart; the app fails closed and sends nothing while flags are unknown

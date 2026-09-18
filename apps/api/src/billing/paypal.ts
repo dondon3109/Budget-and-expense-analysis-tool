@@ -13,6 +13,14 @@ const WEBHOOK_HEADER_LIMITS = {
   transmissionTime: 64,
 } as const;
 
+/**
+ * PayPal retries a failed delivery for up to three days, so the accepted window has to cover
+ * those retries while still rejecting a replayed transmission from long ago.
+ */
+const TRANSMISSION_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1_000;
+/** Tolerated clock skew for a transmission stamped slightly ahead of this Worker. */
+const TRANSMISSION_CLOCK_SKEW_MS = 5 * 60 * 1_000;
+
 const TRANSMISSION_ID_PATTERN = /^[A-Za-z0-9._~-]+$/;
 const TRANSMISSION_SIGNATURE_PATTERN = /^[A-Za-z0-9+/_=-]+$/;
 const CERTIFICATE_PATH_PATTERN = /^\/v1\/notifications\/certs\/[A-Za-z0-9._~-]+$/;
@@ -350,7 +358,10 @@ export function isValidPayPalWebhookHeaders(
     return false;
   }
 
-  return parseUtcTimestamp(headers.transmissionTime) !== null;
+  const transmittedAt = parseUtcTimestamp(headers.transmissionTime);
+  if (transmittedAt === null) return false;
+  const ageMs = Date.now() - transmittedAt;
+  return ageMs <= TRANSMISSION_MAX_AGE_MS && ageMs >= -TRANSMISSION_CLOCK_SKEW_MS;
 }
 
 export function clearPayPalAccessTokenCacheForTesting(): void {
@@ -461,12 +472,26 @@ export async function cancelPayPalSubscription(
   if (!response.ok && response.status !== 204) throw providerError();
 }
 
+/**
+ * Verify a delivery using the raw signed body. PayPal's verify-webhook-signature schema takes
+ * `webhook_event` as a JSON object, so the body is parsed here and only accepted when it
+ * re-serializes byte-for-byte to the bytes PayPal signed. A body that cannot be reproduced
+ * exactly fails closed instead of being verified in a form PayPal never signed.
+ */
 export async function verifyPayPalWebhook(
   env: Bindings,
-  event: unknown,
+  rawBody: string,
   headers: PayPalWebhookHeaders,
 ): Promise<boolean> {
   if (!isValidPayPalWebhookHeaders(env, headers)) return false;
+
+  let event: unknown;
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    return false;
+  }
+  if (typeof event !== "object" || event === null || JSON.stringify(event) !== rawBody) return false;
 
   const response = await authenticatedProviderFetch(
     env,

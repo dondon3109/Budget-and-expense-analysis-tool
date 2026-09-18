@@ -180,6 +180,11 @@ export interface BillingSubscriptionEvent {
   scheduledChangeAt: string | null;
   cancelAtPeriodEnd: boolean;
   checkoutReference: string | null;
+  /**
+   * A reversal or dispute that must terminate the subscription even when the plan that sold it
+   * is no longer configured. Normal subscription updates still require a configured plan.
+   */
+  revocation?: boolean;
 }
 
 export interface BillingProviderSubscription {
@@ -464,8 +469,16 @@ async function applySubscriptionUpdate(
   update: BillingSubscriptionSnapshot,
   webhook?: { providerEventId: string; type: string },
 ): Promise<BillingSubscriptionApplyOutcome> {
-  const interval = configuredInterval(env, update.providerPlanId);
-  if (!interval || (update.interval && update.interval !== interval)) return "rejected_plan";
+  const configuredPlanInterval = configuredInterval(env, update.providerPlanId);
+  if (
+    !update.revocation &&
+    (!configuredPlanInterval || (update.interval && update.interval !== configuredPlanInterval))
+  ) {
+    return "rejected_plan";
+  }
+  // A revocation of a subscription whose plan is no longer configured keeps the interval
+  // already recorded on its row instead of erasing it.
+  const interval = configuredPlanInterval ?? update.interval;
 
   if (webhook) {
     const existingEvent = await env.DB.prepare(

@@ -73,7 +73,8 @@ describe("interestAmountMinor", () => {
     expect(interestAmountMinor(100, 500, "daily")).toBe(0);
   });
 
-  it("works off the absolute balance for negative balances", () => {
-    expect(interestAmountMinor(-1_000_000, 500, "monthly")).toBe(4166);
+  it("never credits interest on a zero or negative balance", () => {
+    expect(interestAmountMinor(0, 500, "monthly")).toBe(0);
+    expect(interestAmountMinor(-1_000_000, 500, "monthly")).toBe(0);
   });
 });

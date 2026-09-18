@@ -65,7 +65,9 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    pnpm dlx supabase db push --linked
    ```
 
-   The migration creates a public `avatars` bucket kept only as a read fallback for pictures uploaded before the R2 cutover. New uploads go to Cloudflare R2 through the Worker. Relink before pushing when preview and production use separate Supabase projects.
+   The migration creates a private `avatars` bucket (`public = false` plus an owner SELECT policy). It is kept only as a read fallback for pictures uploaded before the R2 cutover: the Worker reads those objects through the authenticated Storage endpoint with `SUPABASE_SERVICE_ROLE_KEY`, and `/api/public/avatars/*` stays the only public surface. New uploads go to Cloudflare R2 through the Worker. Relink before pushing when preview and production use separate Supabase projects.
+
+   **Deploy ordering**: deploy the Worker before `supabase db push --linked`. The previous Worker served pre-R2 avatars through the bucket's public object URL, so making the bucket private first leaves those avatars 404ing until the new Worker is live. The reverse order is safe, because the new Worker already reads through the authenticated endpoint.
 
 After changing redirect or template settings, request a fresh recovery email; previously issued links retain their original destination and reset links are short-lived and single-use. Open the fresh link once in the same browser profile that requested it so the PKCE verifier is available. If a newly issued link immediately returns `otp_expired`, check whether the email provider's click tracking or security scanner is opening the link before the user.
 
@@ -96,7 +98,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
    Durable Object rate-limit storage is created by the Worker migration on deploy; do not create it by hand.
 
-4. Copy `apps/api/wrangler.deploy.example.jsonc` to ignored `apps/api/wrangler.deploy.jsonc`.
+4. Copy `apps/api/wrangler.deploy.example.jsonc` to the tracked `apps/api/wrangler.deploy.jsonc`. That file is committed on purpose and may hold only publishable values — Supabase publishable or anon keys, D1 ids, R2 bucket names, queue names, PayPal plan ids and non-secret flags. Every credential goes through `wrangler secret put`, never into this file.
 5. Replace each environment's D1 ID, allowed origins, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`. Keep `SUPABASE_JWT_AUDIENCE` as `authenticated` unless the Supabase project is intentionally configured otherwise. The publishable key is public configuration, but secret and service-role key types remain forbidden in Wrangler `vars`.
 6. Validate the real config before any migration or deploy. The validator reports only environment and binding names; it never prints configured values:
 
@@ -150,7 +152,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
     pnpm --filter @zoption/api exec wrangler secret put PAYPAL_WEBHOOK_ID --config wrangler.deploy.jsonc --env production
     ```
 
-    Register one webhook per environment at `https://PREVIEW_API_HOST/api/billing/paypal/webhook` and `https://api.zoption.site/api/billing/paypal/webhook`. Subscribe only to `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, and `PAYMENT.SALE.COMPLETED`. Record the matching webhook ID as the environment secret. Never copy OAuth tokens, webhook headers, payer data, or secret values into source code, tracked configuration, or logs.
+    Register one webhook per environment at `https://PREVIEW_API_HOST/api/billing/paypal/webhook` and `https://api.zoption.site/api/billing/paypal/webhook`. Subscribe only to the seven subscription lifecycle events (`BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, `PAYMENT.SALE.COMPLETED`) **plus** the three reversal events `PAYMENT.SALE.REFUNDED`, `PAYMENT.CAPTURE.REVERSED`, and `CUSTOMER.DISPUTE.CREATED`. The three reversal events are what revoke Pro after a refund, chargeback or dispute; a webhook registered without them leaves the payer entitled after their money is returned. **Re-registration**: a webhook created before the reversal events existed still carries only the original seven, so update it in the PayPal dashboard or re-run the setup utility, per environment. Record the matching webhook ID as the environment secret. Never copy OAuth tokens, webhook headers, payer data, or secret values into source code, tracked configuration, or logs.
 
 14. Store `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` as a Worker secret in each environment. This is the AES-256-GCM master key that encrypts the AI and voice provider credentials admins save at `/app/admin/provider-configs`. Only ciphertext is written to D1; the key itself never is. Generate a fresh value per environment:
 
@@ -159,11 +161,13 @@ Before release, test Google in Preview with a fresh address and with the verifie
     openssl rand -base64 32 | pnpm --filter @zoption/api exec wrangler secret put PROVIDER_CREDENTIAL_ENCRYPTION_KEY --config wrangler.deploy.jsonc --env production
     ```
 
-    The value must base64-decode to exactly 32 bytes. When it is missing or malformed, every credential write fails with HTTP 500 `encryption_not_configured`, so an admin cannot save an API key from the provider admin UI. Never rotate a key that is already in use: doing so makes every credential already stored in that environment's D1 permanently undecryptable. Preview and production use separate D1 databases and therefore hold independent keys.
+    The value must base64-decode to exactly 32 bytes. When it is missing or malformed, every credential write fails with HTTP 500 `encryption_not_configured`, so an admin cannot save an API key from the provider admin UI. New ciphertexts are written in the `v1.` format: the prefix records the ciphertext format and the value is bound to its credential row id, so a ciphertext copied to another row cannot be decrypted and a future rotation window can identify rows written under an earlier key. Rows written before the prefix existed carry no binding and still decrypt. That window does not exist yet, so replacing this key today still makes every credential already stored in that environment's D1 undecryptable — never rotate a key that is already in use. Preview and production use separate D1 databases and therefore hold independent keys.
+
+15. Do not add `DEV_ACCESS_TOKEN_ENABLED` to any deployed environment. It gates the local `dummy-dev-access-token` shortcut, defaults off, and is deliberately absent from `apps/api/wrangler.deploy.jsonc`. It belongs only in the ignored `apps/api/.dev.vars` for local development, where the shortcut also requires a non-`production` `POSTHOG_AI_ENVIRONMENT` and an exact loopback request origin (`apps/api/src/auth.ts`), so no deployed origin configuration can arm it.
 
 ### Optional PayPal Sandbox provisioning utility
 
-The repository setup utility is intentionally locked to PayPal Sandbox and the approved Preview Worker webhook endpoint. It never calls the live PayPal API, patches/deletes existing resources, or changes Cloudflare by itself. It reconciles the `Zoption Pro` product, the ₱149 monthly and ₱1,299 annual PHP plans, and the seven-event Preview webhook. A conflicting same-name resource, duplicate webhook, or mismatched webhook event set stops the operation for review.
+The repository setup utility is intentionally locked to PayPal Sandbox and the approved Preview Worker webhook endpoint. It never calls the live PayPal API, patches/deletes existing resources, or changes Cloudflare by itself. It reconciles the `Zoption Pro` product, the ₱149 monthly and ₱1,299 annual PHP plans, and the ten-event Preview webhook. A conflicting same-name resource, duplicate webhook, or mismatched webhook event set stops the operation for review.
 
 This utility is only for a deliberate Sandbox Preview configuration. The current Preview deployment intentionally uses PayPal Live, so do not run this utility or copy its Sandbox plans/secrets into that environment unless Preview is explicitly switched to `PAYPAL_ENVIRONMENT=sandbox`. Live Preview resources must be managed in the PayPal Live namespace and its three Worker secrets must come from the matching Preview-specific Live app and webhook.
 
@@ -191,7 +195,7 @@ PAYPAL_WEBHOOK_URL=https://budget-expense-api-preview.dondon3109.workers.dev/api
       --config wrangler.deploy.jsonc --env preview
 ```
 
-If Preview was deliberately switched to Sandbox, copy only the returned non-secret Sandbox plan IDs into its `vars` block in the ignored `apps/api/wrangler.deploy.jsonc`, set `PAYPAL_ENVIRONMENT=sandbox`, set the exact Preview `WEB_APP_URL`, and keep the Production block unchanged. Confirm the Preview Worker has all three secret names before deployment:
+If Preview was deliberately switched to Sandbox, copy only the returned non-secret Sandbox plan IDs into its `vars` block in the tracked `apps/api/wrangler.deploy.jsonc`, set `PAYPAL_ENVIRONMENT=sandbox`, set the exact Preview `WEB_APP_URL`, and keep the Production block unchanged. Confirm the Preview Worker has all three secret names before deployment:
 
 ```bash
 pnpm --filter @zoption/api exec wrangler secret list \
@@ -223,7 +227,7 @@ To restore the permanent complementary grant without restoring former beneficiar
 
 ### Assistant deployment preflight
 
-The real `apps/api/wrangler.deploy.jsonc` is ignored because it contains environment-specific deployment metadata. Before every assistant release, compare its non-secret assistant settings with `apps/api/wrangler.deploy.example.jsonc`; a secret-only change does not synchronize source code, variables, bindings, or cron configuration.
+The real `apps/api/wrangler.deploy.jsonc` is tracked on purpose and holds only publishable environment-specific deployment metadata, never a credential. Before every assistant release, compare its non-secret assistant settings with `apps/api/wrangler.deploy.example.jsonc`; a secret-only change does not synchronize source code, variables, bindings, or cron configuration.
 
 For the target environment:
 
@@ -232,7 +236,8 @@ For the target environment:
 3. List remote D1 migrations. Stop if migration inspection is denied; do not infer assistant schema or provider readiness from `/health`, which checks only the centralized core API bindings (`DB`, `ALLOWED_ORIGINS`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`) plus a non-mutating D1 query.
 4. Create the documented D1 recovery point before applying a pending migration.
 5. Perform a full Worker deploy, not another secret-only deployment.
-6. Verify the resulting deployment version, the `03:17 UTC` retention cron, public smoke checks, and an authenticated plain/tool-backed assistant response. In Preview, inspect the raw PostHog `$ai_generation` JSON: each real DeepSeek call should share one random trace ID, create no person profile, contain model/latency/token/finish or safe error metadata, and contain none of the assistant content or internal identifiers listed above. A deterministic assistant response should create no event.
+6. Verify the resulting deployment version, the `03:17 UTC` retention cron, public smoke checks, and an authenticated plain/tool-backed assistant response.
+7. Verify voice streaming authenticates with a ticket, not a JWT. The clients mint a single-use ticket with `POST /api/app/assistant/voice/ticket` (60-second TTL, rows in `assistant_voice_tickets`, added by `0054_assistant_voice_tickets.sql`) and connect to `/api/app/assistant/voice/stream?ticket=…`. Redemption deletes the row, only a real WebSocket upgrade may redeem it, and an unknown, expired or already redeemed ticket returns `401 invalid_voice_ticket`. A JWT is accepted only from the `Authorization` header, so `?token=` is not a supported credential. In Preview, inspect the raw PostHog `$ai_generation` JSON: each real DeepSeek call should share one random trace ID, create no person profile, contain model/latency/token/finish or safe error metadata, and contain none of the assistant content or internal identifiers listed above. A deterministic assistant response should create no event.
 
 `/health` returns `503` with only `status` and `service` when a core binding or D1 is unavailable. Its log records only a fixed message and error class; binding values, credentials, provider errors, and database error text are never included.
 
@@ -251,7 +256,7 @@ Safe diagnostic actions:
 
 ## Frontend configuration
 
-Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production-only API fallback to `https://api.zoption.site`. Preview and staging builds must receive `VITE_API_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` explicitly from the build process; local or production fallbacks are rejected. All deployment API and Supabase values must be exact HTTPS origins without credentials, paths, queries, or fragments. Production must use `https://api.zoption.site`; Preview and Staging must not. The build accepts only a Supabase `sb_publishable_…` or legacy JWT `anon` key and rejects secret/service-role types without echoing the value. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`.
+Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production-only API fallback to `https://api.zoption.site`. Preview and staging builds must receive `VITE_API_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` explicitly from the build process; local or production fallbacks are rejected. All deployment API and Supabase values must be exact HTTPS origins without credentials, paths, queries, or fragments. Production must use `https://api.zoption.site`; Preview and Staging must not. The build accepts only a Supabase `sb_publishable_…` or legacy JWT `anon` key and rejects secret/service-role types without echoing the value. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`: `pnpm --filter @zoption/api dev` binds `127.0.0.1:8787` only, and `pnpm --filter @zoption/api dev:lan` is the explicit opt-in to `0.0.0.0:8787` for testing from a phone on the same Wi-Fi.
 
 The public Android metadata bucket `zoption-android-beta` must allow CORS from the exact Pages origins `https://zoption.site` and `https://www.zoption.site` for `GET`/`HEAD` only. The install page fetch sends `Accept: application/json` and `cache: "no-store"` (browsers may preflight `Accept`, `Cache-Control`, and `Pragma`); those request headers must be listed. Do not use wildcard origins. The source-of-truth policy is `scripts/r2-android-cors.json`; apply it with `wrangler r2 bucket cors set zoption-android-beta --file scripts/r2-android-cors.json`.
 

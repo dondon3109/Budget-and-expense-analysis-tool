@@ -13,7 +13,11 @@ import { Link } from "react-router-dom";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { getBillingProviderConfig, startBillingCheckout } from "../../lib/api";
-import { openBillingCheckout } from "../../lib/billingCheckout";
+import {
+  CHECKOUT_OPEN_ERROR,
+  openBillingCheckout,
+  redirectToPaypalCheckout,
+} from "../../lib/billingCheckout";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { paymentDisclosure, planFeatures, proCheckoutOptions } from "./billingPlans";
 import "./ProCheckoutDialog.css";
@@ -34,9 +38,7 @@ function checkoutStatusUrl(status: "completed" | "cancelled"): string {
 }
 
 function checkoutErrorMessage(cause: unknown): string {
-  return cause instanceof Error
-    ? cause.message
-    : "Secure payment could not be opened. Continue on PayPal to finish subscribing.";
+  return cause instanceof Error ? cause.message : CHECKOUT_OPEN_ERROR;
 }
 
 interface PayPalCheckoutActionProps {
@@ -140,7 +142,7 @@ function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheck
     onBusyChange(true);
     try {
       const result = await handleClick();
-      if (result?.redirectURL) window.location.assign(result.redirectURL);
+      if (result?.redirectURL) redirectToPaypalCheckout(result.redirectURL);
     } catch (cause) {
       setError(checkoutErrorMessage(cause));
     } finally {
@@ -152,7 +154,11 @@ function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheck
   async function continueOnPayPal() {
     const approvalUrl = approvalUrlRef.current;
     if (approvalUrl) {
-      window.location.assign(approvalUrl);
+      try {
+        redirectToPaypalCheckout(approvalUrl);
+      } catch (cause) {
+        setError(checkoutErrorMessage(cause));
+      }
       return;
     }
 

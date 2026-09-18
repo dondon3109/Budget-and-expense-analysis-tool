@@ -146,6 +146,12 @@ export async function creditDueInterest(
   }> = [];
   for (const { account, categoryId } of categorized) {
     const balance = balanceByAccountId.get(account.id) ?? 0;
+    // A savings account driven below zero by spending or transfers earns nothing;
+    // crediting interest on it would fabricate income in the user's own ledger.
+    if (balance <= 0) {
+      result.skipped += 1;
+      continue;
+    }
     const amount = interestAmountMinor(
       balance,
       account.annualRateBasisPoints,
