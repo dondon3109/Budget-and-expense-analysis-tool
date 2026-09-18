@@ -69,9 +69,9 @@ describe("summarizeWidgetDescription", () => {
       "Iced coffee at Starbucks",
     );
     expect(summarizeWidgetDescription("for dinner today using cash")).toBe("Dinner");
-    expect(
-      summarizeWidgetDescription("groceries at Puregold yesterday using credit card"),
-    ).toBe("Groceries at Puregold");
+    expect(summarizeWidgetDescription("groceries at Puregold yesterday using credit card")).toBe(
+      "Groceries at Puregold",
+    );
     expect(summarizeWidgetDescription("bought medicine at Mercury Drug with cash")).toBe(
       "Medicine at Mercury Drug",
     );
@@ -82,12 +82,12 @@ describe("summarizeWidgetDescription", () => {
 
   it("strips custom user account names from descriptions", () => {
     const accountNames = ["Maya Wallet", "BDO Checking", "Pocket Cash"];
-    expect(
-      summarizeWidgetDescription("dinner at Jollibee using Maya Wallet", accountNames),
-    ).toBe("Dinner at Jollibee");
-    expect(
-      summarizeWidgetDescription("gas at Shell from BDO Checking", accountNames),
-    ).toBe("Gas at Shell");
+    expect(summarizeWidgetDescription("dinner at Jollibee using Maya Wallet", accountNames)).toBe(
+      "Dinner at Jollibee",
+    );
+    expect(summarizeWidgetDescription("gas at Shell from BDO Checking", accountNames)).toBe(
+      "Gas at Shell",
+    );
   });
 
   it("falls back to Expense when speech contained only filler/payment terms", () => {

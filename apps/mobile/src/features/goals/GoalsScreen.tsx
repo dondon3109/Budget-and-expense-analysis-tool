@@ -87,87 +87,90 @@ function GoalRow({ goal, onPress }: { goal: LocalGoalItem; onPress: () => void }
       android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
       onPress={onPress}
     >
-    <Card
-      accessibilityLabel={`Goal ${goal.name}, ${percent}% funded`}
-      style={{
-        borderColor: conflicted ? theme.colors.warning : failed ? theme.colors.danger : undefined,
-      }}
-    >
-      <View style={{ gap: spacing.xs }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-          <MaterialCommunityIcons
-            accessibilityElementsHidden
-            color={theme.colors.brand}
-            name="target"
-            size={20}
-          />
-          <Text
-            numberOfLines={1}
-            style={[typography.headline, { color: theme.colors.text, flex: 1 }]}
-          >
-            {goal.name}
-          </Text>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            {goalStatusLabel(goal.status)}
-          </Text>
-        </View>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            <MoneyValue amountMinor={goal.currentAmountMinor} /> of{" "}
-            <MoneyValue amountMinor={goal.targetAmountMinor} />
-          </Text>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            {percent}%
-          </Text>
-        </View>
-        <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
-          <View
-            style={[
-              styles.fill,
-              {
-                width: (`${percent}%` as DimensionValue),
-                backgroundColor: theme.colors.brand,
-              },
-            ]}
-          />
-        </View>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Target {goal.targetDate}
-          </Text>
-          {conflicted ? (
-            <Button
-              accessibilityLabel={`Review conflict for ${goal.name}`}
-              onPress={() =>
-                router.push({ pathname: "/(app)/goal-conflict", params: { id: goal.id } })
-              }
-              variant="secondary"
+      <Card
+        accessibilityLabel={`Goal ${goal.name}, ${percent}% funded`}
+        style={{
+          borderColor: conflicted ? theme.colors.warning : failed ? theme.colors.danger : undefined,
+        }}
+      >
+        <View style={{ gap: spacing.xs }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color={theme.colors.brand}
+              name="target"
+              size={20}
+            />
+            <Text
+              numberOfLines={1}
+              style={[typography.headline, { color: theme.colors.text, flex: 1 }]}
             >
-              Review
-            </Button>
-          ) : failed ? (
-            <MaterialCommunityIcons
-              accessibilityElementsHidden
-              color={theme.colors.danger}
-              name="cloud-alert-outline"
-              size={18}
+              {goal.name}
+            </Text>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              {goalStatusLabel(goal.status)}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              <MoneyValue amountMinor={goal.currentAmountMinor} /> of{" "}
+              <MoneyValue amountMinor={goal.targetAmountMinor} />
+            </Text>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>{percent}%</Text>
+          </View>
+          <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
+            <View
+              style={[
+                styles.fill,
+                {
+                  width: `${percent}%` as DimensionValue,
+                  backgroundColor: theme.colors.brand,
+                },
+              ]}
             />
-          ) : goal.syncState === "pending" ? (
-            <MaterialCommunityIcons
-              accessibilityElementsHidden
-              color={theme.colors.warning}
-              name="cloud-upload-outline"
-              size={18}
-            />
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Target {goal.targetDate}
+            </Text>
+            {conflicted ? (
+              <Button
+                accessibilityLabel={`Review conflict for ${goal.name}`}
+                onPress={() =>
+                  router.push({ pathname: "/(app)/goal-conflict", params: { id: goal.id } })
+                }
+                variant="secondary"
+              >
+                Review
+              </Button>
+            ) : failed ? (
+              <MaterialCommunityIcons
+                accessibilityElementsHidden
+                color={theme.colors.danger}
+                name="cloud-alert-outline"
+                size={18}
+              />
+            ) : goal.syncState === "pending" ? (
+              <MaterialCommunityIcons
+                accessibilityElementsHidden
+                color={theme.colors.warning}
+                name="cloud-upload-outline"
+                size={18}
+              />
+            ) : null}
+          </View>
+          {conflicted || failed ? (
+            <Text
+              style={[
+                typography.caption,
+                { color: conflicted ? theme.colors.warning : theme.colors.danger },
+              ]}
+            >
+              {conflicted ? "Conflict preserved" : "Sync needs repair"}
+            </Text>
           ) : null}
         </View>
-        {conflicted || failed ? (
-          <Text style={[typography.caption, { color: conflicted ? theme.colors.warning : theme.colors.danger }]}>
-            {conflicted ? "Conflict preserved" : "Sync needs repair"}
-          </Text>
-        ) : null}
-      </View>
-    </Card>
+      </Card>
     </Pressable>
   );
 }

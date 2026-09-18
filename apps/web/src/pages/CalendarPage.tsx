@@ -97,7 +97,6 @@ function buildCalendarDays(
   return lookup;
 }
 
-
 export function CalendarPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
@@ -497,54 +496,50 @@ export function CalendarPage() {
                 onClick={() => setNextMonthOpen((open) => !open)}
               >
                 <span>{formatFullMonth(nextMonth)}</span>
-                <ChevronDown
-                  size={14}
-                  aria-hidden="true"
-                  className={nextMonthOpen ? "open" : ""}
-                />
+                <ChevronDown size={14} aria-hidden="true" className={nextMonthOpen ? "open" : ""} />
               </button>
             </div>
             {nextMonthOpen && (
-            <section className="calendar-next-month" aria-labelledby="calendar-next-month-title">
-              <div className="calendar-next-month-heading">
-                <div>
-                  <p className="eyebrow">Coming up</p>
-                  <h3 id="calendar-next-month-title">{formatFullMonth(nextMonth)}</h3>
+              <section className="calendar-next-month" aria-labelledby="calendar-next-month-title">
+                <div className="calendar-next-month-heading">
+                  <div>
+                    <p className="eyebrow">Coming up</p>
+                    <h3 id="calendar-next-month-title">{formatFullMonth(nextMonth)}</h3>
+                  </div>
+                  {(nextCalendarQuery.isFetching ||
+                    nextSubscriptionsQuery.isFetching ||
+                    nextEventsQuery.isFetching) && <span>Refreshing…</span>}
                 </div>
-                {(nextCalendarQuery.isFetching ||
-                  nextSubscriptionsQuery.isFetching ||
-                  nextEventsQuery.isFetching) && <span>Refreshing…</span>}
-              </div>
-              {nextCalendarQuery.isError ||
-              nextSubscriptionsQuery.isError ||
-              nextEventsQuery.isError ? (
-                <div className="calendar-status error-state" role="alert">
-                  <strong>The next month could not be loaded.</strong>
-                  <span>
-                    {nextCalendarQuery.error?.message ??
-                      nextSubscriptionsQuery.error?.message ??
-                      nextEventsQuery.error?.message}
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <CalendarMonthGrid
-                    month={nextMonth}
-                    selectedDate={selectedDate}
-                    today={today}
-                    days={nextMonthDays}
-                    onSelectDate={setSelectedDate}
-                  />
-                  {(nextCalendarQuery.isPending ||
-                    nextSubscriptionsQuery.isPending ||
-                    nextEventsQuery.isPending) && (
-                    <div className="calendar-loading" aria-live="polite">
-                      Loading next month…
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
+                {nextCalendarQuery.isError ||
+                nextSubscriptionsQuery.isError ||
+                nextEventsQuery.isError ? (
+                  <div className="calendar-status error-state" role="alert">
+                    <strong>The next month could not be loaded.</strong>
+                    <span>
+                      {nextCalendarQuery.error?.message ??
+                        nextSubscriptionsQuery.error?.message ??
+                        nextEventsQuery.error?.message}
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <CalendarMonthGrid
+                      month={nextMonth}
+                      selectedDate={selectedDate}
+                      today={today}
+                      days={nextMonthDays}
+                      onSelectDate={setSelectedDate}
+                    />
+                    {(nextCalendarQuery.isPending ||
+                      nextSubscriptionsQuery.isPending ||
+                      nextEventsQuery.isPending) && (
+                      <div className="calendar-loading" aria-live="polite">
+                        Loading next month…
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
             )}
           </section>
 

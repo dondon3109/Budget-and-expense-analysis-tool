@@ -40,10 +40,7 @@ export interface FirstRunColumnMapping {
  * shared alias tables (date, merchant/description, amount or debit+credit,
  * account/category) — no second mapping engine.
  */
-export function autoMapFirstRunColumns(
-  fileName: string,
-  headers: string[],
-): FirstRunColumnMapping {
+export function autoMapFirstRunColumns(fileName: string, headers: string[]): FirstRunColumnMapping {
   const preset = detectImportPreset(fileName, headers);
   const { mapping, amountMode } = resolvePresetMapping(headers, preset);
   return { preset, mapping, amountMode };

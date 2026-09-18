@@ -957,11 +957,7 @@ export function TransactionsPage() {
                         onChange={(event) => setViewName(event.target.value)}
                       />
                     </label>
-                    <button
-                      className="button secondary"
-                      type="submit"
-                      disabled={!viewName.trim()}
-                    >
+                    <button className="button secondary" type="submit" disabled={!viewName.trim()}>
                       Save
                     </button>
                     <button

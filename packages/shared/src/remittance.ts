@@ -1,10 +1,10 @@
-export type OfwCurrency = 'USD' | 'EUR' | 'SGD' | 'AED' | 'SAR' | 'JPY' | 'CAD' | 'GBP' | 'AUD';
+export type OfwCurrency = "USD" | "EUR" | "SGD" | "AED" | "SAR" | "JPY" | "CAD" | "GBP" | "AUD";
 
-export type RemittanceProvider = 'mid_market' | 'wise' | 'remitly' | 'western_union' | 'bank_wire';
+export type RemittanceProvider = "mid_market" | "wise" | "remitly" | "western_union" | "bank_wire";
 
 export interface ExchangeRateBenchmark {
   fromCurrency: OfwCurrency;
-  toCurrency: 'PHP';
+  toCurrency: "PHP";
   midMarketRate: number; // e.g. 56.50
   providerSpreadEstimates: {
     wise: number; // typical spread % e.g. 0.005 (0.5%)
@@ -18,7 +18,7 @@ export interface ExchangeRateBenchmark {
 export interface RemittanceCalculationOptions {
   sendAmountMinor: number; // Amount in foreign currency minor units (e.g. 500.00 USD -> 50000)
   fromCurrency: OfwCurrency;
-  toCurrency?: 'PHP';
+  toCurrency?: "PHP";
   transferFeeMinor?: number; // In foreign currency minor units (default 0)
   customExchangeRate?: number; // Optional user override for rate
   provider?: RemittanceProvider;
@@ -27,7 +27,7 @@ export interface RemittanceCalculationOptions {
 export interface RemittanceCalculationResult {
   sendAmountMinor: number;
   fromCurrency: OfwCurrency;
-  toCurrency: 'PHP';
+  toCurrency: "PHP";
   effectiveRate: number;
   midMarketRate: number;
   grossConvertedPhpMinor: number; // Converted at mid-market
@@ -48,8 +48,8 @@ export interface DualCurrencyBalance {
 
 export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchmark> = {
   USD: {
-    fromCurrency: 'USD',
-    toCurrency: 'PHP',
+    fromCurrency: "USD",
+    toCurrency: "PHP",
     midMarketRate: 56.5,
     providerSpreadEstimates: {
       wise: 0.005,
@@ -57,11 +57,11 @@ export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchma
       westernUnion: 0.025,
       bankWire: 0.035,
     },
-    lastUpdated: '2026-01-01T00:00:00.000Z',
+    lastUpdated: "2026-01-01T00:00:00.000Z",
   },
   EUR: {
-    fromCurrency: 'EUR',
-    toCurrency: 'PHP',
+    fromCurrency: "EUR",
+    toCurrency: "PHP",
     midMarketRate: 61.2,
     providerSpreadEstimates: {
       wise: 0.005,
@@ -69,11 +69,11 @@ export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchma
       westernUnion: 0.025,
       bankWire: 0.035,
     },
-    lastUpdated: '2026-01-01T00:00:00.000Z',
+    lastUpdated: "2026-01-01T00:00:00.000Z",
   },
   SGD: {
-    fromCurrency: 'SGD',
-    toCurrency: 'PHP',
+    fromCurrency: "SGD",
+    toCurrency: "PHP",
     midMarketRate: 42.1,
     providerSpreadEstimates: {
       wise: 0.005,
@@ -81,11 +81,11 @@ export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchma
       westernUnion: 0.025,
       bankWire: 0.035,
     },
-    lastUpdated: '2026-01-01T00:00:00.000Z',
+    lastUpdated: "2026-01-01T00:00:00.000Z",
   },
   AED: {
-    fromCurrency: 'AED',
-    toCurrency: 'PHP',
+    fromCurrency: "AED",
+    toCurrency: "PHP",
     midMarketRate: 15.38,
     providerSpreadEstimates: {
       wise: 0.005,
@@ -93,11 +93,11 @@ export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchma
       westernUnion: 0.025,
       bankWire: 0.035,
     },
-    lastUpdated: '2026-01-01T00:00:00.000Z',
+    lastUpdated: "2026-01-01T00:00:00.000Z",
   },
   SAR: {
-    fromCurrency: 'SAR',
-    toCurrency: 'PHP',
+    fromCurrency: "SAR",
+    toCurrency: "PHP",
     midMarketRate: 15.06,
     providerSpreadEstimates: {
       wise: 0.005,
@@ -105,11 +105,11 @@ export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchma
       westernUnion: 0.025,
       bankWire: 0.035,
     },
-    lastUpdated: '2026-01-01T00:00:00.000Z',
+    lastUpdated: "2026-01-01T00:00:00.000Z",
   },
   JPY: {
-    fromCurrency: 'JPY',
-    toCurrency: 'PHP',
+    fromCurrency: "JPY",
+    toCurrency: "PHP",
     midMarketRate: 0.38,
     providerSpreadEstimates: {
       wise: 0.005,
@@ -117,11 +117,11 @@ export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchma
       westernUnion: 0.025,
       bankWire: 0.035,
     },
-    lastUpdated: '2026-01-01T00:00:00.000Z',
+    lastUpdated: "2026-01-01T00:00:00.000Z",
   },
   CAD: {
-    fromCurrency: 'CAD',
-    toCurrency: 'PHP',
+    fromCurrency: "CAD",
+    toCurrency: "PHP",
     midMarketRate: 41.8,
     providerSpreadEstimates: {
       wise: 0.005,
@@ -129,11 +129,11 @@ export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchma
       westernUnion: 0.025,
       bankWire: 0.035,
     },
-    lastUpdated: '2026-01-01T00:00:00.000Z',
+    lastUpdated: "2026-01-01T00:00:00.000Z",
   },
   GBP: {
-    fromCurrency: 'GBP',
-    toCurrency: 'PHP',
+    fromCurrency: "GBP",
+    toCurrency: "PHP",
     midMarketRate: 71.5,
     providerSpreadEstimates: {
       wise: 0.005,
@@ -141,11 +141,11 @@ export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchma
       westernUnion: 0.025,
       bankWire: 0.035,
     },
-    lastUpdated: '2026-01-01T00:00:00.000Z',
+    lastUpdated: "2026-01-01T00:00:00.000Z",
   },
   AUD: {
-    fromCurrency: 'AUD',
-    toCurrency: 'PHP',
+    fromCurrency: "AUD",
+    toCurrency: "PHP",
     midMarketRate: 37.2,
     providerSpreadEstimates: {
       wise: 0.005,
@@ -153,28 +153,28 @@ export const DEFAULT_OFW_EXCHANGE_RATES: Record<OfwCurrency, ExchangeRateBenchma
       westernUnion: 0.025,
       bankWire: 0.035,
     },
-    lastUpdated: '2026-01-01T00:00:00.000Z',
+    lastUpdated: "2026-01-01T00:00:00.000Z",
   },
 };
 
 export const OFW_CURRENCIES: readonly OfwCurrency[] = [
-  'USD',
-  'EUR',
-  'SGD',
-  'AED',
-  'SAR',
-  'JPY',
-  'CAD',
-  'GBP',
-  'AUD',
+  "USD",
+  "EUR",
+  "SGD",
+  "AED",
+  "SAR",
+  "JPY",
+  "CAD",
+  "GBP",
+  "AUD",
 ];
 
 export const REMITTANCE_PROVIDERS: readonly RemittanceProvider[] = [
-  'mid_market',
-  'wise',
-  'remitly',
-  'western_union',
-  'bank_wire',
+  "mid_market",
+  "wise",
+  "remitly",
+  "western_union",
+  "bank_wire",
 ];
 
 function roundRate(rate: number): number {
@@ -186,17 +186,19 @@ export function calculateRemittance(
 ): RemittanceCalculationResult {
   const benchmark = DEFAULT_OFW_EXCHANGE_RATES[options.fromCurrency];
   const midMarketRate = benchmark ? benchmark.midMarketRate : 1;
-  const provider = options.provider ?? 'mid_market';
+  const provider = options.provider ?? "mid_market";
 
   let effectiveRate = options.customExchangeRate ?? midMarketRate;
   if (options.customExchangeRate == null && benchmark) {
-    if (provider === 'wise') {
+    if (provider === "wise") {
       effectiveRate = roundRate(midMarketRate * (1 - benchmark.providerSpreadEstimates.wise));
-    } else if (provider === 'remitly') {
+    } else if (provider === "remitly") {
       effectiveRate = roundRate(midMarketRate * (1 - benchmark.providerSpreadEstimates.remitly));
-    } else if (provider === 'western_union') {
-      effectiveRate = roundRate(midMarketRate * (1 - benchmark.providerSpreadEstimates.westernUnion));
-    } else if (provider === 'bank_wire') {
+    } else if (provider === "western_union") {
+      effectiveRate = roundRate(
+        midMarketRate * (1 - benchmark.providerSpreadEstimates.westernUnion),
+      );
+    } else if (provider === "bank_wire") {
       effectiveRate = roundRate(midMarketRate * (1 - benchmark.providerSpreadEstimates.bankWire));
     } else {
       effectiveRate = midMarketRate;
@@ -213,13 +215,13 @@ export function calculateRemittance(
   const totalCostInPhpMinor = transferFeeInPhpMinor + spreadLossPhpMinor;
   const effectiveLossPercent =
     grossConvertedPhpMinor > 0
-      ? Math.round(((totalCostInPhpMinor / grossConvertedPhpMinor) * 100) * 100) / 100
+      ? Math.round((totalCostInPhpMinor / grossConvertedPhpMinor) * 100 * 100) / 100
       : 0;
 
   return {
     sendAmountMinor: options.sendAmountMinor,
     fromCurrency: options.fromCurrency,
-    toCurrency: 'PHP',
+    toCurrency: "PHP",
     effectiveRate,
     midMarketRate,
     grossConvertedPhpMinor,
@@ -254,11 +256,11 @@ export function compareRemittanceProviders(
   fromCurrency: OfwCurrency,
 ): Record<string, RemittanceCalculationResult> {
   const providers: RemittanceProvider[] = [
-    'mid_market',
-    'wise',
-    'remitly',
-    'western_union',
-    'bank_wire',
+    "mid_market",
+    "wise",
+    "remitly",
+    "western_union",
+    "bank_wire",
   ];
 
   const results: Record<string, RemittanceCalculationResult> = {};

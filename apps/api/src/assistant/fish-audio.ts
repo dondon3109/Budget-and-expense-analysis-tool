@@ -22,7 +22,12 @@ function timeoutMs(env: Bindings): number {
     : DEFAULT_TIMEOUT_MS;
 }
 
-async function fishFetch(env: Bindings, path: string, init: RequestInit, apiKeyOverride?: string): Promise<Response> {
+async function fishFetch(
+  env: Bindings,
+  path: string,
+  init: RequestInit,
+  apiKeyOverride?: string,
+): Promise<Response> {
   const apiKey = apiKeyOverride?.trim() || env.FISH_AUDIO_API_KEY?.trim();
   if (!apiKey) throw new AssistantVoiceProviderError("fish_audio", "configuration");
 
@@ -53,7 +58,10 @@ async function fishFetch(env: Bindings, path: string, init: RequestInit, apiKeyO
   }
 }
 
-function createFishProvider(modelOverride?: string, apiKeyOverride?: string): AssistantVoiceSpeechProvider {
+function createFishProvider(
+  modelOverride?: string,
+  apiKeyOverride?: string,
+): AssistantVoiceSpeechProvider {
   return {
     async synthesize(env, text, voice) {
       const model = modelOverride?.trim() || env.FISH_AUDIO_TTS_MODEL?.trim() || FREE_TTS_MODEL;
@@ -89,7 +97,10 @@ function createFishProvider(modelOverride?: string, apiKeyOverride?: string): As
 
 export const fishAudioProvider = createFishProvider();
 
-export function createFishAudioProvider(model?: string, apiKey?: string): AssistantVoiceSpeechProvider {
+export function createFishAudioProvider(
+  model?: string,
+  apiKey?: string,
+): AssistantVoiceSpeechProvider {
   return createFishProvider(model, apiKey);
 }
 

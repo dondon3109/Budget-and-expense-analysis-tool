@@ -378,11 +378,7 @@ export function AppShell({ children }: AppShellProps) {
             </button>
             {signOutError && <small role="alert">{signOutError}</small>}
           </div>
-          <Link
-            className="back-link"
-            to="/"
-            onClick={(event) => handleShellLinkClick(event, "/")}
-          >
+          <Link className="back-link" to="/" onClick={(event) => handleShellLinkClick(event, "/")}>
             ← Back to introduction
           </Link>
         </div>
@@ -437,7 +433,9 @@ export function AppShell({ children }: AppShellProps) {
           title="Discard unsaved changes?"
           consequence="Your unsaved changes will be lost. This cannot be undone."
           confirmLabel={
-            pendingNavigation.action.kind === "sign-out" ? "Discard and sign out" : "Discard changes"
+            pendingNavigation.action.kind === "sign-out"
+              ? "Discard and sign out"
+              : "Discard changes"
           }
           cancelLabel="Keep editing"
           returnFocus={pendingNavigation.opener}

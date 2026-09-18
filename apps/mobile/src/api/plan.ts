@@ -9,10 +9,7 @@ const billingSummarySchema = z.object({
 });
 
 export type PlanErrorCode =
-  | "session_expired"
-  | "account_deleted"
-  | "unreachable"
-  | "invalid_response";
+  "session_expired" | "account_deleted" | "unreachable" | "invalid_response";
 
 export class PlanError extends Error {
   constructor(

@@ -23,7 +23,8 @@ describe("Screen", () => {
       </Screen>,
     );
 
-    const refreshControls = screen.root?.queryAll((node) => node.type === "RCTRefreshControl") ?? [];
+    const refreshControls =
+      screen.root?.queryAll((node) => node.type === "RCTRefreshControl") ?? [];
     expect(refreshControls).toHaveLength(0);
   });
 
@@ -104,10 +105,7 @@ describe("Screen", () => {
 
   it("renders leadingAction on the leading side of the heading", async () => {
     await render(
-      <Screen
-        leadingAction={<Text testID="back-btn">Back</Text>}
-        title="Screen with Back"
-      >
+      <Screen leadingAction={<Text testID="back-btn">Back</Text>} title="Screen with Back">
         <Text>Content</Text>
       </Screen>,
     );

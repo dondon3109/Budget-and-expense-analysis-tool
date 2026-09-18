@@ -23,12 +23,7 @@ export function LegalPageLayout({
       <main className="legal-page-main" id="main-content" tabIndex={-1}>
         <article className="legal-article">
           <header className="legal-article-header">
-            <Breadcrumbs
-              items={[
-                { label: "Home", to: "/" },
-                { label: title },
-              ]}
-            />
+            <Breadcrumbs items={[{ label: "Home", to: "/" }, { label: title }]} />
             <h1>{title}</h1>
             <p className="legal-summary">{summary}</p>
             <p className="legal-updated">Last updated: {lastUpdated}</p>

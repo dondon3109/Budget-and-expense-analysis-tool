@@ -3,7 +3,14 @@
  */
 import "@testing-library/jest-dom/vitest";
 
-import type { AccountRecord, BillingSummary, CategoryRecord, ImportPreview, SubscriptionMonthSummary, SubscriptionRecord } from "@zoption/shared";
+import type {
+  AccountRecord,
+  BillingSummary,
+  CategoryRecord,
+  ImportPreview,
+  SubscriptionMonthSummary,
+  SubscriptionRecord,
+} from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -39,7 +46,9 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
   getSubscriptions: vi.fn(),
   getTransactions: vi.fn(),
   previewImport: vi.fn(),
-  commitImport: vi.fn().mockResolvedValue({ importId: "import-1", importedCount: 1, rejectedCount: 0 }),
+  commitImport: vi
+    .fn()
+    .mockResolvedValue({ importId: "import-1", importedCount: 1, rejectedCount: 0 }),
 }));
 
 const categories: CategoryRecord[] = [
@@ -79,7 +88,15 @@ const categories: CategoryRecord[] = [
 ];
 
 const accounts: AccountRecord[] = [
-  { id: "acc-1", name: "Everyday", type: "checking", currency: "PHP", balanceMinor: null, balanceAsOf: null, archived: false },
+  {
+    id: "acc-1",
+    name: "Everyday",
+    type: "checking",
+    currency: "PHP",
+    balanceMinor: null,
+    balanceAsOf: null,
+    archived: false,
+  },
 ];
 
 const billingSummary: BillingSummary = {
@@ -97,8 +114,22 @@ const billingSummary: BillingSummary = {
   canManageSponsoredSeats: false,
   nonTerminalSubscriptionCount: 0,
   usages: [
-    { feature: "assistant_question", used: 0, limit: 4, periodKind: "anchored_14_day", periodStartedAt: "2026-07-18T00:00:00.000Z", resetsAt: "2026-08-01T00:00:00.000Z" },
-    { feature: "file_import", used: 0, limit: 1, periodKind: "calendar_month", periodStartedAt: "2026-07-01T00:00:00.000Z", resetsAt: "2026-08-01T00:00:00.000Z" },
+    {
+      feature: "assistant_question",
+      used: 0,
+      limit: 4,
+      periodKind: "anchored_14_day",
+      periodStartedAt: "2026-07-18T00:00:00.000Z",
+      resetsAt: "2026-08-01T00:00:00.000Z",
+    },
+    {
+      feature: "file_import",
+      used: 0,
+      limit: 1,
+      periodKind: "calendar_month",
+      periodStartedAt: "2026-07-01T00:00:00.000Z",
+      resetsAt: "2026-08-01T00:00:00.000Z",
+    },
   ],
   allowances: [{ resource: "custom_category", used: 0, limit: 1 }],
 };
@@ -112,9 +143,39 @@ const recurringPreview: ImportPreview = {
   rejectedCount: 0,
   duplicateCount: 0,
   rows: [
-    { rowNumber: 2, status: "ready", date: "2026-05-15", description: "Netflix", amountMinor: -54900, kind: "expense", categoryId: "entertainment", categoryName: "Entertainment", errors: [] },
-    { rowNumber: 3, status: "ready", date: "2026-06-15", description: "Netflix", amountMinor: -54900, kind: "expense", categoryId: "entertainment", categoryName: "Entertainment", errors: [] },
-    { rowNumber: 4, status: "ready", date: "2026-07-15", description: "Netflix", amountMinor: -54900, kind: "expense", categoryId: "entertainment", categoryName: "Entertainment", errors: [] },
+    {
+      rowNumber: 2,
+      status: "ready",
+      date: "2026-05-15",
+      description: "Netflix",
+      amountMinor: -54900,
+      kind: "expense",
+      categoryId: "entertainment",
+      categoryName: "Entertainment",
+      errors: [],
+    },
+    {
+      rowNumber: 3,
+      status: "ready",
+      date: "2026-06-15",
+      description: "Netflix",
+      amountMinor: -54900,
+      kind: "expense",
+      categoryId: "entertainment",
+      categoryName: "Entertainment",
+      errors: [],
+    },
+    {
+      rowNumber: 4,
+      status: "ready",
+      date: "2026-07-15",
+      description: "Netflix",
+      amountMinor: -54900,
+      kind: "expense",
+      categoryId: "entertainment",
+      categoryName: "Entertainment",
+      errors: [],
+    },
   ],
 };
 
@@ -127,7 +188,17 @@ const nonRecurringPreview: ImportPreview = {
   rejectedCount: 0,
   duplicateCount: 0,
   rows: [
-    { rowNumber: 2, status: "ready", date: "2026-07-20", description: "Groceries", amountMinor: -120000, kind: "expense", categoryId: "food", categoryName: "Food & dining", errors: [] },
+    {
+      rowNumber: 2,
+      status: "ready",
+      date: "2026-07-20",
+      description: "Groceries",
+      amountMinor: -120000,
+      kind: "expense",
+      categoryId: "food",
+      categoryName: "Food & dining",
+      errors: [],
+    },
   ],
 };
 
@@ -201,7 +272,12 @@ describe("Import auto-detection of recurring charges", () => {
     vi.mocked(previewImport).mockResolvedValue(recurringPreview);
     const user = userEvent.setup();
     const { container } = renderPage();
-    const csv = ["Date,Description,Amount,Category", "2026-05-15,Netflix,-549.00,Entertainment", "2026-06-15,Netflix,-549.00,Entertainment", "2026-07-15,Netflix,-549.00,Entertainment"].join("\n");
+    const csv = [
+      "Date,Description,Amount,Category",
+      "2026-05-15,Netflix,-549.00,Entertainment",
+      "2026-06-15,Netflix,-549.00,Entertainment",
+      "2026-07-15,Netflix,-549.00,Entertainment",
+    ].join("\n");
     await user.upload(fileInput(container), fileWithBuffer("bank.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
     await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
@@ -218,7 +294,10 @@ describe("Import auto-detection of recurring charges", () => {
     vi.mocked(previewImport).mockResolvedValue(nonRecurringPreview);
     const user = userEvent.setup();
     const { container } = renderPage();
-    const csv = ["Date,Description,Amount,Category", "2026-07-20,Groceries,-1200.00,Food & dining"].join("\n");
+    const csv = [
+      "Date,Description,Amount,Category",
+      "2026-07-20,Groceries,-1200.00,Food & dining",
+    ].join("\n");
     await user.upload(fileInput(container), fileWithBuffer("one.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
     await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
@@ -255,7 +334,12 @@ describe("Import auto-detection of recurring charges", () => {
     } satisfies SubscriptionMonthSummary);
     const user = userEvent.setup();
     const { container } = renderPage();
-    const csv = ["Date,Description,Amount,Category", "2026-05-15,Netflix,-549.00,Entertainment", "2026-06-15,Netflix,-549.00,Entertainment", "2026-07-15,Netflix,-549.00,Entertainment"].join("\n");
+    const csv = [
+      "Date,Description,Amount,Category",
+      "2026-05-15,Netflix,-549.00,Entertainment",
+      "2026-06-15,Netflix,-549.00,Entertainment",
+      "2026-07-15,Netflix,-549.00,Entertainment",
+    ].join("\n");
     await user.upload(fileInput(container), fileWithBuffer("bank.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
     await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
@@ -269,7 +353,12 @@ describe("Import auto-detection of recurring charges", () => {
     vi.mocked(previewImport).mockResolvedValue(recurringPreview);
     const user = userEvent.setup();
     const { container } = renderPage();
-    const csv = ["Date,Description,Amount,Category", "2026-05-15,Netflix,-549.00,Entertainment", "2026-06-15,Netflix,-549.00,Entertainment", "2026-07-15,Netflix,-549.00,Entertainment"].join("\n");
+    const csv = [
+      "Date,Description,Amount,Category",
+      "2026-05-15,Netflix,-549.00,Entertainment",
+      "2026-06-15,Netflix,-549.00,Entertainment",
+      "2026-07-15,Netflix,-549.00,Entertainment",
+    ].join("\n");
     await user.upload(fileInput(container), fileWithBuffer("bank.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
     const trackButton = await screen.findByRole("button", { name: /Track as subscription/i });
@@ -288,20 +377,29 @@ describe("Import auto-detection of recurring charges", () => {
         expect.objectContaining({ name: "Netflix", amountMinor: 54900, billingCycle: "monthly" }),
       ),
     );
-    await waitFor(() => expect(screen.getByText(/is now tracked as an active subscription/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/is now tracked as an active subscription/)).toBeInTheDocument(),
+    );
   });
 
   it("dismisses suggestion via Not now and Dismiss all", async () => {
     vi.mocked(previewImport).mockResolvedValue(recurringPreview);
     const user = userEvent.setup();
     const { container } = renderPage();
-    const csv = ["Date,Description,Amount,Category", "2026-05-15,Netflix,-549.00,Entertainment", "2026-06-15,Netflix,-549.00,Entertainment", "2026-07-15,Netflix,-549.00,Entertainment"].join("\n");
+    const csv = [
+      "Date,Description,Amount,Category",
+      "2026-05-15,Netflix,-549.00,Entertainment",
+      "2026-06-15,Netflix,-549.00,Entertainment",
+      "2026-07-15,Netflix,-549.00,Entertainment",
+    ].join("\n");
     await user.upload(fileInput(container), fileWithBuffer("bank.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
     await screen.findByRole("button", { name: /Track as subscription/i });
 
     await user.click(screen.getByRole("button", { name: "Dismiss Netflix" }));
-    expect(screen.queryByText("Netflix", { selector: ".suggestion-merchant" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Netflix", { selector: ".suggestion-merchant" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/recurring charge/i)).not.toBeInTheDocument();
   });
 });

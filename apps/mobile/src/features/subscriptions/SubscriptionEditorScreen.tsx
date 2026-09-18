@@ -6,7 +6,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { SubscriptionBillingCycle, SubscriptionStatus } from "@zoption/shared";
 import { resolveCategoryEmoji } from "@zoption/shared";
 
-import { useLocalReferenceData, useLocalWorkspace, useSubscription } from "@/db/local-workspace-state";
+import {
+  useLocalReferenceData,
+  useLocalWorkspace,
+  useSubscription,
+} from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
@@ -204,7 +208,10 @@ export function SubscriptionEditorScreen() {
         </View>
       ) : editing && !subscriptionState.subscription ? (
         <View style={styles.centered}>
-          <ErrorState title="Subscription not found" message="This subscription is no longer active on this device." />
+          <ErrorState
+            title="Subscription not found"
+            message="This subscription is no longer active on this device."
+          />
         </View>
       ) : (
         <KeyboardAvoidingView
@@ -242,7 +249,9 @@ export function SubscriptionEditorScreen() {
                   setMessage(null);
                 }}
                 placeholder="0.00"
-                trailing={<Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>}
+                trailing={
+                  <Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>
+                }
                 value={amount}
               />
               <SelectionField

@@ -691,7 +691,10 @@ describe("API foundation", () => {
     expect(transcribe).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File), "auto");
 
     const englishForm = new FormData();
-    englishForm.set("audio", new File([new Uint8Array([1, 2, 3])], "voice.webm", { type: "audio/webm" }));
+    englishForm.set(
+      "audio",
+      new File([new Uint8Array([1, 2, 3])], "voice.webm", { type: "audio/webm" }),
+    );
     englishForm.set("lang", "en");
     const englishResponse = await app.request("/api/app/assistant/voice/transcriptions", {
       method: "POST",
@@ -702,7 +705,10 @@ describe("API foundation", () => {
     expect(transcribe).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File), "en");
 
     const tagalogForm = new FormData();
-    tagalogForm.set("audio", new File([new Uint8Array([1, 2, 3])], "voice.webm", { type: "audio/webm" }));
+    tagalogForm.set(
+      "audio",
+      new File([new Uint8Array([1, 2, 3])], "voice.webm", { type: "audio/webm" }),
+    );
     tagalogForm.set("lang", "fil");
     const tagalogResponse = await app.request("/api/app/assistant/voice/transcriptions", {
       method: "POST",

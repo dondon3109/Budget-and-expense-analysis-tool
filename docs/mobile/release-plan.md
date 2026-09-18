@@ -197,4 +197,3 @@ with the first active account retained as the fallback. The same typed shared
 rule is used by native transaction entry, receipt drafts, and the website.
 Voice recording status and receipt photo actions are also clearer and use the
 shared accessible button component.
-

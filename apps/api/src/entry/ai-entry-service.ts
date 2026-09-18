@@ -467,11 +467,7 @@ export function createAiEntryService(
       let transcript: string;
       try {
         transcript = (
-          await transcriptionProvider.transcribe(
-            env,
-            audio,
-            language ? { language } : undefined,
-          )
+          await transcriptionProvider.transcribe(env, audio, language ? { language } : undefined)
         ).text;
       } catch (error) {
         return throwProviderFailure("voice", error);

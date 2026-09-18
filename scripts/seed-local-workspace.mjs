@@ -33,16 +33,96 @@ const SYSTEM_ACCOUNTS = [
 ];
 
 const STARTER_CATEGORIES = [
-  { key: "salary", name: "Salary", kind: "income", color: "#2a78d6", iconEmoji: "💼", systemKey: null, origin: "starter" },
-  { key: "housing", name: "Housing", kind: "expense", color: "#008300", iconEmoji: "🏠", systemKey: null, origin: "starter" },
-  { key: "food", name: "Food & dining", kind: "expense", color: "#e87ba4", iconEmoji: "🍔", systemKey: null, origin: "starter" },
-  { key: "transport", name: "Transport", kind: "expense", color: "#eda100", iconEmoji: "🚗", systemKey: null, origin: "starter" },
-  { key: "utilities", name: "Utilities", kind: "expense", color: "#1baf7a", iconEmoji: "💡", systemKey: null, origin: "starter" },
-  { key: "leisure", name: "Leisure", kind: "expense", color: "#eb6834", iconEmoji: "🎁", systemKey: null, origin: "starter" },
-  { key: "savings-transfer", name: "Savings transfer", kind: "transfer", color: "#4a3aa7", iconEmoji: "💰", systemKey: null, origin: "starter" },
-  { key: "uncategorized-income", name: "Uncategorized", kind: "income", color: "#6b7280", iconEmoji: null, systemKey: "uncategorized:income", origin: "system" },
-  { key: "uncategorized-expense", name: "Uncategorized", kind: "expense", color: "#6b7280", iconEmoji: null, systemKey: "uncategorized:expense", origin: "system" },
-  { key: "uncategorized-transfer", name: "Uncategorized", kind: "transfer", color: "#6b7280", iconEmoji: null, systemKey: "uncategorized:transfer", origin: "system" },
+  {
+    key: "salary",
+    name: "Salary",
+    kind: "income",
+    color: "#2a78d6",
+    iconEmoji: "💼",
+    systemKey: null,
+    origin: "starter",
+  },
+  {
+    key: "housing",
+    name: "Housing",
+    kind: "expense",
+    color: "#008300",
+    iconEmoji: "🏠",
+    systemKey: null,
+    origin: "starter",
+  },
+  {
+    key: "food",
+    name: "Food & dining",
+    kind: "expense",
+    color: "#e87ba4",
+    iconEmoji: "🍔",
+    systemKey: null,
+    origin: "starter",
+  },
+  {
+    key: "transport",
+    name: "Transport",
+    kind: "expense",
+    color: "#eda100",
+    iconEmoji: "🚗",
+    systemKey: null,
+    origin: "starter",
+  },
+  {
+    key: "utilities",
+    name: "Utilities",
+    kind: "expense",
+    color: "#1baf7a",
+    iconEmoji: "💡",
+    systemKey: null,
+    origin: "starter",
+  },
+  {
+    key: "leisure",
+    name: "Leisure",
+    kind: "expense",
+    color: "#eb6834",
+    iconEmoji: "🎁",
+    systemKey: null,
+    origin: "starter",
+  },
+  {
+    key: "savings-transfer",
+    name: "Savings transfer",
+    kind: "transfer",
+    color: "#4a3aa7",
+    iconEmoji: "💰",
+    systemKey: null,
+    origin: "starter",
+  },
+  {
+    key: "uncategorized-income",
+    name: "Uncategorized",
+    kind: "income",
+    color: "#6b7280",
+    iconEmoji: null,
+    systemKey: "uncategorized:income",
+    origin: "system",
+  },
+  {
+    key: "uncategorized-expense",
+    name: "Uncategorized",
+    kind: "expense",
+    color: "#6b7280",
+    iconEmoji: null,
+    systemKey: "uncategorized:expense",
+    origin: "system",
+  },
+  {
+    key: "uncategorized-transfer",
+    name: "Uncategorized",
+    kind: "transfer",
+    color: "#6b7280",
+    iconEmoji: null,
+    systemKey: "uncategorized:transfer",
+    origin: "system",
+  },
 ];
 
 function parseArgs(argv) {
@@ -55,7 +135,9 @@ function parseArgs(argv) {
     else if (arg === "--reset") args.reset = true;
   }
   if (!args.user) {
-    console.error("Missing --user <supabase-user-uuid>. Pass the UUID of the account you sign in with.");
+    console.error(
+      "Missing --user <supabase-user-uuid>. Pass the UUID of the account you sign in with.",
+    );
     process.exit(1);
   }
   if (!/^[0-9a-f-]{36}$/i.test(args.user)) {
@@ -76,11 +158,10 @@ function runSql(db, sql) {
   const file = join(dir, "seed.sql");
   writeFileSync(file, sql, "utf8");
   try {
-    execFileSync(
-      "npx",
-      ["wrangler", "d1", "execute", db, "--local", `--file=${file}`, "--yes"],
-      { cwd: API_DIR, stdio: ["ignore", "pipe", "pipe"] },
-    );
+    execFileSync("npx", ["wrangler", "d1", "execute", db, "--local", `--file=${file}`, "--yes"], {
+      cwd: API_DIR,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -111,7 +192,8 @@ const monthStart = (date) => `${iso(date).slice(0, 7)}-01`;
 
 function buildSql(userId, months) {
   const tenantId = `user:${userId}`;
-  const accountId = (suffix) => (suffix === "default" ? `${tenantId}:account:default` : `${tenantId}:account:${suffix}`);
+  const accountId = (suffix) =>
+    suffix === "default" ? `${tenantId}:account:default` : `${tenantId}:account:${suffix}`;
   const categoryId = (key) => `${tenantId}:category:${key}`;
   const seedId = (...parts) => `${SEED_PREFIX}${userId}:${parts.join(":")}`;
 
@@ -121,8 +203,12 @@ function buildSql(userId, months) {
   statement("PRAGMA foreign_keys = ON");
 
   // --- tenant + membership, mirroring the API bootstrap ---------------------
-  statement(`INSERT OR IGNORE INTO tenants (id, kind, name) VALUES (${sqlString(tenantId)}, 'user', 'Personal budget')`);
-  statement(`INSERT OR IGNORE INTO user_tenants (user_id, tenant_id) VALUES (${sqlString(userId)}, ${sqlString(tenantId)})`);
+  statement(
+    `INSERT OR IGNORE INTO tenants (id, kind, name) VALUES (${sqlString(tenantId)}, 'user', 'Personal budget')`,
+  );
+  statement(
+    `INSERT OR IGNORE INTO user_tenants (user_id, tenant_id) VALUES (${sqlString(userId)}, ${sqlString(tenantId)})`,
+  );
 
   for (const account of SYSTEM_ACCOUNTS) {
     statement(
@@ -162,30 +248,130 @@ function buildSql(userId, months) {
     const day = (d) => iso(new Date(Date.UTC(year, month, d)));
 
     // Income on the 15th and the last day of the month.
-    addTransaction({ date: day(15), description: "Salary — first half", amount: 22500, kind: "income", category: "salary", account: "bank" });
+    addTransaction({
+      date: day(15),
+      description: "Salary — first half",
+      amount: 22500,
+      kind: "income",
+      category: "salary",
+      account: "bank",
+    });
     if (!isCurrentMonth) {
-      addTransaction({ date: day(28), description: "Salary — second half", amount: 22500, kind: "income", category: "salary", account: "bank" });
+      addTransaction({
+        date: day(28),
+        description: "Salary — second half",
+        amount: 22500,
+        kind: "income",
+        category: "salary",
+        account: "bank",
+      });
     }
 
-    addTransaction({ date: day(1), description: "Rent", amount: 12000, kind: "expense", category: "housing", account: "bank" });
-    addTransaction({ date: day(5), description: "Robinsons Supermarket", amount: 3420.5, kind: "expense", category: "food", account: "gcash" });
-    addTransaction({ date: day(12), description: "SM Groceries", amount: 2180, kind: "expense", category: "food", account: "gcash", notes: "Weekly run" });
-    addTransaction({ date: day(19), description: "Jollibee", amount: 465, kind: "expense", category: "food", account: "default" });
-    addTransaction({ date: day(8), description: "Meralco", amount: 2840.75, kind: "expense", category: "utilities", account: "bank" });
-    addTransaction({ date: day(9), description: "PLDT Fiber", amount: 1699, kind: "expense", category: "utilities", account: "bank" });
-    addTransaction({ date: day(3), description: "Jeepney and MRT", amount: 320, kind: "expense", category: "transport", account: "default" });
-    addTransaction({ date: day(16), description: "Grab to BGC", amount: 585, kind: "expense", category: "transport", account: "gcash" });
-    addTransaction({ date: day(21), description: "Cinema", amount: 780, kind: "expense", category: "leisure", account: "gcash" });
-    addTransaction({ date: day(24), description: "Coffee with friends", amount: 640, kind: "expense", category: "leisure", account: "default" });
+    addTransaction({
+      date: day(1),
+      description: "Rent",
+      amount: 12000,
+      kind: "expense",
+      category: "housing",
+      account: "bank",
+    });
+    addTransaction({
+      date: day(5),
+      description: "Robinsons Supermarket",
+      amount: 3420.5,
+      kind: "expense",
+      category: "food",
+      account: "gcash",
+    });
+    addTransaction({
+      date: day(12),
+      description: "SM Groceries",
+      amount: 2180,
+      kind: "expense",
+      category: "food",
+      account: "gcash",
+      notes: "Weekly run",
+    });
+    addTransaction({
+      date: day(19),
+      description: "Jollibee",
+      amount: 465,
+      kind: "expense",
+      category: "food",
+      account: "default",
+    });
+    addTransaction({
+      date: day(8),
+      description: "Meralco",
+      amount: 2840.75,
+      kind: "expense",
+      category: "utilities",
+      account: "bank",
+    });
+    addTransaction({
+      date: day(9),
+      description: "PLDT Fiber",
+      amount: 1699,
+      kind: "expense",
+      category: "utilities",
+      account: "bank",
+    });
+    addTransaction({
+      date: day(3),
+      description: "Jeepney and MRT",
+      amount: 320,
+      kind: "expense",
+      category: "transport",
+      account: "default",
+    });
+    addTransaction({
+      date: day(16),
+      description: "Grab to BGC",
+      amount: 585,
+      kind: "expense",
+      category: "transport",
+      account: "gcash",
+    });
+    addTransaction({
+      date: day(21),
+      description: "Cinema",
+      amount: 780,
+      kind: "expense",
+      category: "leisure",
+      account: "gcash",
+    });
+    addTransaction({
+      date: day(24),
+      description: "Coffee with friends",
+      amount: 640,
+      kind: "expense",
+      category: "leisure",
+      account: "default",
+    });
 
     if (!isCurrentMonth) {
-      addTransaction({ date: day(28), description: "Transfer to savings", amount: 5000, kind: "transfer", category: "savings-transfer", account: "bank" });
+      addTransaction({
+        date: day(28),
+        description: "Transfer to savings",
+        amount: 5000,
+        kind: "transfer",
+        category: "savings-transfer",
+        account: "bank",
+      });
     }
   }
 
   // A deliberate large expense in the current month so the budget-over state is reachable.
   const thisMonth = monthStart(today);
-  addTransaction({ date: thisMonth, description: "Laptop repair", amount: 6800, kind: "expense", category: "food", account: "bank", notes: "Seeded to exercise an over-budget row" });
+  addTransaction({
+    date: thisMonth,
+    description: "Laptop repair",
+    amount: 6800,
+    kind: "expense",
+    category: "food",
+    account: "bank",
+    notes: "Seeded to exercise an over-budget row",
+  });
 
   // --- monthly budgets for the current month -------------------------------
   const budgets = [
@@ -254,16 +440,18 @@ function buildSql(userId, months) {
 function buildResetSql(userId) {
   const tenantId = `user:${userId}`;
   const filter = `tenant_id = ${sqlString(tenantId)} AND id LIKE '${SEED_PREFIX}%'`;
-  return [
-    `DELETE FROM transactions WHERE ${filter}`,
-    `DELETE FROM budgets WHERE ${filter}`,
-    `DELETE FROM subscriptions WHERE ${filter}`,
-    `DELETE FROM financial_goals WHERE ${filter}`,
-    `DELETE FROM debts WHERE ${filter}`,
-    `DELETE FROM calendar_events WHERE ${filter}`,
-    `DELETE FROM categories WHERE ${filter}`,
-    `DELETE FROM accounts WHERE ${filter}`,
-  ].join(";\n") + ";";
+  return (
+    [
+      `DELETE FROM transactions WHERE ${filter}`,
+      `DELETE FROM budgets WHERE ${filter}`,
+      `DELETE FROM subscriptions WHERE ${filter}`,
+      `DELETE FROM financial_goals WHERE ${filter}`,
+      `DELETE FROM debts WHERE ${filter}`,
+      `DELETE FROM calendar_events WHERE ${filter}`,
+      `DELETE FROM categories WHERE ${filter}`,
+      `DELETE FROM accounts WHERE ${filter}`,
+    ].join(";\n") + ";"
+  );
 }
 
 function main() {
@@ -283,9 +471,13 @@ function main() {
     `SELECT COUNT(*) FROM transactions WHERE tenant_id = ${sqlString(tenantId)} AND id LIKE '${SEED_PREFIX}%'`,
   );
   console.log(`Seeded ${args.db} for ${tenantId}.`);
-  console.log(`  ${count} seeded transactions across the last ${args.months} month(s), plus budgets, 3 subscriptions, 1 goal, 1 debt and 2 calendar events.`);
+  console.log(
+    `  ${count} seeded transactions across the last ${args.months} month(s), plus budgets, 3 subscriptions, 1 goal, 1 debt and 2 calendar events.`,
+  );
   console.log("  Re-running is safe: every insert is INSERT OR IGNORE on a deterministic id.");
-  console.log("  Undo with: node scripts/seed-local-workspace.mjs --user " + args.user + " --reset");
+  console.log(
+    "  Undo with: node scripts/seed-local-workspace.mjs --user " + args.user + " --reset",
+  );
 }
 
 main();

@@ -13,9 +13,7 @@ export const CURRENT_CONSENT_VERSION = 5;
 export const MAX_ASSISTANT_MESSAGE_LENGTH = 2000;
 export const MAX_IDENTITY_NAME_LENGTH = 80;
 
-export function requiresAssistantConsent(
-  preferences: AssistantPreferences | null,
-): boolean {
+export function requiresAssistantConsent(preferences: AssistantPreferences | null): boolean {
   return (
     preferences === null ||
     preferences.consentedAt === null ||
@@ -23,13 +21,9 @@ export function requiresAssistantConsent(
   );
 }
 
-export function requiresIdentitySetup(
-  preferences: AssistantPreferences | null,
-): boolean {
+export function requiresIdentitySetup(preferences: AssistantPreferences | null): boolean {
   if (preferences === null) return false;
-  return (
-    preferences.assistantName === null || preferences.userPreferredName === null
-  );
+  return preferences.assistantName === null || preferences.userPreferredName === null;
 }
 
 export function validateIdentityName(value: string): string | null {
@@ -50,9 +44,7 @@ export function validateAssistantMessage(value: string): string | null {
     clientRequestId: "00000000-0000-4000-8000-000000000000",
   });
   if (!parsed.success) {
-    const issue = parsed.error.issues.find(
-      (candidate) => candidate.path[0] === "message",
-    );
+    const issue = parsed.error.issues.find((candidate) => candidate.path[0] === "message");
     return issue ? issue.message : "Enter a valid message.";
   }
   return null;

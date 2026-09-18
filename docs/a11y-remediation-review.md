@@ -46,19 +46,19 @@ node scripts/local-supabase.mjs disable    # ALWAYS restore the real config afte
 
 ## Defects found and fixed
 
-| # | Finding | Severity | Where |
-|---|---|---|---|
-| 1 | Calendar `role="grid"` had `columnheader`/`gridcell` as direct children with no `role="row"` | **critical** | `components/calendar/CalendarMonthGrid.tsx` |
-| 2 | Calendar expense indicator at 3.38:1 (`--chart-expense` on `--paper`) | serious | `pages/CalendarPage.css` |
-| 3 | Calendar income indicator at 4.24:1 (`--chart-income`) | serious | `pages/CalendarPage.css` |
-| 4 | Import disabled-card heading 4.43:1 and small print 2.63:1, caused by `opacity: 0.64` on the card | serious | `import/import.css` |
-| 5 | Dashboard charts held focusable nodes inside `aria-hidden` (recharts renders `<g tabindex="-1">` for pie sectors, hardcoded, no prop to remove) | serious | `components/dashboard/SpendingByCategory.tsx`, `MonthlyTrend.tsx` |
-| 6 | Assistant loading and error states rendered no `h1` | serious | `pages/AssistantPage.tsx` |
-| 7 | Provider comparison table unreachable by keyboard at 768px | serious | `components/planning/RemittanceCalculatorSection.tsx` |
-| 8 | Calendar `role="separator"` wrapped a button. axe's `nested-interactive` fires on any role with `childrenPresentational: true`, which ARIA sets for `separator` | moderate | `pages/CalendarPage.tsx` |
-| 9 | Review prompt (fixed 410px panel) covered primary data on 6 of 9 pages — the ledger's Amount column, budget inputs, the plan's spread column — and truncated two sentences mid-word | P1 UX | `components/reviews/CustomerReviewPrompt.tsx` |
-| 10 | Support launcher covered footer links on mobile | moderate UX | `components/layout/AppShell.css` |
-| 11 | Consent banner covered the last ~110px of every page | moderate UX | `components/consent/cookieConsent.css` |
+| #   | Finding                                                                                                                                                                             | Severity     | Where                                                             |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ----------------------------------------------------------------- |
+| 1   | Calendar `role="grid"` had `columnheader`/`gridcell` as direct children with no `role="row"`                                                                                        | **critical** | `components/calendar/CalendarMonthGrid.tsx`                       |
+| 2   | Calendar expense indicator at 3.38:1 (`--chart-expense` on `--paper`)                                                                                                               | serious      | `pages/CalendarPage.css`                                          |
+| 3   | Calendar income indicator at 4.24:1 (`--chart-income`)                                                                                                                              | serious      | `pages/CalendarPage.css`                                          |
+| 4   | Import disabled-card heading 4.43:1 and small print 2.63:1, caused by `opacity: 0.64` on the card                                                                                   | serious      | `import/import.css`                                               |
+| 5   | Dashboard charts held focusable nodes inside `aria-hidden` (recharts renders `<g tabindex="-1">` for pie sectors, hardcoded, no prop to remove)                                     | serious      | `components/dashboard/SpendingByCategory.tsx`, `MonthlyTrend.tsx` |
+| 6   | Assistant loading and error states rendered no `h1`                                                                                                                                 | serious      | `pages/AssistantPage.tsx`                                         |
+| 7   | Provider comparison table unreachable by keyboard at 768px                                                                                                                          | serious      | `components/planning/RemittanceCalculatorSection.tsx`             |
+| 8   | Calendar `role="separator"` wrapped a button. axe's `nested-interactive` fires on any role with `childrenPresentational: true`, which ARIA sets for `separator`                     | moderate     | `pages/CalendarPage.tsx`                                          |
+| 9   | Review prompt (fixed 410px panel) covered primary data on 6 of 9 pages — the ledger's Amount column, budget inputs, the plan's spread column — and truncated two sentences mid-word | P1 UX        | `components/reviews/CustomerReviewPrompt.tsx`                     |
+| 10  | Support launcher covered footer links on mobile                                                                                                                                     | moderate UX  | `components/layout/AppShell.css`                                  |
+| 11  | Consent banner covered the last ~110px of every page                                                                                                                                | moderate UX  | `components/consent/cookieConsent.css`                            |
 
 Findings 2, 3 and 5 were **masked by the defects above them** and only became measurable once those
 were fixed — worth knowing when judging whether the list is complete.
@@ -72,7 +72,7 @@ were fixed — worth knowing when judging whether the list is complete.
 2. **`CustomerReviewPrompt.tsx`** — converted from a non-modal docked panel to a modal
    (portal + `useRootLock` + `useFocusTrap` + backdrop). This changes product behaviour, not just
    CSS: the user must now answer or dismiss it. That trade-off was the user's explicit choice.
-3. **`SpendingByCategory.tsx`** — `aria-hidden` was *removed* from the donut wrapper rather than
+3. **`SpendingByCategory.tsx`** — `aria-hidden` was _removed_ from the donut wrapper rather than
    made honest, because recharts offers no way to strip the sector `tabindex`. The accessible
    equivalent is the adjacent category list. Confirm this is the right call.
 4. **The harness guards** in `e2e/fixtures/accessibility.ts` — `waitForAppReady` and the
@@ -112,13 +112,13 @@ Earlier rounds of this work produced false results. The audit now:
 
 ## Verification evidence
 
-| Check | Result |
-|---|---|
-| Unit suite | 233 files / 1820 tests passing |
-| Desktop accessibility spec (public + authenticated + states + empty) | 33 passed, 0 failed |
-| Mobile authenticated (393px) | 21 passed |
-| 768px breakpoint authenticated | 11 passed |
-| Typechecks (app + e2e) | exit 0 |
-| Browser inspection | all 11 routes reviewed from screenshots |
+| Check                                                                | Result                                  |
+| -------------------------------------------------------------------- | --------------------------------------- |
+| Unit suite                                                           | 233 files / 1820 tests passing          |
+| Desktop accessibility spec (public + authenticated + states + empty) | 33 passed, 0 failed                     |
+| Mobile authenticated (393px)                                         | 21 passed                               |
+| 768px breakpoint authenticated                                       | 11 passed                               |
+| Typechecks (app + e2e)                                               | exit 0                                  |
+| Browser inspection                                                   | all 11 routes reviewed from screenshots |
 
 No version numbers were edited: semantic-release owns them.

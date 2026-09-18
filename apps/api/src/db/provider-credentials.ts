@@ -1,4 +1,8 @@
-import type { ProviderCredential, ProviderCredentialWithUsage, ProviderService } from "@zoption/shared";
+import type {
+  ProviderCredential,
+  ProviderCredentialWithUsage,
+  ProviderService,
+} from "@zoption/shared";
 
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
@@ -101,12 +105,17 @@ export const providerCredentialRepository: ProviderCredentialRepository = {
     } catch (error) {
       const msg = error instanceof Error ? error.message.toLowerCase() : "";
       if (msg.includes("provider_credentials_provider_name_unique") || msg.includes("unique")) {
-        throw new HttpError(409, "credential_name_exists", "A credential with this provider and name already exists.");
+        throw new HttpError(
+          409,
+          "credential_name_exists",
+          "A credential with this provider and name already exists.",
+        );
       }
       throw error;
     }
     const created = await this.getById(env, id);
-    if (!created) throw new HttpError(500, "credential_create_failed", "Could not create credential.");
+    if (!created)
+      throw new HttpError(500, "credential_create_failed", "Could not create credential.");
     return created;
   },
 
@@ -125,7 +134,11 @@ export const providerCredentialRepository: ProviderCredentialRepository = {
     } catch (error) {
       const msg = error instanceof Error ? error.message.toLowerCase() : "";
       if (msg.includes("provider_credentials_provider_name_unique") || msg.includes("unique")) {
-        throw new HttpError(409, "credential_name_exists", "A credential with this provider and name already exists.");
+        throw new HttpError(
+          409,
+          "credential_name_exists",
+          "A credential with this provider and name already exists.",
+        );
       }
       throw error;
     }
@@ -138,7 +151,12 @@ export const providerCredentialRepository: ProviderCredentialRepository = {
     const count = await this.countUsages(env, id);
     if (count > 0) {
       const usages = await this.listUsagesForCredential(env, id);
-      throw new HttpError(409, "credential_in_use", "Credential is still referenced by configurations.", { usedBy: usages });
+      throw new HttpError(
+        409,
+        "credential_in_use",
+        "Credential is still referenced by configurations.",
+        { usedBy: usages },
+      );
     }
     const existing = await this.getById(env, id);
     if (!existing) throw new HttpError(404, "credential_not_found", "Credential was not found.");
@@ -160,7 +178,14 @@ export const providerCredentialRepository: ProviderCredentialRepository = {
        FROM provider_configs WHERE credential_id = ? ORDER BY service ASC, priority ASC`,
     )
       .bind(credentialId)
-      .all<{ id: string; service: ProviderService; provider: string; model: string; display_name: string; is_active: number }>();
+      .all<{
+        id: string;
+        service: ProviderService;
+        provider: string;
+        model: string;
+        display_name: string;
+        is_active: number;
+      }>();
     return result.results.map((r) => ({
       configId: r.id,
       service: r.service,

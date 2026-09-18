@@ -37,9 +37,10 @@ describe("GuidesIndexPage", () => {
 
     const breadcrumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(within(breadcrumbs).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
-    expect(
-      within(breadcrumbs).getByText("Personal Finance & Budgeting Guides"),
-    ).toHaveAttribute("aria-current", "page");
+    expect(within(breadcrumbs).getByText("Personal Finance & Budgeting Guides")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
 
     // All guide cards should be rendered initially
     for (const guide of FINANCE_GUIDES) {
@@ -75,7 +76,9 @@ describe("GuidesIndexPage", () => {
       expect(screen.getByRole("heading", { level: 2, name: guide.title })).toBeInTheDocument();
     }
     for (const guide of nonSubscriptionGuides) {
-      expect(screen.queryByRole("heading", { level: 2, name: guide.title })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { level: 2, name: guide.title }),
+      ).not.toBeInTheDocument();
     }
 
     // Filter by Budgeting
@@ -97,12 +100,14 @@ describe("GuidesIndexPage", () => {
   it("renders CTA links and legal footer with the guides link", () => {
     renderWithProviders(<GuidesIndexPage />, ["/guides"]);
 
-    expect(
-      screen.getByRole("link", { name: /Create your free workspace/i }),
-    ).toHaveAttribute("href", "/signup");
-    expect(
-      screen.getByRole("link", { name: "Download Android Beta APK" }),
-    ).toHaveAttribute("href", "/install");
+    expect(screen.getByRole("link", { name: /Create your free workspace/i })).toHaveAttribute(
+      "href",
+      "/signup",
+    );
+    expect(screen.getByRole("link", { name: "Download Android Beta APK" })).toHaveAttribute(
+      "href",
+      "/install",
+    );
 
     const legalFooterNav = screen.getByRole("navigation", { name: "Legal and privacy" });
     expect(within(legalFooterNav).getByRole("link", { name: "Guides" })).toHaveAttribute(
@@ -189,7 +194,9 @@ describe("GuideDetailPage", () => {
     // Related guides
     const relatedGuides = FINANCE_GUIDES.filter((g) => g.slug !== firstGuide.slug).slice(0, 2);
     if (relatedGuides.length > 0) {
-      expect(screen.getByRole("heading", { level: 2, name: "More financial guides" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { level: 2, name: "More financial guides" }),
+      ).toBeInTheDocument();
       for (const related of relatedGuides) {
         expect(screen.getByRole("heading", { level: 3, name: related.title })).toBeInTheDocument();
         expect(screen.getByText(related.description)).toBeInTheDocument();
@@ -234,9 +241,7 @@ describe("GuideDetailPage", () => {
     );
 
     expect(screen.getByRole("heading", { level: 1, name: "Guide not found" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/The guide you requested could not be found/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/The guide you requested could not be found/i)).toBeInTheDocument();
 
     const breadcrumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(within(breadcrumbs).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
@@ -249,7 +254,9 @@ describe("GuideDetailPage", () => {
       "page",
     );
 
-    const backLinks = screen.getAllByRole("link", { name: /Back to all guides|Browse all guides/i });
+    const backLinks = screen.getAllByRole("link", {
+      name: /Back to all guides|Browse all guides/i,
+    });
     expect(backLinks.length).toBeGreaterThanOrEqual(2);
     for (const link of backLinks) {
       expect(link).toHaveAttribute("href", "/guides");

@@ -41,6 +41,7 @@ export function AssistantSessionProvider({ children }: { children: ReactNode }) 
 
 export function useAssistantSession(): AssistantSessionContextValue {
   const context = useContext(AssistantSessionContext);
-  if (!context) throw new Error("useAssistantSession must be used within AssistantSessionProvider.");
+  if (!context)
+    throw new Error("useAssistantSession must be used within AssistantSessionProvider.");
   return context;
 }

@@ -90,7 +90,9 @@ export function GoalEditorScreen() {
       } else {
         await local.workspace.transactionMutations.createGoal(parsed.input);
       }
-      void telemetry.capture(editing ? "goal_updated" : "goal_created", { status: parsed.input.status });
+      void telemetry.capture(editing ? "goal_updated" : "goal_created", {
+        status: parsed.input.status,
+      });
       router.back();
       sync.retry();
     } catch (error) {
@@ -134,7 +136,11 @@ export function GoalEditorScreen() {
       <Stack.Screen options={{ title: editing ? "Edit goal" : "New goal" }} />
       {goalState.error ? (
         <View style={styles.centered}>
-          <ErrorState title="Goal unavailable" message={goalState.error} onRetry={goalState.retry} />
+          <ErrorState
+            title="Goal unavailable"
+            message={goalState.error}
+            onRetry={goalState.retry}
+          />
         </View>
       ) : editing && goalState.loading ? (
         <View accessibilityLabel="Loading goal" style={styles.centered}>
@@ -142,7 +148,10 @@ export function GoalEditorScreen() {
         </View>
       ) : editing && !goalState.goal ? (
         <View style={styles.centered}>
-          <ErrorState title="Goal not found" message="This goal is no longer active on this device." />
+          <ErrorState
+            title="Goal not found"
+            message="This goal is no longer active on this device."
+          />
         </View>
       ) : (
         <KeyboardAvoidingView

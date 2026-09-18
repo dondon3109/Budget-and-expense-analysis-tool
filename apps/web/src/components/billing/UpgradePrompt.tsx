@@ -21,9 +21,7 @@ export function UpgradePrompt({ error }: { error: unknown }) {
   const usageLimit = isUsageLimitReachedError(error) ? error.details : undefined;
   const resourceLimit = isResourceLimitReachedError(error) ? error.details : undefined;
   const upgradeRequired = isUpgradeRequiredError(error) ? error.details : undefined;
-  const resetLabel = usageLimit?.resetsAt
-    ? formatManilaDate(usageLimit.resetsAt, true)
-    : undefined;
+  const resetLabel = usageLimit?.resetsAt ? formatManilaDate(usageLimit.resetsAt, true) : undefined;
   const isAssistantCycle = usageLimit?.periodKind === "anchored_14_day";
 
   const title = usageLimit

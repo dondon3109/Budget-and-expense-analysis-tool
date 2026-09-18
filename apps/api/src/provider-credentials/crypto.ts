@@ -19,7 +19,10 @@ async function importAesKey(masterB64: string): Promise<CryptoKey> {
     throw new Error("Provider credential encryption key must be 32 bytes (base64).");
   }
   // Cast to BufferSource for Web Crypto compatibility (Uint8Array backed by ArrayBuffer)
-  const buf: ArrayBuffer = keyBytes.buffer.slice(keyBytes.byteOffset, keyBytes.byteOffset + keyBytes.byteLength) as ArrayBuffer;
+  const buf: ArrayBuffer = keyBytes.buffer.slice(
+    keyBytes.byteOffset,
+    keyBytes.byteOffset + keyBytes.byteLength,
+  ) as ArrayBuffer;
   return crypto.subtle.importKey("raw", buf, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 

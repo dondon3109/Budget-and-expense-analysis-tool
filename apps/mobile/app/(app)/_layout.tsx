@@ -21,10 +21,7 @@ export default function AuthenticatedLayout() {
   if (session.status === "loading") {
     return (
       <View className="flex-1 items-center justify-center gap-3 px-6">
-        <ActivityIndicator
-          accessibilityLabel="Restoring your session"
-          color={theme.colors.brand}
-        />
+        <ActivityIndicator accessibilityLabel="Restoring your session" color={theme.colors.brand} />
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
           Restoring your session…
         </Text>

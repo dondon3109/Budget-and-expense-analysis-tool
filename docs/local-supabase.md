@@ -30,11 +30,11 @@ Use it only if you specifically want mobile-style dummy data with no Supabase at
 
 Installed with Homebrew (already present); all binaries are in `/opt/homebrew/bin`:
 
-| Tool | Version |
-|---|---|
-| colima | 0.10.3 (with lima 2.2.0) |
-| docker CLI | 29.8.0 |
-| supabase CLI | 2.117.0 |
+| Tool         | Version                  |
+| ------------ | ------------------------ |
+| colima       | 0.10.3 (with lima 2.2.0) |
+| docker CLI   | 29.8.0                   |
+| supabase CLI | 2.117.0                  |
 
 The container runtime is colima, not Docker Desktop. Start it first — no `docker`
 or `supabase` command works until the VM is up:
@@ -95,8 +95,8 @@ Removing the `credsStore` key fixes it. The original file is backed up at
    digit and symbol character. Two throwaway accounts already exist for the audit and
    are safe to reuse:
 
-   | Email | Password | UUID |
-   |---|---|---|
+   | Email               | Password           | UUID                                   |
+   | ------------------- | ------------------ | -------------------------------------- |
    | `audit@example.com` | `Audit-Pass-1234!` | `d56d6661-1c15-43a0-9faa-5909d3e2053a` |
    | `empty@example.com` | `Empty-Pass-1234!` | `6db3a570-0636-4761-906e-fa6309e857a1` |
 
@@ -177,13 +177,13 @@ workspace itself (tenant, accounts, categories) survive.
 
 These need external services and will fail or stay inert against the local stack:
 
-| Area | Why |
-|---|---|
-| Assistant replies | DeepSeek is a networked, paid provider |
-| Voice capture and playback | Fish Audio plus browser audio worklets |
-| Checkout | PayPal is configured for sandbox |
-| Signup confirmation / password reset email | Resend |
-| Android release metadata | `downloads.zoption.site` rejects localhost origins with CORS |
+| Area                                       | Why                                                          |
+| ------------------------------------------ | ------------------------------------------------------------ |
+| Assistant replies                          | DeepSeek is a networked, paid provider                       |
+| Voice capture and playback                 | Fish Audio plus browser audio worklets                       |
+| Checkout                                   | PayPal is configured for sandbox                             |
+| Signup confirmation / password reset email | Resend                                                       |
+| Android release metadata                   | `downloads.zoption.site` rejects localhost origins with CORS |
 
 Verify those as UI states only, not as live behaviour.
 
@@ -233,12 +233,12 @@ E2E_EMAIL=audit@example.com E2E_PASSWORD='Audit-Pass-1234!' pnpm test:e2e
 `pnpm test:e2e` first applies the local D1 migrations (`pnpm test:e2e:prepare`),
 then runs every Playwright project. The authenticated pass covers, per route:
 
-| State | Routes | Notes |
-|---|---|---|
-| Settled | all 11 `/app/*` routes | Also asserts the route rendered an `h1`, made **no failed requests** and logged **no console errors** — a blank page, a redirect or a refused API call would otherwise pass a scan over nothing. The identity 500 above currently trips this |
-| Loading | 5 representative routes | Every API call is left unanswered so the skeletons stay on screen; they cannot be scanned once data arrives |
-| Failed | 5 representative routes | Every API call is aborted, so the error panels render |
-| Empty workspace | 3 routes | Needs a second, unseeded account: `E2E_EMPTY_EMAIL` / `E2E_EMPTY_PASSWORD`. Skips when unset |
+| State           | Routes                  | Notes                                                                                                                                                                                                                                        |
+| --------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settled         | all 11 `/app/*` routes  | Also asserts the route rendered an `h1`, made **no failed requests** and logged **no console errors** — a blank page, a redirect or a refused API call would otherwise pass a scan over nothing. The identity 500 above currently trips this |
+| Loading         | 5 representative routes | Every API call is left unanswered so the skeletons stay on screen; they cannot be scanned once data arrives                                                                                                                                  |
+| Failed          | 5 representative routes | Every API call is aborted, so the error panels render                                                                                                                                                                                        |
+| Empty workspace | 3 routes                | Needs a second, unseeded account: `E2E_EMPTY_EMAIL` / `E2E_EMPTY_PASSWORD`. Skips when unset                                                                                                                                                 |
 
 Screenshots for the visual review pass are written to `test-results/app-audit/` (gitignored).
 Reading them is part of the verification: every purely visual defect found so far — overlapping

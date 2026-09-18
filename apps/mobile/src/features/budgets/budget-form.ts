@@ -16,9 +16,7 @@ export function formatMinorForInput(amountMinor: number): string {
 
 export function parseBudgetForm(
   values: BudgetFormValues,
-):
-  | { success: true; limitMinor: number }
-  | { success: false; errors: BudgetFormErrors } {
+): { success: true; limitMinor: number } | { success: false; errors: BudgetFormErrors } {
   let limitMinor: number;
   try {
     limitMinor = parseAmountToMinor(values.amount);

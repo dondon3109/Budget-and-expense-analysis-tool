@@ -44,11 +44,11 @@ test("keeps debug signing and points release at the release signing config", () 
   expect(out).toMatch(/release \{[\s\S]*?signingConfig signingConfigs\.release/);
   expect(out).toContain("debug {\n            signingConfig signingConfigs.debug");
   // credentials come from keystore.properties or the CI env vars
-  expect(out).toContain("zoptionKeystoreProperties[\"storeFile\"]");
-  expect(out).toContain("System.getenv(\"ANDROID_KEYSTORE_PATH\")");
-  expect(out).toContain("System.getenv(\"ANDROID_KEYSTORE_PASSWORD\")");
-  expect(out).toContain("System.getenv(\"ANDROID_KEY_ALIAS\")");
-  expect(out).toContain("System.getenv(\"ANDROID_KEY_PASSWORD\")");
+  expect(out).toContain('zoptionKeystoreProperties["storeFile"]');
+  expect(out).toContain('System.getenv("ANDROID_KEYSTORE_PATH")');
+  expect(out).toContain('System.getenv("ANDROID_KEYSTORE_PASSWORD")');
+  expect(out).toContain('System.getenv("ANDROID_KEY_ALIAS")');
+  expect(out).toContain('System.getenv("ANDROID_KEY_PASSWORD")');
   // the preamble must precede the android block
   expect(out.indexOf("zoptionKeystorePropertiesFile")).toBeLessThan(out.indexOf("android {"));
 });
@@ -59,7 +59,10 @@ test("is idempotent", () => {
 });
 
 test("fails loudly when the template anchors disappear", () => {
-  const broken = FIXTURE.replace("signingConfigs {\n        debug {", "signingConfigs {\n        renamed {");
+  const broken = FIXTURE.replace(
+    "signingConfigs {\n        debug {",
+    "signingConfigs {\n        renamed {",
+  );
   expect(() => transformBuildGradle(broken)).toThrow(/template may have changed/);
   const brokenRelease = FIXTURE.replace(
     "// Caution! In production, you need to generate your own keystore file.",

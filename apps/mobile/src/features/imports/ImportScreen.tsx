@@ -712,9 +712,9 @@ export function ImportScreen() {
               </Text>
               {firstRun && localRepeatCount > 0 ? (
                 <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                  {localRepeatCount} {localRepeatCount === 1 ? "row repeats" : "rows repeat"}{" "}
-                  inside this file — {localRepeatCount === 1 ? "it is" : "they are"} skipped with
-                  the other duplicates.
+                  {localRepeatCount} {localRepeatCount === 1 ? "row repeats" : "rows repeat"} inside
+                  this file — {localRepeatCount === 1 ? "it is" : "they are"} skipped with the other
+                  duplicates.
                 </Text>
               ) : null}
             </View>

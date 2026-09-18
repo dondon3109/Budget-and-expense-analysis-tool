@@ -34,10 +34,10 @@ export type WidgetReconcileIntent = z.infer<typeof widgetReconcileIntentSchema>;
 export type WidgetIntent = z.infer<typeof widgetIntentSchema>;
 
 export type WidgetIntentParseResult =
-  | { ok: true; intent: WidgetIntent }
-  | { ok: false; error: string };
+  { ok: true; intent: WidgetIntent } | { ok: false; error: string };
 
-const WIDGET_INTENT_FAILURE = "That voice note could not be understood as an expense or a balance update.";
+const WIDGET_INTENT_FAILURE =
+  "That voice note could not be understood as an expense or a balance update.";
 
 /** Validates raw intent JSON from the widget deep-link payload. Garbage fails closed. */
 export function parseWidgetIntentPayload(value: unknown): WidgetIntentParseResult {
@@ -98,10 +98,7 @@ function stripAmount(transcript: string): string {
  *
  * Capitalizes the first letter and falls back to "Expense" if empty.
  */
-export function summarizeWidgetDescription(
-  raw: string,
-  accountNames?: readonly string[],
-): string {
+export function summarizeWidgetDescription(raw: string, accountNames?: readonly string[]): string {
   let text = raw.trim();
   if (!text) return "Expense";
 
@@ -153,7 +150,10 @@ export function summarizeWidgetDescription(
   text = text.replace(/\s+\b(?:for|on|at|in|to|using|with|via|from|by|and)\s*$/i, "");
 
   // 7. Normalize whitespace and trailing punctuation
-  text = text.replace(/\s+/g, " ").replace(/[,.;:]+$/, "").trim();
+  text = text
+    .replace(/\s+/g, " ")
+    .replace(/[,.;:]+$/, "")
+    .trim();
 
   if (!text) return "Expense";
 
@@ -232,7 +232,9 @@ function matchTokens(value: string): string[] {
 
 function includesTokenPhrase(haystack: readonly string[], phrase: readonly string[]): boolean {
   if (phrase.length === 0 || phrase.length > haystack.length) return false;
-  return haystack.some((_, index) => phrase.every((token, offset) => haystack[index + offset] === token));
+  return haystack.some((_, index) =>
+    phrase.every((token, offset) => haystack[index + offset] === token),
+  );
 }
 
 /**

@@ -233,18 +233,20 @@ describe("TransactionsPage pagination", () => {
     apiMocks.getCategories.mockReset().mockResolvedValue([]);
     apiMocks.getAccounts.mockReset().mockResolvedValue([]);
     apiMocks.downloadTransactions.mockReset().mockResolvedValue(undefined);
-    apiMocks.getTransactions.mockReset().mockImplementation(
-      async (_workspace: unknown, request: { page: number; pageSize: number }) => ({
-        items: Array.from({ length: 10 }, (_, index) => ({
-          id: `transaction-${(request.page - 1) * 10 + index + 1}`,
-          description: `Transaction ${(request.page - 1) * 10 + index + 1}`,
-        })),
-        page: request.page,
-        pageSize: request.pageSize,
-        total: 240,
-        totalPages: 24,
-      }),
-    );
+    apiMocks.getTransactions
+      .mockReset()
+      .mockImplementation(
+        async (_workspace: unknown, request: { page: number; pageSize: number }) => ({
+          items: Array.from({ length: 10 }, (_, index) => ({
+            id: `transaction-${(request.page - 1) * 10 + index + 1}`,
+            description: `Transaction ${(request.page - 1) * 10 + index + 1}`,
+          })),
+          page: request.page,
+          pageSize: request.pageSize,
+          total: 240,
+          totalPages: 24,
+        }),
+      );
   });
 
   afterEach(cleanup);

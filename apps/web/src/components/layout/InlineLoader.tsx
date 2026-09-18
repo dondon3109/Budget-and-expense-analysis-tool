@@ -27,27 +27,10 @@ export function InlineLoader({ label = "Loading" }: InlineLoaderProps) {
 
         {/* Micro Astrolabe SVG */}
         <svg className="inline-loader-svg" viewBox="0 0 64 64" fill="none">
-          <circle
-            cx="32"
-            cy="32"
-            r="28"
-            className="inline-loader-reticle-outer"
-          />
-          <circle
-            cx="32"
-            cy="32"
-            r="20"
-            className="inline-loader-reticle-inner"
-          />
-          <path
-            d="M 22 24 H 42 L 22 40 H 42"
-            className="inline-loader-z-track"
-          />
-          <path
-            d="M 22 24 H 42 L 22 40 H 42"
-            pathLength={1}
-            className="inline-loader-z-stroke"
-          />
+          <circle cx="32" cy="32" r="28" className="inline-loader-reticle-outer" />
+          <circle cx="32" cy="32" r="20" className="inline-loader-reticle-inner" />
+          <path d="M 22 24 H 42 L 22 40 H 42" className="inline-loader-z-track" />
+          <path d="M 22 24 H 42 L 22 40 H 42" pathLength={1} className="inline-loader-z-stroke" />
           <circle cx="22" cy="24" r="2" className="inline-loader-vertex" />
           <circle cx="42" cy="24" r="2" className="inline-loader-vertex" />
           <circle cx="22" cy="40" r="2" className="inline-loader-vertex" />

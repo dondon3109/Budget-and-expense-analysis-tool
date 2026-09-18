@@ -16,11 +16,7 @@ export function ErrorState({
 }) {
   const theme = useZoptionTheme();
   return (
-    <View
-      accessibilityRole="alert"
-      className="w-full items-start gap-3"
-      style={styles.container}
-    >
+    <View accessibilityRole="alert" className="w-full items-start gap-3" style={styles.container}>
       <View
         accessibilityElementsHidden
         style={[

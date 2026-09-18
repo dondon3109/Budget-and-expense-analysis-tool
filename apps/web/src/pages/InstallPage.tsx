@@ -20,10 +20,7 @@ import { BrandMark } from "../components/brand/BrandMark";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { PublicHeader } from "../components/navigation/PublicHeader";
-import {
-  useAndroidRelease,
-  type AndroidReleaseSource,
-} from "../releases/useAndroidRelease";
+import { useAndroidRelease, type AndroidReleaseSource } from "../releases/useAndroidRelease";
 import "./LandingPage.css";
 import "./InstallPage.css";
 
@@ -99,71 +96,75 @@ function DownloadPanel({ source }: { source: AndroidReleaseSource }) {
             </p>
           )}
 
-      <dl className="apk-release-facts">
-        <div>
-          <dt>Version</dt>
-          <dd>{release.versionName}</dd>
-        </div>
-        <div>
-          <dt>File size</dt>
-          <dd>{release.sizeLabel}</dd>
-        </div>
-        <div>
-          <dt>Released</dt>
-          <dd>{release.releaseDateLabel}</dd>
-        </div>
-        <div>
-          <dt>Requires</dt>
-          <dd>{release.minimumAndroid}</dd>
-        </div>
-        <div className="apk-release-cert">
-          <dt>Signing certificate</dt>
-          <dd>
-            <code className="apk-cert-fingerprint">{release.certificateSha256}</code>
-          </dd>
-        </div>
-      </dl>
+          <dl className="apk-release-facts">
+            <div>
+              <dt>Version</dt>
+              <dd>{release.versionName}</dd>
+            </div>
+            <div>
+              <dt>File size</dt>
+              <dd>{release.sizeLabel}</dd>
+            </div>
+            <div>
+              <dt>Released</dt>
+              <dd>{release.releaseDateLabel}</dd>
+            </div>
+            <div>
+              <dt>Requires</dt>
+              <dd>{release.minimumAndroid}</dd>
+            </div>
+            <div className="apk-release-cert">
+              <dt>Signing certificate</dt>
+              <dd>
+                <code className="apk-cert-fingerprint">{release.certificateSha256}</code>
+              </dd>
+            </div>
+          </dl>
 
-      {release.notes && release.notes.length > 0 && (
-        <div className="apk-release-notes" aria-label="Release highlights">
-          <p className="apk-release-notes-title">What’s new in this release</p>
-          <ul className="apk-release-notes-list">
-            {release.notes.map((note) => (
-              <li key={note}>
-                <CheckCircle2 size={16} aria-hidden="true" />
-                <span>{note}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="apk-checksum">
-        <div>
-          <p>SHA-256 checksum</p>
-          <code>{release.sha256}</code>
-        </div>
-        <button type="button" onClick={() => void copyChecksum()} aria-describedby="copy-result">
-          {copyState === "copied" ? (
-            <CheckCircle2 size={17} aria-hidden="true" />
-          ) : (
-            <Clipboard size={17} aria-hidden="true" />
+          {release.notes && release.notes.length > 0 && (
+            <div className="apk-release-notes" aria-label="Release highlights">
+              <p className="apk-release-notes-title">What’s new in this release</p>
+              <ul className="apk-release-notes-list">
+                {release.notes.map((note) => (
+                  <li key={note}>
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                    <span>{note}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-          {copyState === "copied" ? "Copied" : "Copy"}
-        </button>
-      </div>
-      <p id="copy-result" className="apk-copy-result" role="status" aria-live="polite">
-        {copyState === "failed"
-          ? "Copying is unavailable in this browser. Select the checksum text instead."
-          : copyState === "copied"
-            ? "Checksum copied to the clipboard."
-            : ""}
-      </p>
-      {release.checksumPath && (
-        <a className="apk-checksum-file" href={release.checksumPath} download>
-          Download checksum file <ExternalLink size={14} aria-hidden="true" />
-        </a>
-      )}
+
+          <div className="apk-checksum">
+            <div>
+              <p>SHA-256 checksum</p>
+              <code>{release.sha256}</code>
+            </div>
+            <button
+              type="button"
+              onClick={() => void copyChecksum()}
+              aria-describedby="copy-result"
+            >
+              {copyState === "copied" ? (
+                <CheckCircle2 size={17} aria-hidden="true" />
+              ) : (
+                <Clipboard size={17} aria-hidden="true" />
+              )}
+              {copyState === "copied" ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p id="copy-result" className="apk-copy-result" role="status" aria-live="polite">
+            {copyState === "failed"
+              ? "Copying is unavailable in this browser. Select the checksum text instead."
+              : copyState === "copied"
+                ? "Checksum copied to the clipboard."
+                : ""}
+          </p>
+          {release.checksumPath && (
+            <a className="apk-checksum-file" href={release.checksumPath} download>
+              Download checksum file <ExternalLink size={14} aria-hidden="true" />
+            </a>
+          )}
 
           {deviceKind !== "checking" && (
             <div className={`apk-device-note ${deviceKind === "android" ? "is-android" : ""}`}>
@@ -209,12 +210,7 @@ export function InstallPage() {
 
       <main id="main-content" tabIndex={-1}>
         <div style={{ maxWidth: "1120px", margin: "0 auto", padding: "1.5rem 1.5rem 0" }}>
-          <Breadcrumbs
-            items={[
-              { label: "Home", to: "/" },
-              { label: "Android Beta APK" },
-            ]}
-          />
+          <Breadcrumbs items={[{ label: "Home", to: "/" }, { label: "Android Beta APK" }]} />
         </div>
         <section className="install-hero" aria-labelledby="install-heading">
           <div className="install-hero-copy">
@@ -226,8 +222,8 @@ export function InstallPage() {
           <div className="install-hero-summary">
             <p className="install-hero-lead">
               Get the official Zoption Beta APK from the Zoption website. It is the new native
-              Android app: your workspace lives on the device, entries work offline, and a photo
-              of a receipt drafts the expense for you.
+              Android app: your workspace lives on the device, entries work offline, and a photo of
+              a receipt drafts the expense for you.
             </p>
             <ul className="install-benefits" aria-label="Android app benefits">
               <li>

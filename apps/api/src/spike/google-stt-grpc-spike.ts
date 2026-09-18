@@ -35,7 +35,9 @@ export async function tryImportGrpc(): Promise<boolean> {
  * Attempt 2: try fetch with application/grpc to speech.googleapis.com
  * This proves whether Workers can even speak gRPC framing.
  */
-export async function tryFetchGrpc(env: { GOOGLE_STT_PROJECT_ID?: string }): Promise<SpikeResult["fetchGrpcAttempt"]> {
+export async function tryFetchGrpc(env: {
+  GOOGLE_STT_PROJECT_ID?: string;
+}): Promise<SpikeResult["fetchGrpcAttempt"]> {
   // Use a known REST endpoint that should return 401 without auth, but proves fetch works
   // For gRPC, we try the gRPC endpoint with wrong content-type
   try {
@@ -56,7 +58,8 @@ export async function tryFetchGrpc(env: { GOOGLE_STT_PROJECT_ID?: string }): Pro
 export function checkHttp2(): boolean {
   try {
     // @ts-ignore - check runtime
-    const hasHttp2 = typeof (globalThis as unknown as Record<string, unknown>)["http2"] !== "undefined";
+    const hasHttp2 =
+      typeof (globalThis as unknown as Record<string, unknown>)["http2"] !== "undefined";
     return hasHttp2;
   } catch {
     return false;

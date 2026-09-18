@@ -24,7 +24,9 @@
   border-radius: var(--radius-md);
   background: var(--paper);
   box-shadow: var(--shadow-card);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .budget-summary-grid article:hover {

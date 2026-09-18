@@ -79,18 +79,18 @@ export function PrivacyPolicyPage() {
             and security diagnostics, rate-limit data, errors, and service-health information.
           </li>
           <li>
-            <strong>Measurement and optional analytics:</strong> limited aggregate page-use and
-            Core Web Vitals performance information sent to PostHog on public web pages in
-            cookieless, memory-only mode, plus six anonymous conversion steps that cover the signup
-            and app surfaces: a signup page view, the outcome of a signup attempt, a first app load,
-            a first import into an empty workspace, assistant consent, and a first assistant
-            question. Those steps are cookieless, carry no financial detail, and write nothing to
-            your device: they never include an email, name, amount, category, account, or tenant
-            identifier, free text, page address with parameters, or a persistent identifier. This
-            measurement runs without an Analytics choice because nothing is stored on your device
-            and nothing identifies you; the optional Analytics and Marketing categories stay off and
-            gate any provider connected in the future. Zoption does not send financial workspace
-            data, account credentials, or assistant conversations to the analytics platform.
+            <strong>Measurement and optional analytics:</strong> limited aggregate page-use and Core
+            Web Vitals performance information sent to PostHog on public web pages in cookieless,
+            memory-only mode, plus six anonymous conversion steps that cover the signup and app
+            surfaces: a signup page view, the outcome of a signup attempt, a first app load, a first
+            import into an empty workspace, assistant consent, and a first assistant question. Those
+            steps are cookieless, carry no financial detail, and write nothing to your device: they
+            never include an email, name, amount, category, account, or tenant identifier, free
+            text, page address with parameters, or a persistent identifier. This measurement runs
+            without an Analytics choice because nothing is stored on your device and nothing
+            identifies you; the optional Analytics and Marketing categories stay off and gate any
+            provider connected in the future. Zoption does not send financial workspace data,
+            account credentials, or assistant conversations to the analytics platform.
           </li>
         </ul>
         <div className="legal-callout">
@@ -170,13 +170,12 @@ export function PrivacyPolicyPage() {
               Spark when activated by the administrator)
             </strong>{" "}
             for the separately enabled AI financial assistant and for a user-initiated
-            product-support chat. For the financial assistant, Zoption may send the
-            current question, bounded prior chat, assistant and user display-name profile, trusted
-            policy and date context, approved tool definitions, and only the tenant-scoped tool
-            results needed for the answer through Zoption&apos;s server. For product support,
-            Zoption sends only the support question, bounded support-chat history, the current
-            product area, and product-help instructions; it does not attach account or financial
-            workspace data.
+            product-support chat. For the financial assistant, Zoption may send the current
+            question, bounded prior chat, assistant and user display-name profile, trusted policy
+            and date context, approved tool definitions, and only the tenant-scoped tool results
+            needed for the answer through Zoption&apos;s server. For product support, Zoption sends
+            only the support question, bounded support-chat history, the current product area, and
+            product-help instructions; it does not attach account or financial workspace data.
           </li>
           <li>
             <strong>PostHog</strong> for unified product analytics and observability across three
@@ -189,7 +188,9 @@ export function PrivacyPolicyPage() {
             identities, financial records, prompts, or conversation contents are ever sent.
           </li>
           <li>
-            <strong>Cloudflare Workers AI, your browser&apos;s speech service, and Fish Audio</strong>{" "}
+            <strong>
+              Cloudflare Workers AI, your browser&apos;s speech service, and Fish Audio
+            </strong>{" "}
             for the separately enabled voice feature. After voice consent, your browser&apos;s own
             speech service (Google on Chrome, Apple on Safari) may process a user-initiated
             recording where it offers live recognition, and Cloudflare Workers AI also receives the
@@ -237,14 +238,14 @@ export function PrivacyPolicyPage() {
           manages identity, sessions, and profile metadata. Cloudflare D1 stores application and
           financial records behind Worker routes that derive the tenant from a verified Supabase
           token and apply tenant predicates to database access. Profile pictures are stored in
-          Cloudflare R2 and served through authenticated Worker upload and delete routes; anyone
-          who obtains the public picture URL may be able to view it. Provider backup and recovery
-          controls apply according to the services and plans in use and may not allow restoration
-          of an individual record or account. We maintain a documented process for assessing and
+          Cloudflare R2 and served through authenticated Worker upload and delete routes; anyone who
+          obtains the public picture URL may be able to view it. Provider backup and recovery
+          controls apply according to the services and plans in use and may not allow restoration of
+          an individual record or account. We maintain a documented process for assessing and
           responding to suspected security incidents. Despite these safeguards, no internet-based
-          service or method of electronic storage can guarantee absolute security.
-          Keep your login credentials confidential, use a unique password, protect the devices you
-          use to access Zoption, and promptly report suspected unauthorized access to
+          service or method of electronic storage can guarantee absolute security. Keep your login
+          credentials confidential, use a unique password, protect the devices you use to access
+          Zoption, and promptly report suspected unauthorized access to
           <a href="mailto:support@zoption.site">support@zoption.site</a>.
         </p>
       </section>
@@ -255,12 +256,12 @@ export function PrivacyPolicyPage() {
           The product-support chat is separate from the financial assistant. When you send a support
           message, Zoption sends that message, bounded prior support messages from the same browser
           session, the current product area, and product-help instructions to the configured AI
-          provider. The support
-          chat does not retrieve financial data or add messages to financial Assistant history.
-          Public support remains unauthenticated. Inside the signed-in workspace, authentication is
-          used to offer a reviewable bug-report draft and to associate a report you explicitly
-          submit with your account. The AI prepares draft fields but cannot submit a report. Avoid
-          putting sensitive personal or financial information in a support question or report.
+          provider. The support chat does not retrieve financial data or add messages to financial
+          Assistant history. Public support remains unauthenticated. Inside the signed-in workspace,
+          authentication is used to offer a reviewable bug-report draft and to associate a report
+          you explicitly submit with your account. The AI prepares draft fields but cannot submit a
+          report. Avoid putting sensitive personal or financial information in a support question or
+          report.
         </p>
         <p>
           Browser cookie consent does not enable the assistant. The assistant has separate,
@@ -271,23 +272,22 @@ export function PrivacyPolicyPage() {
         </p>
         <p>
           For a provider-backed request, the configured AI provider may receive the current
-          question, bounded prior
-          chat, assistant and user display-name profile, trusted compliance and date context,
-          approved tool definitions, and only the financial tool results needed for the answer. Tool
-          results may include transaction descriptions, categories, account names, calculated
-          balances, budgets, trends, recurring or anomaly analysis, and saved goal/debt inputs or
-          projections. Zoption excludes transaction notes, internal record identifiers, tenant and
-          user identifiers, credentials, secrets, and hidden reasoning from tool results and
-          sanitized audit snapshots. Do not type passwords, authentication credentials, payment-card
-          details, government identification numbers, medical information, or other sensitive or
-          unnecessary personal information into assistant questions. The configured AI provider
-          may process request
-          and technical information for response generation, security, abuse prevention, and service
-          operation under its own terms and privacy practices. Provider processing locations,
-          retention, backup deletion, and model-improvement treatment require current provider and
-          legal confirmation. Deleting a chat removes Zoption-controlled active D1 messages and
-          audit rows, but may not immediately remove information independently retained by the
-          provider where its terms or law permit retention.
+          question, bounded prior chat, assistant and user display-name profile, trusted compliance
+          and date context, approved tool definitions, and only the financial tool results needed
+          for the answer. Tool results may include transaction descriptions, categories, account
+          names, calculated balances, budgets, trends, recurring or anomaly analysis, and saved
+          goal/debt inputs or projections. Zoption excludes transaction notes, internal record
+          identifiers, tenant and user identifiers, credentials, secrets, and hidden reasoning from
+          tool results and sanitized audit snapshots. Do not type passwords, authentication
+          credentials, payment-card details, government identification numbers, medical information,
+          or other sensitive or unnecessary personal information into assistant questions. The
+          configured AI provider may process request and technical information for response
+          generation, security, abuse prevention, and service operation under its own terms and
+          privacy practices. Provider processing locations, retention, backup deletion, and
+          model-improvement treatment require current provider and legal confirmation. Deleting a
+          chat removes Zoption-controlled active D1 messages and audit rows, but may not immediately
+          remove information independently retained by the provider where its terms or law permit
+          retention.
         </p>
         <p>
           For provider-backed turns, Zoption may send PostHog metadata-only generation events to
@@ -305,12 +305,11 @@ export function PrivacyPolicyPage() {
           authenticated server to Cloudflare Workers AI&apos;s Whisper Large v3 Turbo model for
           transcription. Where your browser offers its own speech recognition and you have picked
           English or Tagalog, that service also processes the audio: Google on Chrome and Apple on
-          Safari. Transcripts are reviewed before sending. For a
-          voice-originated question, Zoption may send the completed assistant reply text to Fish
-          Audio when you choose spoken replies. Zoption keeps the recording and generated audio in
-          transient processing and browser memory only; it does not save either in D1. Each
-          provider&apos;s own processing, security, retention, and deletion practices apply to the
-          information it receives.
+          Safari. Transcripts are reviewed before sending. For a voice-originated question, Zoption
+          may send the completed assistant reply text to Fish Audio when you choose spoken replies.
+          Zoption keeps the recording and generated audio in transient processing and browser memory
+          only; it does not save either in D1. Each provider&apos;s own processing, security,
+          retention, and deletion practices apply to the information it receives.
         </p>
       </section>
 
@@ -332,34 +331,34 @@ export function PrivacyPolicyPage() {
           widget can preserve context while you navigate. Zoption does not save the support
           conversation to D1. Closing the browser session normally clears the browser copy;
           provider-side processing or retention of messages sent to the configured AI provider
-          remains governed by
-          that provider&apos;s practices and applicable law. If you explicitly submit a bug report,
-          Zoption stores the reviewed report and safe diagnostics in D1 and may send an operational
-          copy through Resend. Open reports are retained while needed to investigate and support the
-          service. Resolved, closed, or duplicate reports are scheduled for deletion after 180 days,
-          unless a longer period is required for security, disputes, or legal obligations. Account
-          deletion removes the account&apos;s bug reports from active D1 storage.
+          remains governed by that provider&apos;s practices and applicable law. If you explicitly
+          submit a bug report, Zoption stores the reviewed report and safe diagnostics in D1 and may
+          send an operational copy through Resend. Open reports are retained while needed to
+          investigate and support the service. Resolved, closed, or duplicate reports are scheduled
+          for deletion after 180 days, unless a longer period is required for security, disputes, or
+          legal obligations. Account deletion removes the account&apos;s bug reports from active D1
+          storage.
         </p>
         <p>
           Each assistant thread has a 90-day retention window measured from its latest completed
           turn. The thread, messages, response metadata, assistant run, and sanitized tool-call
           snapshots are deleted together when the thread expires or when you delete that chat, all
           chats, or your account. Account deletion purges the tenant&apos;s active D1 financial
-          records, goals, debts, chats, and assistant audits. Avatar or identity cleanup can
-          remain pending and be retried if a provider step is temporarily unavailable; a minimal
-          deletion tombstone is retained to stop an unexpired token from recreating the workspace.
-          Specific records may be retained longer where required by law or reasonably necessary for
-          security, fraud prevention, dispute resolution, or legal claims. Deleted information may
-          remain temporarily in provider recovery copies according to provider backup lifecycles and
-          is not ordinarily available for individual restoration. Provider-side retention of
-          information sent to the configured AI provider is governed by that provider&apos;s
-          practices as described
-          above. Voice recordings and generated audio are not stored in Zoption&apos;s D1;
+          records, goals, debts, chats, and assistant audits. Avatar or identity cleanup can remain
+          pending and be retried if a provider step is temporarily unavailable; a minimal deletion
+          tombstone is retained to stop an unexpired token from recreating the workspace. Specific
+          records may be retained longer where required by law or reasonably necessary for security,
+          fraud prevention, dispute resolution, or legal claims. Deleted information may remain
+          temporarily in provider recovery copies according to provider backup lifecycles and is not
+          ordinarily available for individual restoration. Provider-side retention of information
+          sent to the configured AI provider is governed by that provider&apos;s practices as
+          described above. Voice recordings and generated audio are not stored in Zoption&apos;s D1;
           information processed by Cloudflare Workers AI, your browser&apos;s speech service, and
-          Fish Audio remains subject to their provider practices. Metadata-only PostHog AI observability events are subject to the
-          project&apos;s current 12-month event-retention plan. PostHog controls provider-side
-          retention enforcement and deletion timing, so these events do not disappear when the
-          related Zoption chat is deleted and may remain through that provider retention period.
+          Fish Audio remains subject to their provider practices. Metadata-only PostHog AI
+          observability events are subject to the project&apos;s current 12-month event-retention
+          plan. PostHog controls provider-side retention enforcement and deletion timing, so these
+          events do not disappear when the related Zoption chat is deleted and may remain through
+          that provider retention period.
         </p>
         <p>
           Selected customer reviews remain available while the account is active unless you remove
@@ -408,20 +407,19 @@ export function PrivacyPolicyPage() {
           Zoption uses service providers that may process personal data outside the Philippines or
           the country where you live. Cloudflare hosts the application, API, and primary D1
           financial database, and stores profile pictures in R2. Supabase processes identity,
-          session, and profile metadata.
-          If you start a Pro checkout or subscribe, PayPal processes subscription approval and
-          payment information. When you enable the AI assistant or send a product-support chat
-          message, the relevant request context described above may be transferred to and processed
-          by the configured AI provider in locations where it or its subprocessors operate. If
-          you enable voice, the
-          recording described above may be processed by Cloudflare Workers AI or your browser&apos;s
-          speech service and the generated-reply text may be processed by Fish Audio in locations
-          where they or their subprocessors operate. Metadata-only AI observability events are sent to PostHog&apos;s US
-          Cloud region. Privacy laws in those locations may differ from those in your country.
-          Zoption remains responsible for personal data under its control and restricts transfers to
-          information reasonably necessary for the relevant service. We use applicable provider
-          terms and reasonable access and security controls, and will use any additional consent or
-          transfer mechanism required by law. Contact{" "}
+          session, and profile metadata. If you start a Pro checkout or subscribe, PayPal processes
+          subscription approval and payment information. When you enable the AI assistant or send a
+          product-support chat message, the relevant request context described above may be
+          transferred to and processed by the configured AI provider in locations where it or its
+          subprocessors operate. If you enable voice, the recording described above may be processed
+          by Cloudflare Workers AI or your browser&apos;s speech service and the generated-reply
+          text may be processed by Fish Audio in locations where they or their subprocessors
+          operate. Metadata-only AI observability events are sent to PostHog&apos;s US Cloud region.
+          Privacy laws in those locations may differ from those in your country. Zoption remains
+          responsible for personal data under its control and restricts transfers to information
+          reasonably necessary for the relevant service. We use applicable provider terms and
+          reasonable access and security controls, and will use any additional consent or transfer
+          mechanism required by law. Contact{" "}
           <a href="mailto:support@zoption.site">support@zoption.site</a> for information about
           relevant processing locations or safeguards.
         </p>

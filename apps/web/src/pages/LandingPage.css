@@ -113,7 +113,9 @@
   background: var(--lp-surface-translucent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .landing-nav .brand {
@@ -169,7 +171,9 @@
   font-weight: 650;
   white-space: nowrap;
   border-radius: 10px;
-  transition: color 0.18s ease, background 0.18s ease;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
 }
 
 .landing-sign-in:hover {
@@ -188,7 +192,10 @@
   font-size: 13.5px;
   font-weight: 700;
   white-space: nowrap;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
 .landing-nav .button.primary:hover {
@@ -333,7 +340,11 @@
   border-radius: 13px;
   font-size: 14px;
   font-weight: 700;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .hero-actions .button.primary {
@@ -417,12 +428,16 @@
   background: var(--lp-surface);
   box-shadow: var(--lp-shadow-lg);
   transform: rotate(var(--hero-rotation));
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .hero-visual:hover {
   transform: rotate(0deg) translateY(-4px);
-  box-shadow: 0 12px 28px rgba(25, 53, 47, 0.08), 0 36px 90px rgba(25, 53, 47, 0.16);
+  box-shadow:
+    0 12px 28px rgba(25, 53, 47, 0.08),
+    0 36px 90px rgba(25, 53, 47, 0.16);
 }
 
 .hero-visual::before {
@@ -492,7 +507,9 @@
   border: 1px solid var(--lp-border);
   border-radius: 16px;
   background: var(--lp-surface-soft);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .preview-metrics > div:hover {
@@ -581,7 +598,10 @@
   border-radius: 8px 8px 3px 3px;
   background: var(--lp-accent);
   opacity: 0.78;
-  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .chart-bars span:hover {
@@ -618,7 +638,10 @@
   border-radius: 16px;
   background: var(--lp-surface);
   box-shadow: var(--lp-shadow-sm);
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .pillar-item:hover {
@@ -938,8 +961,14 @@
 }
 
 @keyframes pulseRecording {
-  from { transform: scale(0.9); opacity: 0.6; }
-  to { transform: scale(1.4); opacity: 1; }
+  from {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.4);
+    opacity: 1;
+  }
 }
 
 /* Voice Demo */
@@ -962,7 +991,9 @@
   place-items: center;
   cursor: pointer;
   box-shadow: 0 8px 24px color-mix(in srgb, var(--lp-accent-strong) 30%, transparent);
-  transition: transform 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease;
 }
 
 .voice-mic-hero-btn:hover {
@@ -990,17 +1021,44 @@
   animation: waveAnim 1s ease-in-out infinite alternate;
 }
 
-.voice-waves span:nth-child(2) { height: 22px; animation-delay: 0.15s; }
-.voice-waves span:nth-child(3) { height: 30px; animation-delay: 0.3s; }
-.voice-waves span:nth-child(4) { height: 16px; animation-delay: 0.45s; }
-.voice-waves span:nth-child(5) { height: 26px; animation-delay: 0.2s; }
-.voice-waves span:nth-child(6) { height: 32px; animation-delay: 0.35s; }
-.voice-waves span:nth-child(7) { height: 18px; animation-delay: 0.5s; }
-.voice-waves span:nth-child(8) { height: 12px; animation-delay: 0.1s; }
+.voice-waves span:nth-child(2) {
+  height: 22px;
+  animation-delay: 0.15s;
+}
+.voice-waves span:nth-child(3) {
+  height: 30px;
+  animation-delay: 0.3s;
+}
+.voice-waves span:nth-child(4) {
+  height: 16px;
+  animation-delay: 0.45s;
+}
+.voice-waves span:nth-child(5) {
+  height: 26px;
+  animation-delay: 0.2s;
+}
+.voice-waves span:nth-child(6) {
+  height: 32px;
+  animation-delay: 0.35s;
+}
+.voice-waves span:nth-child(7) {
+  height: 18px;
+  animation-delay: 0.5s;
+}
+.voice-waves span:nth-child(8) {
+  height: 12px;
+  animation-delay: 0.1s;
+}
 
 @keyframes waveAnim {
-  0% { transform: scaleY(0.5); opacity: 0.5; }
-  100% { transform: scaleY(1.2); opacity: 1; }
+  0% {
+    transform: scaleY(0.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scaleY(1.2);
+    opacity: 1;
+  }
 }
 
 .spoken-bubble {
@@ -1109,10 +1167,26 @@
   border-style: solid;
 }
 
-.viewfinder-corner.top-left { top: 0; left: 0; border-width: 2px 0 0 2px; }
-.viewfinder-corner.top-right { top: 0; right: 0; border-width: 2px 2px 0 0; }
-.viewfinder-corner.bottom-left { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
-.viewfinder-corner.bottom-right { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+.viewfinder-corner.top-left {
+  top: 0;
+  left: 0;
+  border-width: 2px 0 0 2px;
+}
+.viewfinder-corner.top-right {
+  top: 0;
+  right: 0;
+  border-width: 2px 2px 0 0;
+}
+.viewfinder-corner.bottom-left {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 2px 2px;
+}
+.viewfinder-corner.bottom-right {
+  bottom: 0;
+  right: 0;
+  border-width: 0 2px 2px 0;
+}
 
 .receipt-paper {
   background: var(--lp-surface);
@@ -1223,9 +1297,18 @@
   background: var(--lp-surface-soft);
 }
 
-.format-badge.pdf { color: #d94535; border-color: rgba(217, 69, 53, 0.3); }
-.format-badge.xlsx { color: #107c41; border-color: rgba(16, 124, 65, 0.3); }
-.format-badge.csv { color: var(--lp-info); border-color: rgba(47, 101, 200, 0.3); }
+.format-badge.pdf {
+  color: #d94535;
+  border-color: rgba(217, 69, 53, 0.3);
+}
+.format-badge.xlsx {
+  color: #107c41;
+  border-color: rgba(16, 124, 65, 0.3);
+}
+.format-badge.csv {
+  color: var(--lp-info);
+  border-color: rgba(47, 101, 200, 0.3);
+}
 
 .dropzone-box {
   padding: 20px;
@@ -1253,9 +1336,15 @@
   background: var(--lp-surface-soft);
 }
 
-.icon-badge.pdf { color: #d94535; }
-.icon-badge.xls { color: #107c41; }
-.icon-badge.csv { color: var(--lp-info); }
+.icon-badge.pdf {
+  color: #d94535;
+}
+.icon-badge.xls {
+  color: #107c41;
+}
+.icon-badge.csv {
+  color: var(--lp-info);
+}
 
 .dropzone-box strong {
   display: block;
@@ -1491,7 +1580,9 @@
   border-radius: 22px;
   background: var(--lp-surface);
   box-shadow: var(--lp-shadow);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .facet-visual:hover {
@@ -1622,7 +1713,9 @@
   padding: 10px 14px;
   border: 1px solid transparent;
   border-radius: 12px;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .progress:hover {
@@ -1673,7 +1766,9 @@
   background: var(--lp-surface);
   font-size: 13px;
   color: var(--lp-fg);
-  transition: transform 0.18s ease, border-color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .bill-row:hover {
@@ -1709,7 +1804,9 @@
   cursor: pointer;
   padding: 0;
   outline: none;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .switch.off {
@@ -1748,7 +1845,10 @@
   color: var(--lp-muted);
   box-shadow: var(--lp-shadow-sm);
   cursor: pointer;
-  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease;
 }
 
 .facet-tag-btn:hover {
@@ -1800,7 +1900,9 @@
   border-radius: 12px;
   background: var(--lp-accent-strong);
   transform-origin: left center;
-  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+  transition:
+    transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.3s ease;
 }
 
 .chat {
@@ -1981,7 +2083,10 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease;
 }
 
 .calculator-subs-selector button:hover {
@@ -2334,7 +2439,10 @@
   box-shadow: 0 12px 28px color-mix(in srgb, var(--lp-accent-strong) 25%, transparent);
   font-size: 14px;
   font-weight: 700;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
 .install-promo-actions .button.primary:hover {
@@ -2467,7 +2575,9 @@
   border-radius: 20px;
   background: var(--lp-surface);
   box-shadow: var(--lp-shadow);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .step:hover {
@@ -2513,7 +2623,10 @@
   border: 1px solid var(--lp-accent-strong);
   background: var(--lp-accent-strong);
   box-shadow: 0 10px 24px color-mix(in srgb, var(--lp-accent-strong) 28%, transparent);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
 .final-cta-actions .button.primary:hover {
@@ -2533,7 +2646,9 @@
   background: var(--lp-surface);
   color: var(--lp-fg);
   box-shadow: var(--lp-shadow-sm);
-  transition: transform 0.18s ease, border-color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .final-cta-actions .button.secondary:hover {
@@ -2600,7 +2715,9 @@
   border-radius: 18px;
   background: var(--lp-surface);
   box-shadow: var(--lp-shadow-sm);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .customer-review:hover {
@@ -2728,7 +2845,9 @@
   border-radius: 16px;
   background: var(--lp-surface);
   box-shadow: var(--lp-shadow-sm);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .faq-item:hover,
@@ -2762,7 +2881,9 @@
   font-size: 18px;
   font-weight: 600;
   line-height: 1;
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .faq-item[open] summary::after {
@@ -2791,7 +2912,9 @@
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
-  transition: color 0.18s ease, transform 0.18s ease;
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .faq-see-all:hover {

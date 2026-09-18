@@ -58,7 +58,9 @@ describe("authenticated layout session gate", () => {
   });
 
   it("redirects only once the session has resolved signed-out", async () => {
-    jest.mocked(useSessionSnapshot).mockReturnValue(session({ status: "signed-out", subject: null }));
+    jest
+      .mocked(useSessionSnapshot)
+      .mockReturnValue(session({ status: "signed-out", subject: null }));
 
     await render(<AuthenticatedLayout />);
 
@@ -66,7 +68,9 @@ describe("authenticated layout session gate", () => {
   });
 
   it("renders the authenticated workspace once signed in", async () => {
-    jest.mocked(useSessionSnapshot).mockReturnValue(session({ status: "signed-in", subject: "user-1" }));
+    jest
+      .mocked(useSessionSnapshot)
+      .mockReturnValue(session({ status: "signed-in", subject: "user-1" }));
 
     await render(<AuthenticatedLayout />);
 

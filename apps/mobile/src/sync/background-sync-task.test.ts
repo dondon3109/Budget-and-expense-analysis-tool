@@ -48,7 +48,10 @@ describe("background sync task", () => {
     );
     mockedTaskManager.isTaskRegisteredAsync.mockResolvedValue(false);
     mockedBackgroundTask.registerTaskAsync.mockResolvedValue(undefined);
-    mockedNetInfo.fetch.mockResolvedValue({ isInternetReachable: true, isConnected: true } as never);
+    mockedNetInfo.fetch.mockResolvedValue({
+      isInternetReachable: true,
+      isConnected: true,
+    } as never);
   });
 
   it("defines the task at module scope before registration", () => {
@@ -83,7 +86,10 @@ describe("background sync task", () => {
 
   it("treats offline reachability as a no-op success", async () => {
     setBackgroundSyncRunner(jest.fn(async () => undefined));
-    mockedNetInfo.fetch.mockResolvedValue({ isInternetReachable: false, isConnected: true } as never);
+    mockedNetInfo.fetch.mockResolvedValue({
+      isInternetReachable: false,
+      isConnected: true,
+    } as never);
     await expect(runBackgroundSync()).resolves.toBe(BackgroundTask.BackgroundTaskResult.Success);
   });
 

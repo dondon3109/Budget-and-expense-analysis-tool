@@ -53,9 +53,7 @@ export function parsePersistedMicCaptureConsent(value: unknown): MicCapturePrefe
  * is no record, when it was never granted, or when it was granted under an
  * older notice version (re-consent on wording changes).
  */
-export function requiresMicCaptureConsent(
-  preferences: MicCapturePreferences | null,
-): boolean {
+export function requiresMicCaptureConsent(preferences: MicCapturePreferences | null): boolean {
   return (
     preferences === null ||
     preferences.consentedAt === null ||

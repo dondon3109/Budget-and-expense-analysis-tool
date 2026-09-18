@@ -8,15 +8,33 @@ import { calculateDebtPayoff, type DebtPayoffStrategy } from "@zoption/shared";
 import { useDebts, useLocalWorkspace } from "@/db/local-workspace-state";
 import type { LocalDebtItem } from "@/db/repository";
 import { useSyncState } from "@/sync/sync-state";
-import { Button, Card, EmptyState, ErrorState, FormField, MoneyValue, moneyAccessibilityLabel, SelectionField, Skeleton } from "@/ui/components";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  FormField,
+  MoneyValue,
+  moneyAccessibilityLabel,
+  SelectionField,
+  Skeleton,
+} from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 import { debtTypeLabels, todayIso } from "./debt-form";
 
 const strategyOptions: Array<{ id: DebtPayoffStrategy; label: string; detail: string }> = [
-  { id: "avalanche", label: "Avalanche", detail: "Highest interest rate first. Saves the most interest." },
-  { id: "snowball", label: "Snowball", detail: "Smallest balance first. Faster wins, more interest." },
+  {
+    id: "avalanche",
+    label: "Avalanche",
+    detail: "Highest interest rate first. Saves the most interest.",
+  },
+  {
+    id: "snowball",
+    label: "Snowball",
+    detail: "Smallest balance first. Faster wins, more interest.",
+  },
 ];
 
 export function DebtsScreen() {
@@ -109,7 +127,10 @@ function PayoffPlanCard({ debts }: { debts: LocalDebtItem[] }) {
   return (
     <Card accessibilityLabel="Debt payoff plan">
       <View style={styles.stack}>
-        <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
+        <Text
+          accessibilityRole="header"
+          style={[typography.headline, { color: theme.colors.text }]}
+        >
           Payoff plan
         </Text>
         <SelectionField
@@ -132,13 +153,17 @@ function PayoffPlanCard({ debts }: { debts: LocalDebtItem[] }) {
         {projection && projection.status === "paid_off" && projection.payoffMonths !== null ? (
           <View style={styles.projectionRow}>
             <View style={styles.projectionItem}>
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Debt-free in</Text>
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                Debt-free in
+              </Text>
               <Text style={[typography.title, { color: theme.colors.text }]}>
                 {projection.payoffMonths} mo
               </Text>
             </View>
             <View style={styles.projectionItem}>
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Total interest</Text>
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                Total interest
+              </Text>
               <MoneyValue amountMinor={projection.totalInterestMinor} />
             </View>
           </View>
@@ -211,7 +236,12 @@ function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }
             )}
           </View>
           {conflicted || failed ? (
-            <Text style={[typography.caption, { color: conflicted ? theme.colors.warning : theme.colors.danger }]}>
+            <Text
+              style={[
+                typography.caption,
+                { color: conflicted ? theme.colors.warning : theme.colors.danger },
+              ]}
+            >
               {conflicted ? "Conflict preserved" : "Sync needs repair"}
             </Text>
           ) : null}
@@ -223,7 +253,12 @@ function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }
 
 const styles = StyleSheet.create({
   stack: { gap: spacing.sm },
-  rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  rowBetween: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
   rowGap: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   projectionRow: { flexDirection: "row", gap: spacing.md, marginTop: spacing.xxs },
   projectionItem: { flex: 1, gap: spacing.xxs },

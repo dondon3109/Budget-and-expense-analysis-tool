@@ -21,7 +21,10 @@ afterEach(() => {
   for (const database of databases.splice(0)) database.close();
 });
 
-function identityEnvironment(): { env: Bindings; database: ReturnType<typeof createD1TestDatabase>["database"] } {
+function identityEnvironment(): {
+  env: Bindings;
+  database: ReturnType<typeof createD1TestDatabase>["database"];
+} {
   const { binding, database } = createD1TestDatabase();
   databases.push(database);
   return { env: { DB: binding }, database };

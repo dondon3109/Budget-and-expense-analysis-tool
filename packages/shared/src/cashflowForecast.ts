@@ -154,10 +154,7 @@ function billOccurrences(
         categoryName: sub.categoryName,
       });
     }
-    cursor =
-      sub.billingCycle === "yearly"
-        ? addMonths(cursor, 12)
-        : addMonths(cursor, 1);
+    cursor = sub.billingCycle === "yearly" ? addMonths(cursor, 12) : addMonths(cursor, 1);
   }
   return events;
 }
@@ -202,9 +199,7 @@ function incomeOccurrences(
   return events;
 }
 
-export function projectCashflow(
-  options: CashflowForecastOptions,
-): CashflowForecastResult {
+export function projectCashflow(options: CashflowForecastOptions): CashflowForecastResult {
   const horizonDays = options.horizonDays ?? 30;
   const safetyBufferMinor = options.safetyBufferMinor ?? 0;
   const startDateStr = options.startDate ?? todayUTC();

@@ -53,7 +53,11 @@ if (typeof window !== "undefined") {
         return Reflect.set(target, prop, value, receiver);
       },
       deleteProperty(target, prop) {
-        if (typeof prop === "string" && !(prop in target) && typeof target.removeItem === "function") {
+        if (
+          typeof prop === "string" &&
+          !(prop in target) &&
+          typeof target.removeItem === "function"
+        ) {
           target.removeItem(prop);
           return true;
         }

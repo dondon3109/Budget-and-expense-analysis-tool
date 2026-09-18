@@ -29,9 +29,7 @@ describe("FormField", () => {
   });
 
   it("renders error message with alert accessibility role", async () => {
-    await render(
-      <FormField label="Amount" error="Amount must be greater than zero" />,
-    );
+    await render(<FormField label="Amount" error="Amount must be greater than zero" />);
 
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.getByText("Amount must be greater than zero")).toBeTruthy();
@@ -44,9 +42,7 @@ describe("FormField", () => {
   });
 
   it("applies textAlignVertical: 'top' when multiline is true", async () => {
-    await render(
-      <FormField label="Message" multiline placeholder="Enter message" />,
-    );
+    await render(<FormField label="Message" multiline placeholder="Enter message" />);
 
     const input = screen.getByPlaceholderText("Enter message");
     const flatStyle = Array.isArray(input.props.style)
@@ -68,12 +64,7 @@ describe("FormField", () => {
   });
 
   it("renders trailing content when provided", async () => {
-    await render(
-      <FormField
-        label="Currency"
-        trailing={<Text testID="trailing-icon">PHP</Text>}
-      />,
-    );
+    await render(<FormField label="Currency" trailing={<Text testID="trailing-icon">PHP</Text>} />);
 
     expect(screen.getByTestId("trailing-icon")).toBeTruthy();
   });

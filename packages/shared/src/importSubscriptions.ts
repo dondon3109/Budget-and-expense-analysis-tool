@@ -161,11 +161,7 @@ export function detectImportSubscriptionCandidates(
       cadence === "monthly"
     ) {
       confidence = "high";
-    } else if (
-      distinctMonths >= 3 &&
-      occurrenceCount >= 3 &&
-      amountVariationRatio <= 0.3
-    ) {
+    } else if (distinctMonths >= 3 && occurrenceCount >= 3 && amountVariationRatio <= 0.3) {
       confidence = "high";
     } else if (distinctMonths >= 2 && occurrenceCount >= 2 && amountVariationRatio <= 0.3) {
       confidence = "medium";

@@ -12,12 +12,28 @@ import {
   startBillingCheckout,
 } from "@/api/billing";
 import { useSessionSnapshot } from "@/auth/session-state";
-import { Button, Card, ConfirmationDialog, ErrorState, SelectionField, SkeletonLines } from "@/ui/components";
+import {
+  Button,
+  Card,
+  ConfirmationDialog,
+  ErrorState,
+  SelectionField,
+  SkeletonLines,
+} from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, typography } from "@/ui/tokens";
 
-import { entitlementCopy, pendingCheckoutCopy, periodEndsCopy, PLAN_PRICES, planName, planStatusCopy, usageResetsCopy, usageTitle } from "./billing-copy";
+import {
+  entitlementCopy,
+  pendingCheckoutCopy,
+  periodEndsCopy,
+  PLAN_PRICES,
+  planName,
+  planStatusCopy,
+  usageResetsCopy,
+  usageTitle,
+} from "./billing-copy";
 
 const RECONCILE_ATTEMPTS = 8;
 const RECONCILE_DELAY_MS = 1500;
@@ -80,9 +96,7 @@ export function BillingScreen() {
       });
       await reconcileLoop();
     } catch (error) {
-      setMessage(
-        error instanceof ApiTransportError ? error.message : "Checkout could not start.",
-      );
+      setMessage(error instanceof ApiTransportError ? error.message : "Checkout could not start.");
     } finally {
       setBusy(null);
     }
@@ -127,7 +141,9 @@ export function BillingScreen() {
       setMessage("Renewal is off. Pro access stays until the end of the current period.");
     } catch (error) {
       setMessage(
-        error instanceof ApiTransportError ? error.message : "The subscription could not be changed.",
+        error instanceof ApiTransportError
+          ? error.message
+          : "The subscription could not be changed.",
       );
     } finally {
       setBusy(null);
@@ -155,7 +171,11 @@ export function BillingScreen() {
   }
 
   return (
-    <Screen hasHeader title="Plan and billing" description="Limits are enforced by the Zoption server">
+    <Screen
+      hasHeader
+      title="Plan and billing"
+      description="Limits are enforced by the Zoption server"
+    >
       <Card accessibilityLabel="Current plan">
         <View className="gap-3">
           <View className="flex-row items-center gap-2">
@@ -175,8 +195,8 @@ export function BillingScreen() {
           ) : null}
           {summary.plan === "free" ? (
             <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-              The free plan includes a small monthly allowance of AI questions and imports.
-              Upgrade for more.
+              The free plan includes a small monthly allowance of AI questions and imports. Upgrade
+              for more.
             </Text>
           ) : null}
           {periodEndsCopy(summary) ? (
@@ -211,10 +231,9 @@ export function BillingScreen() {
                     styles.fill,
                     {
                       backgroundColor: theme.colors.brand,
-                      width:
-                        ((usage.limit > 0
-                          ? Math.min(100, Math.round((usage.used / usage.limit) * 100))
-                          : 0) + "%") as `${number}%`,
+                      width: ((usage.limit > 0
+                        ? Math.min(100, Math.round((usage.used / usage.limit) * 100))
+                        : 0) + "%") as `${number}%`,
                     },
                   ]}
                 />
@@ -227,7 +246,10 @@ export function BillingScreen() {
             </View>
           ))}
           {summary.allowances.map((allowance) => (
-            <Text key={allowance.resource} style={[typography.body, { color: theme.colors.textMuted }]}>
+            <Text
+              key={allowance.resource}
+              style={[typography.body, { color: theme.colors.textMuted }]}
+            >
               {allowance.resource === "custom_category"
                 ? allowance.limit === null
                   ? allowance.used + " active custom categories (unlimited)"
@@ -262,8 +284,8 @@ export function BillingScreen() {
               Continue with PayPal
             </Button>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Checkout opens in your browser. Payment confirmation is verified by the Zoption
-              server before Pro access is granted.
+              Checkout opens in your browser. Payment confirmation is verified by the Zoption server
+              before Pro access is granted.
             </Text>
           </View>
         </Card>
@@ -274,8 +296,8 @@ export function BillingScreen() {
           <View className="gap-3">
             <Text style={[typography.headline, { color: theme.colors.text }]}>Subscription</Text>
             <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-              Turn off automatic renewal. Pro access remains through the end of the current
-              period, and no automatic refund is issued.
+              Turn off automatic renewal. Pro access remains through the end of the current period,
+              and no automatic refund is issued.
             </Text>
             <Button
               variant="secondary"
@@ -304,7 +326,17 @@ export function BillingScreen() {
       ) : null}
 
       {message ? (
-        <Text accessibilityRole="alert" style={[typography.body, { color: message.startsWith("Your subscription") ? theme.colors.brand : theme.colors.textMuted }]}>
+        <Text
+          accessibilityRole="alert"
+          style={[
+            typography.body,
+            {
+              color: message.startsWith("Your subscription")
+                ? theme.colors.brand
+                : theme.colors.textMuted,
+            },
+          ]}
+        >
           {message}
         </Text>
       ) : null}

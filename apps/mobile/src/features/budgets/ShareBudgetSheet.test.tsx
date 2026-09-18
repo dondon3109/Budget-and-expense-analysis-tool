@@ -144,8 +144,9 @@ describe("ShareBudgetSheet", () => {
   it("disables generation when there are no envelopes", async () => {
     await renderSheet([]);
 
-    expect(screen.getByText("No envelopes to share yet. Add a category budget first."))
-      .toBeOnTheScreen();
+    expect(
+      screen.getByText("No envelopes to share yet. Add a category budget first."),
+    ).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Generate share link" })).toBeDisabled();
   });
 

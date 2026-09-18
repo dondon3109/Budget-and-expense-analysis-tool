@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Cloud Run bridge: WebSocket → Google Speech V2 StreamingRecognize chirp_3 (partial transcripts)",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"

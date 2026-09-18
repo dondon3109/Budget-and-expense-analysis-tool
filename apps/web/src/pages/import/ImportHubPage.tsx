@@ -55,8 +55,8 @@ export function ImportHubPage() {
       <section className="import-guide-section">
         <h2>Statements you can import</h2>
         <p>
-          Zoption has built-in column detection for these institutions. Pick your bank for the
-          exact headings it reads and how to export from it.
+          Zoption has built-in column detection for these institutions. Pick your bank for the exact
+          headings it reads and how to export from it.
         </p>
         <ul className="import-guide-columns">
           {IMPORT_GUIDES.map((guide) => (

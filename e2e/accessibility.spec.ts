@@ -27,8 +27,6 @@ import {
 // work than a single pass. Give these tests headroom so they cannot flake on a loaded CI box.
 test.describe.configure({ timeout: 120_000 });
 
-
-
 test.describe("accessibility — public routes (desktop)", () => {
   for (const route of PUBLIC_ROUTES) {
     test(`${route} has no serious or critical violations`, async ({ page }) => {

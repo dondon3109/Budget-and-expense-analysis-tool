@@ -178,9 +178,7 @@ describe("Android update prompt", () => {
     });
     await render(<AndroidUpdateOverlayView updates={updates} />);
     expect(screen.getByText("WHAT’S NEW")).toBeTruthy();
-    expect(
-      screen.getByText("Added a quick action bar to the mobile home dashboard."),
-    ).toBeTruthy();
+    expect(screen.getByText("Added a quick action bar to the mobile home dashboard.")).toBeTruthy();
     expect(
       screen.getByText("Added a recent activity card to the mobile home screen."),
     ).toBeTruthy();
@@ -233,4 +231,3 @@ describe("Android update prompt", () => {
     expect(updates.updateNow).toHaveBeenCalledTimes(1);
   });
 });
-

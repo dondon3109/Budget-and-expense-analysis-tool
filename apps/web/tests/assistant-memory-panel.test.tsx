@@ -40,11 +40,7 @@ function renderPanel(props: { open?: boolean; onClose?: () => void } = {}) {
   const onClose = props.onClose ?? vi.fn();
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <AssistantMemoryPanel
-        workspace={mockWorkspace}
-        open={props.open ?? true}
-        onClose={onClose}
-      />
+      <AssistantMemoryPanel workspace={mockWorkspace} open={props.open ?? true} onClose={onClose} />
     </QueryClientProvider>,
   );
   return { ...result, queryClient, onClose };
@@ -117,10 +113,9 @@ describe("AssistantMemoryPanel", () => {
     fireEvent.click(snowballCard);
 
     await waitFor(() => {
-      expect(apiMocks.updateAssistantMemoryPreferences).toHaveBeenCalledWith(
-        mockWorkspace,
-        { debtStrategy: "snowball" },
-      );
+      expect(apiMocks.updateAssistantMemoryPreferences).toHaveBeenCalledWith(mockWorkspace, {
+        debtStrategy: "snowball",
+      });
     });
   });
 

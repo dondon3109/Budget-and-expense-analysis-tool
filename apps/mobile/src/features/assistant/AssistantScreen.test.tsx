@@ -7,7 +7,12 @@ import { AssistantScreen } from "./AssistantScreen";
 // into checkboxes and delete only the conversations the user picked.
 
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn().mockReturnValue(true) },
+  router: {
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    canGoBack: jest.fn().mockReturnValue(true),
+  },
 }));
 
 jest.mock("@react-native-community/netinfo", () => ({

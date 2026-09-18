@@ -53,9 +53,7 @@ describe("CashflowForecastCard", () => {
   });
 
   it("warns when the balance dips below the buffer without going negative", async () => {
-    await render(
-      <CashflowForecastCard {...baseProps} safetyBufferMinor={480_000} />,
-    );
+    await render(<CashflowForecastCard {...baseProps} safetyBufferMinor={480_000} />);
 
     expect(screen.getByText("Buffer warning")).toBeTruthy();
     expect(screen.getByText("Low buffer")).toBeTruthy();
@@ -102,21 +100,15 @@ describe("CashflowForecastCard", () => {
   });
 
   it("renders an empty state when there are no upcoming bills", async () => {
-    await render(
-      <CashflowForecastCard startingBalanceMinor={500_000} subscriptions={[]} />,
-    );
+    await render(<CashflowForecastCard startingBalanceMinor={500_000} subscriptions={[]} />);
 
-    expect(
-      screen.getByText("No upcoming bills or renewals in the next 30 days."),
-    ).toBeTruthy();
+    expect(screen.getByText("No upcoming bills or renewals in the next 30 days.")).toBeTruthy();
     expect(screen.getByText("On track")).toBeTruthy();
   });
 
   it("navigates to subscriptions when the link is pressed", async () => {
     const onViewSubscriptions = jest.fn();
-    await render(
-      <CashflowForecastCard {...baseProps} onViewSubscriptions={onViewSubscriptions} />,
-    );
+    await render(<CashflowForecastCard {...baseProps} onViewSubscriptions={onViewSubscriptions} />);
 
     await fireEvent.press(screen.getByRole("button", { name: "View subscriptions" }));
     expect(onViewSubscriptions).toHaveBeenCalledTimes(1);

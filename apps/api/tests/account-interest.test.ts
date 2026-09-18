@@ -119,7 +119,9 @@ describe("creditDueInterest", () => {
     expect(result).toEqual({ checked: 1, credited: 1, skipped: 0 });
     expect(batchCalls).toHaveLength(1);
     expect(batchCalls[0]).toHaveLength(1);
-    const insert = statements.find((statement) => statement.query.includes("INSERT INTO transactions"));
+    const insert = statements.find((statement) =>
+      statement.query.includes("INSERT INTO transactions"),
+    );
     expect(insert).toBeDefined();
     const [, , accountId, categoryId, date, amountMinor, fingerprint] = insert!.bindings;
     expect(accountId).toBe("savings-1");

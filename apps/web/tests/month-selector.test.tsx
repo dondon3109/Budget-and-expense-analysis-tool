@@ -44,7 +44,9 @@ describe("MonthSelector", () => {
 
   it("disables months beyond its supplied maximum", () => {
     const onChange = vi.fn();
-    render(<MonthSelector label="Report month" value="2026-07" max="2026-08" onChange={onChange} />);
+    render(
+      <MonthSelector label="Report month" value="2026-07" max="2026-08" onChange={onChange} />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Report month: July 2026" }));
 

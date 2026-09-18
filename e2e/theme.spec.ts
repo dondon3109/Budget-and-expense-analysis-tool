@@ -26,9 +26,9 @@ test("previews and confirms Coffee on a first visit, then keeps all themes reach
 
   await page.getByRole("button", { name: "Confirm Coffee theme" }).click();
   await expect(dialog).toBeHidden();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("zoption-theme"))).toBe(
-    "coffee",
-  );
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("zoption-theme")))
+    .toBe("coffee");
   await expect(
     page.getByRole("button", { name: "Choose theme. Current theme: Coffee" }),
   ).toBeVisible();
@@ -71,9 +71,7 @@ test("previews and confirms Coffee on a first visit, then keeps all themes reach
   await themeTrigger.click();
   await page.getByRole("menuitemradio", { name: "Light" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("zoption-theme"))).toBe(
-    "light",
-  );
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("zoption-theme"))).toBe("light");
 
   await page.getByRole("button", { name: "Choose theme. Current theme: Light" }).click();
   await page.getByRole("menuitemradio", { name: "Dark" }).click();

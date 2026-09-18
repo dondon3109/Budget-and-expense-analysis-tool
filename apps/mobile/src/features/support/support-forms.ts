@@ -19,10 +19,12 @@ export function isValidSupportHistory(messages: SupportChatMessage[]): boolean {
   if (messages.some((message) => message.role !== "user" && message.role !== "assistant")) {
     return false;
   }
-  if (messages.some((message) => {
-    const length = message.content.trim().length;
-    return length < 1 || length > MAX_SUPPORT_MESSAGE_LENGTH;
-  })) {
+  if (
+    messages.some((message) => {
+      const length = message.content.trim().length;
+      return length < 1 || length > MAX_SUPPORT_MESSAGE_LENGTH;
+    })
+  ) {
     return false;
   }
   return messages.at(-1)?.role === "user";
@@ -37,10 +39,7 @@ export function prepareSupportHistory(
   const trimmed = messages
     .filter((message) => message.content.trim().length > 0)
     .slice(-(MAX_SUPPORT_HISTORY_MESSAGES - 1));
-  const history: SupportChatMessage[] = [
-    ...trimmed,
-    { role: "user", content: nextUserMessage },
-  ];
+  const history: SupportChatMessage[] = [...trimmed, { role: "user", content: nextUserMessage }];
   return isValidSupportHistory(history) ? history : [];
 }
 
@@ -59,8 +58,7 @@ export function buildBugDiagnostics(route: string): BugReportDiagnostics {
     typeof Constants.expoConfig?.version === "string" && Constants.expoConfig.version.length > 0
       ? Constants.expoConfig.version
       : "dev";
-  const platform =
-    Platform.OS === "ios" ? "ios" : Platform.OS === "android" ? "android" : "other";
+  const platform = Platform.OS === "ios" ? "ios" : Platform.OS === "android" ? "android" : "other";
   return {
     route,
     releaseVersion,

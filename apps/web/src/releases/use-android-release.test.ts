@@ -92,4 +92,3 @@ describe("useAndroidRelease", () => {
     expect(result.current.release?.downloadPath).toBe(shippedReleaseJson.downloadPath);
   });
 });
-

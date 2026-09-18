@@ -53,15 +53,12 @@ export async function completeSupportChat(
   if (api.accessToken === undefined) {
     let response: Response;
     try {
-      response = await (api.fetchImpl ?? fetch)(
-        publicConfig.apiUrl + "/api/support/chat",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-          signal: api.signal,
-        },
-      );
+      response = await (api.fetchImpl ?? fetch)(publicConfig.apiUrl + "/api/support/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+        signal: api.signal,
+      });
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") throw error;
       throw new ApiTransportError(
@@ -107,9 +104,7 @@ export function createBugReport(
 
 const bugReportListSchema = z.array(bugReportResponseSchema).max(200);
 
-export function listBugReports(
-  api: SupportApi & { accessToken: string },
-): Promise<BugReport[]> {
+export function listBugReports(api: SupportApi & { accessToken: string }): Promise<BugReport[]> {
   return apiRequest({
     ...api,
     path: "/api/app/support/bug-reports",

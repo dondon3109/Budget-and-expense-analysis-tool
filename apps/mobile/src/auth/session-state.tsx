@@ -240,9 +240,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       const normalizedEmail = email.trim().toLowerCase();
       if (
         demoEnabled &&
-        (normalizedEmail.startsWith("dummy") ||
-          normalizedEmail.startsWith("test@") ||
-          !supabase)
+        (normalizedEmail.startsWith("dummy") || normalizedEmail.startsWith("test@") || !supabase)
       ) {
         await signInWithDummyAccount();
         return;
@@ -256,23 +254,26 @@ export function SessionProvider({ children }: PropsWithChildren) {
     [demoEnabled, signInWithDummyAccount],
   );
 
-  const getAccessToken = useCallback(async (refresh: boolean) => {
-    if (isDummySessionRef.current) {
-      if (!demoEnabled) {
-        throw new Error("Dummy sessions are not available in this Zoption build.");
+  const getAccessToken = useCallback(
+    async (refresh: boolean) => {
+      if (isDummySessionRef.current) {
+        if (!demoEnabled) {
+          throw new Error("Dummy sessions are not available in this Zoption build.");
+        }
+        return "dummy-dev-access-token";
       }
-      return "dummy-dev-access-token";
-    }
-    const result = refresh
-      ? await getSupabaseClient().auth.refreshSession()
-      : await getSupabaseClient().auth.getSession();
-    if (result.error) throw result.error;
-    const session = result.data.session;
-    if (!session || !subjectRef.current || session.user.id !== subjectRef.current) {
-      throw new Error("Your session expired. Sign in again to open your workspace.");
-    }
-    return session.access_token;
-  }, [demoEnabled]);
+      const result = refresh
+        ? await getSupabaseClient().auth.refreshSession()
+        : await getSupabaseClient().auth.getSession();
+      if (result.error) throw result.error;
+      const session = result.data.session;
+      if (!session || !subjectRef.current || session.user.id !== subjectRef.current) {
+        throw new Error("Your session expired. Sign in again to open your workspace.");
+      }
+      return session.access_token;
+    },
+    [demoEnabled],
+  );
 
   const sendPasswordReset = useCallback(async (email: string) => {
     const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email.trim(), {
@@ -333,7 +334,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
       if (!currentSession.session) {
         throw new Error(
           "Google code exchange failed: " +
-            JSON.stringify({ name: exchangeError.name, message: exchangeError.message, code: exchangeError.code }),
+            JSON.stringify({
+              name: exchangeError.name,
+              message: exchangeError.message,
+              code: exchangeError.code,
+            }),
         );
       }
     }

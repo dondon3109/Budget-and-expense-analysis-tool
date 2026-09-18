@@ -119,9 +119,7 @@ describe("update-copy", () => {
 
   describe("verificationFailureMessage & checkFailureMessage", () => {
     it("returns appropriate error messages", () => {
-      expect(verificationFailureMessage("checksum-mismatch")).toContain(
-        "could not be verified",
-      );
+      expect(verificationFailureMessage("checksum-mismatch")).toContain("could not be verified");
       expect(checkFailureMessage("unsupported")).toBe(
         "In-app updates are available in the official Android Beta.",
       );

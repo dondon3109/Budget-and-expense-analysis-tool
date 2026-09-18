@@ -16,7 +16,7 @@ Technical correctness is not what is holding the site back. Two things are:
 
 ## Resolved: Cloudflare was overriding the crawler policy
 
-**Fixed 2026-08-31.** *Manage your robots.txt* is now off for the `zoption.site` zone,
+**Fixed 2026-08-31.** _Manage your robots.txt_ is now off for the `zoption.site` zone,
 and the live file carries no `Disallow` for any agent:
 
 ```sh
@@ -57,7 +57,7 @@ This contradicts stated intent in two places:
   Preferred Source.
 
 The `Content-Signal: search=yes,ai-train=no,use=reference` header shows the intent is
-to allow AI *search* while refusing AI *training*. Blocking GPTBot and Google-Extended
+to allow AI _search_ while refusing AI _training_. Blocking GPTBot and Google-Extended
 undermines that.
 
 **Code side is done.** `scripts/robots.mjs` no longer repeats `Allow` rules for agents
@@ -71,8 +71,8 @@ blocking them, and `robots.test.ts` fails if anyone re-adds the redundant rules.
 Cloudflare block covered. The wildcard `User-agent: * / Allow: /` now permits those
 agents on its own, and `robots.test.ts` fails if anyone re-adds the redundant rules.
 
-**Dashboard side.** In Cloudflare for the `zoption.site` zone: **Bots** → *Manage your
-robots.txt* → off. This could not be done from the repository — the managed block is
+**Dashboard side.** In Cloudflare for the `zoption.site` zone: **Bots** → _Manage your
+robots.txt_ → off. This could not be done from the repository — the managed block is
 injected above the origin response at the edge, so no origin file can override it. If
 the zone is ever recreated or the setting is re-enabled, this is the first thing to
 re-check.
@@ -86,16 +86,16 @@ re-check.
 
 All eight public routes are product, pricing, or legal pages:
 
-| Route | Type | Search demand targeted |
-| --- | --- | --- |
-| `/` | product | brand only |
-| `/pricing` | product | brand only |
-| `/changelog` | product | brand only |
-| `/install` | product | brand only |
-| `/faq` | support | long-tail only |
-| `/terms-of-service` | legal | none |
-| `/privacy-policy` | legal | none |
-| `/cookie-policy` | legal | none |
+| Route               | Type    | Search demand targeted |
+| ------------------- | ------- | ---------------------- |
+| `/`                 | product | brand only             |
+| `/pricing`          | product | brand only             |
+| `/changelog`        | product | brand only             |
+| `/install`          | product | brand only             |
+| `/faq`              | support | long-tail only         |
+| `/terms-of-service` | legal   | none                   |
+| `/privacy-policy`   | legal   | none                   |
+| `/cookie-policy`    | legal   | none                   |
 
 There is no informational content, so there is nothing to rank for head terms, and no
 internal linking structure to distribute authority.
@@ -115,7 +115,7 @@ Meanwhile the features that actually differentiate Zoption are invisible to sear
 ## Where the demand is
 
 Directional research from August 2026. **No volume figures are given** because no
-Ahrefs or Search Console data is connected — see *Getting real data* below. Rankings
+Ahrefs or Search Console data is connected — see _Getting real data_ below. Rankings
 are qualitative, based on observed competitor coverage.
 
 ### Cluster A — bank and wallet import (best fit)
@@ -125,7 +125,7 @@ An entire industry ranks for these terms: `statementedge.com/convert/ph/bdo`,
 `bank-statementconverter.com/banks/country/philippines`.
 
 They are one-shot converters: a user converts a statement, then still needs somewhere
-to *put* the data. Zoption is a budgeting app that already ships BPI, BDO, and
+to _put_ the data. Zoption is a budgeting app that already ships BPI, BDO, and
 MariBank presets. That combination is a defensible moat none of them have, and the
 terms are far less contested than "budget app".
 
@@ -232,7 +232,7 @@ This document ranks opportunities qualitatively. To prioritize on evidence:
 
 - [x] Make `robots.txt` a single source of truth (`scripts/robots.mjs`, no conflicting
       `Allow` groups) — code side done
-- [x] Turn off *Manage your robots.txt* in the Cloudflare dashboard (2026-08-31)
+- [x] Turn off _Manage your robots.txt_ in the Cloudflare dashboard (2026-08-31)
 - [x] Verify live `robots.txt` has no `Disallow` — confirmed 0
 - [ ] **Ship it: commit and push.** Production is 5 commits behind `origin/main`, so
       none of the work below is live yet (sitemap still lists 8 URLs, `/tools/...` 404s)

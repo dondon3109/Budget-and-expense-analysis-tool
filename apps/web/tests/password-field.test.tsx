@@ -49,7 +49,12 @@ describe("PasswordField", () => {
   it("supports keyboard activation and mirrors disabled state", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
-      <PasswordField id="current-password" label="Current password" value="secret" onChange={() => undefined} />,
+      <PasswordField
+        id="current-password"
+        label="Current password"
+        value="secret"
+        onChange={() => undefined}
+      />,
     );
 
     await user.tab();

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { daysInMonth, interestAmountMinor, isInterestCreditDay, manilaDate } from "../src/interest/credit";
+import {
+  daysInMonth,
+  interestAmountMinor,
+  isInterestCreditDay,
+  manilaDate,
+} from "../src/interest/credit";
 
 describe("manilaDate", () => {
   it("formats an instant as an Asia/Manila YYYY-MM-DD date", () => {

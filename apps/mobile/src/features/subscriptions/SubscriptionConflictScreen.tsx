@@ -3,7 +3,11 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useLocalReferenceData, useLocalWorkspace, useSubscriptionConflict } from "@/db/local-workspace-state";
+import {
+  useLocalReferenceData,
+  useLocalWorkspace,
+  useSubscriptionConflict,
+} from "@/db/local-workspace-state";
 import type { LocalSubscriptionConflictVersion } from "@/db/transaction-mutation-repository";
 import { useSyncState } from "@/sync/sync-state";
 import {
@@ -31,16 +35,14 @@ function VersionCard({
 }) {
   const theme = useZoptionTheme();
   const reference = useLocalReferenceData();
-  const categoryName =
-    version?.categoryId
-      ? (reference.data?.categories.find((category) => category.id === version.categoryId)?.name ??
-        "Unknown category")
-      : "No category";
-  const accountName =
-    version?.accountId
-      ? (reference.data?.accounts.find((account) => account.id === version.accountId)?.name ??
-        "Unknown account")
-      : "No account";
+  const categoryName = version?.categoryId
+    ? (reference.data?.categories.find((category) => category.id === version.categoryId)?.name ??
+      "Unknown category")
+    : "No category";
+  const accountName = version?.accountId
+    ? (reference.data?.accounts.find((account) => account.id === version.accountId)?.name ??
+      "Unknown account")
+    : "No account";
   return (
     <Card accessibilityLabel={title}>
       <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
@@ -169,7 +171,9 @@ export function SubscriptionConflictScreen() {
         }
         onCancel={() => setChoice(null)}
         onConfirm={() => void resolve()}
-        title={choice === "keep_local" ? "Keep this device subscription?" : "Use server subscription?"}
+        title={
+          choice === "keep_local" ? "Keep this device subscription?" : "Use server subscription?"
+        }
         visible={choice !== null}
       />
     </SafeAreaView>

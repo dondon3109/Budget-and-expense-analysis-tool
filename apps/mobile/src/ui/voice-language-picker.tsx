@@ -35,7 +35,11 @@ export function VoiceLanguagePicker({
   };
 
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel="Voice language" className="w-full gap-2">
+    <View
+      accessibilityRole="radiogroup"
+      accessibilityLabel="Voice language"
+      className="w-full gap-2"
+    >
       {VOICE_LANGUAGES.map((option) => {
         const selected = language === option.code;
         return (
@@ -225,13 +229,7 @@ export function VoiceLanguageBadgeButton({
         disabled && { opacity: 0.6 },
       ]}
     >
-      <Text
-        style={[
-          typography.caption,
-          styles.badgeButtonText,
-          { color: theme.colors.brand },
-        ]}
-      >
+      <Text style={[typography.caption, styles.badgeButtonText, { color: theme.colors.brand }]}>
         {opt.shortLabel}
       </Text>
     </Pressable>

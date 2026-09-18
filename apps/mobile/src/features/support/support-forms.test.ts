@@ -1,4 +1,9 @@
-import { buildBugDiagnostics, prepareSupportHistory, validateBugDraft, validateSupportMessage } from "./support-forms";
+import {
+  buildBugDiagnostics,
+  prepareSupportHistory,
+  validateBugDraft,
+  validateSupportMessage,
+} from "./support-forms";
 import type { SupportChatMessage } from "@/api/support";
 
 describe("support form helpers", () => {

@@ -142,7 +142,11 @@ export function CashflowForecastCard({
         ) : null}
       </View>
 
-      <View accessibilityRole="tablist" accessibilityLabel="Forecast horizon" style={styles.segmented}>
+      <View
+        accessibilityRole="tablist"
+        accessibilityLabel="Forecast horizon"
+        style={styles.segmented}
+      >
         {HORIZONS.map((days) => {
           const isSelected = days === horizon;
           return (
@@ -223,9 +227,7 @@ export function CashflowForecastCard({
       </View>
 
       <View style={styles.detailRow}>
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Lowest balance
-        </Text>
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Lowest balance</Text>
         <View style={styles.detailValue}>
           <MoneyValue
             amountMinor={selected.minProjectedBalanceMinor}

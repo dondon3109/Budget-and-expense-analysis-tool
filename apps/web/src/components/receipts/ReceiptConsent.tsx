@@ -18,9 +18,8 @@ export function ReceiptConsent({ accepting, error, onAccept }: ReceiptConsentPro
         Zoption sends only the photo, PDF, or recording you choose to AI during that request to
         draft editable entries. A recording may also be processed by your browser&apos;s speech
         service (Google on Chrome, Apple on Safari) where it offers live recognition. Source files
-        are processed in-flight and discarded immediately —
-        they are never stored, kept, or used for anything else. Nothing is added to your budget
-        until you confirm it.
+        are processed in-flight and discarded immediately — they are never stored, kept, or used for
+        anything else. Nothing is added to your budget until you confirm it.
       </p>
       <div className="receipt-consent-points">
         <article>

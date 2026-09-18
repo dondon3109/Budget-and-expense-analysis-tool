@@ -33,7 +33,9 @@ export function EventEditorScreen() {
 
   const [title, setTitle] = useState("");
   const dateParam = single(params.date);
-  const [date, setDate] = useState(() => (dateParam && dateParam.trim().length > 0 ? dateParam.trim() : todayIso()));
+  const [date, setDate] = useState(() =>
+    dateParam && dateParam.trim().length > 0 ? dateParam.trim() : todayIso(),
+  );
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
@@ -73,9 +75,7 @@ export function EventEditorScreen() {
       router.back();
       sync.retry();
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "The event could not be saved safely.",
-      );
+      setMessage(error instanceof Error ? error.message : "The event could not be saved safely.");
     } finally {
       setSaving(false);
     }
@@ -91,9 +91,7 @@ export function EventEditorScreen() {
       router.back();
       sync.retry();
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "The event could not be deleted safely.",
-      );
+      setMessage(error instanceof Error ? error.message : "The event could not be deleted safely.");
     } finally {
       setSaving(false);
     }
@@ -107,7 +105,11 @@ export function EventEditorScreen() {
       <Stack.Screen options={{ title: editing ? "Edit event" : "New event" }} />
       {eventState.error ? (
         <View style={styles.centered}>
-          <ErrorState title="Event unavailable" message={eventState.error} onRetry={eventState.retry} />
+          <ErrorState
+            title="Event unavailable"
+            message={eventState.error}
+            onRetry={eventState.retry}
+          />
         </View>
       ) : eventState.loading ? (
         <View accessibilityLabel="Loading event" style={styles.centered}>
@@ -194,11 +196,7 @@ export function EventEditorScreen() {
               Save event
             </Button>
             {editing ? (
-              <Button
-                disabled={saving}
-                onPress={() => setConfirmDelete(true)}
-                variant="danger"
-              >
+              <Button disabled={saving} onPress={() => setConfirmDelete(true)} variant="danger">
                 Delete event
               </Button>
             ) : null}

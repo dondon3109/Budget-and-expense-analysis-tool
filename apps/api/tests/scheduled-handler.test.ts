@@ -46,8 +46,7 @@ const environment = {
         run: async () => ({ meta: { changes: 0 } }),
       }),
     }),
-    batch: async (statements: unknown[]) =>
-      statements.map(() => ({ meta: { changes: 0 } })),
+    batch: async (statements: unknown[]) => statements.map(() => ({ meta: { changes: 0 } })),
   },
 } as unknown as Bindings;
 

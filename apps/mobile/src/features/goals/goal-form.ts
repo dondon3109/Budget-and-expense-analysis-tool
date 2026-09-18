@@ -29,9 +29,7 @@ function isValidIsoDate(value: string): boolean {
   const day = Number(dayText);
   const date = new Date(Date.UTC(year, month - 1, day));
   return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
   );
 }
 
@@ -42,10 +40,17 @@ export function defaultTargetDate(now = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-export function parseGoalForm(
-  values: GoalFormValues,
-):
-  | { success: true; input: { name: string; targetAmountMinor: number; currentAmountMinor: number; targetDate: string; status: FinancialGoalStatus } }
+export function parseGoalForm(values: GoalFormValues):
+  | {
+      success: true;
+      input: {
+        name: string;
+        targetAmountMinor: number;
+        currentAmountMinor: number;
+        targetDate: string;
+        status: FinancialGoalStatus;
+      };
+    }
   | { success: false; errors: GoalFormErrors } {
   const errors: GoalFormErrors = {};
   const name = values.name.trim();

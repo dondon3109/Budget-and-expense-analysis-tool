@@ -1,7 +1,4 @@
-import {
-  parseAmountToMinor,
-  type TransactionInput,
-} from "@zoption/shared";
+import { parseAmountToMinor, type TransactionInput } from "@zoption/shared";
 
 import { formatMinorForInput, localCalendarDate } from "@/features/transactions/transaction-form";
 

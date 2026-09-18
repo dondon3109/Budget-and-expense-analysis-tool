@@ -124,11 +124,7 @@ export function SubscriptionsScreen() {
       title="Subscriptions"
     >
       {state.error ? (
-        <ErrorState
-          message={state.error}
-          onRetry={state.retry}
-          title="Subscriptions unavailable"
-        />
+        <ErrorState message={state.error} onRetry={state.retry} title="Subscriptions unavailable" />
       ) : state.loading ? (
         <View accessibilityLabel="Loading subscriptions" style={styles.stack}>
           <Skeleton height={100} />
@@ -237,7 +233,9 @@ export function SubscriptionsScreen() {
               <Text style={[typography.headline, { color: theme.colors.text }]}>
                 No {filter} subscriptions
               </Text>
-              <Text style={[typography.caption, { color: theme.colors.textMuted, textAlign: "center" }]}>
+              <Text
+                style={[typography.caption, { color: theme.colors.textMuted, textAlign: "center" }]}
+              >
                 {filter === "canceled"
                   ? "All your subscriptions are currently active."
                   : "You do not have any active subscriptions."}
@@ -312,11 +310,7 @@ function MonthlyCostCard({
           accessibilityElementsHidden
           style={[styles.summaryIconBox, { backgroundColor: theme.colors.brandSoft }]}
         >
-          <MaterialCommunityIcons
-            color={theme.colors.brand}
-            name="calendar-sync"
-            size={24}
-          />
+          <MaterialCommunityIcons color={theme.colors.brand} name="calendar-sync" size={24} />
         </View>
       </View>
 
@@ -420,9 +414,7 @@ function SubscriptionRow({
                 style={[
                   styles.statusPill,
                   {
-                    backgroundColor: isCanceled
-                      ? theme.colors.canvasMuted
-                      : theme.colors.brandSoft,
+                    backgroundColor: isCanceled ? theme.colors.canvasMuted : theme.colors.brandSoft,
                   },
                 ]}
               >
@@ -529,7 +521,8 @@ function SubscriptionRow({
 
             {monthlyEquivalent !== null && !isCanceled ? (
               <Text style={[typography.caption, { color: theme.colors.textMuted, fontSize: 11 }]}>
-                ≈ <MoneyValue amountMinor={monthlyEquivalent} />/mo
+                ≈ <MoneyValue amountMinor={monthlyEquivalent} />
+                /mo
               </Text>
             ) : null}
           </View>

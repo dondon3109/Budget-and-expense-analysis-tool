@@ -31,7 +31,8 @@ describe("SelectionField", () => {
 
     // A Modal should be present
     const modals =
-      screen.root?.queryAll((node) => node.type === "Modal" || (node.type as unknown) === Modal) ?? [];
+      screen.root?.queryAll((node) => node.type === "Modal" || (node.type as unknown) === Modal) ??
+      [];
     expect(modals.length).toBe(1);
     expect(screen.getByText("Option 1")).toBeTruthy();
 
@@ -58,14 +59,16 @@ describe("SelectionField", () => {
     );
 
     const modalsBefore =
-      screen.root?.queryAll((node) => node.type === "Modal" || (node.type as unknown) === Modal) ?? [];
+      screen.root?.queryAll((node) => node.type === "Modal" || (node.type as unknown) === Modal) ??
+      [];
     expect(modalsBefore.length).toBe(1);
 
     // Open nested selection field
     await fireEvent.press(screen.getByRole("button", { name: /Nested Field/ }));
 
     const modalsAfter =
-      screen.root?.queryAll((node) => node.type === "Modal" || (node.type as unknown) === Modal) ?? [];
+      screen.root?.queryAll((node) => node.type === "Modal" || (node.type as unknown) === Modal) ??
+      [];
     expect(modalsAfter.length).toBe(1);
 
     // Options are rendered inline

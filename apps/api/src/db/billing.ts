@@ -232,11 +232,7 @@ export interface BillingRepository {
     interval: BillingInterval,
   ): Promise<BillingCheckoutReference>;
   createMonthlyImportUsageStatement(env: Bindings, tenantId: string): D1PreparedStatement;
-  rethrowMonthlyImportUsageError(
-    env: Bindings,
-    tenantId: string,
-    error: unknown,
-  ): Promise<never>;
+  rethrowMonthlyImportUsageError(env: Bindings, tenantId: string, error: unknown): Promise<never>;
   hasNonTerminalSubscription(env: Bindings, tenantId: string): Promise<boolean>;
   getProviderSubscription(
     env: Bindings,
@@ -424,21 +420,23 @@ async function monthlyImportLimitError(env: Bindings, tenantId: string): Promise
   const isPro = await hasProEntitlement(env, tenantId);
   const limit = (isPro ? PRO_LIMITS : FREE_LIMITS).file_import;
   const item = await monthlyImportUsage(env, tenantId, limit);
-  return new HttpError(409, "monthly_limit_reached", "You have reached this month’s import limit.", {
-    feature: item.feature,
-    used: item.used,
-    limit,
-    periodKind: item.periodKind,
-    periodStartedAt: item.periodStartedAt,
-    resetsAt: item.resetsAt,
-    billingPath: "/app/settings#plan-and-billing",
-  });
+  return new HttpError(
+    409,
+    "monthly_limit_reached",
+    "You have reached this month’s import limit.",
+    {
+      feature: item.feature,
+      used: item.used,
+      limit,
+      periodKind: item.periodKind,
+      periodStartedAt: item.periodStartedAt,
+      resetsAt: item.resetsAt,
+      billingPath: "/app/settings#plan-and-billing",
+    },
+  );
 }
 
-function buildMonthlyImportUsageStatement(
-  env: Bindings,
-  tenantId: string,
-): D1PreparedStatement {
+function buildMonthlyImportUsageStatement(env: Bindings, tenantId: string): D1PreparedStatement {
   return env.DB.prepare(
     `INSERT INTO billing_monthly_usage (tenant_id, month, feature, count, allowance)
      VALUES (

@@ -120,9 +120,7 @@ describe("fx rates", () => {
 
   it("falls back to the fallback rate when nothing has ever been stored", async () => {
     const { DB } = asBindings([]);
-    expect(await loadUsdToPhp({ DB }, "2026-08-07")).toBe(
-      FALLBACK_USD_TO_PHP,
-    );
+    expect(await loadUsdToPhp({ DB }, "2026-08-07")).toBe(FALLBACK_USD_TO_PHP);
   });
 
   it("refreshDailyFxRate returns null on provider failure without throwing", async () => {

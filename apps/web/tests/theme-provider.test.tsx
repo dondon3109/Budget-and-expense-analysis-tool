@@ -96,9 +96,7 @@ describe("ThemeProvider", () => {
       name: "Choose theme. Current theme: Light",
     });
     await user.click(trigger);
-    await waitFor(() =>
-      expect(screen.getByRole("menuitemradio", { name: "Light" })).toHaveFocus(),
-    );
+    await waitFor(() => expect(screen.getByRole("menuitemradio", { name: "Light" })).toHaveFocus());
 
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("menuitemradio", { name: "Dark" })).toHaveFocus();

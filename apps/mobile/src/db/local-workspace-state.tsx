@@ -10,7 +10,12 @@ import {
 } from "react";
 import { addDatabaseChangeListener } from "expo-sqlite";
 
-import { closeLocalWorkspace, describeWorkspaceOpenFailure, openLocalWorkspace, type LocalWorkspace } from "./workspace";
+import {
+  closeLocalWorkspace,
+  describeWorkspaceOpenFailure,
+  openLocalWorkspace,
+  type LocalWorkspace,
+} from "./workspace";
 import type { LocalWorkspaceStats } from "./repository";
 import type {
   LocalBudgetMonthData,

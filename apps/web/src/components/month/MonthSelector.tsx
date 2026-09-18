@@ -1,11 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { isMonth, shiftMonth } from "../../lib/calendar";
 import { formatFullMonth } from "../../lib/formatters";
@@ -55,14 +49,7 @@ function lastAvailableMonth(year: number, min?: string, max?: string): string | 
   );
 }
 
-export function MonthSelector({
-  value,
-  onChange,
-  label,
-  min,
-  max,
-  className,
-}: MonthSelectorProps) {
+export function MonthSelector({ value, onChange, label, min, max, className }: MonthSelectorProps) {
   const [open, setOpen] = useState(false);
   const [displayYear, setDisplayYear] = useState(() => Number(value.slice(0, 4)));
   const popoverId = useId();

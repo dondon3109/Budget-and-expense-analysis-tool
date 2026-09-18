@@ -2,13 +2,7 @@ import type { TransactionVoiceDraft } from "@zoption/shared";
 
 export const VOICE_PREVIEW_AUTO_SAVE_MS = 3000;
 
-export type VoicePreviewStatus =
-  | "idle"
-  | "pending"
-  | "saving"
-  | "saved"
-  | "discarded"
-  | "error";
+export type VoicePreviewStatus = "idle" | "pending" | "saving" | "saved" | "discarded" | "error";
 
 export interface VoicePreviewIdleState {
   status: "idle";

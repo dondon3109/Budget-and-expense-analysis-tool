@@ -49,15 +49,29 @@ describe("mobile voice-stream", () => {
       (global as any).WebSocket = MockWebSocket;
 
       try {
-        const ws = openMobileVoiceStreamWebSocket("test-mobile-token-xyz") as unknown as MockWebSocket;
-        expect(ws.url).toContain("/api/app/assistant/voice/stream?token=test-mobile-token-xyz&lang=auto");
+        const ws = openMobileVoiceStreamWebSocket(
+          "test-mobile-token-xyz",
+        ) as unknown as MockWebSocket;
+        expect(ws.url).toContain(
+          "/api/app/assistant/voice/stream?token=test-mobile-token-xyz&lang=auto",
+        );
         expect(ws.url.startsWith("ws:") || ws.url.startsWith("wss:")).toBe(true);
 
-        const wsFil = openMobileVoiceStreamWebSocket("test-mobile-token-xyz", "fil") as unknown as MockWebSocket;
-        expect(wsFil.url).toContain("/api/app/assistant/voice/stream?token=test-mobile-token-xyz&lang=fil");
+        const wsFil = openMobileVoiceStreamWebSocket(
+          "test-mobile-token-xyz",
+          "fil",
+        ) as unknown as MockWebSocket;
+        expect(wsFil.url).toContain(
+          "/api/app/assistant/voice/stream?token=test-mobile-token-xyz&lang=fil",
+        );
 
-        const wsEn = openMobileVoiceStreamWebSocket("test-mobile-token-xyz", "en") as unknown as MockWebSocket;
-        expect(wsEn.url).toContain("/api/app/assistant/voice/stream?token=test-mobile-token-xyz&lang=en");
+        const wsEn = openMobileVoiceStreamWebSocket(
+          "test-mobile-token-xyz",
+          "en",
+        ) as unknown as MockWebSocket;
+        expect(wsEn.url).toContain(
+          "/api/app/assistant/voice/stream?token=test-mobile-token-xyz&lang=en",
+        );
       } finally {
         global.WebSocket = originalWs;
       }

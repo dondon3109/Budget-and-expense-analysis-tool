@@ -93,9 +93,7 @@ export function CancellationGuideSheet({
             ) : null}
           </View>
 
-          <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-            {guide.summary}
-          </Text>
+          <Text style={[typography.body, { color: theme.colors.textMuted }]}>{guide.summary}</Text>
 
           {guide.directUrl ? (
             <Button

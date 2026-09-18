@@ -170,10 +170,7 @@ export default function SignInScreen() {
         >
           Forgot password?
         </Button>
-        <View
-          accessibilityLabel="Social sign-in options"
-          style={styles.dividerRow}
-        >
+        <View accessibilityLabel="Social sign-in options" style={styles.dividerRow}>
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>or</Text>
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />

@@ -14,7 +14,9 @@ function jsonResponse(body: unknown, status = 200) {
 
 describe("support api transport", () => {
   it("keeps the public chat free of Authorization headers", async () => {
-    const fetchMock = jest.fn(async () => jsonResponse({ message: "You can find imports under More." }));
+    const fetchMock = jest.fn(async () =>
+      jsonResponse({ message: "You can find imports under More." }),
+    );
     const result = await completeSupportChat(
       { fetchImpl: fetchMock },
       { messages: [{ role: "user", content: "Where is import?" }], pageContext: "landing" },
@@ -60,28 +62,31 @@ describe("support api transport", () => {
 
   it("submits a bug report with diagnostics and decodes the reference", async () => {
     const fetchMock = jest.fn(async () =>
-      jsonResponse({
-        id: "11111111-1111-4111-8111-111111111111",
-        reference: "BUG-123",
-        title: "Import preview crashes",
-        category: "import",
-        actualBehavior: "App closes after mapping.",
-        expectedBehavior: "Preview opens.",
-        stepsToReproduce: "Pick a CSV, map, confirm.",
-        frequency: "always",
-        pageContext: "import",
-        diagnostics: {
-          route: "/app/import",
-          releaseVersion: "1.0.0",
-          viewportWidth: 390,
-          viewportHeight: 844,
-          displayMode: "standalone",
-          platform: "ios",
+      jsonResponse(
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          reference: "BUG-123",
+          title: "Import preview crashes",
+          category: "import",
+          actualBehavior: "App closes after mapping.",
+          expectedBehavior: "Preview opens.",
+          stepsToReproduce: "Pick a CSV, map, confirm.",
+          frequency: "always",
+          pageContext: "import",
+          diagnostics: {
+            route: "/app/import",
+            releaseVersion: "1.0.0",
+            viewportWidth: 390,
+            viewportHeight: 844,
+            displayMode: "standalone",
+            platform: "ios",
+          },
+          status: "new",
+          createdAt: "2026-05-01T08:00:00.000Z",
+          updatedAt: "2026-05-01T08:00:00.000Z",
         },
-        status: "new",
-        createdAt: "2026-05-01T08:00:00.000Z",
-        updatedAt: "2026-05-01T08:00:00.000Z",
-      }, 201),
+        201,
+      ),
     );
     const report = await createBugReport(
       { accessToken: token, fetchImpl: fetchMock },
@@ -143,7 +148,10 @@ describe("support api transport", () => {
 
   it("surfaces support_unavailable as an unavailable error", async () => {
     const fetchMock = jest.fn(async () =>
-      jsonResponse({ error: "support_unavailable", message: "Zoption Support did not return an answer." }, 503),
+      jsonResponse(
+        { error: "support_unavailable", message: "Zoption Support did not return an answer." },
+        503,
+      ),
     );
     await expect(
       completeSupportChat(

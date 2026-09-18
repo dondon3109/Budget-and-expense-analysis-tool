@@ -52,9 +52,7 @@ describe("FullPageLoadingStatus", () => {
   });
 
   it("drives the progress gauge with transform and keeps the cursor as a sibling", () => {
-    render(
-      <FullPageLoadingStatus title="Preparing your workspace" description="Loading." />,
-    );
+    render(<FullPageLoadingStatus title="Preparing your workspace" description="Loading." />);
 
     const fill = document.querySelector<HTMLElement>(".full-page-loading-status-fill");
     const cursor = document.querySelector<HTMLElement>(".full-page-loading-status-cursor");
@@ -110,5 +108,3 @@ describe("FullPageLoadingStatus", () => {
     vi.restoreAllMocks();
   });
 });
-
-

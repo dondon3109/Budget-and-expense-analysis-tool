@@ -84,7 +84,11 @@ export interface ProviderConfigRepository {
     actorId: string,
   ): Promise<ProviderConfig[]>;
   delete(env: Bindings, id: string, actorId: string): Promise<ProviderConfig>;
-  listAudits(env: Bindings, service?: ProviderService, limit?: number): Promise<ProviderConfigAuditRow[]>;
+  listAudits(
+    env: Bindings,
+    service?: ProviderService,
+    limit?: number,
+  ): Promise<ProviderConfigAuditRow[]>;
 }
 
 function auditPayload(config: ProviderConfig | null): string | null {
@@ -200,7 +204,10 @@ export const providerConfigRepository: ProviderConfigRepository = {
       .first<{ maxPriority: number }>();
     const priority = input.priority ?? (maxPriorityRow ? maxPriorityRow.maxPriority + 1 : 1);
     const id = crypto.randomUUID();
-    const displayName = (input.displayName?.trim() || `${input.provider} / ${input.model}`).slice(0, 40);
+    const displayName = (input.displayName?.trim() || `${input.provider} / ${input.model}`).slice(
+      0,
+      40,
+    );
     try {
       // Try new columns; fallback to legacy for pre-migration
       try {
@@ -208,7 +215,17 @@ export const providerConfigRepository: ProviderConfigRepository = {
           `INSERT INTO provider_configs (id, service, provider, model, display_name, credential_id, enabled, priority, is_active, updated_by, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, datetime('now'), datetime('now'))`,
         )
-          .bind(id, input.service, input.provider, input.model, displayName, input.credentialId ?? null, (input.enabled ?? true) ? 1 : 0, priority, actorId)
+          .bind(
+            id,
+            input.service,
+            input.provider,
+            input.model,
+            displayName,
+            input.credentialId ?? null,
+            (input.enabled ?? true) ? 1 : 0,
+            priority,
+            actorId,
+          )
           .run();
       } catch (e) {
         const msg = e instanceof Error ? e.message.toLowerCase() : "";
@@ -217,19 +234,39 @@ export const providerConfigRepository: ProviderConfigRepository = {
             `INSERT INTO provider_configs (id, service, provider, model, enabled, priority, is_active, updated_by, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, 0, ?, datetime('now'), datetime('now'))`,
           )
-            .bind(id, input.service, input.provider, input.model, (input.enabled ?? true) ? 1 : 0, priority, actorId)
+            .bind(
+              id,
+              input.service,
+              input.provider,
+              input.model,
+              (input.enabled ?? true) ? 1 : 0,
+              priority,
+              actorId,
+            )
             .run();
         } else throw e;
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message.toLowerCase() : "";
-      if (msg.includes("provider_configs_service_provider_model_unique") || msg.includes("unique")) {
-        throw new HttpError(409, "provider_config_duplicate", "This provider and model already exists for this service.");
+      if (
+        msg.includes("provider_configs_service_provider_model_unique") ||
+        msg.includes("unique")
+      ) {
+        throw new HttpError(
+          409,
+          "provider_config_duplicate",
+          "This provider and model already exists for this service.",
+        );
       }
       throw error;
     }
     const created = await this.getById(env, id);
-    if (!created) throw new HttpError(500, "provider_config_create_failed", "Could not create provider configuration.");
+    if (!created)
+      throw new HttpError(
+        500,
+        "provider_config_create_failed",
+        "Could not create provider configuration.",
+      );
     await insertAudit(env, {
       configId: id,
       service: input.service,
@@ -243,14 +280,20 @@ export const providerConfigRepository: ProviderConfigRepository = {
 
   async update(env, id, patch, actorId) {
     const existing = await this.getById(env, id);
-    if (!existing) throw new HttpError(404, "provider_config_not_found", "Provider configuration was not found.");
+    if (!existing)
+      throw new HttpError(
+        404,
+        "provider_config_not_found",
+        "Provider configuration was not found.",
+      );
 
     const nextProvider = patch.provider ?? existing.provider;
     const nextModel = patch.model ?? existing.model;
     const nextEnabled = patch.enabled !== undefined ? patch.enabled : existing.enabled;
     const nextPriority = patch.priority ?? existing.priority;
     const nextDisplayName = patch.displayName?.trim() ?? existing.displayName;
-    const nextCredentialId = patch.credentialId !== undefined ? patch.credentialId : existing.credentialId;
+    const nextCredentialId =
+      patch.credentialId !== undefined ? patch.credentialId : existing.credentialId;
 
     // Prevent disabling the active config without switching active
     if (existing.isActive && patch.enabled === false) {
@@ -266,7 +309,16 @@ export const providerConfigRepository: ProviderConfigRepository = {
         await env.DB.prepare(
           `UPDATE provider_configs SET provider = ?, model = ?, display_name = ?, credential_id = ?, enabled = ?, priority = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`,
         )
-          .bind(nextProvider, nextModel, nextDisplayName, nextCredentialId, nextEnabled ? 1 : 0, nextPriority, actorId, id)
+          .bind(
+            nextProvider,
+            nextModel,
+            nextDisplayName,
+            nextCredentialId,
+            nextEnabled ? 1 : 0,
+            nextPriority,
+            actorId,
+            id,
+          )
           .run();
       } catch (e) {
         const msg = e instanceof Error ? e.message.toLowerCase() : "";
@@ -280,13 +332,25 @@ export const providerConfigRepository: ProviderConfigRepository = {
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message.toLowerCase() : "";
-      if (msg.includes("provider_configs_service_provider_model_unique") || msg.includes("unique")) {
-        throw new HttpError(409, "provider_config_duplicate", "This provider and model already exists for this service.");
+      if (
+        msg.includes("provider_configs_service_provider_model_unique") ||
+        msg.includes("unique")
+      ) {
+        throw new HttpError(
+          409,
+          "provider_config_duplicate",
+          "This provider and model already exists for this service.",
+        );
       }
       throw error;
     }
     const updated = await this.getById(env, id);
-    if (!updated) throw new HttpError(404, "provider_config_not_found", "Provider configuration was not found.");
+    if (!updated)
+      throw new HttpError(
+        404,
+        "provider_config_not_found",
+        "Provider configuration was not found.",
+      );
     await insertAudit(env, {
       configId: id,
       service: existing.service,
@@ -300,7 +364,12 @@ export const providerConfigRepository: ProviderConfigRepository = {
 
   async setActive(env, id, actorId) {
     const target = await this.getById(env, id);
-    if (!target) throw new HttpError(404, "provider_config_not_found", "Provider configuration was not found.");
+    if (!target)
+      throw new HttpError(
+        404,
+        "provider_config_not_found",
+        "Provider configuration was not found.",
+      );
     if (!target.enabled) {
       throw new HttpError(409, "provider_not_enabled", "Enable the provider before activating it.");
     }
@@ -321,7 +390,12 @@ export const providerConfigRepository: ProviderConfigRepository = {
     );
     await env.DB.batch(stmts);
     const activated = await this.getById(env, id);
-    if (!activated) throw new HttpError(404, "provider_config_not_found", "Provider configuration was not found.");
+    if (!activated)
+      throw new HttpError(
+        404,
+        "provider_config_not_found",
+        "Provider configuration was not found.",
+      );
     if (previous && previous.id !== id) {
       const prevAfter = await this.getById(env, previous.id);
       await insertAudit(env, {
@@ -347,12 +421,20 @@ export const providerConfigRepository: ProviderConfigRepository = {
   async reorder(env, service, orderedIds, actorId) {
     const existing = await this.list(env, service);
     if (existing.length !== orderedIds.length) {
-      throw new HttpError(400, "invalid_reorder", "Provide every config ID for this service exactly once.");
+      throw new HttpError(
+        400,
+        "invalid_reorder",
+        "Provide every config ID for this service exactly once.",
+      );
     }
     const existingIds = new Set(existing.map((c) => c.id));
     for (const oid of orderedIds) {
       if (!existingIds.has(oid)) {
-        throw new HttpError(400, "invalid_reorder", "One or more config IDs are invalid for this service.");
+        throw new HttpError(
+          400,
+          "invalid_reorder",
+          "One or more config IDs are invalid for this service.",
+        );
       }
     }
     const batch = orderedIds.map((oid, idx) =>
@@ -375,9 +457,18 @@ export const providerConfigRepository: ProviderConfigRepository = {
 
   async delete(env, id, actorId) {
     const existing = await this.getById(env, id);
-    if (!existing) throw new HttpError(404, "provider_config_not_found", "Provider configuration was not found.");
+    if (!existing)
+      throw new HttpError(
+        404,
+        "provider_config_not_found",
+        "Provider configuration was not found.",
+      );
     if (existing.isActive) {
-      throw new HttpError(409, "cannot_delete_active_config", "Activate a different configuration before deleting this active one.");
+      throw new HttpError(
+        409,
+        "cannot_delete_active_config",
+        "Activate a different configuration before deleting this active one.",
+      );
     }
     await env.DB.prepare(`DELETE FROM provider_configs WHERE id = ?`).bind(id).run();
     await insertAudit(env, {

@@ -103,9 +103,7 @@ describe("TransactionTable keyboard navigation", () => {
   it("makes body rows programmatically focusable without adding tab stops", () => {
     renderTable({ items: [item, incomeItem] });
 
-    const rows = screen
-      .getByRole("table", { name: "Transactions" })
-      .querySelectorAll("tbody tr");
+    const rows = screen.getByRole("table", { name: "Transactions" }).querySelectorAll("tbody tr");
     expect(rows).toHaveLength(2);
     for (const row of rows) {
       expect(row).toHaveAttribute("tabindex", "-1");

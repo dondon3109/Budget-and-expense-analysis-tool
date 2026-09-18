@@ -6,13 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useEventConflict, useLocalWorkspace } from "@/db/local-workspace-state";
 import type { LocalEventConflictVersion } from "@/db/transaction-mutation-repository";
 import { useSyncState } from "@/sync/sync-state";
-import {
-  Button,
-  Card,
-  ConfirmationDialog,
-  ErrorState,
-  Skeleton,
-} from "@/ui/components";
+import { Button, Card, ConfirmationDialog, ErrorState, Skeleton } from "@/ui/components";
 import { spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 

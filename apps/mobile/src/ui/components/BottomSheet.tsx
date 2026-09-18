@@ -60,9 +60,7 @@ export function BottomSheet({ visible, title, onDismiss, children }: BottomSheet
             showsVerticalScrollIndicator
             style={styles.scroll}
           >
-            <BottomSheetContext.Provider value={true}>
-              {children}
-            </BottomSheetContext.Provider>
+            <BottomSheetContext.Provider value={true}>{children}</BottomSheetContext.Provider>
           </ScrollView>
         </SafeAreaView>
       </View>

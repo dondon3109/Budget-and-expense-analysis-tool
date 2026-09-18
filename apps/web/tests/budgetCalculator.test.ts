@@ -55,9 +55,7 @@ describe("allocateBudget", () => {
   });
 
   it("rejects percentages that do not sum to 100", () => {
-    expect(() => allocateBudget(1000, { needs: 50, wants: 30, savings: 19 })).toThrow(
-      /sum to 100/,
-    );
+    expect(() => allocateBudget(1000, { needs: 50, wants: 30, savings: 19 })).toThrow(/sum to 100/);
   });
 
   it("rejects non-integer or negative input", () => {

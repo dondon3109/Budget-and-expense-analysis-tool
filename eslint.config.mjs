@@ -3,7 +3,14 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/coverage/**", "**/.wrangler/**", ".lighthouseci/**", "tmp/**", "apps/stt-bridge/**"],
+    ignores: [
+      "**/dist/**",
+      "**/coverage/**",
+      "**/.wrangler/**",
+      ".lighthouseci/**",
+      "tmp/**",
+      "apps/stt-bridge/**",
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -80,7 +87,14 @@ export default tseslint.config(
   },
   {
     ...tseslint.configs.disableTypeChecked,
-    files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "apps/api/tests/**/*.ts", "apps/api/src/spike/**/*.ts"],
+    files: [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+      "apps/api/tests/**/*.ts",
+      "apps/api/src/spike/**/*.ts",
+    ],
     rules: {
       ...tseslint.configs.disableTypeChecked.rules,
       "@typescript-eslint/require-await": "off",
@@ -111,7 +125,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ["apps/web/src/lib/api.ts", "apps/web/src/lib/voiceStream.ts", "apps/web/src/pages/AdminProviderConfigsPage.tsx", "apps/mobile/src/features/assistant/assistant-voice-hooks.ts"],
+    files: [
+      "apps/web/src/lib/api.ts",
+      "apps/web/src/lib/voiceStream.ts",
+      "apps/web/src/pages/AdminProviderConfigsPage.tsx",
+      "apps/mobile/src/features/assistant/assistant-voice-hooks.ts",
+    ],
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
       "no-empty": "off",

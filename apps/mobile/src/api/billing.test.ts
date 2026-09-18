@@ -34,7 +34,14 @@ function summaryPayload() {
     canManageSponsoredSeats: false,
     nonTerminalSubscriptionCount: 1,
     usages: [
-      { feature: "assistant_question", used: 12, limit: 100, periodKind: "anchored_14_day", periodStartedAt: "2026-05-18T00:00:00.000Z", resetsAt: "2026-06-01T00:00:00.000Z" },
+      {
+        feature: "assistant_question",
+        used: 12,
+        limit: 100,
+        periodKind: "anchored_14_day",
+        periodStartedAt: "2026-05-18T00:00:00.000Z",
+        resetsAt: "2026-06-01T00:00:00.000Z",
+      },
     ],
     allowances: [{ resource: "custom_category", used: 3, limit: null }],
   };
@@ -59,10 +66,7 @@ describe("billing api transport", () => {
         201,
       ),
     );
-    const result = await startBillingCheckout(
-      { accessToken: token, fetchImpl: fetchMock },
-      "year",
-    );
+    const result = await startBillingCheckout({ accessToken: token, fetchImpl: fetchMock }, "year");
     expect(result.approvalUrl).toBe("https://paypal.example/approve");
     expect(result.subscriptionId).toBe("I-SUB123");
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
@@ -90,11 +94,20 @@ describe("billing api transport", () => {
 
   it("surfaces a non-cancelable conflict with the server message", async () => {
     const fetchMock = jest.fn(async () =>
-      jsonResponse({ error: "subscription_not_cancelable", message: "There is no active subscription to cancel." }, 409),
+      jsonResponse(
+        {
+          error: "subscription_not_cancelable",
+          message: "There is no active subscription to cancel.",
+        },
+        409,
+      ),
     );
     await expect(
       cancelBillingSubscription({ accessToken: token, fetchImpl: fetchMock }),
-    ).rejects.toMatchObject({ code: "conflict", message: "There is no active subscription to cancel." });
+    ).rejects.toMatchObject({
+      code: "conflict",
+      message: "There is no active subscription to cancel.",
+    });
   });
 
   it("rejects a malformed summary", async () => {

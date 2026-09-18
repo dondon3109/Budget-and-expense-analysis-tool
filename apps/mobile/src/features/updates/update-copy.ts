@@ -71,15 +71,15 @@ function splitSentenceParagraph(text: string): string[] {
   for (let i = 0; i < text.length; i++) {
     current += text[i];
     const char = text[i];
-      if (char === "." || char === "!" || char === "?") {
-        // Look ahead for space + capital letter
-        const afterSpace = text[i + 2];
-        if (
-          i + 2 < text.length &&
-          text[i + 1] === " " &&
-          afterSpace !== undefined &&
-          /[A-Z]/.test(afterSpace)
-        ) {
+    if (char === "." || char === "!" || char === "?") {
+      // Look ahead for space + capital letter
+      const afterSpace = text[i + 2];
+      if (
+        i + 2 < text.length &&
+        text[i + 1] === " " &&
+        afterSpace !== undefined &&
+        /[A-Z]/.test(afterSpace)
+      ) {
         const words = current.trim().split(/\s+/);
         const lastWord = (words[words.length - 1] ?? "").toLowerCase();
         // Ignore common abbreviations
@@ -115,10 +115,7 @@ export function updateAvailableMessage(
   latest: ParsedAndroidRelease,
 ): string {
   const notes = normalizeReleaseNotes(latest.notes);
-  const bulletNotes =
-    notes.length > 0
-      ? `\n\n${notes.map((note) => `• ${note}`).join("\n")}`
-      : "";
+  const bulletNotes = notes.length > 0 ? `\n\n${notes.map((note) => `• ${note}`).join("\n")}` : "";
   return `You have ${installed.versionName}. Version ${latest.versionName} is ${formatApkSize(latest.size)}.${bulletNotes}`;
 }
 

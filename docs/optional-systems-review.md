@@ -21,7 +21,7 @@ Last reviewed: 2026-09-13.
 
 | System                                           | Flag             | Reconsider when                                                                                                                                                                                                       |
 | ------------------------------------------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Expo OTA publishing                              | Removed          | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                 |
+| Expo OTA publishing                              | Removed          | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                                                                                 |
 | `apps/ads` Remotion renderer and generated media | Freeze           | A concrete campaign requires refreshed product claims and assets. It stays outside runtime/release-critical ownership. Consider moving rendered outputs out of the main source tree in a separately approved cleanup. |
 | Cloud Run Chirp 3 STT bridge                     | Freeze unshipped | Workers AI Whisper remains the runtime transcription path. Do not deploy the Cloud Run bridge unless measured voice usage clearly beats Whisper on latency and cost.                                                  |
 

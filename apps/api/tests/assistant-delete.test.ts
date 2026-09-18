@@ -85,7 +85,9 @@ describe("assistantRepository.deleteThread", () => {
   it("deletes an existing conversation for the owning tenant", async () => {
     const { env, database } = environment();
 
-    await expect(assistantRepository.deleteThread(env, TENANT_A, THREAD_A)).resolves.toBeUndefined();
+    await expect(
+      assistantRepository.deleteThread(env, TENANT_A, THREAD_A),
+    ).resolves.toBeUndefined();
     expect(threadCount(database, THREAD_A)).toBe(0);
   });
 
@@ -100,7 +102,9 @@ describe("assistantRepository.deleteThread", () => {
     const { env, database } = environment();
 
     // Tenant A cannot delete Tenant B's thread; it is a tenant-scoped no-op.
-    await expect(assistantRepository.deleteThread(env, TENANT_A, THREAD_B)).resolves.toBeUndefined();
+    await expect(
+      assistantRepository.deleteThread(env, TENANT_A, THREAD_B),
+    ).resolves.toBeUndefined();
     expect(threadCount(database, THREAD_B)).toBe(1);
     // And Tenant B's own ownership is unaffected.
     expect(threadCount(database, THREAD_A)).toBe(1);

@@ -49,7 +49,9 @@ const transactionPage: TransactionPage = {
   totalPages: 2,
 };
 
-function renderHistory(overrides: Partial<ComponentProps<typeof DashboardTransactionHistory>> = {}) {
+function renderHistory(
+  overrides: Partial<ComponentProps<typeof DashboardTransactionHistory>> = {},
+) {
   const props: ComponentProps<typeof DashboardTransactionHistory> = {
     page: transactionPage,
     isPending: false,
@@ -76,7 +78,9 @@ describe("DashboardTransactionHistory", () => {
   it("shows all-time records, including prior-month transfers, and links to record management", () => {
     renderHistory();
 
-    expect(screen.getByRole("heading", { name: "Every transaction, in one place" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Every transaction, in one place" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("July salary")).toBeInTheDocument();
     expect(screen.getByText("Bank → Cash")).toBeInTheDocument();
     expect(screen.getByText("10 transactions across your full history")).toBeInTheDocument();
@@ -89,7 +93,9 @@ describe("DashboardTransactionHistory", () => {
   it("requests the next page and disables unavailable pagination controls", () => {
     const { props } = renderHistory();
 
-    expect(screen.getByRole("button", { name: "Previous transaction history page" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Previous transaction history page" }),
+    ).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Next transaction history page" }));
     expect(props.onPageChange).toHaveBeenCalledWith(2);
   });

@@ -41,7 +41,10 @@ const attempted = new Set<string>();
 export const authConfigured = Boolean(SEEDED.email && SEEDED.password);
 export const emptyAuthConfigured = Boolean(EMPTY.email && EMPTY.password);
 
-async function signIn(browser: Browser, credentials: Credentials): Promise<StorageState | undefined> {
+async function signIn(
+  browser: Browser,
+  credentials: Credentials,
+): Promise<StorageState | undefined> {
   if (!credentials.email || !credentials.password) return undefined;
   if (attempted.has(credentials.label)) return cache.get(credentials.label);
   attempted.add(credentials.label);

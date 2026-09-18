@@ -132,7 +132,10 @@ export function BalanceAdjustCard({
         </View>
         {adjustmentId ? (
           <>
-            <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.brand }]}>
+            <Text
+              accessibilityRole="alert"
+              style={[typography.body, { color: theme.colors.brand }]}
+            >
               Adjustment saved as an Uncategorized transaction.
             </Text>
             <Button variant="secondary" disabled={busy} loading={busy} onPress={() => void undo()}>
@@ -183,7 +186,10 @@ export function BalanceAdjustCard({
           </>
         )}
         {message ? (
-          <Text accessibilityRole="alert" style={[typography.callout, { color: theme.colors.danger }]}>
+          <Text
+            accessibilityRole="alert"
+            style={[typography.callout, { color: theme.colors.danger }]}
+          >
             {message}
           </Text>
         ) : null}

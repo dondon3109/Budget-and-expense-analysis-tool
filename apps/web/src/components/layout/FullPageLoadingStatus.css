@@ -209,7 +209,9 @@
   width: 10px;
   height: 10px;
   background: var(--income);
-  box-shadow: 0 0 16px var(--income), 0 0 4px var(--income);
+  box-shadow:
+    0 0 16px var(--income),
+    0 0 4px var(--income);
 }
 .sat-income .full-page-loading-satellite-halo {
   background: var(--income);
@@ -219,7 +221,9 @@
   width: 7.5px;
   height: 7.5px;
   background: var(--amber);
-  box-shadow: 0 0 14px var(--amber), 0 0 3px var(--amber);
+  box-shadow:
+    0 0 14px var(--amber),
+    0 0 3px var(--amber);
 }
 .sat-amber .full-page-loading-satellite-halo {
   background: var(--amber);
@@ -229,7 +233,9 @@
   width: 9px;
   height: 9px;
   background: var(--brand);
-  box-shadow: 0 0 14px var(--brand), 0 0 3px var(--brand);
+  box-shadow:
+    0 0 14px var(--brand),
+    0 0 3px var(--brand);
 }
 .sat-brand .full-page-loading-satellite-halo {
   background: var(--brand);
@@ -341,7 +347,9 @@
   height: 6px;
   border-radius: 50%;
   background: var(--paper);
-  box-shadow: 0 0 8px var(--income), 0 0 2px var(--income);
+  box-shadow:
+    0 0 8px var(--income),
+    0 0 2px var(--income);
 }
 
 /* Milestone demarcation notches */

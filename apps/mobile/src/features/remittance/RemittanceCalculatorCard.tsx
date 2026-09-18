@@ -202,7 +202,11 @@ export function RemittanceCalculatorCard({
         <Text style={[typography.caption, { color: theme.colors.textMuted, fontWeight: "600" }]}>
           Provider
         </Text>
-        <View accessibilityRole="tablist" accessibilityLabel="Remittance provider" style={styles.providerGrid}>
+        <View
+          accessibilityRole="tablist"
+          accessibilityLabel="Remittance provider"
+          style={styles.providerGrid}
+        >
           {COMMERCIAL_PROVIDERS.map((option) => {
             const selected = option === provider;
             return (
@@ -215,9 +219,7 @@ export function RemittanceCalculatorCard({
                 style={[
                   styles.providerTile,
                   {
-                    backgroundColor: selected
-                      ? theme.colors.brandSoft
-                      : theme.colors.surface,
+                    backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
                     borderColor: selected ? theme.colors.brand : theme.colors.border,
                     borderWidth: selected ? 2 : 1,
                   },
@@ -303,24 +305,18 @@ export function RemittanceCalculatorCard({
               style={[
                 styles.comparisonRow,
                 {
-                  backgroundColor: isSelected
-                    ? theme.colors.brandSoft
-                    : theme.colors.surface,
+                  backgroundColor: isSelected ? theme.colors.brandSoft : theme.colors.surface,
                   borderColor: isSelected ? theme.colors.brand : theme.colors.border,
                 },
               ]}
             >
               <View style={{ flex: 1, gap: 2 }}>
                 <View style={styles.comparisonTitleRow}>
-                  <Text
-                    style={[typography.body, { color: theme.colors.text, fontWeight: "600" }]}
-                  >
+                  <Text style={[typography.body, { color: theme.colors.text, fontWeight: "600" }]}>
                     {PROVIDER_LABELS[option]}
                   </Text>
                   {isBest ? (
-                    <View
-                      style={[styles.bestPill, { backgroundColor: theme.colors.brand }]}
-                    >
+                    <View style={[styles.bestPill, { backgroundColor: theme.colors.brand }]}>
                       <Text
                         style={[
                           typography.caption,

@@ -58,9 +58,19 @@ describe("first-run import dedupe fingerprint skip", () => {
     expect(flags).toEqual([false, false, true]);
     await expect(
       countFirstRunDuplicates([
-        { date: "2026-07-20", amountMinor: 125050, description: "Weekend groceries", accountSource },
+        {
+          date: "2026-07-20",
+          amountMinor: 125050,
+          description: "Weekend groceries",
+          accountSource,
+        },
         { date: "2026-07-21", amountMinor: 50000, description: "Coffee", accountSource },
-        { date: "2026-07-20", amountMinor: 125050, description: "Weekend groceries", accountSource },
+        {
+          date: "2026-07-20",
+          amountMinor: 125050,
+          description: "Weekend groceries",
+          accountSource,
+        },
       ]),
     ).resolves.toBe(1);
   });

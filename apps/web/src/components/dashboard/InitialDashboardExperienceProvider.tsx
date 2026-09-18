@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { useAuth } from "../../auth/AuthProvider";
 
@@ -7,9 +15,8 @@ type InitialDashboardExperienceContextValue = {
   completeInitialDashboardExperience: () => void;
 };
 
-const InitialDashboardExperienceContext = createContext<InitialDashboardExperienceContextValue | null>(
-  null,
-);
+const InitialDashboardExperienceContext =
+  createContext<InitialDashboardExperienceContextValue | null>(null);
 
 export function InitialDashboardExperienceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();

@@ -41,9 +41,9 @@ describe("voice language store and persistence", () => {
 
   it("fails closed to auto for unknown or malformed state", () => {
     expect(parsePersistedVoiceLanguage({ state: { language: "es" }, version: 1 })).toBe("auto");
-    expect(parsePersistedVoiceLanguage({ state: { language: "auto", extra: true }, version: 1 })).toBe(
-      "auto",
-    );
+    expect(
+      parsePersistedVoiceLanguage({ state: { language: "auto", extra: true }, version: 1 }),
+    ).toBe("auto");
     expect(parsePersistedVoiceLanguage(null)).toBe("auto");
     expect(parsePersistedVoiceLanguage(undefined)).toBe("auto");
     expect(parsePersistedVoiceLanguage("auto")).toBe("auto");

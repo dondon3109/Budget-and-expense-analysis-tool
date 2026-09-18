@@ -55,7 +55,9 @@ async function reachabilityHint(): Promise<boolean> {
  * own error classification handles retries.
  */
 export async function runBackgroundSync(): Promise<BackgroundTask.BackgroundTaskResult> {
-  if (!shouldRunBackgroundSync({ hasRunner: runner !== null, reachable: await reachabilityHint() })) {
+  if (
+    !shouldRunBackgroundSync({ hasRunner: runner !== null, reachable: await reachabilityHint() })
+  ) {
     // Nothing to run. Reporting Success avoids the OS treating an intentional
     // no-op as a failed task worth retrying.
     return BackgroundTask.BackgroundTaskResult.Success;

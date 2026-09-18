@@ -136,18 +136,8 @@ export function FullPageLoadingStatus({
             </defs>
 
             {/* Outer harmonic reticle & cardinal ticks */}
-            <circle
-              className="full-page-loading-reticle-outer"
-              cx="100"
-              cy="100"
-              r="90"
-            />
-            <circle
-              className="full-page-loading-reticle-inner"
-              cx="100"
-              cy="100"
-              r="68"
-            />
+            <circle className="full-page-loading-reticle-outer" cx="100" cy="100" r="90" />
+            <circle className="full-page-loading-reticle-inner" cx="100" cy="100" r="68" />
 
             {/* Cardinal calibration pips */}
             <line x1="100" y1="4" x2="100" y2="12" className="full-page-loading-tick" />
@@ -162,10 +152,7 @@ export function FullPageLoadingStatus({
             <circle cx="164" cy="164" r="1.5" className="full-page-loading-dot-pip" />
 
             {/* Z Monogram — Underlying guide track */}
-            <path
-              className="full-page-loading-z-track"
-              d="M 68 74 H 132 L 68 126 H 132"
-            />
+            <path className="full-page-loading-z-track" d="M 68 74 H 132 L 68 126 H 132" />
 
             {/* Z Monogram — Precision drawing stroke */}
             <path

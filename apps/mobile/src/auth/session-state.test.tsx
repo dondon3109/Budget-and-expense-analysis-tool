@@ -27,8 +27,12 @@ const mockAuth = {
   onAuthStateChange: jest.fn((_callback) => ({
     data: { subscription: { unsubscribe: jest.fn() } },
   })),
-  getSession: jest.fn(() => Promise.resolve({ data: { session: mockCurrentSession }, error: null })),
-  refreshSession: jest.fn(() => Promise.resolve({ data: { session: mockCurrentSession }, error: null })),
+  getSession: jest.fn(() =>
+    Promise.resolve({ data: { session: mockCurrentSession }, error: null }),
+  ),
+  refreshSession: jest.fn(() =>
+    Promise.resolve({ data: { session: mockCurrentSession }, error: null }),
+  ),
   startAutoRefresh: jest.fn(),
   stopAutoRefresh: jest.fn(),
   signOut: jest.fn(() => {
@@ -80,12 +84,16 @@ describe("SessionProvider and dummy session handling", () => {
     mockAuth.onAuthStateChange.mockReset().mockImplementation((_callback) => ({
       data: { subscription: { unsubscribe: jest.fn() } },
     }));
-    mockAuth.getSession.mockReset().mockImplementation(() =>
-      Promise.resolve({ data: { session: mockCurrentSession }, error: null }),
-    );
-    mockAuth.refreshSession.mockReset().mockImplementation(() =>
-      Promise.resolve({ data: { session: mockCurrentSession }, error: null }),
-    );
+    mockAuth.getSession
+      .mockReset()
+      .mockImplementation(() =>
+        Promise.resolve({ data: { session: mockCurrentSession }, error: null }),
+      );
+    mockAuth.refreshSession
+      .mockReset()
+      .mockImplementation(() =>
+        Promise.resolve({ data: { session: mockCurrentSession }, error: null }),
+      );
     mockAuth.signOut.mockReset().mockImplementation(() => {
       mockCurrentSession = null;
       return Promise.resolve({ error: null });

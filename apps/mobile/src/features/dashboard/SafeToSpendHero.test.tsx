@@ -52,7 +52,9 @@ describe("SafeToSpendHero (mobile)", () => {
 
     expect(screen.getByText("Safe to spend this week")).toBeTruthy();
     expect(
-      screen.getByText("Keep spending minimal until your next planned deposit or balance adjustment."),
+      screen.getByText(
+        "Keep spending minimal until your next planned deposit or balance adjustment.",
+      ),
     ).toBeTruthy();
   });
 });

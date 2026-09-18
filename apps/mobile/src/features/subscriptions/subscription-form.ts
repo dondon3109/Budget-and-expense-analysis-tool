@@ -1,7 +1,4 @@
-import {
-  subscriptionInputSchema,
-  type SubscriptionBillingCycle,
-} from "@zoption/shared";
+import { subscriptionInputSchema, type SubscriptionBillingCycle } from "@zoption/shared";
 
 export interface SubscriptionFormValues {
   name: string;
@@ -45,9 +42,7 @@ function isValidIsoDate(value: string): boolean {
   const day = Number(dayText);
   const date = new Date(Date.UTC(year, month - 1, day));
   return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
   );
 }
 
@@ -59,9 +54,7 @@ function parseMinor(value: string): number | null {
   return Math.round(whole * 100) + fraction;
 }
 
-export function parseSubscriptionForm(
-  values: SubscriptionFormValues,
-):
+export function parseSubscriptionForm(values: SubscriptionFormValues):
   | {
       success: true;
       input: {

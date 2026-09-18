@@ -58,7 +58,8 @@ export function RemittanceCalculatorSection() {
       fromCurrency,
       provider: selectedProvider,
       transferFeeMinor,
-      customExchangeRate: parsedCustomRate && !isNaN(parsedCustomRate) ? parsedCustomRate : undefined,
+      customExchangeRate:
+        parsedCustomRate && !isNaN(parsedCustomRate) ? parsedCustomRate : undefined,
     });
   }, [sendAmountMinor, fromCurrency, selectedProvider, transferFeeMinor, parsedCustomRate]);
 
@@ -68,7 +69,12 @@ export function RemittanceCalculatorSection() {
 
   const bestProvider = useMemo(() => {
     // Exclude mid_market theoretical baseline from best commercial provider
-    const commercialProviders: RemittanceProvider[] = ["wise", "remitly", "western_union", "bank_wire"];
+    const commercialProviders: RemittanceProvider[] = [
+      "wise",
+      "remitly",
+      "western_union",
+      "bank_wire",
+    ];
     let best: RemittanceProvider = "wise";
     let maxReceived = providerComparison[best]?.netPhpReceivedMinor ?? 0;
 
@@ -113,7 +119,7 @@ export function RemittanceCalculatorSection() {
         {/* Left Column: Input Form */}
         <div className="remittance-card remittance-inputs-card">
           <h3 className="remittance-card-title">Transfer Parameters</h3>
-          
+
           <div className="remittance-field">
             <label htmlFor="remittance-from-currency">Send Currency</label>
             <div className="remittance-select-wrapper">
@@ -124,7 +130,9 @@ export function RemittanceCalculatorSection() {
                   setFromCurrency(e.target.value as OfwCurrency);
                   if (useCustomRate) {
                     setCustomRate(
-                      DEFAULT_OFW_EXCHANGE_RATES[e.target.value as OfwCurrency]?.midMarketRate.toString() || ""
+                      DEFAULT_OFW_EXCHANGE_RATES[
+                        e.target.value as OfwCurrency
+                      ]?.midMarketRate.toString() || "",
                     );
                   }
                 }}
@@ -255,7 +263,9 @@ export function RemittanceCalculatorSection() {
                 <TrendingDown size={15} aria-hidden="true" />
                 <span>Hidden FX Spread Loss</span>
               </div>
-              <strong className={`breakdown-value ${singleResult.spreadLossPhpMinor > 0 ? "loss" : ""}`}>
+              <strong
+                className={`breakdown-value ${singleResult.spreadLossPhpMinor > 0 ? "loss" : ""}`}
+              >
                 {singleResult.spreadLossPhpMinor > 0 ? "−" : ""}
                 {formatMoney(singleResult.spreadLossPhpMinor)}
               </strong>
@@ -266,7 +276,9 @@ export function RemittanceCalculatorSection() {
                 <Building2 size={15} aria-hidden="true" />
                 <span>Upfront Transfer Fee</span>
               </div>
-              <strong className={`breakdown-value ${singleResult.transferFeeInPhpMinor > 0 ? "loss" : ""}`}>
+              <strong
+                className={`breakdown-value ${singleResult.transferFeeInPhpMinor > 0 ? "loss" : ""}`}
+              >
                 {singleResult.transferFeeInPhpMinor > 0 ? "−" : ""}
                 {formatMoney(singleResult.transferFeeInPhpMinor)}
               </strong>
@@ -303,7 +315,8 @@ export function RemittanceCalculatorSection() {
             <h3 className="remittance-card-title">Provider Spread & Value Comparison</h3>
             <p className="comparison-subtitle">
               Based on sending {currentCurrencyInfo.symbol}
-              {sendAmount.toLocaleString("en-US")} {fromCurrency} converted directly to Philippine Pesos.
+              {sendAmount.toLocaleString("en-US")} {fromCurrency} converted directly to Philippine
+              Pesos.
             </p>
           </div>
           <div className="best-provider-badge">
@@ -327,8 +340,12 @@ export function RemittanceCalculatorSection() {
                 <th scope="col">Provider</th>
                 <th scope="col">Effective Rate</th>
                 <th scope="col">Estimated Spread Loss</th>
-                <th scope="col" className="text-right">Net Received (PHP)</th>
-                <th scope="col" className="text-right">Total Drag</th>
+                <th scope="col" className="text-right">
+                  Net Received (PHP)
+                </th>
+                <th scope="col" className="text-right">
+                  Total Drag
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -364,7 +381,9 @@ export function RemittanceCalculatorSection() {
                       </strong>
                     </td>
                     <td className="drag-cell text-right">
-                      <span className={`drag-percent ${res.effectiveLossPercent > 2 ? "high-drag" : ""}`}>
+                      <span
+                        className={`drag-percent ${res.effectiveLossPercent > 2 ? "high-drag" : ""}`}
+                      >
                         {res.effectiveLossPercent.toFixed(2)}%
                       </span>
                     </td>

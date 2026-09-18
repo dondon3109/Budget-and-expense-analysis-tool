@@ -94,11 +94,21 @@ describe("assistant api transport", () => {
       createdAt: "2026-05-01T08:00:05.000Z",
     };
     const fetchMock = jest.fn(async () =>
-      jsonResponse({ thread, userMessage: { ...message, role: "user", content: "Where does my money go?" }, assistantMessage: message }, 201),
+      jsonResponse(
+        {
+          thread,
+          userMessage: { ...message, role: "user", content: "Where does my money go?" },
+          assistantMessage: message,
+        },
+        201,
+      ),
     );
     const result = await createAssistantThreadTurn(
       { accessToken: token, fetchImpl: fetchMock },
-      { message: "Where does my money go?", clientRequestId: "33333333-3333-4333-8333-333333333333" },
+      {
+        message: "Where does my money go?",
+        clientRequestId: "33333333-3333-4333-8333-333333333333",
+      },
     );
     expect(result.thread.id).toBe(thread.id);
     expect(result.assistantMessage.status).toBe("completed");
@@ -109,16 +119,31 @@ describe("assistant api transport", () => {
 
   it("sends a follow-up turn to the thread messages path", async () => {
     const threadId = "11111111-1111-4111-8111-111111111111";
-    const thread = { id: threadId, title: "Budget check", lastMessageAt: "2026-05-01T08:00:00.000Z", createdAt: "2026-05-01T08:00:00.000Z" };
-    const message = { id: "44444444-4444-4444-8444-444444444444", threadId, role: "assistant", content: "ok", status: "completed", createdAt: "2026-05-01T08:00:05.000Z" };
-    const fetchMock = jest.fn(async () =>
-      jsonResponse({ thread, userMessage: { ...message, role: "user", content: "and food?" }, assistantMessage: message }),
-    );
-    await sendAssistantTurn(
-      { accessToken: token, fetchImpl: fetchMock },
+    const thread = {
+      id: threadId,
+      title: "Budget check",
+      lastMessageAt: "2026-05-01T08:00:00.000Z",
+      createdAt: "2026-05-01T08:00:00.000Z",
+    };
+    const message = {
+      id: "44444444-4444-4444-8444-444444444444",
       threadId,
-      { message: "and food?", clientRequestId: "55555555-5555-4555-8555-555555555555" },
+      role: "assistant",
+      content: "ok",
+      status: "completed",
+      createdAt: "2026-05-01T08:00:05.000Z",
+    };
+    const fetchMock = jest.fn(async () =>
+      jsonResponse({
+        thread,
+        userMessage: { ...message, role: "user", content: "and food?" },
+        assistantMessage: message,
+      }),
     );
+    await sendAssistantTurn({ accessToken: token, fetchImpl: fetchMock }, threadId, {
+      message: "and food?",
+      clientRequestId: "55555555-5555-4555-8555-555555555555",
+    });
     const [url] = fetchMock.mock.calls[0] as unknown as [string];
     expect(url).toBe(apiBase + "/api/app/assistant/threads/" + threadId + "/messages");
   });
@@ -206,7 +231,11 @@ describe("assistant api transport", () => {
     expect(memory[0]?.value).toBe("avalanche");
 
     fetchMock.mockResolvedValueOnce(
-      jsonResponse({ debtStrategy: "avalanche", responseDetail: "concise", coachingStyle: "gentle" }),
+      jsonResponse({
+        debtStrategy: "avalanche",
+        responseDetail: "concise",
+        coachingStyle: "gentle",
+      }),
     );
     const preferences = await updateAssistantMemoryPreferences(
       { accessToken: token, fetchImpl: fetchMock },

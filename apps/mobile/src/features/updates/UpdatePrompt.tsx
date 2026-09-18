@@ -42,9 +42,7 @@ export function AndroidUpdateOverlayView({ updates }: { updates: AndroidUpdateCo
 
   const title = overlayTitle(updates);
   const isUpdatePrompt =
-    promptVisible &&
-    updates.prompt === "available" &&
-    Boolean(updates.installed && updates.latest);
+    promptVisible && updates.prompt === "available" && Boolean(updates.installed && updates.latest);
   const notes = updates.latest ? normalizeReleaseNotes(updates.latest.notes) : [];
 
   return (
@@ -68,10 +66,7 @@ export function AndroidUpdateOverlayView({ updates }: { updates: AndroidUpdateCo
           {/* Header */}
           <View style={styles.header}>
             <View
-              style={[
-                styles.iconBadge,
-                { backgroundColor: overlayIconBadgeBg(updates, theme) },
-              ]}
+              style={[styles.iconBadge, { backgroundColor: overlayIconBadgeBg(updates, theme) }]}
             >
               <MaterialCommunityIcons
                 name={overlayIcon(updates)}
@@ -204,10 +199,7 @@ function ProgressBar({ bytesWritten, totalBytes }: { bytesWritten: number; total
       style={[styles.progressTrack, { backgroundColor: theme.colors.canvasMuted }]}
     >
       <View
-        style={[
-          styles.progressFill,
-          { width: `${percent}%`, backgroundColor: theme.colors.brand },
-        ]}
+        style={[styles.progressFill, { width: `${percent}%`, backgroundColor: theme.colors.brand }]}
       />
     </View>
   );
@@ -428,4 +420,3 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 });
-

@@ -20,7 +20,13 @@ import {
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
-import { debtTypeLabels, formatMinorForInput, parseDebtForm, todayIso, type DebtFormErrors } from "./debt-form";
+import {
+  debtTypeLabels,
+  formatMinorForInput,
+  parseDebtForm,
+  todayIso,
+  type DebtFormErrors,
+} from "./debt-form";
 
 const typeOptions = (Object.keys(debtTypeLabels) as DebtType[]).map((type) => ({
   id: type,
@@ -96,7 +102,10 @@ export function DebtEditorScreen() {
       } else {
         await local.workspace.transactionMutations.createDebt({ ...parsed.input, status });
       }
-      void telemetry.capture(editing ? "debt_updated" : "debt_created", { debt_type: type, status });
+      void telemetry.capture(editing ? "debt_updated" : "debt_created", {
+        debt_type: type,
+        status,
+      });
       router.back();
       sync.retry();
     } catch (error) {
@@ -140,7 +149,11 @@ export function DebtEditorScreen() {
       <Stack.Screen options={{ title: editing ? "Edit debt" : "New debt" }} />
       {debtState.error ? (
         <View style={styles.centered}>
-          <ErrorState title="Debt unavailable" message={debtState.error} onRetry={debtState.retry} />
+          <ErrorState
+            title="Debt unavailable"
+            message={debtState.error}
+            onRetry={debtState.retry}
+          />
         </View>
       ) : editing && debtState.loading ? (
         <View accessibilityLabel="Loading debt" style={styles.centered}>
@@ -148,7 +161,10 @@ export function DebtEditorScreen() {
         </View>
       ) : editing && !debtState.debt ? (
         <View style={styles.centered}>
-          <ErrorState title="Debt not found" message="This debt is no longer active on this device." />
+          <ErrorState
+            title="Debt not found"
+            message="This debt is no longer active on this device."
+          />
         </View>
       ) : (
         <KeyboardAvoidingView

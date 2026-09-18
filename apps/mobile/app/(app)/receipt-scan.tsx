@@ -23,12 +23,17 @@ import {
   type ReceiptReviewCategory,
   type ReceiptReviewItem,
 } from "@/features/receipts/receipt-review";
-import {
-  localCalendarDate,
-  parseTransactionForm,
-} from "@/features/transactions/transaction-form";
+import { localCalendarDate, parseTransactionForm } from "@/features/transactions/transaction-form";
 import { useSyncState } from "@/sync/sync-state";
-import { Button, Card, ErrorState, FormField, SelectionField, formatDateInput, formatMoneyMinor } from "@/ui/components";
+import {
+  Button,
+  Card,
+  ErrorState,
+  FormField,
+  SelectionField,
+  formatDateInput,
+  formatMoneyMinor,
+} from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -627,8 +632,11 @@ export default function ReceiptScanScreen() {
                         : "Items need review before saving"}
                   </Text>
                   <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                    Items: {reviewedTotalMinor === null ? "—" : formatReceiptAmount(reviewedTotalMinor, activeCurrency)} · Receipt:{" "}
-                    {formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}
+                    Items:{" "}
+                    {reviewedTotalMinor === null
+                      ? "—"
+                      : formatReceiptAmount(reviewedTotalMinor, activeCurrency)}{" "}
+                    · Receipt: {formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}
                   </Text>
                   {!hasExtractedLines ? (
                     <Text style={[typography.caption, { color: theme.colors.textMuted }]}>

@@ -58,9 +58,7 @@ describe("WelcomeScreen", () => {
 
     expect(screen.getByText("ILLUSTRATIVE WORKSPACE")).toBeTruthy();
     expect(screen.getByText("Total Net Balance")).toBeTruthy();
-    expect(
-      screen.getByText("Preview values are synthetic and illustrative."),
-    ).toBeTruthy();
+    expect(screen.getByText("Preview values are synthetic and illustrative.")).toBeTruthy();
   });
 
   it("navigates to sign-in on primary CTA press", async () => {

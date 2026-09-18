@@ -17,8 +17,10 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     aliases: ["gcash", "g-cash", "gcash autopay", "alipay"],
     category: "philippines",
     directUrl: "https://www.gcash.com",
-    summary: "Manage and cancel active subscriptions, recurring merchant authorizations, and AutoPay debits inside the GCash app.",
-    cutoffWarning: "Cancel at least 24 hours before your billing date to prevent pre-authorized wallet deductions.",
+    summary:
+      "Manage and cancel active subscriptions, recurring merchant authorizations, and AutoPay debits inside the GCash app.",
+    cutoffWarning:
+      "Cancel at least 24 hours before your billing date to prevent pre-authorized wallet deductions.",
     steps: [
       "Open the GCash app and tap 'Profile' at the bottom right.",
       "Go to 'Settings' > 'Linked Accounts' or 'AutoPay / Subscriptions'.",
@@ -33,8 +35,10 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     aliases: ["maya", "paymaya", "maya wallet"],
     category: "philippines",
     directUrl: "https://www.maya.ph",
-    summary: "Revoke recurring subscriptions, virtual card debits, and authorized merchants in Maya.",
-    cutoffWarning: "Cancel recurring authorizations at least 24 hours prior to billing to prevent card pre-holds.",
+    summary:
+      "Revoke recurring subscriptions, virtual card debits, and authorized merchants in Maya.",
+    cutoffWarning:
+      "Cancel recurring authorizations at least 24 hours prior to billing to prevent card pre-holds.",
     steps: [
       "Open the Maya app and navigate to 'Cards' or 'Profile' settings.",
       "Check 'Active Subscriptions' or 'Manage Recurring Payments'.",
@@ -49,8 +53,10 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     aliases: ["globe", "globe telecom", "globe postpaid", "globeone"],
     category: "philippines",
     directUrl: "https://www.globe.com.ph",
-    summary: "Cancel recurring lifestyle addons, entertainment subscriptions (Viu, Disney+, Netflix), and data boosters.",
-    cutoffWarning: "Add-ons billed on your monthly cutoff cycle should be canceled 48 hours before billing cut-off.",
+    summary:
+      "Cancel recurring lifestyle addons, entertainment subscriptions (Viu, Disney+, Netflix), and data boosters.",
+    cutoffWarning:
+      "Add-ons billed on your monthly cutoff cycle should be canceled 48 hours before billing cut-off.",
     steps: [
       "Open the GlobeOne app and select your postpaid account.",
       "Go to 'Subscriptions' or 'Content Add-ons'.",
@@ -64,7 +70,8 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     aliases: ["smart", "smart communications", "smart postpaid", "giga life", "smart giga"],
     category: "philippines",
     directUrl: "https://smart.com.ph",
-    summary: "Cancel entertainment packages, postpaid recurring add-ons, and value-added services on Smart.",
+    summary:
+      "Cancel entertainment packages, postpaid recurring add-ons, and value-added services on Smart.",
     cutoffWarning: "Cancel at least 2 days prior to your monthly plan cutoff date.",
     steps: [
       "Open the Smart GigaLife / Smart App.",
@@ -82,7 +89,8 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     category: "app_stores",
     directUrl: "https://finance-app.itunes.apple.com/account/subscriptions",
     summary: "Cancel subscriptions billed through your Apple ID / App Store account.",
-    cutoffWarning: "Apple requires cancellation at least 24 hours before renewal date to avoid automatic billing.",
+    cutoffWarning:
+      "Apple requires cancellation at least 24 hours before renewal date to avoid automatic billing.",
     steps: [
       "Open 'Settings' on your iPhone or iPad.",
       "Tap your Name / Apple ID profile at the top.",
@@ -98,7 +106,8 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     category: "app_stores",
     directUrl: "https://play.google.com/store/account/subscriptions",
     summary: "Manage and cancel Android app subscriptions and Google One storage plans.",
-    cutoffWarning: "Cancel before your renewal cycle begins; benefits remain active until the end of the paid period.",
+    cutoffWarning:
+      "Cancel before your renewal cycle begins; benefits remain active until the end of the paid period.",
     steps: [
       "Open the Google Play Store app or visit play.google.com/store/account/subscriptions.",
       "Tap your profile icon at top right > 'Payments & subscriptions' > 'Subscriptions'.",
@@ -130,7 +139,8 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     category: "streaming",
     directUrl: "https://www.spotify.com/account/overview/",
     summary: "Cancel Spotify Premium renewal and switch to Spotify Free.",
-    cutoffWarning: "Premium stays active until your next billing date. If billed through GCash/Apple, cancel through that provider.",
+    cutoffWarning:
+      "Premium stays active until your next billing date. If billed through GCash/Apple, cancel through that provider.",
     steps: [
       "Log in to spotify.com/account on a web browser.",
       "Under 'Your plan', click 'Change plan'.",
@@ -145,7 +155,8 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     category: "streaming",
     directUrl: "https://www.youtube.com/paid_memberships",
     summary: "Cancel YouTube Premium or YouTube Music memberships.",
-    cutoffWarning: "Cancel before your renewal date. Access continues until the end of your billing cycle.",
+    cutoffWarning:
+      "Cancel before your renewal date. Access continues until the end of your billing cycle.",
     steps: [
       "Go to youtube.com/paid_memberships.",
       "Click 'Manage membership' next to YouTube Premium.",
@@ -160,7 +171,8 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     category: "streaming",
     directUrl: "https://www.disneyplus.com/account",
     summary: "Cancel your Disney+ subscription.",
-    cutoffWarning: "If subscribed through Globe or Apple/Google, cancel via that provider's portal.",
+    cutoffWarning:
+      "If subscribed through Globe or Apple/Google, cancel via that provider's portal.",
     steps: [
       "Log in to DisneyPlus.com in a web browser.",
       "Select your Profile > 'Account'.",
@@ -177,7 +189,8 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     category: "software",
     directUrl: "https://account.adobe.com/plans",
     summary: "Cancel Adobe Creative Cloud or individual Adobe plans.",
-    cutoffWarning: "Warning: Annual plans paid monthly may incur early termination fees if canceled after the initial 14-day refund window.",
+    cutoffWarning:
+      "Warning: Annual plans paid monthly may incur early termination fees if canceled after the initial 14-day refund window.",
     steps: [
       "Sign in to account.adobe.com/plans.",
       "Select 'Manage plan' for the plan you want to cancel.",
@@ -192,7 +205,8 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     category: "software",
     directUrl: "https://www.canva.com/settings/billing-and-plans",
     summary: "Cancel Canva Pro or Canva Teams subscription renewal.",
-    cutoffWarning: "Cancel before renewal. Your designs and brand assets remain intact in the Free plan.",
+    cutoffWarning:
+      "Cancel before renewal. Your designs and brand assets remain intact in the Free plan.",
     steps: [
       "Log in to Canva.com and click the gear icon (Settings) in top right.",
       "Click 'Billing & plans' on the left sidebar.",
@@ -223,7 +237,8 @@ export const CANCELLATION_GUIDES: CancellationGuide[] = [
     category: "streaming",
     directUrl: "https://www.amazon.com/mc/manage",
     summary: "End Amazon Prime or Prime Video membership.",
-    cutoffWarning: "If you haven't used Prime benefits during the billing cycle, you may be eligible for a full/partial refund.",
+    cutoffWarning:
+      "If you haven't used Prime benefits during the billing cycle, you may be eligible for a full/partial refund.",
     steps: [
       "Go to 'Your Account' on Amazon.com > 'Prime Membership'.",
       "Click 'Update, cancel and more' under Manage Membership.",

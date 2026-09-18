@@ -62,8 +62,7 @@ export function allocateBudget(
   let leftover = incomeMinor - entries.reduce((sum, entry) => sum + entry.value, 0);
   const byLargestRemainder = [...entries].sort(
     (a, b) =>
-      b.remainder - a.remainder ||
-      BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket),
+      b.remainder - a.remainder || BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket),
   );
 
   for (const entry of byLargestRemainder) {

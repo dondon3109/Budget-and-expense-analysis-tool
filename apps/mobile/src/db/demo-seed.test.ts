@@ -1,10 +1,6 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
-import {
-  DUMMY_DEV_SUBJECT,
-  isDummyDevelopmentSubject,
-  seedDummyWorkspaceData,
-} from "./demo-seed";
+import { DUMMY_DEV_SUBJECT, isDummyDevelopmentSubject, seedDummyWorkspaceData } from "./demo-seed";
 
 let mockDevelopmentVariant = true;
 

@@ -30,17 +30,19 @@ export function GuidesIndexPage() {
     >
       <div className="guides-index-page">
         <nav className="guides-category-nav" aria-label="Filter guides by category">
-          {(Object.keys(CATEGORY_LABELS) as (FinanceGuide["category"] | "all")[]).map((category) => (
-            <button
-              key={category}
-              type="button"
-              className={`guides-category-pill ${selectedCategory === category ? "active" : ""}`}
-              onClick={() => setSelectedCategory(category)}
-              aria-pressed={selectedCategory === category}
-            >
-              {CATEGORY_LABELS[category]}
-            </button>
-          ))}
+          {(Object.keys(CATEGORY_LABELS) as (FinanceGuide["category"] | "all")[]).map(
+            (category) => (
+              <button
+                key={category}
+                type="button"
+                className={`guides-category-pill ${selectedCategory === category ? "active" : ""}`}
+                onClick={() => setSelectedCategory(category)}
+                aria-pressed={selectedCategory === category}
+              >
+                {CATEGORY_LABELS[category]}
+              </button>
+            ),
+          )}
         </nav>
 
         <section className="guides-grid" aria-label="Available financial guides">

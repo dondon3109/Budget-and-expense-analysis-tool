@@ -59,7 +59,9 @@ describe("CancellationGuideSheet", () => {
     expect(screen.getByLabelText(/Difficulty:/)).toBeTruthy();
     expect(screen.getByText("Billing cutoff notice")).toBeTruthy();
     expect(
-      screen.getByText("You can watch until your billing period ends. No partial refund is issued."),
+      screen.getByText(
+        "You can watch until your billing period ends. No partial refund is issued.",
+      ),
     ).toBeTruthy();
     expect(screen.getByLabelText("Cancellation steps")).toBeTruthy();
     expect(screen.getByText("Sign in to your account on Netflix.com.")).toBeTruthy();
@@ -70,7 +72,9 @@ describe("CancellationGuideSheet", () => {
       <CancellationGuideSheet subscriptionName="Netflix" visible onDismiss={jest.fn()} />,
     );
 
-    await fireEvent.press(screen.getByRole("button", { name: "Open official cancellation portal" }));
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Open official cancellation portal" }),
+    );
 
     expect(Linking.openURL).toHaveBeenCalledTimes(1);
     expect(Linking.openURL).toHaveBeenCalledWith("https://www.netflix.com/youraccount");
@@ -91,7 +95,9 @@ describe("CancellationGuideSheet", () => {
     expect(screen.queryByRole("button", { name: "Open official cancellation portal" })).toBeNull();
 
     await fireEvent.press(
-      screen.getByRole("button", { name: "Open Apple App Store (iOS & iCloud) subscriptions portal" }),
+      screen.getByRole("button", {
+        name: "Open Apple App Store (iOS & iCloud) subscriptions portal",
+      }),
     );
     expect(Linking.openURL).toHaveBeenCalledWith(
       "https://finance-app.itunes.apple.com/account/subscriptions",

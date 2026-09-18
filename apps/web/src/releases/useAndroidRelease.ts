@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { ANDROID_RELEASE, type AndroidRelease } from "./androidRelease";
-import {
-  ANDROID_LATEST_URL,
-  parseRemoteAndroidRelease,
-} from "./androidReleaseMetadata";
+import { ANDROID_LATEST_URL, parseRemoteAndroidRelease } from "./androidReleaseMetadata";
 
 export type AndroidReleaseStatus = "loading" | "remote" | "unavailable";
 

@@ -24,7 +24,13 @@ describe("import presets shared module", () => {
   });
 
   it("detects BPI by signature alone", () => {
-    const signature = ["Branch", "Transaction Description", "Debit Amount", "Credit Amount", "Running Balance"];
+    const signature = [
+      "Branch",
+      "Transaction Description",
+      "Debit Amount",
+      "Credit Amount",
+      "Running Balance",
+    ];
     expect(detectImportPreset("history.csv", signature).id).toBe("bpi");
   });
 
@@ -33,7 +39,12 @@ describe("import presets shared module", () => {
   });
 
   it("detects MariBank by filename", () => {
-    const headers = ["Transaction Time", "Transaction Details", "Transaction Amount", "Transaction Type"];
+    const headers = [
+      "Transaction Time",
+      "Transaction Details",
+      "Transaction Amount",
+      "Transaction Type",
+    ];
     expect(detectImportPreset("mari bank export.csv", headers).id).toBe("maribank");
   });
 

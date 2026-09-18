@@ -308,9 +308,7 @@ export async function transcribeVoice(
           Accept: "application/json",
           Authorization: `Bearer ${accessToken}`,
           // No-store privacy path: never cache or persist this audio payload.
-          ...(options.noStore
-            ? { "Cache-Control": "no-store", "X-Zoption-No-Store": "1" }
-            : {}),
+          ...(options.noStore ? { "Cache-Control": "no-store", "X-Zoption-No-Store": "1" } : {}),
         },
         body: form,
         signal: api.signal,

@@ -34,9 +34,11 @@ export function PlanUsageIndicator({
     !exhausted &&
     remaining !== null &&
     remaining <= Math.max(1, Math.ceil(limit * 0.2));
-  const state = limit === null ? "unlimited" : exhausted ? "exhausted" : nearLimit ? "warning" : "normal";
+  const state =
+    limit === null ? "unlimited" : exhausted ? "exhausted" : nearLimit ? "warning" : "normal";
   const reset = resetsAt ? formatManilaDate(resetsAt) : undefined;
-  const percent = limit === null ? null : Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
+  const percent =
+    limit === null ? null : Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
 
   if (meter) {
     return (

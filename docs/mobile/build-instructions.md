@@ -58,13 +58,13 @@ Once the development build is installed on your device/emulator, you do **not** 
 
 ### Separation of Change Types
 
-| Change Type | Action Required | Command |
-| ----------- | --------------- | ------- |
-| **JS / TS / UI / Styles / Stores** (`app/**`, `src/**`) | **Fast Refresh only** (Instant save) | `npx expo start` (Metro running) |
-| **Native Packages / Dependencies** (`package.json`) | Rebuild Development App | `pnpm mobile:android` / `npx expo run:android` |
-| **Config Plugins / Manifest** (`app.config.ts`, `plugins/**`) | Rebuild Development App | `pnpm mobile:android:rebuild` / `npx expo run:android --no-build-cache` |
-| **Custom Native Code** (`modules/**`, `android/**`) | Rebuild Development App | `pnpm mobile:android` / `npx expo run:android` |
-| **Production Release** | Trigger GitHub Actions CI | `Android Beta Build` workflow (Signs with production key) |
+| Change Type                                                   | Action Required                      | Command                                                                 |
+| ------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------- |
+| **JS / TS / UI / Styles / Stores** (`app/**`, `src/**`)       | **Fast Refresh only** (Instant save) | `npx expo start` (Metro running)                                        |
+| **Native Packages / Dependencies** (`package.json`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                          |
+| **Config Plugins / Manifest** (`app.config.ts`, `plugins/**`) | Rebuild Development App              | `pnpm mobile:android:rebuild` / `npx expo run:android --no-build-cache` |
+| **Custom Native Code** (`modules/**`, `android/**`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                          |
+| **Production Release**                                        | Trigger GitHub Actions CI            | `Android Beta Build` workflow (Signs with production key)               |
 
 ## Android emulator (available on this host)
 

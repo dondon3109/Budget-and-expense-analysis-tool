@@ -17,10 +17,7 @@ import {
   transcribeVoice,
   type AssistantSpeechVoice,
 } from "@/api/assistant-voice";
-import {
-  startMobileVoiceStream,
-  type MobileVoiceStreamSession,
-} from "@/api/voice-stream";
+import { startMobileVoiceStream, type MobileVoiceStreamSession } from "@/api/voice-stream";
 import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 
@@ -195,9 +192,9 @@ export function useVoiceRecorder<Result>({
       liveStreamRef.current = null;
     }
     const resolvedTranscript =
-      (streamTranscript && streamTranscript.trim().length > 0
+      streamTranscript && streamTranscript.trim().length > 0
         ? streamTranscript.trim()
-        : latestLiveTranscriptRef.current.trim());
+        : latestLiveTranscriptRef.current.trim();
 
     let recordingUri = recorder.uri;
     let uploadStarted = false;
@@ -297,7 +294,11 @@ export function useVoiceRecorder<Result>({
             })
           : null;
 
-      await armAssistantRecorder(recorder, setAudioModeAsync, () => currentPhase() !== "requesting");
+      await armAssistantRecorder(
+        recorder,
+        setAudioModeAsync,
+        () => currentPhase() !== "requesting",
+      );
       if (currentPhase() !== "requesting") {
         // Cancelled (or unmounted) while warming up — never report capturing,
         // or a stranded take confuses the UI after the user gave up or left.
@@ -318,34 +319,38 @@ export function useVoiceRecorder<Result>({
             return;
           }
           if (phaseRef.current !== "recording") return;
-          void startMobileVoiceStream(token, {
-            onPartial: (partial) => {
-              latestLiveTranscriptRef.current = partial;
-              if (phaseRef.current === "recording") {
-                onPartialTranscript?.(partial);
-              }
+          void startMobileVoiceStream(
+            token,
+            {
+              onPartial: (partial) => {
+                latestLiveTranscriptRef.current = partial;
+                if (phaseRef.current === "recording") {
+                  onPartialTranscript?.(partial);
+                }
+              },
+              onFinal: (final) => {
+                latestLiveTranscriptRef.current = final;
+                if (phaseRef.current === "recording") {
+                  onPartialTranscript?.(final);
+                }
+              },
+              onAutoStop: () => {
+                // Silence auto-stop: end the take and transcribe without a tap.
+                if (phaseRef.current === "recording") {
+                  void stopAndTranscribeRef.current();
+                }
+              },
+              onLatency: (metrics) => {
+                if (typeof console !== "undefined" && console.debug) {
+                  console.debug("[voice] mobile live latency", metrics);
+                }
+              },
+              onError: (err) => {
+                console.warn("[voice] live voice stream onError", err);
+              },
             },
-            onFinal: (final) => {
-              latestLiveTranscriptRef.current = final;
-              if (phaseRef.current === "recording") {
-                onPartialTranscript?.(final);
-              }
-            },
-            onAutoStop: () => {
-              // Silence auto-stop: end the take and transcribe without a tap.
-              if (phaseRef.current === "recording") {
-                void stopAndTranscribeRef.current();
-              }
-            },
-            onLatency: (metrics) => {
-              if (typeof console !== "undefined" && console.debug) {
-                console.debug("[voice] mobile live latency", metrics);
-              }
-            },
-            onError: (err) => {
-              console.warn("[voice] live voice stream onError", err);
-            },
-          }, { language: languageRef.current })
+            { language: languageRef.current },
+          )
             .then((session) => {
               console.warn("[voice] live session started, live=", session.live);
               if (phaseRef.current !== "recording") {

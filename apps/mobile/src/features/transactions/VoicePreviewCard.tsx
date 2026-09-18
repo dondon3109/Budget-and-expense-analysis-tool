@@ -35,11 +35,7 @@ export function VoicePreviewCard({
   const theme = useZoptionTheme();
 
   const details = [draft.categoryName, draft.accountName].filter(Boolean).join(" · ");
-  const countdownText = error
-    ? error
-    : saving
-      ? "Saving..."
-      : `Saving in ${remainingSeconds}s...`;
+  const countdownText = error ? error : saving ? "Saving..." : `Saving in ${remainingSeconds}s...`;
 
   const tone = draft.kind === "income" ? "income" : "expense";
 

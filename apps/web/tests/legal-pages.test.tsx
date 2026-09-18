@@ -125,6 +125,9 @@ describe("legal pages", () => {
     const breadcrumbNav = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(breadcrumbNav).toBeInTheDocument();
     expect(within(breadcrumbNav).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
-    expect(within(breadcrumbNav).getByText("Privacy Policy")).toHaveAttribute("aria-current", "page");
+    expect(within(breadcrumbNav).getByText("Privacy Policy")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

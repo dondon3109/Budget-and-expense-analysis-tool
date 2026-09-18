@@ -39,7 +39,11 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
             reloading is safe.
           </p>
           <div className="app-crash-actions">
-            <button className="button primary" type="button" onClick={() => window.location.reload()}>
+            <button
+              className="button primary"
+              type="button"
+              onClick={() => window.location.reload()}
+            >
               Reload Zoption
             </button>
             <a className="button secondary" href="/app">

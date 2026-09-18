@@ -3,9 +3,7 @@ import Constants from "expo-constants";
 export type AppVariant = "development" | "preview" | "production";
 
 /** Demo-only capabilities fail closed unless the embedded variant is explicitly development. */
-export function isDevelopmentAppVariant(
-  extra: unknown = Constants.expoConfig?.extra,
-): boolean {
+export function isDevelopmentAppVariant(extra: unknown = Constants.expoConfig?.extra): boolean {
   return (
     typeof extra === "object" &&
     extra !== null &&

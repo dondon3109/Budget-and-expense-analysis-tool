@@ -140,7 +140,13 @@ const server = createServer((request, response) => {
   }
 
   if (path === "/auth/v1/health") {
-    send(response, 200, { version: "zoption-auth-stub", name: "fake-supabase-auth" }, origin, requestedHeaders);
+    send(
+      response,
+      200,
+      { version: "zoption-auth-stub", name: "fake-supabase-auth" },
+      origin,
+      requestedHeaders,
+    );
     return;
   }
 
@@ -178,8 +184,7 @@ const server = createServer((request, response) => {
         return;
       }
 
-      const email =
-        typeof parsed.email === "string" && parsed.email ? parsed.email : defaultEmail;
+      const email = typeof parsed.email === "string" && parsed.email ? parsed.email : defaultEmail;
       send(response, 200, sessionFor(email), origin, requestedHeaders);
     });
     return;
@@ -213,7 +218,13 @@ const server = createServer((request, response) => {
     return;
   }
 
-  send(response, 404, { message: `no stub route for ${request.method} ${path}` }, origin, requestedHeaders);
+  send(
+    response,
+    404,
+    { message: `no stub route for ${request.method} ${path}` },
+    origin,
+    requestedHeaders,
+  );
 });
 
 server.listen(port, "127.0.0.1", () => {

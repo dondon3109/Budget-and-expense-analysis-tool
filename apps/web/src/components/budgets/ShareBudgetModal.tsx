@@ -196,7 +196,8 @@ function ShareBudgetDialog({ onClose, month, categories }: ShareBudgetDialogProp
                   <span>
                     <strong>{category.name}</strong>
                     <small>
-                      {formatMoney(category.spentMinor)} spent of {formatMoney(category.allocatedLimitMinor)}
+                      {formatMoney(category.spentMinor)} spent of{" "}
+                      {formatMoney(category.allocatedLimitMinor)}
                     </small>
                   </span>
                 </label>
@@ -204,7 +205,8 @@ function ShareBudgetDialog({ onClose, month, categories }: ShareBudgetDialogProp
             })}
           </div>
           <p>
-            {selectedCategories.length} selected · {formatMoney(totalSelectedMinor)} total envelope budget
+            {selectedCategories.length} selected · {formatMoney(totalSelectedMinor)} total envelope
+            budget
           </p>
         </fieldset>
 
@@ -261,9 +263,18 @@ function ShareBudgetDialog({ onClose, month, categories }: ShareBudgetDialogProp
           <section className="share-budget-generated" aria-label="Generated share link">
             <label className="share-budget-field">
               <span>Read-only link</span>
-              <input ref={linkInputRef} readOnly value={generatedLink} onFocus={(event) => event.target.select()} />
+              <input
+                ref={linkInputRef}
+                readOnly
+                value={generatedLink}
+                onFocus={(event) => event.target.select()}
+              />
             </label>
-            <button className="share-budget-copy-button" type="button" onClick={() => void copyLink()}>
+            <button
+              className="share-budget-copy-button"
+              type="button"
+              onClick={() => void copyLink()}
+            >
               <Copy size={16} aria-hidden="true" />
               {copied ? "Copied" : "Copy Link"}
             </button>

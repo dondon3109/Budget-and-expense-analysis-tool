@@ -268,7 +268,9 @@ describe("landing page", () => {
     const aiTab = within(spotlight).getByRole("tab", { name: /ai assistant/i });
     await user.click(aiTab);
     expect(aiTab).toHaveAttribute("aria-selected", "true");
-    expect(within(spotlight).getByText(/ask your numbers, not a generic chatbot/i)).toBeInTheDocument();
+    expect(
+      within(spotlight).getByText(/ask your numbers, not a generic chatbot/i),
+    ).toBeInTheDocument();
     expect(within(spotlight).getByText(/grounded ai assistant/i)).toBeInTheDocument();
   });
 
@@ -333,5 +335,3 @@ describe("landing page", () => {
     }
   });
 });
-
-

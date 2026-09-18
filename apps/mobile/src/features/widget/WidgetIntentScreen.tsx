@@ -5,16 +5,17 @@ import { Text, View } from "react-native";
 
 import { matchCategory, transactionInputSchema } from "@zoption/shared";
 
-import { useDashboardData, useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
+import {
+  useDashboardData,
+  useLocalWorkspace,
+  useTransactionFormData,
+} from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
 import { Button, Card, ErrorState, FormField, MoneyValue, SelectionField } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
-import {
-  formatMinorForInput,
-  localCalendarDate,
-} from "@/features/transactions/transaction-form";
+import { formatMinorForInput, localCalendarDate } from "@/features/transactions/transaction-form";
 import {
   buildBalanceAdjustmentInput,
   computeBalanceAdjustment,
@@ -53,7 +54,11 @@ type ResolvedIntent =
   | { status: "ready"; intent: WidgetIntent; interpreted: boolean; transcript: string | null };
 
 function useResolvedIntent(): ResolvedIntent {
-  const params = useLocalSearchParams<{ payload?: string | string[]; transcript?: string | string[]; error?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    payload?: string | string[];
+    transcript?: string | string[];
+    error?: string | string[];
+  }>();
   return useMemo(() => {
     const transcript = single(params.transcript)?.trim() || null;
     const error = single(params.error);
@@ -63,11 +68,13 @@ function useResolvedIntent(): ResolvedIntent {
     const payload = single(params.payload);
     if (payload) {
       const parsed = parseWidgetIntentPayload(payload);
-      if (parsed.ok) return { status: "ready" as const, intent: parsed.intent, interpreted: false, transcript };
+      if (parsed.ok)
+        return { status: "ready" as const, intent: parsed.intent, interpreted: false, transcript };
     }
     if (transcript) {
       const fallback = parseWidgetTranscriptToIntent(transcript);
-      if (fallback) return { status: "ready" as const, intent: fallback, interpreted: true, transcript };
+      if (fallback)
+        return { status: "ready" as const, intent: fallback, interpreted: true, transcript };
     }
     return {
       status: "failed" as const,
@@ -89,21 +96,31 @@ function ExpenseConfirm({
   const sync = useSyncState();
   const formData = useTransactionFormData();
 
-  const accounts = useMemo(() => formData.data?.accounts.filter((item) => !item.pending) ?? [], [formData.data]);
+  const accounts = useMemo(
+    () => formData.data?.accounts.filter((item) => !item.pending) ?? [],
+    [formData.data],
+  );
   const categories = useMemo(
-    () => formData.data?.categories.filter((item) => item.kind === "expense" && !item.pending) ?? [],
+    () =>
+      formData.data?.categories.filter((item) => item.kind === "expense" && !item.pending) ?? [],
     [formData.data],
   );
 
   const [description, setDescription] = useState(() =>
-    summarizeWidgetDescription(intent.merchant, accounts.map((a) => a.name)),
+    summarizeWidgetDescription(
+      intent.merchant,
+      accounts.map((a) => a.name),
+    ),
   );
 
   useEffect(() => {
     if (accounts.length > 0) {
       setDescription((current) => {
         if (current === intent.merchant) {
-          return summarizeWidgetDescription(intent.merchant, accounts.map((a) => a.name));
+          return summarizeWidgetDescription(
+            intent.merchant,
+            accounts.map((a) => a.name),
+          );
         }
         return current;
       });
@@ -281,7 +298,11 @@ function ExpenseConfirm({
         <SelectionField
           label="Account"
           value={resolvedAccountId}
-          options={accounts.map((item) => ({ id: item.id, label: item.name, detail: item.currency }))}
+          options={accounts.map((item) => ({
+            id: item.id,
+            label: item.name,
+            detail: item.currency,
+          }))}
           placeholder="Choose an account"
           sheetTitle="Account"
           disabled={saving}
@@ -297,7 +318,10 @@ function ExpenseConfirm({
           onSelect={setCategoryId}
         />
         {message ? (
-          <Text accessibilityRole="alert" style={[typography.callout, { color: theme.colors.danger }]}>
+          <Text
+            accessibilityRole="alert"
+            style={[typography.callout, { color: theme.colors.danger }]}
+          >
             {message}
           </Text>
         ) : null}
@@ -393,21 +417,19 @@ function ReconcileConfirm({
     }
   }, [targetAmountInput]);
 
-  const accounts = useMemo(() => formData.data?.accounts.filter((item) => !item.pending) ?? [], [formData.data]);
-  const resolvedAccountId =
-    accountId ?? resolveWidgetAccount(accounts, accountName) ?? "";
+  const accounts = useMemo(
+    () => formData.data?.accounts.filter((item) => !item.pending) ?? [],
+    [formData.data],
+  );
+  const resolvedAccountId = accountId ?? resolveWidgetAccount(accounts, accountName) ?? "";
   const account = accounts.find((item) => item.id === resolvedAccountId);
   // The dashboard read is the only source of the current balance and settles
   // after the lighter accounts query, so an unread balance stays unknown and
   // the delta stays hidden. Reading it as zero would book the whole target
   // balance as an adjustment.
-  const currentBalanceMinor = resolveKnownBalanceMinor(
-    dashboard.data?.accounts,
-    resolvedAccountId,
-  );
+  const currentBalanceMinor = resolveKnownBalanceMinor(dashboard.data?.accounts, resolvedAccountId);
   const targetMinor = effectiveNewBalanceMinor ?? newBalanceMinor;
-  const balanceAlreadyMatches =
-    currentBalanceMinor !== null && currentBalanceMinor === targetMinor;
+  const balanceAlreadyMatches = currentBalanceMinor !== null && currentBalanceMinor === targetMinor;
 
   const confirm = async (): Promise<void> => {
     if (!local.workspace || saving || !resolvedAccountId || !account) return;
@@ -427,10 +449,7 @@ function ReconcileConfirm({
         setMessage("The balance already matches this amount.");
         return;
       }
-      const categoryId = resolveAdjustmentCategoryId(
-        formData.data?.categories ?? [],
-        preview.kind,
-      );
+      const categoryId = resolveAdjustmentCategoryId(formData.data?.categories ?? [], preview.kind);
       if (!categoryId) {
         setMessage("No category is available to book this adjustment.");
         return;
@@ -494,7 +513,9 @@ function ReconcileConfirm({
     <Card accessibilityLabel="Confirm balance update">
       <View className="gap-4">
         <View className="flex-row items-center justify-between">
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Confirm balance update</Text>
+          <Text style={[typography.headline, { color: theme.colors.text }]}>
+            Confirm balance update
+          </Text>
           <View
             style={{
               paddingHorizontal: spacing.sm,
@@ -511,7 +532,11 @@ function ReconcileConfirm({
         <SelectionField
           label="Account"
           value={resolvedAccountId}
-          options={accounts.map((item) => ({ id: item.id, label: item.name, detail: item.currency }))}
+          options={accounts.map((item) => ({
+            id: item.id,
+            label: item.name,
+            detail: item.currency,
+          }))}
           placeholder="Choose an account"
           sheetTitle="Account"
           disabled={saving || adjustmentId !== null}
@@ -554,22 +579,31 @@ function ReconcileConfirm({
           </Text>
         )}
         {message ? (
-          <Text accessibilityRole="alert" style={[typography.callout, { color: theme.colors.danger }]}>
+          <Text
+            accessibilityRole="alert"
+            style={[typography.callout, { color: theme.colors.danger }]}
+          >
             {message}
           </Text>
         ) : null}
         {adjustmentId ? (
           <View className="gap-3">
-            <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.brand }]}>
+            <Text
+              accessibilityRole="alert"
+              style={[typography.body, { color: theme.colors.brand }]}
+            >
               Balance updated with an Uncategorized adjustment.
             </Text>
             <View className="flex-row items-center gap-3">
               <View className="flex-1">
-                <Button onPress={() => router.replace("/(app)/(tabs)")}>
-                  View accounts
-                </Button>
+                <Button onPress={() => router.replace("/(app)/(tabs)")}>View accounts</Button>
               </View>
-              <Button variant="secondary" disabled={saving} loading={saving} onPress={() => void undo()}>
+              <Button
+                variant="secondary"
+                disabled={saving}
+                loading={saving}
+                onPress={() => void undo()}
+              >
                 Undo adjustment
               </Button>
             </View>
@@ -607,12 +641,12 @@ export function WidgetIntentScreen() {
 
   if (resolved.status === "failed") {
     return (
-      <Screen hasHeader title="Voice widget" description="Review a voice note from the home-screen mic">
-        <ErrorState
-          title="Voice note unclear"
-          message={resolved.message}
-          onRetry={undefined}
-        />
+      <Screen
+        hasHeader
+        title="Voice widget"
+        description="Review a voice note from the home-screen mic"
+      >
+        <ErrorState title="Voice note unclear" message={resolved.message} onRetry={undefined} />
         {resolved.transcript ? (
           <Card accessibilityLabel="Heard transcript">
             <View className="gap-4">
@@ -634,9 +668,7 @@ export function WidgetIntentScreen() {
                   />
                 </View>
                 <View className="min-w-0 flex-1">
-                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                    Heard
-                  </Text>
+                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Heard</Text>
                   <Text
                     style={[typography.callout, { color: theme.colors.text, fontStyle: "italic" }]}
                   >
@@ -646,10 +678,7 @@ export function WidgetIntentScreen() {
               </View>
               <View className="flex-row items-center gap-3">
                 <View className="flex-1">
-                  <Button
-                    variant="secondary"
-                    onPress={() => router.replace("/(app)/transaction")}
-                  >
+                  <Button variant="secondary" onPress={() => router.replace("/(app)/transaction")}>
                     Open transaction form
                   </Button>
                 </View>
@@ -671,7 +700,11 @@ export function WidgetIntentScreen() {
   }
 
   return (
-    <Screen hasHeader title="Voice widget" description="Review a voice note from the home-screen mic">
+    <Screen
+      hasHeader
+      title="Voice widget"
+      description="Review a voice note from the home-screen mic"
+    >
       {resolved.transcript ? (
         <Card accessibilityLabel="Spoken voice note">
           <View className="flex-row items-center gap-3">

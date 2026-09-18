@@ -114,15 +114,17 @@ describe("workspace generation recovery helpers", () => {
 });
 
 describe("snapshot generation verification", () => {
-  function mockDatabase(overrides: {
-    foreignKeys?: unknown[];
-    brokenTransfers?: unknown[];
-    subject?: string | null;
-    client?: string | null;
-    cursor?: string | null;
-    outbox?: number;
-    conflicts?: number;
-  } = {}) {
+  function mockDatabase(
+    overrides: {
+      foreignKeys?: unknown[];
+      brokenTransfers?: unknown[];
+      subject?: string | null;
+      client?: string | null;
+      cursor?: string | null;
+      outbox?: number;
+      conflicts?: number;
+    } = {},
+  ) {
     return {
       getAllAsync: jest
         .fn()

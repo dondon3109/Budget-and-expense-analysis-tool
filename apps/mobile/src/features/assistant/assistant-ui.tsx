@@ -7,10 +7,7 @@ import {
   type AssistantMemory,
   type AssistantThreadKind,
 } from "@zoption/shared";
-import {
-  assistantSpeechVoiceOptions,
-  type AssistantSpeechVoice,
-} from "@/api/assistant-voice";
+import { assistantSpeechVoiceOptions, type AssistantSpeechVoice } from "@/api/assistant-voice";
 import { Button } from "@/ui/components/Button";
 import { Card } from "@/ui/components/Card";
 import { FormField } from "@/ui/components/FormField";
@@ -50,9 +47,7 @@ export function AssistantStatusBadge({
   return (
     <View style={[styles.statusBadge, { backgroundColor }]}>
       <View style={[styles.statusDot, { backgroundColor: textColor }]} />
-      <Text style={[styles.statusBadgeText, { color: textColor }]}>
-        {label ?? defaultText}
-      </Text>
+      <Text style={[styles.statusBadgeText, { color: textColor }]}>{label ?? defaultText}</Text>
     </View>
   );
 }
@@ -106,7 +101,8 @@ export function AssistantUnavailableView({
           >
             {isOffline
               ? "The assistant requires an active internet connection to securely analyze your financial records in the cloud."
-              : errorMessage ?? "Zoption AI services could not be reached. Your records remain stored safely on this device."}
+              : (errorMessage ??
+                "Zoption AI services could not be reached. Your records remain stored safely on this device.")}
           </Text>
         </View>
 
@@ -510,7 +506,10 @@ export function VoiceModelField({
         Preview {selected?.label ?? "voice"}
       </Button>
       {previewError ? (
-        <Text accessibilityRole="alert" style={[typography.caption, { color: theme.colors.danger }]}>
+        <Text
+          accessibilityRole="alert"
+          style={[typography.caption, { color: theme.colors.danger }]}
+        >
           {previewError}
         </Text>
       ) : null}

@@ -172,11 +172,9 @@ describe("transcribeVoice error mapping", () => {
     const fetchMockLang = jest.fn(async () =>
       jsonResponse({ text: "Magkano ang nagastos?", durationSeconds: 2, languageCode: "fil" }),
     );
-    await transcribeVoice(
-      { accessToken: token, fetchImpl: fetchMockLang },
-      RECORDING,
-      { language: "fil" },
-    );
+    await transcribeVoice({ accessToken: token, fetchImpl: fetchMockLang }, RECORDING, {
+      language: "fil",
+    });
     const [, initLang] = fetchMockLang.mock.calls[0] as unknown as [string, RequestInit];
     expect((initLang.body as FormData).get("lang")).toBe("fil");
   });

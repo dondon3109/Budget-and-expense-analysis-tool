@@ -1,4 +1,9 @@
-import { acknowledgeMobileSync, pullMobileSync, pushMobileSync, snapshotMobileSync } from "./mobile-sync";
+import {
+  acknowledgeMobileSync,
+  pullMobileSync,
+  pushMobileSync,
+  snapshotMobileSync,
+} from "./mobile-sync";
 
 const accountChange = {
   entityType: "account",

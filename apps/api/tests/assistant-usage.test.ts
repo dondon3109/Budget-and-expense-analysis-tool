@@ -20,9 +20,7 @@ function environment(): { env: Bindings; database: DatabaseSync } {
   databases.push(database);
   database.exec("PRAGMA foreign_keys = ON; CREATE TABLE tenants (id text PRIMARY KEY NOT NULL);");
   database.prepare("INSERT INTO tenants (id) VALUES (?)").run(TENANT_ID);
-  database.exec(
-    "CREATE TABLE effective_pro_entitlements (tenant_id text PRIMARY KEY NOT NULL);",
-  );
+  database.exec("CREATE TABLE effective_pro_entitlements (tenant_id text PRIMARY KEY NOT NULL);");
   const migration = readFileSync(
     new URL("../../../db/migrations/0023_assistant_cycle_usage.sql", import.meta.url),
     "utf8",
@@ -92,7 +90,9 @@ describe("assistant cycle repository", () => {
   it("allows ten Free uses and rejects the eleventh atomically", async () => {
     const { env, database } = environment();
 
-    await Promise.all(Array.from({ length: 10 }, () => assistantUsageRepository.consumeUsage(env, TENANT_ID)));
+    await Promise.all(
+      Array.from({ length: 10 }, () => assistantUsageRepository.consumeUsage(env, TENANT_ID)),
+    );
     await expect(assistantUsageRepository.consumeUsage(env, TENANT_ID)).rejects.toMatchObject({
       status: 409,
       code: "assistant_cycle_limit_reached",
@@ -199,7 +199,9 @@ describe("assistant cycle repository", () => {
     });
     expect(
       database
-        .prepare("SELECT anchor_at_epoch AS anchorAtEpoch, count FROM billing_assistant_cycle_usage")
+        .prepare(
+          "SELECT anchor_at_epoch AS anchorAtEpoch, count FROM billing_assistant_cycle_usage",
+        )
         .get(),
     ).toEqual({ anchorAtEpoch: anchor.anchorAtEpoch, count: 11 });
   });

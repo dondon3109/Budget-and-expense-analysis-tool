@@ -1346,9 +1346,24 @@ describe("mobile sync account and category push repository", () => {
     ).toEqual({ required_plan: "free" });
 
     for (const [name, id, op, key] of [
-      ["Second free", "12000000-0000-4000-8000-000000000006", "12000000-0000-4000-8000-000000000004", "12000000-0000-4000-8000-000000000005"],
-      ["Third free", "12000000-0000-4000-8000-00000000000a", "12000000-0000-4000-8000-00000000000b", "12000000-0000-4000-8000-00000000000c"],
-      ["Fourth free", "12000000-0000-4000-8000-00000000000d", "12000000-0000-4000-8000-00000000000e", "12000000-0000-4000-8000-00000000000f"],
+      [
+        "Second free",
+        "12000000-0000-4000-8000-000000000006",
+        "12000000-0000-4000-8000-000000000004",
+        "12000000-0000-4000-8000-000000000005",
+      ],
+      [
+        "Third free",
+        "12000000-0000-4000-8000-00000000000a",
+        "12000000-0000-4000-8000-00000000000b",
+        "12000000-0000-4000-8000-00000000000c",
+      ],
+      [
+        "Fourth free",
+        "12000000-0000-4000-8000-00000000000d",
+        "12000000-0000-4000-8000-00000000000e",
+        "12000000-0000-4000-8000-00000000000f",
+      ],
     ] as const) {
       const result = await repository.push(env, "tenant-1", {
         protocolVersion: 1,
@@ -2401,7 +2416,9 @@ describe("mobile sync subscription push repository", () => {
     ).toEqual({ count: 0 });
     expect(
       database
-        .prepare("SELECT amount_minor AS amountMinor, subscription_id AS subscriptionId FROM transactions WHERE id = ?")
+        .prepare(
+          "SELECT amount_minor AS amountMinor, subscription_id AS subscriptionId FROM transactions WHERE id = ?",
+        )
         .get(charge.id),
     ).toEqual({ amountMinor: -74_900, subscriptionId: null });
     expect(

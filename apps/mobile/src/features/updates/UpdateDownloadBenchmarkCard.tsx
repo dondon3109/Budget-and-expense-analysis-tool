@@ -1,5 +1,12 @@
 import { useRef, useState } from "react";
-import { Platform, StyleSheet, Text, View, type DimensionValue, type TextStyle } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  type DimensionValue,
+  type TextStyle,
+} from "react-native";
 
 import { Button, Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -65,8 +72,8 @@ export function UpdateDownloadBenchmarkCard() {
           Download benchmark (dev only)
         </Text>
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Downloads the current public Beta APK via the optimized path, verifies it, then
-          deletes the temp file. It never opens the installer.
+          Downloads the current public Beta APK via the optimized path, verifies it, then deletes
+          the temp file. It never opens the installer.
         </Text>
         {phase === "running" ? (
           <View className="gap-2">
@@ -81,9 +88,7 @@ export function UpdateDownloadBenchmarkCard() {
             </Button>
           </View>
         ) : (
-          <Button onPress={run}>
-            {phase === "done" ? "Run again" : "Run device benchmark"}
-          </Button>
+          <Button onPress={run}>{phase === "done" ? "Run again" : "Run device benchmark"}</Button>
         )}
         {phase === "done" && result ? <Report result={result} /> : null}
       </View>
@@ -108,17 +113,31 @@ function Report({ result }: { result: DownloadBenchmarkResult }) {
         {"download " + t.downloadSeconds.toFixed(1) + "s @ " + t.downloadMbps.toFixed(1) + " Mbps"}
       </Text>
       <Text style={[styles.mono, { color: theme.colors.text }]}>
-        {"hash " + Math.round(t.hashMs) + "ms | verify " + Math.round(t.verifyMs) + "ms | total " + t.totalSeconds.toFixed(1) + "s"}
+        {"hash " +
+          Math.round(t.hashMs) +
+          "ms | verify " +
+          Math.round(t.verifyMs) +
+          "ms | total " +
+          t.totalSeconds.toFixed(1) +
+          "s"}
       </Text>
       <Text style={[styles.mono, { color: theme.colors.textMuted }]}>
         {"progress callbacks: " + result.progressCallbacks}
       </Text>
-      <Text style={[typography.body, { color: result.ok ? theme.colors.income : theme.colors.danger }]}>
+      <Text
+        style={[typography.body, { color: result.ok ? theme.colors.income : theme.colors.danger }]}
+      >
         {statusLine}
       </Text>
       {GATE_LABELS.map(({ key, label }) => (
-        <Text key={key} style={[typography.body, { color: result.gates[key] ? theme.colors.text : theme.colors.danger }]}>
-          {result.gates[key] ? "PASS" : "FAIL"}   {label}
+        <Text
+          key={key}
+          style={[
+            typography.body,
+            { color: result.gates[key] ? theme.colors.text : theme.colors.danger },
+          ]}
+        >
+          {result.gates[key] ? "PASS" : "FAIL"} {label}
         </Text>
       ))}
     </View>
@@ -135,7 +154,12 @@ function ProgressBar({ bytesWritten, totalBytes }: DownloadProgress) {
       accessibilityValue={{ min: 0, max: 100, now: percent }}
       style={[styles.track, { backgroundColor: theme.colors.canvasMuted }]}
     >
-      <View style={[styles.fill, { width: (percent + "%") as DimensionValue, backgroundColor: theme.colors.brand }]} />
+      <View
+        style={[
+          styles.fill,
+          { width: (percent + "%") as DimensionValue, backgroundColor: theme.colors.brand },
+        ]}
+      />
     </View>
   );
 }

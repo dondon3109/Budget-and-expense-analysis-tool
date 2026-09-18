@@ -200,7 +200,9 @@ export function CalendarScreen() {
         <View style={styles.addRow}>
           <Button
             accessibilityHint="Opens the event editor"
-            onPress={() => router.push({ pathname: "/(app)/event", params: { date: selectedDate } })}
+            onPress={() =>
+              router.push({ pathname: "/(app)/event", params: { date: selectedDate } })
+            }
           >
             Add event
           </Button>

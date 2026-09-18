@@ -43,9 +43,7 @@ function isValidIsoDate(value: string): boolean {
   const day = Number(dayText);
   const date = new Date(Date.UTC(year, month - 1, day));
   return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
   );
 }
 
@@ -63,7 +61,17 @@ function parseAprBasisPoints(value: string): number | null {
 }
 
 export function parseDebtForm(values: DebtFormValues):
-  | { success: true; input: { name: string; type: DebtType; balanceMinor: number; aprBasisPoints: number; minimumPaymentMinor: number; balanceAsOf: string } }
+  | {
+      success: true;
+      input: {
+        name: string;
+        type: DebtType;
+        balanceMinor: number;
+        aprBasisPoints: number;
+        minimumPaymentMinor: number;
+        balanceAsOf: string;
+      };
+    }
   | { success: false; errors: DebtFormErrors } {
   const errors: DebtFormErrors = {};
   const name = values.name.trim();

@@ -71,7 +71,10 @@ function detectRuntime() {
       return false;
     }
   };
-  return { supabase: has("supabase") || has("npx", ["--no-install", "supabase", "--version"]), docker: has("docker", ["info"]) };
+  return {
+    supabase: has("supabase") || has("npx", ["--no-install", "supabase", "--version"]),
+    docker: has("docker", ["info"]),
+  };
 }
 
 /** Reads the running local stack so we never hardcode keys that the CLI owns. */
@@ -82,7 +85,11 @@ function readLocalStack() {
   ];
   for (const [command, args] of attempts) {
     try {
-      const out = execFileSync(command, args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+      const out = execFileSync(command, args, {
+        cwd: ROOT,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      });
       const parsed = JSON.parse(out.slice(out.indexOf("{")));
       const url = parsed.API_URL ?? parsed.api_url;
       const key = parsed.ANON_KEY ?? parsed.PUBLISHABLE_KEY ?? parsed.anon_key;
@@ -105,23 +112,33 @@ function status() {
     } else {
       for (const [key, kind] of Object.entries(target.keys)) {
         const value = currentValue(content, key);
-        console.log(`       ${key.padEnd(30)} ${kind === "key" ? mask(value) : (value ?? "(unset)")}`);
+        console.log(
+          `       ${key.padEnd(30)} ${kind === "key" ? mask(value) : (value ?? "(unset)")}`,
+        );
       }
     }
-    console.log(`       backup: ${existsSync(target.backup) ? "present (local mode is active)" : "none"}`);
+    console.log(
+      `       backup: ${existsSync(target.backup) ? "present (local mode is active)" : "none"}`,
+    );
   }
   console.log(`\n  supabase CLI: ${runtime.supabase ? "available" : "NOT AVAILABLE"}`);
   console.log(`  docker:       ${runtime.docker ? "running" : "NOT RUNNING"}`);
   if (!runtime.docker) {
-    console.log("\n  A container runtime is required before 'enable' can work: supabase start needs Docker.");
+    console.log(
+      "\n  A container runtime is required before 'enable' can work: supabase start needs Docker.",
+    );
   }
 }
 
 function enable(force) {
   const alreadyBackedUp = TARGETS.filter((target) => existsSync(target.backup));
   if (alreadyBackedUp.length > 0 && !force) {
-    console.error("Refusing to run: a cloud backup already exists, so local mode may already be active.");
-    console.error("Run 'disable' first to restore the cloud values, or pass --force to overwrite the backup.");
+    console.error(
+      "Refusing to run: a cloud backup already exists, so local mode may already be active.",
+    );
+    console.error(
+      "Run 'disable' first to restore the cloud values, or pass --force to overwrite the backup.",
+    );
     process.exit(1);
   }
 
@@ -170,7 +187,11 @@ function disable() {
     console.log(`  ${target.label}: restored from backup`);
     restored += 1;
   }
-  console.log(restored > 0 ? "\nCloud configuration restored. Restart both dev servers." : "\nNothing to restore.");
+  console.log(
+    restored > 0
+      ? "\nCloud configuration restored. Restart both dev servers."
+      : "\nNothing to restore.",
+  );
 }
 
 const [command = "status", ...rest] = process.argv.slice(2);

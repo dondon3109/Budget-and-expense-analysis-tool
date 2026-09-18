@@ -71,8 +71,7 @@ export const useVoiceLanguageStore = create<VoiceLanguageState>()(
       setLanguage: (language) => set({ language }),
       cycleLanguage: () => {
         const current = get().language;
-        const next: VoiceLanguage =
-          current === "auto" ? "en" : current === "en" ? "fil" : "auto";
+        const next: VoiceLanguage = current === "auto" ? "en" : current === "en" ? "fil" : "auto";
         set({ language: next });
         return next;
       },

@@ -46,7 +46,12 @@ export function createProviderCredentialRoutes(
     await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
     const body = providerCredentialCreateSchema.safeParse(await readJson(context));
     if (!body.success) {
-      throw new HttpError(400, "invalid_request", "Provide a valid credential.", body.error.flatten());
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Provide a valid credential.",
+        body.error.flatten(),
+      );
     }
     const knownProviders = new Set([
       ...Object.keys(providerAllowlist.assistant ?? {}),
@@ -58,13 +63,22 @@ export function createProviderCredentialRoutes(
     }
     const master = context.env.PROVIDER_CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "";
     if (!validateMasterKeyFormat(master)) {
-      throw new HttpError(500, "encryption_not_configured", "Credential encryption is not configured. Set PROVIDER_CREDENTIAL_ENCRYPTION_KEY.");
+      throw new HttpError(
+        500,
+        "encryption_not_configured",
+        "Credential encryption is not configured. Set PROVIDER_CREDENTIAL_ENCRYPTION_KEY.",
+      );
     }
     const encrypted = await encryptSecret(body.data.secret, master);
     const last4 = getLast4(body.data.secret);
     const created = await repository.create(
       context.env,
-      { provider: body.data.provider, name: body.data.name, encryptedSecret: encrypted, apiKeyLast4: last4 },
+      {
+        provider: body.data.provider,
+        name: body.data.name,
+        encryptedSecret: encrypted,
+        apiKeyLast4: last4,
+      },
       context.get("authUser").id,
     );
     // Invalidate cache for provider's service so health reflects new credential
@@ -80,14 +94,23 @@ export function createProviderCredentialRoutes(
     if (!existing) throw new HttpError(404, "credential_not_found", "Credential was not found.");
     const body = providerCredentialUpdateSchema.safeParse(await readJson(context));
     if (!body.success) {
-      throw new HttpError(400, "invalid_request", "Provide at least one change.", body.error.flatten());
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Provide at least one change.",
+        body.error.flatten(),
+      );
     }
     const patch: { name?: string; encryptedSecret?: string; apiKeyLast4?: string } = {};
     if (body.data.name !== undefined) patch.name = body.data.name;
     if (body.data.secret !== undefined) {
       const master = context.env.PROVIDER_CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "";
       if (!validateMasterKeyFormat(master)) {
-        throw new HttpError(500, "encryption_not_configured", "Credential encryption is not configured.");
+        throw new HttpError(
+          500,
+          "encryption_not_configured",
+          "Credential encryption is not configured.",
+        );
       }
       patch.encryptedSecret = await encryptSecret(body.data.secret, master);
       patch.apiKeyLast4 = getLast4(body.data.secret);
@@ -189,7 +212,11 @@ export function createProviderCredentialRoutes(
     if (!row) throw new HttpError(404, "credential_not_found", "Credential was not found.");
     const master = context.env.PROVIDER_CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "";
     if (!validateMasterKeyFormat(master)) {
-      throw new HttpError(500, "encryption_not_configured", "Credential encryption is not configured.");
+      throw new HttpError(
+        500,
+        "encryption_not_configured",
+        "Credential encryption is not configured.",
+      );
     }
     // Verify we can decrypt — transient plaintext only in memory, never returned
     let plain: string;
@@ -197,7 +224,11 @@ export function createProviderCredentialRoutes(
       const { decryptSecret } = await import("../provider-credentials/crypto");
       plain = await decryptSecret(row.encrypted_secret, master);
     } catch {
-      throw new HttpError(500, "credential_decrypt_failed", "Could not decrypt credential — check master key.");
+      throw new HttpError(
+        500,
+        "credential_decrypt_failed",
+        "Could not decrypt credential — check master key.",
+      );
     }
     if (!plain.trim()) throw new HttpError(400, "credential_invalid", "Credential is empty.");
 

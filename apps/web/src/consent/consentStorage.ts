@@ -42,7 +42,8 @@ export function parseConsentRecord(value: string | null): ConsentRecord | null {
 }
 
 export function readConsentRecord(storage?: Pick<Storage, "getItem">) {
-  const resolvedStorage = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
+  const resolvedStorage =
+    storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
   if (!resolvedStorage) return null;
 
   try {

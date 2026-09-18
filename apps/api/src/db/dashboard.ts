@@ -40,7 +40,7 @@ export async function loadCashflowTrend(
   // A missing rate row falls back to the latest stored rate.
   const usdToPhp = await loadUsdToPhp(env);
   const totalsResult = await env.DB.prepare(
-      `SELECT date,
+    `SELECT date,
               COALESCE(SUM(CASE WHEN kind = 'income' THEN convertedMinor ELSE 0 END), 0) AS incomeMinor,
               COALESCE(SUM(CASE WHEN kind = 'expense' THEN convertedMinor ELSE 0 END), 0) AS expenseMinor
        FROM (
@@ -54,9 +54,9 @@ export async function loadCashflowTrend(
          WHERE tenant_id = ?2 AND kind != 'transfer' AND date >= ?3 AND date <= ?4
        )
        GROUP BY date`,
-    )
-      .bind(usdToPhp, tenantId, preview.range.from, preview.range.to)
-      .all<{ date: string; incomeMinor: number; expenseMinor: number }>();
+  )
+    .bind(usdToPhp, tenantId, preview.range.from, preview.range.to)
+    .all<{ date: string; incomeMinor: number; expenseMinor: number }>();
 
   return buildCashflowTrendFromDayTotals(
     totalsResult.results.map((row) => ({

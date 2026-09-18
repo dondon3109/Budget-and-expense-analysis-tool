@@ -71,7 +71,9 @@ describe("SharedBudgetPage", () => {
   it("renders a valid shared budget token", () => {
     renderSharedBudget(encodeSharedBudgetToken(basePayload));
 
-    expect(screen.getByRole("heading", { name: "Family Budget - September 2026" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Family Budget - September 2026" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("September 2026")).toBeInTheDocument();
     expect(screen.getByText("Don")).toBeInTheDocument();
     expect(screen.getByText("Read this before the family check-in.")).toBeInTheDocument();

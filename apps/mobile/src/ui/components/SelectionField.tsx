@@ -203,7 +203,9 @@ export function SelectionField({
                   />
                 ) : null}
                 <View className="min-w-0 flex-1">
-                  <Text style={[typography.body, { color: theme.colors.text }]}>{option.label}</Text>
+                  <Text style={[typography.body, { color: theme.colors.text }]}>
+                    {option.label}
+                  </Text>
                   {option.detail ? (
                     <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                       {option.detail}

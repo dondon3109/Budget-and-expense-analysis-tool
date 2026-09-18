@@ -139,9 +139,7 @@ describe("useVoiceRecorder unmount during recording", () => {
     const prepareGate = new Promise<void>((resolve) => {
       resolvePrepare = resolve;
     });
-    audioMocks().AudioModule.requestRecordingPermissionsAsync.mockResolvedValueOnce(
-      permissionGate,
-    );
+    audioMocks().AudioModule.requestRecordingPermissionsAsync.mockResolvedValueOnce(permissionGate);
     const pendingRecorder = {
       prepareToRecordAsync: jest.fn(() => prepareGate),
       record: jest.fn(),
@@ -214,11 +212,9 @@ describe("voice language forwarding in recorder hooks", () => {
       await result.current.startRecording();
     });
 
-    expect(startMobileVoiceStream).toHaveBeenCalledWith(
-      "test-token",
-      expect.any(Object),
-      { language: "auto" },
-    );
+    expect(startMobileVoiceStream).toHaveBeenCalledWith("test-token", expect.any(Object), {
+      language: "auto",
+    });
   });
 
   it("forwards configured or explicit language to startMobileVoiceStream", async () => {
@@ -238,11 +234,9 @@ describe("voice language forwarding in recorder hooks", () => {
       await result.current.startRecording();
     });
 
-    expect(startMobileVoiceStream).toHaveBeenCalledWith(
-      "test-token",
-      expect.any(Object),
-      { language: "fil" },
-    );
+    expect(startMobileVoiceStream).toHaveBeenCalledWith("test-token", expect.any(Object), {
+      language: "fil",
+    });
   });
 
   it("forwards language to transcribeVoice in useAssistantRecorder", async () => {
@@ -271,4 +265,3 @@ describe("voice language forwarding in recorder hooks", () => {
     );
   });
 });
-

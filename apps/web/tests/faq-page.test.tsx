@@ -32,9 +32,13 @@ describe("FAQ page", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Frequently asked questions" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Does Zoption connect to my bank?" })).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "How does the AI Financial Assistant work, and what does it read?" }),
+      screen.getByRole("heading", { name: "Does Zoption connect to my bank?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "How does the AI Financial Assistant work, and what does it read?",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Can I track subscriptions and recurring charges?" }),
@@ -103,7 +107,9 @@ describe("FAQ page", () => {
   it("explains the empty-start and no-bank-connection approach and links to signup", () => {
     renderPage();
 
-    expect(screen.getByText(/starts empty and private, with no bank connection/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/starts empty and private, with no bank connection/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Create your workspace" })).toHaveAttribute(
       "href",
       "/signup",

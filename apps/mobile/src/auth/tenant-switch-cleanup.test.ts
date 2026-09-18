@@ -26,9 +26,10 @@ describe("identity transition cleanup", () => {
   it("closes sheets, resets voice options and clears the plan cache", () => {
     useSheetStore.setState({ openSheet: "theme-picker" });
     const voiceReset = jest.fn();
-    (
-      useAssistantVoiceOptionsStore.getState as unknown as jest.Mock
-    ).mockReturnValue({ ensureSubject: voiceReset, setState: jest.fn() });
+    (useAssistantVoiceOptionsStore.getState as unknown as jest.Mock).mockReturnValue({
+      ensureSubject: voiceReset,
+      setState: jest.fn(),
+    });
 
     clearUserScopedRuntimeState();
 

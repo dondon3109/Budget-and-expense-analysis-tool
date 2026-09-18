@@ -13,7 +13,9 @@ const {
 } = require("./with-android-mic-widget");
 
 function fakeManifest() {
-  return { application: [{ $: { "android:name": ".MainApplication" }, activity: [], receiver: [] }] };
+  return {
+    application: [{ $: { "android:name": ".MainApplication" }, activity: [], receiver: [] }],
+  };
 }
 
 test("resolves the deep-link scheme per variant", () => {
@@ -38,9 +40,7 @@ test("registers the widget receiver and voice activity exactly once", () => {
   expect(receivers[0]["intent-filter"][0].action[0].$["android:name"]).toBe(
     "android.appwidget.action.APPWIDGET_UPDATE",
   );
-  expect(receivers[0]["meta-data"][0].$["android:resource"]).toBe(
-    "@xml/zoption_mic_widget_info",
-  );
+  expect(receivers[0]["meta-data"][0].$["android:resource"]).toBe("@xml/zoption_mic_widget_info");
 });
 
 test("declares speech-recognizer package visibility exactly once", () => {
@@ -87,10 +87,10 @@ test("generated widget carries the scheme and deep-links the intent route", () =
   const files = widgetFileContents("zoption-preview");
   expect(Object.keys(files)).toHaveLength(8);
   expect(files["app/src/main/res/values/zoption_mic_widget_strings.xml"]).toContain(
-    "<string name=\"zoption_mic_widget_scheme\">zoption-preview</string>",
+    '<string name="zoption_mic_widget_scheme">zoption-preview</string>',
   );
   expect(files["app/src/main/res/values/zoption_mic_widget_strings.xml"]).toContain(
-    "<string name=\"zoption_mic_widget_action_label\">Record expense</string>",
+    '<string name="zoption_mic_widget_action_label">Record expense</string>',
   );
   const infoXml = files["app/src/main/res/xml/zoption_mic_widget_info.xml"];
   expect(infoXml).toContain('android:resizeMode="horizontal|vertical"');
@@ -113,8 +113,7 @@ test("generated widget carries the scheme and deep-links the intent route", () =
   expect(intents).toContain("newBalanceMinor");
   expect(intents).toContain("amountMinor");
   expect(intents).toContain("summarizeMerchant");
-  const activity =
-    files["app/src/main/java/site/zoption/micwidget/MicWidgetVoiceActivity.kt"];
+  const activity = files["app/src/main/java/site/zoption/micwidget/MicWidgetVoiceActivity.kt"];
   expect(activity).toContain("RecognizerIntent.ACTION_RECOGNIZE_SPEECH");
   expect(activity).toContain("isRecognitionAvailable");
   expect(activity).toContain("ERROR_STT_UNAVAILABLE");
@@ -149,7 +148,7 @@ test("writeWidgetFiles creates directory tree and writes files to platform root"
     expect(fs.existsSync(iconXml)).toBe(true);
     expect(fs.existsSync(providerKt)).toBe(true);
     const content = await fs.promises.readFile(stringsXml, "utf-8");
-    expect(content).toContain("<string name=\"zoption_mic_widget_scheme\">zoption</string>");
+    expect(content).toContain('<string name="zoption_mic_widget_scheme">zoption</string>');
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true });
   }
@@ -176,7 +175,7 @@ test("withMicWidget dangerous mod correctly extracts platformProjectRoot from mo
     const stringsXml = path.join(tempDir, "app/src/main/res/values/zoption_mic_widget_strings.xml");
     expect(fs.existsSync(stringsXml)).toBe(true);
     const content = await fs.promises.readFile(stringsXml, "utf-8");
-    expect(content).toContain("<string name=\"zoption_mic_widget_scheme\">zoption-test</string>");
+    expect(content).toContain('<string name="zoption_mic_widget_scheme">zoption-test</string>');
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true });
   }

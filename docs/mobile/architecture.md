@@ -48,11 +48,11 @@ flowchart LR
 
 ## Application variants
 
-| Variant     | Android package                | Proposed iOS bundle ID     | Purpose                                                                                       |
-| ----------- | ------------------------------ | -------------------------- | --------------------------------------------------------------------------------------------- |
-| Development | `site.zoption.android.dev`     | `site.zoption.ios.dev`     | Local development build with developer tooling                                                |
-| Preview     | `site.zoption.android.preview` | `site.zoption.ios.preview` | Internal distribution against non-production configuration                                    |
-| Production  | `site.zoption.android`         | `site.zoption.ios`         | Website-linked Zoption Beta build; no app-store listing |
+| Variant     | Android package                | Proposed iOS bundle ID     | Purpose                                                    |
+| ----------- | ------------------------------ | -------------------------- | ---------------------------------------------------------- |
+| Development | `site.zoption.android.dev`     | `site.zoption.ios.dev`     | Local development build with developer tooling             |
+| Preview     | `site.zoption.android.preview` | `site.zoption.ios.preview` | Internal distribution against non-production configuration |
+| Production  | `site.zoption.android`         | `site.zoption.ios`         | Website-linked Zoption Beta build; no app-store listing    |
 
 The final iOS bundle identifier is a proposal only. Variant selection must be build-profile controlled and validated at config load.
 

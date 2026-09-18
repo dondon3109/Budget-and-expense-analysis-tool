@@ -38,11 +38,7 @@ describe("SmsQuickPasteModal", () => {
 
   it("auto-pastes the SMS text from the clipboard", async () => {
     await render(
-      <SmsQuickPasteModal
-        visible
-        onDismiss={jest.fn()}
-        readClipboard={async () => GCASH_SMS}
-      />,
+      <SmsQuickPasteModal visible onDismiss={jest.fn()} readClipboard={async () => GCASH_SMS} />,
     );
 
     await fireEvent.press(screen.getByRole("button", { name: "Auto-Paste from Clipboard" }));

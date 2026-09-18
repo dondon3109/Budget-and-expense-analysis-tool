@@ -52,8 +52,7 @@ export function createAiEntryRoutes(service: AiEntryService) {
       const body = await readJson(context);
       const record =
         typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
-      const transcript =
-        typeof record.transcript === "string" ? record.transcript.trim() : "";
+      const transcript = typeof record.transcript === "string" ? record.transcript.trim() : "";
       if (!transcript) {
         throw new HttpError(400, "invalid_entry_transcript", "Provide a transcript to extract.");
       }

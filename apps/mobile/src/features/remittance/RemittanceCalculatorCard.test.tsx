@@ -115,9 +115,7 @@ describe("RemittanceCalculatorCard", () => {
 
     // Wise carries the lowest spread, so it keeps the best-value badge by default.
     expect(screen.getByText("Best value")).toBeTruthy();
-    expect(
-      screen.getByLabelText(/Wise: net .* best value/),
-    ).toBeTruthy();
+    expect(screen.getByLabelText(/Wise: net .* best value/)).toBeTruthy();
   });
 
   it("recalculates when the origin currency changes", async () => {

@@ -10,7 +10,9 @@ import {
 
 const apiMocks = vi.hoisted(() => ({
   openVoiceStreamWebSocket: vi.fn(),
-  describeVoiceStreamFailure: vi.fn().mockResolvedValue("WebSocket connection to voice stream failed."),
+  describeVoiceStreamFailure: vi
+    .fn()
+    .mockResolvedValue("WebSocket connection to voice stream failed."),
 }));
 
 vi.mock("../src/lib/api", () => apiMocks);
@@ -176,10 +178,16 @@ describe("startLiveTranscriptionSession", () => {
       expect.objectContaining({ message: "Voice mode is busy. Try again shortly." }),
     );
     mockWs.on_message({
-      data: JSON.stringify({ type: "error", code: "gemini_missing_key", message: "Live transcription not configured" }),
+      data: JSON.stringify({
+        type: "error",
+        code: "gemini_missing_key",
+        message: "Live transcription not configured",
+      }),
     });
     expect(onError).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringContaining("Live transcription not configured") }),
+      expect.objectContaining({
+        message: expect.stringContaining("Live transcription not configured"),
+      }),
     );
   });
 

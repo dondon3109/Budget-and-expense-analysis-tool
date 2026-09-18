@@ -472,7 +472,9 @@ describe("SettingsPage", () => {
 
     await waitFor(() => {
       expect(downloadSpy).toHaveBeenCalled();
-      expect(screen.getByRole("status")).toHaveTextContent("Account archive downloaded successfully.");
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Account archive downloaded successfully.",
+      );
     });
   });
 

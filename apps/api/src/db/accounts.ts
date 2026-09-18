@@ -101,8 +101,9 @@ function normalize(
       ? {
           enabled: true,
           annualRateBasisPoints: (row.annualRateBasisPoints as number | null) ?? null,
-          frequency: (row.interestFrequency as AccountRecord["interest"] &
-            NonNullable<AccountRecord["interest"]>["frequency"]) ?? null,
+          frequency:
+            (row.interestFrequency as AccountRecord["interest"] &
+              NonNullable<AccountRecord["interest"]>["frequency"]) ?? null,
           payDay: (row.interestPayDay as number | null) ?? null,
         }
       : { enabled: false, annualRateBasisPoints: null, frequency: null, payDay: null },
@@ -207,7 +208,11 @@ export const accountRepository: AccountRepository = {
     await ensureUniqueName(env, tenantId, input.name, accountId);
     const nextType = input.type ?? existing.type;
     if (input.interest !== undefined && nextType !== "savings") {
-      throw new HttpError(400, "interest_not_for_account_type", "Only savings accounts earn interest.");
+      throw new HttpError(
+        400,
+        "interest_not_for_account_type",
+        "Only savings accounts earn interest.",
+      );
     }
     await drizzle(env.DB)
       .update(accounts)

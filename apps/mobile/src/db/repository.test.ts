@@ -504,8 +504,22 @@ describe("encrypted local workspace repository", () => {
       },
     ]);
     expect(result.categories).toEqual([
-      { id: "category-1", name: "Dining", kind: "expense", color: "#123456", iconEmoji: "🍔", pending: false },
-      { id: "category-2", name: "Groceries", kind: "expense", color: "#0F766E", iconEmoji: "🛒", pending: false },
+      {
+        id: "category-1",
+        name: "Dining",
+        kind: "expense",
+        color: "#123456",
+        iconEmoji: "🍔",
+        pending: false,
+      },
+      {
+        id: "category-2",
+        name: "Groceries",
+        kind: "expense",
+        color: "#0F766E",
+        iconEmoji: "🛒",
+        pending: false,
+      },
     ]);
   });
 });

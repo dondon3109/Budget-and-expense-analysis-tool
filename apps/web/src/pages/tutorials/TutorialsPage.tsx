@@ -380,7 +380,9 @@ export function TutorialsPage({ inAppShell = false }: { inAppShell?: boolean } =
   return (
     <div className="public-tutorials-layout">
       <PublicHeader />
-      <main id="main-content" tabIndex={-1}>{content}</main>
+      <main id="main-content" tabIndex={-1}>
+        {content}
+      </main>
       <LegalFooter />
     </div>
   );

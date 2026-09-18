@@ -62,9 +62,7 @@ describe("R2 android/latest.json metadata validation", () => {
   });
 
   it("defaults minimumAndroidVersion when omitted", () => {
-    const release = parseRemoteAndroidRelease(
-      validRemote({ minimumAndroidVersion: undefined }),
-    );
+    const release = parseRemoteAndroidRelease(validRemote({ minimumAndroidVersion: undefined }));
     expect(release?.minimumAndroid).toBe("Android 7.0 or newer (API 24+)");
   });
 
@@ -112,7 +110,9 @@ describe("R2 android/latest.json metadata validation", () => {
 
   it("rejects invalid APK SHA-256 checksums", () => {
     expect(parseRemoteAndroidRelease(validRemote({ sha256: "abc" }))).toBeNull();
-    expect(parseRemoteAndroidRelease(validRemote({ sha256: `${APK_SHA256.slice(0, 63)}g` }))).toBeNull();
+    expect(
+      parseRemoteAndroidRelease(validRemote({ sha256: `${APK_SHA256.slice(0, 63)}g` })),
+    ).toBeNull();
     expect(parseRemoteAndroidRelease(validRemote({ sha256: `${APK_SHA256} ` }))).toBeNull();
   });
 

@@ -1,4 +1,9 @@
-import { debtTypeLabels, formatMinorForInput, parseDebtForm, type DebtFormValues } from "./debt-form";
+import {
+  debtTypeLabels,
+  formatMinorForInput,
+  parseDebtForm,
+  type DebtFormValues,
+} from "./debt-form";
 
 function validValues(): DebtFormValues {
   return {

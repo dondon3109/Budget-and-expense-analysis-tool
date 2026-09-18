@@ -97,5 +97,7 @@ export function BillingLimitDialog({ error, returnFocus, onClose }: BillingLimit
   const details = isUsageLimitReachedError(error) ? error.details : undefined;
   if (!details) return null;
 
-  return <BillingLimitDialogContent details={details} returnFocus={returnFocus} onClose={onClose} />;
+  return (
+    <BillingLimitDialogContent details={details} returnFocus={returnFocus} onClose={onClose} />
+  );
 }

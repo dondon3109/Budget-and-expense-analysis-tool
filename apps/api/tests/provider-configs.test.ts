@@ -501,7 +501,8 @@ describe("admin provider-configs authorization", () => {
       await next();
     });
     app.onError((err, c) => {
-      if (err instanceof HttpError) return c.json({ error: err.code, message: err.message }, err.status);
+      if (err instanceof HttpError)
+        return c.json({ error: err.code, message: err.message }, err.status);
       return c.json({ error: "internal" }, 500);
     });
     app.route("/configs", routes);

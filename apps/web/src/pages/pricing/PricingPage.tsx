@@ -11,7 +11,11 @@ const COMPARISON_ROWS = [
   {
     category: "Privacy & Data Ownership",
     features: [
-      { name: "Zero bank credentials required", free: "Yes (100% private)", pro: "Yes (100% private)" },
+      {
+        name: "Zero bank credentials required",
+        free: "Yes (100% private)",
+        pro: "Yes (100% private)",
+      },
       { name: "Data storage", free: "Private cloud workspace", pro: "Private cloud workspace" },
       { name: "No advertising or data monetization", free: "Guaranteed", pro: "Guaranteed" },
       { name: "Filtered CSV transaction export", free: "Not included", pro: "Full access" },
@@ -22,7 +26,11 @@ const COMPARISON_ROWS = [
     features: [
       { name: "Speech-to-transaction voice entry", free: "Unlimited", pro: "Unlimited" },
       { name: "Camera receipt photo scanning", free: "Unlimited", pro: "Unlimited" },
-      { name: "Bank statement imports (PDF, CSV, XLS, XLSX)", free: "1 committed / month", pro: "10 committed / month" },
+      {
+        name: "Bank statement imports (PDF, CSV, XLS, XLSX)",
+        free: "1 committed / month",
+        pro: "10 committed / month",
+      },
       { name: "Transaction deduplication warnings", free: "Included", pro: "Included" },
       { name: "Exact centavo integer math (no rounding drift)", free: "Included", pro: "Included" },
     ],
@@ -31,17 +39,37 @@ const COMPARISON_ROWS = [
     category: "Accounts & Budgets",
     features: [
       { name: "Starter accounts (Cash, GCash, Maya, Bank)", free: "Included", pro: "Included" },
-      { name: "Custom accounts creation & renaming", free: "Default accounts", pro: "Unlimited custom" },
+      {
+        name: "Custom accounts creation & renaming",
+        free: "Default accounts",
+        pro: "Unlimited custom",
+      },
       { name: "Custom budget categories", free: "4 custom + starters", pro: "Unlimited active" },
-      { name: "High-yield savings interest compounding", free: "Manual entry", pro: "Automatic (daily/mo/yr)" },
-      { name: "Interactive Renewal Calendar (Subscriptions)", free: "Basic list", pro: "Interactive monthly grid" },
+      {
+        name: "High-yield savings interest compounding",
+        free: "Manual entry",
+        pro: "Automatic (daily/mo/yr)",
+      },
+      {
+        name: "Interactive Renewal Calendar (Subscriptions)",
+        free: "Basic list",
+        pro: "Interactive monthly grid",
+      },
     ],
   },
   {
     category: "AI Financial Assistant",
     features: [
-      { name: "Natural language workspace query assistant", free: "10 queries / 14 days", pro: "100 queries / 14 days" },
-      { name: "Assistant permissions model", free: "Read-only & consented", pro: "Read-only & consented" },
+      {
+        name: "Natural language workspace query assistant",
+        free: "10 queries / 14 days",
+        pro: "100 queries / 14 days",
+      },
+      {
+        name: "Assistant permissions model",
+        free: "Read-only & consented",
+        pro: "Read-only & consented",
+      },
       { name: "Transparent reasoning & grounded citations", free: "Included", pro: "Included" },
     ],
   },
@@ -50,7 +78,11 @@ const COMPARISON_ROWS = [
     features: [
       { name: "Progressive Web App (PWA) with offline caching", free: "Included", pro: "Included" },
       { name: "Official Android Beta Native APK", free: "Free download", pro: "Free download" },
-      { name: "Customer support", free: "Community & documentation", pro: "Direct priority support (< 24h response)" },
+      {
+        name: "Customer support",
+        free: "Community & documentation",
+        pro: "Direct priority support (< 24h response)",
+      },
     ],
   },
 ];
@@ -105,12 +137,7 @@ export function PricingPage() {
       />
 
       <main className="pricing-main" id="main-content" tabIndex={-1}>
-        <Breadcrumbs
-          items={[
-            { label: "Home", to: "/" },
-            { label: "Pricing & Plans" },
-          ]}
-        />
+        <Breadcrumbs items={[{ label: "Home", to: "/" }, { label: "Pricing & Plans" }]} />
         <section className="pricing-hero">
           <div className="pricing-eyebrow">
             <ShieldCheck size={16} aria-hidden="true" />
@@ -122,11 +149,7 @@ export function PricingPage() {
             or advertising monetization.
           </p>
 
-          <div
-            className="pricing-interval-toggle"
-            role="radiogroup"
-            aria-label="Billing frequency"
-          >
+          <div className="pricing-interval-toggle" role="radiogroup" aria-label="Billing frequency">
             <button
               type="button"
               role="radio"
@@ -291,8 +314,16 @@ export function PricingPage() {
                   const featureRows = group.features.map((feat) => (
                     <tr key={feat.name}>
                       <th scope="row">{feat.name}</th>
-                      <td>{feat.free === "Not included" ? <Minus size={16} aria-label="Not included" /> : feat.free}</td>
-                      <td><strong>{feat.pro}</strong></td>
+                      <td>
+                        {feat.free === "Not included" ? (
+                          <Minus size={16} aria-label="Not included" />
+                        ) : (
+                          feat.free
+                        )}
+                      </td>
+                      <td>
+                        <strong>{feat.pro}</strong>
+                      </td>
                     </tr>
                   ));
                   return [headerRow, ...featureRows];

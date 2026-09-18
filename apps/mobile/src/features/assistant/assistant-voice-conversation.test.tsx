@@ -486,10 +486,7 @@ describe("AssistantVoiceConversation", () => {
     installHookMocks();
     await render(<AssistantVoiceConversation {...baseProps} initialThreadId={THREAD_ID} />);
 
-    expect(m.listAssistantMessages).toHaveBeenCalledWith(
-      { accessToken: "token" },
-      THREAD_ID,
-    );
+    expect(m.listAssistantMessages).toHaveBeenCalledWith({ accessToken: "token" }, THREAD_ID);
     // Prior context re-enters the voice UI instead of a blank session.
     expect(await screen.findByText("How much did I spend?")).toBeTruthy();
     expect(await screen.findByText("You spent PHP 1,250 this month.")).toBeTruthy();
@@ -552,9 +549,9 @@ describe("AssistantVoiceConversation", () => {
     expect(screen.getByLabelText("Auto voice language")).toBeTruthy();
     expect(screen.getByLabelText("English voice language")).toBeTruthy();
     expect(screen.getByLabelText("Tagalog voice language")).toBeTruthy();
-    expect(
-      screen.getByLabelText("Auto voice language").props.accessibilityState?.selected,
-    ).toBe(true);
+    expect(screen.getByLabelText("Auto voice language").props.accessibilityState?.selected).toBe(
+      true,
+    );
 
     expect(mocks().useAssistantRecorder).toHaveBeenCalledWith(
       expect.objectContaining({ language: "auto" }),
@@ -594,5 +591,3 @@ describe("AssistantVoiceConversation", () => {
     expect(await screen.findByText("Tap to speak with your assistant")).toBeTruthy();
   });
 });
-
-

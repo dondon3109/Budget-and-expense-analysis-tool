@@ -120,7 +120,10 @@ describe("PWA foundation", () => {
     expect(policy.isStaticAssetRequest(request(`${origin}/user-avatar.png`), origin)).toBe(false);
     expect(policy.isSameOriginRequest(request(`${origin}/install`), origin)).toBe(true);
     expect(
-      policy.isSameOriginRequest(request("https://downloads.zoption.site/android/latest.json"), origin),
+      policy.isSameOriginRequest(
+        request("https://downloads.zoption.site/android/latest.json"),
+        origin,
+      ),
     ).toBe(false);
     expect(
       policy.isSafePublicNavigation(request(`${origin}/install`, { mode: "navigate" }), origin),

@@ -130,12 +130,11 @@ export function createGoogleSttProvider(
                 {
                   parts: [
                     {
-                      text:
-                        isTagalog
-                          ? "Transcribe this audio verbatim. The audio may be in Tagalog, Filipino, English, or Taglish. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes."
-                          : isEnglish
-                            ? "Transcribe this audio verbatim in English. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes."
-                            : "Transcribe this audio verbatim. The audio may be in English, Tagalog, Filipino, or Taglish. Automatically detect the spoken language. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
+                      text: isTagalog
+                        ? "Transcribe this audio verbatim. The audio may be in Tagalog, Filipino, English, or Taglish. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes."
+                        : isEnglish
+                          ? "Transcribe this audio verbatim in English. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes."
+                          : "Transcribe this audio verbatim. The audio may be in English, Tagalog, Filipino, or Taglish. Automatically detect the spoken language. Return only the exact transcribed words and punctuation with no explanation, timestamps, or quotes.",
                     },
                     { inlineData: { mimeType: audioMime, data: b64 } },
                   ],
@@ -173,7 +172,11 @@ export function createGoogleSttProvider(
           } | null;
           const transcript = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
           if (!transcript) throw new AssistantVoiceProviderError("google", "invalid_response");
-          return { text: transcript, durationSeconds: 0, languageCode: isTagalog ? "fil-PH" : "en-US" };
+          return {
+            text: transcript,
+            durationSeconds: 0,
+            languageCode: isTagalog ? "fil-PH" : "en-US",
+          };
         }
 
         // Speech-to-Text V2 / chirp_3 path
@@ -226,7 +229,11 @@ export function createGoogleSttProvider(
           } | null;
           const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
           if (!transcript) throw new AssistantVoiceProviderError("google", "invalid_response");
-          return { text: transcript, durationSeconds: 0, languageCode: isTagalog ? "fil-PH" : "en-US" };
+          return {
+            text: transcript,
+            durationSeconds: 0,
+            languageCode: isTagalog ? "fil-PH" : "en-US",
+          };
         }
 
         // Fallback for raw API key without projectId using Speech V1
@@ -261,7 +268,11 @@ export function createGoogleSttProvider(
           } | null;
           const transcript = data?.results?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
           if (!transcript) throw new AssistantVoiceProviderError("google", "invalid_response");
-          return { text: transcript, durationSeconds: 0, languageCode: isTagalog ? "fil-PH" : "en-US" };
+          return {
+            text: transcript,
+            durationSeconds: 0,
+            languageCode: isTagalog ? "fil-PH" : "en-US",
+          };
         }
 
         // Without projectId or valid API key, fail as configuration error

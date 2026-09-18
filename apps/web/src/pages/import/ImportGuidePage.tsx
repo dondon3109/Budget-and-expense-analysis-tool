@@ -55,9 +55,9 @@ function ImportGuideBody({ guide }: { guide: ImportGuide }) {
       <section className="import-guide-section">
         <h2>Your data stays yours</h2>
         <p>
-          Zoption does not connect to {guide.shortName} and never asks for your banking
-          credentials. You upload a file you already downloaded, and every record lives in your own
-          isolated workspace. Your workspace starts empty and contains only what you choose to add.
+          Zoption does not connect to {guide.shortName} and never asks for your banking credentials.
+          You upload a file you already downloaded, and every record lives in your own isolated
+          workspace. Your workspace starts empty and contains only what you choose to add.
         </p>
       </section>
 

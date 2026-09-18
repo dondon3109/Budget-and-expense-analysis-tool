@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import {
   calculateDualCurrencyBalance,
@@ -7,20 +7,20 @@ import {
   DEFAULT_OFW_EXCHANGE_RATES,
   OFW_CURRENCIES,
   type OfwCurrency,
-} from '../src/remittance';
+} from "../src/remittance";
 
-describe('DEFAULT_OFW_EXCHANGE_RATES benchmark data', () => {
-  it('defines benchmarks for all supported OFW currencies', () => {
+describe("DEFAULT_OFW_EXCHANGE_RATES benchmark data", () => {
+  it("defines benchmarks for all supported OFW currencies", () => {
     const expectedCurrencies: OfwCurrency[] = [
-      'USD',
-      'EUR',
-      'SGD',
-      'AED',
-      'SAR',
-      'JPY',
-      'CAD',
-      'GBP',
-      'AUD',
+      "USD",
+      "EUR",
+      "SGD",
+      "AED",
+      "SAR",
+      "JPY",
+      "CAD",
+      "GBP",
+      "AUD",
     ];
 
     expect(OFW_CURRENCIES).toEqual(expectedCurrencies);
@@ -29,17 +29,17 @@ describe('DEFAULT_OFW_EXCHANGE_RATES benchmark data', () => {
       const benchmark = DEFAULT_OFW_EXCHANGE_RATES[currency];
       expect(benchmark).toBeDefined();
       expect(benchmark.fromCurrency).toBe(currency);
-      expect(benchmark.toCurrency).toBe('PHP');
+      expect(benchmark.toCurrency).toBe("PHP");
       expect(benchmark.midMarketRate).toBeGreaterThan(0);
       expect(benchmark.providerSpreadEstimates.wise).toBe(0.005);
       expect(benchmark.providerSpreadEstimates.remitly).toBe(0.015);
       expect(benchmark.providerSpreadEstimates.westernUnion).toBe(0.025);
       expect(benchmark.providerSpreadEstimates.bankWire).toBe(0.035);
-      expect(typeof benchmark.lastUpdated).toBe('string');
+      expect(typeof benchmark.lastUpdated).toBe("string");
     }
   });
 
-  it('has expected reasonable mid-market rates for standard OFW corridors', () => {
+  it("has expected reasonable mid-market rates for standard OFW corridors", () => {
     expect(DEFAULT_OFW_EXCHANGE_RATES.USD.midMarketRate).toBe(56.5);
     expect(DEFAULT_OFW_EXCHANGE_RATES.EUR.midMarketRate).toBe(61.2);
     expect(DEFAULT_OFW_EXCHANGE_RATES.SGD.midMarketRate).toBe(42.1);
@@ -52,18 +52,18 @@ describe('DEFAULT_OFW_EXCHANGE_RATES benchmark data', () => {
   });
 });
 
-describe('calculateRemittance', () => {
-  it('calculates mid-market remittance with zero fee and zero spread', () => {
+describe("calculateRemittance", () => {
+  it("calculates mid-market remittance with zero fee and zero spread", () => {
     const result = calculateRemittance({
       sendAmountMinor: 50_000, // 500.00 USD
-      fromCurrency: 'USD',
-      provider: 'mid_market',
+      fromCurrency: "USD",
+      provider: "mid_market",
     });
 
     expect(result).toEqual({
       sendAmountMinor: 50_000,
-      fromCurrency: 'USD',
-      toCurrency: 'PHP',
+      fromCurrency: "USD",
+      toCurrency: "PHP",
       effectiveRate: 56.5,
       midMarketRate: 56.5,
       grossConvertedPhpMinor: 2_825_000, // 500 * 56.50 * 100
@@ -76,11 +76,11 @@ describe('calculateRemittance', () => {
     });
   });
 
-  it('calculates Wise remittance with 0.5% FX spread', () => {
+  it("calculates Wise remittance with 0.5% FX spread", () => {
     const result = calculateRemittance({
       sendAmountMinor: 50_000, // 500.00 USD
-      fromCurrency: 'USD',
-      provider: 'wise',
+      fromCurrency: "USD",
+      provider: "wise",
     });
 
     // 56.50 * (1 - 0.005) = 56.2175
@@ -96,11 +96,11 @@ describe('calculateRemittance', () => {
     expect(result.effectiveLossPercent).toBe(0.5);
   });
 
-  it('calculates Remitly, Western Union, and Bank Wire spreads correctly', () => {
+  it("calculates Remitly, Western Union, and Bank Wire spreads correctly", () => {
     const remitly = calculateRemittance({
       sendAmountMinor: 50_000,
-      fromCurrency: 'USD',
-      provider: 'remitly',
+      fromCurrency: "USD",
+      provider: "remitly",
     });
     // 56.50 * (1 - 0.015) = 55.6525
     expect(remitly.effectiveRate).toBe(55.6525);
@@ -110,8 +110,8 @@ describe('calculateRemittance', () => {
 
     const westernUnion = calculateRemittance({
       sendAmountMinor: 50_000,
-      fromCurrency: 'USD',
-      provider: 'western_union',
+      fromCurrency: "USD",
+      provider: "western_union",
     });
     // 56.50 * (1 - 0.025) = 55.0875
     expect(westernUnion.effectiveRate).toBe(55.0875);
@@ -121,8 +121,8 @@ describe('calculateRemittance', () => {
 
     const bankWire = calculateRemittance({
       sendAmountMinor: 50_000,
-      fromCurrency: 'USD',
-      provider: 'bank_wire',
+      fromCurrency: "USD",
+      provider: "bank_wire",
     });
     // 56.50 * (1 - 0.035) = 54.5225
     expect(bankWire.effectiveRate).toBe(54.5225);
@@ -131,11 +131,11 @@ describe('calculateRemittance', () => {
     expect(bankWire.effectiveLossPercent).toBe(3.5);
   });
 
-  it('incorporates upfront transfer fees into total cost and effective loss', () => {
+  it("incorporates upfront transfer fees into total cost and effective loss", () => {
     const result = calculateRemittance({
       sendAmountMinor: 50_000, // 500.00 USD
-      fromCurrency: 'USD',
-      provider: 'wise',
+      fromCurrency: "USD",
+      provider: "wise",
       transferFeeMinor: 500, // 5.00 USD fee
     });
 
@@ -149,12 +149,12 @@ describe('calculateRemittance', () => {
     expect(result.effectiveLossPercent).toBe(1.5);
   });
 
-  it('honors custom exchange rates over provider defaults', () => {
+  it("honors custom exchange rates over provider defaults", () => {
     const result = calculateRemittance({
       sendAmountMinor: 100_000, // 1000.00 USD
-      fromCurrency: 'USD',
+      fromCurrency: "USD",
       customExchangeRate: 55.0,
-      provider: 'wise', // should be overridden by customExchangeRate
+      provider: "wise", // should be overridden by customExchangeRate
     });
 
     expect(result.effectiveRate).toBe(55.0);
@@ -166,10 +166,10 @@ describe('calculateRemittance', () => {
     expect(result.effectiveLossPercent).toBe(2.65);
   });
 
-  it('handles custom exchange rates better than mid-market gracefully without negative loss', () => {
+  it("handles custom exchange rates better than mid-market gracefully without negative loss", () => {
     const result = calculateRemittance({
       sendAmountMinor: 100_000,
-      fromCurrency: 'USD',
+      fromCurrency: "USD",
       customExchangeRate: 58.0,
     });
 
@@ -182,11 +182,11 @@ describe('calculateRemittance', () => {
     expect(result.effectiveLossPercent).toBe(0);
   });
 
-  it('handles edge case of zero send amount', () => {
+  it("handles edge case of zero send amount", () => {
     const result = calculateRemittance({
       sendAmountMinor: 0,
-      fromCurrency: 'AED',
-      provider: 'wise',
+      fromCurrency: "AED",
+      provider: "wise",
     });
 
     expect(result.grossConvertedPhpMinor).toBe(0);
@@ -196,10 +196,10 @@ describe('calculateRemittance', () => {
     expect(result.effectiveLossPercent).toBe(0);
   });
 
-  it('handles zero send amount with a flat transfer fee without dividing by zero', () => {
+  it("handles zero send amount with a flat transfer fee without dividing by zero", () => {
     const result = calculateRemittance({
       sendAmountMinor: 0,
-      fromCurrency: 'SAR',
+      fromCurrency: "SAR",
       transferFeeMinor: 200, // 2.00 SAR
     });
 
@@ -210,37 +210,37 @@ describe('calculateRemittance', () => {
   });
 });
 
-describe('calculateDualCurrencyBalance', () => {
-  it('converts foreign currency balance using mid-market benchmark', () => {
-    const usdBalance = calculateDualCurrencyBalance(100_000, 'USD'); // 1,000.00 USD
+describe("calculateDualCurrencyBalance", () => {
+  it("converts foreign currency balance using mid-market benchmark", () => {
+    const usdBalance = calculateDualCurrencyBalance(100_000, "USD"); // 1,000.00 USD
     expect(usdBalance).toEqual({
-      foreignCurrency: 'USD',
+      foreignCurrency: "USD",
       foreignBalanceMinor: 100_000,
       convertedPhpMinor: 5_650_000, // 1000 * 56.50 * 100
       exchangeRate: 56.5,
     });
 
-    const jpyBalance = calculateDualCurrencyBalance(500_000, 'JPY'); // 5,000 JPY
+    const jpyBalance = calculateDualCurrencyBalance(500_000, "JPY"); // 5,000 JPY
     expect(jpyBalance).toEqual({
-      foreignCurrency: 'JPY',
+      foreignCurrency: "JPY",
       foreignBalanceMinor: 500_000,
       convertedPhpMinor: 190_000, // 500000 * 0.38
       exchangeRate: 0.38,
     });
 
-    const sgdBalance = calculateDualCurrencyBalance(25_000, 'SGD'); // 250.00 SGD
+    const sgdBalance = calculateDualCurrencyBalance(25_000, "SGD"); // 250.00 SGD
     expect(sgdBalance).toEqual({
-      foreignCurrency: 'SGD',
+      foreignCurrency: "SGD",
       foreignBalanceMinor: 25_000,
       convertedPhpMinor: 1_052_500, // 25000 * 42.10
       exchangeRate: 42.1,
     });
   });
 
-  it('supports custom exchange rate override for dual currency balance', () => {
-    const result = calculateDualCurrencyBalance(50_000, 'EUR', 62.5);
+  it("supports custom exchange rate override for dual currency balance", () => {
+    const result = calculateDualCurrencyBalance(50_000, "EUR", 62.5);
     expect(result).toEqual({
-      foreignCurrency: 'EUR',
+      foreignCurrency: "EUR",
       foreignBalanceMinor: 50_000,
       convertedPhpMinor: 3_125_000, // 50000 * 62.50
       exchangeRate: 62.5,
@@ -248,16 +248,16 @@ describe('calculateDualCurrencyBalance', () => {
   });
 });
 
-describe('compareRemittanceProviders', () => {
-  it('returns comparison results for all providers in ascending order of cost', () => {
-    const comparison = compareRemittanceProviders(100_000, 'USD'); // 1,000.00 USD
+describe("compareRemittanceProviders", () => {
+  it("returns comparison results for all providers in ascending order of cost", () => {
+    const comparison = compareRemittanceProviders(100_000, "USD"); // 1,000.00 USD
 
     expect(Object.keys(comparison)).toEqual([
-      'mid_market',
-      'wise',
-      'remitly',
-      'western_union',
-      'bank_wire',
+      "mid_market",
+      "wise",
+      "remitly",
+      "western_union",
+      "bank_wire",
     ]);
 
     expect(comparison.mid_market!.netPhpReceivedMinor).toBe(5_650_000);

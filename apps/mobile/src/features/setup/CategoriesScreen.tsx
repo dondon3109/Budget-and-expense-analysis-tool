@@ -23,13 +23,7 @@ function statusText(state: LocalCategoryItem["syncState"]): string | null {
   }
 }
 
-function CategoryRow({
-  category,
-  onPress,
-}: {
-  category: LocalCategoryItem;
-  onPress: () => void;
-}) {
+function CategoryRow({ category, onPress }: { category: LocalCategoryItem; onPress: () => void }) {
   const theme = useZoptionTheme();
   const status = statusText(category.syncState);
   const disabled = category.system || category.syncState === "failed";
@@ -103,13 +97,7 @@ function CategoryRow({
   );
 }
 
-function SectionHeader({
-  title,
-  onAdd,
-}: {
-  title: string;
-  onAdd?: () => void;
-}) {
+function SectionHeader({ title, onAdd }: { title: string; onAdd?: () => void }) {
   const theme = useZoptionTheme();
   return (
     <View className="flex-row items-center justify-between gap-3">

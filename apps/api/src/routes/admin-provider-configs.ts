@@ -66,7 +66,11 @@ export function createAdminProviderConfigRoutes(
     const service = parseService(context.req.query("service"));
     const limitRaw = context.req.query("limit");
     const limit = limitRaw ? Number(limitRaw) : 50;
-    const auditsRaw = await repository.listAudits(context.env, service, Number.isFinite(limit) ? limit : 50);
+    const auditsRaw = await repository.listAudits(
+      context.env,
+      service,
+      Number.isFinite(limit) ? limit : 50,
+    );
     // Parse JSON strings safely for frontend; never expose secrets (configs contain no secrets)
     const audits = auditsRaw.map((row) => ({
       id: row.id,
@@ -91,7 +95,12 @@ export function createAdminProviderConfigRoutes(
     await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
     const id = context.req.param("id");
     const config = await repository.getById(context.env, id);
-    if (!config) throw new HttpError(404, "provider_config_not_found", "Provider configuration was not found.");
+    if (!config)
+      throw new HttpError(
+        404,
+        "provider_config_not_found",
+        "Provider configuration was not found.",
+      );
     return context.json(config);
   });
 
@@ -99,10 +108,19 @@ export function createAdminProviderConfigRoutes(
     await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
     const body = providerConfigCreateSchema.safeParse(await readJson(context));
     if (!body.success) {
-      throw new HttpError(400, "invalid_request", "Provide a valid provider and model.", body.error.flatten());
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Provide a valid provider and model.",
+        body.error.flatten(),
+      );
     }
     if (!registry.validateAllowlist(body.data.service, body.data.provider, body.data.model)) {
-      throw new HttpError(400, "invalid_provider_model", "Unsupported provider or model for this service.");
+      throw new HttpError(
+        400,
+        "invalid_provider_model",
+        "Unsupported provider or model for this service.",
+      );
     }
     const needsCred = expectsCredential(body.data.service, body.data.provider);
     const credentialId = body.data.credentialId ?? null;
@@ -111,16 +129,28 @@ export function createAdminProviderConfigRoutes(
     }
     // cloudflare binding never uses a credential; google via bridge uses ADC (optional credential for REST health-check only)
     if (body.data.provider === "cloudflare_workers_ai" && credentialId) {
-      throw new HttpError(400, "credential_not_allowed", "This provider does not use a credential.");
+      throw new HttpError(
+        400,
+        "credential_not_allowed",
+        "This provider does not use a credential.",
+      );
     }
     if (credentialId) {
       const cred = await credentialRepository.getById(context.env, credentialId);
       if (!cred) throw new HttpError(404, "credential_not_found", "Credential was not found.");
       if (cred.provider !== body.data.provider) {
-        throw new HttpError(400, "credential_provider_mismatch", "Credential provider must match configuration provider.");
+        throw new HttpError(
+          400,
+          "credential_provider_mismatch",
+          "Credential provider must match configuration provider.",
+        );
       }
     }
-    const created = await repository.create(context.env, body.data as never, context.get("authUser").id);
+    const created = await repository.create(
+      context.env,
+      body.data as never,
+      context.get("authUser").id,
+    );
     registry.invalidate(body.data.service);
     return context.json(created, 201);
   });
@@ -129,17 +159,35 @@ export function createAdminProviderConfigRoutes(
     await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
     const id = context.req.param("id");
     const existing = await repository.getById(context.env, id);
-    if (!existing) throw new HttpError(404, "provider_config_not_found", "Provider configuration was not found.");
+    if (!existing)
+      throw new HttpError(
+        404,
+        "provider_config_not_found",
+        "Provider configuration was not found.",
+      );
     const body = providerConfigUpdateSchema.safeParse(await readJson(context));
     if (!body.success) {
-      throw new HttpError(400, "invalid_request", "Provide at least one valid change.", body.error.flatten());
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Provide at least one valid change.",
+        body.error.flatten(),
+      );
     }
     const nextProvider = body.data.provider ?? existing.provider;
     const nextModel = body.data.model ?? existing.model;
-    const nextCredentialId = body.data.credentialId !== undefined ? body.data.credentialId : existing.credentialId;
+    const nextCredentialId =
+      body.data.credentialId !== undefined ? body.data.credentialId : existing.credentialId;
     // Validate allowlist if provider or model changes
-    if ((body.data.provider !== undefined || body.data.model !== undefined) && !registry.validateAllowlist(existing.service, nextProvider, nextModel)) {
-      throw new HttpError(400, "invalid_provider_model", "Unsupported provider or model for this service.");
+    if (
+      (body.data.provider !== undefined || body.data.model !== undefined) &&
+      !registry.validateAllowlist(existing.service, nextProvider, nextModel)
+    ) {
+      throw new HttpError(
+        400,
+        "invalid_provider_model",
+        "Unsupported provider or model for this service.",
+      );
     }
     // Validate credential ↔ provider consistency
     const needsCred = expectsCredential(existing.service, nextProvider);
@@ -147,13 +195,21 @@ export function createAdminProviderConfigRoutes(
       throw new HttpError(400, "credential_required", "This provider requires a credential.");
     }
     if (nextProvider === "cloudflare_workers_ai" && nextCredentialId) {
-      throw new HttpError(400, "credential_not_allowed", "This provider does not use a credential.");
+      throw new HttpError(
+        400,
+        "credential_not_allowed",
+        "This provider does not use a credential.",
+      );
     }
     if (nextCredentialId) {
       const cred = await credentialRepository.getById(context.env, nextCredentialId);
       if (!cred) throw new HttpError(404, "credential_not_found", "Credential was not found.");
       if (cred.provider !== nextProvider) {
-        throw new HttpError(400, "credential_provider_mismatch", "Credential provider must match configuration provider.");
+        throw new HttpError(
+          400,
+          "credential_provider_mismatch",
+          "Credential provider must match configuration provider.",
+        );
       }
     }
     const updated = await repository.update(context.env, id, body.data, context.get("authUser").id);
@@ -173,9 +229,19 @@ export function createAdminProviderConfigRoutes(
     await platformAdmins.requireAdmin(context.env, context.get("authUser").id);
     const body = providerConfigReorderSchema.safeParse(await readJson(context));
     if (!body.success) {
-      throw new HttpError(400, "invalid_request", "Provide orderedIds for a service.", body.error.flatten());
+      throw new HttpError(
+        400,
+        "invalid_request",
+        "Provide orderedIds for a service.",
+        body.error.flatten(),
+      );
     }
-    const reordered = await repository.reorder(context.env, body.data.service, body.data.orderedIds, context.get("authUser").id);
+    const reordered = await repository.reorder(
+      context.env,
+      body.data.service,
+      body.data.orderedIds,
+      context.get("authUser").id,
+    );
     registry.invalidate(body.data.service);
     return context.json({ configs: reordered });
   });

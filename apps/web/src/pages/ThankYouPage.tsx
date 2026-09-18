@@ -1,4 +1,11 @@
-import { ArrowRight, CheckCircle2, Heart, MessageSquareCheck, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Heart,
+  MessageSquareCheck,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { LegalFooter } from "../components/legal/LegalFooter";
@@ -86,12 +93,7 @@ export function ThankYouPage() {
 
       <main className="thank-you-main" id="main-content" tabIndex={-1}>
         <div className="thank-you-container">
-          <Breadcrumbs
-            items={[
-              { label: "Home", to: "/" },
-              { label: "Thank You" },
-            ]}
-          />
+          <Breadcrumbs items={[{ label: "Home", to: "/" }, { label: "Thank You" }]} />
 
           <article className="thank-you-card">
             <div className="thank-you-icon-wrap" aria-hidden="true">

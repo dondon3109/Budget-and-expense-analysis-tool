@@ -1,4 +1,7 @@
-import { parsePersistedAssistantVoiceOptions, useAssistantVoiceOptionsStore } from "./assistant-voice-store";
+import {
+  parsePersistedAssistantVoiceOptions,
+  useAssistantVoiceOptionsStore,
+} from "./assistant-voice-store";
 
 describe("assistant voice options persistence", () => {
   it("round-trips the versioned allowlist", () => {
@@ -29,9 +32,9 @@ describe("assistant voice options persistence", () => {
   });
 
   it("fails closed to defaults for malformed state", () => {
-    expect(
-      parsePersistedAssistantVoiceOptions({ subject: "user-a", replyMode: "loud" }),
-    ).toBe(null);
+    expect(parsePersistedAssistantVoiceOptions({ subject: "user-a", replyMode: "loud" })).toBe(
+      null,
+    );
     expect(parsePersistedAssistantVoiceOptions({ voice: "bright", extra: true })).toBe(null);
     expect(parsePersistedAssistantVoiceOptions("garbage")).toBe(null);
   });

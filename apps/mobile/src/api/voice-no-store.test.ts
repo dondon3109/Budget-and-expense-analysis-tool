@@ -44,9 +44,7 @@ describe("in-flight no-store audio path", () => {
   beforeEach(() => mockDelete.mockClear());
 
   it("transcribeVoice sends no-store headers when opted in", async () => {
-    const fetchMock = jest.fn(async () =>
-      jsonResponse({ text: "hello", durationSeconds: 1 }),
-    );
+    const fetchMock = jest.fn(async () => jsonResponse({ text: "hello", durationSeconds: 1 }));
     await transcribeVoice({ accessToken: "token", fetchImpl: fetchMock }, RECORDING, {
       noStore: true,
     });
@@ -59,9 +57,7 @@ describe("in-flight no-store audio path", () => {
   });
 
   it("transcribeVoice omits no-store headers by default", async () => {
-    const fetchMock = jest.fn(async () =>
-      jsonResponse({ text: "hello", durationSeconds: 1 }),
-    );
+    const fetchMock = jest.fn(async () => jsonResponse({ text: "hello", durationSeconds: 1 }));
     await transcribeVoice({ accessToken: "token", fetchImpl: fetchMock }, RECORDING);
     const headers = requestHeaders(fetchMock);
     expect(headers["Cache-Control"]).toBeUndefined();

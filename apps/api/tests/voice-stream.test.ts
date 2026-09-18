@@ -850,9 +850,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
         headers: { Upgrade: "websocket", Connection: "Upgrade" },
       });
       expect(res.status).toBe(101);
-      expect(serverWs.send).toHaveBeenCalledWith(
-        expect.stringContaining("bridge_connect_failed"),
-      );
+      expect(serverWs.send).toHaveBeenCalledWith(expect.stringContaining("bridge_connect_failed"));
     } finally {
       globalThis.fetch = originalFetch;
       delete (globalThis as any).WebSocketPair;

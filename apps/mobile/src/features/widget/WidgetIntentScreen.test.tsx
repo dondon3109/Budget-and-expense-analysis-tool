@@ -234,9 +234,7 @@ describe("WidgetIntentScreen expense review", () => {
     await render(<WidgetIntentScreen />);
 
     expect(screen.getByText("Voice note heard")).toBeTruthy();
-    expect(
-      screen.getByText("“I have spent 500 pesos for dinner today using cash”"),
-    ).toBeTruthy();
+    expect(screen.getByText("“I have spent 500 pesos for dinner today using cash”")).toBeTruthy();
   });
 
   it("renders a cancel button to dismiss the confirmation", async () => {

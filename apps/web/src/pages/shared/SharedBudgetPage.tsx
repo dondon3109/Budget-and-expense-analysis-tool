@@ -42,7 +42,11 @@ export function SharedBudgetPage({ token: tokenProp }: SharedBudgetPageProps) {
   if (!result.valid || !result.payload) {
     return (
       <main className="shared-budget-page shared-budget-error-page">
-        <section className="shared-budget-error-card" role="alert" aria-labelledby="shared-budget-error-title">
+        <section
+          className="shared-budget-error-card"
+          role="alert"
+          aria-labelledby="shared-budget-error-title"
+        >
           <AlertTriangle size={28} aria-hidden="true" />
           <p className="shared-budget-eyebrow">Link unavailable</p>
           <h1 id="shared-budget-error-title">We could not open this shared budget</h1>
@@ -116,7 +120,10 @@ export function SharedBudgetPage({ token: tokenProp }: SharedBudgetPageProps) {
         </article>
       </section>
 
-      <section className="shared-budget-envelope-section" aria-labelledby="shared-budget-envelopes-title">
+      <section
+        className="shared-budget-envelope-section"
+        aria-labelledby="shared-budget-envelopes-title"
+      >
         <div className="shared-budget-section-heading">
           <WalletCards size={20} aria-hidden="true" />
           <div>
@@ -130,7 +137,10 @@ export function SharedBudgetPage({ token: tokenProp }: SharedBudgetPageProps) {
             return (
               <article className="shared-budget-envelope-card" key={envelope.categoryId}>
                 <div className="shared-budget-envelope-heading">
-                  <span className="shared-budget-category-dot" style={{ background: envelope.categoryColor }} />
+                  <span
+                    className="shared-budget-category-dot"
+                    style={{ background: envelope.categoryColor }}
+                  />
                   <div>
                     <h3>{envelope.categoryName}</h3>
                     <p>{envelope.percentUsed}% used</p>

@@ -61,9 +61,12 @@ describe("buildSnapshotFromRemote", () => {
     expect(() => buildSnapshotFromRemote({ ...validRemote, sha256: "nope" })).toThrow(
       /strict release-metadata validation/,
     );
-    expect(() => buildSnapshotFromRemote({ ...validRemote, downloadUrl: "http://downloads.zoption.site/android/x.apk" })).toThrow(
-      /strict release-metadata validation/,
-    );
+    expect(() =>
+      buildSnapshotFromRemote({
+        ...validRemote,
+        downloadUrl: "http://downloads.zoption.site/android/x.apk",
+      }),
+    ).toThrow(/strict release-metadata validation/);
     expect(() => buildSnapshotFromRemote(null)).toThrow(/strict release-metadata validation/);
   });
 

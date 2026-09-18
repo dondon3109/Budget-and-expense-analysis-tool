@@ -35,9 +35,7 @@ describe("mic-capture consent gate (separate from assistant-voice consent)", () 
   it("fails closed for malformed persisted state", () => {
     expect(parsePersistedMicCaptureConsent("garbage")).toBe(null);
     expect(parsePersistedMicCaptureConsent({ consentedAt: "not-a-version" })).toBe(null);
-    expect(
-      parsePersistedMicCaptureConsent({ consentedAt: null, consentVersion: -1 }),
-    ).toBe(null);
+    expect(parsePersistedMicCaptureConsent({ consentedAt: null, consentVersion: -1 })).toBe(null);
     expect(
       parsePersistedMicCaptureConsent({
         consentedAt: "2026-09-07T00:00:00.000Z",

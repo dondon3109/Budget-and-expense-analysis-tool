@@ -38,7 +38,9 @@ export function entitlementCopy(summary: BillingSummary): string | null {
 export function periodEndsCopy(summary: BillingSummary): string | null {
   if (summary.plan !== "zoption_pro" || summary.currentPeriodEndsAt === null) return null;
   if (summary.cancelAtPeriodEnd) {
-    return "Renewal is off. Pro access remains until " + manilaDate(summary.currentPeriodEndsAt) + ".";
+    return (
+      "Renewal is off. Pro access remains until " + manilaDate(summary.currentPeriodEndsAt) + "."
+    );
   }
   return "Renews on " + manilaDate(summary.currentPeriodEndsAt) + ".";
 }
@@ -61,9 +63,11 @@ export function usageResetsCopy(usage: BillingUsage): string | null {
   return "Resets " + manilaDate(usage.resetsAt) + ".";
 }
 
-export function allowanceCopy(
-  allowance: { resource: string; used: number; limit: number | null },
-): string {
+export function allowanceCopy(allowance: {
+  resource: string;
+  used: number;
+  limit: number | null;
+}): string {
   switch (allowance.resource) {
     case "custom_category":
       return allowance.limit === null

@@ -74,10 +74,22 @@ export function ImportSubscriptionSuggestions({
     mutationFn: (input: SubscriptionInput) => createSubscription(workspace, input),
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.allSubscriptions(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions(workspace, new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") + "-01") });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.subscriptions(
+          workspace,
+          new Date().getFullYear() +
+            "-" +
+            String(new Date().getMonth() + 1).padStart(2, "0") +
+            "-01",
+        ),
+      });
       if (activeCandidate) {
         setDismissed((prev) => new Set([...prev, activeCandidate.normalized]));
-        setSuccessMessage('"' + created.name + '" is now tracked as an active subscription. See it in your Renewal Calendar.');
+        setSuccessMessage(
+          '"' +
+            created.name +
+            '" is now tracked as an active subscription. See it in your Renewal Calendar.',
+        );
         setActiveCandidate(null);
         setTimeout(() => setSuccessMessage(null), 4000);
       }
@@ -95,11 +107,17 @@ export function ImportSubscriptionSuggestions({
 
   function resolveCategoryId(candidate: ImportSubscriptionCandidate): string {
     const byId = candidate.categoryId
-      ? categories.find((c) => c.id === candidate.categoryId && !c.archived && c.kind === "expense" && !c.locked)
+      ? categories.find(
+          (c) => c.id === candidate.categoryId && !c.archived && c.kind === "expense" && !c.locked,
+        )
       : undefined;
     if (byId) return byId.id;
     const byName = categories.find(
-      (c) => normalizedName(c.name) === normalizedName(candidate.categoryName) && !c.archived && c.kind === "expense" && !c.locked,
+      (c) =>
+        normalizedName(c.name) === normalizedName(candidate.categoryName) &&
+        !c.archived &&
+        c.kind === "expense" &&
+        !c.locked,
     );
     if (byName) return byName.id;
     return selectableCategories[0]?.id ?? "";
@@ -120,7 +138,9 @@ export function ImportSubscriptionSuggestions({
         status: "active" as const,
         categoryId: resolveCategoryId(activeCandidate),
         categoryName: activeCandidate.categoryName,
-        categoryColor: selectableCategories.find((c) => c.id === resolveCategoryId(activeCandidate))?.color ?? "#64748b",
+        categoryColor:
+          selectableCategories.find((c) => c.id === resolveCategoryId(activeCandidate))?.color ??
+          "#64748b",
         accountId: resolveAccountId(),
         accountName: activeAccounts.find((a) => a.id === resolveAccountId())?.name ?? null,
       } satisfies SubscriptionRecord)
@@ -183,7 +203,9 @@ export function ImportSubscriptionSuggestions({
                   </div>
 
                   <div className="suggestion-meta">
-                    <span className="suggestion-amount">{formatMoney(candidate.typicalAmountMinor)}</span>
+                    <span className="suggestion-amount">
+                      {formatMoney(candidate.typicalAmountMinor)}
+                    </span>
                     <span className="suggestion-dot">·</span>
                     <span className="suggestion-count">
                       {candidate.occurrenceCount} times in {candidate.distinctMonths}{" "}
@@ -201,8 +223,8 @@ export function ImportSubscriptionSuggestions({
                       {candidate.occurrenceDates.slice(0, 4).join(" · ")}
                       {candidate.occurrenceDates.length > 4
                         ? " · +" + (candidate.occurrenceDates.length - 4) + " more"
-                        : ""}
-                      {" "}· Next: {candidate.nextBillingDate}
+                        : ""}{" "}
+                      · Next: {candidate.nextBillingDate}
                     </span>
                   </div>
 
@@ -211,7 +233,10 @@ export function ImportSubscriptionSuggestions({
                       Range {formatMoney(candidate.lowestAmountMinor)} –{" "}
                       {formatMoney(candidate.highestAmountMinor)}
                       {candidate.priceChangePercent !== null && candidate.priceChangePercent !== 0
-                        ? " · " + (candidate.priceChangePercent > 0 ? "+" : "") + candidate.priceChangePercent + "% since last"
+                        ? " · " +
+                          (candidate.priceChangePercent > 0 ? "+" : "") +
+                          candidate.priceChangePercent +
+                          "% since last"
                         : ""}
                     </div>
                   )}
@@ -246,9 +271,9 @@ export function ImportSubscriptionSuggestions({
         </ul>
 
         <p className="suggestion-footer">
-          Tracking creates an active subscription and a matching expense on its next billing date. You
-          can edit the amount, billing cycle, or billing date before saving. Yearly plans are divided
-          across 12 months in your Renewal Calendar cash-flow totals.
+          Tracking creates an active subscription and a matching expense on its next billing date.
+          You can edit the amount, billing cycle, or billing date before saving. Yearly plans are
+          divided across 12 months in your Renewal Calendar cash-flow totals.
         </p>
       </section>
 

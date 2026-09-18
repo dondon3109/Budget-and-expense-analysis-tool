@@ -6,14 +6,7 @@ import {
 } from "@paypal/react-paypal-js/sdk-v6";
 import type { BillingInterval, BillingProviderConfig, BillingSummary } from "@zoption/shared";
 import { Check, CreditCard, LockKeyhole, Minus, ShieldCheck, WalletCards, X } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 

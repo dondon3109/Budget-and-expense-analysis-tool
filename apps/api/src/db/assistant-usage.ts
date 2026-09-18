@@ -47,12 +47,7 @@ interface AssistantCycleUsageRow {
 }
 
 export interface AssistantUsageRepository {
-  getUsage(
-    env: Bindings,
-    tenantId: string,
-    limit: number,
-    now?: Date,
-  ): Promise<BillingUsage>;
+  getUsage(env: Bindings, tenantId: string, limit: number, now?: Date): Promise<BillingUsage>;
   consumeUsage(env: Bindings, tenantId: string): Promise<void>;
 }
 
@@ -113,9 +108,7 @@ export async function getAssistantCycleUsage(
     };
   }
 
-  const nowEpoch = now
-    ? Math.floor(now.getTime() / 1_000)
-    : Number(existing.nowEpoch);
+  const nowEpoch = now ? Math.floor(now.getTime() / 1_000) : Number(existing.nowEpoch);
   const currentIndex = Math.max(
     Number(existing.periodIndex),
     assistantCycleIndex(Number(existing.anchorAtEpoch), nowEpoch),

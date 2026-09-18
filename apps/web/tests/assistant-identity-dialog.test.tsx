@@ -13,7 +13,12 @@ describe("AssistantIdentityDialog", () => {
   it("keeps Tab inside the dialog and closes on Escape", () => {
     const onClose = vi.fn();
     render(
-      <AssistantIdentityDialog required={false} busy={false} onSubmit={vi.fn()} onClose={onClose} />,
+      <AssistantIdentityDialog
+        required={false}
+        busy={false}
+        onSubmit={vi.fn()}
+        onClose={onClose}
+      />,
     );
 
     const dialog = screen.getByRole("dialog", { name: "Edit assistant names" });

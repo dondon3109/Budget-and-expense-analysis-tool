@@ -38,9 +38,9 @@ export function CookiePolicyPage() {
           cookieless, memory-only mode without setting analytics cookies, storing persistent device
           identifiers, or creating person profiles. Zoption does not send your financial workspace
           data, account credentials, or assistant conversations to the analytics platform. Because
-          nothing is stored on your device and nothing identifies you, this measurement runs
-          without an Analytics choice, and the Analytics and Marketing categories stay off and gate
-          any provider connected in the future.
+          nothing is stored on your device and nothing identifies you, this measurement runs without
+          an Analytics choice, and the Analytics and Marketing categories stay off and gate any
+          provider connected in the future.
         </p>
         <p>
           Zoption also records six anonymous conversion steps so the path from a first public page
@@ -96,13 +96,13 @@ export function CookiePolicyPage() {
         <h2>5. Providers and future changes</h2>
         <p>
           PostHog is Zoption&apos;s web measurement provider. It receives cookieless, memory-only
-          page-use and Core Web Vitals measurements on public pages and the six anonymous
-          conversion steps described in section 2. It never receives what you enter: no amounts,
-          categories, accounts, search text, page addresses with parameters, or free text, and no
-          person profile is built. Before enabling any additional Analytics or Marketing provider,
-          Zoption must connect it to the consent gate, update this policy and its vendor inventory,
-          disclose purposes and retention, and make any minimal Content Security Policy changes
-          deliberately. Optional technology must not load before the corresponding consent.
+          page-use and Core Web Vitals measurements on public pages and the six anonymous conversion
+          steps described in section 2. It never receives what you enter: no amounts, categories,
+          accounts, search text, page addresses with parameters, or free text, and no person profile
+          is built. Before enabling any additional Analytics or Marketing provider, Zoption must
+          connect it to the consent gate, update this policy and its vendor inventory, disclose
+          purposes and retention, and make any minimal Content Security Policy changes deliberately.
+          Optional technology must not load before the corresponding consent.
         </p>
       </section>
 
@@ -115,12 +115,12 @@ export function CookiePolicyPage() {
           involves feature-specific server processing. The support chat sends a message only when
           you choose to submit it and keeps its browser copy in session storage. A signed-in bug
           report is stored only after you review and explicitly submit it; this account-bound
-          storage is not controlled by Cookie Settings. PostHog receives operational model,
-          latency, token, call-structure, finish, and error metadata for the financial assistant
-          without questions, answers, financial records, tool payloads, credentials, or internal
-          IDs. Mobile builds transmit only sanitized crash summaries without message contents or
-          financial records. Read the <Link to="/privacy-policy">Privacy Policy</Link> for
-          account, financial, provider, assistant, and rights information.
+          storage is not controlled by Cookie Settings. PostHog receives operational model, latency,
+          token, call-structure, finish, and error metadata for the financial assistant without
+          questions, answers, financial records, tool payloads, credentials, or internal IDs. Mobile
+          builds transmit only sanitized crash summaries without message contents or financial
+          records. Read the <Link to="/privacy-policy">Privacy Policy</Link> for account, financial,
+          provider, assistant, and rights information.
         </p>
       </section>
 

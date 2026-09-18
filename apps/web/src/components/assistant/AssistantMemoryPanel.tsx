@@ -235,7 +235,8 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
                 <span className="strategy-pill">Saves interest</span>
               </div>
               <p className="strategy-desc">
-                Prioritizes debts with the highest interest rate first to minimize total interest paid.
+                Prioritizes debts with the highest interest rate first to minimize total interest
+                paid.
               </p>
             </button>
 
@@ -252,7 +253,8 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
                 <span className="strategy-pill">Fastest wins</span>
               </div>
               <p className="strategy-desc">
-                Prioritizes debts with the smallest balance first to build momentum through quick payoffs.
+                Prioritizes debts with the smallest balance first to build momentum through quick
+                payoffs.
               </p>
             </button>
 

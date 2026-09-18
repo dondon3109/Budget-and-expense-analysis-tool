@@ -379,7 +379,9 @@ async function createPostHogTransport(config: TelemetryConfig): Promise<Telemetr
   // Lazy import keeps the library off the critical path: disabled builds
   // never execute it, and a failing load is caught by the service's init.
   if (!config.apiKey) {
-    throw new Error("EXPO_PUBLIC_POSTHOG_KEY variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once EXPO_PUBLIC_POSTHOG_KEY is configured");
+    throw new Error(
+      "EXPO_PUBLIC_POSTHOG_KEY variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once EXPO_PUBLIC_POSTHOG_KEY is configured",
+    );
   }
   const posthog = await import("posthog-react-native");
   const client = new posthog.default(config.apiKey, createPostHogOptions(config.host));

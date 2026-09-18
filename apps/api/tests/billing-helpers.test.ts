@@ -78,44 +78,20 @@ describe("billing time and status helpers", () => {
   it("retains PayPal access through a future paid-through date after cancellation", () => {
     const now = new Date("2026-08-01T00:00:00.000Z");
     expect(
-      hasEffectiveProEntitlement(
-        "canceled",
-        "2026-08-01T00:00:00.001Z",
-        now,
-        "paypal",
-        true,
-      ),
+      hasEffectiveProEntitlement("canceled", "2026-08-01T00:00:00.001Z", now, "paypal", true),
     ).toBe(true);
     expect(
-      hasEffectiveProEntitlement(
-        "canceled",
-        "2026-08-01T00:00:00.001Z",
-        now,
-        "paypal",
-        false,
-      ),
+      hasEffectiveProEntitlement("canceled", "2026-08-01T00:00:00.001Z", now, "paypal", false),
     ).toBe(false);
   });
 
   it("blocks checkout and account deletion while canceled PayPal access remains paid", () => {
     const now = new Date("2026-08-01T00:00:00.000Z");
     expect(
-      isCheckoutBlockingSubscription(
-        "canceled",
-        "2026-08-01T00:00:00.001Z",
-        "paypal",
-        true,
-        now,
-      ),
+      isCheckoutBlockingSubscription("canceled", "2026-08-01T00:00:00.001Z", "paypal", true, now),
     ).toBe(true);
     expect(
-      isCheckoutBlockingSubscription(
-        "canceled",
-        "2026-07-31T23:59:59.999Z",
-        "paypal",
-        true,
-        now,
-      ),
+      isCheckoutBlockingSubscription("canceled", "2026-07-31T23:59:59.999Z", "paypal", true, now),
     ).toBe(false);
   });
 
@@ -218,11 +194,7 @@ describe("billing usage error mapping", () => {
     const failure = new Error("D1 unavailable");
 
     await expect(
-      billingRepository.rethrowMonthlyImportUsageError(
-        environment,
-        "user:user-1",
-        failure,
-      ),
+      billingRepository.rethrowMonthlyImportUsageError(environment, "user:user-1", failure),
     ).rejects.toBe(failure);
   });
 });

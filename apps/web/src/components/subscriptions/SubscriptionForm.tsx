@@ -78,10 +78,7 @@ export function SubscriptionForm({
     () => availableCategories.filter((category) => !category.locked),
     [availableCategories],
   );
-  const activeAccounts = useMemo(
-    () => accounts.filter((account) => !account.archived),
-    [accounts],
-  );
+  const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
 
   useEffect(() => {
     if (!selectableCategories.some((category) => category.id === categoryId)) {
@@ -261,7 +258,11 @@ export function SubscriptionForm({
             <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button className="button primary" type="submit" disabled={busy || !categoryId || !accountId}>
+            <button
+              className="button primary"
+              type="submit"
+              disabled={busy || !categoryId || !accountId}
+            >
               {submitLabel ??
                 (busy
                   ? editing

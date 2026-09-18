@@ -33,8 +33,7 @@ export function TransactionRow({
       : pending
         ? "Saved on this device"
         : undefined;
-  const statusColor =
-    failed || conflicted ? theme.colors.danger : theme.colors.warning;
+  const statusColor = failed || conflicted ? theme.colors.danger : theme.colors.warning;
 
   return (
     <Pressable
@@ -42,9 +41,7 @@ export function TransactionRow({
       accessibilityHint={onPress ? "Opens transaction editor" : undefined}
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityState={
-        conflicted || failed || pending
-          ? { busy: pending, disabled: !onPress }
-          : undefined
+        conflicted || failed || pending ? { busy: pending, disabled: !onPress } : undefined
       }
       android_ripple={
         onPress
@@ -98,7 +95,13 @@ export function TransactionRow({
       <MoneyValue
         amountMinor={transaction.amountMinor}
         currency={transaction.currency}
-        tone={transaction.kind === "transfer" ? "default" : transaction.amountMinor < 0 ? "expense" : "income"}
+        tone={
+          transaction.kind === "transfer"
+            ? "default"
+            : transaction.amountMinor < 0
+              ? "expense"
+              : "income"
+        }
         style={typography.headline}
       />
     </Pressable>

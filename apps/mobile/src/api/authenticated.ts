@@ -93,20 +93,10 @@ export function mapApiError(
     );
   }
   if (status === 500 || status === 503) {
-    return new ApiTransportError(
-      errorMessage(body, fallback),
-      "unavailable",
-      status,
-      code,
-    );
+    return new ApiTransportError(errorMessage(body, fallback), "unavailable", status, code);
   }
   if (status === 409) {
-    return new ApiTransportError(
-      errorMessage(body, fallback),
-      "conflict",
-      status,
-      code,
-    );
+    return new ApiTransportError(errorMessage(body, fallback), "conflict", status, code);
   }
   if (status === 400 || status === 415 || status === 422) {
     return new ApiTransportError(

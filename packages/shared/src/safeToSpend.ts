@@ -38,12 +38,7 @@ export interface SafeToSpendResult {
  * All amounts are integer minor units (PHP centavos).
  */
 export function safeToSpend(options: SafeToSpendOptions): number {
-  const {
-    remainingWeeklyEnvelopeMinor,
-    daysLeftInWeek,
-    forecast,
-    safetyBufferMinor = 0,
-  } = options;
+  const { remainingWeeklyEnvelopeMinor, daysLeftInWeek, forecast, safetyBufferMinor = 0 } = options;
 
   // Edge case: zero or negative envelope
   if (remainingWeeklyEnvelopeMinor <= 0) {

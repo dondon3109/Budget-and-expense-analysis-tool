@@ -145,7 +145,8 @@ export function CashflowForecastSection({
           </div>
           <h2 className="forecast-heading">Upcoming Balance & Obligation Forecast</h2>
           <p className="forecast-subheading">
-            Simulate your expected cash position based on current liquid balances and recurring subscription commitments.
+            Simulate your expected cash position based on current liquid balances and recurring
+            subscription commitments.
           </p>
         </div>
 
@@ -203,7 +204,8 @@ export function CashflowForecastSection({
               <span className="alert-amount negative">
                 {formatMoney(forecast.minProjectedBalanceMinor)}
               </span>
-              . Consider adjusting renewal dates or transferring additional funds to keep accounts covered.
+              . Consider adjusting renewal dates or transferring additional funds to keep accounts
+              covered.
             </p>
           </div>
         </div>
@@ -218,9 +220,8 @@ export function CashflowForecastSection({
             <strong className="alert-title">Low Buffer Warning</strong>
             <p className="alert-desc">
               Your balance drops close to your reserve threshold around{" "}
-              <strong>{formatFullDate(forecast.minBalanceDate)}</strong> ({formatMoney(
-                forecast.minProjectedBalanceMinor,
-              )}
+              <strong>{formatFullDate(forecast.minBalanceDate)}</strong> (
+              {formatMoney(forecast.minProjectedBalanceMinor)}
               ). Keep an eye on incoming payments to maintain comfortable liquidity.
             </p>
           </div>
@@ -235,8 +236,8 @@ export function CashflowForecastSection({
           <div className="alert-content">
             <strong className="alert-title">Healthy Cashflow Projection</strong>
             <p className="alert-desc">
-              All upcoming bill obligations are safely covered across the next {horizonDays} days with a
-              lowest projected buffer of {formatMoney(forecast.minProjectedBalanceMinor)} on{" "}
+              All upcoming bill obligations are safely covered across the next {horizonDays} days
+              with a lowest projected buffer of {formatMoney(forecast.minProjectedBalanceMinor)} on{" "}
               {formatDisplayDate(forecast.minBalanceDate)}.
             </p>
           </div>
@@ -267,18 +268,20 @@ export function CashflowForecastSection({
               )}
             </div>
           </div>
-          <div
-            className={`metric-value ${forecast.endingBalanceMinor < 0 ? "negative" : ""}`}
-          >
+          <div className={`metric-value ${forecast.endingBalanceMinor < 0 ? "negative" : ""}`}>
             {formatMoney(forecast.endingBalanceMinor)}
           </div>
-          <div className="metric-caption">At day {horizonDays} ({formatDisplayDate(forecast.endDate)})</div>
+          <div className="metric-caption">
+            At day {horizonDays} ({formatDisplayDate(forecast.endDate)})
+          </div>
         </div>
 
         <div className="forecast-metric-card">
           <div className="metric-header">
             <span className="metric-title">Lowest Projected Point</span>
-            <div className={`metric-icon-box ${forecast.minProjectedBalanceMinor < 0 ? "danger" : ""}`}>
+            <div
+              className={`metric-icon-box ${forecast.minProjectedBalanceMinor < 0 ? "danger" : ""}`}
+            >
               <AlertCircle size={16} aria-hidden="true" />
             </div>
           </div>
@@ -287,7 +290,9 @@ export function CashflowForecastSection({
           >
             {formatMoney(forecast.minProjectedBalanceMinor)}
           </div>
-          <div className="metric-caption">Expected on {formatDisplayDate(forecast.minBalanceDate)}</div>
+          <div className="metric-caption">
+            Expected on {formatDisplayDate(forecast.minBalanceDate)}
+          </div>
         </div>
 
         <div className="forecast-metric-card">
@@ -299,7 +304,8 @@ export function CashflowForecastSection({
           </div>
           <div className="metric-value">{formatMoney(forecast.totalBillsMinor)}</div>
           <div className="metric-caption">
-            {forecast.upcomingBillRisks.length} renewal{forecast.upcomingBillRisks.length === 1 ? "" : "s"} over {horizonDays}d
+            {forecast.upcomingBillRisks.length} renewal
+            {forecast.upcomingBillRisks.length === 1 ? "" : "s"} over {horizonDays}d
           </div>
         </div>
       </div>
@@ -310,7 +316,8 @@ export function CashflowForecastSection({
           <div>
             <h3 className="projection-card-title">Projected Balance Trajectory</h3>
             <p className="projection-card-subtitle">
-              Daily simulation over the next {horizonDays} days highlighting bill deductions and minimum liquidity.
+              Daily simulation over the next {horizonDays} days highlighting bill deductions and
+              minimum liquidity.
             </p>
           </div>
           <div className="projection-legend">
@@ -330,7 +337,11 @@ export function CashflowForecastSection({
         </div>
 
         <div className="projection-chart-container">
-          <div className="projection-timeline-bars" role="img" aria-label="Cashflow projection timeline">
+          <div
+            className="projection-timeline-bars"
+            role="img"
+            aria-label="Cashflow projection timeline"
+          >
             {forecast.dailyTimeline.map((day) => {
               const heightPercent = Math.max(
                 10,
@@ -339,8 +350,8 @@ export function CashflowForecastSection({
               const statusClass = day.isDeficit
                 ? "bar-deficit"
                 : day.isDip
-                ? "bar-dip"
-                : "bar-safe";
+                  ? "bar-dip"
+                  : "bar-safe";
 
               const hasBills = day.events.some((e) => e.type === "bill");
 
@@ -349,7 +360,12 @@ export function CashflowForecastSection({
                   key={day.date}
                   className={`timeline-bar-col ${statusClass}`}
                   title={`${formatDisplayDate(day.date)}: ${formatMoney(day.projectedBalanceMinor)}${
-                    hasBills ? ` · Bills: ${day.events.filter((e) => e.type === "bill").map((b) => b.name).join(", ")}` : ""
+                    hasBills
+                      ? ` · Bills: ${day.events
+                          .filter((e) => e.type === "bill")
+                          .map((b) => b.name)
+                          .join(", ")}`
+                      : ""
                   }`}
                 >
                   <div className="bar-track">
@@ -363,9 +379,7 @@ export function CashflowForecastSection({
                     day.dayIndex === Math.floor(horizonDays / 2) ||
                     day.dayIndex === horizonDays - 1 ||
                     day.date === forecast.minBalanceDate) && (
-                    <span className="bar-label">
-                      {formatDisplayDate(day.date)}
-                    </span>
+                    <span className="bar-label">{formatDisplayDate(day.date)}</span>
                   )}
                 </div>
               );
@@ -375,7 +389,9 @@ export function CashflowForecastSection({
           <div className="projection-summary-footer">
             <div className="summary-stat">
               <span className="summary-stat-label">Start</span>
-              <strong className="summary-stat-value">{formatMoney(forecast.startingBalanceMinor)}</strong>
+              <strong className="summary-stat-value">
+                {formatMoney(forecast.startingBalanceMinor)}
+              </strong>
             </div>
             <div className="summary-stat">
               <span className="summary-stat-label">Net Movement</span>
@@ -420,7 +436,8 @@ export function CashflowForecastSection({
             <h3 className="projection-card-title">Upcoming Bill Obligations</h3>
           </div>
           <span className="obligations-count-badge">
-            {forecast.upcomingBillRisks.length} Scheduled Payment{forecast.upcomingBillRisks.length === 1 ? "" : "s"}
+            {forecast.upcomingBillRisks.length} Scheduled Payment
+            {forecast.upcomingBillRisks.length === 1 ? "" : "s"}
           </span>
         </div>
 
@@ -429,7 +446,8 @@ export function CashflowForecastSection({
             <CheckCircle2 size={32} className="empty-icon" aria-hidden="true" />
             <p className="empty-title">No upcoming bills in this period</p>
             <p className="empty-desc">
-              There are no active subscription renewals scheduled within the next {horizonDays} days.
+              There are no active subscription renewals scheduled within the next {horizonDays}{" "}
+              days.
             </p>
           </div>
         ) : (
@@ -440,9 +458,15 @@ export function CashflowForecastSection({
                 <tr>
                   <th scope="col">Due Date</th>
                   <th scope="col">Subscription / Obligation</th>
-                  <th scope="col" className="text-right">Amount</th>
-                  <th scope="col" className="text-right">Balance After</th>
-                  <th scope="col" className="text-center">Risk Assessment</th>
+                  <th scope="col" className="text-right">
+                    Amount
+                  </th>
+                  <th scope="col" className="text-right">
+                    Balance After
+                  </th>
+                  <th scope="col" className="text-center">
+                    Risk Assessment
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -465,8 +489,8 @@ export function CashflowForecastSection({
                           {risk.daysUntilDue === 0
                             ? "Today"
                             : risk.daysUntilDue === 1
-                            ? "Tomorrow"
-                            : `in ${risk.daysUntilDue} days`}
+                              ? "Tomorrow"
+                              : `in ${risk.daysUntilDue} days`}
                         </span>
                       </td>
                       <td className="name-cell">

@@ -2,17 +2,17 @@
 
 Last updated: 2026-08-16.
 
-| Milestone                            | Status      | Exit evidence                                                                                                                |
-| ------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 0. Discovery and design              | Complete    | Verified repository/worktree baseline, parity matrix, architecture, sync protocol, threat model, shared compatibility review |
-| 1. Mobile foundation                 | Complete    | Native Android/iOS development builds and runtime navigation/input on both platforms (Android 15 emulator, iPhone 17 Pro sim) |
+| Milestone                            | Status      | Exit evidence                                                                                                                                                                   |
+| ------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0. Discovery and design              | Complete    | Verified repository/worktree baseline, parity matrix, architecture, sync protocol, threat model, shared compatibility review                                                    |
+| 1. Mobile foundation                 | Complete    | Native Android/iOS development builds and runtime navigation/input on both platforms (Android 15 emulator, iPhone 17 Pro sim)                                                   |
 | 2. Authentication and shell          | In progress | Real Supabase session and Worker-derived tenant verified on iOS and Android; Google OAuth runtime-proven end-to-end on Android (identity preserved); Sign in with Apple remains |
-| 3. Encrypted local database          | Complete   | iOS and Android SQLCipher file/reopen proofs, migrations, observable repository, and guarded sign-out implemented             |
-| 4. Transaction sync vertical slice   | Complete   | Create/edit/delete + offline durability, restart recovery, push/pull, and explicit multi-client conflict resolution proven against production on iOS and Android |
-| 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity; Android runtime passes complete                          |
-| 6. Planning and recurring money      | Complete   | Goals, debts (avalanche/snowball), subscriptions, calendar, fee-aware transfers, and savings-interest modeling proven with tests and Android runtime passes |
-| 7. Imports                           | Complete   | Native selection, explicit preview, duplicate prevention, atomic commit                                                      |
-| 8. Online-only capabilities          | Complete   | Assistant/voice/billing/support/account management with online/consent boundaries; 40 new mobile tests, iOS dev build proof  |
+| 3. Encrypted local database          | Complete    | iOS and Android SQLCipher file/reopen proofs, migrations, observable repository, and guarded sign-out implemented                                                               |
+| 4. Transaction sync vertical slice   | Complete    | Create/edit/delete + offline durability, restart recovery, push/pull, and explicit multi-client conflict resolution proven against production on iOS and Android                |
+| 5. Core budgeting                    | In progress | Local-first dashboard/budgets/cash flow/search with semantic parity; Android runtime passes complete                                                                            |
+| 6. Planning and recurring money      | Complete    | Goals, debts (avalanche/snowball), subscriptions, calendar, fee-aware transfers, and savings-interest modeling proven with tests and Android runtime passes                     |
+| 7. Imports                           | Complete    | Native selection, explicit preview, duplicate prevention, atomic commit                                                                                                         |
+| 8. Online-only capabilities          | Complete    | Assistant/voice/billing/support/account management with online/consent boundaries; 40 new mobile tests, iOS dev build proof                                                     |
 | 9. Hardening and release preparation | In progress | Accessibility, permissions, log/secret audits, release/preview builds, deep links, cold start, memory, and Android background-task execution verified; device-only items remain |
 
 ## Milestone 0 verified baseline
@@ -800,12 +800,12 @@ against production. One full cycle was verified:
   and tokens cannot leak through app logs.
 - **Android permission audit** (dev build): INTERNET, ACCESS_NETWORK_STATE /
   ACCESS_WIFI_STATE (NetInfo), RECORD_AUDIO + FOREGROUND_SERVICE_MEDIA_PLAYBACK
-  + MODIFY_AUDIO_SETTINGS (voice assistant; audio permission not granted until
-  used), RECEIVE_BOOT_COMPLETED (background sync scheduling), USE_BIOMETRIC
-  (SecureStore). No location, camera, contacts, or storage permissions. The
-  dev-client-only SYSTEM_ALERT_WINDOW / CHANGE_WIFI_MULTICAST_STATE entries are
-  expected to disappear from the preview build (to be confirmed from its
-  manifest).
+  - MODIFY_AUDIO_SETTINGS (voice assistant; audio permission not granted until
+    used), RECEIVE_BOOT_COMPLETED (background sync scheduling), USE_BIOMETRIC
+    (SecureStore). No location, camera, contacts, or storage permissions. The
+    dev-client-only SYSTEM_ALERT_WINDOW / CHANGE_WIFI_MULTICAST_STATE entries are
+    expected to disappear from the preview build (to be confirmed from its
+    manifest).
 - **Accessibility audit (Android emulator)**: all 10 clickable nodes on the
   transactions screen expose labels ("Add transaction", "Search transactions",
   filter chips, and the four tab-bar destinations); zero unlabeled interactive

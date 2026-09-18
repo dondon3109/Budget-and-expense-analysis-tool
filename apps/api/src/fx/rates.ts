@@ -49,10 +49,7 @@ function utcDate(now: Date): string {
  * Store today's rate if not already present. Idempotent per date: a racing or
  * repeated run returns the already-stored row without overwriting it.
  */
-export async function storeFxRate(
-  env: Bindings,
-  now = new Date(),
-): Promise<FxRateResult | null> {
+export async function storeFxRate(env: Bindings, now = new Date()): Promise<FxRateResult | null> {
   const date = utcDate(now);
   const existing = await env.DB.prepare("SELECT date FROM fx_rates WHERE date = ?")
     .bind(date)
@@ -80,7 +77,10 @@ export async function refreshDailyFxRate(env: Bindings): Promise<FxRateResult | 
     return await storeFxRate(env);
   } catch (error) {
     console.log(
-      JSON.stringify({ message: "Daily FX refresh failed", error: error instanceof Error ? error.message : String(error) }),
+      JSON.stringify({
+        message: "Daily FX refresh failed",
+        error: error instanceof Error ? error.message : String(error),
+      }),
     );
     return null;
   }

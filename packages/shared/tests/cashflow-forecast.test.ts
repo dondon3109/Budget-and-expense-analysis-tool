@@ -240,9 +240,7 @@ describe("recurring yearly bills", () => {
       horizonDays: 90,
     });
 
-    const events = result.dailyTimeline.flatMap((d) =>
-      d.events.filter((e) => e.name === "Domain"),
-    );
+    const events = result.dailyTimeline.flatMap((d) => d.events.filter((e) => e.name === "Domain"));
     expect(events).toHaveLength(1);
     expect(events[0]!.date).toBe("2026-01-05");
   });
@@ -864,9 +862,7 @@ describe("end-to-end integration", () => {
       horizonDays: 30,
     });
 
-    const event = result.dailyTimeline
-      .flatMap((d) => d.events)
-      .find((e) => e.name === "Side Gig")!;
+    const event = result.dailyTimeline.flatMap((d) => d.events).find((e) => e.name === "Side Gig")!;
     expect(event.id).toBe("Side Gig");
   });
 

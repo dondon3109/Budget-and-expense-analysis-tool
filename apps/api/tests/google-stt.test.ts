@@ -118,7 +118,10 @@ describe("createGoogleSttProvider", () => {
     }) as any;
 
     try {
-      const provider = createGoogleSttProvider("gemini-3.5-transcribe-live", "AIzaSySecretVoiceKey9999");
+      const provider = createGoogleSttProvider(
+        "gemini-3.5-transcribe-live",
+        "AIzaSySecretVoiceKey9999",
+      );
       const audioBlob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "audio/webm" });
       const res = await provider.transcribe({} as any, audioBlob as any);
 

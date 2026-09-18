@@ -298,21 +298,18 @@ export function AssistantScreen() {
     [openThread],
   );
 
-  const handleVoiceTurnComplete = useCallback(
-    (thread: AssistantThread) => {
-      setThreads((previous) => [
-        {
-          id: thread.id,
-          title: thread.title,
-          kind: thread.kind,
-          lastMessageAt: thread.lastMessageAt,
-          createdAt: thread.createdAt,
-        },
-        ...previous.filter((item) => item.id !== thread.id),
-      ]);
-    },
-    [],
-  );
+  const handleVoiceTurnComplete = useCallback((thread: AssistantThread) => {
+    setThreads((previous) => [
+      {
+        id: thread.id,
+        title: thread.title,
+        kind: thread.kind,
+        lastMessageAt: thread.lastMessageAt,
+        createdAt: thread.createdAt,
+      },
+      ...previous.filter((item) => item.id !== thread.id),
+    ]);
+  }, []);
 
   const handleVoiceError = useCallback((error: ApiTransportError) => {
     setVoiceError({ message: error.message });
@@ -909,10 +906,7 @@ export function AssistantScreen() {
               <View style={styles.chatStatusRow}>
                 <View style={[styles.chatStatusDot, { backgroundColor: theme.colors.income }]} />
                 <Text
-                  style={[
-                    typography.caption,
-                    { color: theme.colors.income, fontWeight: "600" },
-                  ]}
+                  style={[typography.caption, { color: theme.colors.income, fontWeight: "600" }]}
                 >
                   Online · Read-only
                 </Text>
@@ -1361,8 +1355,8 @@ function VoiceConsentBlock({ busy, onEnable }: { busy: boolean; onEnable: () => 
     <View className="gap-3">
       <Text style={[typography.body, { color: theme.colors.textMuted }]}>
         Enable voice input to dictate questions into the message box. Your recording is sent to
-        Cloudflare Workers AI for transcription only. Zoption does not store recordings, and
-        answers on this screen are always text.
+        Cloudflare Workers AI for transcription only. Zoption does not store recordings, and answers
+        on this screen are always text.
       </Text>
       <Button variant="secondary" loading={busy} onPress={onEnable}>
         Enable voice input

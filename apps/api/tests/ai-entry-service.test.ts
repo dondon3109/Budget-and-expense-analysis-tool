@@ -259,11 +259,7 @@ describe("AI entry service", () => {
     const customTranscriptionProvider = {
       transcribe: mockTranscribe,
     };
-    const service = createAiEntryService(
-      repository(),
-      imports(),
-      customTranscriptionProvider,
-    );
+    const service = createAiEntryService(repository(), imports(), customTranscriptionProvider);
 
     const result = await service.extractVoice(
       env(run, vi.fn()),
@@ -278,10 +274,8 @@ describe("AI entry service", () => {
       amountMinor: 50_000,
       kind: "transfer",
     });
-    expect(mockTranscribe).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      { language: "fil" },
-    );
+    expect(mockTranscribe).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+      language: "fil",
+    });
   });
 });

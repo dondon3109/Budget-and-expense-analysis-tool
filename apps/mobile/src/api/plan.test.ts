@@ -38,17 +38,17 @@ describe("plan reading", () => {
     const fetchImpl = jest.fn<Promise<Response>, [URL | RequestInfo, RequestInit?]>(() =>
       Promise.resolve(jsonResponse({ error: "invalid" }, 401)),
     );
-    await expect(
-      readPlan({ accessToken: "expired", fetchImpl }),
-    ).rejects.toMatchObject<Partial<PlanError>>({ code: "session_expired", status: 401 });
+    await expect(readPlan({ accessToken: "expired", fetchImpl })).rejects.toMatchObject<
+      Partial<PlanError>
+    >({ code: "session_expired", status: 401 });
   });
 
   it("rejects a malformed summary that lacks a known plan", async () => {
     const fetchImpl = jest.fn<Promise<Response>, [URL | RequestInfo, RequestInit?]>(() =>
       Promise.resolve(jsonResponse({ plan: "business" })),
     );
-    await expect(
-      readPlan({ accessToken: "access-token", fetchImpl }),
-    ).rejects.toMatchObject<Partial<PlanError>>({ code: "invalid_response" });
+    await expect(readPlan({ accessToken: "access-token", fetchImpl })).rejects.toMatchObject<
+      Partial<PlanError>
+    >({ code: "invalid_response" });
   });
 });

@@ -4,11 +4,7 @@ import { MoneyParseError, parseAmountToMinor } from "@zoption/shared";
 
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import { formatMoney } from "../../lib/formatters";
-import {
-  allocateBudget,
-  DEFAULT_PERCENTAGES,
-  type BudgetRulePercentages,
-} from "./allocateBudget";
+import { allocateBudget, DEFAULT_PERCENTAGES, type BudgetRulePercentages } from "./allocateBudget";
 import "./BudgetCalculatorPage.css";
 
 export const BUDGET_CALCULATOR_LAST_UPDATED = "August 31, 2026";
@@ -34,7 +30,11 @@ const BUCKET_COPY = [
     blurb:
       "Emergency fund, MP2 or other savings, insurance, investments, and any extra you throw at high-interest debt above the minimum.",
   },
-] as const satisfies ReadonlyArray<{ key: keyof BudgetRulePercentages; label: string; blurb: string }>;
+] as const satisfies ReadonlyArray<{
+  key: keyof BudgetRulePercentages;
+  label: string;
+  blurb: string;
+}>;
 
 export function BudgetCalculatorPage() {
   const [incomeInput, setIncomeInput] = useState("30,000.00");
@@ -91,8 +91,8 @@ export function BudgetCalculatorPage() {
             />
           </div>
           <p className="calc-hint" id="calc-income-hint">
-            Use your take-home pay — what actually lands in your account after SSS,
-            Pag-IBIG, PhilHealth, and withholding tax.
+            Use your take-home pay — what actually lands in your account after SSS, Pag-IBIG,
+            PhilHealth, and withholding tax.
           </p>
           {parsed.error ? <p className="calc-error">{parsed.error}</p> : null}
         </div>
@@ -117,8 +117,7 @@ export function BudgetCalculatorPage() {
           ))}
           {percentagesValid ? null : (
             <p className="calc-error">
-              The three percentages must add up to 100. They currently add up to{" "}
-              {percentageTotal}.
+              The three percentages must add up to 100. They currently add up to {percentageTotal}.
             </p>
           )}
           {percentagesValid &&
@@ -153,9 +152,9 @@ export function BudgetCalculatorPage() {
 
       {allocation ? (
         <p className="calc-exact">
-          These three amounts add up to exactly {formatMoney(allocation.total)}. Nothing is
-          lost to rounding: every centavo is assigned, so the split always reconciles with
-          the number you typed.
+          These three amounts add up to exactly {formatMoney(allocation.total)}. Nothing is lost to
+          rounding: every centavo is assigned, so the split always reconciles with the number you
+          typed.
         </p>
       ) : null}
 
@@ -186,42 +185,38 @@ export function BudgetCalculatorPage() {
 
       <h2>How the 50/30/20 rule works in pesos</h2>
       <p>
-        The rule is a starting frame, not a law. Take-home pay is split three ways: 50%
-        for needs you cannot drop, 30% for wants you could drop, and 20% for savings and
-        paying down debt faster than the minimum. Filipino households often run needs
-        well above 50% once rent, utilities, and transport are counted, especially in
-        Metro Manila — if that is you, treat the target as a direction rather than a
-        scorecard and move one percentage point at a time.
+        The rule is a starting frame, not a law. Take-home pay is split three ways: 50% for needs
+        you cannot drop, 30% for wants you could drop, and 20% for savings and paying down debt
+        faster than the minimum. Filipino households often run needs well above 50% once rent,
+        utilities, and transport are counted, especially in Metro Manila — if that is you, treat the
+        target as a direction rather than a scorecard and move one percentage point at a time.
       </p>
       <p>
-        Two local details change the picture. First, budget from take-home pay, because
-        SSS, Pag-IBIG, PhilHealth, and withholding tax are already gone before the money
-        reaches you. Second, treat your 13th month pay and any bonus as savings or debt
-        payoff rather than as spendable monthly income — it arrives once a year, and a
-        budget that quietly assumes thirteen months will run short every January.
+        Two local details change the picture. First, budget from take-home pay, because SSS,
+        Pag-IBIG, PhilHealth, and withholding tax are already gone before the money reaches you.
+        Second, treat your 13th month pay and any bonus as savings or debt payoff rather than as
+        spendable monthly income — it arrives once a year, and a budget that quietly assumes
+        thirteen months will run short every January.
       </p>
       <p>
-        The percentages above are adjustable because the standard split is not universal.
-        Someone carrying high-interest credit card debt is better served by a larger
-        savings bucket until that balance clears; someone with stable housing can often
-        push savings higher.
+        The percentages above are adjustable because the standard split is not universal. Someone
+        carrying high-interest credit card debt is better served by a larger savings bucket until
+        that balance clears; someone with stable housing can often push savings higher.
       </p>
 
       <h2>Why centavo accuracy matters</h2>
       <p>
-        Most calculators round each bucket independently and quietly drop the difference.
-        Split ₱30,000.01 three ways and the naive result can lose a centavo, which sounds
-        trivial until your ledger no longer matches your bank. Zoption stores money as
-        whole centavos and does the same in this calculator, so the three buckets always
-        sum to exactly what you entered.
+        Most calculators round each bucket independently and quietly drop the difference. Split
+        ₱30,000.01 three ways and the naive result can lose a centavo, which sounds trivial until
+        your ledger no longer matches your bank. Zoption stores money as whole centavos and does the
+        same in this calculator, so the three buckets always sum to exactly what you entered.
       </p>
 
       <h2>Keep the split honest</h2>
       <p>
-        A plan only survives contact with real spending. Import your BDO, BPI, or MariBank
-        statement and Zoption will categorize it against the budget you just set, so you
-        can see which bucket actually grew last month. See{" "}
-        <Link to="/import">what you can import</Link>, read the{" "}
+        A plan only survives contact with real spending. Import your BDO, BPI, or MariBank statement
+        and Zoption will categorize it against the budget you just set, so you can see which bucket
+        actually grew last month. See <Link to="/import">what you can import</Link>, read the{" "}
         <Link to="/import/bdo-statement">BDO statement guide</Link>, or work through the{" "}
         <Link to="/guides/50-30-20-rule-pesos">50/30/20 rule in pesos</Link>.
       </p>

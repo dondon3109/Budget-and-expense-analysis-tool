@@ -45,7 +45,8 @@ export function Screen({
   const [internalRefreshing, setInternalRefreshing] = useState(false);
 
   const resolvedEdges =
-    edges ?? (hasHeader ? (["bottom", "left", "right"] as const) : (["top", "left", "right"] as const));
+    edges ??
+    (hasHeader ? (["bottom", "left", "right"] as const) : (["top", "left", "right"] as const));
 
   const shouldRenderHeading =
     showHeading && (!hasHeader || Boolean(description || action || leadingAction));

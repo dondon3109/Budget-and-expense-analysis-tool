@@ -40,10 +40,9 @@ describe("CancellationGuideDrawer", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Netflix Standard")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Open official cancellation portal/i })).toHaveAttribute(
-      "href",
-      "https://www.netflix.com/youraccount",
-    );
+    expect(
+      screen.getByRole("link", { name: /Open official cancellation portal/i }),
+    ).toHaveAttribute("href", "https://www.netflix.com/youraccount");
     expect(screen.getByText(/Billing Cutoff Notice/i)).toBeInTheDocument();
     expect(screen.getByText(/Under the 'Membership & Billing' section/i)).toBeInTheDocument();
   });

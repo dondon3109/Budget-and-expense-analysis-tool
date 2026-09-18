@@ -19,7 +19,11 @@ describe("renderMobileVoiceCaption", () => {
   });
 
   it("parses single bold tag into bold Text element", async () => {
-    const parts = renderMobileVoiceCaption("You spent **PHP 1,250** this month.", textStyle, boldStyle);
+    const parts = renderMobileVoiceCaption(
+      "You spent **PHP 1,250** this month.",
+      textStyle,
+      boldStyle,
+    );
     await render(<Text>{parts}</Text>);
     expect(screen.getByText("You spent ")).toBeTruthy();
     expect(screen.getByText("PHP 1,250")).toBeTruthy();
@@ -27,7 +31,11 @@ describe("renderMobileVoiceCaption", () => {
   });
 
   it("parses multiple bold tags correctly", async () => {
-    const parts = renderMobileVoiceCaption("**Total:** **$50.00** across **3** items", textStyle, boldStyle);
+    const parts = renderMobileVoiceCaption(
+      "**Total:** **$50.00** across **3** items",
+      textStyle,
+      boldStyle,
+    );
     await render(<Text>{parts}</Text>);
     expect(screen.getByText("Total:")).toBeTruthy();
     expect(screen.getByText("$50.00")).toBeTruthy();

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { accountUpdateSchema, categoryListQuerySchema, resourceIdSchema, transactionInputSchema } from "../src/schemas";
+import {
+  accountUpdateSchema,
+  categoryListQuerySchema,
+  resourceIdSchema,
+  transactionInputSchema,
+} from "../src/schemas";
 
 describe("API request boundary schemas", () => {
   it("accepts generated and deterministic application identifiers", () => {
@@ -31,9 +36,9 @@ describe("API request boundary schemas", () => {
   });
 
   it("accepts an account update with an optional type", () => {
-    expect(
-      accountUpdateSchema.safeParse({ name: "Maya Wallet", type: "savings" }).success,
-    ).toBe(true);
+    expect(accountUpdateSchema.safeParse({ name: "Maya Wallet", type: "savings" }).success).toBe(
+      true,
+    );
     expect(accountUpdateSchema.safeParse({ name: "Maya Wallet" }).success).toBe(true);
     expect(accountUpdateSchema.safeParse({ name: "Maya Wallet", type: "not-a-type" }).success).toBe(
       false,

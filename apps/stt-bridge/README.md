@@ -3,6 +3,7 @@
 **Purpose:** Terminate browser `WSS` from Worker, bridge to `speech.googleapis.com` `StreamingRecognize` (gRPC bidi) with `model=chirp_3`. Keeps Google SA auth inside Cloud Run (ADC), not forwarded from Worker.
 
 **Run locally (mock, no GCP creds):**
+
 ```bash
 npm install
 PORT=8080 node server.js
@@ -10,6 +11,7 @@ PORT=8080 node server.js
 ```
 
 **Run with real Google:**
+
 ```bash
 gcloud auth application-default login
 GOOGLE_CLOUD_PROJECT=my-project SPEECH_LOCATION=us node server.js
@@ -18,6 +20,7 @@ gcloud run deploy stt-bridge --source . --region us-central1 --allow-unauthentic
 ```
 
 **Protocol:**
+
 - `Browser → Bridge` JSON `{type:"config", config:{model:"chirp_3", language:"en-US"}}` then binary PCM chunks
 - `Bridge → Browser` `{type:"partial", transcript, isFinal:false, t_first_partial, latency_*}` / `{type:"final"}`
 - Worker proxies, adds `x-t-mic-start` header for `mic→stream` measurement.

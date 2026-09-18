@@ -103,7 +103,9 @@ describe("TransactionVoiceEntry language support", () => {
     expect(useVoiceLanguageStore.getState().language).toBe("en");
     await waitFor(() => {
       expect(
-        screen.getByText(/Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form./),
+        screen.getByText(
+          /Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form./,
+        ),
       ).toBeTruthy();
     });
   });

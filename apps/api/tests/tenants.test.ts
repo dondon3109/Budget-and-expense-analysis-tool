@@ -113,7 +113,8 @@ describe("tenant bootstrap", () => {
       "starter",
     ]);
     expect(
-      captured.find((statement) => statement.values.includes("user:user-1:category:salary"))?.values,
+      captured.find((statement) => statement.values.includes("user:user-1:category:salary"))
+        ?.values,
     ).toEqual([
       "user:user-1:category:salary",
       "user:user-1",

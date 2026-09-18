@@ -7,9 +7,7 @@
   "durable_objects": {
     "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }],
   },
-  "migrations": [
-    { "tag": "v1-rate-limit", "new_sqlite_classes": ["RateLimitDurableObject"] },
-  ],
+  "migrations": [{ "tag": "v1-rate-limit", "new_sqlite_classes": ["RateLimitDurableObject"] }],
   "queues": {
     "producers": [{ "binding": "JOBS", "queue": "budget-expense-jobs-e2e" }],
     "consumers": [

@@ -123,7 +123,9 @@ export default function WelcomeScreen() {
       <Card accessibilityLabel="Illustrative private workspace preview">
         <View style={styles.previewHeader}>
           <View style={styles.previewTitleGroup}>
-            <Text style={[typography.caption, { color: theme.colors.textMuted, fontWeight: "700" }]}>
+            <Text
+              style={[typography.caption, { color: theme.colors.textMuted, fontWeight: "700" }]}
+            >
               ILLUSTRATIVE WORKSPACE
             </Text>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -140,19 +142,9 @@ export default function WelcomeScreen() {
           </Text>
           <View style={styles.balanceRow}>
             <MoneyValue amountMinor={4285000} style={styles.heroMoney} />
-            <View
-              style={[
-                styles.deltaPill,
-                { backgroundColor: theme.colors.brandSoft },
-              ]}
-            >
+            <View style={[styles.deltaPill, { backgroundColor: theme.colors.brandSoft }]}>
               <MaterialCommunityIcons name="trending-up" size={14} color={theme.colors.income} />
-              <Text
-                style={[
-                  typography.caption,
-                  { color: theme.colors.income, fontWeight: "700" },
-                ]}
-              >
+              <Text style={[typography.caption, { color: theme.colors.income, fontWeight: "700" }]}>
                 +₱14,350
               </Text>
             </View>
@@ -201,11 +193,19 @@ export default function WelcomeScreen() {
               <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
               <Text
                 numberOfLines={1}
-                style={[typography.caption, { color: theme.colors.text, flex: 1, fontWeight: "500" }]}
+                style={[
+                  typography.caption,
+                  { color: theme.colors.text, flex: 1, fontWeight: "500" },
+                ]}
               >
                 {cat.name}
               </Text>
-              <Text style={[typography.caption, { color: theme.colors.textMuted, marginRight: spacing.xs }]}>
+              <Text
+                style={[
+                  typography.caption,
+                  { color: theme.colors.textMuted, marginRight: spacing.xs },
+                ]}
+              >
                 {cat.share}%
               </Text>
               <View style={[styles.catTrack, { backgroundColor: theme.colors.border }]}>
@@ -233,7 +233,9 @@ export default function WelcomeScreen() {
           </Text>
         </View>
 
-        <Text style={[typography.caption, styles.disclaimerText, { color: theme.colors.textMuted }]}>
+        <Text
+          style={[typography.caption, styles.disclaimerText, { color: theme.colors.textMuted }]}
+        >
           Preview values are synthetic and illustrative.
         </Text>
       </Card>
@@ -252,22 +254,20 @@ export default function WelcomeScreen() {
             <Card key={pillar.title} style={styles.featureCard}>
               <View
                 accessibilityElementsHidden
-                style={[
-                  styles.featureIconWrap,
-                  { backgroundColor: theme.colors.brandSoft },
-                ]}
+                style={[styles.featureIconWrap, { backgroundColor: theme.colors.brandSoft }]}
               >
-                <MaterialCommunityIcons
-                  name={pillar.icon}
-                  size={22}
-                  color={theme.colors.brand}
-                />
+                <MaterialCommunityIcons name={pillar.icon} size={22} color={theme.colors.brand} />
               </View>
               <View style={{ gap: spacing.xxs, flex: 1 }}>
                 <Text style={[typography.headline, { color: theme.colors.text }]}>
                   {pillar.title}
                 </Text>
-                <Text style={[typography.body, { color: theme.colors.textMuted, fontSize: 14, lineHeight: 20 }]}>
+                <Text
+                  style={[
+                    typography.body,
+                    { color: theme.colors.textMuted, fontSize: 14, lineHeight: 20 },
+                  ]}
+                >
                   {pillar.description}
                 </Text>
               </View>
@@ -300,11 +300,7 @@ export default function WelcomeScreen() {
         ) : null}
 
         <View style={styles.assuranceRow}>
-          <MaterialCommunityIcons
-            name="shield-outline"
-            size={14}
-            color={theme.colors.textMuted}
-          />
+          <MaterialCommunityIcons name="shield-outline" size={14} color={theme.colors.textMuted} />
           <Text
             style={[
               typography.caption,

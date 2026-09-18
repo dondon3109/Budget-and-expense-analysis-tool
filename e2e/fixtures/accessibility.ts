@@ -43,7 +43,13 @@ export const APP_ROUTES = [
  * skeleton or failure panel, so auditing one of each pattern is enough; scanning all
  * eleven in all three states would triple the run for no extra coverage.
  */
-export const APP_STATE_ROUTES = ["/app", "/app/transactions", "/app/budgets", "/app/subscriptions", "/app/plan"];
+export const APP_STATE_ROUTES = [
+  "/app",
+  "/app/transactions",
+  "/app/budgets",
+  "/app/subscriptions",
+  "/app/plan",
+];
 
 /**
  * Routes with a designed empty state worth auditing on a workspace that holds no data.
@@ -244,9 +250,7 @@ export async function auditAppRoute(
     // refusal can only be attributed by correlation: drop it only when a refusal we already expect
     // was actually observed AND nothing unexpected failed. Otherwise it is reported as-is.
     const unexpected = unexpectedFailures(failedRequests);
-    const sawExpectedRefusal = failedRequests.some(
-      (entry) => !unexpected.includes(entry),
-    );
+    const sawExpectedRefusal = failedRequests.some((entry) => !unexpected.includes(entry));
     const reportedConsoleErrors =
       unexpected.length > 0 || !sawExpectedRefusal
         ? consoleErrors
@@ -316,7 +320,8 @@ export async function analyseVisible(page: Page, label: string): Promise<Finding
   // never examined: useRootLock inerts #root behind a dialog, and the startup splash inerts the
   // content wrapper. Refuse to measure either.
   const hidden = await page.evaluate(() => {
-    if (document.getElementById("root")?.inert === true) return "a dialog is holding the app root inert";
+    if (document.getElementById("root")?.inert === true)
+      return "a dialog is holding the app root inert";
     const content = document.querySelector<HTMLElement>(".private-app-startup-content");
     if (content && content.inert === true) return "the startup splash is still covering the route";
     return null;
@@ -366,7 +371,9 @@ export async function analyseVisible(page: Page, label: string): Promise<Finding
             // and dropping it here is a finding disappearing without anyone noticing.
             if (!element) return true;
             const rect = element.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
+            return (
+              rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight
+            );
           } catch {
             return true;
           }

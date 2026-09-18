@@ -51,7 +51,9 @@ describe("assistant form helpers", () => {
   it("validates assistant messages with the shared input schema", () => {
     expect(validateAssistantMessage("Where does my money go?")).toBe(null);
     expect(validateAssistantMessage("   ")).toMatch(/Enter a question/);
-    expect(validateAssistantMessage("x".repeat(MAX_ASSISTANT_MESSAGE_LENGTH + 1))).toMatch(/2,000 characters/);
+    expect(validateAssistantMessage("x".repeat(MAX_ASSISTANT_MESSAGE_LENGTH + 1))).toMatch(
+      /2,000 characters/,
+    );
   });
 
   it("groups threads by recency", () => {

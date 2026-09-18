@@ -117,7 +117,8 @@ function CancellationGuideContent({
                   <h3>General Cancellation Guidelines</h3>
                 </div>
                 <p>
-                  We don't have a direct 1-click guide on file for <strong>{item.name}</strong>, but here are the standard steps to stop recurring charges:
+                  We don't have a direct 1-click guide on file for <strong>{item.name}</strong>, but
+                  here are the standard steps to stop recurring charges:
                 </p>
               </div>
 
@@ -126,7 +127,8 @@ function CancellationGuideContent({
                 <div>
                   <strong>Billing Cycle Notice</strong>
                   <p>
-                    Most subscription services require cancellation at least 24 to 48 hours before the renewal date to avoid being billed for the subsequent period.
+                    Most subscription services require cancellation at least 24 to 48 hours before
+                    the renewal date to avoid being billed for the subsequent period.
                   </p>
                 </div>
               </div>
@@ -134,17 +136,21 @@ function CancellationGuideContent({
               <ol className="cancellation-steps-list">
                 <li>
                   <span>
-                    <strong>Identify Billing Channel:</strong> Check whether {item.name} is billed directly on their website, via Apple App Store, Google Play Store, or GCash/Maya AutoPay.
+                    <strong>Identify Billing Channel:</strong> Check whether {item.name} is billed
+                    directly on their website, via Apple App Store, Google Play Store, or GCash/Maya
+                    AutoPay.
                   </span>
                 </li>
                 <li>
                   <span>
-                    <strong>Account / Billing Settings:</strong> Log in to the service's website or app, navigate to Account Settings &gt; Subscriptions or Billing.
+                    <strong>Account / Billing Settings:</strong> Log in to the service's website or
+                    app, navigate to Account Settings &gt; Subscriptions or Billing.
                   </span>
                 </li>
                 <li>
                   <span>
-                    <strong>Cancel &amp; Save Proof:</strong> Select 'Cancel Subscription' or 'Turn off Auto-Renewal' and retain the confirmation email or screenshot.
+                    <strong>Cancel &amp; Save Proof:</strong> Select 'Cancel Subscription' or 'Turn
+                    off Auto-Renewal' and retain the confirmation email or screenshot.
                   </span>
                 </li>
               </ol>
@@ -153,7 +159,9 @@ function CancellationGuideContent({
 
           <div className="cancellation-drawer-footer-note">
             <p>
-              <em>Note:</em> Marking a subscription as canceled in Zoption tracks your local budget and stops renewal reminders; it does not automatically contact the merchant or dispute past bank charges.
+              <em>Note:</em> Marking a subscription as canceled in Zoption tracks your local budget
+              and stops renewal reminders; it does not automatically contact the merchant or dispute
+              past bank charges.
             </p>
           </div>
         </div>

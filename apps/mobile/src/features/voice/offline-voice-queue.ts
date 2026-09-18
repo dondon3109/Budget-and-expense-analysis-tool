@@ -131,7 +131,8 @@ export async function drainVoiceQueue(
     } catch (error) {
       item.status = "failed";
       item.attempts += 1;
-      item.failureReason = error instanceof Error ? error.message : "Voice draft failed. Try again.";
+      item.failureReason =
+        error instanceof Error ? error.message : "Voice draft failed. Try again.";
       failed = item.id;
       break;
     }

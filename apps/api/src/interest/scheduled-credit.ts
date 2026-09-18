@@ -82,7 +82,10 @@ export async function creditDueInterest(
   if (proAccounts.length === 0) return result;
 
   const categoryByTenant = new Map<string, string>();
-  for (const tenantIds of chunk([...new Set(proAccounts.map((a) => a.tenantId))], BIND_CHUNK_SIZE)) {
+  for (const tenantIds of chunk(
+    [...new Set(proAccounts.map((a) => a.tenantId))],
+    BIND_CHUNK_SIZE,
+  )) {
     const placeholders = tenantIds.map(() => "?").join(", ");
     const categoryRows = await env.DB.prepare(
       `SELECT tenant_id AS tenantId, id
@@ -113,7 +116,10 @@ export async function creditDueInterest(
   // each tenant's accounts still chunk under the D1 bind limit.
   const balanceByAccountId = new Map<string, number>();
   for (const [tenantId, accounts] of groupByTenant(categorized.map((c) => c.account))) {
-    for (const accountIds of chunk(accounts.map((a) => a.id), BIND_CHUNK_SIZE)) {
+    for (const accountIds of chunk(
+      accounts.map((a) => a.id),
+      BIND_CHUNK_SIZE,
+    )) {
       const placeholders = accountIds.map(() => "?").join(", ");
       const balanceRows = await env.DB.prepare(
         `SELECT account_id AS accountId,
@@ -140,7 +146,11 @@ export async function creditDueInterest(
   }> = [];
   for (const { account, categoryId } of categorized) {
     const balance = balanceByAccountId.get(account.id) ?? 0;
-    const amount = interestAmountMinor(balance, account.annualRateBasisPoints, account.interestFrequency);
+    const amount = interestAmountMinor(
+      balance,
+      account.annualRateBasisPoints,
+      account.interestFrequency,
+    );
     if (amount <= 0) {
       result.skipped += 1;
       continue;
@@ -171,11 +181,24 @@ export async function creditDueInterest(
   const pending = creditable.filter((entry) => !existingFingerprints.has(entry.fingerprint));
   if (pending.length === 0) return result;
 
-  const insertStatement = ({ account, categoryId, amount, fingerprint }: (typeof pending)[number]) =>
+  const insertStatement = ({
+    account,
+    categoryId,
+    amount,
+    fingerprint,
+  }: (typeof pending)[number]) =>
     env.DB.prepare(
       `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint, source_kind)
        VALUES (?, ?, ?, ?, ?, 'Interest', ?, 'PHP', 'income', ?, 'manual')`,
-    ).bind(crypto.randomUUID(), account.tenantId, account.id, categoryId, today, amount, fingerprint);
+    ).bind(
+      crypto.randomUUID(),
+      account.tenantId,
+      account.id,
+      categoryId,
+      today,
+      amount,
+      fingerprint,
+    );
 
   try {
     await env.DB.batch(pending.map(insertStatement));

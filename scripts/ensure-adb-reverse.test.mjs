@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  ensureAdbReverse,
-  parseAdbDevices,
-  parseReversedPorts,
-} from "./ensure-adb-reverse.mjs";
+import { ensureAdbReverse, parseAdbDevices, parseReversedPorts } from "./ensure-adb-reverse.mjs";
 
 describe("ensure-adb-reverse", () => {
   describe("parseAdbDevices", () => {
@@ -14,10 +10,7 @@ emulator-5554\toffline
 unauthorized_device\tunauthorized
 192.168.1.100:5555\tdevice
 `;
-      expect(parseAdbDevices(sample)).toEqual([
-        "EYLFLJOZN755CIKZ",
-        "192.168.1.100:5555",
-      ]);
+      expect(parseAdbDevices(sample)).toEqual(["EYLFLJOZN755CIKZ", "192.168.1.100:5555"]);
     });
 
     it("handles empty or malformed outputs", () => {

@@ -160,9 +160,7 @@ export function AssistantVoiceConversation({
     if (initialThreadId == null) return;
     let cancelled = false;
     setHistoryLoading(true);
-    void withToken((token) =>
-      listAssistantMessages({ accessToken: token }, initialThreadId),
-    )
+    void withToken((token) => listAssistantMessages({ accessToken: token }, initialThreadId))
       .then((page) => {
         if (cancelled || !mountedRef.current) return;
         setCaptions(mapAssistantMessagesToVoiceCaptions(page.items));
@@ -323,7 +321,11 @@ export function AssistantVoiceConversation({
         if (!speechAvailable) {
           setCaptions((current) => [
             ...current,
-            { id: turn.assistantMessage.id, role: "assistant", text: turn.assistantMessage.content },
+            {
+              id: turn.assistantMessage.id,
+              role: "assistant",
+              text: turn.assistantMessage.content,
+            },
           ]);
           setNotice("Spoken replies are unavailable in this environment. Showing text only.");
           setVoiceStatus("idle");
@@ -435,7 +437,16 @@ export function AssistantVoiceConversation({
     } else {
       beginListening();
     }
-  }, [beginListening, consented, enableVoice, historyLoading, recorder, setVoiceStatus, speakingId, status]);
+  }, [
+    beginListening,
+    consented,
+    enableVoice,
+    historyLoading,
+    recorder,
+    setVoiceStatus,
+    speakingId,
+    status,
+  ]);
 
   const handleClose = useCallback(() => {
     if (statusRef.current === "listening" || statusRef.current === "preparing") {
@@ -556,9 +567,7 @@ export function AssistantVoiceConversation({
               onPress={onClose}
               style={[styles.consentSecondaryButton, { borderColor: theme.colors.border }]}
             >
-              <Text style={[typography.label, { color: theme.colors.textMuted }]}>
-                Not now
-              </Text>
+              <Text style={[typography.label, { color: theme.colors.textMuted }]}>Not now</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -697,7 +706,9 @@ export function AssistantVoiceConversation({
                     style={[
                       typography.caption,
                       styles.speakerBadgeText,
-                      { color: item.role === "user" ? theme.colors.onBrand : theme.colors.textMuted },
+                      {
+                        color: item.role === "user" ? theme.colors.onBrand : theme.colors.textMuted,
+                      },
                     ]}
                   >
                     {item.role === "user" ? "You" : assistantName}
@@ -709,7 +720,9 @@ export function AssistantVoiceConversation({
                   </Text>
                 ) : (
                   <Text style={[typography.body, { color: theme.colors.text }]}>
-                    {item.id === speakingId && status === "speaking" && typedCount < typingFull.length
+                    {item.id === speakingId &&
+                    status === "speaking" &&
+                    typedCount < typingFull.length
                       ? renderMobileVoiceCaption(
                           `${typingFull.slice(0, typedCount)}▍`,
                           [typography.body, { color: theme.colors.text }],
@@ -784,11 +797,7 @@ export function AssistantVoiceConversation({
               Ready to talk
             </Text>
             <Text
-              style={[
-                typography.callout,
-                styles.emptySubtext,
-                { color: theme.colors.textMuted },
-              ]}
+              style={[typography.callout, styles.emptySubtext, { color: theme.colors.textMuted }]}
             >
               Speak now, or tap a question below:
             </Text>
@@ -887,7 +896,11 @@ export function AssistantVoiceConversation({
 
       <View style={[styles.stage, { borderTopColor: theme.colors.border }]}>
         {/* Equalizer waveform visualizer */}
-        <View style={styles.waveformContainer} accessibilityElementsHidden={true} aria-hidden={true}>
+        <View
+          style={styles.waveformContainer}
+          accessibilityElementsHidden={true}
+          aria-hidden={true}
+        >
           <View
             style={[
               styles.waveBar,
@@ -986,9 +999,7 @@ export function AssistantVoiceConversation({
         </View>
 
         <View style={styles.orbWrapper}>
-          {status === "thinking" ? (
-            <RadarWaveRings color={theme.colors.brand} size={104} />
-          ) : null}
+          {status === "thinking" ? <RadarWaveRings color={theme.colors.brand} size={104} /> : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={

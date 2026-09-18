@@ -40,9 +40,7 @@ export function ShareBudgetSheet({
   copyLink = defaultCopyLink,
 }: ShareBudgetSheetProps) {
   const theme = useZoptionTheme();
-  const [selectedIds, setSelectedIds] = useState<string[]>(() =>
-    rows.map((row) => row.categoryId),
-  );
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => rows.map((row) => row.categoryId));
   const [expiry, setExpiry] = useState<ShareExpiry>("7");
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -112,8 +110,8 @@ export function ShareBudgetSheet({
   return (
     <BottomSheet onDismiss={onDismiss} title="Share envelopes" visible={visible}>
       <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-        Generate a tamper-evident, view-only link for family. Only the selected envelope totals
-        are included.
+        Generate a tamper-evident, view-only link for family. Only the selected envelope totals are
+        included.
       </Text>
 
       <View style={styles.section}>
@@ -199,9 +197,7 @@ export function ShareBudgetSheet({
                 style={[
                   styles.expiryPill,
                   {
-                    backgroundColor: selected
-                      ? theme.colors.brandSoft
-                      : theme.colors.surfaceRaised,
+                    backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surfaceRaised,
                     borderColor: selected ? theme.colors.brand : theme.colors.border,
                   },
                 ]}
@@ -221,7 +217,10 @@ export function ShareBudgetSheet({
       </View>
 
       {error ? (
-        <Text accessibilityRole="alert" style={[typography.callout, { color: theme.colors.danger }]}>
+        <Text
+          accessibilityRole="alert"
+          style={[typography.callout, { color: theme.colors.danger }]}
+        >
           {error}
         </Text>
       ) : null}
@@ -244,7 +243,12 @@ export function ShareBudgetSheet({
           >
             {shareUrl}
           </Text>
-          <Button accessibilityLabel="Copy Link" icon="content-copy" onPress={copy} variant="primary">
+          <Button
+            accessibilityLabel="Copy Link"
+            icon="content-copy"
+            onPress={copy}
+            variant="primary"
+          >
             {copied ? "Copied" : "Copy Link"}
           </Button>
           {copied ? (

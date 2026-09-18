@@ -162,10 +162,9 @@ export function TransactionEditorScreen() {
   const pendingValuesToSaveRef = useRef<TransactionFormValues | null>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
-  const saveRef =
-    useRef<((formValuesToSave?: TransactionFormValues) => Promise<boolean>) | undefined>(
-      undefined,
-    );
+  const saveRef = useRef<
+    ((formValuesToSave?: TransactionFormValues) => Promise<boolean>) | undefined
+  >(undefined);
 
   useEffect(() => {
     if (!formData.data) return;

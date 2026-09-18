@@ -41,14 +41,17 @@ function VersionCard({
         <>
           <Text style={[typography.body, { color: theme.colors.text }]}>{version.name}</Text>
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-            {debtTypeLabels[version.type]} · {version.aprBasisPoints / 100}% APR · {version.status === "paid" ? "paid off" : "active"}
+            {debtTypeLabels[version.type]} · {version.aprBasisPoints / 100}% APR ·{" "}
+            {version.status === "paid" ? "paid off" : "active"}
           </Text>
           <View style={styles.amountRow}>
             <Text style={[typography.callout, { color: theme.colors.textMuted }]}>Balance</Text>
             <MoneyValue amountMinor={version.balanceMinor} />
           </View>
           <View style={styles.amountRow}>
-            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>Minimum payment</Text>
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+              Minimum payment
+            </Text>
             <MoneyValue amountMinor={version.minimumPaymentMinor} />
           </View>
         </>

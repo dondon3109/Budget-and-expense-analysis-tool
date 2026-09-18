@@ -76,7 +76,9 @@ describe("ThankYouPage", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: /Thank you for your bug report/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/reviews all submitted reports within 24 to 48 hours/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/reviews all submitted reports within 24 to 48 hours/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Track your reports/i })).toHaveAttribute(
       "href",
       "/app/support/reports",
