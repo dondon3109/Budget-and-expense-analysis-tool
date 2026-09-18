@@ -72,4 +72,54 @@ describe("setupPayPalLive", () => {
     });
     expect(calls.every((call) => call.url.startsWith("https://api-m.paypal.com/"))).toBe(true);
   });
+
+  it("replaces the event set of a webhook that predates the reversal events", async () => {
+    const webhookUrl =
+      "https://budget-expense-api-preview.dondon3109.workers.dev/api/billing/paypal/webhook";
+    const { calls, fetchImpl } = queuedFetch([
+      json({ access_token: "live-access-token" }),
+      json({ products: [], total_pages: 1 }),
+      json({ id: "PROD-1" }, 201),
+      json({ plans: [], total_pages: 1 }),
+      json({ id: "P-MONTHLY" }, 201),
+      json({ plans: [], total_pages: 1 }),
+      json({ id: "P-ANNUAL" }, 201),
+      json({
+        webhooks: [
+          {
+            id: "WH-LIVE",
+            url: webhookUrl,
+            event_types: eventTypes.slice(0, 7).map((name) => ({ name })),
+          },
+        ],
+      }),
+      new Response(null, { status: 204 }),
+    ]);
+
+    await expect(
+      setupPayPalLive({
+        env: {
+          PAYPAL_CLIENT_ID: "live-client-id",
+          PAYPAL_CLIENT_SECRET: "live-client-secret",
+        },
+        fetchImpl,
+        apply: true,
+        webhookUrls: [webhookUrl],
+      }),
+    ).resolves.toMatchObject({
+      mode: "apply",
+      webhooks: { [webhookUrl]: { id: "WH-LIVE", action: "update" } },
+    });
+
+    const update = calls.find((call) => call.init.method === "PATCH");
+    expect(update.url).toBe("https://api-m.paypal.com/v1/notifications/webhooks/WH-LIVE");
+    expect(JSON.parse(update.init.body)).toEqual([
+      { op: "replace", path: "/event_types", value: eventTypes.map((name) => ({ name })) },
+    ]);
+    expect(
+      calls.some(
+        (call) => call.init.method === "POST" && call.url.endsWith("/v1/notifications/webhooks"),
+      ),
+    ).toBe(false);
+  });
 });

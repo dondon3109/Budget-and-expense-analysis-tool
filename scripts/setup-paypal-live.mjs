@@ -100,8 +100,11 @@ async function requestJson(fetchImpl, operation, pathOrUrl, init) {
     throw new LiveSetupError(`${operation} (fetch: ${error?.message})`);
   }
   if (!response.ok) throw new LiveSetupError(operation, response.status);
+  const text = await response.text();
+  // A webhook update answers 204 with no body; every other call returns a JSON document.
+  if (!text) return {};
   try {
-    return await response.json();
+    return JSON.parse(text);
   } catch {
     throw new LiveSetupError(operation);
   }
@@ -360,8 +363,29 @@ async function reconcileWebhook(fetchImpl, accessTokenValue, webhookUrl, apply) 
   if (candidates.length > 1) throw new LiveSetupError("reconciling a webhook");
   if (candidates.length === 1) {
     const webhook = record(candidates[0], "reconciling a webhook");
-    if (!hasExpectedWebhookEvents(webhook)) throw new LiveSetupError("reconciling a webhook");
-    return { id: string(webhook, "id", "reconciling a webhook"), action: "reuse" };
+    const id = string(webhook, "id", "reconciling a webhook");
+    if (hasExpectedWebhookEvents(webhook)) return { id, action: "reuse" };
+    // PayPal keeps the event set a webhook was created with, so one registered before the
+    // reversal events existed never receives them. Replacing the set in place keeps the same
+    // webhook id, so the deployed PAYPAL_WEBHOOK_ID secret stays valid.
+    if (!apply) return { id, action: "update" };
+    await requestJson(
+      fetchImpl,
+      "updating a webhook",
+      `/v1/notifications/webhooks/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: { ...bearerHeaders(accessTokenValue), "Content-Type": "application/json" },
+        body: JSON.stringify([
+          {
+            op: "replace",
+            path: "/event_types",
+            value: WEBHOOK_EVENT_TYPES.map((name) => ({ name })),
+          },
+        ]),
+      },
+    );
+    return { id, action: "update" };
   }
   if (!apply) return { id: null, action: "create" };
   const payload = record(
